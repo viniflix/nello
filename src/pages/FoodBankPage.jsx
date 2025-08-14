@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { User, Trash2, Edit } from 'lucide-react';
@@ -32,11 +33,12 @@ const FoodForm = ({ onSave, foodToEdit, nutritionistId }) => {
         setLoading(true);
 
         const payload = {
-            ...foodData,
+            name: foodData.name,
             calories: parseFloat(foodData.calories),
             protein: parseFloat(foodData.protein),
             fat: parseFloat(foodData.fat),
             carbs: parseFloat(foodData.carbs),
+            group: foodData.group,
             nutritionist_id: nutritionistId
         };
         

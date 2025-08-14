@@ -8,53 +8,84 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useChat } from '@/contexts/ChatContext';
 
-const getAdherenceColor = (percentage) => {
-  if (percentage > 110) return 'bg-red-500';
-  if (percentage >= 90) return 'bg-green-500';
-  return 'bg-yellow-500';
+const getAdherenceColor = (value, target) => {
+  if (target === 0) return 'text-muted-foreground';
+  const percentage = (value / target) * 100;
+  if (percentage > 110) return 'text-red-500';
+  if (percentage >= 90) return 'text-green-500';
+  return 'text-yellow-500';
 };
 
-const PatientProgressChart = ({ patientId, prescription }) => {
-  const [totals, setTotals] = useState({ calories: 0 });
-
-  useEffect(() => {
-    const fetchTodayEntries = async () => {
-      const today = new Date().toISOString().split('T')[0];
-      const { data, error } = await supabase
-        .from('meals')
-        .select('total_calories')
-        .eq('patient_id', patientId)
-        .eq('meal_date', today);
-
-      if (error) {
-        console.error("Error fetching entries for progress chart", error);
-        return;
-      }
-
-      const totalCalories = data.reduce((acc, entry) => acc + entry.total_calories, 0);
-      setTotals({ calories: totalCalories });
-    };
-
-    if (patientId) {
-      fetchTodayEntries();
-    }
-  }, [patientId]);
-
-  if (!prescription) return <div className="text-xs text-muted-foreground mt-2">Sem metas definidas.</div>;
-
-  const calorieAdherence = prescription.calories > 0 ? (totals.calories / prescription.calories) * 100 : 0;
-
-  return (
-    <div className="w-full">
-        <div className="flex justify-between items-baseline mb-1">
-            <span className="text-sm font-medium text-foreground">Calorias</span>
-            <span className={`text-sm font-bold ${getAdherenceColor(calorieAdherence).replace('bg-', 'text-')}`}>{Math.round(totals.calories)} / {prescription.calories}</span>
-        </div>
-        <div className="w-full bg-muted rounded-full h-2.5 relative">
-            <div className={`h-2.5 rounded-full ${getAdherenceColor(calorieAdherence)}`} style={{width: `${Math.min(calorieAdherence, 100)}%`}}></div>
-        </div>
+const MacroBlock = ({ title, consumed, target, colorClass }) => (
+    <div className="text-center">
+        <p className="text-xs font-medium text-muted-foreground">{title}</p>
+        <p className={`text-sm font-bold ${colorClass}`}>{Math.round(consumed)} / {Math.round(target)}g</p>
     </div>
-  );
+);
+
+const PatientProgressChart = ({ patientId, prescription }) => {
+    const [totals, setTotals] = useState({ calories: 0, protein: 0, fat: 0, carbs: 0 });
+
+    useEffect(() => {
+        const fetchTodayEntries = async () => {
+            const today = new Date().toISOString().split('T')[0];
+            const { data, error } = await supabase
+                .from('meals')
+                .select('total_calories, total_protein, total_fat, total_carbs')
+                .eq('patient_id', patientId)
+                .eq('meal_date', today);
+
+            if (error) {
+                console.error("Error fetching entries for progress chart", error);
+                return;
+            }
+
+            const dailyTotals = data.reduce((acc, entry) => {
+                acc.calories += entry.total_calories || 0;
+                acc.protein += entry.total_protein || 0;
+                acc.fat += entry.total_fat || 0;
+                acc.carbs += entry.total_carbs || 0;
+                return acc;
+            }, { calories: 0, protein: 0, fat: 0, carbs: 0 });
+
+            setTotals(dailyTotals);
+        };
+
+        if (patientId) {
+            fetchTodayEntries();
+        }
+    }, [patientId]);
+
+    if (!prescription) return <div className="text-xs text-muted-foreground mt-2 text-center">Sem metas de dieta definidas para hoje.</div>;
+
+    return (
+        <div className="w-full space-y-3">
+            <div className="grid grid-cols-4 gap-2">
+                <MacroBlock 
+                    title="Proteínas" 
+                    consumed={totals.protein} 
+                    target={prescription.protein}
+                    colorClass={getAdherenceColor(totals.protein, prescription.protein)}
+                />
+                <MacroBlock 
+                    title="Gorduras" 
+                    consumed={totals.fat} 
+                    target={prescription.fat}
+                    colorClass={getAdherenceColor(totals.fat, prescription.fat)}
+                />
+                <MacroBlock 
+                    title="Carbs" 
+                    consumed={totals.carbs} 
+                    target={prescription.carbs}
+                    colorClass={getAdherenceColor(totals.carbs, prescription.carbs)}
+                />
+                <div className="text-center">
+                    <p className="text-xs font-medium text-muted-foreground">Calorias</p>
+                    <p className={`text-sm font-bold ${getAdherenceColor(totals.calories, prescription.calories)}`}>{Math.round(totals.calories)} / {Math.round(prescription.calories)}</p>
+                </div>
+            </div>
+        </div>
+    );
 };
 
 const PatientItem = ({ patient, prescription, onPrescribe }) => {
@@ -116,7 +147,10 @@ const PatientItem = ({ patient, prescription, onPrescribe }) => {
 const PatientListCard = ({ patients, prescriptions, onPrescribe }) => {
   const getPatientPrescription = (patientId) => {
     const today = new Date();
-    return prescriptions.find(p => p.patient_id === patientId && new Date(p.end_date) >= today);
+    const activePrescriptions = prescriptions
+      .filter(p => p.patient_id === patientId && new Date(p.end_date) >= today)
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    return activePrescriptions[0] || null;
   };
 
   return (

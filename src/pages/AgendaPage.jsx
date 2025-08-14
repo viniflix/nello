@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Calendar as CalendarIcon, Plus, Clock, User, Edit, Trash2 } from 'lucide-react';
@@ -100,9 +101,18 @@ export default function AgendaPage() {
             notes,
             status: 'scheduled'
         };
-        const { error } = await supabase.from('appointments').upsert(data.id ? { ...payload, id: data.id } : payload);
+
+        let query;
+        if (data.id) {
+            query = supabase.from('appointments').update(payload).eq('id', data.id);
+        } else {
+            query = supabase.from('appointments').insert(payload);
+        }
+        
+        const { error } = await query;
+
         if (error) {
-            toast({ title: "Erro", description: "Não foi possível salvar o agendamento.", variant: "destructive" });
+            toast({ title: "Erro", description: `Não foi possível salvar o agendamento. ${error.message}`, variant: "destructive" });
         } else {
             toast({ title: "Sucesso!", description: `Agendamento ${data.id ? 'atualizado' : 'criado'} com sucesso.` });
             setIsFormOpen(false);

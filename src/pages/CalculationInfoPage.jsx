@@ -1,3 +1,4 @@
+
 import React from 'react';
 import DashboardHeader from '@/components/DashboardHeader';
 import { useAuth } from '@/contexts/AuthContext';
@@ -64,6 +65,31 @@ const CalculationInfoPage = () => {
                     description="O IMC é calculado usando o peso e a altura do paciente."
                     formula={`IMC = Peso (kg) / (Altura (m) * Altura (m))`}
                     example="Um paciente com 70kg e 1.75m de altura tem um IMC de: 70 / (1.75 * 1.75) = 22.9."
+                />
+                <CalculationCard 
+                    title="Calculadora de Macronutrientes"
+                    description="Entenda o passo a passo de como a plataforma estima as necessidades calóricas e de macronutrientes."
+                    formula={`1. TMB (Taxa Metabólica Basal - Fórmula Mifflin-St Jeor):
+   - Homens: (10 * Peso) + (6.25 * Altura) - (5 * Idade) + 5
+   - Mulheres: (10 * Peso) + (6.25 * Altura) - (5 * Idade) - 161
+
+2. GET (Gasto Energético Total):
+   - GET = TMB * Fator de Atividade
+
+3. Calorias-Alvo:
+   - Manter Peso: GET
+   - Perder Peso: GET - 500 kcal
+   - Ganhar Peso: GET + 500 kcal
+
+4. Proteínas (g):
+   - Proteínas = Peso * Ratio de Proteína (g/kg)
+
+5. Gorduras (g):
+   - Gorduras = (Calorias-Alvo * (% de Gordura / 100)) / 9
+
+6. Carboidratos (g):
+   - Carboidratos = (Calorias-Alvo - (Proteínas * 4) - (Gorduras * 9)) / 4`}
+                    example="Um homem de 30 anos, 70kg, 175cm, com atividade moderada (fator 1.55) e objetivo de manter o peso, teria uma estimativa de 2756 kcal. A distribuição de macros seria então calculada com base nas preferências de proteína e gordura definidas."
                 />
             </main>
         </div>

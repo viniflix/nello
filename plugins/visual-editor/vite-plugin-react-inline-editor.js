@@ -9,7 +9,7 @@ import fs from 'fs';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const VITE_PROJECT_ROOT = path.resolve(__dirname, '../..');
-const EDITABLE_HTML_TAGS = ["a", "Button", "button", "p", "span", "h1", "h2", "h3", "h4", "h5", "h6", "label", "Label"];
+const EDITABLE_HTML_TAGS = ["a", "Button", "button", "p", "span", "h1", "h2", "h3", "h4", "h5", "h6", "label", "Label", "img"];
 
 function parseEditId(editId) {
   const parts = editId.split(':');
@@ -44,6 +44,43 @@ function checkTagNameEditable(openingElementNode, editableTagsList) {
     }
 
     return false;
+}
+
+function validateImageSrc(openingNode) {
+    if (!openingNode || !openingNode.name || openingNode.name.name !== 'img') {
+        return { isValid: true, reason: null }; // Not an image, skip validation
+    }
+
+    const hasPropsSpread = openingNode.attributes.some(attr => 
+        t.isJSXSpreadAttribute(attr) && 
+        attr.argument && 
+        t.isIdentifier(attr.argument) && 
+        attr.argument.name === 'props'
+    );
+
+    if (hasPropsSpread) {
+        return { isValid: false, reason: 'props-spread' };
+    }
+
+    const srcAttr = openingNode.attributes.find(attr => 
+        t.isJSXAttribute(attr) && 
+        attr.name && 
+        attr.name.name === 'src'
+    );
+
+    if (!srcAttr) {
+        return { isValid: false, reason: 'missing-src' };
+    }
+
+    if (!t.isStringLiteral(srcAttr.value)) {
+        return { isValid: false, reason: 'dynamic-src' };
+    }
+
+    if (!srcAttr.value.value || srcAttr.value.value.trim() === '') {
+        return { isValid: false, reason: 'empty-src' };
+    }
+
+    return { isValid: true, reason: null };
 }
 
 export default function inlineEditPlugin() {
@@ -89,6 +126,17 @@ export default function inlineEditPlugin() {
               // Condition 1: Is the current element tag type editable?
               const isCurrentElementEditable = checkTagNameEditable(openingNode, EDITABLE_HTML_TAGS);
               if (!isCurrentElementEditable) {
+                return;
+              }
+
+              const imageValidation = validateImageSrc(openingNode);
+              if (!imageValidation.isValid) {
+                const disabledAttribute = t.jsxAttribute(
+                  t.jsxIdentifier('data-edit-disabled'),
+                  t.stringLiteral('true')
+                );
+                openingNode.attributes.push(disabledAttribute);
+                attributesAdded++;
                 return;
               }
 
@@ -267,34 +315,51 @@ export default function inlineEditPlugin() {
             }
 
             const generateFunction = generate.default || generate;
+            const targetOpeningElement = targetNodePath.node;
             const parentElementNode = targetNodePath.parentPath?.node;
+            
+            const isImageElement = targetOpeningElement.name && targetOpeningElement.name.name === 'img';
+            
             let beforeCode = '';
-
-            if (parentElementNode && t.isJSXElement(parentElementNode)) {
-              const beforeOutput = generateFunction(parentElementNode, {});
-              beforeCode = beforeOutput.code;
-            }
-
+            let afterCode = '';
             let modified = false;
 
-            if (parentElementNode && t.isJSXElement(parentElementNode)) {
-              parentElementNode.children = [];
-              if (newFullText && newFullText.trim() !== '') {
-                const newTextNode = t.jsxText(newFullText);
-                parentElementNode.children.push(newTextNode);
+            if (isImageElement) {
+              // Handle image src attribute update
+              const beforeOutput = generateFunction(targetOpeningElement, {});
+              beforeCode = beforeOutput.code;
+              
+              const srcAttr = targetOpeningElement.attributes.find(attr => 
+                t.isJSXAttribute(attr) && attr.name && attr.name.name === 'src'
+              );
+              
+              if (srcAttr && t.isStringLiteral(srcAttr.value)) {
+                srcAttr.value = t.stringLiteral(newFullText);
+                modified = true;
+                
+                const afterOutput = generateFunction(targetOpeningElement, {});
+                afterCode = afterOutput.code;
               }
-              modified = true;
+            } else {
+              if (parentElementNode && t.isJSXElement(parentElementNode)) {
+                const beforeOutput = generateFunction(parentElementNode, {});
+                beforeCode = beforeOutput.code;
+                
+                parentElementNode.children = [];
+                if (newFullText && newFullText.trim() !== '') {
+                  const newTextNode = t.jsxText(newFullText);
+                  parentElementNode.children.push(newTextNode);
+                }
+                modified = true;
+                
+                const afterOutput = generateFunction(parentElementNode, {});
+                afterCode = afterOutput.code;
+              }
             }
 
             if (!modified) {
               res.writeHead(409, { 'Content-Type': 'application/json' });
               return res.end(JSON.stringify({ error: 'Could not apply changes to AST.' }));
-            }
-
-            let afterCode = '';
-            if (parentElementNode && t.isJSXElement(parentElementNode)) {
-              const afterOutput = generateFunction(parentElementNode, {});
-              afterCode = afterOutput.code;
             }
 
             const output = generateFunction(babelAst, {});

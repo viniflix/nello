@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { User as UserIcon, Mail, ShieldCheck, Save, Upload, Phone, MapPin, GraduationCap, Briefcase, Info, Loader2 } from 'lucide-react';
@@ -23,7 +24,7 @@ const NutritionistProfilePage = () => {
         name: '', crn: '', phone: '', education: '', bio: '',
         address: { street: '', city: '', state: '', zip: '' },
         specialties: [],
-        preferences: { showDevBar: false },
+        preferences: { showDevBar: false, showFinancials: false },
         avatar_url: ''
     });
     const [loading, setLoading] = useState(false);
@@ -40,7 +41,10 @@ const NutritionistProfilePage = () => {
                 bio: user.profile.bio || '',
                 address: user.profile.address || { street: '', city: '', state: '', zip: '' },
                 specialties: user.profile.specialties || [],
-                preferences: user.profile.preferences || { showDevBar: false },
+                preferences: {
+                    showDevBar: user.profile.preferences?.showDevBar || false,
+                    showFinancials: user.profile.preferences?.showFinancials || false,
+                },
                 avatar_url: user.profile.avatar_url || ''
             });
         }
@@ -116,7 +120,10 @@ const NutritionistProfilePage = () => {
                 education: user.profile.education || '', bio: user.profile.bio || '',
                 address: user.profile.address || { street: '', city: '', state: '', zip: '' },
                 specialties: user.profile.specialties || [],
-                preferences: user.profile.preferences || { showDevBar: false },
+                preferences: {
+                    showDevBar: user.profile.preferences?.showDevBar || false,
+                    showFinancials: user.profile.preferences?.showFinancials || false,
+                },
                 avatar_url: user.profile.avatar_url || ''
             });
         }
@@ -184,6 +191,10 @@ const NutritionistProfilePage = () => {
                            <div className="flex items-center justify-between rounded-lg border p-4">
                                 <div><Label htmlFor="dev-bar" className="font-semibold">Exibir Barra de Desenvolvedor</Label><p className="text-sm text-muted-foreground">Mostra atalhos e informações úteis no rodapé do dashboard.</p></div>
                                 <Switch id="dev-bar" checked={formData.preferences.showDevBar} onCheckedChange={(checked) => { setFormData(prev => ({...prev, preferences: {...prev.preferences, showDevBar: checked }})); setIsEditing(true); }} />
+                            </div>
+                           <div className="flex items-center justify-between rounded-lg border p-4">
+                                <div><Label htmlFor="financials-module" className="font-semibold">Exibir Módulo Financeiro</Label><p className="text-sm text-muted-foreground">Ativa a página para controle de receitas e despesas.</p></div>
+                                <Switch id="financials-module" checked={formData.preferences.showFinancials} onCheckedChange={(checked) => { setFormData(prev => ({...prev, preferences: {...prev.preferences, showFinancials: checked }})); setIsEditing(true); }} />
                             </div>
                         </CardContent>
                     </Card>

@@ -136,22 +136,9 @@ export default function NutritionistDashboard() {
     loadData();
   }, [loadData]);
 
-  const handleAddPrescription = async (newPrescription) => {
-    const { error } = await supabase
-      .from('prescriptions')
-      .upsert(newPrescription, { onConflict: 'patient_id, start_date' })
-      .select();
-
-    if (error) {
-      console.error("Prescription error:", error);
-      toast({ title: "Erro", description: "Não foi possível salvar a prescrição.", variant: "destructive" });
-    } else {
-      toast({ title: "Sucesso!", description: "Prescrição salva com sucesso." });
-      loadData();
-      setShowPrescription(false);
-      setSelectedPatient(null);
-    }
-  };
+  const handleSavePrescription = useCallback(() => {
+    loadData();
+  }, [loadData]);
 
   const handleOpenPrescriptionDialog = (patient) => {
     setSelectedPatient(patient);
@@ -171,6 +158,7 @@ export default function NutritionistDashboard() {
   
   const existingPrescription = selectedPatient ? prescriptions.find(p => p.patient_id === selectedPatient.id) : null;
   const showDevBar = user?.profile?.preferences?.showDevBar || false;
+  const showFinancials = user?.profile?.preferences?.showFinancials || false;
 
   return (
     <div className="min-h-screen bg-background">
@@ -205,9 +193,11 @@ export default function NutritionistDashboard() {
                 <Button variant="outline" asChild>
                     <Link to="/nutritionist/agenda"><Calendar className="w-4 h-4 mr-2" /> Agenda</Link>
                 </Button>
-                <Button variant="outline" asChild>
-                    <Link to="/nutritionist/financial"><DollarSign className="w-4 h-4 mr-2" /> Financeiro</Link>
-                </Button>
+                {showFinancials && (
+                  <Button variant="outline" asChild>
+                      <Link to="/nutritionist/financial"><DollarSign className="w-4 h-4 mr-2" /> Financeiro</Link>
+                  </Button>
+                )}
                 <Button variant="outline" asChild>
                     <Link to="/nutritionist/food-bank"><BookOpen className="w-4 h-4 mr-2" /> Banco de Alimentos</Link>
                 </Button>
@@ -251,7 +241,7 @@ export default function NutritionistDashboard() {
         setIsOpen={setShowPrescription}
         patient={selectedPatient}
         nutritionistId={user.id}
-        onAddPrescription={handleAddPrescription}
+        onSave={handleSavePrescription}
         existingPrescription={existingPrescription}
       />
       <NotificationsPanel isOpen={showNotifications} setIsOpen={setShowNotifications} />

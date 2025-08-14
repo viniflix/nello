@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, FileText, MessageSquare, Baby, BarChart, Utensils, History } from 'lucide-react';
+import { ArrowLeft, FileText, MessageSquare, Baby, BarChart, Utensils, History, User as UserIcon } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/customSupabaseClient';
 import { Button } from '@/components/ui/button';
@@ -232,8 +233,8 @@ export default function NutritionistPatientDetail() {
         <Link to="/nutritionist" className="mr-2">
             <Button variant="ghost" size="icon"><ArrowLeft className="w-5 h-5" /></Button>
         </Link>
-        <div className="w-10 h-10 bg-secondary rounded-full mr-3 flex items-center justify-center font-bold text-primary">
-          {patient.name.charAt(0)}
+        <div className="w-10 h-10 bg-secondary rounded-full mr-3 flex items-center justify-center font-bold text-primary overflow-hidden">
+            {patient.avatar_url ? <img src={patient.avatar_url} alt={patient.name} className="w-full h-full object-cover" /> : <UserIcon className="w-6 h-6 text-muted-foreground" />}
         </div>
         <div>
           <h2 className="font-semibold text-foreground">{patient.name}</h2>

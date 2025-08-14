@@ -1,4 +1,4 @@
-import { POPUP_STYLES, getPopupHTMLTemplate } from './plugins/visual-editor/visual-editor-config.js';
+import { POPUP_STYLES } from './plugins/visual-editor/visual-editor-config.js';
 
 const PLUGIN_APPLY_EDIT_API_URL = '/api/apply-edit';
 
@@ -9,23 +9,19 @@ const ALLOWED_PARENT_ORIGINS = [
 	'http://localhost:4000',
 ];
 
-let popupElement = null;
-let popupTextarea = null;
-let popupSaveButton = null;
-let popupCancelButton = null;
-let currentEditingInfo = null;
 let disabledTooltipElement = null;
+let currentDisabledHoverElement = null;
 
 let translations = {
-  cancel: 'Cancel',
-  save: 'Save',
-  addText: 'Add text',
-  disabledTooltipText: "This text can be changed only through chat."
+  disabledTooltipText: "This text can be changed only through chat.",
+  disabledTooltipTextImage: "This image can only be changed through chat."
 };
 
 let areStylesInjected = false;
 
 let globalEventHandlers = null;
+
+let currentEditingInfo = null;
 
 function injectPopupStyles() {
   if (areStylesInjected) return;
@@ -37,60 +33,43 @@ function injectPopupStyles() {
   areStylesInjected = true;
 }
 
-function createPopup() {
-  if (popupElement) return;
-
-  injectPopupStyles();
-
-  popupElement = document.createElement('div');
-  popupElement.id = 'inline-editor-popup';
- 
-  popupElement.innerHTML = getPopupHTMLTemplate(translations.save, translations.cancel);
-  document.body.appendChild(popupElement);
- 
-  popupTextarea = popupElement.querySelector('textarea');
-  popupSaveButton = popupElement.querySelector('.save-button');
-  popupCancelButton = popupElement.querySelector('.cancel-button');
-
-  popupTextarea.placeholder = `${translations.addText}...`;
- 
-  popupSaveButton.addEventListener('click', handlePopupSave);
-  popupCancelButton.addEventListener('click', handlePopupCancel);
+function findEditableElementAtPoint(event) {
+  let editableElement = event.target.closest('[data-edit-id]');
+  
+  if (editableElement) {
+    return editableElement;
+  }
+  
+  const elementsAtPoint = document.elementsFromPoint(event.clientX, event.clientY);
+  
+  const found = elementsAtPoint.find(el => el !== event.target && el.hasAttribute('data-edit-id'));
+  if (found) return found;
+  
+  return null;
 }
 
-function showPopup(targetElement, editId, currentText) {
-  if (!popupElement) createPopup();
+function findDisabledElementAtPoint(event) {
+  const direct = event.target.closest('[data-edit-disabled]');
+  if (direct) return direct;
+  const elementsAtPoint = document.elementsFromPoint(event.clientX, event.clientY);
+  const found = elementsAtPoint.find(el => el !== event.target && el.hasAttribute('data-edit-disabled'));
+  if (found) return found;
+  return null;
+}
 
-  currentEditingInfo = { editId, targetElement };
-
-  popupSaveButton.textContent = translations.save;
-  popupCancelButton.textContent = translations.cancel;
-
-  popupTextarea.style.display = 'block';
-  popupTextarea.value = currentText;
-  popupTextarea.disabled = false;
-  popupSaveButton.style.display = 'inline-block';
-
-  popupElement.classList.add('is-active');
-  popupTextarea.focus();
+function showPopup(targetElement, editId, currentContent, isImage = false) {
+ currentEditingInfo = { editId, targetElement };
 
  const parentOrigin = getParentOrigin();
+
  if (parentOrigin && ALLOWED_PARENT_ORIGINS.includes(parentOrigin)) {
+   const eventType = isImage ? 'imageEditEnter' : 'editEnter';
+   
    window.parent.postMessage({
-     type: 'editEnter',
+     type: eventType,
+     payload: { currentText: currentContent }
    }, parentOrigin);
  }
-}
-
-function hidePopup() {
-  if (popupElement) {
-    popupElement.classList.remove('is-active');
-    popupElement.classList.remove('is-disabled-view');
-   
-    if(popupTextarea) popupTextarea.style.display = 'none';
-    if(popupSaveButton) popupSaveButton.style.display = 'none';
-  }
-  currentEditingInfo = null;
 }
 
 function handleGlobalEvent(event) {
@@ -102,26 +81,30 @@ function handleGlobalEvent(event) {
     return;
   }
 
-  const editableElement = event.target.closest('[data-edit-id]');
+  const editableElement = findEditableElementAtPoint(event);
 
   if (editableElement) {
     event.preventDefault();
     event.stopPropagation();
     event.stopImmediatePropagation();
 
-    if (event.type === 'click') {
-      if (currentEditingInfo) {
-        hidePopup();
-      }
-
+    if (['click', 'pointerdown'].includes(event.type)) {
       const editId = editableElement.getAttribute('data-edit-id');
       if (!editId) {
         console.warn('[INLINE EDITOR] Clicked element missing data-edit-id');
         return;
       }
 
-      const currentText = editableElement.textContent || '';
-      showPopup(editableElement, editId, currentText);
+      const isImage = editableElement.tagName.toLowerCase() === 'img';
+      let currentContent = '';
+      
+      if (isImage) {
+        currentContent = editableElement.getAttribute('src') || '';
+      } else {
+        currentContent = editableElement.textContent || '';
+      }
+      
+      showPopup(editableElement, editId, currentContent, isImage);
     }
   } else {
     event.preventDefault();
@@ -146,10 +129,8 @@ function getParentOrigin() {
   return null;
 }
 
-async function handlePopupSave() {
-  if (!currentEditingInfo) return;
-  
-  const newText = popupTextarea.value
+async function handleEditSave(updatedText) {
+  const newText = updatedText
   // Replacing characters that cause Babel parser to crash
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
@@ -192,19 +173,6 @@ async function handlePopupSave() {
   } catch (error) {
     console.error(`[vite][visual-editor] Error during fetch for ${editId}:`, error);
   }
-
-  hidePopup();
-}
-
-function handlePopupCancel() {
- const parentOrigin = getParentOrigin();
- if (parentOrigin && ALLOWED_PARENT_ORIGINS.includes(parentOrigin)) {
-   window.parent.postMessage({
-     type: 'editCancel',
-   }, parentOrigin);
- }
-
-  hidePopup();
 }
 
 function createDisabledTooltip() {
@@ -215,10 +183,10 @@ function createDisabledTooltip() {
   document.body.appendChild(disabledTooltipElement);
 }
 
-function showDisabledTooltip(targetElement) {
+function showDisabledTooltip(targetElement, isImage = false) {
   if (!disabledTooltipElement) createDisabledTooltip();
 
-  disabledTooltipElement.textContent = translations.disabledTooltipText;
+  disabledTooltipElement.textContent = isImage ? translations.disabledTooltipTextImage : translations.disabledTooltipText;
   
   if (!disabledTooltipElement.isConnected) {
     document.body.appendChild(disabledTooltipElement);
@@ -257,11 +225,29 @@ function hideDisabledTooltip() {
 }
 
 function handleDisabledElementHover(event) {
-  showDisabledTooltip(event.currentTarget);
+  const isImage = event.currentTarget.tagName.toLowerCase() === 'img';
+
+  showDisabledTooltip(event.currentTarget, isImage);
 }
 
 function handleDisabledElementLeave() {
   hideDisabledTooltip();
+}
+
+function handleDisabledGlobalHover(event) {
+  const disabledElement = findDisabledElementAtPoint(event);
+  if (disabledElement) {
+    if (currentDisabledHoverElement !== disabledElement) {
+      currentDisabledHoverElement = disabledElement;
+      const isImage = disabledElement.tagName.toLowerCase() === 'img';
+      showDisabledTooltip(disabledElement, isImage);
+    }
+  } else {
+    if (currentDisabledHoverElement) {
+      currentDisabledHoverElement = null;
+      hideDisabledTooltip();
+    }
+  }
 }
 
 function enableEditMode() {
@@ -281,6 +267,8 @@ function enableEditMode() {
     });
   }
   
+  document.addEventListener('mousemove', handleDisabledGlobalHover, true);
+  
   document.querySelectorAll('[data-edit-disabled]').forEach(el => {
     el.removeEventListener('mouseenter', handleDisabledElementHover);
     el.addEventListener('mouseenter', handleDisabledElementHover);
@@ -292,7 +280,6 @@ function enableEditMode() {
 function disableEditMode() {
   document.getElementById('root')?.removeAttribute('data-edit-mode-enabled');
 
-  hidePopup();
   hideDisabledTooltip();
 
   if (globalEventHandlers) {
@@ -302,6 +289,9 @@ function disableEditMode() {
     globalEventHandlers = null;
   }
   
+  document.removeEventListener('mousemove', handleDisabledGlobalHover, true);
+  currentDisabledHoverElement = null;
+  
   document.querySelectorAll('[data-edit-disabled]').forEach(el => {
     el.removeEventListener('mouseenter', handleDisabledElementHover);
     el.removeEventListener('mouseleave', handleDisabledElementLeave);
@@ -309,10 +299,14 @@ function disableEditMode() {
 }
 
 window.addEventListener("message", function(event) {
+  if (event.data?.type === "edit-save") {
+    handleEditSave(event.data?.payload?.newText);
+  }
   if (event.data?.type === "enable-edit-mode") {
     if (event.data?.translations) {
-        translations = { ...translations, ...event.data.translations };
-    }
+      translations = { ...translations, ...event.data.translations };
+  }
+
     enableEditMode();
   }
   if (event.data?.type === "disable-edit-mode") {

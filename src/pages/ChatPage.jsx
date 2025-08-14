@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, Fragment } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -97,15 +98,12 @@ const MediaViewer = ({ mediaPath, messageText, onImageClick }) => {
 
     useEffect(() => {
         const getSignedUrl = async () => {
-            if (!mediaPath) return;
-            // Ensure mediaPath is a relative path, not a full URL
-            const path = mediaPath.includes('http') ? new URL(mediaPath).pathname.split('/chat_media/')[1] : mediaPath;
-            if (!path) {
+            if (!mediaPath) {
                 setLoading(false);
-                setSignedUrl('');
                 return;
             }
-
+            
+            const path = mediaPath;
             setLoading(true);
             const { data, error } = await supabase.storage
                 .from('chat_media')
@@ -128,7 +126,7 @@ const MediaViewer = ({ mediaPath, messageText, onImageClick }) => {
     const fileType = mediaPath.split('.').pop().toLowerCase();
     
     if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(fileType)) {
-        return <img src={signedUrl} alt={messageText || "Imagem enviada"} className="rounded-lg max-w-[200px] md:max-w-xs h-auto cursor-pointer" onClick={() => onImageClick(mediaPath)} />;
+        return <img src={signedUrl} alt={messageText || "Imagem enviada"} className="rounded-lg max-w-[200px] md:max-w-xs h-auto cursor-pointer" onClick={() => onImageClick(signedUrl)} />;
     }
     if (['mp4', 'webm', 'mov', 'quicktime'].includes(fileType)) {
         return <video controls src={signedUrl} className="rounded-lg max-w-[200px] md:max-w-xs h-auto" />;
@@ -196,7 +194,7 @@ const ChatPage = () => {
 
   useEffect(() => { if (user && recipientId) fetchMessages(user.id, recipientId); }, [user, recipientId, fetchMessages]);
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'auto' }); }, [messages]);
-  useEffect(() => { if(recipientId) markChatAsRead(recipientId); }, [recipientId, markChatAsRead]);
+  useEffect(() => { if(recipientId) markChatAsRead(recipientId); }, [recipientId, markChatAsRead, messages]);
 
 
   const handleFileChange = (event) => {
@@ -231,7 +229,6 @@ const ChatPage = () => {
 
     if (mediaFile) {
       messageType = mediaType;
-      // For media, the message content will be the file name
       messageText = mediaFile.name; 
       const fileExtension = mediaFile.name.split('.').pop();
       const filePath = `${user.id}/${Date.now()}.${fileExtension}`;

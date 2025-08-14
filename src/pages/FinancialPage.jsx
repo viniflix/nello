@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { DollarSign, Plus, Download, Edit, Trash2, FileText, ArrowUp, ArrowDown, Banknote } from 'lucide-react';
@@ -148,7 +149,7 @@ export default function FinancialPage() {
             transaction_date, 
             category: type === 'expense' ? category : null 
         };
-
+        
         let query;
         if (data.id) {
             query = supabase.from('financial_transactions').update(payload).eq('id', data.id);

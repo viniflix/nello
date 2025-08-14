@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -49,7 +50,7 @@ const MacroCalculator = ({ calories, macros, setMacros }) => {
     );
 };
 
-const PrescriptionDialog = ({ isOpen, setIsOpen, onSave, patientId, nutritionistId, existingPrescription }) => {
+const PrescriptionDialog = ({ isOpen, setIsOpen, onSave, patient, nutritionistId, existingPrescription }) => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [templates, setTemplates] = useState([]);
@@ -69,6 +70,7 @@ const PrescriptionDialog = ({ isOpen, setIsOpen, onSave, patientId, nutritionist
         ...existingPrescription,
         start_date: format(new Date(existingPrescription.start_date), 'yyyy-MM-dd'),
         end_date: format(new Date(existingPrescription.end_date), 'yyyy-MM-dd'),
+        meal_plan: existingPrescription.meal_plan || {}
       });
     } else {
       setPrescription({
@@ -97,16 +99,17 @@ const PrescriptionDialog = ({ isOpen, setIsOpen, onSave, patientId, nutritionist
       setPrescription(prev => ({
         ...prev,
         template_id: template.id,
-        meal_plan: template.meals,
+        meal_plan: template.meals || {},
       }));
     }
   };
 
   const handleSave = async () => {
+    if (!patient) return;
     setLoading(true);
     
     const payload = {
-        patient_id: patientId,
+        patient_id: patient.id,
         nutritionist_id: nutritionistId,
         calories: Number(prescription.calories),
         protein: Number(prescription.protein),
@@ -142,7 +145,7 @@ const PrescriptionDialog = ({ isOpen, setIsOpen, onSave, patientId, nutritionist
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>{existingPrescription ? 'Editar' : 'Nova'} Prescrição</DialogTitle>
+          <DialogTitle>{existingPrescription ? 'Editar' : 'Nova'} Prescrição para {patient?.name}</DialogTitle>
           <DialogDescription>Defina metas e orientações para o paciente.</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4 max-h-[70vh] overflow-y-auto pr-2">

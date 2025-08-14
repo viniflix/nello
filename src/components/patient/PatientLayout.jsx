@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Outlet, useLocation, Link, useNavigate } from 'react-router-dom';
 import { Home, Search, Plus, BarChart2, User, Bell, LogOut, ArrowLeft, MessageSquare } from 'lucide-react';
