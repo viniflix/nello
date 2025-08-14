@@ -1,95 +1,150 @@
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Droplets, Wheat, Beef } from 'lucide-react';
+import { ArrowLeft, FileText, MessageSquare, Baby, BarChart, Utensils } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/customSupabaseClient';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend } from 'recharts';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 
-const getAdherenceColor = (percentage) => {
-    if (percentage > 110) return { bar: 'hsl(var(--destructive))', text: 'text-destructive' };
-    if (percentage >= 90) return { bar: 'hsl(var(--primary))', text: 'text-primary' };
-    return { bar: 'hsl(var(--accent))', text: 'text-accent' };
-};
+import AnamneseView from '@/components/nutritionist/patient-detail/AnamneseView';
+import WeeklySummary from '@/components/nutritionist/patient-detail/WeeklySummary';
+import GrowthChart from '@/components/nutritionist/patient-detail/GrowthChart';
+import DashboardTab from '@/components/nutritionist/patient-detail/DashboardTab';
+import { format } from 'date-fns';
 
-const NutrientProgressCard = ({ label, icon, value, goal }) => {
-    const adherence = goal > 0 ? (value / goal) * 100 : 0;
-    const color = getAdherenceColor(adherence).text;
-  
-    return (
-      <Card className="bg-card/50">
-        <CardContent className="p-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-full bg-primary/10 ${color}`}>
-                    {icon}
-                </div>
+const MealRecordCard = ({ meal }) => (
+    <Card>
+        <CardHeader>
+            <div className='flex justify-between items-start'>
                 <div>
-                    <p className="text-sm text-muted-foreground">{label}</p>
-                    <p className="font-bold text-foreground">{Math.round(value)}g</p>
+                    <CardTitle>{meal.meal_type}</CardTitle>
+                    <CardDescription>{meal.meal_time}</CardDescription>
+                </div>
+                <div className='text-right'>
+                    <p className='font-bold text-destructive'>{Math.round(meal.total_calories)} kcal</p>
+                    <p className='text-xs text-muted-foreground'>
+                        P:{Math.round(meal.total_protein)}g, G:{Math.round(meal.total_fat)}g, C:{Math.round(meal.total_carbs)}g
+                    </p>
                 </div>
             </div>
-            <p className={`font-bold ${color}`}>{Math.round(adherence)}%</p>
+        </CardHeader>
+        <CardContent>
+            <div className='space-y-2'>
+                {meal.meal_items.map(item => (
+                    <div key={item.id} className='text-sm flex justify-between p-2 bg-muted/50 rounded-md'>
+                        <span>{item.quantity}g de {item.name}</span>
+                        <span className='text-muted-foreground'>{Math.round(item.calories)} kcal</span>
+                    </div>
+                ))}
+            </div>
+            {meal.notes && (
+                <div className='mt-4'>
+                    <h4 className='font-semibold text-sm'>Observações</h4>
+                    <p className='text-sm text-muted-foreground p-2 bg-muted/50 rounded-md'>{meal.notes}</p>
+                </div>
+            )}
         </CardContent>
-      </Card>
+    </Card>
+);
+
+
+const FoodRecordsTab = ({ patientId }) => {
+    const [meals, setMeals] = useState([]);
+    const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchMeals = async () => {
+            setLoading(true);
+            const { data, error } = await supabase
+                .from('meals')
+                .select('*, meal_items(*)')
+                .eq('patient_id', patientId)
+                .eq('meal_date', date)
+                .order('meal_time', { ascending: true });
+            
+            if (error) {
+                console.error("Error fetching meals:", error);
+                setMeals([]);
+            } else {
+                setMeals(data);
+            }
+            setLoading(false);
+        };
+        fetchMeals();
+    }, [patientId, date]);
+
+    return (
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="space-y-6">
+            <div className="flex justify-between items-center">
+                <h3 className="text-lg font-bold">Registros de {format(new Date(date), 'dd/MM/yyyy')}</h3>
+                <input type="date" value={date} onChange={e => setDate(e.target.value)} className="bg-card text-sm text-muted-foreground border-border rounded-md p-1 focus:ring-primary"/>
+            </div>
+            {loading ? <p>Carregando...</p> : (
+                meals.length > 0 ? (
+                    <div className="space-y-4">
+                        {meals.map(meal => <MealRecordCard key={meal.id} meal={meal} />)}
+                    </div>
+                ) : (
+                    <p className="text-muted-foreground text-center py-8">Nenhum registro encontrado para esta data.</p>
+                )
+            )}
+        </motion.div>
     );
-  };
+};
 
 export default function NutritionistPatientDetail() {
   const { patientId } = useParams();
+  const { user } = useAuth();
   const [patient, setPatient] = useState(null);
   const [prescription, setPrescription] = useState(null);
-  const [foodEntries, setFoodEntries] = useState([]);
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [loading, setLoading] = useState(true);
+  const [meals, setMeals] = useState([]);
+  const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
 
-  const loadData = useCallback(async () => {
+  const loadPatientData = useCallback(async () => {
     setLoading(true);
     const { data: patientData } = await supabase.from('user_profiles').select('*').eq('id', patientId).single();
     setPatient(patientData);
 
-    const { data: prescriptionData } = await supabase.from('prescriptions').select('*').eq('patient_id', patientId).maybeSingle();
+    const { data: prescriptionData } = await supabase
+      .from('prescriptions')
+      .select('*')
+      .eq('patient_id', patientId)
+      .lte('start_date', selectedDate)
+      .gte('end_date', selectedDate)
+      .maybeSingle();
     setPrescription(prescriptionData);
-
-    const { data: entriesData } = await supabase.from('food_entries').select('*').eq('patient_id', patientId).eq('entry_date', selectedDate);
-    setFoodEntries(entriesData || []);
+    
     setLoading(false);
   }, [patientId, selectedDate]);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    loadPatientData();
+  }, [loadPatientData]);
 
-  const dailyTotals = useMemo(() => {
-    return foodEntries.reduce((acc, entry) => ({
-      calories: acc.calories + entry.calories,
-      protein: acc.protein + entry.protein,
-      fat: acc.fat + entry.fat,
-      carbs: acc.carbs + entry.carbs,
-    }), { calories: 0, protein: 0, fat: 0, carbs: 0 });
-  }, [foodEntries]);
+  useEffect(() => {
+    const fetchMeals = async () => {
+        const { data, error } = await supabase
+            .from('meals')
+            .select('*, meal_items(*)')
+            .eq('patient_id', patientId)
+            .eq('meal_date', selectedDate);
+        if (error) {
+            console.error(error);
+            setMeals([]);
+        } else {
+            setMeals(data);
+        }
+    };
+    if (patientId) {
+        fetchMeals();
+    }
+  }, [patientId, selectedDate]);
 
-  const weeklyData = useMemo(() => {
-    // This part is complex with async calls inside a loop, will simplify for now
-    // A proper implementation would use a database function or a more complex query.
-    // For now, we'll just show today's data as an example.
-    const data = [];
-    for (let i = 6; i >= 0; i--) {
-        const date = new Date();
-        date.setDate(new Date(selectedDate).getDate() - i);
-        data.push({
-            name: date.toLocaleDateString('pt-BR', {weekday: 'short'}).replace('.',''),
-            Consumido: 0,
-            Meta: prescription?.calories || 0
-        });
-    }
-    if(data.length > 0) {
-        data[6].Consumido = Math.round(dailyTotals.calories);
-    }
-    return data;
-  }, [prescription, dailyTotals, selectedDate]);
 
   if (loading) {
     return <div className="flex items-center justify-center h-screen">Carregando detalhes do paciente...</div>;
@@ -98,9 +153,17 @@ export default function NutritionistPatientDetail() {
   if (!patient) {
     return <div className="flex items-center justify-center h-screen">Paciente não encontrado.</div>;
   }
-  
-  const calorieAdherence = prescription ? (dailyTotals.calories / prescription.calories) * 100 : 0;
-  const calorieAdherenceColor = getAdherenceColor(calorieAdherence).bar;
+
+  const tabs = [
+    { value: "dashboard", label: "Dashboard", icon: <BarChart className="w-4 h-4 mr-2"/> },
+    { value: "records", label: "Registros", icon: <Utensils className="w-4 h-4 mr-2"/> },
+    { value: "summary", label: "Resumo Semanal", icon: <FileText className="w-4 h-4 mr-2"/> },
+    { value: "anamnese", label: "Anamnese", icon: <MessageSquare className="w-4 h-4 mr-2"/> },
+  ];
+
+  if (patient.patient_category === 'pregnant' || patient.patient_category === 'child') {
+    tabs.push({ value: "growth", label: "Crescimento", icon: <Baby className="w-4 h-4 mr-2"/> });
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -118,73 +181,41 @@ export default function NutritionistPatientDetail() {
       </header>
 
       <main className="max-w-4xl mx-auto p-4 space-y-6">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-            <Card className="glass-card">
-                <CardHeader>
-                    <CardTitle>Resumo do Dia</CardTitle>
-                    <input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className="bg-transparent text-sm text-muted-foreground border-none focus:ring-0 p-0"/>
-                </CardHeader>
-                <CardContent>
-                    {!prescription ? (
-                        <p className="text-muted-foreground">Paciente sem dieta prescrita.</p>
-                    ) : (
-                        <div className="space-y-4">
-                            <div className="text-center">
-                                <p className="text-4xl font-bold" style={{color: calorieAdherenceColor}}>{Math.round(dailyTotals.calories)}</p>
-                                <p className="text-muted-foreground">/ {prescription.calories} kcal</p>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <NutrientProgressCard label="Proteínas" icon={<Beef size={20}/>} value={dailyTotals.protein} goal={prescription.protein} />
-                                <NutrientProgressCard label="Gorduras" icon={<Droplets size={20}/>} value={dailyTotals.fat} goal={prescription.fat} />
-                                <NutrientProgressCard label="Carboidratos" icon={<Wheat size={20}/>} value={dailyTotals.carbs} goal={prescription.carbs} />
-                            </div>
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
-        </motion.div>
-        
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }}>
-            <Card className="glass-card">
-                <CardHeader>
-                    <CardTitle>Histórico de Calorias (Últimos 7 Dias)</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <ResponsiveContainer width="100%" height={300}>
-                        <BarChart data={weeklyData}>
-                            <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.2} />
-                            <XAxis dataKey="name" tick={{fontSize: 12}}/>
-                            <YAxis tick={{fontSize: 12}} />
-                            <Tooltip contentStyle={{backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}/>
-                            <Legend />
-                            <Bar dataKey="Consumido" fill={calorieAdherenceColor} radius={[4,4,0,0]}/>
-                            <Bar dataKey="Meta" fill="hsl(var(--muted-foreground))" radius={[4,4,0,0]}/>
-                        </BarChart>
-                    </ResponsiveContainer>
-                </CardContent>
-            </Card>
-        </motion.div>
-
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }}>
-            <Card className="glass-card">
-                <CardHeader><CardTitle>Registros Alimentares de Hoje</CardTitle></CardHeader>
-                <CardContent>
-                    {foodEntries.length > 0 ? (
-                        <div className="space-y-2">
-                        {foodEntries.map(entry => (
-                            <div key={entry.id} className="p-3 rounded-lg bg-background flex justify-between items-center">
-                                <div>
-                                    <p className="font-medium">{entry.quantity}g de {entry.food_name}</p>
-                                    <p className="text-sm text-muted-foreground">{entry.entry_time}</p>
-                                </div>
-                                <p className="font-semibold text-destructive">{Math.round(entry.calories)} kcal</p>
-                            </div>
-                        ))}
-                        </div>
-                    ) : <p className="text-muted-foreground">Nenhum registro encontrado para hoje.</p>}
-                </CardContent>
-            </Card>
-        </motion.div>
+        <Tabs defaultValue="dashboard">
+            <TabsList className="grid w-full" style={{gridTemplateColumns: `repeat(${tabs.length}, 1fr)`}}>
+                {tabs.map(tab => (
+                    <TabsTrigger key={tab.value} value={tab.value}>{tab.icon}{tab.label}</TabsTrigger>
+                ))}
+            </TabsList>
+            <TabsContent value="dashboard" className="mt-6">
+                <DashboardTab 
+                    meals={meals} 
+                    prescription={prescription} 
+                    selectedDate={selectedDate}
+                    setSelectedDate={setSelectedDate}
+                />
+            </TabsContent>
+            <TabsContent value="records" className="mt-6">
+                <FoodRecordsTab patientId={patientId} />
+            </TabsContent>
+            <TabsContent value="summary" className="mt-6">
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+                    <WeeklySummary patientId={patientId} nutritionistId={user.id} prescription={prescription} />
+                </motion.div>
+            </TabsContent>
+            <TabsContent value="anamnese" className="mt-6">
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+                    <AnamneseView patientId={patientId} nutritionistId={user.id} />
+                </motion.div>
+            </TabsContent>
+            {(patient.patient_category === 'pregnant' || patient.patient_category === 'child') && (
+                <TabsContent value="growth" className="mt-6">
+                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+                        <GrowthChart patientId={patientId} />
+                    </motion.div>
+                </TabsContent>
+            )}
+        </Tabs>
       </main>
     </div>
   );

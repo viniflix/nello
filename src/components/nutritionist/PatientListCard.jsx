@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { BarChart2, MessageSquare, Edit, ChevronRight } from 'lucide-react';
@@ -5,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/customSupabaseClient';
+import { useChat } from '@/contexts/ChatContext';
 
 const getAdherenceColor = (percentage) => {
   if (percentage > 110) return 'bg-red-500';
@@ -19,17 +21,17 @@ const PatientProgressChart = ({ patientId, prescription }) => {
     const fetchTodayEntries = async () => {
       const today = new Date().toISOString().split('T')[0];
       const { data, error } = await supabase
-        .from('food_entries')
-        .select('calories')
+        .from('meals')
+        .select('total_calories')
         .eq('patient_id', patientId)
-        .eq('entry_date', today);
+        .eq('meal_date', today);
 
       if (error) {
         console.error("Error fetching entries for progress chart", error);
         return;
       }
 
-      const totalCalories = data.reduce((acc, entry) => acc + entry.calories, 0);
+      const totalCalories = data.reduce((acc, entry) => acc + entry.total_calories, 0);
       setTotals({ calories: totalCalories });
     };
 
@@ -57,6 +59,8 @@ const PatientProgressChart = ({ patientId, prescription }) => {
 
 const PatientItem = ({ patient, prescription, onPrescribe }) => {
   const navigate = useNavigate();
+  const { unreadSenders } = useChat();
+  const hasUnread = unreadSenders.has(patient.id);
 
   return (
     <motion.div
@@ -91,9 +95,10 @@ const PatientItem = ({ patient, prescription, onPrescribe }) => {
           <Edit className="w-3 h-3 mr-1.5" />
           {prescription ? 'Editar Dieta' : 'Criar Dieta'}
         </Button>
-        <Button size="sm" variant="outline" onClick={() => navigate(`/chat/nutritionist/${patient.id}`)}>
+        <Button size="sm" variant="outline" onClick={() => navigate(`/chat/nutritionist/${patient.id}`)} className={`${hasUnread ? 'bg-primary/20 text-primary border-primary' : ''}`}>
           <MessageSquare className="w-3 h-3 mr-1.5" />
           Chat
+          {hasUnread && <span className="ml-2 w-2 h-2 bg-destructive rounded-full"></span>}
         </Button>
         <Button size="sm" variant="ghost" className="text-primary hover:text-primary" onClick={() => navigate(`/nutritionist/patient/${patient.id}`)}>
           <BarChart2 className="w-3 h-3 mr-1.5" />

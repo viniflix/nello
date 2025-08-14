@@ -22,6 +22,10 @@ import PatientLayout from '@/components/patient/PatientLayout.jsx';
 import PatientRecords from '@/pages/PatientRecords.jsx';
 import PatientSearch from '@/pages/PatientSearch.jsx';
 import NutritionistPatientDetail from '@/pages/NutritionistPatientDetail.jsx';
+import MacroCalculatorPage from '@/pages/MacroCalculatorPage.jsx';
+import FoodBankPage from '@/pages/FoodBankPage.jsx';
+import FinancialPage from '@/pages/FinancialPage.jsx';
+import AgendaPage from '@/pages/AgendaPage.jsx';
 
 function ProtectedRoute({ children, userType }) {
   const { user, loading } = useAuth();
@@ -75,16 +79,40 @@ function AppRoutes() {
           <ChatPage />
         </ProtectedRoute>
       } />
+       <Route path="/chat/patient" element={
+        <ProtectedRoute userType="patient">
+          <ChatPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/nutritionist/calculator" element={
+        <ProtectedRoute userType="nutritionist">
+          <MacroCalculatorPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/nutritionist/food-bank" element={
+        <ProtectedRoute userType="nutritionist">
+          <FoodBankPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/nutritionist/financial" element={
+        <ProtectedRoute userType="nutritionist">
+          <FinancialPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/nutritionist/agenda" element={
+        <ProtectedRoute userType="nutritionist">
+          <AgendaPage />
+        </ProtectedRoute>
+      } />
 
       <Route element={<ProtectedRoute userType="patient"><PatientLayout /></ProtectedRoute>}>
         <Route path="/patient" element={<PatientDashboard />} />
         <Route path="/patient/search" element={<PatientSearch />} />
         <Route path="/patient/records" element={<PatientRecords />} />
         <Route path="/patient/profile" element={<PatientProfile />} />
-        <Route path="/chat/patient" element={<ChatPage />} />
       </Route>
       
-      <Route path="/patient/add-food" element={
+      <Route path="/patient/add-food/:mealId?" element={
         <ProtectedRoute userType="patient">
           <AddFoodPage />
         </ProtectedRoute>

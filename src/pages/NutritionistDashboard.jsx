@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Users, Target, Calendar, User, Plus } from 'lucide-react';
+import { Users, Target, Calendar, User, Plus, BookOpen, BrainCircuit, DollarSign, Bell } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/customSupabaseClient';
@@ -12,6 +12,8 @@ import RecentPrescriptionsCard from '@/components/nutritionist/RecentPrescriptio
 import PrescriptionDialog from '@/components/nutritionist/PrescriptionDialog';
 import AddPatientDialog from '@/components/nutritionist/AddPatientDialog';
 import { Button } from '@/components/ui/button';
+import { Link } from 'react-router-dom';
+import NotificationsPanel from '@/components/NotificationsPanel';
 
 const DashboardStats = ({ patientCount, prescriptionCount }) => (
   <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -52,6 +54,8 @@ export default function NutritionistDashboard() {
   const [prescriptions, setPrescriptions] = useState([]);
   const [showPrescription, setShowPrescription] = useState(false);
   const [showAddPatient, setShowAddPatient] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -97,6 +101,23 @@ export default function NutritionistDashboard() {
     }
   }, [user, loadData]);
 
+  useEffect(() => {
+      const fetchUnread = async () => {
+          if(!user) return;
+          const { count } = await supabase.from('notifications').select('*', { count: 'exact', head: true }).eq('user_id', user.id).eq('is_read', false);
+          setUnreadNotifications(count || 0);
+      };
+      fetchUnread();
+      
+      const channel = supabase.channel(`notifications-count:${user?.id}`)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${user?.id}`}, payload => {
+            fetchUnread();
+        })
+        .subscribe();
+    
+    return () => { supabase.removeChannel(channel); }
+  }, [user]);
+
   const handleAddPatient = useCallback(() => {
     loadData();
   }, [loadData]);
@@ -138,29 +159,48 @@ export default function NutritionistDashboard() {
 
   return (
     <div className="min-h-screen bg-background">
-      <DashboardHeader 
+       <DashboardHeader 
         user={user.profile} 
         logout={signOut} 
         title="HipoZero" 
         subtitle="Painel do Nutricionista"
         icon={<User className="w-6 h-6 text-primary-foreground" />}
+        actions={
+            <Button variant="ghost" size="icon" onClick={() => setShowNotifications(true)} className="relative">
+                <Bell className="w-5 h-5 text-primary-foreground" />
+                {unreadNotifications > 0 && <div className="absolute top-0 right-0 w-2 h-2 bg-destructive rounded-full" />}
+            </Button>
+        }
       />
-
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
-          <div className="flex justify-between items-center mb-8">
+          <div className="flex justify-between items-center mb-8 flex-wrap gap-4">
             <div>
               <h1 className="text-3xl font-bold text-foreground mb-2">Dashboard</h1>
               <p className="text-muted-foreground">Gerencie seus pacientes e prescrições</p>
             </div>
-            <Button onClick={() => setShowAddPatient(true)}>
-              <Plus className="w-4 h-4 mr-2" />
-              Adicionar Paciente
-            </Button>
+            <div className="flex items-center gap-2 flex-wrap">
+                <Button variant="outline" asChild>
+                    <Link to="/nutritionist/agenda"><Calendar className="w-4 h-4 mr-2" /> Agenda</Link>
+                </Button>
+                <Button variant="outline" asChild>
+                    <Link to="/nutritionist/financial"><DollarSign className="w-4 h-4 mr-2" /> Financeiro</Link>
+                </Button>
+                <Button variant="outline" asChild>
+                    <Link to="/nutritionist/food-bank"><BookOpen className="w-4 h-4 mr-2" /> Banco de Alimentos</Link>
+                </Button>
+                <Button variant="outline" asChild>
+                    <Link to="/nutritionist/calculator"><BrainCircuit className="w-4 h-4 mr-2" /> Calculadora</Link>
+                </Button>
+                <Button onClick={() => setShowAddPatient(true)}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Adicionar Paciente
+                </Button>
+            </div>
           </div>
 
           <DashboardStats patientCount={patients.length} prescriptionCount={activePrescriptionCount} />
@@ -196,6 +236,7 @@ export default function NutritionistDashboard() {
         onAddPrescription={handleAddPrescription}
         existingPrescription={existingPrescription}
       />
+      <NotificationsPanel isOpen={showNotifications} setIsOpen={setShowNotifications} />
     </div>
   );
 }

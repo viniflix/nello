@@ -1,9 +1,12 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Search } from 'lucide-react';
 import { supabase } from '@/lib/customSupabaseClient';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { useToast } from '@/components/ui/use-toast';
+
 
 const FoodItem = ({ food }) => (
     <Card className="bg-card/80">
@@ -24,23 +27,37 @@ const FoodItem = ({ food }) => (
 );
 
 const PatientSearch = () => {
+    const { user } = useAuth();
+    const { toast } = useToast();
     const [foods, setFoods] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [loading, setLoading] = useState(true);
 
+    const fetchFoods = useCallback(async () => {
+        if (!user || !user.profile) return;
+        setLoading(true);
+
+        const nutritionistId = user.profile.nutritionist_id;
+        const query = supabase
+            .from('foods')
+            .select('*')
+            .or(`nutritionist_id.is.null,nutritionist_id.eq.${nutritionistId}`);
+
+        const { data, error } = await query;
+        
+        if (error) {
+            console.error("Error fetching foods", error);
+            toast({ title: "Erro", description: "Não foi possível carregar os alimentos.", variant: "destructive" });
+        } else {
+            setFoods(data || []);
+        }
+        setLoading(false);
+    }, [user, toast]);
+
+
     useEffect(() => {
-        const fetchFoods = async () => {
-            setLoading(true);
-            const { data, error } = await supabase.from('foods').select('*');
-            if (error) {
-                console.error("Error fetching foods", error);
-            } else {
-                setFoods(data);
-            }
-            setLoading(false);
-        };
         fetchFoods();
-    }, []);
+    }, [fetchFoods]);
 
     const filteredFoods = useMemo(() => {
         if (!searchTerm) return foods;
@@ -69,16 +86,20 @@ const PatientSearch = () => {
                 animate={{ opacity: 1 }}
                 className="space-y-4"
             >
-                {filteredFoods.map((food, index) => (
-                    <motion.div
-                        key={food.id}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.3, delay: index * 0.05 }}
-                    >
-                        <FoodItem food={food} />
-                    </motion.div>
-                ))}
+                {filteredFoods.length > 0 ? (
+                    filteredFoods.map((food, index) => (
+                        <motion.div
+                            key={food.id}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.3, delay: index * 0.05 }}
+                        >
+                            <FoodItem food={food} />
+                        </motion.div>
+                    ))
+                ) : (
+                    <p className="text-center text-muted-foreground mt-8">Nenhum alimento encontrado.</p>
+                )}
             </motion.div>
         )}
     </div>
