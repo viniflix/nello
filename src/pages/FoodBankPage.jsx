@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { User, Plus, Trash2 } from 'lucide-react';
+import { User, Trash2, Edit } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
@@ -9,50 +9,91 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
 
-const AddFoodForm = ({ onFoodAdded, nutritionistId }) => {
-    const [newFood, setNewFood] = useState({ name: '', calories: '', protein: '', fat: '', carbs: '', group: 'Personalizado' });
+const FoodForm = ({ onSave, foodToEdit, nutritionistId }) => {
+    const [foodData, setFoodData] = useState({ name: '', calories: '', protein: '', fat: '', carbs: '', group: 'Personalizado' });
     const [loading, setLoading] = useState(false);
     const { toast } = useToast();
 
-    const handleAddFood = async () => {
-        if (!newFood.name || !newFood.calories || !newFood.protein || !newFood.fat || !newFood.carbs) {
+    useEffect(() => {
+        if (foodToEdit) {
+            setFoodData(foodToEdit);
+        } else {
+            setFoodData({ name: '', calories: '', protein: '', fat: '', carbs: '', group: 'Personalizado' });
+        }
+    }, [foodToEdit]);
+
+    const handleSave = async () => {
+        if (!foodData.name || !foodData.calories || !foodData.protein || !foodData.fat || !foodData.carbs) {
             toast({ title: "Erro", description: "Preencha todos os campos.", variant: "destructive" });
             return;
         }
         setLoading(true);
-        const { error } = await supabase.from('foods').insert({
-            ...newFood,
-            calories: parseFloat(newFood.calories),
-            protein: parseFloat(newFood.protein),
-            fat: parseFloat(newFood.fat),
-            carbs: parseFloat(newFood.carbs),
+
+        const payload = {
+            ...foodData,
+            calories: parseFloat(foodData.calories),
+            protein: parseFloat(foodData.protein),
+            fat: parseFloat(foodData.fat),
+            carbs: parseFloat(foodData.carbs),
             nutritionist_id: nutritionistId
-        });
+        };
+        
+        let error;
+        if(foodToEdit?.id) {
+            const { error: updateError } = await supabase.from('foods').update(payload).eq('id', foodToEdit.id);
+            error = updateError;
+        } else {
+            const { error: insertError } = await supabase.from('foods').insert(payload);
+            error = insertError;
+        }
 
         if (error) {
-            toast({ title: "Erro", description: "Não foi possível adicionar o alimento.", variant: "destructive" });
+            toast({ title: "Erro", description: `Não foi possível salvar o alimento. ${error.message}`, variant: "destructive" });
         } else {
-            toast({ title: "Sucesso!", description: "Alimento adicionado ao seu banco de dados." });
-            setNewFood({ name: '', calories: '', protein: '', fat: '', carbs: '', group: 'Personalizado' });
-            onFoodAdded();
+            toast({ title: "Sucesso!", description: `Alimento ${foodToEdit ? 'atualizado' : 'adicionado'}.` });
+            onSave();
         }
         setLoading(false);
     };
 
     return (
         <div className="space-y-4">
-            <div className="space-y-2"><Label htmlFor="foodName">Nome do Alimento</Label><Input id="foodName" value={newFood.name} onChange={e => setNewFood({...newFood, name: e.target.value})} placeholder="Ex: Frango Grelhado" /></div>
+            <div className="space-y-2"><Label htmlFor="foodName">Nome do Alimento</Label><Input id="foodName" value={foodData.name} onChange={e => setFoodData({...foodData, name: e.target.value})} placeholder="Ex: Frango Grelhado" /></div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="space-y-2"><Label htmlFor="calories">Calorias</Label><Input id="calories" type="number" value={newFood.calories} onChange={e => setNewFood({...newFood, calories: e.target.value})} placeholder="165" /></div>
-                <div className="space-y-2"><Label htmlFor="protein">Proteínas</Label><Input id="protein" type="number" value={newFood.protein} onChange={e => setNewFood({...newFood, protein: e.target.value})} placeholder="31" /></div>
-                <div className="space-y-2"><Label htmlFor="fat">Gorduras</Label><Input id="fat" type="number" value={newFood.fat} onChange={e => setNewFood({...newFood, fat: e.target.value})} placeholder="3.6" /></div>
-                <div className="space-y-2"><Label htmlFor="carbs">Carbs</Label><Input id="carbs" type="number" value={newFood.carbs} onChange={e => setNewFood({...newFood, carbs: e.target.value})} placeholder="0" /></div>
+                <div className="space-y-2"><Label htmlFor="calories">Calorias</Label><Input id="calories" type="number" value={foodData.calories} onChange={e => setFoodData({...foodData, calories: e.target.value})} placeholder="165" /></div>
+                <div className="space-y-2"><Label htmlFor="protein">Proteínas</Label><Input id="protein" type="number" value={foodData.protein} onChange={e => setFoodData({...foodData, protein: e.target.value})} placeholder="31" /></div>
+                <div className="space-y-2"><Label htmlFor="fat">Gorduras</Label><Input id="fat" type="number" value={foodData.fat} onChange={e => setFoodData({...foodData, fat: e.target.value})} placeholder="3.6" /></div>
+                <div className="space-y-2"><Label htmlFor="carbs">Carbs</Label><Input id="carbs" type="number" value={foodData.carbs} onChange={e => setFoodData({...foodData, carbs: e.target.value})} placeholder="0" /></div>
             </div>
-            <Button onClick={handleAddFood} disabled={loading}>{loading ? 'Adicionando...' : 'Adicionar Alimento'}</Button>
+            <Button onClick={handleSave} disabled={loading}>{loading ? 'Salvando...' : 'Salvar Alimento'}</Button>
         </div>
     );
 };
+
+const EditFoodDialog = ({ food, onSaved, nutritionistId }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    
+    const handleSave = () => {
+        onSaved();
+        setIsOpen(false);
+    }
+    
+    return (
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+            <DialogTrigger asChild>
+                <Button variant="ghost" size="icon"><Edit className="w-4 h-4 text-accent" /></Button>
+            </DialogTrigger>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Editar Alimento</DialogTitle>
+                </DialogHeader>
+                <FoodForm onSave={handleSave} foodToEdit={food} nutritionistId={nutritionistId} />
+            </DialogContent>
+        </Dialog>
+    )
+}
 
 const FoodBankPage = () => {
     const { user, signOut } = useAuth();
@@ -89,11 +130,11 @@ const FoodBankPage = () => {
     }, [filteredFoods]);
 
     const handleDeleteFood = async (foodId) => {
-        const { error } = await supabase.from('foods').delete().match({ id: foodId, nutritionist_id: user.id });
+        const { error } = await supabase.from('foods').delete().eq('id', foodId);
         if (error) {
             toast({ title: "Erro", description: `Não foi possível remover o alimento: ${error.message}`, variant: "destructive" });
         } else {
-            fetchFoods(); // Refetch foods from the server
+            fetchFoods();
             toast({ title: "Sucesso!", description: "Alimento removido." });
         }
     };
@@ -116,7 +157,7 @@ const FoodBankPage = () => {
                             <CardDescription>Adicione itens personalizados ao seu banco de dados. Eles estarão disponíveis apenas para você e seus pacientes.</CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <AddFoodForm onFoodAdded={fetchFoods} nutritionistId={user.id} />
+                            <FoodForm onSave={fetchFoods} nutritionistId={user.id} />
                         </CardContent>
                     </Card>
 
@@ -133,8 +174,9 @@ const FoodBankPage = () => {
                                 {customFoods.length > 0 ? customFoods.map(food => (
                                     <div key={food.id} className="flex justify-between items-center p-3 bg-muted rounded-lg">
                                         <p>{food.name}</p>
-                                        <div className="flex items-center gap-4">
-                                            <p className="text-sm text-muted-foreground">{food.calories}kcal | P:{food.protein}g F:{food.fat}g C:{food.carbs}g</p>
+                                        <div className="flex items-center gap-2">
+                                            <p className="text-sm text-muted-foreground hidden sm:block">{food.calories}kcal | P:{food.protein}g F:{food.fat}g C:{food.carbs}g</p>
+                                            <EditFoodDialog food={food} onSaved={fetchFoods} nutritionistId={user.id} />
                                             <Button variant="ghost" size="icon" onClick={() => handleDeleteFood(food.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
                                         </div>
                                     </div>
@@ -146,7 +188,7 @@ const FoodBankPage = () => {
                                 {publicFoods.map(food => (
                                     <div key={food.id} className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
                                         <p>{food.name}</p>
-                                        <p className="text-sm text-muted-foreground">{food.calories}kcal | P:{food.protein}g F:{food.fat}g C:{food.carbs}g</p>
+                                        <p className="text-sm text-muted-foreground hidden sm:block">{food.calories}kcal | P:{food.protein}g F:{food.fat}g C:{food.carbs}g</p>
                                     </div>
                                 ))}
                             </div>

@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Users, Target, Calendar, User, Plus, BookOpen, BrainCircuit, DollarSign, Bell } from 'lucide-react';
+import { Users, Target, Calendar, User, Plus, BookOpen, BrainCircuit, DollarSign, Bell, UserCog, Code } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/customSupabaseClient';
@@ -12,7 +12,7 @@ import RecentPrescriptionsCard from '@/components/nutritionist/RecentPrescriptio
 import PrescriptionDialog from '@/components/nutritionist/PrescriptionDialog';
 import AddPatientDialog from '@/components/nutritionist/AddPatientDialog';
 import { Button } from '@/components/ui/button';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import NotificationsPanel from '@/components/NotificationsPanel';
 
 const DashboardStats = ({ patientCount, prescriptionCount }) => (
@@ -47,8 +47,22 @@ const DashboardStats = ({ patientCount, prescriptionCount }) => (
   </div>
 );
 
+const DevBar = ({ show }) => {
+    if(!show) return null;
+    return (
+        <div className="fixed bottom-0 left-0 right-0 bg-foreground text-background p-2 z-50">
+            <div className="max-w-7xl mx-auto flex justify-end items-center gap-4">
+                 <Link to="/nutritionist/calculations" className="text-xs hover:underline flex items-center gap-1">
+                    <BrainCircuit className="w-3 h-3"/> Central de Cálculos
+                </Link>
+            </div>
+        </div>
+    )
+}
+
 export default function NutritionistDashboard() {
   const { user, signOut } = useAuth();
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [patients, setPatients] = useState([]);
   const [prescriptions, setPrescriptions] = useState([]);
@@ -156,6 +170,7 @@ export default function NutritionistDashboard() {
   }
   
   const existingPrescription = selectedPatient ? prescriptions.find(p => p.patient_id === selectedPatient.id) : null;
+  const showDevBar = user?.profile?.preferences?.showDevBar || false;
 
   return (
     <div className="min-h-screen bg-background">
@@ -184,6 +199,9 @@ export default function NutritionistDashboard() {
               <p className="text-muted-foreground">Gerencie seus pacientes e prescrições</p>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
+                 <Button variant="ghost" asChild>
+                    <Link to="/nutritionist/profile"><UserCog className="w-4 h-4 mr-2" /> Meu Perfil</Link>
+                </Button>
                 <Button variant="outline" asChild>
                     <Link to="/nutritionist/agenda"><Calendar className="w-4 h-4 mr-2" /> Agenda</Link>
                 </Button>
@@ -237,6 +255,7 @@ export default function NutritionistDashboard() {
         existingPrescription={existingPrescription}
       />
       <NotificationsPanel isOpen={showNotifications} setIsOpen={setShowNotifications} />
+      <DevBar show={showDevBar} />
     </div>
   );
 }

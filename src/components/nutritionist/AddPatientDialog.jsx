@@ -1,19 +1,15 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
-import AnamneseForm from '@/components/AnamneseForm';
 
 const AddPatientDialog = ({ isOpen, setIsOpen, onAddPatient, nutritionistId }) => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
-  const [showAnamnese, setShowAnamnese] = useState(false);
   const [newPatient, setNewPatient] = useState({
     name: '',
     email: '',
@@ -25,19 +21,9 @@ const AddPatientDialog = ({ isOpen, setIsOpen, onAddPatient, nutritionistId }) =
     goal: '',
     patient_category: 'adult'
   });
-  const [anamneseData, setAnamneseData] = useState({
-    clinical_history: '',
-    nutritional_history: '',
-    lifestyle_habits: '',
-    physical_activity: '',
-    family_history: '',
-    medications_supplements: '',
-  });
 
   const resetForm = () => {
     setNewPatient({ name: '', email: '', password: '', birth_date: '', gender: '', height: '', weight: '', goal: '', patient_category: 'adult' });
-    setAnamneseData({ clinical_history: '', nutritional_history: '', lifestyle_habits: '', physical_activity: '', family_history: '', medications_supplements: '' });
-    setShowAnamnese(false);
   };
 
   const handleAdd = async () => {
@@ -69,20 +55,6 @@ const AddPatientDialog = ({ isOpen, setIsOpen, onAddPatient, nutritionistId }) =
       setLoading(false);
       toast({ title: "Erro ao criar paciente", description: signUpError.message, variant: "destructive" });
       return;
-    }
-
-    if (showAnamnese && signUpData.user) {
-      const { error: anamneseError } = await supabase
-        .from('anamneses')
-        .upsert({
-          patient_id: signUpData.user.id,
-          nutritionist_id: nutritionistId,
-          data: anamneseData
-        }, { onConflict: 'patient_id' });
-
-      if (anamneseError) {
-        toast({ title: "Aviso", description: `Paciente criado, mas houve um erro ao salvar a anamnese: ${anamneseError.message}`, variant: "destructive" });
-      }
     }
 
     setLoading(false);
@@ -162,17 +134,6 @@ const AddPatientDialog = ({ isOpen, setIsOpen, onAddPatient, nutritionistId }) =
                 </Select>
             </div>
           </div>
-          
-          <div className="flex items-center space-x-2 pt-4">
-            <Checkbox id="show-anamnese" checked={showAnamnese} onCheckedChange={setShowAnamnese} />
-            <Label htmlFor="show-anamnese" className="cursor-pointer">Preencher anamnese agora</Label>
-          </div>
-
-          <AnamneseForm
-            anamneseData={anamneseData}
-            setAnamneseData={setAnamneseData}
-            isExpanded={showAnamnese}
-          />
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => setIsOpen(false)} disabled={loading}>Cancelar</Button>

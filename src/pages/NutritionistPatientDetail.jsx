@@ -1,8 +1,7 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, FileText, MessageSquare, Baby, BarChart, Utensils } from 'lucide-react';
+import { ArrowLeft, FileText, MessageSquare, Baby, BarChart, Utensils, History } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/customSupabaseClient';
 import { Button } from '@/components/ui/button';
@@ -13,7 +12,8 @@ import AnamneseView from '@/components/nutritionist/patient-detail/AnamneseView'
 import WeeklySummary from '@/components/nutritionist/patient-detail/WeeklySummary';
 import GrowthChart from '@/components/nutritionist/patient-detail/GrowthChart';
 import DashboardTab from '@/components/nutritionist/patient-detail/DashboardTab';
-import { format } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 const MealRecordCard = ({ meal }) => (
     <Card>
@@ -23,11 +23,14 @@ const MealRecordCard = ({ meal }) => (
                     <CardTitle>{meal.meal_type}</CardTitle>
                     <CardDescription>{meal.meal_time}</CardDescription>
                 </div>
-                <div className='text-right'>
+                 <div className='text-right'>
                     <p className='font-bold text-destructive'>{Math.round(meal.total_calories)} kcal</p>
                     <p className='text-xs text-muted-foreground'>
                         P:{Math.round(meal.total_protein)}g, G:{Math.round(meal.total_fat)}g, C:{Math.round(meal.total_carbs)}g
                     </p>
+                    {meal.is_edited && (
+                         <p className='text-xs text-accent mt-1 flex items-center justify-end'><History className="w-3 h-3 mr-1"/> Editado</p>
+                    )}
                 </div>
             </div>
         </CardHeader>
@@ -49,7 +52,6 @@ const MealRecordCard = ({ meal }) => (
         </CardContent>
     </Card>
 );
-
 
 const FoodRecordsTab = ({ patientId }) => {
     const [meals, setMeals] = useState([]);
@@ -80,7 +82,7 @@ const FoodRecordsTab = ({ patientId }) => {
     return (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="space-y-6">
             <div className="flex justify-between items-center">
-                <h3 className="text-lg font-bold">Registros de {format(new Date(date), 'dd/MM/yyyy')}</h3>
+                <h3 className="text-lg font-bold">Registros de {format(new Date(date.replace(/-/g, '/')), 'dd/MM/yyyy')}</h3>
                 <input type="date" value={date} onChange={e => setDate(e.target.value)} className="bg-card text-sm text-muted-foreground border-border rounded-md p-1 focus:ring-primary"/>
             </div>
             {loading ? <p>Carregando...</p> : (
@@ -95,6 +97,64 @@ const FoodRecordsTab = ({ patientId }) => {
         </motion.div>
     );
 };
+
+const EditHistoryTab = ({ patientId }) => {
+    const [history, setHistory] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchHistory = async () => {
+            setLoading(true);
+            const { data, error } = await supabase
+                .from('meal_edit_history')
+                .select('*')
+                .eq('patient_id', patientId)
+                .order('edited_at', { ascending: false });
+            
+            if (error) {
+                console.error("Error fetching history:", error);
+                setHistory([]);
+            } else {
+                setHistory(data);
+            }
+            setLoading(false);
+        };
+        fetchHistory();
+    }, [patientId]);
+    
+    return (
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="space-y-4">
+            {loading ? <p>Carregando histórico de edições...</p> : (
+                history.length > 0 ? history.map(item => (
+                    <Card key={item.id}>
+                        <CardHeader>
+                            <CardTitle>Edição de Refeição</CardTitle>
+                            <CardDescription>
+                                Editado {formatDistanceToNow(new Date(item.edited_at), { addSuffix: true, locale: ptBR })}
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <h4 className="font-semibold mb-2">Antes</h4>
+                                <div className="text-xs p-2 bg-muted/50 rounded-md">
+                                    <p>Tipo: {item.original_data.meal_type} às {item.original_data.meal_time}</p>
+                                    <p>Calorias: {Math.round(item.original_data.total_calories)} kcal</p>
+                                </div>
+                            </div>
+                             <div>
+                                <h4 className="font-semibold mb-2">Depois</h4>
+                                <div className="text-xs p-2 bg-primary/10 rounded-md">
+                                    <p>Tipo: {item.new_data.meal_type} às {item.new_data.meal_time}</p>
+                                    <p>Calorias: {Math.round(item.new_data.total_calories)} kcal</p>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                )) : <p className="text-center py-8 text-muted-foreground">Nenhuma edição encontrada.</p>
+            )}
+        </motion.div>
+    )
+}
 
 export default function NutritionistPatientDetail() {
   const { patientId } = useParams();
@@ -157,6 +217,7 @@ export default function NutritionistPatientDetail() {
   const tabs = [
     { value: "dashboard", label: "Dashboard", icon: <BarChart className="w-4 h-4 mr-2"/> },
     { value: "records", label: "Registros", icon: <Utensils className="w-4 h-4 mr-2"/> },
+    { value: "history", label: "Hist. Edições", icon: <History className="w-4 h-4 mr-2"/> },
     { value: "summary", label: "Resumo Semanal", icon: <FileText className="w-4 h-4 mr-2"/> },
     { value: "anamnese", label: "Anamnese", icon: <MessageSquare className="w-4 h-4 mr-2"/> },
   ];
@@ -197,6 +258,9 @@ export default function NutritionistPatientDetail() {
             </TabsContent>
             <TabsContent value="records" className="mt-6">
                 <FoodRecordsTab patientId={patientId} />
+            </TabsContent>
+             <TabsContent value="history" className="mt-6">
+                <EditHistoryTab patientId={patientId} />
             </TabsContent>
             <TabsContent value="summary" className="mt-6">
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>

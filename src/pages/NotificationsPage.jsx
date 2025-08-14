@@ -9,9 +9,12 @@ import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { useChat } from '@/contexts/ChatContext';
+
 
 const NotificationCard = ({ notification, onMarkAsRead, user }) => {
     const navigate = useNavigate();
+    const { markChatAsRead } = useChat();
 
     const getNotificationDetails = (notification) => {
         const { type, content } = notification;
@@ -33,7 +36,15 @@ const NotificationCard = ({ notification, onMarkAsRead, user }) => {
                 return {
                     title: 'Nova Mensagem no Chat',
                     description: content.message || 'Você tem uma nova mensagem.',
-                    action: () => user?.profile?.user_type === 'nutritionist' ? navigate(`/chat/nutritionist/${content.from_id}`) : navigate('/chat/patient'),
+                    action: () => {
+                        const fromId = content.from_id;
+                        if (user?.profile?.user_type === 'nutritionist') {
+                            navigate(`/chat/nutritionist/${fromId}`)
+                        } else {
+                            navigate('/chat/patient');
+                        }
+                        markChatAsRead(fromId);
+                    },
                 };
             case 'daily_log_reminder':
                  return {
@@ -47,15 +58,20 @@ const NotificationCard = ({ notification, onMarkAsRead, user }) => {
     };
 
     const details = getNotificationDetails(notification);
+    
+    const handleClick = () => {
+        if(details.action) details.action();
+        if(!notification.is_read) onMarkAsRead(notification.id);
+    }
 
     return (
         <Card className={`transition-all ${notification.is_read ? 'opacity-60' : 'bg-primary/5'}`}>
             <CardContent className="p-4 flex items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-4 flex-grow cursor-pointer" onClick={handleClick}>
                      <div className="p-2 bg-primary/10 rounded-full">
                         <Bell className="w-5 h-5 text-primary" />
                     </div>
-                    <div className="flex-grow cursor-pointer" onClick={details.action}>
+                    <div className="flex-grow">
                         <p className="font-semibold">{details.title}</p>
                         <p className="text-sm text-muted-foreground">{details.description}</p>
                         <p className="text-xs text-muted-foreground/80 mt-1">
@@ -125,7 +141,7 @@ const NotificationsPage = () => {
     };
 
     const handleMarkAllAsRead = async () => {
-        await supabase.from('notifications').update({ is_read: true }).eq('user_id', user.id);
+        await supabase.from('notifications').update({ is_read: true }).eq('user_id', user.id).eq('is_read', false);
         setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
     };
 

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Outlet, useLocation, Link, useNavigate } from 'react-router-dom';
 import { Home, Search, Plus, BarChart2, User, Bell, LogOut, ArrowLeft, MessageSquare } from 'lucide-react';
@@ -66,6 +67,8 @@ const PatientLayout = () => {
         return 'Chat com Nutri';
       case '/patient/add-food':
         return 'Adicionar Refeição';
+      case '/patient/notifications':
+        return 'Notificações';
       default:
         if (location.pathname.startsWith('/patient/add-food')) return 'Editar Refeição';
         return 'HipoZero';
@@ -74,7 +77,7 @@ const PatientLayout = () => {
   
   const noHeaderOn = ['/patient/add-food', '/patient/add-food/'];
   const hideHeader = noHeaderOn.some(path => location.pathname.startsWith(path) && path.length === location.pathname.length);
-  const showBackButtonOn = ['/patient/search', '/patient/records', '/patient/profile', '/chat/patient'];
+  const showBackButtonOn = ['/patient/search', '/patient/records', '/patient/profile', '/chat/patient', '/patient/notifications'];
   const showBackButton = showBackButtonOn.includes(location.pathname) || location.pathname.startsWith('/patient/add-food/');
 
   return (

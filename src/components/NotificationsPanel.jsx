@@ -4,14 +4,17 @@ import { supabase } from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Bell, Check } from 'lucide-react';
+import { Bell, Check, Trash2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { useToast } from './ui/use-toast';
+import { useChat } from '@/contexts/ChatContext';
 
 const NotificationCard = ({ notification, onMarkAsRead, user, closePanel }) => {
     const navigate = useNavigate();
+    const { markChatAsRead } = useChat();
 
     const getNotificationDetails = (notification) => {
         const { type, content } = notification;
@@ -34,11 +37,13 @@ const NotificationCard = ({ notification, onMarkAsRead, user, closePanel }) => {
                     title: 'Nova Mensagem no Chat',
                     description: content.message || 'Você tem uma nova mensagem.',
                     action: () => {
+                        const fromId = content.from_id;
                         if (user?.profile?.user_type === 'nutritionist') {
-                            navigate(`/chat/nutritionist/${content.from_id}`)
+                            navigate(`/chat/nutritionist/${fromId}`);
                         } else {
                             navigate('/chat/patient');
                         }
+                        markChatAsRead(fromId);
                     },
                 };
             case 'daily_log_reminder':
@@ -56,7 +61,7 @@ const NotificationCard = ({ notification, onMarkAsRead, user, closePanel }) => {
 
     const handleClick = () => {
         if(details.action) details.action();
-        onMarkAsRead(notification.id);
+        if(!notification.is_read) onMarkAsRead(notification.id);
         closePanel();
     }
 
@@ -90,6 +95,7 @@ const NotificationsPanel = ({ isOpen, setIsOpen }) => {
     const { user } = useAuth();
     const [notifications, setNotifications] = useState([]);
     const [loading, setLoading] = useState(true);
+    const { toast } = useToast();
 
     const fetchNotifications = useCallback(async () => {
         if (!user) return;
@@ -131,9 +137,17 @@ const NotificationsPanel = ({ isOpen, setIsOpen }) => {
         setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
     };
 
-    const handleMarkAllAsRead = async () => {
-        await supabase.from('notifications').update({ is_read: true }).eq('user_id', user.id);
-        setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+    const handleClearRead = async () => {
+        const readIds = notifications.filter(n => n.is_read).map(n => n.id);
+        if (readIds.length === 0) return;
+
+        const { error } = await supabase.from('notifications').delete().in('id', readIds);
+        if (error) {
+            toast({ title: "Erro", description: "Não foi possível limpar as notificações.", variant: "destructive" });
+        } else {
+            toast({ title: "Sucesso", description: "Notificações lidas foram limpas." });
+            fetchNotifications();
+        }
     };
 
     return (
@@ -142,9 +156,9 @@ const NotificationsPanel = ({ isOpen, setIsOpen }) => {
                 <CardHeader>
                     <div className="flex justify-between items-center">
                         <CardTitle>Notificações</CardTitle>
-                         {notifications.some(n => !n.is_read) && (
-                            <Button variant="outline" size="sm" onClick={handleMarkAllAsRead}>
-                                Marcar todas como lidas
+                         {notifications.some(n => n.is_read) && (
+                            <Button variant="outline" size="sm" onClick={handleClearRead}>
+                                <Trash2 className="w-4 h-4 mr-2" /> Limpar Lidas
                             </Button>
                         )}
                     </div>

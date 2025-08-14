@@ -1,4 +1,3 @@
-
 // This file is deprecated. All data operations should go through Supabase.
 // The functions and mock data are kept for reference during transition but are no longer used.
 

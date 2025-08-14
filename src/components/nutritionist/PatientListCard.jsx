@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { BarChart2, MessageSquare, Edit, ChevronRight } from 'lucide-react';
+import { BarChart2, MessageSquare, Edit, ChevronRight, User as UserIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useNavigate } from 'react-router-dom';
@@ -72,8 +72,12 @@ const PatientItem = ({ patient, prescription, onPrescribe }) => {
       <div className="flex justify-between items-center gap-4">
         <div className="flex-1">
           <div className="flex items-center gap-3">
-             <div className="w-12 h-12 bg-secondary rounded-full flex items-center justify-center font-bold text-primary text-xl">
-              {patient.name.charAt(0)}
+             <div className="w-12 h-12 bg-secondary rounded-full flex items-center justify-center font-bold text-primary text-xl overflow-hidden">
+                {patient.avatar_url ? (
+                    <img src={patient.avatar_url} alt={patient.name} className="w-full h-full object-cover"/>
+                ) : (
+                    <UserIcon className="w-8 h-8 text-primary/70" />
+                )}
             </div>
             <div>
               <h3 className="font-semibold text-lg text-foreground">{patient.name}</h3>

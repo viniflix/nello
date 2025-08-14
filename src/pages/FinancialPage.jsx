@@ -12,9 +12,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/components/ui/use-toast';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
 import Papa from 'papaparse';
-import jsPDF from 'jspdf';
 import DashboardHeader from '@/components/DashboardHeader';
 import { ResponsiveContainer, BarChart as RechartsBarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
+import { exportFinancialsToPdf } from '@/lib/pdfUtils';
 
 const expenseCategories = ['Aluguel', 'Contas', 'Materiais', 'Marketing', 'Outros'];
 
@@ -102,59 +102,12 @@ const TransactionForm = ({ transaction, patients, onSave, onCancel }) => {
     );
 };
 
-const ReceiptForm = ({ patients, onGenerate }) => {
-    const [formData, setFormData] = useState({
-        patient_id: '',
-        service_date: format(new Date(), 'yyyy-MM-dd'),
-        description: 'Consulta de Nutrição',
-        amount: ''
-    });
-
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        const patient = patients.find(p => p.id === formData.patient_id);
-        onGenerate({ ...formData, patient_name: patient.name });
-    };
-
-    return (
-        <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-                <Label htmlFor="patient_id">Paciente</Label>
-                <Select required value={formData.patient_id} onValueChange={(value) => setFormData(prev => ({ ...prev, patient_id: value }))}>
-                    <SelectTrigger><SelectValue placeholder="Selecione um paciente" /></SelectTrigger>
-                    <SelectContent>
-                        {patients.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-                    </SelectContent>
-                </Select>
-            </div>
-            <div>
-                <Label htmlFor="description">Descrição do Serviço</Label>
-                <Input id="description" required value={formData.description} onChange={e => setFormData(prev => ({ ...prev, description: e.target.value }))} />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-                <div>
-                    <Label htmlFor="amount">Valor (R$)</Label>
-                    <Input id="amount" type="number" step="0.01" required value={formData.amount} onChange={e => setFormData(prev => ({ ...prev, amount: e.target.value }))} />
-                </div>
-                <div>
-                    <Label htmlFor="service_date">Data do Serviço</Label>
-                    <Input id="service_date" type="date" required value={formData.service_date} onChange={e => setFormData(prev => ({ ...prev, service_date: e.target.value }))} />
-                </div>
-            </div>
-            <DialogFooter>
-                <Button type="submit">Gerar Recibo</Button>
-            </DialogFooter>
-        </form>
-    );
-};
-
 export default function FinancialPage() {
     const { user, signOut } = useAuth();
     const { toast } = useToast();
     const [transactions, setTransactions] = useState([]);
     const [patients, setPatients] = useState([]);
     const [isFormOpen, setIsFormOpen] = useState(false);
-    const [isReceiptFormOpen, setIsReceiptFormOpen] = useState(false);
     const [editingTransaction, setEditingTransaction] = useState(null);
     const [loading, setLoading] = useState(true);
     const [selectedMonth, setSelectedMonth] = useState(new Date());
@@ -236,24 +189,6 @@ export default function FinancialPage() {
         link.click();
         document.body.removeChild(link);
     };
-
-    const handleGenerateReceipt = (data) => {
-        const doc = new jsPDF();
-        doc.setFontSize(22);
-        doc.text("Recibo de Pagamento", 105, 20, { align: 'center' });
-        doc.setFontSize(12);
-        doc.text(`Recebi de ${data.patient_name}`, 20, 40);
-        doc.text(`a quantia de R$ ${parseFloat(data.amount).toFixed(2)}, referente a:`, 20, 50);
-        doc.text(data.description, 20, 60);
-        doc.text(`Data do serviço: ${format(new Date(data.service_date + 'T00:00:00'), 'dd/MM/yyyy')}`, 20, 70);
-        doc.line(20, 90, 190, 90);
-        doc.text(user.profile.name, 105, 100, { align: 'center' });
-        if (user.profile.fiscal_data?.crn) doc.text(`CRN: ${user.profile.fiscal_data.crn}`, 105, 105, { align: 'center' });
-        if (user.profile.fiscal_data?.cpf_cnpj) doc.text(`CPF/CNPJ: ${user.profile.fiscal_data.cpf_cnpj}`, 105, 110, { align: 'center' });
-        doc.text(`Data de emissão: ${format(new Date(), 'dd/MM/yyyy')}`, 105, 120, { align: 'center' });
-        doc.save(`recibo_${data.patient_name.replace(' ', '_')}_${data.service_date}.pdf`);
-        setIsReceiptFormOpen(false);
-    };
     
     const summary = useMemo(() => {
         const income = transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
@@ -271,7 +206,7 @@ export default function FinancialPage() {
                     <div className="flex justify-between items-center mb-6 flex-wrap gap-2">
                         <Input type="month" value={format(selectedMonth, 'yyyy-MM')} onChange={(e) => setSelectedMonth(new Date(e.target.value + '-02'))} className="w-auto" />
                         <div className='flex justify-end gap-2 flex-wrap'>
-                            <Dialog open={isReceiptFormOpen} onOpenChange={setIsReceiptFormOpen}><DialogTrigger asChild><Button variant="outline"><FileText className="w-4 h-4 mr-2" /> Emitir Recibo</Button></DialogTrigger><DialogContent><DialogHeader><DialogTitle>Gerar Recibo</DialogTitle></DialogHeader><ReceiptForm patients={patients} onGenerate={handleGenerateReceipt} /></DialogContent></Dialog>
+                            <Button onClick={() => exportFinancialsToPdf(transactions, summary, format(selectedMonth, 'MMMM yyyy'))} variant="outline"><FileText className="w-4 h-4 mr-2" /> Exportar PDF</Button>
                             <Button onClick={handleExportCSV} variant="outline"><Download className="w-4 h-4 mr-2" /> Exportar CSV</Button>
                             <Dialog open={isFormOpen} onOpenChange={(open) => { if(!open) setEditingTransaction(null); setIsFormOpen(open);}}><DialogTrigger asChild><Button onClick={() => {setEditingTransaction(null); setIsFormOpen(true);}}><Plus className="w-4 h-4 mr-2" /> Nova Transação</Button></DialogTrigger><DialogContent><DialogHeader><DialogTitle>{editingTransaction ? 'Editar' : 'Nova'} Transação</DialogTitle></DialogHeader><TransactionForm transaction={editingTransaction} patients={patients} onSave={handleSaveTransaction} onCancel={() => {setEditingTransaction(null); setIsFormOpen(false);}} /></DialogContent></Dialog>
                         </div>
@@ -284,7 +219,7 @@ export default function FinancialPage() {
                         <Card className="md:col-span-2 lg:col-span-1"><CardHeader><CardTitle className="text-sm font-medium">Balanço do Mês</CardTitle></CardHeader><CardContent className="p-0"><ResponsiveContainer width="100%" height={80}><RechartsBarChart data={chartData} layout="vertical" barSize={20}><Tooltip cursor={{fill: 'transparent'}} contentStyle={{backgroundColor: 'hsl(var(--card))', border: 'none'}} formatter={(value) => `R$ ${value.toFixed(2)}`} /><Bar dataKey="Receitas" stackId="a" fill="hsl(var(--primary))" radius={[4, 0, 0, 4]} /><Bar dataKey="Despesas" stackId="a" fill="hsl(var(--destructive))" radius={[0, 4, 4, 0]}/></RechartsBarChart></ResponsiveContainer></CardContent></Card>
                     </div>
 
-                    <Card>
+                    <Card id="financial-report">
                         <CardHeader><CardTitle>Histórico de Transações do Mês</CardTitle></CardHeader>
                         <CardContent>
                             <div className="space-y-2">

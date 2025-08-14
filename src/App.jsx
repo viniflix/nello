@@ -26,8 +26,26 @@ import MacroCalculatorPage from '@/pages/MacroCalculatorPage.jsx';
 import FoodBankPage from '@/pages/FoodBankPage.jsx';
 import FinancialPage from '@/pages/FinancialPage.jsx';
 import AgendaPage from '@/pages/AgendaPage.jsx';
+import NutritionistProfilePage from '@/pages/NutritionistProfilePage.jsx';
+import CalculationInfoPage from '@/pages/CalculationInfoPage.jsx';
+import NotificationsPage from '@/pages/NotificationsPage.jsx';
 
-function ProtectedRoute({ children, userType }) {
+const AuthWrapper = ({ children }) => {
+    const { user, loading } = useAuth();
+
+    if (loading) {
+        return <div className="flex items-center justify-center h-screen">Carregando...</div>;
+    }
+
+    if (user) {
+        const redirectPath = user.profile.user_type === 'nutritionist' ? '/nutritionist' : '/patient';
+        return <Navigate to={redirectPath} replace />;
+    }
+
+    return children;
+};
+
+const ProtectedRoute = ({ children, userType }) => {
   const { user, loading } = useAuth();
   
   if (loading) {
@@ -39,84 +57,51 @@ function ProtectedRoute({ children, userType }) {
   }
   
   if (userType && user.profile.user_type !== userType) {
-    return <Navigate to={user.profile.user_type === 'nutritionist' ? '/nutritionist' : '/patient'} replace />;
+    const correctDashboard = user.profile.user_type === 'nutritionist' ? '/nutritionist' : '/patient';
+    return <Navigate to={correctDashboard} replace />;
   }
   
   return children;
-}
+};
 
-function AppRoutes() {
+const AppRoutes = () => {
   const { user, loading } = useAuth();
 
   if (loading) {
     return <div className="flex items-center justify-center h-screen">Carregando...</div>;
   }
   
-  const getRedirectPath = () => {
-    if (user && user.profile) {
-        return user.profile.user_type === 'nutritionist' ? '/nutritionist' : '/patient';
-    }
-    return '/login';
-  }
+  const getHomePath = () => {
+    if (!user) return "/login";
+    return user.profile.user_type === 'nutritionist' ? '/nutritionist' : '/patient';
+  };
 
   return (
     <Routes>
-      <Route path="/login" element={user && user.profile ? <Navigate to={getRedirectPath()} replace /> : <LoginPage />} />
-      <Route path="/register" element={user && user.profile ? <Navigate to={getRedirectPath()} replace /> : <RegisterPage />} />
+      <Route path="/login" element={<AuthWrapper><LoginPage /></AuthWrapper>} />
+      <Route path="/register" element={<AuthWrapper><RegisterPage /></AuthWrapper>} />
       
-      <Route path="/nutritionist" element={
-        <ProtectedRoute userType="nutritionist">
-          <NutritionistDashboard />
-        </ProtectedRoute>
-      } />
-      <Route path="/nutritionist/patient/:patientId" element={
-        <ProtectedRoute userType="nutritionist">
-          <NutritionistPatientDetail />
-        </ProtectedRoute>
-      } />
-       <Route path="/chat/nutritionist/:patientId" element={
-        <ProtectedRoute userType="nutritionist">
-          <ChatPage />
-        </ProtectedRoute>
-      } />
-       <Route path="/chat/patient" element={
-        <ProtectedRoute userType="patient">
-          <ChatPage />
-        </ProtectedRoute>
-      } />
-      <Route path="/nutritionist/calculator" element={
-        <ProtectedRoute userType="nutritionist">
-          <MacroCalculatorPage />
-        </ProtectedRoute>
-      } />
-      <Route path="/nutritionist/food-bank" element={
-        <ProtectedRoute userType="nutritionist">
-          <FoodBankPage />
-        </ProtectedRoute>
-      } />
-      <Route path="/nutritionist/financial" element={
-        <ProtectedRoute userType="nutritionist">
-          <FinancialPage />
-        </ProtectedRoute>
-      } />
-      <Route path="/nutritionist/agenda" element={
-        <ProtectedRoute userType="nutritionist">
-          <AgendaPage />
-        </ProtectedRoute>
-      } />
+      <Route path="/nutritionist" element={<ProtectedRoute userType="nutritionist"><NutritionistDashboard /></ProtectedRoute>} />
+      <Route path="/nutritionist/profile" element={<ProtectedRoute userType="nutritionist"><NutritionistProfilePage /></ProtectedRoute>} />
+      <Route path="/nutritionist/notifications" element={<ProtectedRoute userType="nutritionist"><NotificationsPage /></ProtectedRoute>} />
+      <Route path="/nutritionist/calculations" element={<ProtectedRoute userType="nutritionist"><CalculationInfoPage /></ProtectedRoute>} />
+      <Route path="/nutritionist/patient/:patientId" element={<ProtectedRoute userType="nutritionist"><NutritionistPatientDetail /></ProtectedRoute>} />
+      <Route path="/chat/nutritionist/:patientId" element={<ProtectedRoute userType="nutritionist"><ChatPage /></ProtectedRoute>} />
+      <Route path="/chat/patient" element={<ProtectedRoute userType="patient"><ChatPage /></ProtectedRoute>} />
+      <Route path="/nutritionist/calculator" element={<ProtectedRoute userType="nutritionist"><MacroCalculatorPage /></ProtectedRoute>} />
+      <Route path="/nutritionist/food-bank" element={<ProtectedRoute userType="nutritionist"><FoodBankPage /></ProtectedRoute>} />
+      <Route path="/nutritionist/financial" element={<ProtectedRoute userType="nutritionist"><FinancialPage /></ProtectedRoute>} />
+      <Route path="/nutritionist/agenda" element={<ProtectedRoute userType="nutritionist"><AgendaPage /></ProtectedRoute>} />
 
       <Route element={<ProtectedRoute userType="patient"><PatientLayout /></ProtectedRoute>}>
         <Route path="/patient" element={<PatientDashboard />} />
         <Route path="/patient/search" element={<PatientSearch />} />
         <Route path="/patient/records" element={<PatientRecords />} />
         <Route path="/patient/profile" element={<PatientProfile />} />
+        <Route path="/patient/notifications" element={<NotificationsPage />} />
       </Route>
       
-      <Route path="/patient/add-food/:mealId?" element={
-        <ProtectedRoute userType="patient">
-          <AddFoodPage />
-        </ProtectedRoute>
-      } />
+      <Route path="/patient/add-food/:mealId?" element={<ProtectedRoute userType="patient"><AddFoodPage /></ProtectedRoute>} />
 
       <Route element={<MainLayout />}>
         <Route path="/store" element={<StorePage />} />
@@ -124,12 +109,13 @@ function AppRoutes() {
         <Route path="/success" element={<SuccessPage />} />
       </Route>
 
-      <Route path="/" element={<Navigate to={getRedirectPath()} replace />} />
+      <Route path="/" element={<Navigate to={getHomePath()} replace />} />
+      <Route path="*" element={<Navigate to={getHomePath()} replace />} />
     </Routes>
   );
 }
 
-function App() {
+const App = () => {
   return (
     <Router>
       <AuthProvider>

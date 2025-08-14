@@ -1,14 +1,10 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
-import { Target, AlertTriangle, CheckCircle, TrendingUp, FileText, CalendarDays, BarChart, CalendarClock } from 'lucide-react';
+import { Target, AlertTriangle, CheckCircle, TrendingUp, CalendarDays, BarChart, CalendarClock } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/customSupabaseClient';
-import AnamneseForm from '@/components/AnamneseForm';
-import { useToast } from '@/components/ui/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, format, isAfter } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -18,13 +14,6 @@ const getAdherenceStatus = (percentage) => {
     if (percentage >= 90) return { text: 'Meta atingida', color: 'text-primary', icon: <CheckCircle className="w-4 h-4 mr-1" /> };
     return { text: 'Abaixo da meta', color: 'text-accent', icon: <TrendingUp className="w-4 h-4 mr-1" /> };
 };
-
-const AnamneseNotificationCard = ({ onOpenModal }) => (
-    <Card className="glass-card m-4 bg-primary/10 border-primary/20">
-        <CardHeader><div className="flex items-center gap-3"><FileText className="w-6 h-6 text-primary" /><CardTitle className="text-primary">Anamnese Pendente</CardTitle></div></CardHeader>
-        <CardContent><p className="text-muted-foreground mb-4">Seu nutricionista precisa de mais algumas informações. Por favor, preencha sua anamnese.</p><Button onClick={onOpenModal} className="w-full">Preencher Anamnese</Button></CardContent>
-    </Card>
-);
 
 const AppointmentReminderCard = ({ appointment }) => {
     if (!appointment || isAfter(new Date(), new Date(appointment.appointment_time))) {
@@ -38,24 +27,6 @@ const AppointmentReminderCard = ({ appointment }) => {
                 <p className="text-lg font-semibold mt-2">{format(new Date(appointment.appointment_time), "dd 'de' MMMM 'às' HH:mm", { locale: ptBR })}</p>
             </CardContent>
         </Card>
-    );
-};
-
-
-const AnamneseModal = ({ isOpen, setIsOpen, anamnese, onSave }) => {
-    const [anamneseData, setAnamneseData] = useState({});
-    const [loading, setLoading] = useState(false);
-    useEffect(() => { setAnamneseData(anamnese?.data || {}); }, [anamnese, isOpen]);
-    const handleSave = async () => { setLoading(true); await onSave(anamneseData); setLoading(false); };
-
-    return (
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
-            <DialogContent className="max-w-md">
-                <DialogHeader><DialogTitle>Preencher Anamnese</DialogTitle></DialogHeader>
-                <div className="py-4 max-h-[70vh] overflow-y-auto pr-2"><AnamneseForm anamneseData={anamneseData} setAnamneseData={setAnamneseData} isExpanded={true} /></div>
-                <DialogFooter><Button variant="outline" onClick={() => setIsOpen(false)} disabled={loading}>Cancelar</Button><Button onClick={handleSave} disabled={loading}>{loading ? 'Salvando...' : 'Salvar'}</Button></DialogFooter>
-            </DialogContent>
-        </Dialog>
     );
 };
 
@@ -91,12 +62,9 @@ const GoalsCard = ({ prescription, periodEntries }) => {
 
 export default function PatientDashboard() {
   const { user } = useAuth();
-  const { toast } = useToast();
   const [prescription, setPrescription] = useState(null);
   const [allMeals, setAllMeals] = useState([]);
-  const [anamnese, setAnamnese] = useState(null);
   const [appointment, setAppointment] = useState(null);
-  const [showAnamneseModal, setShowAnamneseModal] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const loadData = useCallback(async () => {
@@ -111,10 +79,7 @@ export default function PatientDashboard() {
     const firstDayOfMonth = format(startOfMonth(today), 'yyyy-MM-dd');
     const { data: mealsData } = await supabase.from('meals').select('*').eq('patient_id', user.id).gte('meal_date', firstDayOfMonth);
     setAllMeals(mealsData || []);
-
-    const { data: anamneseData } = await supabase.from('anamneses').select('*').eq('patient_id', user.id).maybeSingle();
-    setAnamnese(anamneseData);
-
+    
     const { data: apptData } = await supabase.from('appointments').select('*').eq('patient_id', user.id).gte('appointment_time', today.toISOString()).order('appointment_time', { ascending: true }).limit(1).maybeSingle();
     setAppointment(apptData);
     
@@ -130,13 +95,6 @@ export default function PatientDashboard() {
         .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [user, loadData]);
-
-  const handleSaveAnamnese = async (data) => {
-    if (!user.profile.nutritionist_id) { toast({ title: "Erro", description: "Você não tem um nutricionista associado.", variant: "destructive" }); return; }
-    const { error } = await supabase.from('anamneses').upsert({ patient_id: user.id, nutritionist_id: user.profile.nutritionist_id, data: data, id: anamnese?.id }, { onConflict: 'patient_id' });
-    if (error) { toast({ title: "Erro", description: "Não foi possível salvar a anamnese.", variant: "destructive" }); } 
-    else { toast({ title: "Sucesso!", description: "Anamnese salva com sucesso." }); setShowAnamneseModal(false); loadData(); }
-  };
 
   const todayTotals = useMemo(() => {
     const todayStr = format(new Date(), 'yyyy-MM-dd');
@@ -171,11 +129,20 @@ export default function PatientDashboard() {
     <div className="pb-24">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="space-y-6">
           <AppointmentReminderCard appointment={appointment} />
-          {!anamnese && <AnamneseNotificationCard onOpenModal={() => setShowAnamneseModal(true)} />}
           {!prescription ? (
             <Card className="glass-card m-4"><CardContent className="text-center py-12"><Target className="w-12 h-12 text-muted-foreground mx-auto mb-4" /><h3 className="text-lg font-semibold text-foreground mb-2">Nenhuma dieta ativa</h3><p className="text-muted-foreground text-sm">Entre em contato com seu nutricionista.</p></CardContent></Card>
           ) : (
             <>
+              <Card className="glass-card m-4">
+                <CardHeader><CardTitle>Metas e Progresso</CardTitle><CardDescription>Acompanhe sua evolução semanal e mensal.</CardDescription></CardHeader>
+                <CardContent>
+                    <Tabs defaultValue="week" className="w-full">
+                        <TabsList className="grid w-full grid-cols-2"><TabsTrigger value="week"><CalendarDays className="w-4 h-4 mr-2"/>Semana</TabsTrigger><TabsTrigger value="month"><BarChart className="w-4 h-4 mr-2"/>Mês</TabsTrigger></TabsList>
+                        <TabsContent value="week" className="pt-4"><GoalsCard prescription={prescription} periodEntries={weeklyTotals} /></TabsContent>
+                        <TabsContent value="month" className="pt-4"><GoalsCard prescription={prescription} periodEntries={monthlyTotals} /></TabsContent>
+                    </Tabs>
+                </CardContent>
+              </Card>
               <Card className="glass-card shadow-lg m-4">
                 <CardHeader><CardTitle className="gradient-text">Resumo de Hoje</CardTitle><div className={`flex items-center text-sm font-medium ${calorieStatus.color}`}>{calorieStatus.icon}<span>{calorieStatus.text}</span></div></CardHeader>
                 <CardContent className="flex flex-col items-center gap-4">
@@ -196,20 +163,9 @@ export default function PatientDashboard() {
                     </div>
                 </CardContent>
               </Card>
-              <Card className="glass-card m-4">
-                <CardHeader><CardTitle>Metas e Progresso</CardTitle><CardDescription>Acompanhe sua evolução semanal e mensal.</CardDescription></CardHeader>
-                <CardContent>
-                    <Tabs defaultValue="week" className="w-full">
-                        <TabsList className="grid w-full grid-cols-2"><TabsTrigger value="week"><CalendarDays className="w-4 h-4 mr-2"/>Semana</TabsTrigger><TabsTrigger value="month"><BarChart className="w-4 h-4 mr-2"/>Mês</TabsTrigger></TabsList>
-                        <TabsContent value="week" className="pt-4"><GoalsCard prescription={prescription} periodEntries={weeklyTotals} /></TabsContent>
-                        <TabsContent value="month" className="pt-4"><GoalsCard prescription={prescription} periodEntries={monthlyTotals} /></TabsContent>
-                    </Tabs>
-                </CardContent>
-              </Card>
             </>
           )}
         </motion.div>
-        <AnamneseModal isOpen={showAnamneseModal} setIsOpen={setShowAnamneseModal} anamnese={anamnese} onSave={handleSaveAnamnese} />
     </div>
   );
 }

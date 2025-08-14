@@ -30,12 +30,12 @@ export default function LoginPage() {
         description: error.message || "Email ou senha incorretos.",
         variant: "destructive",
       });
-    } else {
+    } else if (data.user) {
        toast({
         title: "Login realizado com sucesso!",
         description: `Bem-vindo(a) de volta!`,
       });
-      // The AuthProvider will handle navigation via onAuthStateChange
+      // Navigation is now primarily handled by the AuthProvider's state changes
     }
     
     setLoading(false);

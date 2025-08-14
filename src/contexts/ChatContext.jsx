@@ -22,6 +22,22 @@ export function ChatProvider({ children }) {
   const [unreadSenders, setUnreadSenders] = useState(new Set());
   const channelRef = useRef(null);
 
+  const markChatAsRead = useCallback(async (senderId) => {
+      if (!user || !senderId) return;
+      
+      const { error } = await supabase.rpc('mark_chat_notifications_as_read', { p_user_id: user.id, p_sender_id: senderId });
+      if (error) {
+        console.error("Failed to mark chat as read:", error);
+        return;
+      }
+      
+      setUnreadSenders(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(senderId);
+          return newSet;
+      });
+  }, [user]);
+
   const fetchMessages = useCallback(async (fromId, toId) => {
     if (!fromId || !toId) return;
     setLoading(true);
@@ -41,12 +57,9 @@ export function ChatProvider({ children }) {
     }
     setLoading(false);
     
-    setUnreadSenders(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(toId);
-        return newSet;
-    });
-  }, []);
+    markChatAsRead(toId);
+
+  }, [markChatAsRead]);
 
   const sendMessage = async (newMessageData) => {
     const { error } = await supabase.from('chats').insert([newMessageData]);
@@ -56,7 +69,6 @@ export function ChatProvider({ children }) {
       toast({ title: "Erro", description: "Não foi possível enviar a mensagem.", variant: "destructive" });
       return null;
     }
-    // No need to manually add the message here, realtime will handle it
     return true;
   };
 
@@ -69,7 +81,6 @@ export function ChatProvider({ children }) {
         return;
     }
     
-    // Fetch initial unread messages
     const fetchUnread = async () => {
         const { data } = await supabase.rpc('get_unread_senders', { p_user_id: user.id });
         if (data) {
@@ -91,16 +102,14 @@ export function ChatProvider({ children }) {
       }, (payload) => {
         const newMessage = payload.new;
         
-        // Is this message for me or from me?
         const isForMe = newMessage.to_id === user.id;
         const isFromMe = newMessage.from_id === user.id;
         
         if (isForMe) {
-            // If I'm currently chatting with the sender, add message and mark as read
             if (newMessage.from_id === currentRecipientId) {
                 setMessages(currentMessages => [...currentMessages, newMessage]);
+                markChatAsRead(newMessage.from_id);
             } else {
-                // Otherwise, just mark as unread
                 setUnreadSenders(prev => new Set(prev).add(newMessage.from_id));
                  toast({
                     title: "Nova Mensagem",
@@ -108,7 +117,6 @@ export function ChatProvider({ children }) {
                 });
             }
         } else if (isFromMe) {
-             // If I sent the message and I'm viewing the chat, add it to the view
              if(newMessage.to_id === currentRecipientId) {
                 setMessages(currentMessages => [...currentMessages, newMessage]);
              }
@@ -130,14 +138,15 @@ export function ChatProvider({ children }) {
         channelRef.current = null;
       }
     };
-  }, [user, currentRecipientId, toast]);
+  }, [user, currentRecipientId, toast, markChatAsRead]);
 
   const value = {
     messages,
     sendMessage,
     fetchMessages,
     loading,
-    unreadSenders
+    unreadSenders,
+    markChatAsRead
   };
 
   return (
