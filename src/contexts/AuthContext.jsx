@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useNavigate } from 'react-router-dom';
@@ -19,37 +18,49 @@ export function AuthProvider({ children }) {
   const navigate = useNavigate();
 
   const signOut = useCallback(async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-    navigate('/login', { replace: true });
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error && error.message !== 'Auth session not found') {
+        throw error;
+      }
+    } catch (error) {
+      console.error('Error during sign out:', error.message);
+    } finally {
+      setUser(null);
+      navigate('/login', { replace: true });
+    }
   }, [navigate]);
 
   useEffect(() => {
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setLoading(true);
-        if (session?.user) {
-          const { data: profile, error } = await supabase
-            .from('user_profiles')
-            .select('*')
-            .eq('id', session.user.id)
-            .single();
-
-          if (error) {
-            console.error('Error fetching profile, signing out:', error);
-            await signOut();
-          } else if (profile) {
-            setUser({ ...session.user, profile });
-          }
-        } else {
-          setUser(null);
-        }
+    setLoading(true);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_OUT') {
+        setUser(null);
         setLoading(false);
+        return;
       }
-    );
+      
+      if (session?.user) {
+        const { data: profile, error } = await supabase
+          .from('user_profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+
+        if (error || !profile) {
+          console.error('Error fetching profile or profile does not exist, signing out:', error);
+          await signOut();
+        } else {
+          setUser({ ...session.user, profile });
+        }
+      } else {
+        setUser(null);
+      }
+      setLoading(false);
+    });
 
     return () => {
-      authListener.subscription.unsubscribe();
+      subscription.unsubscribe();
     };
   }, [signOut]);
 

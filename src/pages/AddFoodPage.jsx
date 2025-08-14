@@ -1,6 +1,7 @@
+
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Plus, Trash2, Save, ArrowLeft } from 'lucide-react';
+import { Search, Plus, Trash2, Save, ArrowLeft, Award } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useToast } from '@/components/ui/use-toast';
@@ -177,33 +178,49 @@ const AddFoodPage = () => {
             total_protein: mealTotals.protein, total_fat: mealTotals.fat, total_carbs: mealTotals.carbs,
         };
 
+        const saveAndCheckAchievements = async (meal_id) => {
+            const itemsPayload = mealItems.map(item => ({ meal_id, food_id: item.food_id, name: item.name, quantity: item.quantity, calories: item.calories, protein: item.protein, fat: item.fat, carbs: item.carbs }));
+            const { error: itemsError } = await supabase.from('meal_items').insert(itemsPayload);
+            
+            if (itemsError) {
+                toast({ title: "Erro", description: `Não foi possível salvar os itens: ${itemsError.message}`, variant: "destructive" });
+            } else {
+                toast({ title: "Sucesso!", description: `Refeição salva.` });
+                
+                const { data: newAchievements, error: rpcError } = await supabase.rpc('check_and_grant_achievements', { p_user_id: user.id });
+                if (rpcError) {
+                    console.error("Error checking achievements:", rpcError);
+                } else if (newAchievements && newAchievements.length > 0) {
+                    newAchievements.forEach((ach, index) => {
+                        setTimeout(() => {
+                           toast({
+                                title: "🎉 Conquista Desbloqueada!",
+                                description: ach.name,
+                                duration: 5000,
+                            });
+                        }, 500 * (index + 1));
+                    });
+                }
+
+                navigate('/patient/records');
+            }
+        };
+
         if (mealId) {
-             const { data: updatedMeal, error: mealError } = await supabase.from('meals').update(mealPayload).eq('id', mealId).select().single();
+             const { error: mealError } = await supabase.from('meals').update(mealPayload).eq('id', mealId);
              if(mealError) {
                 toast({ title: "Erro", description: `Não foi possível atualizar a refeição: ${mealError.message}`, variant: "destructive" });
                 setLoading(false); return;
              }
              await supabase.from('meal_items').delete().eq('meal_id', mealId);
-             const itemsPayload = mealItems.map(item => ({ meal_id: mealId, food_id: item.food_id, name: item.name, quantity: item.quantity, calories: item.calories, protein: item.protein, fat: item.fat, carbs: item.carbs }));
-             const { error: itemsError } = await supabase.from('meal_items').insert(itemsPayload);
-             if (itemsError) toast({ title: "Erro", description: `Não foi possível salvar os itens: ${itemsError.message}`, variant: "destructive" });
-             else {
-                toast({ title: "Sucesso!", description: `Refeição atualizada.` });
-                navigate('/patient/records');
-            }
+             await saveAndCheckAchievements(mealId);
         } else {
             const { data: newMeal, error: mealError } = await supabase.from('meals').insert(mealPayload).select().single();
             if(mealError) {
                 toast({ title: "Erro", description: `Não foi possível salvar a refeição: ${mealError.message}`, variant: "destructive" });
                 setLoading(false); return;
             }
-            const itemsPayload = mealItems.map(item => ({ meal_id: newMeal.id, food_id: item.food_id, name: item.name, quantity: item.quantity, calories: item.calories, protein: item.protein, fat: item.fat, carbs: item.carbs }));
-            const { error: itemsError } = await supabase.from('meal_items').insert(itemsPayload);
-            if (itemsError) toast({ title: "Erro", description: `Não foi possível salvar os itens: ${itemsError.message}`, variant: "destructive" });
-            else {
-                toast({ title: "Sucesso!", description: `Refeição salva.` });
-                navigate('/patient/records');
-            }
+            await saveAndCheckAchievements(newMeal.id);
         }
         setLoading(false);
     };

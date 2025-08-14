@@ -1,5 +1,6 @@
+
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 import { Toaster } from '@/components/ui/toaster';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
@@ -63,54 +64,61 @@ const ProtectedRoute = ({ children, userType }) => {
   return children;
 };
 
-const AppRoutes = () => {
+const AppLayout = () => {
   const { user, loading } = useAuth();
 
   if (loading) {
     return <div className="flex items-center justify-center h-screen">Carregando...</div>;
   }
-  
+
   const getHomePath = () => {
     if (!user) return "/login";
     return user.profile.user_type === 'nutritionist' ? '/nutritionist' : '/patient';
   };
 
   return (
-    <Routes>
-      <Route path="/login" element={<AuthWrapper><LoginPage /></AuthWrapper>} />
-      <Route path="/register" element={<AuthWrapper><RegisterPage /></AuthWrapper>} />
-      
-      <Route path="/nutritionist" element={<ProtectedRoute userType="nutritionist"><NutritionistDashboard /></ProtectedRoute>} />
-      <Route path="/nutritionist/profile" element={<ProtectedRoute userType="nutritionist"><NutritionistProfilePage /></ProtectedRoute>} />
-      <Route path="/nutritionist/notifications" element={<ProtectedRoute userType="nutritionist"><NotificationsPage /></ProtectedRoute>} />
-      <Route path="/nutritionist/calculations" element={<ProtectedRoute userType="nutritionist"><CalculationInfoPage /></ProtectedRoute>} />
-      <Route path="/nutritionist/patient/:patientId" element={<ProtectedRoute userType="nutritionist"><NutritionistPatientDetail /></ProtectedRoute>} />
-      <Route path="/chat/nutritionist/:patientId" element={<ProtectedRoute userType="nutritionist"><ChatPage /></ProtectedRoute>} />
-      <Route path="/chat/patient" element={<ProtectedRoute userType="patient"><ChatPage /></ProtectedRoute>} />
-      <Route path="/nutritionist/calculator" element={<ProtectedRoute userType="nutritionist"><MacroCalculatorPage /></ProtectedRoute>} />
-      <Route path="/nutritionist/food-bank" element={<ProtectedRoute userType="nutritionist"><FoodBankPage /></ProtectedRoute>} />
-      <Route path="/nutritionist/financial" element={<ProtectedRoute userType="nutritionist"><FinancialPage /></ProtectedRoute>} />
-      <Route path="/nutritionist/agenda" element={<ProtectedRoute userType="nutritionist"><AgendaPage /></ProtectedRoute>} />
+    <ChatProvider>
+      <CartProvider>
+        <div className="min-h-screen bg-background">
+          <Routes>
+            <Route path="/login" element={<AuthWrapper><LoginPage /></AuthWrapper>} />
+            <Route path="/register" element={<AuthWrapper><RegisterPage /></AuthWrapper>} />
+            
+            <Route path="/nutritionist" element={<ProtectedRoute userType="nutritionist"><NutritionistDashboard /></ProtectedRoute>} />
+            <Route path="/nutritionist/profile" element={<ProtectedRoute userType="nutritionist"><NutritionistProfilePage /></ProtectedRoute>} />
+            <Route path="/nutritionist/notifications" element={<ProtectedRoute userType="nutritionist"><NotificationsPage /></ProtectedRoute>} />
+            <Route path="/nutritionist/calculations" element={<ProtectedRoute userType="nutritionist"><CalculationInfoPage /></ProtectedRoute>} />
+            <Route path="/nutritionist/patient/:patientId" element={<ProtectedRoute userType="nutritionist"><NutritionistPatientDetail /></ProtectedRoute>} />
+            <Route path="/chat/nutritionist/:patientId" element={<ProtectedRoute userType="nutritionist"><ChatPage /></ProtectedRoute>} />
+            <Route path="/chat/patient" element={<ProtectedRoute userType="patient"><ChatPage /></ProtectedRoute>} />
+            <Route path="/nutritionist/calculator" element={<ProtectedRoute userType="nutritionist"><MacroCalculatorPage /></ProtectedRoute>} />
+            <Route path="/nutritionist/food-bank" element={<ProtectedRoute userType="nutritionist"><FoodBankPage /></ProtectedRoute>} />
+            <Route path="/nutritionist/financial" element={<ProtectedRoute userType="nutritionist"><FinancialPage /></ProtectedRoute>} />
+            <Route path="/nutritionist/agenda" element={<ProtectedRoute userType="nutritionist"><AgendaPage /></ProtectedRoute>} />
 
-      <Route element={<ProtectedRoute userType="patient"><PatientLayout /></ProtectedRoute>}>
-        <Route path="/patient" element={<PatientDashboard />} />
-        <Route path="/patient/search" element={<PatientSearch />} />
-        <Route path="/patient/records" element={<PatientRecords />} />
-        <Route path="/patient/profile" element={<PatientProfile />} />
-        <Route path="/patient/notifications" element={<NotificationsPage />} />
-      </Route>
-      
-      <Route path="/patient/add-food/:mealId?" element={<ProtectedRoute userType="patient"><AddFoodPage /></ProtectedRoute>} />
+            <Route element={<ProtectedRoute userType="patient"><PatientLayout /></ProtectedRoute>}>
+              <Route path="/patient" element={<PatientDashboard />} />
+              <Route path="/patient/search" element={<PatientSearch />} />
+              <Route path="/patient/records" element={<PatientRecords />} />
+              <Route path="/patient/profile" element={<PatientProfile />} />
+              <Route path="/patient/notifications" element={<NotificationsPage />} />
+            </Route>
+            
+            <Route path="/patient/add-food/:mealId?" element={<ProtectedRoute userType="patient"><AddFoodPage /></ProtectedRoute>} />
 
-      <Route element={<MainLayout />}>
-        <Route path="/store" element={<StorePage />} />
-        <Route path="/product/:id" element={<ProductDetailPage />} />
-        <Route path="/success" element={<SuccessPage />} />
-      </Route>
+            <Route element={<MainLayout />}>
+              <Route path="/store" element={<StorePage />} />
+              <Route path="/product/:id" element={<ProductDetailPage />} />
+              <Route path="/success" element={<SuccessPage />} />
+            </Route>
 
-      <Route path="/" element={<Navigate to={getHomePath()} replace />} />
-      <Route path="*" element={<Navigate to={getHomePath()} replace />} />
-    </Routes>
+            <Route path="/" element={<Navigate to={getHomePath()} replace />} />
+            <Route path="*" element={<Navigate to={getHomePath()} replace />} />
+          </Routes>
+          <Toaster />
+        </div>
+      </CartProvider>
+    </ChatProvider>
   );
 }
 
@@ -118,18 +126,11 @@ const App = () => {
   return (
     <Router>
       <AuthProvider>
-        <ChatProvider>
-          <CartProvider>
-            <Helmet>
-              <title>HipoZero - Controle Nutricional Inteligente</title>
-              <meta name="description" content="Plataforma moderna para nutricionistas e pacientes com controle alimentar, prescrição de dietas e acompanhamento nutricional baseado na Tabela TACO." />
-            </Helmet>
-            <div className="min-h-screen bg-background">
-              <AppRoutes />
-              <Toaster />
-            </div>
-          </CartProvider>
-        </ChatProvider>
+        <Helmet>
+          <title>HipoZero - Controle Nutricional Inteligente</title>
+          <meta name="description" content="Plataforma moderna para nutricionistas e pacientes com controle alimentar, prescrição de dietas e acompanhamento nutricional baseado na Tabela TACO." />
+        </Helmet>
+        <AppLayout />
       </AuthProvider>
     </Router>
   );

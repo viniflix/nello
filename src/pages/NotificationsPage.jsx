@@ -1,9 +1,10 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Bell, Check } from 'lucide-react';
+import { Bell, Check, Award } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
@@ -17,22 +18,27 @@ const NotificationCard = ({ notification, onMarkAsRead, user }) => {
 
     const getNotificationDetails = (notification) => {
         const { type, content } = notification;
+        let icon = <Bell className="w-5 h-5 text-primary" />;
+        let details = { title: 'Nova Notificação', description: 'Você tem uma nova atualização.' };
+
         switch (type) {
             case 'new_weekly_summary':
-                return {
+                details = {
                     title: 'Novo Resumo Semanal',
                     description: 'Seu nutricionista adicionou observações sobre seu progresso.',
                     action: () => navigate('/patient/records'),
                 };
+                break;
             case 'appointment_reminder':
                 const time = new Date(content.appointment_time).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-                return {
+                details = {
                     title: 'Lembrete de Consulta',
                     description: `Sua consulta está agendada para ${time}.`,
                     action: () => user?.profile?.user_type === 'nutritionist' ? navigate('/nutritionist/agenda') : null,
                 };
+                break;
             case 'new_message':
-                return {
+                details = {
                     title: 'Nova Mensagem no Chat',
                     description: content.message || 'Você tem uma nova mensagem.',
                     action: () => {
@@ -45,15 +51,26 @@ const NotificationCard = ({ notification, onMarkAsRead, user }) => {
                         markChatAsRead(fromId);
                     },
                 };
+                break;
             case 'daily_log_reminder':
-                 return {
+                 details = {
                     title: 'Lembrete Diário',
                     description: 'Não se esqueça de registrar suas refeições hoje!',
                     action: () => navigate('/patient/add-food'),
                 };
+                break;
+            case 'new_achievement':
+                icon = <Award className="w-5 h-5 text-yellow-500" />;
+                details = {
+                    title: `Conquista: ${content.name}`,
+                    description: content.description,
+                    action: () => navigate('/patient/profile', { state: { tab: 'achievements' } }),
+                };
+                break;
             default:
-                return { title: 'Nova Notificação', description: 'Você tem uma nova atualização.' };
+                break;
         }
+        return { ...details, icon };
     };
 
     const details = getNotificationDetails(notification);
@@ -68,7 +85,7 @@ const NotificationCard = ({ notification, onMarkAsRead, user }) => {
             <CardContent className="p-4 flex items-center justify-between gap-4">
                 <div className="flex items-center gap-4 flex-grow cursor-pointer" onClick={handleClick}>
                      <div className="p-2 bg-primary/10 rounded-full">
-                        <Bell className="w-5 h-5 text-primary" />
+                        {details.icon}
                     </div>
                     <div className="flex-grow">
                         <p className="font-semibold">{details.title}</p>

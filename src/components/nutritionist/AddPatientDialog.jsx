@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -33,32 +34,30 @@ const AddPatientDialog = ({ isOpen, setIsOpen, onAddPatient, nutritionistId }) =
     }
     setLoading(true);
 
-    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+    const { error } = await supabase.rpc('create_patient_user', {
       email: newPatient.email,
       password: newPatient.password,
-      options: {
-        data: {
-          name: newPatient.name,
-          user_type: 'patient',
-          birth_date: newPatient.birth_date,
-          gender: newPatient.gender,
-          height: parseInt(newPatient.height),
-          weight: parseFloat(newPatient.weight),
-          goal: newPatient.goal,
-          nutritionist_id: nutritionistId,
-          patient_category: newPatient.patient_category
-        }
+      metadata: {
+        name: newPatient.name,
+        user_type: 'patient',
+        birth_date: newPatient.birth_date,
+        gender: newPatient.gender,
+        height: parseInt(newPatient.height),
+        weight: parseFloat(newPatient.weight),
+        goal: newPatient.goal,
+        nutritionist_id: nutritionistId,
+        patient_category: newPatient.patient_category
       }
     });
 
-    if (signUpError) {
+    if (error) {
       setLoading(false);
-      toast({ title: "Erro ao criar paciente", description: signUpError.message, variant: "destructive" });
+      toast({ title: "Erro ao criar paciente", description: error.message, variant: "destructive" });
       return;
     }
 
     setLoading(false);
-    toast({ title: "Sucesso!", description: "Paciente adicionado com sucesso. Peça para que verifique o e-mail de confirmação." });
+    toast({ title: "Sucesso!", description: "Paciente adicionado com sucesso." });
     onAddPatient();
     setIsOpen(false);
     resetForm();

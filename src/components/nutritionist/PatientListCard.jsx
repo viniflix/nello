@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { BarChart2, MessageSquare, Edit, ChevronRight, User as UserIcon } from 'lucide-react';

@@ -14,6 +14,8 @@ import AddPatientDialog from '@/components/nutritionist/AddPatientDialog';
 import { Button } from '@/components/ui/button';
 import { Link, useNavigate } from 'react-router-dom';
 import NotificationsPanel from '@/components/NotificationsPanel';
+import PatientAdherenceChart from '@/components/nutritionist/PatientAdherenceChart';
+import RecentActivityFeed from '@/components/nutritionist/RecentActivityFeed';
 
 const DashboardStats = ({ patientCount, prescriptionCount }) => (
   <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -213,6 +215,8 @@ export default function NutritionistDashboard() {
 
           <DashboardStats patientCount={patients.length} prescriptionCount={activePrescriptionCount} />
 
+          <PatientAdherenceChart />
+
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2">
               <PatientListCard
@@ -221,10 +225,13 @@ export default function NutritionistDashboard() {
                 onPrescribe={handleOpenPrescriptionDialog}
               />
             </div>
-            <RecentPrescriptionsCard
-              prescriptions={prescriptions}
-              patients={patients}
-            />
+            <div className="space-y-8">
+              <RecentPrescriptionsCard
+                prescriptions={prescriptions}
+                patients={patients}
+              />
+              <RecentActivityFeed />
+            </div>
           </div>
         </motion.div>
       </main>

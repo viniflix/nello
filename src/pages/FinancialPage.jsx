@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { DollarSign, Plus, Download, Edit, Trash2, FileText, ArrowUp, ArrowDown, Banknote } from 'lucide-react';

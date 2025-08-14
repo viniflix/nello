@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { User as UserIcon, Calendar, Target, Scale, FileText, Download, Upload, Loader2 } from 'lucide-react';
+import * as LucideIcons from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -12,6 +13,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/customSupabaseClient';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { exportToPdf } from '@/lib/pdfUtils';
+
+const { User: UserIcon, Calendar, Target, Scale, FileText, Download, Upload, Loader2, Award } = LucideIcons;
 
 const anamnesisFieldLabels = {
     food_preferences: 'Preferências alimentares',
@@ -124,16 +127,98 @@ const AnamneseViewReadOnly = ({ patientId }) => {
     );
 };
 
+const AchievementsView = ({ userId }) => {
+    const [achievements, setAchievements] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const { toast } = useToast();
+
+    useEffect(() => {
+        const fetchAchievements = async () => {
+            setLoading(true);
+            const { data, error } = await supabase
+                .from('user_achievements')
+                .select(`
+                    achieved_at,
+                    achievements (
+                        name,
+                        description,
+                        icon_name
+                    )
+                `)
+                .eq('user_id', userId)
+                .order('achieved_at', { ascending: false });
+
+            if (error) {
+                toast({ title: "Erro", description: "Não foi possível carregar as conquistas.", variant: "destructive" });
+            } else {
+                setAchievements(data);
+            }
+            setLoading(false);
+        };
+
+        if (userId) {
+            fetchAchievements();
+        }
+    }, [userId, toast]);
+
+    if (loading) return <div className="flex justify-center p-4"><Loader2 className="animate-spin" /></div>;
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Minhas Conquistas</CardTitle>
+                <CardDescription>Continue a registar as suas refeições para desbloquear mais!</CardDescription>
+            </CardHeader>
+            <CardContent>
+                {achievements.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                        {achievements.map((ach, index) => {
+                            const IconComponent = LucideIcons[ach.achievements.icon_name] || Award;
+                            return (
+                                <motion.div
+                                    key={index}
+                                    initial={{ opacity: 0, scale: 0.8 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    transition={{ delay: index * 0.1 }}
+                                >
+                                    <Card className="text-center p-4 flex flex-col items-center justify-center h-full glass-card">
+                                        <div className="p-3 bg-primary/10 rounded-full mb-3">
+                                            <IconComponent className="w-8 h-8 text-primary" />
+                                        </div>
+                                        <p className="font-bold text-foreground">{ach.achievements.name}</p>
+                                        <p className="text-xs text-muted-foreground mt-1">{ach.achievements.description}</p>
+                                    </Card>
+                                </motion.div>
+                            );
+                        })}
+                    </div>
+                ) : (
+                    <p className="text-muted-foreground text-center py-8">Ainda não desbloqueou nenhuma conquista. Continue assim!</p>
+                )}
+            </CardContent>
+        </Card>
+    );
+};
+
+
 export default function PatientProfile() {
   const { user, updateUserProfile } = useAuth();
+  const location = useLocation();
   const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
+  const [activeTab, setActiveTab] = useState("profile");
   const [formData, setFormData] = useState({
     name: '', birth_date: '', gender: '', height: '', weight: '', goal: '', avatar_url: ''
   });
   const [loadingAvatar, setLoadingAvatar] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const avatarInputRef = useRef(null);
+
+  useEffect(() => {
+    if (location.state?.tab) {
+        setActiveTab(location.state.tab);
+    }
+  }, [location.state]);
 
   useEffect(() => {
     if (user && user.profile) {
@@ -239,8 +324,8 @@ export default function PatientProfile() {
   return (
     <div className="pb-24">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="p-4 space-y-6">
-            <Tabs defaultValue="profile">
-                <TabsList className="grid w-full grid-cols-2"><TabsTrigger value="profile">Perfil</TabsTrigger><TabsTrigger value="anamnese">Anamnese</TabsTrigger></TabsList>
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+                <TabsList className="grid w-full grid-cols-3"><TabsTrigger value="profile">Perfil</TabsTrigger><TabsTrigger value="anamnese">Anamnese</TabsTrigger><TabsTrigger value="achievements">Conquistas</TabsTrigger></TabsList>
                 <TabsContent value="profile" className="mt-6">
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                         <div className="lg:col-span-2">
@@ -302,6 +387,7 @@ export default function PatientProfile() {
                     </div>
                 </TabsContent>
                 <TabsContent value="anamnese" className="mt-6"><AnamneseViewReadOnly patientId={user.id}/></TabsContent>
+                <TabsContent value="achievements" className="mt-6"><AchievementsView userId={user.id} /></TabsContent>
             </Tabs>
         </motion.div>
     </div>

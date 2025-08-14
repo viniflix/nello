@@ -362,7 +362,7 @@ const PrescriptionDialog = ({ isOpen, setIsOpen, onSave, patient, nutritionistId
                     <div className="flex items-end gap-2">
                       <div className="flex-grow space-y-2">
                         <Label htmlFor="meal-plan-template">Template de Cardápio</Label>
-                        <Select onValueChange={handleTemplateChange} value={selectedTemplateId.toString() || '0'}>
+                        <Select onValueChange={handleTemplateChange} value={selectedTemplateId !== null ? selectedTemplateId.toString() : '0'}>
                           <SelectTrigger id="meal-plan-template"><SelectValue placeholder="Usar um template..." /></SelectTrigger>
                           <SelectContent>
                               <SelectItem value="0">Nenhum</SelectItem>

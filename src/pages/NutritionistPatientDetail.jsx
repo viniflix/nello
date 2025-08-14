@@ -1,13 +1,15 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, FileText, MessageSquare, Baby, BarChart, Utensils, History, User as UserIcon } from 'lucide-react';
+import { ArrowLeft, FileText, MessageSquare, Baby, BarChart, Utensils, History, User as UserIcon, Trash2, Settings } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/customSupabaseClient';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { useToast } from "@/components/ui/use-toast";
 
 import AnamneseView from '@/components/nutritionist/patient-detail/AnamneseView';
 import WeeklySummary from '@/components/nutritionist/patient-detail/WeeklySummary';
@@ -157,6 +159,86 @@ const EditHistoryTab = ({ patientId }) => {
     )
 }
 
+const SettingsTab = ({ patientId, patientName }) => {
+    const [loading, setLoading] = useState(false);
+    const { toast } = useToast();
+    const navigate = useNavigate();
+
+    const handleDeletePatient = async () => {
+        setLoading(true);
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!session) {
+             toast({
+                title: 'Erro de Autenticação',
+                description: 'Sua sessão expirou. Por favor, faça login novamente.',
+                variant: 'destructive',
+            });
+            setLoading(false);
+            return;
+        }
+
+        const { data, error } = await supabase.functions.invoke('delete-user-securely', {
+            headers: {
+                Authorization: `Bearer ${session.access_token}`,
+            },
+            body: { userIdToDelete: patientId },
+        });
+
+        if (error || data.error) {
+            toast({
+                title: 'Erro ao excluir paciente',
+                description: data?.error?.message || error?.message || 'Não foi possível remover o paciente. Tente novamente.',
+                variant: 'destructive',
+            });
+            console.error('Delete patient error:', error || data.error);
+            setLoading(false);
+        } else {
+            toast({
+                title: 'Paciente excluído!',
+                description: `${patientName} foi removido(a) permanentemente.`,
+            });
+            navigate('/nutritionist');
+        }
+    };
+
+    return (
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+            <Card className="border-destructive">
+                <CardHeader>
+                    <CardTitle>Zona de Perigo</CardTitle>
+                    <CardDescription>Ações nesta seção são permanentes e não podem ser desfeitas.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button variant="destructive" disabled={loading}>
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                {loading ? 'Excluindo...' : 'Excluir Paciente'}
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>Você tem certeza absoluta?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    Você deseja realmente apagar este paciente? Esta ação é definitiva e não pode ser desfeita. Todos os dados, incluindo perfil, registros alimentares e histórico, serão permanentemente removidos.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction onClick={handleDeletePatient} className="bg-destructive hover:bg-destructive/90">
+                                    Sim, excluir paciente
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                </CardContent>
+            </Card>
+        </motion.div>
+    );
+};
+
+
 export default function NutritionistPatientDetail() {
   const { patientId } = useParams();
   const { user } = useAuth();
@@ -215,7 +297,7 @@ export default function NutritionistPatientDetail() {
     return <div className="flex items-center justify-center h-screen">Paciente não encontrado.</div>;
   }
 
-  const tabs = [
+  const baseTabs = [
     { value: "dashboard", label: "Dashboard", icon: <BarChart className="w-4 h-4 mr-2"/> },
     { value: "records", label: "Registros", icon: <Utensils className="w-4 h-4 mr-2"/> },
     { value: "history", label: "Hist. Edições", icon: <History className="w-4 h-4 mr-2"/> },
@@ -224,8 +306,10 @@ export default function NutritionistPatientDetail() {
   ];
 
   if (patient.patient_category === 'pregnant' || patient.patient_category === 'child') {
-    tabs.push({ value: "growth", label: "Crescimento", icon: <Baby className="w-4 h-4 mr-2"/> });
+    baseTabs.push({ value: "growth", label: "Crescimento", icon: <Baby className="w-4 h-4 mr-2"/> });
   }
+
+  const tabs = [...baseTabs, { value: "settings", label: "Configurações", icon: <Settings className="w-4 h-4 mr-2"/> }];
 
   return (
     <div className="min-h-screen bg-background">
@@ -244,7 +328,7 @@ export default function NutritionistPatientDetail() {
 
       <main className="max-w-4xl mx-auto p-4 space-y-6">
         <Tabs defaultValue="dashboard">
-            <TabsList className="grid w-full" style={{gridTemplateColumns: `repeat(${tabs.length}, 1fr)`}}>
+            <TabsList className="grid w-full" style={{gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))`}}>
                 {tabs.map(tab => (
                     <TabsTrigger key={tab.value} value={tab.value}>{tab.icon}{tab.label}</TabsTrigger>
                 ))}
@@ -280,6 +364,9 @@ export default function NutritionistPatientDetail() {
                     </motion.div>
                 </TabsContent>
             )}
+            <TabsContent value="settings" className="mt-6">
+                <SettingsTab patientId={patientId} patientName={patient.name} />
+            </TabsContent>
         </Tabs>
       </main>
     </div>

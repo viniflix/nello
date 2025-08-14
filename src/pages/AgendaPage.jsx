@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Calendar as CalendarIcon, Plus, Clock, User, Edit, Trash2 } from 'lucide-react';
