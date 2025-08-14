@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useNavigate } from 'react-router-dom';
@@ -17,41 +18,41 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  const fetchProfile = useCallback(async (userId) => {
-    const { data: profile, error } = await supabase
-      .from('user_profiles')
-      .select('*')
-      .eq('id', userId)
-      .maybeSingle();
-    
-    if (error) {
-      console.error("Error fetching user profile:", error);
-      return null;
-    }
-    return profile;
-  }, []);
-
-  const handleSessionUpdate = useCallback(async (session) => {
-    if (session?.user) {
-        const profile = await fetchProfile(session.user.id);
-        if (profile) {
-            setUser({ ...session.user, profile });
-        } else {
-             await supabase.auth.signOut();
-             setUser(null);
-        }
-    } else {
-        setUser(null);
-    }
-    setLoading(false);
-  },[fetchProfile]);
-  
   const signOut = useCallback(async () => {
     await supabase.auth.signOut();
     setUser(null);
     navigate('/login', { replace: true });
   }, [navigate]);
-  
+
+  useEffect(() => {
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        setLoading(true);
+        if (session?.user) {
+          const { data: profile, error } = await supabase
+            .from('user_profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+
+          if (error) {
+            console.error('Error fetching profile, signing out:', error);
+            await signOut();
+          } else if (profile) {
+            setUser({ ...session.user, profile });
+          }
+        } else {
+          setUser(null);
+        }
+        setLoading(false);
+      }
+    );
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
+  }, [signOut]);
+
   const updateUserProfile = (newProfileData) => {
     setUser(currentUser => {
         if (!currentUser) return null;
@@ -59,42 +60,6 @@ export function AuthProvider({ children }) {
         return { ...currentUser, profile: updatedProfile };
     });
   }
-
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      // Handle cases where token is invalid or session is lost
-      if (_event === 'SIGNED_OUT' || !session) {
-        setUser(null);
-        setLoading(false);
-        return;
-      }
-      if (_event === 'TOKEN_REFRESHED' || _event === 'INITIAL_SESSION' || _event === 'SIGNED_IN' || _event === 'USER_UPDATED') {
-        if(session?.user){
-            const profile = await fetchProfile(session.user.id);
-            if(profile) {
-                setUser({ ...session.user, profile });
-            } else {
-                await signOut();
-            }
-        }
-      }
-      setLoading(false);
-    });
-
-    const getInitialSession = async () => {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        if(error || !session) {
-            setLoading(false);
-            return;
-        }
-        await handleSessionUpdate(session);
-    }
-    getInitialSession();
-
-    return () => {
-      subscription?.unsubscribe();
-    };
-  }, [fetchProfile, signOut, handleSessionUpdate]);
 
   const value = {
     signUp: (data) => supabase.auth.signUp(data),

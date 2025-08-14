@@ -5,88 +5,8 @@ import { BarChart2, MessageSquare, Edit, ChevronRight, User as UserIcon } from '
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/lib/customSupabaseClient';
 import { useChat } from '@/contexts/ChatContext';
-
-const getAdherenceColor = (value, target) => {
-  if (target === 0) return 'text-muted-foreground';
-  const percentage = (value / target) * 100;
-  if (percentage > 110) return 'text-red-500';
-  if (percentage >= 90) return 'text-green-500';
-  return 'text-yellow-500';
-};
-
-const MacroBlock = ({ title, consumed, target, colorClass }) => (
-    <div className="text-center">
-        <p className="text-xs font-medium text-muted-foreground">{title}</p>
-        <p className={`text-sm font-bold ${colorClass}`}>{Math.round(consumed)} / {Math.round(target)}g</p>
-    </div>
-);
-
-const PatientProgressChart = ({ patientId, prescription }) => {
-    const [totals, setTotals] = useState({ calories: 0, protein: 0, fat: 0, carbs: 0 });
-
-    useEffect(() => {
-        const fetchTodayEntries = async () => {
-            const today = new Date().toISOString().split('T')[0];
-            const { data, error } = await supabase
-                .from('meals')
-                .select('total_calories, total_protein, total_fat, total_carbs')
-                .eq('patient_id', patientId)
-                .eq('meal_date', today);
-
-            if (error) {
-                console.error("Error fetching entries for progress chart", error);
-                return;
-            }
-
-            const dailyTotals = data.reduce((acc, entry) => {
-                acc.calories += entry.total_calories || 0;
-                acc.protein += entry.total_protein || 0;
-                acc.fat += entry.total_fat || 0;
-                acc.carbs += entry.total_carbs || 0;
-                return acc;
-            }, { calories: 0, protein: 0, fat: 0, carbs: 0 });
-
-            setTotals(dailyTotals);
-        };
-
-        if (patientId) {
-            fetchTodayEntries();
-        }
-    }, [patientId]);
-
-    if (!prescription) return <div className="text-xs text-muted-foreground mt-2 text-center">Sem metas de dieta definidas para hoje.</div>;
-
-    return (
-        <div className="w-full space-y-3">
-            <div className="grid grid-cols-4 gap-2">
-                <MacroBlock 
-                    title="Proteínas" 
-                    consumed={totals.protein} 
-                    target={prescription.protein}
-                    colorClass={getAdherenceColor(totals.protein, prescription.protein)}
-                />
-                <MacroBlock 
-                    title="Gorduras" 
-                    consumed={totals.fat} 
-                    target={prescription.fat}
-                    colorClass={getAdherenceColor(totals.fat, prescription.fat)}
-                />
-                <MacroBlock 
-                    title="Carbs" 
-                    consumed={totals.carbs} 
-                    target={prescription.carbs}
-                    colorClass={getAdherenceColor(totals.carbs, prescription.carbs)}
-                />
-                <div className="text-center">
-                    <p className="text-xs font-medium text-muted-foreground">Calorias</p>
-                    <p className={`text-sm font-bold ${getAdherenceColor(totals.calories, prescription.calories)}`}>{Math.round(totals.calories)} / {Math.round(prescription.calories)}</p>
-                </div>
-            </div>
-        </div>
-    );
-};
+import PatientProgressChart from './PatientProgressChart';
 
 const PatientItem = ({ patient, prescription, onPrescribe }) => {
   const navigate = useNavigate();
@@ -147,9 +67,16 @@ const PatientItem = ({ patient, prescription, onPrescribe }) => {
 const PatientListCard = ({ patients, prescriptions, onPrescribe }) => {
   const getPatientPrescription = (patientId) => {
     const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
     const activePrescriptions = prescriptions
-      .filter(p => p.patient_id === patientId && new Date(p.end_date) >= today)
+      .filter(p => {
+        const startDate = new Date(p.start_date);
+        const endDate = new Date(p.end_date);
+        return p.patient_id === patientId && startDate <= today && endDate >= today;
+      })
       .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      
     return activePrescriptions[0] || null;
   };
 

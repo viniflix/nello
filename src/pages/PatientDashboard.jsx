@@ -1,13 +1,15 @@
+
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
-import { Target, AlertTriangle, CheckCircle, TrendingUp, CalendarDays, BarChart, CalendarClock } from 'lucide-react';
+import { Target, AlertTriangle, CheckCircle, TrendingUp, CalendarDays, BarChart, CalendarClock, BookCopy } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/customSupabaseClient';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, format, isAfter } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import MealPlanView from '@/components/patient/MealPlanView';
 
 const getAdherenceStatus = (percentage) => {
     if (percentage > 110) return { text: 'Acima da meta', color: 'text-destructive', icon: <AlertTriangle className="w-4 h-4 mr-1" /> };
@@ -73,8 +75,32 @@ export default function PatientDashboard() {
     const today = new Date();
     const todayStr = format(today, 'yyyy-MM-dd');
 
-    const { data: presData } = await supabase.from('prescriptions').select('*').eq('patient_id', user.id).lte('start_date', todayStr).gte('end_date', todayStr).maybeSingle();
-    setPrescription(presData);
+    const { data: presData, error: presError } = await supabase
+        .from('prescriptions')
+        .select('*')
+        .eq('patient_id', user.id)
+        .lte('start_date', todayStr)
+        .gte('end_date', todayStr)
+        .maybeSingle();
+
+    if (presError) {
+        console.error("Error fetching prescription:", presError);
+        setPrescription(null);
+    } else if (presData && presData.template_id) {
+        const { data: itemsData, error: itemsError } = await supabase
+            .from('meal_plan_template_items')
+            .select('*, foods(id, name)')
+            .eq('template_id', presData.template_id);
+        
+        if (itemsError) {
+            console.error("Error fetching meal plan items:", itemsError);
+            setPrescription(presData);
+        } else {
+            setPrescription({ ...presData, meal_plan_items: itemsData || [] });
+        }
+    } else {
+        setPrescription(presData);
+    }
 
     const firstDayOfMonth = format(startOfMonth(today), 'yyyy-MM-dd');
     const { data: mealsData } = await supabase.from('meals').select('*').eq('patient_id', user.id).gte('meal_date', firstDayOfMonth);
@@ -134,12 +160,23 @@ export default function PatientDashboard() {
           ) : (
             <>
               <Card className="glass-card m-4">
-                <CardHeader><CardTitle>Metas e Progresso</CardTitle><CardDescription>Acompanhe sua evolução semanal e mensal.</CardDescription></CardHeader>
+                <CardHeader><CardTitle>Metas e Progresso</CardTitle><CardDescription>Acompanhe sua evolução e plano alimentar.</CardDescription></CardHeader>
                 <CardContent>
-                    <Tabs defaultValue="week" className="w-full">
-                        <TabsList className="grid w-full grid-cols-2"><TabsTrigger value="week"><CalendarDays className="w-4 h-4 mr-2"/>Semana</TabsTrigger><TabsTrigger value="month"><BarChart className="w-4 h-4 mr-2"/>Mês</TabsTrigger></TabsList>
-                        <TabsContent value="week" className="pt-4"><GoalsCard prescription={prescription} periodEntries={weeklyTotals} /></TabsContent>
-                        <TabsContent value="month" className="pt-4"><GoalsCard prescription={prescription} periodEntries={monthlyTotals} /></TabsContent>
+                    <Tabs defaultValue="progress" className="w-full">
+                        <TabsList className="grid w-full grid-cols-2">
+                            <TabsTrigger value="progress"><TrendingUp className="w-4 h-4 mr-2"/>Progresso</TabsTrigger>
+                            <TabsTrigger value="plan"><BookCopy className="w-4 h-4 mr-2"/>Plano Alimentar</TabsTrigger>
+                        </TabsList>
+                        <TabsContent value="progress" className="pt-4">
+                            <Tabs defaultValue="week" className="w-full">
+                                <TabsList className="grid w-full grid-cols-2"><TabsTrigger value="week"><CalendarDays className="w-4 h-4 mr-2"/>Semana</TabsTrigger><TabsTrigger value="month"><BarChart className="w-4 h-4 mr-2"/>Mês</TabsTrigger></TabsList>
+                                <TabsContent value="week" className="pt-4"><GoalsCard prescription={prescription} periodEntries={weeklyTotals} /></TabsContent>
+                                <TabsContent value="month" className="pt-4"><GoalsCard prescription={prescription} periodEntries={monthlyTotals} /></TabsContent>
+                            </Tabs>
+                        </TabsContent>
+                        <TabsContent value="plan" className="pt-4">
+                            <MealPlanView mealPlanItems={prescription.meal_plan_items} />
+                        </TabsContent>
                     </Tabs>
                 </CardContent>
               </Card>
