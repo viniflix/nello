@@ -1,0 +1,4 @@
+node_modules/
+.env
+/[Dd][Oo][Cc][Ss]/
+/AGENTS.md
