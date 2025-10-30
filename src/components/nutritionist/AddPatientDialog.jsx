@@ -1,12 +1,11 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useToast } from '@/components/ui/use-toast';
-import { supabase } from '@/lib/customSupabaseClient';
+import { useToast } from '../ui/use-toast'; 
+import { supabase } from '../../lib/customSupabaseClient'; 
 
 const AddPatientDialog = ({ isOpen, setIsOpen, onAddPatient, nutritionistId }) => {
   const { toast } = useToast();
@@ -14,7 +13,6 @@ const AddPatientDialog = ({ isOpen, setIsOpen, onAddPatient, nutritionistId }) =
   const [newPatient, setNewPatient] = useState({
     name: '',
     email: '',
-    password: '',
     birth_date: '',
     gender: '',
     height: '',
@@ -23,52 +21,70 @@ const AddPatientDialog = ({ isOpen, setIsOpen, onAddPatient, nutritionistId }) =
     patient_category: 'adult'
   });
 
+  // Reseta o formulário para o estado inicial
   const resetForm = () => {
-    setNewPatient({ name: '', email: '', password: '', birth_date: '', gender: '', height: '', weight: '', goal: '', patient_category: 'adult' });
+    setNewPatient({ name: '', email: '', birth_date: '', gender: '', height: '', weight: '', goal: '', patient_category: 'adult' });
   };
 
+  // Lida com o envio do formulário de adição de paciente
   const handleAdd = async () => {
-    if (!newPatient.name || !newPatient.email || !newPatient.password || !newPatient.birth_date || !newPatient.gender || !newPatient.height || !newPatient.weight || !newPatient.goal) {
+    // Validação dos campos obrigatórios
+    if (!newPatient.name || !newPatient.email || !newPatient.birth_date || !newPatient.gender || !newPatient.height || !newPatient.weight || !newPatient.goal) {
       toast({ title: "Erro", description: "Preencha todos os campos obrigatórios.", variant: "destructive" });
       return;
     }
     setLoading(true);
 
-    const { error } = await supabase.rpc('create_patient_user', {
-      email: newPatient.email,
-      password: newPatient.password,
-      metadata: {
-        name: newPatient.name,
-        user_type: 'patient',
-        birth_date: newPatient.birth_date,
-        gender: newPatient.gender,
-        height: parseInt(newPatient.height),
-        weight: parseFloat(newPatient.weight),
-        goal: newPatient.goal,
-        nutritionist_id: nutritionistId,
-        patient_category: newPatient.patient_category
+    // 1. Chamar a Edge Function para criar o paciente
+    const { data, error } = await supabase.functions.invoke('create-patient', {
+      body: {
+        email: newPatient.email,
+        // Adiciona a URL de redirecionamento para a página de definir senha
+        redirectTo: window.location.origin + '/update-password',
+        metadata: {
+          name: newPatient.name,
+          user_type: 'patient',
+          birth_date: newPatient.birth_date,
+          gender: newPatient.gender,
+          height: parseInt(newPatient.height),
+          weight: parseFloat(newPatient.weight),
+          goal: newPatient.goal,
+          nutritionist_id: nutritionistId,
+          patient_category: newPatient.patient_category
+        }
       }
     });
 
-    if (error) {
+    // 2. Tratar erro DENTRO da função (ex: email já existe)
+    if (data && data.error) {
       setLoading(false);
-      toast({ title: "Erro ao criar paciente", description: error.message, variant: "destructive" });
+      toast({ title: "Erro ao criar paciente", description: data.error, variant: "destructive" });
       return;
     }
 
+    // 3. Tratar erro NA CHAMADA da função (ex: 404, 500, rede)
+    if (error) {
+        setLoading(false);
+        const errorMessage = error.context?.message || error.message || 'Falha ao chamar a função.';
+        toast({ title: "Erro ao chamar função", description: errorMessage, variant: "destructive" });
+        console.error("Function Invoke Error:", error);
+        return;
+    }
+
+    // 4. Lógica de SUCESSO
     setLoading(false);
-    toast({ title: "Sucesso!", description: "Paciente adicionado com sucesso." });
+    toast({ title: "Sucesso!", description: "Convite enviado ao paciente com sucesso." });
     onAddPatient();
     setIsOpen(false);
     resetForm();
   };
-
+  
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { setIsOpen(open); if (!open) resetForm(); }}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Adicionar Paciente</DialogTitle>
-          <DialogDescription>Cadastre um novo paciente e defina suas credenciais de acesso.</DialogDescription>
+          <DialogDescription>Cadastre um novo paciente. Um e-mail de convite será enviado para ele definir a própria senha.</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4 max-h-[70vh] overflow-y-auto pr-2">
           <div className="space-y-2">
@@ -79,10 +95,7 @@ const AddPatientDialog = ({ isOpen, setIsOpen, onAddPatient, nutritionistId }) =
             <Label htmlFor="email">Email de Acesso</Label>
             <Input id="email" type="email" value={newPatient.email} onChange={(e) => setNewPatient({...newPatient, email: e.target.value})} placeholder="email@exemplo.com" />
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="password">Senha de Acesso</Label>
-            <Input id="password" type="text" value={newPatient.password} onChange={(e) => setNewPatient({...newPatient, password: e.target.value})} placeholder="Crie uma senha forte" />
-          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="birthDate">Data de Nascimento</Label>

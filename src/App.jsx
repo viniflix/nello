@@ -29,6 +29,7 @@ import AgendaPage from '@/pages/AgendaPage.jsx';
 import NutritionistProfilePage from '@/pages/NutritionistProfilePage.jsx';
 import CalculationInfoPage from '@/pages/CalculationInfoPage.jsx';
 import NotificationsPage from '@/pages/NotificationsPage.jsx';
+import UpdatePasswordPage from './pages/UpdatePasswordPage';
 
 const AuthWrapper = ({ children }) => {
     const { user, loading } = useAuth();
@@ -83,6 +84,7 @@ const AppLayout = () => {
           <Routes>
             <Route path="/login" element={<AuthWrapper><LoginPage /></AuthWrapper>} />
             <Route path="/register" element={<AuthWrapper><RegisterPage /></AuthWrapper>} />
+            <Route path="/update-password" element={<UpdatePasswordPage />} />
             
             <Route path="/nutritionist" element={<ProtectedRoute userType="nutritionist"><NutritionistDashboard /></ProtectedRoute>} />
             <Route path="/nutritionist/profile" element={<ProtectedRoute userType="nutritionist"><NutritionistProfilePage /></ProtectedRoute>} />

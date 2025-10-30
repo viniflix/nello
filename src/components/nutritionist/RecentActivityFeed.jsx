@@ -67,7 +67,7 @@ const RecentActivityFeed = () => {
                                 </div>
                                 <div className="flex-1">
                                     <p className="text-sm">
-                                        <span className="font-semibold text-primary">{item.patient_name}</span> registou o seu <span className="font-semibold">{item.meal_type}</span>.
+                                        <span className="font-semibold text-primary">{item.patient_name}</span> registrou o seu <span className="font-semibold">{item.meal_type}</span>.
                                     </p>
                                     <p className="text-xs text-muted-foreground">
                                         ({Math.round(item.total_calories)} kcal) • {formatDistanceToNow(new Date(item.created_at), { addSuffix: true, locale: ptBR })}
