@@ -1,34 +1,47 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Loader2 } from 'lucide-react';
+import { X, Loader2, AlertTriangle } from 'lucide-react'; // Importado AlertTriangle
 import { Button } from './ui/button';
-import { supabase } from '@/lib/customSupabaseClient';
 
-const ImageModal = ({ mediaPath, onClose }) => {
-  const [signedUrl, setSignedUrl] = useState('');
-  const [loading, setLoading] = useState(true);
+// O 'mediaPath' é a URL assinada, e 'mediaType' nos diz o que é
+const ImageModal = ({ mediaPath, mediaType, onClose }) => {
 
-  useEffect(() => {
-    const getSignedUrl = async () => {
-      if (!mediaPath) return;
-      setLoading(true);
-      const { data, error } = await supabase.storage
-        .from('chat_media')
-        .createSignedUrl(mediaPath, 300); // 5 minutes validity
-
-      if (error) {
-        console.error('Error creating signed URL for modal:', error);
-        setSignedUrl('');
-      } else {
-        setSignedUrl(data.signedUrl);
-      }
-      setLoading(false);
-    };
-
-    getSignedUrl();
-  }, [mediaPath]);
-
+  // Se não há 'mediaPath', não renderiza nada
   if (!mediaPath) return null;
+
+  const renderMedia = () => {
+    if (mediaType === 'video') {
+      return (
+        <video 
+          src={mediaPath} 
+          controls 
+          autoPlay 
+          className="object-contain w-full h-full max-h-[90vh] rounded-lg"
+        >
+          Seu navegador não suporta vídeos.
+        </video>
+      );
+    }
+    
+    // O padrão é imagem
+    if (mediaType === 'image') {
+      return (
+        <img 
+          src={mediaPath} 
+          alt="Visualização ampliada" 
+          className="object-contain w-full h-full max-h-[90vh] rounded-lg" 
+        />
+      );
+    }
+
+    // Fallback para caso algo dê errado
+    return (
+      <div className="w-full h-[50vh] flex flex-col items-center justify-center text-white">
+        <AlertTriangle className="w-12 h-12 mb-4" />
+        <p>Tipo de mídia não suportado para visualização.</p>
+      </div>
+    );
+  };
 
   return (
     <AnimatePresence>
@@ -55,14 +68,9 @@ const ImageModal = ({ mediaPath, onClose }) => {
             <X className="w-6 h-6" />
             <span className="sr-only">Fechar</span>
           </Button>
-          {loading ? (
-             <div className="w-full h-[50vh] flex items-center justify-center">
-                <Loader2 className="w-12 h-12 text-white animate-spin" />
-             </div>
-          ) : signedUrl ? (
-             <img src={signedUrl} alt="Visualização ampliada" className="object-contain w-full h-full max-h-[90vh] rounded-lg" />
-          ) : (
-            <p className="text-white text-center">Não foi possível carregar a imagem.</p>
+          
+          {mediaPath ? renderMedia() : (
+            <p className="text-white text-center">Não foi possível carregar a mídia.</p>
           )}
         </motion.div>
       </motion.div>

@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef, Fragment } from 'react';
+import React, { useState, useEffect, useRef, Fragment, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Send, ArrowLeft, Paperclip, X, FileText, Download, Mic, Square, Play, Pause, Loader2, User as UserIcon } from 'lucide-react';
+import { Send, ArrowLeft, Paperclip, X, FileText, Download, Mic, Square, Play, Pause, Loader2, User as UserIcon, PlayCircle } from 'lucide-react'; // Adicionado PlayCircle
 import { useAuth } from '@/contexts/AuthContext';
 import { useChat } from '@/contexts/ChatContext';
 import { supabase } from '@/lib/customSupabaseClient';
@@ -48,7 +48,9 @@ const AudioPlayer = ({ src }) => {
     useEffect(() => {
         const audio = audioRef.current;
         if(!audio) return;
-        const setAudioData = () => setDuration(audio.duration);
+        const setAudioData = () => {
+          if(isFinite(audio.duration)) setDuration(audio.duration);
+        };
         const setAudioTime = () => setCurrentTime(audio.currentTime);
 
         audio.addEventListener('loadeddata', setAudioData);
@@ -86,7 +88,7 @@ const AudioPlayer = ({ src }) => {
             }}>
                 <div className="h-full bg-primary rounded-full" style={{ width: `${(currentTime / duration) * 100}%` }}></div>
             </div>
-            <span className="text-xs w-12 text-right">{formatTime(duration)}</span>
+            <span className="text-xs w-12 text-right">{formatTime(isFinite(duration) ? duration : 0)}</span>
         </div>
     );
 };
@@ -125,14 +127,27 @@ const MediaViewer = ({ mediaPath, messageText, onImageClick }) => {
     const fileType = mediaPath.split('.').pop().toLowerCase();
     
     if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(fileType)) {
-        return <img src={signedUrl} alt={messageText || "Imagem enviada"} className="rounded-lg max-w-[200px] md:max-w-xs h-auto cursor-pointer" onClick={() => onImageClick(signedUrl)} />;
+        return <img src={signedUrl} alt={messageText || "Imagem enviada"} className="rounded-lg max-w-[200px] md:max-w-xs h-auto cursor-pointer" onClick={() => onImageClick(signedUrl, 'image')} />;
     }
-    if (['mp4', 'webm', 'mov', 'quicktime'].includes(fileType)) {
-        return <video controls src={signedUrl} className="rounded-lg max-w-[200px] md:max-w-xs h-auto" />;
+
+    // --- CORREÇÃO DO BUG DE ÁUDIO/VÍDEO ---
+    // .webm foi REMOVIDO daqui
+    if (['mp4', 'mov', 'quicktime'].includes(fileType)) {
+        return (
+          <div className="relative rounded-lg max-w-[200px] md:max-w-xs h-auto cursor-pointer group" onClick={() => onImageClick(signedUrl, 'video')}>
+            <video src={signedUrl} className="rounded-lg w-full h-full" />
+            <div className="absolute inset-0 flex items-center justify-center bg-black/40 group-hover:bg-black/60 transition-all rounded-lg">
+              <PlayCircle className="w-12 h-12 text-white/80" />
+            </div>
+          </div>
+        );
     }
+    // .webm foi ADICIONADO aqui
     if (['mp3', 'wav', 'ogg', 'm4a', 'aac', 'webm'].includes(fileType)) {
         return <AudioPlayer src={signedUrl} />;
     }
+    // --- FIM DA CORREÇÃO ---
+
     if (fileType === 'pdf') {
         return (
              <a href={signedUrl} download={messageText || 'document.pdf'} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-2 bg-background/50 rounded-lg hover:bg-background/80 transition-colors">
@@ -153,6 +168,7 @@ const ChatMessage = ({ msg, isSender, onImageClick }) => {
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className={`flex ${isSender ? 'justify-end' : 'justify-start'}`}>
       <div className={`max-w-xs md:max-w-md p-3 rounded-2xl shadow-sm ${ isSender ? 'bg-primary text-primary-foreground rounded-br-lg' : 'bg-card text-card-foreground rounded-bl-lg border'}`}>
+        {/* Passa o tipo de mídia para o onImageClick */}
         {mediaPath ? <MediaViewer mediaPath={mediaPath} messageText={originalFileName} onImageClick={onImageClick} /> : <p className="text-sm whitespace-pre-wrap">{messageText}</p>}
         {mediaPath && messageText && messageText !== originalFileName && <p className="text-sm mt-2">{messageText}</p>}
         <p className={`text-xs mt-1 ${isSender ? 'text-primary-foreground/70' : 'text-muted-foreground'} text-right`}>{format(parseISO(msg.created_at), 'HH:mm')}</p>
@@ -163,33 +179,57 @@ const ChatMessage = ({ msg, isSender, onImageClick }) => {
 
 const ChatPage = () => {
   const { user } = useAuth();
-  const { messages, sendMessage, fetchMessages, loading, markChatAsRead } = useChat();
+  const { messages, sendMessage, fetchMessages, loading: messagesLoading, markChatAsRead } = useChat();
   const { patientId } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [newMessage, setNewMessage] = useState('');
   const [recipient, setRecipient] = useState(null);
+  const [recipientLoading, setRecipientLoading] = useState(true);
   const [mediaFile, setMediaFile] = useState(null);
   const [mediaPreview, setMediaPreview] = useState(null);
   const [mediaType, setMediaType] = useState(null);
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
   const [isSending, setIsSending] = useState(false);
-  const [modalMediaPath, setModalMediaPath] = useState(null);
+  // --- MUDANÇA NO ESTADO DO MODAL ---
+  const [modalMedia, setModalMedia] = useState({ path: null, type: null });
   const [isRecording, setIsRecording] = useState(false);
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
 
   const recipientId = user.profile.user_type === 'nutritionist' ? patientId : user.profile.nutritionist_id;
 
+  const fetchRecipient = useCallback(async (id) => {
+    if (!id) {
+      setRecipientLoading(false); 
+      return;
+    }
+    setRecipientLoading(true); 
+
+    const { data, error } = await supabase.rpc('get_chat_recipient_profile', {
+      recipient_id: id
+    });
+    
+    const recipientData = data ? data[0] : null;
+
+    if (error) {
+      console.error('Erro ao buscar destinatário:', error);
+      toast({
+        title: "Erro",
+        description: `Não foi possível carregar os dados do destinatário: ${error.message}`,
+        variant: "destructive"
+      });
+      setRecipient(null);
+    } else {
+      setRecipient(recipientData);
+    }
+    setRecipientLoading(false); 
+  }, [toast]);
+
   useEffect(() => {
-    const fetchRecipient = async () => {
-      if (!recipientId) return;
-      const { data, error } = await supabase.from('user_profiles').select('id, name, user_type, avatar_url').eq('id', recipientId).maybeSingle();
-      if (error) console.error("Error fetching recipient", error); else setRecipient(data);
-    };
-    fetchRecipient();
-  }, [recipientId]);
+    fetchRecipient(recipientId);
+  }, [recipientId, fetchRecipient]);
 
   useEffect(() => { if (user && recipientId) fetchMessages(user.id, recipientId); }, [user, recipientId, fetchMessages]);
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'auto' }); }, [messages]);
@@ -228,12 +268,17 @@ const ChatPage = () => {
 
     if (mediaFile) {
       messageType = mediaType;
-      messageText = mediaFile.name; 
+      messageText = (mediaType === 'audio') ? 'Mensagem de áudio' : mediaFile.name;
+      
       const fileExtension = mediaFile.name.split('.').pop();
       const filePath = `${user.id}/${Date.now()}.${fileExtension}`;
       const { error } = await supabase.storage.from('chat_media').upload(filePath, mediaFile);
       if (error) { toast({ title: "Erro no upload", description: error.message, variant: "destructive" }); setIsSending(false); return; }
       mediaPath = filePath;
+      
+      if (mediaType === 'audio') {
+        messageText = ''; 
+      }
     }
 
     await sendMessage({ from_id: user.id, to_id: recipientId, message: messageText, message_type: messageType, media_url: mediaPath });
@@ -252,7 +297,11 @@ const ChatPage = () => {
         const mediaRecorder = new MediaRecorder(stream, { mimeType });
         mediaRecorderRef.current = mediaRecorder;
         audioChunksRef.current = [];
-        mediaRecorder.ondataavailable = (event) => { if(event.data.size > 0) audioChunksRef.current.push(event.data); };
+        
+        mediaRecorder.ondataavailable = (event) => { 
+          if(event.data.size > 0) audioChunksRef.current.push(event.data); 
+        };
+        
         mediaRecorder.onstop = () => {
             const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
             const audioFile = new File([audioBlob], `audio_${Date.now()}.webm`, { type: mimeType });
@@ -260,14 +309,22 @@ const ChatPage = () => {
             setMediaPreview(URL.createObjectURL(audioBlob));
             setMediaType('audio');
             mediaRecorder.stream.getTracks().forEach(track => track.stop());
+            setIsRecording(false); 
         };
-        mediaRecorder.start(); setIsRecording(true);
+        
+        mediaRecorder.start(); 
+        setIsRecording(true);
       } catch (err) {
+          console.error("Erro ao gravar áudio:", err);
           toast({ title: "Erro de gravação", description: "Não foi possível acessar o microfone. Verifique as permissões.", variant: "destructive"});
       }
   };
 
-  const stopRecording = () => { if (mediaRecorderRef.current?.state === "recording") { mediaRecorderRef.current.stop(); setIsRecording(false); } };
+  const stopRecording = () => { 
+    if (mediaRecorderRef.current?.state === "recording") { 
+      mediaRecorderRef.current.stop(); 
+    }
+  };
   
   const handleBack = () => { user.profile.user_type === 'nutritionist' ? navigate('/nutritionist') : navigate('/patient'); };
   const groupedMessages = messages.reduce((acc, msg) => {
@@ -276,12 +333,19 @@ const ChatPage = () => {
     acc[date].push(msg); return acc;
   }, {});
 
-  if (!recipient && !loading) return <div className="flex items-center justify-center h-screen">Você não tem um {user.profile.user_type === 'patient' ? 'nutricionista' : 'paciente'} associado.</div>;
-  if (loading) return <div className="flex items-center justify-center h-screen">Carregando chat...</div>;
+  if (messagesLoading || recipientLoading) return <div className="flex items-center justify-center h-screen"><Loader2 className="animate-spin w-8 h-8 text-primary" /></div>;
+
+  if (!recipient) return <div className="flex items-center justify-center h-screen p-4 text-center text-muted-foreground">Você não tem um {user.profile.user_type === 'patient' ? 'nutricionista' : 'paciente'} associado.</div>;
 
   return (
     <div className="h-screen flex flex-col bg-background">
-      <ImageModal mediaPath={modalMediaPath} onClose={() => setModalMediaPath(null)} />
+      {/* --- MUDANÇA NA CHAMADA DO MODAL --- */}
+      <ImageModal 
+        mediaPath={modalMedia.path} 
+        mediaType={modalMedia.type}
+        onClose={() => setModalMedia({ path: null, type: null })} 
+      />
+      
       <header className="bg-card/80 backdrop-blur-md border-b border-border p-4 flex items-center sticky top-0 z-10">
         <Button variant="ghost" size="icon" onClick={handleBack} className="mr-2"><ArrowLeft className="w-5 h-5" /></Button>
         <div className="w-10 h-10 bg-secondary rounded-full mr-3 flex items-center justify-center font-bold text-primary overflow-hidden">
@@ -297,7 +361,8 @@ const ChatPage = () => {
          {Object.entries(groupedMessages).map(([date, msgs]) => (
             <Fragment key={date}>
               <DateSeparator date={date} />
-              <div className="space-y-4">{msgs.map((msg) => (<ChatMessage key={msg.id} msg={msg} isSender={msg.from_id === user.id} onImageClick={setModalMediaPath} />))}</div>
+              {/* --- MUDANÇA NO onImageClick --- */}
+              <div className="space-y-4">{msgs.map((msg) => (<ChatMessage key={msg.id} msg={msg} isSender={msg.from_id === user.id} onImageClick={(path, type) => setModalMedia({ path, type })} />))}</div>
             </Fragment>
         ))}
         <div ref={messagesEndRef} />
@@ -328,7 +393,7 @@ const ChatPage = () => {
                 {isRecording ? <Square className="w-5 h-5 text-destructive" /> : <Mic className="w-5 h-5" />}
             </Button>
             : 
-            <Button type="submit" size="icon" disabled={isSending || (newMessage.trim() === '' && !mediaFile)}><Send className="w-5 h-5" /></Button>
+            <Button type="submit" size="icon" disabled={isSending || (newMessage.trim() === '' && !mediaFile)}>{isSending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}</Button>
           }
         </form>
       </footer>

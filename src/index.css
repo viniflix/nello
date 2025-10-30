@@ -2,57 +2,49 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap');
+
+@font-face {
+  font-family: 'Clash Display';
+  src: url('/fonts/ClashDisplay-Semibold.woff2') format('woff2'); 
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
 
 :root {
-  --background: 54 100% 94%; /* #FEFAE0 */
-  --foreground: 88 25% 25%; /* Dark Olive Green for text */
+  --background: 54 100% 94%;
+  --background-page: 47 65% 91%;
   
-  --card: 54 100% 94%; /* #FEFAE0 */
-  --card-foreground: 88 25% 25%;
-
+  --card: 54 100% 94%;
+  --card-foreground: 215 25% 27%;
   --popover: 54 100% 94%;
-  --popover-foreground: 88 25% 25%;
-
-  --primary: 88 25% 45%; /* Dark Olive Green - 5F6F52 */
+  --popover-foreground: 215 25% 27%;
+  
+  --primary: 124 16% 37%;
   --primary-foreground: 54 100% 94%;
 
-  --secondary: 88 25% 67%; /* Laurel Green - A9B388 */
-  --secondary-foreground: 88 25% 25%;
-
-  --muted: 47 65% 91%; /* #F9EBC7 */
-  --muted-foreground: 30 33% 45%; /* Camel */
-
-  --accent: 30 33% 54%; /* Camel - B99470 */
+  --accent: 20 61% 35%;
   --accent-foreground: 54 100% 94%;
 
-  --destructive: 20 70% 45%; /* Alloy Orange - C4661F */
+  --destructive: 20 70% 45%;
   --destructive-foreground: 54 100% 94%;
 
-  --border: 88 25% 80%; /* Lighter Laurel Green */
-  --input: 47 65% 91%; /* #F9EBC7 */
-  --ring: 88 25% 45%; /* Dark Olive Green */
+  --foreground: 88 25% 25%;
+  --secondary: 88 25% 67%;
+  --secondary-foreground: 88 25% 25%;
+  --muted: 47 65% 91%;
+  --muted-foreground: 30 33% 45%;
+  --border: 88 25% 80%;
+  --input: 47 65% 91%;
+  --ring: 124 16% 37%;
 
   --radius: 0.5rem;
 }
 
 body {
-  background-color: hsl(var(--background));
+  background-color: hsl(var(--background-page)); 
   color: hsl(var(--foreground));
-  font-family: 'Inter', sans-serif;
+  font-family: 'Nunito', sans-serif;
   min-height: 100vh;
-}
-
-.glass-card {
-  background-color: hsl(var(--card) / 0.9);
-  backdrop-filter: blur(8px);
-  border: 1px solid hsl(var(--border) / 0.5);
-  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
-}
-
-.gradient-text {
-  background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--secondary)));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
 }
