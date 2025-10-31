@@ -21,7 +21,6 @@ import AddFoodPage from '@/pages/AddFoodPage.jsx';
 import PatientLayout from '@/components/patient/PatientLayout.jsx';
 import PatientRecords from '@/pages/PatientRecords.jsx';
 import PatientSearch from '@/pages/PatientSearch.jsx';
-import NutritionistPatientDetail from '@/pages/NutritionistPatientDetail.jsx';
 import PatientsPage from '@/pages/PatientsPage.jsx';
 import PatientHubPage from '@/pages/PatientHubPage.jsx';
 import AlertsPage from '@/pages/AlertsPage.jsx';
@@ -95,7 +94,6 @@ const AppLayout = () => {
             <Route path="/nutritionist/profile" element={<ProtectedRoute userType="nutritionist"><NutritionistProfilePage /></ProtectedRoute>} />
             <Route path="/nutritionist/notifications" element={<ProtectedRoute userType="nutritionist"><NotificationsPage /></ProtectedRoute>} />
             <Route path="/nutritionist/calculations" element={<ProtectedRoute userType="nutritionist"><CalculationInfoPage /></ProtectedRoute>} />
-            <Route path="/nutritionist/patient/:patientId" element={<ProtectedRoute userType="nutritionist"><NutritionistPatientDetail /></ProtectedRoute>} />
             <Route path="/nutritionist/patients" element={<ProtectedRoute userType="nutritionist"><PatientsPage /></ProtectedRoute>} />
             <Route path="/nutritionist/patients/:patientId/hub" element={<ProtectedRoute userType="nutritionist"><PatientHubPage /></ProtectedRoute>} />
             <Route path="/nutritionist/patients/:patientId/anamnese" element={<ProtectedRoute userType="nutritionist"><PatientAnamnesePage /></ProtectedRoute>} />
