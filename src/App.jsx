@@ -22,6 +22,10 @@ import PatientLayout from '@/components/patient/PatientLayout.jsx';
 import PatientRecords from '@/pages/PatientRecords.jsx';
 import PatientSearch from '@/pages/PatientSearch.jsx';
 import NutritionistPatientDetail from '@/pages/NutritionistPatientDetail.jsx';
+import PatientsPage from '@/pages/PatientsPage.jsx';
+import PatientHubPage from '@/pages/PatientHubPage.jsx';
+import AlertsPage from '@/pages/AlertsPage.jsx';
+import PatientAnamnesePage from '@/pages/PatientAnamnesePage.jsx';
 import MacroCalculatorPage from '@/pages/MacroCalculatorPage.jsx';
 import FoodBankPage from '@/pages/FoodBankPage.jsx';
 import FinancialPage from '@/pages/FinancialPage.jsx';
@@ -30,6 +34,7 @@ import NutritionistProfilePage from '@/pages/NutritionistProfilePage.jsx';
 import CalculationInfoPage from '@/pages/CalculationInfoPage.jsx';
 import NotificationsPage from '@/pages/NotificationsPage.jsx';
 import UpdatePasswordPage from './pages/UpdatePasswordPage';
+
 
 const AuthWrapper = ({ children }) => {
     const { user, loading } = useAuth();
@@ -91,6 +96,10 @@ const AppLayout = () => {
             <Route path="/nutritionist/notifications" element={<ProtectedRoute userType="nutritionist"><NotificationsPage /></ProtectedRoute>} />
             <Route path="/nutritionist/calculations" element={<ProtectedRoute userType="nutritionist"><CalculationInfoPage /></ProtectedRoute>} />
             <Route path="/nutritionist/patient/:patientId" element={<ProtectedRoute userType="nutritionist"><NutritionistPatientDetail /></ProtectedRoute>} />
+            <Route path="/nutritionist/patients" element={<ProtectedRoute userType="nutritionist"><PatientsPage /></ProtectedRoute>} />
+            <Route path="/nutritionist/patients/:patientId/hub" element={<ProtectedRoute userType="nutritionist"><PatientHubPage /></ProtectedRoute>} />
+            <Route path="/nutritionist/patients/:patientId/anamnese" element={<ProtectedRoute userType="nutritionist"><PatientAnamnesePage /></ProtectedRoute>} />
+            <Route path="/nutritionist/alerts" element={<ProtectedRoute userType="nutritionist"><AlertsPage /></ProtectedRoute>} />  
             <Route path="/chat/nutritionist/:patientId" element={<ProtectedRoute userType="nutritionist"><ChatPage /></ProtectedRoute>} />
             <Route path="/chat/patient" element={<ProtectedRoute userType="patient"><ChatPage /></ProtectedRoute>} />
             <Route path="/nutritionist/calculator" element={<ProtectedRoute userType="nutritionist"><MacroCalculatorPage /></ProtectedRoute>} />

@@ -12,13 +12,10 @@ import { useChat } from '@/contexts/ChatContext';
 import { supabase } from '@/lib/customSupabaseClient';
 import DashboardHeader from '@/components/DashboardHeader';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-// PatientListCard NÃO é mais importado
-import PrescriptionDialog from '@/components/nutritionist/PrescriptionDialog';
-import AddPatientDialog from '@/components/nutritionist/AddPatientDialog';
 import { Button } from '@/components/ui/button';
 import { Link, useNavigate } from 'react-router-dom';
 import NotificationsPanel from '@/components/NotificationsPanel';
-import RecentActivityFeed from '@/components/nutritionist/RecentActivityFeed'; // Será usado na lateral
+import RecentActivityFeed from '@/components/nutritionist/RecentActivityFeed';
 import { format, parseISO, isToday } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -27,14 +24,11 @@ const UpcomingAppointmentsWidget = ({ appointments }) => {
   const navigate = useNavigate();
   
   return (
-    // Card com sombra
     <Card className="bg-card shadow-figma-btn rounded-xl">
       <CardHeader>
-        {/* Título com fonte Clash Display e cor #4F6F52 (text-primary) */}
         <CardTitle className="font-clash text-lg font-semibold text-primary">
           Próximas Consultas
         </CardTitle>
-        {/* Descrição com cor #B99470 */}
         <CardDescription style={{ color: '#B99470' }}>
           Seus próximos agendamentos.
         </CardDescription>
@@ -74,29 +68,24 @@ const UpcomingAppointmentsWidget = ({ appointments }) => {
   );
 };
 
-// --- WIDGET (ESQUERDA): 3 Cards de Estatística ---
+// --- WIDGET (ESQUERDA): Cards de Estatística ---
 const StatCard = ({ title, description, value, icon: Icon, link }) => (
   <Card className="bg-card shadow-figma-btn rounded-xl">
     <CardHeader className="relative pb-2">
-      {/* Título (Clash Display, Verde #4F6F52) */}
       <CardTitle className="font-clash text-xl font-semibold text-primary">
         {title}
       </CardTitle>
-      {/* Descrição (Nunito, Laranja #C4661F) */}
       <CardDescription className="text-destructive font-semibold">
         {description}
       </CardDescription>
-      {/* Ícone (Laranja #C4661F, canto superior direito) */}
       <div className="absolute top-4 right-4">
         <Icon className="h-5 w-5 text-destructive" />
       </div>
     </CardHeader>
     <CardContent>
-      {/* Informação (Nunito, Grande, Marrom #783D19) */}
       <div className="text-4xl font-bold text-accent my-4">
         {value}
       </div>
-      {/* Link "Ver mais..." (Laranja #C4661F) */}
       <Link to={link} className="text-xs font-semibold text-destructive hover:underline self-end">
         Ver mais...
       </Link>
@@ -112,21 +101,21 @@ const DashboardStats = ({ patientCount, alertsCount, adherencePercent }) => {
         description="Pacientes ativos"
         value={patientCount}
         icon={Users}
-        link="/nutritionist/patients" // Link para a futura página de pacientes
+        link="/nutritionist/patients"
       />
       <StatCard 
         title="Alertas do Dia"
         description="Consultas e notificações"
         value={alertsCount}
         icon={Bell}
-        link="/nutritionist/agenda" // Link para agenda
+        link="/nutritionist/alerts" // Link para a página de Alertas
       />
       <StatCard 
         title="Adesão de Dieta"
         description="Média de registros (Hoje)"
         value={adherencePercent}
         icon={PieChart}
-        link="#" // Link para uma futura página de relatórios
+        link="/nutritionist/alerts" // Link para a página de Alertas
       />
     </div>
   );
@@ -134,7 +123,6 @@ const DashboardStats = ({ patientCount, alertsCount, adherencePercent }) => {
 
 // --- WIDGET (ESQUERDA - DENTRO DO FEED): Precisando de Atenção ---
 const LowAdherencePatientsWidget = () => (
-  // Card SEM SOMBRA, pois está dentro do "Feed de Atividades"
   <Card className="bg-card rounded-xl border-none"> 
     <CardHeader>
       <CardTitle className="font-clash text-lg font-semibold text-primary">Precisando de Atenção</CardTitle>
@@ -155,20 +143,13 @@ const LowAdherencePatientsWidget = () => (
 export default function NutritionistDashboard() {
   const { toast } = useToast();
   const { user, signOut } = useAuth();
-  const { unreadSenders } = useChat(); // 'unreadSenders' não é usado neste layout
+  const { unreadSenders } = useChat();
   const navigate = useNavigate();
-
   const [patients, setPatients] = useState([]);
-  const [prescriptions, setPrescriptions] = useState([]);
   const [appointments, setAppointments] = useState([]);
-  const [unreadNotifications, setUnreadNotifications] = useState(0); 
+  const [alertsCount, setAlertsCount] = useState(0); 
   const [adherence, setAdherence] = useState('--%'); 
   const [loading, setLoading] = useState(true);
-  
-  const [showAddPatient, setShowAddPatient] = useState(false);
-  const [showPrescription, setShowPrescription] = useState(false);
-  const [selectedPatient, setSelectedPatient] = useState(null);
-  const [existingPrescription, setExistingPrescription] = useState(null);
   const [showNotifications, setShowNotifications] = useState(false);
   
   const fetchData = useCallback(async () => {
@@ -177,26 +158,19 @@ export default function NutritionistDashboard() {
     try {
       const today = new Date().toISOString(); 
       const todayDateOnly = new Date().toISOString().split('T')[0];
+      const todayMonthDay = format(new Date(), 'MM-dd'); 
 
-      // Busca de Pacientes (para o card de estatística)
+      // Busca de Pacientes (com birth_date)
       const { data: patientData, error: patientError } = await supabase
         .from('user_profiles')
-        .select('*')
+        .select('id, name, birth_date')
         .eq('nutritionist_id', user.id)
         .eq('is_active', true)
         .order('name', { ascending: true });
       if (patientError) throw patientError;
       setPatients(patientData || []);
 
-      // Busca de Prescrições (para o modal)
-      const { data: prescriptionData, error: prescriptionError } = await supabase
-        .from('prescriptions')
-        .select('*')
-        .eq('nutritionist_id', user.id);
-      if (prescriptionError) throw prescriptionError;
-      setPrescriptions(prescriptionData || []);
-
-      // Busca de Consultas (Próximas 3, para o widget da direita)
+      // Busca de Consultas (Próximas 3)
       const { data: apptData, error: apptError } = await supabase
         .from('appointments')
         .select('id, appointment_time, patient:appointments_patient_id_fkey(id, name, avatar_url)')
@@ -207,7 +181,7 @@ export default function NutritionistDashboard() {
       if (apptError) throw apptError;
       setAppointments(apptData || []);
       
-      // Busca de Notificações/Alertas (Contagem)
+      // Busca de Notificações
       const { count: notifCount, error: notifError } = await supabase
         .from('notifications')
         .select('*', { count: 'exact', head: true })
@@ -223,14 +197,28 @@ export default function NutritionistDashboard() {
         .gte('appointment_time', `${todayDateOnly}T00:00:00`)
         .lte('appointment_time', `${todayDateOnly}T23:59:59`);
       if (todayApptError) throw todayApptError;
-      
-      setUnreadNotifications((notifCount || 0) + (todayApptCount || 0));
 
-      // 5. Busca de Adesão (Placeholder)
-      if (patientData && patientData.length > 0) {
-        setAdherence('100%'); // Valor de placeholder
+      // Contagem de Aniversário
+      const birthdayCount = (patientData || []).filter(p => {
+          if (!p.birth_date) return false;
+          const birthDate = new Date(p.birth_date);
+          birthDate.setHours(birthDate.getHours() + 4); // Corrige fuso
+          return format(birthDate, 'MM-dd') === todayMonthDay;
+        }
+      ).length;
+      
+      // Soma tudo para os "Alertas do Dia"
+      setAlertsCount((notifCount || 0) + (todayApptCount || 0) + birthdayCount);
+
+      // 5. *** MUDANÇA: Busca de Adesão (Real) ***
+      const { data: adherenceData, error: adherenceError } = await supabase
+        .rpc('get_daily_adherence', { p_nutritionist_id: user.id });
+
+      if (adherenceError) {
+        console.error('Erro ao buscar adesão:', adherenceError);
+        setAdherence('--%');
       } else {
-        setAdherence('0%');
+        setAdherence(Math.round(adherenceData) + '%'); // Arredonda e adiciona '%'
       }
 
     } catch (error) {
@@ -246,33 +234,19 @@ export default function NutritionistDashboard() {
     }
   }, [user, fetchData]); 
 
-  const handleAddPatient = () => fetchData();
-  const handleSavePrescription = () => fetchData();
-
-  const handleOpenPrescriptionDialog = (patient) => {
-    // Esta função era usada pelo 'PatientListCard', está desabilitada.
-    const existing = prescriptions.find(p => p.patient_id === patient.id);
-    setSelectedPatient(patient);
-    setExistingPrescription(existing || null);
-    setShowPrescription(true);
-  };
-
   if (loading || !user?.profile) {
     return <div className="flex items-center justify-center h-screen bg-background-page"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
   }
 
   return (
-    // Fundo da página (cor #F9EBC7)
     <div className="flex flex-col min-h-screen bg-background-page"> 
       
-      {/* O HEADER */}
       <DashboardHeader 
         user={user.profile}
         logout={signOut}
         onToggleNotifications={() => setShowNotifications(s => !s)}
       />
       
-      {/* O CONTEÚDO PRINCIPAL (Tudo abaixo do header) */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -315,12 +289,12 @@ export default function NutritionistDashboard() {
                 <BrainCircuit className="w-4 h-4 mr-2" />
                 Calculadora
               </Button>
-              <Button 
-                onClick={() => setShowAddPatient(true)} 
+              <Button
+                onClick={() => navigate('/nutritionist/patients')}
                 className="bg-primary text-primary-foreground rounded-5px shadow-figma-btn font-semibold hover:bg-primary/90 whitespace-nowrap"
               >
                 <Plus className="w-4 h-4 mr-2" />
-                Adicionar Paciente
+                Meus Pacientes
               </Button>
             </div>
             <div className="block md:hidden space-y-3">
@@ -348,11 +322,11 @@ export default function NutritionistDashboard() {
                 </Button>
               </div>
               <Button 
-                onClick={() => setShowAddPatient(true)} 
+                onClick={() => navigate('/nutritionist/patients')}
                 className="w-full bg-primary text-primary-foreground rounded-5px shadow-figma-btn font-semibold hover:bg-primary/90"
               >
                   <Plus className="w-4 h-4 mr-2" />
-                  Adicionar Paciente
+                  Meus Pacientes
               </Button>
             </div>
           </div>
@@ -360,22 +334,21 @@ export default function NutritionistDashboard() {
         {/* --- FIM DO BLOCO "DASHBOARD" --- */}
 
 
-        {/* --- LAYOUT DE GRID (Conteúdo da Página) --- */}
+        {/* --- Conteúdo da Página --- */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
           {/* Coluna Lateral */}
           <div className="lg:col-span-1 space-y-8 lg:order-last">
             <UpcomingAppointmentsWidget appointments={appointments} />
-            {/* 'Atividades Recentes' */}
             <RecentActivityFeed />
           </div>
 
           {/* Coluna Principal*/}
           <div className="lg:col-span-2 space-y-8 lg:order-first">
-            {/* 3 Cards de Estatística */}
+            {/* Cards de Estatística */}
             <DashboardStats 
               patientCount={patients.length} 
-              alertsCount={unreadNotifications} 
+              alertsCount={alertsCount} 
               adherencePercent={adherence}
             />
             
@@ -400,22 +373,7 @@ export default function NutritionistDashboard() {
           
         </div>
       </motion.div>
-
-      {/* --- Modais --- */}
-      <AddPatientDialog
-        isOpen={showAddPatient}
-        setIsOpen={setShowAddPatient}
-        onAddPatient={handleAddPatient}
-        nutritionistId={user?.id}
-      />
-      <PrescriptionDialog
-        isOpen={showPrescription}
-        setIsOpen={setShowPrescription}
-        patient={selectedPatient}
-        nutritionistId={user?.id}
-        onSave={handleSavePrescription}
-        existingPrescription={existingPrescription}
-      />
+      
       <NotificationsPanel isOpen={showNotifications} setIsOpen={setShowNotifications} />
     </div>
   );
