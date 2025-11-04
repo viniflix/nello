@@ -6,8 +6,8 @@
 		<meta name="generator" content="HipoZero" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 		<title>HipoZero - Home</title>
-		<script type="module" crossorigin src="/assets/index-Bz5cmZzS.js"></script>
-		<link rel="stylesheet" crossorigin href="/assets/index-B9VT3WI8.css">
+		<script type="module" crossorigin src="./assets/index-CHZe5K5I.js"></script>
+		<link rel="stylesheet" crossorigin href="./assets/index-AAIebeRc.css">
 		<script type="module">
 window.onerror = (message, source, lineno, colno, errorObj) => {
 	const errorDetails = errorObj ? JSON.stringify({
@@ -49,9 +49,7 @@ observer.observe(document.documentElement, {
 });
 
 function handleViteOverlay(node) {
-	if (!node.shadowRoot) {
-		return;
-	}
+	if (!node.shadowRoot) return;
 
 	const backdrop = node.shadowRoot.querySelector('.backdrop');
 
@@ -118,19 +116,18 @@ window.fetch = function(...args) {
 				contentType.includes('application/xhtml+xml');
 
 			if (!response.ok && !isDocumentResponse) {
-					const responseClone = response.clone();
-					const errorFromRes = await responseClone.text();
-					const requestUrl = response.url;
-					console.error(`Fetch error from ${requestUrl}: ${errorFromRes}`);
+				const responseClone = response.clone();
+				const errorFromRes = await responseClone.text();
+				const requestUrl = response.url;
+				console.error(`Fetch error from ${requestUrl}: ${errorFromRes}`);
 			}
 
 			return response;
 		})
 		.catch(error => {
-			if (!url.match(/.html?$/i)) {
+			if (!url.match(/\.html?$/i)) {
 				console.error(error);
 			}
-
 			throw error;
 		});
 };
