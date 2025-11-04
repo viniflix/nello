@@ -90,8 +90,13 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded }) => {
             birth_date: formData.birth_date ? format(formData.birth_date, 'yyyy-MM-dd') : null,
             gender: formData.gender, phone: formData.phone, cpf: formData.cpf,
             occupation: formData.occupation, civil_status: formData.civil_status,
-            observations: formData.observations, address: addressData 
+            observations: formData.observations 
         };
+
+        // Adicione a chave 'address' APENAS se addressData não for null
+        if (addressData) {
+            metadata.address = addressData;
+        }
         
         const redirectTo = `${window.location.origin}/update-password`;
 
