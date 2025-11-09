@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { usePatientFormStore } from '@/stores/usePatientFormStore'; 
 import InputMask from 'react-input-mask'; 
 import { useAuth } from '@/contexts/AuthContext'; 
@@ -18,7 +18,7 @@ import {
     Calendar as CalendarIcon, Loader2, User, Mail, Phone, Users, FileText, 
     Briefcase, Heart, PenSquare, MapPin, Map, Hash, Building2, Home, Building, Landmark
 } from "lucide-react";
-import { format } from "date-fns";
+import { format, parse } from "date-fns";
 import { ptBR } from 'date-fns/locale';
 import { cn } from "@/lib/utils"; 
 
@@ -38,11 +38,55 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded }) => {
     const { formData, updateField, resetForm, fillAddress } = usePatientFormStore();
     const [loading, setLoading] = useState(false); 
     const [cepLoading, setCepLoading] = useState(false); 
+    
+    // --- ALTERAÇÕES DO CALENDÁRIO ---
+    const [localDateString, setLocalDateString] = useState('');
+    const [calendarOpen, setCalendarOpen] = useState(false); // <-- NOVA LINHA: Controla o Popover
+
+    useEffect(() => {
+        if (formData.birth_date) {
+            const formattedDate = format(formData.birth_date, 'dd/MM/yyyy');
+            if (localDateString !== formattedDate) {
+                setLocalDateString(formattedDate);
+            }
+        } else {
+            setLocalDateString('');
+        }
+    }, [formData.birth_date]); 
+
+    const handleDateInputChange = (e) => {
+        const dateStr = e.target.value;
+        setLocalDateString(dateStr); 
+
+        if (dateStr.length === 10) {
+            try {
+                const parsedDate = parse(dateStr, 'dd/MM/yyyy', new Date());
+                if (!isNaN(parsedDate) && parsedDate.getFullYear() > 1900 && parsedDate < new Date()) {
+                    updateField('birth_date', parsedDate);
+                } else {
+                    updateField('birth_date', null);
+                }
+            } catch {
+                updateField('birth_date', null);
+            }
+        } else if (dateStr.length === 0) {
+            updateField('birth_date', null);
+        }
+    };
+
+    const handleDateSelect = (date) => {
+        updateField('birth_date', date); 
+        setLocalDateString(date ? format(date, 'dd/MM/yyyy') : ''); 
+        setCalendarOpen(false); // <-- NOVA LINHA: Fecha o calendário APÓS selecionar
+    };
+    // --- FIM DAS ALTERAÇÕES ---
 
     const handleClose = () => {
         setIsOpen(false);
         resetForm();
         setStep("1");
+        setLocalDateString('');
+        setCalendarOpen(false); // <-- NOVA LINHA: Reseta o estado do calendário
     };
 
     // (handleCepBlur ... sem mudanças)
@@ -93,7 +137,6 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded }) => {
             observations: formData.observations 
         };
 
-        // Adicione a chave 'address' APENAS se addressData não for null
         if (addressData) {
             metadata.address = addressData;
         }
@@ -178,28 +221,28 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded }) => {
                                     </InputMask>
                                 </IconInputWrapper>
                             </div>
+                            
+                            {/* --- INÍCIO DO BLOCO JSX DA DATA (ALTERADO) --- */}
                             <div className="space-y-2">
                                 <Label htmlFor="birth_date" className="font-semibold">Data de Nascimento</Label>
-                                <Popover>
-                                    <PopoverTrigger asChild>
-                                        <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal bg-muted shadow-inner", !formData.birth_date && "text-muted-foreground")}>
-                                            <CalendarIcon className="mr-2 h-4 w-4" />
-                                            {formData.birth_date ? format(formData.birth_date, "PPP", { locale: ptBR }) : <span>Selecione uma data</span>}
-                                        </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-auto p-0">
-                                        <Calendar
-                                            mode="single"
-                                            selected={formData.birth_date}
-                                            onSelect={(date) => updateField('birth_date', date)}
-                                            captionLayout="dropdown-nav" 
-                                            fromYear={1930} 
-                                            toYear={new Date().getFullYear()} 
-                                            initialFocus
-                                        />
-                                    </PopoverContent>
-                                </Popover>
+                                <div className="flex w-full space-x-2">
+                                    {/* 1. O Input para digitar */}
+                                    <div className="flex-grow">
+                                        <IconInputWrapper icon={CalendarIcon}>
+                                            <InputMask
+                                                mask="99/99/9999"
+                                                placeholder="dd/mm/aaaa"
+                                                value={localDateString}
+                                                onChange={handleDateInputChange}
+                                            >
+                                                {(inputProps) => <Input {...inputProps} id="birth_date" className="bg-muted shadow-inner pl-10" />}
+                                            </InputMask>
+                                        </IconInputWrapper>
+                                    </div>
+                                </div>
                             </div>
+                            {/* --- FIM DO BLOCO JSX DA DATA --- */}
+
                             <div className="space-y-2">
                                 <Label htmlFor="gender" className="font-semibold">Gênero</Label>
                                 <IconInputWrapper icon={Users}>
