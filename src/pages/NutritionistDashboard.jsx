@@ -241,11 +241,7 @@ export default function NutritionistDashboard() {
   return (
     <div className="flex flex-col min-h-screen bg-background-page"> 
       
-      <DashboardHeader 
-        user={user.profile}
-        logout={signOut}
-        onToggleNotifications={() => setShowNotifications(s => !s)}
-      />
+      
       
       <motion.div
         initial={{ opacity: 0, y: 20 }}

@@ -186,7 +186,7 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded }) => {
                 </DialogHeader>
 
                 <Tabs value={step} onValueChange={setStep} className="w-full">
-                    <TabsList className="grid w-full grid-cols-2">
+                    <TabsList className="grid  w-full grid-cols-2">
                         <TabsTrigger value="1">1. Dados Pessoais</TabsTrigger>
                         <TabsTrigger value="2">2. Endereço (Opcional)</TabsTrigger>
                     </TabsList>

@@ -1,5 +1,3 @@
-// src/pages/PatientsPage.jsx
-
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/customSupabaseClient';
@@ -69,11 +67,6 @@ const PatientsPage = () => {
 
     return (
         <div className="flex flex-col min-h-screen bg-background-page">
-            <DashboardHeader 
-                user={user?.profile}
-                logout={signOut}
-                onToggleNotifications={() => {}}
-            />
             
             <motion.div
                 initial={{ opacity: 0, y: 20 }}

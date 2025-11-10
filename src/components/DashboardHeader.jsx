@@ -69,8 +69,8 @@ const DashboardHeader = ({ user, logout, onToggleNotifications }) => {
     // - Cor de fundo: bg-background (#FEFAE0)
     // - Quinas redondas: rounded-xl (10px)
     // - Sombra: shadow-figma-btn (que é a sombra customizada)
-    <div className="relative m-4 md:m-8 bg-background rounded-xl shadow-figma-btn">
-      <div className="max-w-7xl mx-auto px-4"> {/* Padding lateral reduzido */}
+    <div className="relative m-4 bg-card md:m-4 rounded-xl shadow-figma-btn">
+      <div className="max-w-7xl mx-auto px-4">
         <div className="flex justify-between items-center h-20">
           
           {/* Lado Esquerdo: Botão Voltar (Condicional) + Logo */}

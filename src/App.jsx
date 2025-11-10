@@ -1,20 +1,14 @@
-
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 import { Toaster } from '@/components/ui/toaster';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
-import { CartProvider } from '@/hooks/useCart';
 import { ChatProvider } from '@/contexts/ChatContext';
-
 import LoginPage from '@/pages/LoginPage.jsx';
 import RegisterPage from '@/pages/RegisterPage.jsx';
 import NutritionistDashboard from '@/pages/NutritionistDashboard.jsx';
 import PatientDashboard from '@/pages/PatientDashboard.jsx';
 import PatientProfile from '@/pages/PatientProfile.jsx';
-import StorePage from '@/pages/StorePage.jsx';
-import ProductDetailPage from '@/pages/ProductDetailPage.jsx';
-import SuccessPage from '@/pages/SuccessPage.jsx';
 import MainLayout from '@/components/MainLayout.jsx';
 import ChatPage from '@/pages/ChatPage.jsx';
 import AddFoodPage from '@/pages/AddFoodPage.jsx';
@@ -83,28 +77,35 @@ const AppLayout = () => {
 
   return (
     <ChatProvider>
-      <CartProvider>
         <div className="min-h-screen bg-background">
           <Routes>
             <Route path="/login" element={<AuthWrapper><LoginPage /></AuthWrapper>} />
             <Route path="/register" element={<AuthWrapper><RegisterPage /></AuthWrapper>} />
             <Route path="/update-password" element={<UpdatePasswordPage />} />
-            
-            <Route path="/nutritionist" element={<ProtectedRoute userType="nutritionist"><NutritionistDashboard /></ProtectedRoute>} />
-            <Route path="/nutritionist/profile" element={<ProtectedRoute userType="nutritionist"><NutritionistProfilePage /></ProtectedRoute>} />
-            <Route path="/nutritionist/notifications" element={<ProtectedRoute userType="nutritionist"><NotificationsPage /></ProtectedRoute>} />
-            <Route path="/nutritionist/calculations" element={<ProtectedRoute userType="nutritionist"><CalculationInfoPage /></ProtectedRoute>} />
-            <Route path="/nutritionist/patients" element={<ProtectedRoute userType="nutritionist"><PatientsPage /></ProtectedRoute>} />
-            <Route path="/nutritionist/patients/:patientId/hub" element={<ProtectedRoute userType="nutritionist"><PatientHubPage /></ProtectedRoute>} />
-            <Route path="/nutritionist/patients/:patientId/anamnese" element={<ProtectedRoute userType="nutritionist"><PatientAnamnesePage /></ProtectedRoute>} />
-            <Route path="/nutritionist/alerts" element={<ProtectedRoute userType="nutritionist"><AlertsPage /></ProtectedRoute>} />  
-            <Route path="/chat/nutritionist/:patientId" element={<ProtectedRoute userType="nutritionist"><ChatPage /></ProtectedRoute>} />
-            <Route path="/chat/patient" element={<ProtectedRoute userType="patient"><ChatPage /></ProtectedRoute>} />
-            <Route path="/nutritionist/calculator" element={<ProtectedRoute userType="nutritionist"><MacroCalculatorPage /></ProtectedRoute>} />
-            <Route path="/nutritionist/food-bank" element={<ProtectedRoute userType="nutritionist"><FoodBankPage /></ProtectedRoute>} />
-            <Route path="/nutritionist/financial" element={<ProtectedRoute userType="nutritionist"><FinancialPage /></ProtectedRoute>} />
-            <Route path="/nutritionist/agenda" element={<ProtectedRoute userType="nutritionist"><AgendaPage /></ProtectedRoute>} />
+            {/* --- ROTAS DO NUTRICIONISTA --- */}
+            <Route 
+              element={
+                <ProtectedRoute userType="nutritionist">
+                  <MainLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route path="/nutritionist" element={<NutritionistDashboard />} />
+              <Route path="/nutritionist/profile" element={<NutritionistProfilePage />} />
+              <Route path="/nutritionist/notifications" element={<NotificationsPage />} />
+              <Route path="/nutritionist/calculations" element={<CalculationInfoPage />} />
+              <Route path="/nutritionist/patients" element={<PatientsPage />} />
+              <Route path="/nutritionist/patients/:patientId/hub" element={<PatientHubPage />} />
+              <Route path="/nutritionist/patients/:patientId/anamnese" element={<PatientAnamnesePage />} />
+              <Route path="/nutritionist/alerts" element={<AlertsPage />} />  
+              <Route path="/chat/nutritionist/:patientId" element={<ChatPage />} />
+              <Route path="/nutritionist/calculator" element={<MacroCalculatorPage />} />
+              <Route path="/nutritionist/food-bank" element={<FoodBankPage />} />
+              <Route path="/nutritionist/financial" element={<FinancialPage />} />
+              <Route path="/nutritionist/agenda" element={<AgendaPage />} />
+            </Route>
 
+            {/* --- ROTAS DO PACIENTE --- */}
             <Route element={<ProtectedRoute userType="patient"><PatientLayout /></ProtectedRoute>}>
               <Route path="/patient" element={<PatientDashboard />} />
               <Route path="/patient/search" element={<PatientSearch />} />
@@ -113,20 +114,15 @@ const AppLayout = () => {
               <Route path="/patient/notifications" element={<NotificationsPage />} />
             </Route>
             
+            <Route path="/chat/patient" element={<ProtectedRoute userType="patient"><ChatPage /></ProtectedRoute>} />
             <Route path="/patient/add-food/:mealId?" element={<ProtectedRoute userType="patient"><AddFoodPage /></ProtectedRoute>} />
 
-            <Route element={<MainLayout />}>
-              <Route path="/store" element={<StorePage />} />
-              <Route path="/product/:id" element={<ProductDetailPage />} />
-              <Route path="/success" element={<SuccessPage />} />
-            </Route>
-
+            {/* --- ROTAS DE REDIRECIONAMENTO (Sem mudança) --- */}
             <Route path="/" element={<Navigate to={getHomePath()} replace />} />
             <Route path="*" element={<Navigate to={getHomePath()} replace />} />
           </Routes>
           <Toaster />
         </div>
-      </CartProvider>
     </ChatProvider>
   );
 }
