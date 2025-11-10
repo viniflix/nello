@@ -1,5 +1,4 @@
 import React from 'react';
-import DashboardHeader from '@/components/DashboardHeader';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { BrainCircuit } from 'lucide-react';
@@ -32,14 +31,6 @@ const CalculationInfoPage = () => {
     
     return (
         <div className="min-h-screen bg-background">
-            <DashboardHeader
-                user={user.profile}
-                logout={signOut}
-                title="Central de Cálculos"
-                subtitle="Entenda como o sistema funciona"
-                icon={<BrainCircuit className="w-6 h-6 text-primary-foreground" />}
-                backLink="/nutritionist"
-            />
             <main className="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
                 <CalculationCard 
                     title="Cálculo Nutricional de Refeições"

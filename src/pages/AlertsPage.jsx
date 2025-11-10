@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
-import DashboardHeader from '@/components/DashboardHeader';
 import { useAuth } from '@/contexts/AuthContext';
 
 const AlertsPage = () => {
@@ -11,11 +10,6 @@ const AlertsPage = () => {
 
     return (
         <div className="flex flex-col min-h-screen bg-background-page">
-            <DashboardHeader 
-                user={user?.profile}
-                logout={signOut}
-                onToggleNotifications={() => {}}
-            />
             
             <main className="max-w-4xl mx-auto w-full p-4 md:p-8">
                 <div className="mb-4">

@@ -8,7 +8,6 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/customSupabaseClient';
-import DashboardHeader from '@/components/DashboardHeader';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -133,7 +132,6 @@ const NutritionistProfilePage = () => {
 
     return (
         <div className="min-h-screen bg-background">
-            <DashboardHeader user={user.profile} logout={signOut} title="Meu Perfil" subtitle="Gerencie suas informações e preferências" icon={<UserIcon className="w-6 h-6 text-primary-foreground" />} backLink="/nutritionist" />
             <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="space-y-6">
                     <Card>

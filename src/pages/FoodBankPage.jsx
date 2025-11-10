@@ -4,7 +4,6 @@ import { User, Trash2, Edit } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
-import DashboardHeader from '@/components/DashboardHeader';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -142,38 +141,39 @@ const FoodBankPage = () => {
 
     return (
         <div className="min-h-screen bg-background">
-            <DashboardHeader
-                user={user.profile}
-                logout={signOut}
-                title="HipoZero"
-                subtitle="Banco de Alimentos"
-                icon={<User className="w-6 h-6 text-primary-foreground" />}
-                backLink="/nutritionist"
-            />
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+                    
+                    <div className="flex flex-col justify-center flex-1">
+                        <h1 className="font-clash text-4xl sm:text-5xl font-semibold text-primary">
+                        BANCO DE ALIMENTOS
+                        </h1>
+                        <p className="text-lg text-accent mt-2 gap-8 mb-8">
+                        Gerencie seus alimentos personalizados, e verifique o banco de alimentos público.
+                        </p>
+                    </div>
                     <Card className="mb-8">
                         <CardHeader>
-                            <CardTitle>Adicionar Novo Alimento</CardTitle>
-                            <CardDescription>Adicione itens personalizados ao seu banco de dados. Eles estarão disponíveis apenas para você e seus pacientes.</CardDescription>
+                            <CardTitle className="font-clash font-semibold text-primary">Adicionar Novo Alimento</CardTitle>
+                            <CardDescription className="text-accent mt-2 gap-8 mb-8">Adicione itens personalizados ao seu banco de alimentos. Eles estarão disponíveis apenas para você e seus pacientes.</CardDescription>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="text-primary">
                             <FoodForm onSave={fetchFoods} nutritionistId={user.id} />
                         </CardContent>
                     </Card>
 
                     <Card>
                         <CardHeader>
-                            <CardTitle>Consultar Banco de Alimentos</CardTitle>
+                            <CardTitle className="font-clash font-semibold text-primary">Consultar Banco de Alimentos</CardTitle>
                             <div className="mt-4">
                                 <Input placeholder="Buscar alimento..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
                             </div>
                         </CardHeader>
                         <CardContent>
-                            <h3 className="text-lg font-semibold mb-4">Meus Alimentos Personalizados</h3>
+                            <h3 className="text-lg font-semibold mb-4 text-primary">Meus Alimentos Personalizados</h3>
                             <div className="space-y-2 mb-6">
                                 {customFoods.length > 0 ? customFoods.map(food => (
-                                    <div key={food.id} className="flex justify-between items-center p-3 bg-muted rounded-lg">
+                                    <div key={food.id} className="flex justify-between items-center text-accent p-3 bg-muted rounded-lg">
                                         <p>{food.name}</p>
                                         <div className="flex items-center gap-2">
                                             <p className="text-sm text-muted-foreground hidden sm:block">{food.calories}kcal | P:{food.protein}g F:{food.fat}g C:{food.carbs}g</p>
@@ -184,10 +184,10 @@ const FoodBankPage = () => {
                                 )) : <p className="text-muted-foreground">Nenhum alimento personalizado.</p>}
                             </div>
 
-                            <h3 className="text-lg font-semibold mb-4">Banco de Dados Público</h3>
+                            <h3 className="text-lg font-semibold mb-4 text-primary">Banco de Dados Público</h3>
                             <div className="space-y-2 max-h-96 overflow-y-auto">
                                 {publicFoods.map(food => (
-                                    <div key={food.id} className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
+                                    <div key={food.id} className="flex justify-between text-accent items-center p-3 bg-muted/50 rounded-lg">
                                         <p>{food.name}</p>
                                         <p className="text-sm text-muted-foreground hidden sm:block">{food.calories}kcal | P:{food.protein}g F:{food.fat}g C:{food.carbs}g</p>
                                     </div>

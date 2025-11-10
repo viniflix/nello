@@ -3,7 +3,6 @@ import { motion } from 'framer-motion';
 import { BrainCircuit, User, Save } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
-import DashboardHeader from '@/components/DashboardHeader';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -73,33 +72,28 @@ const MacroCalculatorPage = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <DashboardHeader
-        user={user.profile}
-        logout={signOut}
-        title="HipoZero"
-        subtitle="Calculadora de Macronutrientes"
-        icon={<User className="w-6 h-6 text-primary-foreground" />}
-        backLink="/nutritionist"
-      />
-
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-foreground mb-2">Calculadora de Macros</h1>
-            <p className="text-muted-foreground">Estime as necessidades diárias de macronutrientes para seus pacientes.</p>
-          </div>
+        <div className="flex flex-col justify-center flex-1">
+            <h1 className="font-clash text-4xl sm:text-5xl font-semibold text-primary">
+            CALCULADORA DE MACROS
+            </h1>
+            <p className="text-lg text-accent mt-2 gap-8 mb-8">
+            Estime as necessidades diárias de macronutrientes para seus pacientes.
+            </p>
+        </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-6">
               <Card className="glass-card">
                 <CardHeader>
-                  <CardTitle>Dados do Paciente</CardTitle>
+                  <CardTitle className="font-clash font-semibold text-primary">Dados do Paciente</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-4 text-accent">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="space-y-2"><Label htmlFor="weight">Peso (kg)</Label><Input id="weight" type="number" value={formData.weight} onChange={handleInputChange} placeholder="70" /></div>
                     <div className="space-y-2"><Label htmlFor="height">Altura (cm)</Label><Input id="height" type="number" value={formData.height} onChange={handleInputChange} placeholder="175" /></div>
@@ -123,8 +117,8 @@ const MacroCalculatorPage = () => {
               </Card>
 
               <Card className="glass-card">
-                <CardHeader><CardTitle>Ajustes Finos</CardTitle></CardHeader>
-                <CardContent className="space-y-6">
+                <CardHeader className="font-clash font-semibold text-primary"><CardTitle>Ajustes Finos</CardTitle></CardHeader>
+                <CardContent className="space-y-6 text-accent">
                   <div className="space-y-2">
                     <Label>Proteína (g por kg de peso): {proteinRatio[0]}g/kg</Label>
                     <Slider value={proteinRatio} onValueChange={setProteinRatio} max={3} step={0.1} />
@@ -140,7 +134,7 @@ const MacroCalculatorPage = () => {
             <div className="space-y-6">
               <Card className="glass-card sticky top-24">
                 <CardHeader>
-                  <CardTitle>Resultados Estimados</CardTitle>
+                  <CardTitle className="font-clash font-semibold text-primary">Resultados Estimados</CardTitle>
                   <CardDescription>Metas diárias calculadas</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">

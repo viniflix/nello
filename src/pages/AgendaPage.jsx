@@ -13,7 +13,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/components/ui/use-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import DashboardHeader from '@/components/DashboardHeader';
 
 const AppointmentForm = ({ appointment, patients, onSave, onCancel }) => {
     const [formData, setFormData] = useState({
@@ -135,7 +134,6 @@ export default function AgendaPage() {
 
     return (
         <div className="min-h-screen bg-background">
-            <DashboardHeader user={user.profile} logout={signOut} title="Agenda" subtitle="Gerencie suas consultas" icon={<CalendarIcon className="w-6 h-6 text-primary-foreground" />} backLink="/nutritionist" />
             <main className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="grid grid-cols-1 md:grid-cols-3 gap-8">
                     <div className="md:col-span-1">

@@ -12,7 +12,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/components/ui/use-toast';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
 import Papa from 'papaparse';
-import DashboardHeader from '@/components/DashboardHeader';
 import { ResponsiveContainer, BarChart as RechartsBarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
 import { exportFinancialsToPdf } from '@/lib/pdfUtils';
 
@@ -200,7 +199,6 @@ export default function FinancialPage() {
     
     return (
         <div className="min-h-screen bg-background">
-            <DashboardHeader user={user.profile} logout={signOut} title="Financeiro" subtitle="Controle suas receitas e despesas" icon={<DollarSign className="w-6 h-6 text-primary-foreground" />} backLink="/nutritionist" />
             <main className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
                     <div className="flex justify-between items-center mb-6 flex-wrap gap-2">
