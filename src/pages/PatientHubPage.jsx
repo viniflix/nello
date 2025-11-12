@@ -1,83 +1,71 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/customSupabaseClient';
-import { ArrowLeft, User, Loader2, FileText, BarChart3, Utensils, Droplet, HeartPulse, Sparkles } from 'lucide-react';
+import { ArrowLeft, Loader2, RefreshCw, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { format, differenceInYears } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
-
-// Componente do Módulo
-const ModuleCard = ({ title, description, icon: Icon, to }) => {
-    const navigate = useNavigate();
-    return (
-        <Card 
-            className="bg-background-page hover:shadow-lg hover:border-primary transition-all cursor-pointer"
-            onClick={() => navigate(to)}
-        >
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-primary">{title}</CardTitle>
-                <Icon className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-                <p className="text-xs text-muted-foreground">{description}</p>
-            </CardContent>
-        </Card>
-    );
-};
-
+import { usePatientHub } from '@/hooks/usePatientHub';
+import PatientProfileSummary from '@/components/patient-hub/PatientProfileSummary';
+import PatientModulesGrid from '@/components/patient-hub/PatientModulesGrid';
+import PatientActivityFeed from '@/components/patient-hub/PatientActivityFeed';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const PatientHubPage = () => {
     const { patientId } = useParams();
-    const { user } = useAuth();
-    const [patient, setPatient] = useState(null);
-    const [loading, setLoading] = useState(true);
+    const navigate = useNavigate();
 
-    const fetchPatientProfile = useCallback(async () => {
-        if (!patientId || !user?.id) return;
-        setLoading(true);
+    // Hook customizado que gerencia todos os dados do hub
+    const {
+        loading,
+        error,
+        patientData,
+        latestMetrics,
+        modulesStatus,
+        activities,
+        activitiesLoading,
+        refresh,
+        loadActivities
+    } = usePatientHub(patientId);
 
-        const { data, error } = await supabase
-            .from('user_profiles')
-            .select('*')
-            .eq('id', patientId)
-            .eq('nutritionist_id', user.id) // Garante que o nutri só veja o paciente dele
-            .single();
-        
-        if (error || !data) {
-            console.error("Erro ao buscar paciente ou paciente não encontrado:", error);
-            setPatient(null);
-        } else {
-            setPatient(data);
-        }
-        setLoading(false);
-    }, [patientId, user?.id]);
-
-    useEffect(() => {
-        fetchPatientProfile();
-    }, [fetchPatientProfile]);
-
-    const getPatientAge = (birthDate) => {
-        if (!birthDate) return '';
-        try {
-            // Adiciona 4 horas para corrigir o fuso horário (problema comum de 'new Date()')
-            const date = new Date(birthDate);
-            date.setHours(date.getHours() + 4); 
-            return differenceInYears(new Date(), date) + ' anos';
-        } catch {
-            return '';
-        }
+    // Handlers para ações do perfil
+    const handleEditProfile = () => {
+        // TODO: Implementar edição de perfil (Fase 2)
+        console.log('Editar perfil do paciente:', patientId);
     };
 
+    const handleOpenChat = () => {
+        navigate(`/chat/nutritionist/${patientId}`);
+    };
+
+    const handleScheduleAppointment = () => {
+        // TODO: Implementar agendamento (Fase 2)
+        navigate('/nutritionist/agenda');
+    };
+
+    const handleLoadMoreActivities = () => {
+        loadActivities(activities.length + 20);
+    };
+
+    // Estado de carregamento
     if (loading) {
-        return <div className="flex items-center justify-center h-screen"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
+        return (
+            <div className="flex items-center justify-center h-screen bg-background-page">
+                <div className="text-center">
+                    <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto mb-4" />
+                    <p className="text-muted-foreground">Carregando dados do paciente...</p>
+                </div>
+            </div>
+        );
     }
 
-    if (!patient) {
+    // Estado de erro
+    if (error || !patientData) {
         return (
-            <div className="flex flex-col items-center justify-center h-screen">
-                <p className="text-lg text-destructive mb-4">Paciente não encontrado.</p>
+            <div className="flex flex-col items-center justify-center h-screen bg-background-page p-4">
+                <Alert variant="destructive" className="max-w-md mb-6">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                        {error?.message || 'Paciente não encontrado ou você não tem permissão para visualizá-lo.'}
+                    </AlertDescription>
+                </Alert>
                 <Button asChild variant="outline">
                     <Link to="/nutritionist/patients">
                         <ArrowLeft className="w-4 h-4 mr-2" />
@@ -90,71 +78,66 @@ const PatientHubPage = () => {
 
     return (
         <div className="min-h-screen bg-background-page">
-            {/* Header do Paciente */}
+            {/* Header Sticky */}
             <header className="bg-card/80 backdrop-blur-md border-b border-border p-4 sticky top-0 z-10">
-                <div className="max-w-4xl mx-auto flex items-center justify-between">
+                <div className="max-w-7xl mx-auto flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         <Link to="/nutritionist/patients">
-                            <Button variant="ghost" size="icon"><ArrowLeft className="w-5 h-5" /></Button>
+                            <Button variant="ghost" size="icon">
+                                <ArrowLeft className="w-5 h-5" />
+                            </Button>
                         </Link>
-                        <div className="w-10 h-10 bg-secondary rounded-full flex items-center justify-center font-bold text-primary overflow-hidden">
-                            {patient.avatar_url ? (
-                                <img src={patient.avatar_url} alt={patient.name} className="w-full h-full object-cover" />
-                            ) : (
-                                <User className="w-6 h-6 text-primary/70" />
-                            )}
-                        </div>
                         <div>
-                            <h2 className="font-semibold text-foreground">{patient.name}</h2>
+                            <h1 className="font-semibold text-foreground text-lg">
+                                {patientData.name}
+                            </h1>
                             <p className="text-xs text-muted-foreground">
-                                {patient.email} {getPatientAge(patient.birth_date) && `• ${getPatientAge(patient.birth_date)}`}
+                                Hub do Paciente
                             </p>
                         </div>
                     </div>
-                    {/* (Espaço para botões de ação futuros, ex: "Agendar") */}
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={refresh}
+                        className="gap-2"
+                    >
+                        <RefreshCw className="w-4 h-4" />
+                        <span className="hidden sm:inline">Atualizar</span>
+                    </Button>
                 </div>
             </header>
 
-            {/* Grid de Módulos */}
-            <main className="max-w-4xl mx-auto w-full p-4 md:p-8">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <ModuleCard 
-                        title="Anamnese"
-                        description="Histórico clínico e hábitos de vida."
-                        icon={FileText}
-                        to={`/nutritionist/patients/${patientId}/anamnese`} // (Link para o Dia 5)
+            {/* Conteúdo Principal */}
+            <main className="max-w-7xl mx-auto w-full p-4 md:p-8 space-y-8">
+                {/* BLOCO 1 - Perfil do Paciente */}
+                <section>
+                    <PatientProfileSummary
+                        patientData={patientData}
+                        latestMetrics={latestMetrics}
+                        onEditProfile={handleEditProfile}
+                        onOpenChat={handleOpenChat}
+                        onScheduleAppointment={handleScheduleAppointment}
                     />
-                    <ModuleCard 
-                        title="Avaliação Antropométrica"
-                        description="Medidas de peso, altura e dobras."
-                        icon={BarChart3}
-                        to="#" // (Link futuro)
+                </section>
+
+                {/* BLOCO 2 - Grid de Módulos */}
+                <section>
+                    <PatientModulesGrid
+                        patientId={patientId}
+                        modulesStatus={modulesStatus}
                     />
-                    <ModuleCard 
-                        title="Plano Alimentar"
-                        description="Prescrição da dieta e refeições."
-                        icon={Utensils}
-                        to="#" // (Link futuro)
+                </section>
+
+                {/* BLOCO 3 - Feed de Atividades */}
+                <section>
+                    <PatientActivityFeed
+                        patientId={patientId}
+                        activities={activities}
+                        loading={activitiesLoading}
+                        onLoadMore={handleLoadMoreActivities}
                     />
-                    <ModuleCard 
-                        title="Exames Laboratoriais"
-                        description="Resultados de exames de sangue."
-                        icon={Droplet}
-                        to="#" // (Link futuro)
-                    />
-                    <ModuleCard 
-                        title="Metas e Prescrições"
-                        description="Calorias, macros e orientações."
-                        icon={HeartPulse}
-                        to="#" // (Link futuro)
-                    />
-                    <ModuleCard 
-                        title="Conquistas"
-                        description="Gerenciar conquistas do paciente."
-                        icon={Sparkles}
-                        to="#" // (Link futuro)
-                    />
-                </div>
+                </section>
             </main>
         </div>
     );
