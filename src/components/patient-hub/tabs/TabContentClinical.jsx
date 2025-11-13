@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FileText, Droplet, Activity, CheckCircle2, AlertCircle, Calendar, ArrowRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { getLatestAnamnesis } from '@/lib/supabase/anamnesis-queries';
 
 /**
  * TabContentClinical - Dashboard de Dados Clínicos
@@ -12,20 +13,32 @@ import { cn } from '@/lib/utils';
  */
 const TabContentClinical = ({ patientId, modulesStatus = {} }) => {
     const navigate = useNavigate();
+    const [latestAnamnesis, setLatestAnamnesis] = useState(null);
+    const [anamnesisLoading, setAnamnesisLoading] = useState(true);
+
+    // Buscar última anamnese do paciente
+    useEffect(() => {
+        const fetchLatestAnamnesis = async () => {
+            if (!patientId) return;
+
+            setAnamnesisLoading(true);
+            try {
+                const { data } = await getLatestAnamnesis(patientId);
+                setLatestAnamnesis(data);
+            } catch (error) {
+                console.error('Erro ao buscar anamnese:', error);
+            } finally {
+                setAnamnesisLoading(false);
+            }
+        };
+
+        fetchLatestAnamnesis();
+    }, [patientId]);
 
     // ============================================================
     // MOCK DATA - Substituir por dados reais quando integrado
     // ============================================================
     const mockClinicalData = {
-        anamnesis: {
-            completed: modulesStatus.anamnese === 'completed',
-            lastUpdate: '2025-01-08',
-            highlightInfo: {
-                allergies: ['Lactose', 'Glúten'],
-                conditions: ['Diabetes Tipo 2', 'Hipertensão'],
-                medications: 2
-            }
-        },
         labs: {
             completed: modulesStatus.lab_results === 'completed',
             lastUpdate: '2024-12-20',
@@ -41,9 +54,20 @@ const TabContentClinical = ({ patientId, modulesStatus = {} }) => {
     // CARD 1: ANAMNESE
     // ============================================================
     const AnamnesisCard = () => {
-        const isComplete = mockClinicalData.anamnesis.completed;
+        const hasAnamnesis = !anamnesisLoading && latestAnamnesis;
 
-        if (!isComplete) {
+        if (anamnesisLoading) {
+            // Loading state
+            return (
+                <Card className="border-l-4 border-l-[#a9b388]">
+                    <CardContent className="py-8 text-center">
+                        <p className="text-sm text-muted-foreground">Carregando anamnese...</p>
+                    </CardContent>
+                </Card>
+            );
+        }
+
+        if (!hasAnamnesis) {
             // Estado Pendente
             return (
                 <Card className="border-l-4 border-l-[#c4661f] bg-[#fefae0]/30 hover:shadow-md transition-all">
@@ -64,7 +88,7 @@ const TabContentClinical = ({ patientId, modulesStatus = {} }) => {
                                     alergias, condições de saúde e medicações em uso.
                                 </p>
                                 <Button
-                                    onClick={() => navigate(`/nutritionist/patients/${patientId}/anamnese`)}
+                                    onClick={() => navigate(`/nutritionist/patients/${patientId}/anamnesis`)}
                                     className="gap-2"
                                 >
                                     <FileText className="w-4 h-4" />
@@ -77,7 +101,13 @@ const TabContentClinical = ({ patientId, modulesStatus = {} }) => {
             );
         }
 
-        // Estado Completo
+        // Estado Completo - Com dados reais
+        const statusConfig = {
+            draft: { label: 'Rascunho', color: 'bg-yellow-100 text-yellow-800 border-yellow-300' },
+            completed: { label: 'Completa', color: 'bg-[#a9b388]/20 text-[#5f6f52] border-[#5f6f52]' }
+        };
+        const config = statusConfig[latestAnamnesis.status] || statusConfig.draft;
+
         return (
             <Card className="border-l-4 border-l-[#5f6f52] hover:shadow-xl transition-all">
                 <CardHeader className="pb-3">
@@ -85,78 +115,47 @@ const TabContentClinical = ({ patientId, modulesStatus = {} }) => {
                         <div className="flex items-center gap-2">
                             <CheckCircle2 className="w-5 h-5 text-[#5f6f52]" />
                             <CardTitle className="text-lg">Anamnese</CardTitle>
-                            <Badge className="bg-[#a9b388]/20 text-[#5f6f52] border-[#5f6f52]">
-                                Completa
+                            <Badge variant="outline" className={config.color}>
+                                {config.label}
                             </Badge>
                         </div>
                         <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => navigate(`/nutritionist/patients/${patientId}/anamnese`)}
+                            onClick={() => navigate(`/nutritionist/patients/${patientId}/anamnesis`)}
                             className="gap-1"
                         >
-                            Revisar
+                            Ver Histórico
                             <ArrowRight className="w-3 h-3" />
                         </Button>
                     </div>
                 </CardHeader>
 
                 <CardContent>
-                    {/* Informações de Destaque */}
-                    <div className="space-y-3">
-                        {/* Alergias */}
-                        {mockClinicalData.anamnesis.highlightInfo.allergies.length > 0 && (
-                            <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                                <div className="text-xs font-semibold text-red-900 mb-1 uppercase tracking-wide">
-                                    ⚠️ Alergias/Restrições
-                                </div>
-                                <div className="flex flex-wrap gap-2">
-                                    {mockClinicalData.anamnesis.highlightInfo.allergies.map((allergy, idx) => (
-                                        <Badge key={idx} variant="destructive" className="text-xs">
-                                            {allergy}
-                                        </Badge>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Condições de Saúde */}
-                        {mockClinicalData.anamnesis.highlightInfo.conditions.length > 0 && (
-                            <div className="bg-[#a9b388]/10 border border-[#a9b388] rounded-lg p-3">
-                                <div className="text-xs font-semibold text-[#5f6f52] mb-1 uppercase tracking-wide">
-                                    🩺 Condições de Saúde
-                                </div>
-                                <div className="flex flex-wrap gap-2">
-                                    {mockClinicalData.anamnesis.highlightInfo.conditions.map((condition, idx) => (
-                                        <Badge key={idx} variant="outline" className="bg-[#fefae0] text-xs border-[#a9b388]">
-                                            {condition}
-                                        </Badge>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Medicações */}
-                        {mockClinicalData.anamnesis.highlightInfo.medications > 0 && (
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                <span className="font-medium text-foreground">
-                                    {mockClinicalData.anamnesis.highlightInfo.medications}
-                                </span>
-                                medicação(ões) em uso
-                            </div>
-                        )}
+                    {/* Informações sobre o documento usado */}
+                    <div className="bg-[#fefae0] border border-[#a9b388] rounded-lg p-3 mb-3">
+                        <div className="text-xs font-semibold text-[#5f6f52] mb-1 uppercase tracking-wide">
+                            📋 Documento
+                        </div>
+                        <p className="text-sm text-foreground">
+                            {latestAnamnesis.template?.title || 'Anamnese Nutricional'}
+                        </p>
                     </div>
 
                     {/* Data de Atualização */}
                     <div className="flex items-center justify-between text-xs text-muted-foreground pt-3 mt-3 border-t">
                         <span className="flex items-center gap-1">
                             <Calendar className="w-3 h-3" />
-                            Última atualização: {new Date(mockClinicalData.anamnesis.lastUpdate).toLocaleDateString('pt-BR')}
+                            Registrada em: {new Date(latestAnamnesis.date).toLocaleDateString('pt-BR', {
+                                day: '2-digit',
+                                month: 'long',
+                                year: 'numeric'
+                            })}
                         </span>
                         <Button
                             variant="link"
                             size="sm"
-                            onClick={() => navigate(`/nutritionist/patients/${patientId}/anamnese`)}
+                            onClick={() => navigate(`/nutritionist/patients/${patientId}/anamnesis`)}
                             className="h-auto p-0 text-xs"
                         >
                             Ver completo →

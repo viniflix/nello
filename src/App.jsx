@@ -19,6 +19,8 @@ import PatientsPage from '@/pages/PatientsPage.jsx';
 import PatientHubPage from '@/pages/PatientHubPage.jsx';
 import AlertsPage from '@/pages/AlertsPage.jsx';
 import PatientAnamnesePage from '@/pages/PatientAnamnesePage.jsx';
+import PatientAnamnesisList from '@/pages/PatientAnamnesisList.jsx';
+import PatientAnamnesisForm from '@/pages/PatientAnamnesisForm.jsx';
 import AnthropometryPage from '@/pages/AnthropometryPage.jsx';
 import MealPlanPage from '@/pages/MealPlanPage.jsx';
 import MealPlanSummaryPage from '@/pages/MealPlanSummaryPage.jsx';
@@ -100,6 +102,9 @@ const AppLayout = () => {
               <Route path="/nutritionist/patients" element={<PatientsPage />} />
               <Route path="/nutritionist/patients/:patientId/hub" element={<PatientHubPage />} />
               <Route path="/nutritionist/patients/:patientId/anamnese" element={<PatientAnamnesePage />} />
+              <Route path="/nutritionist/patients/:patientId/anamnesis" element={<PatientAnamnesisList />} />
+              <Route path="/nutritionist/patients/:patientId/anamnesis/new" element={<PatientAnamnesisForm />} />
+              <Route path="/nutritionist/patients/:patientId/anamnesis/:anamnesisId/edit" element={<PatientAnamnesisForm />} />
               <Route path="/nutritionist/patients/:patientId/anthropometry" element={<AnthropometryPage />} />
               <Route path="/nutritionist/patients/:patientId/meal-plan" element={<MealPlanPage />} />
               <Route path="/nutritionist/patients/:patientId/meal-plan/:planId/summary" element={<MealPlanSummaryPage />} />
