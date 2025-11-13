@@ -20,6 +20,8 @@ import PatientHubPage from '@/pages/PatientHubPage.jsx';
 import AlertsPage from '@/pages/AlertsPage.jsx';
 import PatientAnamnesePage from '@/pages/PatientAnamnesePage.jsx';
 import AnthropometryPage from '@/pages/AnthropometryPage.jsx';
+import MealPlanPage from '@/pages/MealPlanPage.jsx';
+import MealPlanSummaryPage from '@/pages/MealPlanSummaryPage.jsx';
 import MacroCalculatorPage from '@/pages/MacroCalculatorPage.jsx';
 import FoodBankPage from '@/pages/FoodBankPage.jsx';
 import FinancialPage from '@/pages/FinancialPage.jsx';
@@ -99,6 +101,8 @@ const AppLayout = () => {
               <Route path="/nutritionist/patients/:patientId/hub" element={<PatientHubPage />} />
               <Route path="/nutritionist/patients/:patientId/anamnese" element={<PatientAnamnesePage />} />
               <Route path="/nutritionist/patients/:patientId/anthropometry" element={<AnthropometryPage />} />
+              <Route path="/nutritionist/patients/:patientId/meal-plan" element={<MealPlanPage />} />
+              <Route path="/nutritionist/patients/:patientId/meal-plan/:planId/summary" element={<MealPlanSummaryPage />} />
               <Route path="/nutritionist/alerts" element={<AlertsPage />} />  
               <Route path="/chat/nutritionist/:patientId" element={<ChatPage />} />
               <Route path="/nutritionist/calculator" element={<MacroCalculatorPage />} />

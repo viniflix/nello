@@ -27,19 +27,19 @@ const ActivityItem = ({ activity }) => {
     const getActivityIcon = (type) => {
         switch (type) {
             case 'meal':
-                return <Utensils className="w-4 h-4 text-orange-500" />;
+                return <Utensils className="w-4 h-4 text-[#c4661f]" />;
             case 'weight':
-                return <Weight className="w-4 h-4 text-blue-500" />;
+                return <Weight className="w-4 h-4 text-[#5f6f52]" />;
             case 'achievement':
-                return <Trophy className="w-4 h-4 text-yellow-500" />;
+                return <Trophy className="w-4 h-4 text-[#b99470]" />;
             case 'appointment':
-                return <Calendar className="w-4 h-4 text-purple-500" />;
+                return <Calendar className="w-4 h-4 text-[#783d19]" />;
             case 'message':
-                return <MessageSquare className="w-4 h-4 text-green-500" />;
+                return <MessageSquare className="w-4 h-4 text-[#a9b388]" />;
             case 'anamnese':
-                return <FileText className="w-4 h-4 text-indigo-500" />;
+                return <FileText className="w-4 h-4 text-[#5f6f52]" />;
             default:
-                return <FileText className="w-4 h-4 text-gray-500" />;
+                return <FileText className="w-4 h-4 text-muted-foreground" />;
         }
     };
 

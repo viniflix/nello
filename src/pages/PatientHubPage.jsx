@@ -1,16 +1,22 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Loader2, RefreshCw, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Loader2, RefreshCw, AlertCircle, Activity, Stethoscope, User, Utensils, Heart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { usePatientHub } from '@/hooks/usePatientHub';
 import PatientProfileSummary from '@/components/patient-hub/PatientProfileSummary';
-import PatientModulesGrid from '@/components/patient-hub/PatientModulesGrid';
-import PatientActivityFeed from '@/components/patient-hub/PatientActivityFeed';
+import PatientJourneyWidget from '@/components/patient-hub/PatientJourneyWidget';
+import TabContentFeed from '@/components/patient-hub/tabs/TabContentFeed';
+import TabContentClinical from '@/components/patient-hub/tabs/TabContentClinical';
+import TabContentBody from '@/components/patient-hub/tabs/TabContentBody';
+import TabContentNutrition from '@/components/patient-hub/tabs/TabContentNutrition';
+import TabContentAdherence from '@/components/patient-hub/tabs/TabContentAdherence';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const PatientHubPage = () => {
     const { patientId } = useParams();
     const navigate = useNavigate();
+    const [activeTab, setActiveTab] = useState('feed');
 
     // Hook customizado que gerencia todos os dados do hub
     const {
@@ -121,22 +127,81 @@ const PatientHubPage = () => {
                     />
                 </section>
 
-                {/* BLOCO 2 - Grid de Módulos */}
+                {/* BLOCO 2 - Jornada Clínica (Guia Discreto) */}
                 <section>
-                    <PatientModulesGrid
+                    <PatientJourneyWidget
                         patientId={patientId}
                         modulesStatus={modulesStatus}
+                        latestMetrics={latestMetrics}
                     />
                 </section>
 
-                {/* BLOCO 3 - Feed de Atividades */}
+                {/* BLOCO 3 - Tabs de Navegação */}
                 <section>
-                    <PatientActivityFeed
-                        patientId={patientId}
-                        activities={activities}
-                        loading={activitiesLoading}
-                        onLoadMore={handleLoadMoreActivities}
-                    />
+                    <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                        <TabsList className="grid w-full grid-cols-3 lg:grid-cols-5 gap-2 h-auto p-1 bg-muted/50">
+                            <TabsTrigger value="feed" className="flex items-center gap-2 data-[state=active]:bg-background">
+                                <Activity className="h-4 w-4" />
+                                <span className="hidden sm:inline">Feed</span>
+                            </TabsTrigger>
+                            <TabsTrigger value="clinical" className="flex items-center gap-2 data-[state=active]:bg-background">
+                                <Stethoscope className="h-4 w-4" />
+                                <span className="hidden sm:inline">Clínico</span>
+                            </TabsTrigger>
+                            <TabsTrigger value="body" className="flex items-center gap-2 data-[state=active]:bg-background">
+                                <User className="h-4 w-4" />
+                                <span className="hidden sm:inline">Corporal</span>
+                            </TabsTrigger>
+                            <TabsTrigger value="nutrition" className="flex items-center gap-2 data-[state=active]:bg-background">
+                                <Utensils className="h-4 w-4" />
+                                <span className="hidden sm:inline">Nutrição</span>
+                            </TabsTrigger>
+                            <TabsTrigger value="adherence" className="flex items-center gap-2 data-[state=active]:bg-background">
+                                <Heart className="h-4 w-4" />
+                                <span className="hidden sm:inline">Adesão</span>
+                            </TabsTrigger>
+                        </TabsList>
+
+                        <div className="mt-6">
+                            <TabsContent value="feed" className="m-0">
+                                <TabContentFeed
+                                    patientId={patientId}
+                                    activities={activities}
+                                    loading={activitiesLoading}
+                                    onLoadMore={handleLoadMoreActivities}
+                                />
+                            </TabsContent>
+
+                            <TabsContent value="clinical" className="m-0">
+                                <TabContentClinical
+                                    patientId={patientId}
+                                    modulesStatus={modulesStatus}
+                                />
+                            </TabsContent>
+
+                            <TabsContent value="body" className="m-0">
+                                <TabContentBody
+                                    patientId={patientId}
+                                    modulesStatus={modulesStatus}
+                                    latestMetrics={latestMetrics}
+                                />
+                            </TabsContent>
+
+                            <TabsContent value="nutrition" className="m-0">
+                                <TabContentNutrition
+                                    patientId={patientId}
+                                    modulesStatus={modulesStatus}
+                                />
+                            </TabsContent>
+
+                            <TabsContent value="adherence" className="m-0">
+                                <TabContentAdherence
+                                    patientId={patientId}
+                                    modulesStatus={modulesStatus}
+                                />
+                            </TabsContent>
+                        </div>
+                    </Tabs>
                 </section>
             </main>
         </div>
