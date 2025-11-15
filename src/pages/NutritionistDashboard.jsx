@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  Plus, Calendar, MessageSquare, UserCheck, Loader2, BookOpen, BrainCircuit, 
+import {
+  Plus, Calendar, MessageSquare, UserCheck, Loader2, BookOpen, BrainCircuit,
   Users, // Ícone para Total de Pacientes
   Bell, // Ícone para Alertas do Calendário
-  PieChart // Ícone para Adesão
+  PieChart, // Ícone para Adesão
+  CalendarDays, // Ícone para Consultas Agendadas
+  DollarSign // Ícone para Faturamento
 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -14,7 +16,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Link, useNavigate } from 'react-router-dom';
 import NotificationsPanel from '@/components/NotificationsPanel';
-import RecentActivityFeed from '@/components/nutritionist/RecentActivityFeed';
+import PatientUpdatesWidget from '@/components/nutritionist/PatientUpdatesWidget';
+import NutritionistActivityFeed from '@/components/nutritionist/NutritionistActivityFeed';
 import { format, parseISO, isToday } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -23,12 +26,12 @@ const UpcomingAppointmentsWidget = ({ appointments }) => {
   const navigate = useNavigate();
   
   return (
-    <Card className="bg-card shadow-figma-btn rounded-xl">
+    <Card className="bg-card shadow-card-dark rounded-xl">
       <CardHeader>
         <CardTitle className="font-clash text-lg font-semibold text-primary">
           Próximas Consultas
         </CardTitle>
-        <CardDescription style={{ color: '#B99470' }}>
+        <CardDescription className="text-muted-foreground">
           Seus próximos agendamentos.
         </CardDescription>
       </CardHeader>
@@ -66,76 +69,6 @@ const UpcomingAppointmentsWidget = ({ appointments }) => {
     </Card>
   );
 };
-
-// --- WIDGET (ESQUERDA): Cards de Estatística ---
-const StatCard = ({ title, description, value, icon: Icon, link }) => (
-  <Card className="bg-card shadow-figma-btn rounded-xl">
-    <CardHeader className="relative pb-2">
-      <CardTitle className="font-clash text-xl font-semibold text-primary">
-        {title}
-      </CardTitle>
-      <CardDescription className="text-destructive font-semibold">
-        {description}
-      </CardDescription>
-      <div className="absolute top-4 right-4">
-        <Icon className="h-5 w-5 text-destructive" />
-      </div>
-    </CardHeader>
-    <CardContent>
-      <div className="text-4xl font-bold text-accent my-4">
-        {value}
-      </div>
-      <Link to={link} className="text-xs font-semibold text-destructive hover:underline self-end">
-        Ver mais...
-      </Link>
-    </CardContent>
-  </Card>
-);
-
-const DashboardStats = ({ patientCount, alertsCount, adherencePercent }) => {
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-      <StatCard 
-        title="Total de Pacientes"
-        description="Pacientes ativos"
-        value={patientCount}
-        icon={Users}
-        link="/nutritionist/patients"
-      />
-      <StatCard 
-        title="Alertas do Dia"
-        description="Consultas e notificações"
-        value={alertsCount}
-        icon={Bell}
-        link="/nutritionist/alerts" // Link para a página de Alertas
-      />
-      <StatCard 
-        title="Adesão de Dieta"
-        description="Média de registros (Hoje)"
-        value={adherencePercent}
-        icon={PieChart}
-        link="/nutritionist/alerts" // Link para a página de Alertas
-      />
-    </div>
-  );
-};
-
-// --- WIDGET (ESQUERDA - DENTRO DO FEED): Precisando de Atenção ---
-const LowAdherencePatientsWidget = () => (
-  <Card className="bg-card rounded-xl border-none"> 
-    <CardHeader>
-      <CardTitle className="font-clash text-lg font-semibold text-primary">Precisando de Atenção</CardTitle>
-      <CardDescription style={{ color: '#B99470' }}>
-        Pacientes com baixa adesão ou pendências.
-      </CardDescription>
-    </CardHeader>
-    <CardContent>
-      <p className="text-sm text-muted-foreground text-center py-4">
-        (Em breve: Pacientes com baixa adesão ou anamneses pendentes)
-      </p>
-    </CardContent>
-  </Card>
-);
 
 
 // --- COMPONENTE PRINCIPAL DO DASHBOARD ---
@@ -234,11 +167,11 @@ export default function NutritionistDashboard() {
   }, [user, fetchData]); 
 
   if (loading || !user?.profile) {
-    return <div className="flex items-center justify-center h-screen bg-background-page"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
+    return <div className="flex items-center justify-center h-screen bg-background"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-background-page"> 
+    <div className="flex flex-col min-h-screen bg-background"> 
       
       
       
@@ -248,85 +181,30 @@ export default function NutritionistDashboard() {
         transition={{ duration: 0.5 }}
         className="max-w-7xl mx-auto w-full px-4 md:px-8" 
       >
-        {/* Bloco "DASHBOARD" */}
-        <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-8 mb-8">
-          
-          <div className="flex flex-col justify-center flex-1">
-            <h1 className="font-clash text-4xl sm:text-5xl font-semibold text-primary">
-              DASHBOARD
-            </h1>
-            <p className="text-lg text-accent mt-2">
-              Gerencie seus pacientes, prescrições e análises.
+        {/* Zona de Ação Rápida */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+          {/* Lado Esquerdo: Título e Descrição */}
+          <div>
+            <h2 className="text-3xl font-bold font-heading uppercase tracking-wide text-primary">
+              Dashboard
+            </h2>
+            <p className="text-neutral-600">
+              Visualize as informações mais importantes da sua operação.
             </p>
           </div>
 
-          <div className="flex flex-col space-y-3">
-            <div className="w-full h-2 bg-destructive rounded-full shadow-figma-btn lg:hidden"></div>
-            <div className="hidden md:flex flex-wrap items-center justify-start lg:justify-end gap-3">
-              <Button
-                onClick={() => navigate('/nutritionist/agenda')}
-                className="bg-card text-primary rounded-5px shadow-figma-btn font-semibold hover:bg-card/90 whitespace-nowrap"
-              >
-                <Calendar className="w-4 h-4 mr-2" />
-                Agenda
-              </Button>
-              <Button
-                onClick={() => navigate('/nutritionist/food-bank')}
-                className="bg-card text-primary rounded-5px shadow-figma-btn font-semibold hover:bg-card/90 whitespace-nowrap"
-              >
-                <BookOpen className="w-4 h-4 mr-2" />
-                Banco de Alimentos
-              </Button>
-              <Button
-                onClick={() => navigate('/nutritionist/calculator')}
-                className="bg-card text-primary rounded-5px shadow-figma-btn font-semibold hover:bg-card/90 whitespace-nowrap"
-              >
-                <BrainCircuit className="w-4 h-4 mr-2" />
-                Calculadora
-              </Button>
-              <Button
-                onClick={() => navigate('/nutritionist/patients')}
-                className="bg-primary text-primary-foreground rounded-5px shadow-figma-btn font-semibold hover:bg-primary/90 whitespace-nowrap"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Meus Pacientes
-              </Button>
-            </div>
-            <div className="block md:hidden space-y-3">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <Button
-                  onClick={() => navigate('/nutritionist/agenda')}
-                  className="bg-card text-primary rounded-5px shadow-figma-btn font-semibold hover:bg-card/90"
-                >
-                  <Calendar className="w-4 h-4 mr-2" />
-                  Agenda
-                </Button>
-                <Button
-                  onClick={() => navigate('/nutritionist/food-bank')}
-                  className="bg-card text-primary rounded-5px shadow-figma-btn font-semibold hover:bg-card/90"
-                >
-                  <BookOpen className="w-4 h-4 mr-2" />
-                  Banco de Alimentos
-                </Button>
-                <Button
-                  onClick={() => navigate('/nutritionist/calculator')}
-                  className="bg-card text-primary rounded-5px shadow-figma-btn font-semibold hover:bg-card/90"
-                >
-                  <BrainCircuit className="w-4 h-4 mr-2" />
-                  Calculadora
-                </Button>
-              </div>
-              <Button 
-                onClick={() => navigate('/nutritionist/patients')}
-                className="w-full bg-primary text-primary-foreground rounded-5px shadow-figma-btn font-semibold hover:bg-primary/90"
-              >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Meus Pacientes
-              </Button>
-            </div>
+          {/* Lado Direito: Ações Rápidas */}
+          <div className="flex gap-2 flex-wrap">
+            <Button variant="outline" onClick={() => navigate('/nutritionist/patients')}>
+              <Users className="h-4 w-4 mr-2" />
+              Ver todos os pacientes
+            </Button>
+            <Button variant="secondary" onClick={() => navigate('/nutritionist/patients')}>
+              <Plus className="h-4 w-4 mr-2" />
+              Novo Paciente
+            </Button>
           </div>
         </div>
-        {/* --- FIM DO BLOCO "DASHBOARD" --- */}
 
 
         {/* --- Conteúdo da Página --- */}
@@ -335,34 +213,70 @@ export default function NutritionistDashboard() {
           {/* Coluna Lateral */}
           <div className="lg:col-span-1 space-y-8 lg:order-last">
             <UpcomingAppointmentsWidget appointments={appointments} />
-            <RecentActivityFeed />
+            <PatientUpdatesWidget />
           </div>
 
           {/* Coluna Principal*/}
           <div className="lg:col-span-2 space-y-8 lg:order-first">
-            {/* Cards de Estatística */}
-            <DashboardStats 
-              patientCount={patients.length} 
-              alertsCount={alertsCount} 
-              adherencePercent={adherence}
-            />
-            
-            {/* "Card Feed de Atividades" */}
-            <Card className="bg-card shadow-figma-btn rounded-xl">
-              <CardHeader>
-                <CardTitle className="font-clash text-lg font-semibold text-primary">Feed de Atividades</CardTitle>
-                <CardDescription style={{ color: '#B99470' }}>
-                  Ações importantes e pendências.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Card "Precisando de Atenção" */}
-                <LowAdherencePatientsWidget />
-                
-                {/* (Quando tiver mais itens do feed, eles entram aqui) */}
+            {/* Cards de Estatística - Design com Cores Vibrantes */}
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mb-6">
+              {/* Card 1: Pacientes (Verde) */}
+              <Card className="bg-primary text-white border-0 shadow-card-dark">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="font-heading uppercase text-sm font-medium text-white/80 whitespace-nowrap tracking-wide">
+                    Total de Pacientes
+                  </CardTitle>
+                  <Users className="h-6 w-6 text-white/80" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-4xl font-bold text-white">
+                    {patients.length}
+                  </div>
+                  <p className="text-xs text-white/70">
+                    Pacientes ativos
+                  </p>
+                </CardContent>
+              </Card>
 
-              </CardContent>
-            </Card>
+              {/* Card 2: Consultas (Laranja) */}
+              <Card className="bg-secondary text-white border-0 shadow-card-dark">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="font-heading uppercase text-sm font-medium text-white/80 whitespace-nowrap tracking-wide">
+                    Consultas Agendadas
+                  </CardTitle>
+                  <CalendarDays className="h-6 w-6 text-white/80" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-4xl font-bold text-white">
+                    {appointments.length}
+                  </div>
+                  <p className="text-xs text-white/70">
+                    Próximas consultas
+                  </p>
+                </CardContent>
+              </Card>
+
+              {/* Card 3: Alertas (Neutro Escuro) */}
+              <Card className="bg-neutral-800 text-white border-0 shadow-card-dark">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="font-heading uppercase text-sm font-medium text-white/80 whitespace-nowrap tracking-wide">
+                    Alertas do Dia
+                  </CardTitle>
+                  <Bell className="h-6 w-6 text-white/80" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-4xl font-bold text-white">
+                    {alertsCount}
+                  </div>
+                  <p className="text-xs text-white/70">
+                    Consultas e notificações
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Feed do Nutricionista (Alertas e Pendências) */}
+            <NutritionistActivityFeed />
 
           </div>
           

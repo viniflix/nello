@@ -11,7 +11,7 @@ const PatientAnamnesePage = () => {
     // (Lógica futura para buscar 'patient', 'fields' e 'answers' virá aqui)
 
     return (
-        <div className="flex flex-col min-h-screen bg-background-page">
+        <div className="flex flex-col min-h-screen bg-background">
             <header className="bg-card/80 backdrop-blur-md border-b border-border p-4 sticky top-0 z-10">
                 <div className="max-w-4xl mx-auto flex items-center justify-between">
                     <Button asChild variant="ghost" size="sm">
@@ -22,15 +22,15 @@ const PatientAnamnesePage = () => {
                     </Button>
                 </div>
             </header>
-            
+
             <main className="max-w-4xl mx-auto w-full p-4 md:p-8">
-                <Card className="bg-card shadow-figma-btn rounded-xl">
+                <Card className="bg-card shadow-card-dark rounded-xl">
                     <CardHeader className="flex flex-row items-center justify-between">
                         <div>
                             <CardTitle className="font-clash text-2xl font-semibold text-primary">
                                 Anamnese
                             </CardTitle>
-                            <CardDescription style={{ color: '#B99470' }}>
+                            <CardDescription className="text-muted-foreground">
                                 Perguntas customizadas e histórico do paciente.
                             </CardDescription>
                         </div>

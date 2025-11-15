@@ -53,7 +53,7 @@ const PatientHubPage = () => {
     // Estado de carregamento
     if (loading) {
         return (
-            <div className="flex items-center justify-center h-screen bg-background-page">
+            <div className="flex items-center justify-center h-screen bg-background">
                 <div className="text-center">
                     <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto mb-4" />
                     <p className="text-muted-foreground">Carregando dados do paciente...</p>
@@ -65,7 +65,7 @@ const PatientHubPage = () => {
     // Estado de erro
     if (error || !patientData) {
         return (
-            <div className="flex flex-col items-center justify-center h-screen bg-background-page p-4">
+            <div className="flex flex-col items-center justify-center h-screen bg-background p-4">
                 <Alert variant="destructive" className="max-w-md mb-6">
                     <AlertCircle className="h-4 w-4" />
                     <AlertDescription>
@@ -83,7 +83,7 @@ const PatientHubPage = () => {
     }
 
     return (
-        <div className="min-h-screen bg-background-page">
+        <div className="min-h-screen bg-background">
             {/* Header Sticky */}
             <header className="bg-card/80 backdrop-blur-md border-b border-border p-4 sticky top-0 z-10">
                 <div className="max-w-7xl mx-auto flex items-center justify-between">

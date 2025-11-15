@@ -1,50 +1,94 @@
+/* src/index.css */
+
+/* 1. Importar a fonte Inter (corpo) */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+/* 2. Carregar a ClashDisplay (títulos) que já está no projeto */
+@font-face {
+  font-family: 'ClashDisplay';
+  src: url('/fonts/ClashDisplay-Variable.woff2') format('woff2');
+  font-weight: 200 700;
+  font-display: swap;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'ClashDisplay';
+  src: url('/fonts/ClashDisplay-Semibold.woff2') format('woff2');
+  font-weight: 600;
+  font-display: swap;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'ClashDisplay';
+  src: url('/fonts/ClashDisplay-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-display: swap;
+  font-style: normal;
+}
+
+/* 3. Definir as bases do Tailwind */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap');
+/* 4. Definir nossas variáveis CSS (Tokens) */
+@layer base {
+  :root {
+    /* FUNDO: Um cinza bem leve (Stone 100) */
+    --background: 24 5.4% 92.9%; /* stone-100 (#edeced) */
+    /* TEXTO: Um cinza escuro (Stone 800) */
+    --foreground: 24 5.7% 23.9%; /* stone-800 (#44403c) */
 
-@font-face {
-  font-family: 'Clash Display';
-  src: url('/fonts/ClashDisplay-Semibold.woff2') format('woff2'); 
-  font-weight: 600;
-  font-style: normal;
-  font-display: swap;
+    /* CARD: Branco puro, para "saltar" do fundo */
+    --card: 0 0% 100%; /* white */
+    --card-foreground: 24 5.7% 23.9%; /* stone-800 */
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 24 5.7% 23.9%;
+
+    /* Cores primárias e secundárias (OK) */
+    --primary: 100 31% 38%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 26 95% 48%;
+    --secondary-foreground: 0 0% 100%;
+
+    /* TEXTO "MUTED" (Correção de Contraste) */
+    /* Agora usa Stone 500, legível em fundo branco */
+    --muted: 24 5.4% 92.9%; /* stone-100 */
+    --muted-foreground: 24 3.8% 46.1%; /* stone-500 (#78716c) */
+
+    --accent: 24 5.6% 94.9%; /* stone-100 (mais claro) */
+    --accent-foreground: 24 5.9% 10%; /* stone-900 */
+
+    --destructive: 0 72.2% 50.6%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* BORDAS (Correção de Contraste) */
+    --border: 24 5.1% 83.1%; /* stone-300 (#d6d3d1) */
+    --input: 24 5.1% 83.1%; /* stone-300 */
+    --ring: 100 31% 38%; /* Verde Primário */
+
+    /* Raio (OK) */
+    --radius: 0.75rem; /* 12px */
+  }
+
+  .dark {
+    /* TODO: Definir variáveis do Dark Mode baseadas em 'stone' */
+    /* Ex: --background: 24 9.8% 10%; (stone-900) */
+    /* Ex: --foreground: 0 0% 98%; (stone-50) */
+  }
 }
 
-:root {
-  --background: 47 65% 91%;
-  --background-page: 47 65% 91%;
-  
-  --card: 54 100% 94%;
-  --card-foreground: 215 25% 27%;
-  --popover: 54 100% 94%;
-  --popover-foreground: 215 25% 27%;
-  
-  --primary: 124 16% 37%;
-  --primary-foreground: 54 100% 94%;
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
 
-  --accent: 20 61% 35%;
-  --accent-foreground: 54 100% 94%;
-
-  --destructive: 20 70% 45%;
-  --destructive-foreground: 54 100% 94%;
-
-  --foreground: 88 25% 25%;
-  --secondary: 88 25% 67%;
-  --secondary-foreground: 88 25% 25%;
-  --muted: 47 65% 91%;
-  --muted-foreground: 30 33% 45%;
-  --border: 88 25% 80%;
-  --input: 47 65% 91%;
-  --ring: 124 16% 37%;
-
-  --radius: 0.5rem;
-}
-
-body {
-  background-color: hsl(var(--background-page)); 
-  color: hsl(var(--foreground));
-  font-family: 'Nunito', sans-serif;
-  min-height: 100vh;
+  /* Estilo base para os Títulos (ClashDisplay) */
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-heading font-semibold uppercase tracking-wide;
+  }
 }

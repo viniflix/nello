@@ -9,7 +9,7 @@ const AlertsPage = () => {
     const { user, signOut } = useAuth();
 
     return (
-        <div className="flex flex-col min-h-screen bg-background-page">
+        <div className="flex flex-col min-h-screen bg-background">
             
             <main className="max-w-4xl mx-auto w-full p-4 md:p-8">
                 <div className="mb-4">
@@ -21,12 +21,12 @@ const AlertsPage = () => {
                     </Button>
                 </div>
 
-                <Card className="bg-card shadow-figma-btn rounded-xl">
+                <Card className="bg-card shadow-card-dark rounded-xl">
                     <CardHeader>
                         <CardTitle className="font-clash text-2xl font-semibold text-primary">
                             Alertas e Notificações
                         </CardTitle>
-                        <CardDescription style={{ color: '#B99470' }}>
+                        <CardDescription className="text-muted-foreground">
                             Avisos importantes, aniversários e pendências.
                         </CardDescription>
                     </CardHeader>

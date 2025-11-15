@@ -169,7 +169,7 @@ const PatientProfileSummary = ({
                 {/* Métricas e Informações */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                     {/* Idade */}
-                    <div className="bg-background-page p-4 rounded-lg border border-border">
+                    <div className="bg-background p-4 rounded-lg border border-border">
                         <div className="flex items-center gap-2 mb-1">
                             <Calendar className="w-4 h-4 text-primary" />
                             <span className="text-xs font-medium text-muted-foreground">Idade</span>
@@ -180,7 +180,7 @@ const PatientProfileSummary = ({
                     </div>
 
                     {/* Peso Atual */}
-                    <div className="bg-background-page p-4 rounded-lg border border-border">
+                    <div className="bg-background p-4 rounded-lg border border-border">
                         <div className="flex items-center gap-2 mb-1">
                             <Weight className="w-4 h-4 text-primary" />
                             <span className="text-xs font-medium text-muted-foreground">Peso Atual</span>
@@ -191,7 +191,7 @@ const PatientProfileSummary = ({
                     </div>
 
                     {/* IMC */}
-                    <div className="bg-background-page p-4 rounded-lg border border-border">
+                    <div className="bg-background p-4 rounded-lg border border-border">
                         <div className="flex items-center gap-2 mb-1">
                             <Activity className="w-4 h-4 text-primary" />
                             <span className="text-xs font-medium text-muted-foreground">IMC</span>
@@ -209,7 +209,7 @@ const PatientProfileSummary = ({
                     </div>
 
                     {/* Objetivo */}
-                    <div className="bg-background-page p-4 rounded-lg border border-border">
+                    <div className="bg-background p-4 rounded-lg border border-border">
                         <div className="flex items-center gap-2 mb-1">
                             <Target className="w-4 h-4 text-primary" />
                             <span className="text-xs font-medium text-muted-foreground">Objetivo</span>
@@ -222,19 +222,19 @@ const PatientProfileSummary = ({
 
                 {/* Datas Importantes */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                    <div className="bg-background-page p-3 rounded-lg border border-border">
+                    <div className="bg-background p-3 rounded-lg border border-border">
                         <p className="text-xs text-muted-foreground mb-1">Paciente desde</p>
                         <p className="text-sm font-semibold text-foreground">
                             {formatDate(patientData?.created_at)}
                         </p>
                     </div>
-                    <div className="bg-background-page p-3 rounded-lg border border-border">
+                    <div className="bg-background p-3 rounded-lg border border-border">
                         <p className="text-xs text-muted-foreground mb-1">Última consulta</p>
                         <p className="text-sm font-semibold text-foreground">
                             {latestMetrics?.last_appointment || 'Sem registro'}
                         </p>
                     </div>
-                    <div className="bg-background-page p-3 rounded-lg border border-border">
+                    <div className="bg-background p-3 rounded-lg border border-border">
                         <p className="text-xs text-muted-foreground mb-1">Próxima consulta</p>
                         <p className="text-sm font-semibold text-foreground">
                             {latestMetrics?.next_appointment || 'Não agendada'}

@@ -66,7 +66,7 @@ const PatientsPage = () => {
 
 
     return (
-        <div className="flex flex-col min-h-screen bg-background-page">
+        <div className="flex flex-col min-h-screen bg-background">
             
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -89,7 +89,7 @@ const PatientsPage = () => {
                     <div className="flex-shrink-0 mt-4 lg:mt-0">
                         <Button 
                             onClick={() => setShowAddPatientModal(true)} 
-                            className="bg-primary text-primary-foreground rounded-5px shadow-figma-btn font-semibold hover:bg-primary/90 w-full lg:w-auto"
+                            className="bg-primary text-primary-foreground rounded-5px shadow-card font-semibold hover:bg-primary/90 w-full lg:w-auto"
                         >
                             <Plus className="w-4 h-4 mr-2" />
                             Adicionar Paciente
@@ -97,7 +97,7 @@ const PatientsPage = () => {
                     </div>
                 </div>
 
-                <Card className="bg-card shadow-figma-btn rounded-xl">
+                <Card className="bg-card shadow-card-dark rounded-xl">
                     <CardHeader>
                         <div className="flex flex-col md:flex-row gap-4">
                             <div className="relative flex-1">
@@ -136,7 +136,7 @@ const PatientsPage = () => {
                                     <Link 
                                         to={`/nutritionist/patients/${patient.id}/hub`} 
                                         key={patient.id} 
-                                        className="block p-4 border bg-background-page rounded-lg hover:shadow-lg hover:border-primary transition-all"
+                                        className="block p-4 border bg-background rounded-lg hover:shadow-lg hover:border-primary transition-all"
                                     >
                                         <div className="flex justify-between items-center gap-4">
                                             <div className="flex items-center gap-3 flex-1">

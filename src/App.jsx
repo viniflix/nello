@@ -20,7 +20,7 @@ import PatientHubPage from '@/pages/PatientHubPage.jsx';
 import AlertsPage from '@/pages/AlertsPage.jsx';
 import PatientAnamnesePage from '@/pages/PatientAnamnesePage.jsx';
 import PatientAnamnesisList from '@/pages/PatientAnamnesisList.jsx';
-import PatientAnamnesisForm from '@/pages/PatientAnamnesisForm.jsx';
+import PatientAnamnesisForm from '@/pages/PatientAnamnesisFormV2.jsx';
 import AnthropometryPage from '@/pages/AnthropometryPage.jsx';
 import MealPlanPage from '@/pages/MealPlanPage.jsx';
 import MealPlanSummaryPage from '@/pages/MealPlanSummaryPage.jsx';
