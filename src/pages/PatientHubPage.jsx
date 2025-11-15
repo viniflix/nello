@@ -12,6 +12,8 @@ import TabContentBody from '@/components/patient-hub/tabs/TabContentBody';
 import TabContentNutrition from '@/components/patient-hub/tabs/TabContentNutrition';
 import TabContentAdherence from '@/components/patient-hub/tabs/TabContentAdherence';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 
 const PatientHubPage = () => {
     const { patientId } = useParams();
@@ -50,14 +52,80 @@ const PatientHubPage = () => {
         loadActivities(activities.length + 20);
     };
 
-    // Estado de carregamento
+    // OTIMIZADO: Skeleton loader ao invés de spinner
     if (loading) {
         return (
-            <div className="flex items-center justify-center h-screen bg-background">
-                <div className="text-center">
-                    <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto mb-4" />
-                    <p className="text-muted-foreground">Carregando dados do paciente...</p>
-                </div>
+            <div className="min-h-screen bg-background">
+                {/* Header Skeleton */}
+                <header className="bg-card/80 backdrop-blur-md border-b border-border p-4">
+                    <div className="max-w-7xl mx-auto flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <Skeleton className="w-10 h-10 rounded-md" />
+                            <div>
+                                <Skeleton className="h-5 w-32 mb-2" />
+                                <Skeleton className="h-3 w-24" />
+                            </div>
+                        </div>
+                        <Skeleton className="w-24 h-9" />
+                    </div>
+                </header>
+
+                {/* Content Skeleton */}
+                <main className="max-w-7xl mx-auto w-full p-4 md:p-8 space-y-8">
+                    {/* Profile Summary Skeleton */}
+                    <Card>
+                        <CardHeader className="flex flex-row items-start justify-between space-y-0">
+                            <div className="flex items-center gap-4">
+                                <Skeleton className="h-20 w-20 rounded-full" />
+                                <div className="space-y-2">
+                                    <Skeleton className="h-6 w-48" />
+                                    <Skeleton className="h-4 w-32" />
+                                    <Skeleton className="h-4 w-40" />
+                                </div>
+                            </div>
+                            <div className="flex gap-2">
+                                <Skeleton className="h-10 w-24" />
+                                <Skeleton className="h-10 w-24" />
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                {[1, 2, 3, 4].map(i => (
+                                    <div key={i} className="space-y-2">
+                                        <Skeleton className="h-4 w-16" />
+                                        <Skeleton className="h-6 w-20" />
+                                    </div>
+                                ))}
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Journey Widget Skeleton */}
+                    <Card>
+                        <CardHeader>
+                            <Skeleton className="h-5 w-40" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                {[1, 2, 3, 4].map(i => (
+                                    <Skeleton key={i} className="h-20 rounded-lg" />
+                                ))}
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Tabs Skeleton */}
+                    <Card>
+                        <CardHeader>
+                            <Skeleton className="h-10 w-full" />
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                            {[1, 2, 3].map(i => (
+                                <Skeleton key={i} className="h-16 w-full" />
+                            ))}
+                        </CardContent>
+                    </Card>
+                </main>
             </div>
         );
     }

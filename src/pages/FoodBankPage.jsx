@@ -104,7 +104,7 @@ const FoodBankPage = () => {
 
     const fetchFoods = useCallback(async () => {
         setLoading(true);
-        const { data, error } = await supabase.from('foods').select('*').or(`nutritionist_id.eq.${user.id},nutritionist_id.is.null`);
+        const { data, error } = await supabase.from('foods').select('*').or(`nutritionist_id.eq.${user.id},nutritionist_id.is.null`).limit(1000); // OTIMIZADO: Limita a 1000 alimentos
         if (error) {
             toast({ title: "Erro", description: "Não foi possível carregar os alimentos.", variant: "destructive" });
         } else {

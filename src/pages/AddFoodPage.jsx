@@ -54,7 +54,8 @@ const AddFoodPage = () => {
         const { data, error } = await supabase
             .from('foods')
             .select('*')
-            .or(`nutritionist_id.is.null,nutritionist_id.eq.${nutritionistId}`);
+            .or(`nutritionist_id.is.null,nutritionist_id.eq.${nutritionistId}`)
+            .limit(1000); // OTIMIZADO: Limita a 1000 alimentos mais comuns
           
         if (error) {
           toast({ title: "Erro", description: "Não foi possível carregar os alimentos.", variant: "destructive" });
@@ -111,7 +112,8 @@ const AddFoodPage = () => {
         const { data, error } = await supabase
             .from('measure_conversions')
             .select('*')
-            .eq('food_id', food.id);
+            .eq('food_id', food.id)
+            .limit(50); // OTIMIZADO: Limita a 50 conversões por alimento
         
         if(error) console.error(error);
         else setConversions(data || []);

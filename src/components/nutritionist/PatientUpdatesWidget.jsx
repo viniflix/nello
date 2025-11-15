@@ -49,28 +49,31 @@ const PatientUpdatesWidget = () => {
 
                 const activities = [];
 
-                // Buscar TODAS as atividades (sem limite)
+                // OTIMIZADO: Buscar últimos 100 registros de cada tipo
                 const [mealsData, editsData, weightData] = await Promise.all([
-                    // 1. REFEIÇÕES
+                    // 1. REFEIÇÕES - Últimas 100
                     supabase
                         .from('meals')
                         .select('id, patient_id, meal_type, total_calories, created_at')
                         .in('patient_id', patientIds)
-                        .order('created_at', { ascending: false }),
+                        .order('created_at', { ascending: false })
+                        .limit(100),
 
-                    // 2. EDIÇÕES DE REFEIÇÃO
+                    // 2. EDIÇÕES DE REFEIÇÃO - Últimas 100
                     supabase
                         .from('meal_edit_history')
                         .select('id, patient_id, edited_at')
                         .in('patient_id', patientIds)
-                        .order('edited_at', { ascending: false }),
+                        .order('edited_at', { ascending: false })
+                        .limit(100),
 
-                    // 3. PESO REGISTRADO
+                    // 3. PESO REGISTRADO - Últimos 100
                     supabase
                         .from('growth_records')
                         .select('id, patient_id, weight, created_at')
                         .in('patient_id', patientIds)
                         .order('created_at', { ascending: false })
+                        .limit(100)
                 ]);
 
                 // Processar REFEIÇÕES

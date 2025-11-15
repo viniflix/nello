@@ -314,44 +314,22 @@ export const getPatientSummary = async (patientId, nutritionistId) => {
  */
 export const getPatientsWithLowAdherence = async (nutritionistId) => {
     try {
-        // Buscar todos os pacientes ativos do nutricionista
-        const { data: patients } = await supabase
-            .from('user_profiles')
-            .select('id, name')
-            .eq('nutritionist_id', nutritionistId)
-            .eq('user_type', 'patient')
-            .eq('is_active', true);
+        // OTIMIZADO: Usa função SQL que faz tudo em 1 query ao invés de N+1
+        const { data, error } = await supabase
+            .rpc('get_patients_low_adherence_optimized', {
+                p_nutritionist_id: nutritionistId,
+                p_days_threshold: 2 // 2 dias = 48 horas
+            });
 
-        if (!patients || patients.length === 0) {
-            return { data: [], error: null };
-        }
+        if (error) throw error;
 
-        const lowAdherencePatients = [];
-        const now = new Date();
-        const threshold48h = new Date(now.getTime() - 48 * 60 * 60 * 1000);
-
-        // Verificar última atividade de cada paciente
-        for (const patient of patients) {
-            const { data: lastMeal } = await supabase
-                .from('meals')
-                .select('created_at')
-                .eq('patient_id', patient.id)
-                .order('created_at', { ascending: false })
-                .limit(1)
-                .maybeSingle();
-
-            // Se não tem refeição OU última refeição foi há mais de 48h
-            if (!lastMeal || new Date(lastMeal.created_at) < threshold48h) {
-                lowAdherencePatients.push({
-                    id: patient.id,
-                    name: patient.name,
-                    last_activity: lastMeal?.created_at || null,
-                    days_inactive: lastMeal
-                        ? Math.floor((now - new Date(lastMeal.created_at)) / (1000 * 60 * 60 * 24))
-                        : null
-                });
-            }
-        }
+        // Transformar resultado para manter compatibilidade com código existente
+        const lowAdherencePatients = (data || []).map(patient => ({
+            id: patient.patient_id,
+            name: patient.patient_name,
+            last_activity: patient.last_meal_date,
+            days_inactive: patient.days_since_last_meal === 9999 ? null : patient.days_since_last_meal
+        }));
 
         return { data: lowAdherencePatients, error: null };
     } catch (error) {
@@ -368,97 +346,54 @@ export const getPatientsWithLowAdherence = async (nutritionistId) => {
  */
 export const getPatientsPendingData = async (nutritionistId) => {
     try {
-        // Buscar todos os pacientes ativos do nutricionista
-        const { data: patients } = await supabase
-            .from('user_profiles')
-            .select('id, name')
-            .eq('nutritionist_id', nutritionistId)
-            .eq('user_type', 'patient')
-            .eq('is_active', true);
+        // OTIMIZADO: Usa função SQL que faz 5 queries ao invés de 1+(4*N)
+        const { data, error } = await supabase
+            .rpc('get_patients_pending_data_optimized', {
+                p_nutritionist_id: nutritionistId
+            });
 
-        if (!patients || patients.length === 0) {
-            return { data: [], error: null };
-        }
+        if (error) throw error;
 
-        const pendingData = [];
-
-        // Verificar pendências de cada paciente
-        for (const patient of patients) {
+        // Transformar resultado para manter compatibilidade com código existente
+        const pendingData = (data || []).map(patient => {
             const pending = [];
 
-            // Verificar ANAMNESE
-            const { data: anamneseData } = await supabase
-                .from('anamnesis_records')
-                .select('id')
-                .eq('patient_id', patient.id)
-                .limit(1)
-                .maybeSingle();
+            // Converter array de strings em objetos com labels e rotas
+            patient.pending_items.forEach(type => {
+                const pendingMap = {
+                    'anamnese': {
+                        type: 'anamnesis',
+                        label: 'Anamnese Pendente',
+                        route: `/nutritionist/patients/${patient.patient_id}/anamnese`
+                    },
+                    'anthropometry': {
+                        type: 'anthropometry',
+                        label: 'Avaliação Antropométrica Pendente',
+                        route: `/nutritionist/patients/${patient.patient_id}`
+                    },
+                    'meal_plan': {
+                        type: 'meal_plan',
+                        label: 'Plano Alimentar Pendente',
+                        route: `/nutritionist/patients/${patient.patient_id}`
+                    },
+                    'prescription': {
+                        type: 'prescription',
+                        label: 'Cálculo de Necessidades Pendente',
+                        route: `/nutritionist/patients/${patient.patient_id}`
+                    }
+                };
 
-            if (!anamneseData) {
-                pending.push({
-                    type: 'anamnesis',
-                    label: 'Anamnese Pendente',
-                    route: `/nutritionist/patients/${patient.id}/anamnese`
-                });
-            }
+                if (pendingMap[type]) {
+                    pending.push(pendingMap[type]);
+                }
+            });
 
-            // Verificar AVALIAÇÃO ANTROPOMÉTRICA
-            const { data: anthropometryData } = await supabase
-                .from('growth_records')
-                .select('id')
-                .eq('patient_id', patient.id)
-                .limit(1)
-                .maybeSingle();
-
-            if (!anthropometryData) {
-                pending.push({
-                    type: 'anthropometry',
-                    label: 'Avaliação Antropométrica Pendente',
-                    route: `/nutritionist/patients/${patient.id}`
-                });
-            }
-
-            // Verificar PLANO ALIMENTAR
-            const { data: mealPlanData } = await supabase
-                .from('meal_plans')
-                .select('id')
-                .eq('patient_id', patient.id)
-                .limit(1)
-                .maybeSingle();
-
-            if (!mealPlanData) {
-                pending.push({
-                    type: 'meal_plan',
-                    label: 'Plano Alimentar Pendente',
-                    route: `/nutritionist/patients/${patient.id}`
-                });
-            }
-
-            // Verificar PRESCRIÇÃO (Cálculo de Necessidades)
-            const { data: prescriptionData } = await supabase
-                .from('prescriptions')
-                .select('id')
-                .eq('patient_id', patient.id)
-                .limit(1)
-                .maybeSingle();
-
-            if (!prescriptionData) {
-                pending.push({
-                    type: 'prescription',
-                    label: 'Cálculo de Necessidades Pendente',
-                    route: `/nutritionist/patients/${patient.id}`
-                });
-            }
-
-            // Se tem pendências, adicionar à lista
-            if (pending.length > 0) {
-                pendingData.push({
-                    patient_id: patient.id,
-                    patient_name: patient.name,
-                    pending_items: pending
-                });
-            }
-        }
+            return {
+                patient_id: patient.patient_id,
+                patient_name: patient.patient_name,
+                pending_items: pending
+            };
+        });
 
         return { data: pendingData, error: null };
     } catch (error) {
@@ -469,309 +404,96 @@ export const getPatientsPendingData = async (nutritionistId) => {
 
 export const getComprehensiveActivityFeed = async (nutritionistId, limit = 20) => {
     try {
-        const activities = [];
+        // OTIMIZADO: Usa função SQL que consolida 8 queries em 1
+        const { data, error } = await supabase
+            .rpc('get_comprehensive_activity_feed_optimized', {
+                p_nutritionist_id: nutritionistId,
+                p_limit: limit
+            });
 
-        // Buscar pacientes do nutricionista para filtrar
+        if (error) throw error;
+
+        // Buscar avatares dos pacientes (cache-friendly)
+        const patientIds = [...new Set(data?.map(a => a.patient_id) || [])];
         const { data: patientsData } = await supabase
             .from('user_profiles')
-            .select('id, name, avatar_url')
-            .eq('nutritionist_id', nutritionistId)
-            .eq('user_type', 'patient');
+            .select('id, avatar_url')
+            .in('id', patientIds);
 
-        if (!patientsData || patientsData.length === 0) {
-            return { data: [], error: null };
-        }
+        const avatarMap = Object.fromEntries((patientsData || []).map(p => [p.id, p.avatar_url]));
 
-        const patientIds = patientsData.map(p => p.id);
-        const patientMap = Object.fromEntries(patientsData.map(p => [p.id, p]));
+        // Transformar resultado SQL para formato compatível com código existente
+        const activities = (data || []).map(activity => {
+            const baseActivity = {
+                id: `${activity.activity_type}-${activity.activity_id}`,
+                type: activity.activity_type,
+                patient_id: activity.patient_id,
+                patient_name: activity.patient_name,
+                patient_avatar: avatarMap[activity.patient_id] || null,
+                timestamp: activity.activity_date,
+                metadata: activity.activity_data
+            };
 
-        // Buscar todas as atividades em paralelo
-        const [mealsData, anthropometryData, anamnesisData, mealPlansData, prescriptionsData, appointmentsData, chatsData, achievementsData] = await Promise.all([
-            // 1. REFEIÇÕES
-            supabase
-                .from('meals')
-                .select('id, patient_id, meal_type, total_calories, created_at')
-                .in('patient_id', patientIds)
-                .order('created_at', { ascending: false })
-                .limit(50),
-
-            // 2. AVALIAÇÕES ANTROPOMÉTRICAS
-            supabase
-                .from('growth_records')
-                .select('id, patient_id, weight, height, created_at')
-                .in('patient_id', patientIds)
-                .order('created_at', { ascending: false })
-                .limit(30),
-
-            // 3. ANAMNESE
-            supabase
-                .from('anamnesis_records')
-                .select('id, patient_id, template_id, version, status, created_at')
-                .in('patient_id', patientIds)
-                .order('created_at', { ascending: false })
-                .limit(20),
-
-            // 4. PLANOS ALIMENTARES
-            supabase
-                .from('meal_plans')
-                .select('id, patient_id, name, daily_calories, is_active, created_at')
-                .in('patient_id', patientIds)
-                .order('created_at', { ascending: false })
-                .limit(20),
-
-            // 5. PRESCRIÇÕES
-            supabase
-                .from('prescriptions')
-                .select('id, patient_id, calories, diet_type, created_at')
-                .in('patient_id', patientIds)
-                .order('created_at', { ascending: false })
-                .limit(20),
-
-            // 6. CONSULTAS
-            supabase
-                .from('appointments')
-                .select('id, patient_id, appointment_time, notes, status, created_at')
-                .eq('nutritionist_id', nutritionistId)
-                .order('created_at', { ascending: false })
-                .limit(30),
-
-            // 7. MENSAGENS
-            supabase
-                .from('chats')
-                .select('id, from_id, to_id, message, message_type, created_at')
-                .or(`from_id.eq.${nutritionistId},to_id.eq.${nutritionistId}`)
-                .order('created_at', { ascending: false })
-                .limit(50),
-
-            // 8. CONQUISTAS
-            supabase
-                .from('user_achievements')
-                .select('id, user_id, achievement_id, achieved_at, achievements(name)')
-                .in('user_id', patientIds)
-                .order('achieved_at', { ascending: false })
-                .limit(20)
-        ]);
-
-        // Processar REFEIÇÕES
-        if (mealsData.data) {
-            mealsData.data.forEach(meal => {
-                const patient = patientMap[meal.patient_id];
-                if (patient) {
-                    activities.push({
-                        id: `meal-${meal.id}`,
-                        type: 'meal',
+            // Adicionar título e descrição específicos por tipo
+            switch (activity.activity_type) {
+                case 'meal':
+                    return {
+                        ...baseActivity,
                         title: 'Refeição Registrada',
-                        description: `${meal.meal_type} - ${meal.total_calories || 0} kcal`,
-                        patient_id: meal.patient_id,
-                        patient_name: patient.name,
-                        patient_avatar: patient.avatar_url,
-                        timestamp: meal.created_at,
-                        metadata: {
-                            meal_type: meal.meal_type,
-                            calories: meal.total_calories,
-                            meal_id: meal.id
-                        }
-                    });
-                }
-            });
-        }
-
-        // Processar AVALIAÇÕES ANTROPOMÉTRICAS
-        if (anthropometryData.data) {
-            anthropometryData.data.forEach(record => {
-                const patient = patientMap[record.patient_id];
-                if (patient) {
-                    const imc = record.height
-                        ? (record.weight / Math.pow(record.height / 100, 2)).toFixed(1)
+                        description: `${activity.activity_data.meal_type} - ${activity.activity_data.total_calories || 0} kcal`
+                    };
+                case 'anthropometry':
+                    const imc = activity.activity_data.height && activity.activity_data.weight
+                        ? (activity.activity_data.weight / Math.pow(activity.activity_data.height / 100, 2)).toFixed(1)
                         : null;
-
-                    activities.push({
-                        id: `anthropometry-${record.id}`,
-                        type: 'anthropometry',
+                    return {
+                        ...baseActivity,
                         title: 'Peso Registrado',
-                        description: `Peso: ${record.weight} kg${imc ? ` - IMC: ${imc}` : ''}`,
-                        patient_id: record.patient_id,
-                        patient_name: patient.name,
-                        patient_avatar: patient.avatar_url,
-                        timestamp: record.created_at,
-                        metadata: {
-                            weight: record.weight,
-                            height: record.height,
-                            imc,
-                            record_id: record.id
-                        }
-                    });
-                }
-            });
-        }
-
-        // Processar ANAMNESE
-        if (anamnesisData.data) {
-            anamnesisData.data.forEach(anamnesis => {
-                const patient = patientMap[anamnesis.patient_id];
-                if (patient) {
-                    activities.push({
-                        id: `anamnesis-${anamnesis.id}`,
-                        type: 'anamnesis',
+                        description: `Peso: ${activity.activity_data.weight} kg${imc ? ` - IMC: ${imc}` : ''}`
+                    };
+                case 'anamnesis':
+                    return {
+                        ...baseActivity,
                         title: 'Anamnese Preenchida',
-                        description: `Versão: ${anamnesis.version || 1}${anamnesis.status ? ` - ${anamnesis.status}` : ''}`,
-                        patient_id: anamnesis.patient_id,
-                        patient_name: patient.name,
-                        patient_avatar: patient.avatar_url,
-                        timestamp: anamnesis.created_at,
-                        metadata: {
-                            template_id: anamnesis.template_id,
-                            status: anamnesis.status,
-                            record_id: anamnesis.id
-                        }
-                    });
-                }
-            });
-        }
-
-        // Processar PLANOS ALIMENTARES
-        if (mealPlansData.data) {
-            mealPlansData.data.forEach(plan => {
-                const patient = patientMap[plan.patient_id];
-                if (patient) {
-                    activities.push({
-                        id: `meal-plan-${plan.id}`,
-                        type: 'meal_plan',
+                        description: 'Anamnese completa'
+                    };
+                case 'meal_plan':
+                    return {
+                        ...baseActivity,
                         title: 'Plano Alimentar Criado',
-                        description: `${plan.name}${plan.daily_calories ? ` - ${plan.daily_calories} kcal/dia` : ''}`,
-                        patient_id: plan.patient_id,
-                        patient_name: patient.name,
-                        patient_avatar: patient.avatar_url,
-                        timestamp: plan.created_at,
-                        metadata: {
-                            plan_name: plan.name,
-                            calories: plan.daily_calories,
-                            is_active: plan.is_active,
-                            plan_id: plan.id
-                        }
-                    });
-                }
-            });
-        }
-
-        // Processar PRESCRIÇÕES
-        if (prescriptionsData.data) {
-            prescriptionsData.data.forEach(prescription => {
-                const patient = patientMap[prescription.patient_id];
-                if (patient) {
-                    activities.push({
-                        id: `prescription-${prescription.id}`,
-                        type: 'prescription',
+                        description: activity.activity_data.name
+                    };
+                case 'prescription':
+                    return {
+                        ...baseActivity,
                         title: 'Prescrição Nutricional',
-                        description: `${prescription.calories || ''} kcal - ${prescription.diet_type || 'Dieta personalizada'}`,
-                        patient_id: prescription.patient_id,
-                        patient_name: patient.name,
-                        patient_avatar: patient.avatar_url,
-                        timestamp: prescription.created_at,
-                        metadata: {
-                            calories: prescription.calories,
-                            diet_type: prescription.diet_type,
-                            prescription_id: prescription.id
-                        }
-                    });
-                }
-            });
-        }
-
-        // Processar CONSULTAS
-        if (appointmentsData.data) {
-            appointmentsData.data.forEach(appointment => {
-                const patient = patientMap[appointment.patient_id];
-                if (patient) {
-                    activities.push({
-                        id: `appointment-${appointment.id}`,
-                        type: 'appointment',
+                        description: `${activity.activity_data.calories || ''} kcal`
+                    };
+                case 'appointment':
+                    return {
+                        ...baseActivity,
                         title: 'Consulta Agendada',
-                        description: appointment.notes || 'Consulta de acompanhamento',
-                        patient_id: appointment.patient_id,
-                        patient_name: patient.name,
-                        patient_avatar: patient.avatar_url,
-                        timestamp: appointment.created_at,
-                        metadata: {
-                            appointment_time: appointment.appointment_time,
-                            status: appointment.status,
-                            appointment_id: appointment.id
-                        }
-                    });
-                }
-            });
-        }
-
-        // Processar MENSAGENS
-        if (chatsData.data) {
-            chatsData.data.forEach(chat => {
-                const isFromNutritionist = chat.from_id === nutritionistId;
-                const patientId = isFromNutritionist ? chat.to_id : chat.from_id;
-                const patient = patientMap[patientId];
-
-                if (patient) {
-                    let description = '';
-                    switch (chat.message_type) {
-                        case 'text':
-                            description = chat.message?.substring(0, 100) || 'Mensagem';
-                            break;
-                        case 'image':
-                            description = '📷 Imagem';
-                            break;
-                        case 'audio':
-                            description = '🎤 Áudio';
-                            break;
-                        default:
-                            description = 'Mensagem';
-                    }
-
-                    activities.push({
-                        id: `chat-${chat.id}`,
+                        description: activity.activity_data.notes || 'Consulta de acompanhamento'
+                    };
+                case 'chat':
+                    return {
+                        ...baseActivity,
                         type: 'message',
-                        title: isFromNutritionist ? 'Você enviou uma mensagem' : 'Mensagem Recebida',
-                        description,
-                        patient_id: patientId,
-                        patient_name: patient.name,
-                        patient_avatar: patient.avatar_url,
-                        timestamp: chat.created_at,
-                        metadata: {
-                            message_type: chat.message_type,
-                            from_nutritionist: isFromNutritionist,
-                            chat_id: chat.id
-                        }
-                    });
-                }
-            });
-        }
-
-        // Processar CONQUISTAS
-        if (achievementsData.data) {
-            achievementsData.data.forEach(achievement => {
-                const patient = patientMap[achievement.user_id];
-                if (patient) {
-                    activities.push({
-                        id: `achievement-${achievement.id}`,
-                        type: 'achievement',
+                        title: 'Mensagem Recebida',
+                        description: activity.activity_data.message_preview || 'Mensagem'
+                    };
+                case 'achievement':
+                    return {
+                        ...baseActivity,
                         title: 'Conquista Desbloqueada',
-                        description: achievement.achievements?.name || 'Nova conquista',
-                        patient_id: achievement.user_id,
-                        patient_name: patient.name,
-                        patient_avatar: patient.avatar_url,
-                        timestamp: achievement.achieved_at,
-                        metadata: {
-                            achievement_name: achievement.achievements?.name,
-                            achievement_id: achievement.achievement_id
-                        }
-                    });
-                }
-            });
-        }
+                        description: activity.activity_data.achievement_name || 'Nova conquista'
+                    };
+                default:
+                    return baseActivity;
+            }
+        });
 
-        // Ordenar todas as atividades por timestamp (mais recentes primeiro)
-        activities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-
-        // Retornar apenas o limite solicitado
-        return { data: activities.slice(0, limit), error: null };
+        return { data: activities, error: null };
     } catch (error) {
         console.error('Erro ao buscar feed de atividades:', error);
         return { data: [], error };

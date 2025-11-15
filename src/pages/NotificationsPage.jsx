@@ -118,7 +118,8 @@ const NotificationsPage = () => {
             .from('notifications')
             .select('*')
             .eq('user_id', user.id)
-            .order('created_at', { ascending: false });
+            .order('created_at', { ascending: false })
+            .limit(200); // OTIMIZADO: Últimas 200 notificações
 
         if (error) {
             console.error(error);

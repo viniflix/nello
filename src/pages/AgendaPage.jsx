@@ -76,11 +76,11 @@ export default function AgendaPage() {
     const loadData = useCallback(async () => {
         if (!user) return;
         setLoading(true);
-        const { data: apptsData, error: apptsError } = await supabase.from('appointments').select('*, patient:user_profiles!appointments_patient_id_fkey(name)').eq('nutritionist_id', user.id);
+        const { data: apptsData, error: apptsError } = await supabase.from('appointments').select('*, patient:user_profiles!appointments_patient_id_fkey(name)').eq('nutritionist_id', user.id).limit(1000); // OTIMIZADO: Até 1000 agendamentos
         if (apptsError) toast({ title: "Erro", description: apptsError.message, variant: "destructive" });
         else setAppointments(apptsData || []);
 
-        const { data: patientsData, error: patientsError } = await supabase.from('user_profiles').select('id, name').eq('nutritionist_id', user.id);
+        const { data: patientsData, error: patientsError } = await supabase.from('user_profiles').select('id, name').eq('nutritionist_id', user.id).limit(500); // OTIMIZADO: Até 500 pacientes
         if (patientsError) toast({ title: "Erro", description: "Não foi possível carregar os pacientes.", variant: "destructive" });
         else setPatients(patientsData || []);
         setLoading(false);

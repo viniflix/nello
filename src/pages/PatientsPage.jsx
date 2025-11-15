@@ -37,7 +37,8 @@ const PatientsPage = () => {
             .from('user_profiles')
             .select('*')
             .eq('nutritionist_id', user.id)
-            .order(column, { ascending: ascending });
+            .order(column, { ascending: ascending })
+            .limit(500); // OTIMIZADO: Máximo 500 pacientes
 
         if (error) {
             console.error("Erro ao buscar pacientes:", error);

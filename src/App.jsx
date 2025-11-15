@@ -1,44 +1,73 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 import { Toaster } from '@/components/ui/toaster';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { ChatProvider } from '@/contexts/ChatContext';
-import LoginPage from '@/pages/LoginPage.jsx';
-import RegisterPage from '@/pages/RegisterPage.jsx';
-import NutritionistDashboard from '@/pages/NutritionistDashboard.jsx';
-import PatientDashboard from '@/pages/PatientDashboard.jsx';
-import PatientProfile from '@/pages/PatientProfile.jsx';
-import MainLayout from '@/components/MainLayout.jsx';
-import ChatPage from '@/pages/ChatPage.jsx';
-import AddFoodPage from '@/pages/AddFoodPage.jsx';
-import PatientLayout from '@/components/patient/PatientLayout.jsx';
-import PatientRecords from '@/pages/PatientRecords.jsx';
-import PatientSearch from '@/pages/PatientSearch.jsx';
-import PatientsPage from '@/pages/PatientsPage.jsx';
-import PatientHubPage from '@/pages/PatientHubPage.jsx';
-import AlertsPage from '@/pages/AlertsPage.jsx';
-import PatientAnamnesePage from '@/pages/PatientAnamnesePage.jsx';
-import PatientAnamnesisList from '@/pages/PatientAnamnesisList.jsx';
-import PatientAnamnesisForm from '@/pages/PatientAnamnesisFormV2.jsx';
-import AnthropometryPage from '@/pages/AnthropometryPage.jsx';
-import MealPlanPage from '@/pages/MealPlanPage.jsx';
-import MealPlanSummaryPage from '@/pages/MealPlanSummaryPage.jsx';
-import MacroCalculatorPage from '@/pages/MacroCalculatorPage.jsx';
-import FoodBankPage from '@/pages/FoodBankPage.jsx';
-import FinancialPage from '@/pages/FinancialPage.jsx';
-import AgendaPage from '@/pages/AgendaPage.jsx';
-import NutritionistProfilePage from '@/pages/NutritionistProfilePage.jsx';
-import CalculationInfoPage from '@/pages/CalculationInfoPage.jsx';
-import NotificationsPage from '@/pages/NotificationsPage.jsx';
-import UpdatePasswordPage from './pages/UpdatePasswordPage';
+import { Loader2 } from 'lucide-react';
 
+// Mantém imports críticos para auth e layouts (não lazy load)
+import MainLayout from '@/components/MainLayout.jsx';
+import PatientLayout from '@/components/patient/PatientLayout.jsx';
+
+// CODE SPLITTING: Lazy load de todas as páginas
+const LoginPage = lazy(() => import('@/pages/LoginPage.jsx'));
+const RegisterPage = lazy(() => import('@/pages/RegisterPage.jsx'));
+const UpdatePasswordPage = lazy(() => import('./pages/UpdatePasswordPage'));
+
+// Dashboards
+const NutritionistDashboard = lazy(() => import('@/pages/NutritionistDashboard.jsx'));
+const PatientDashboard = lazy(() => import('@/pages/PatientDashboard.jsx'));
+
+// Páginas do Nutricionista
+const PatientsPage = lazy(() => import('@/pages/PatientsPage.jsx'));
+const PatientHubPage = lazy(() => import('@/pages/PatientHubPage.jsx'));
+const AlertsPage = lazy(() => import('@/pages/AlertsPage.jsx'));
+const NutritionistProfilePage = lazy(() => import('@/pages/NutritionistProfilePage.jsx'));
+const NotificationsPage = lazy(() => import('@/pages/NotificationsPage.jsx'));
+const CalculationInfoPage = lazy(() => import('@/pages/CalculationInfoPage.jsx'));
+const AgendaPage = lazy(() => import('@/pages/AgendaPage.jsx'));
+const FinancialPage = lazy(() => import('@/pages/FinancialPage.jsx'));
+
+// Anamnese
+const PatientAnamnesePage = lazy(() => import('@/pages/PatientAnamnesePage.jsx'));
+const PatientAnamnesisList = lazy(() => import('@/pages/PatientAnamnesisList.jsx'));
+const PatientAnamnesisForm = lazy(() => import('@/pages/PatientAnamnesisFormV2.jsx'));
+
+// Antropometria e Plano Alimentar
+const AnthropometryPage = lazy(() => import('@/pages/AnthropometryPage.jsx'));
+const MealPlanPage = lazy(() => import('@/pages/MealPlanPage.jsx'));
+const MealPlanSummaryPage = lazy(() => import('@/pages/MealPlanSummaryPage.jsx'));
+
+// Ferramentas
+const MacroCalculatorPage = lazy(() => import('@/pages/MacroCalculatorPage.jsx'));
+const FoodBankPage = lazy(() => import('@/pages/FoodBankPage.jsx'));
+
+// Chat
+const ChatPage = lazy(() => import('@/pages/ChatPage.jsx'));
+
+// Páginas do Paciente
+const PatientProfile = lazy(() => import('@/pages/PatientProfile.jsx'));
+const PatientRecords = lazy(() => import('@/pages/PatientRecords.jsx'));
+const PatientSearch = lazy(() => import('@/pages/PatientSearch.jsx'));
+const AddFoodPage = lazy(() => import('@/pages/AddFoodPage.jsx'));
+
+
+// Fallback de carregamento para Suspense
+const PageLoadingFallback = () => (
+    <div className="flex items-center justify-center h-screen bg-background">
+        <div className="flex flex-col items-center gap-3">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            <p className="text-sm text-muted-foreground">Carregando...</p>
+        </div>
+    </div>
+);
 
 const AuthWrapper = ({ children }) => {
     const { user, loading } = useAuth();
 
     if (loading) {
-        return <div className="flex items-center justify-center h-screen">Carregando...</div>;
+        return <PageLoadingFallback />;
     }
 
     if (user) {
@@ -51,20 +80,20 @@ const AuthWrapper = ({ children }) => {
 
 const ProtectedRoute = ({ children, userType }) => {
   const { user, loading } = useAuth();
-  
+
   if (loading) {
-    return <div className="flex items-center justify-center h-screen">Carregando...</div>;
+    return <PageLoadingFallback />;
   }
 
   if (!user || !user.profile) {
     return <Navigate to="/login" replace />;
   }
-  
+
   if (userType && user.profile.user_type !== userType) {
     const correctDashboard = user.profile.user_type === 'nutritionist' ? '/nutritionist' : '/patient';
     return <Navigate to={correctDashboard} replace />;
   }
-  
+
   return children;
 };
 
@@ -72,7 +101,7 @@ const AppLayout = () => {
   const { user, loading } = useAuth();
 
   if (loading) {
-    return <div className="flex items-center justify-center h-screen">Carregando...</div>;
+    return <PageLoadingFallback />;
   }
 
   const getHomePath = () => {
@@ -83,7 +112,8 @@ const AppLayout = () => {
   return (
     <ChatProvider>
         <div className="min-h-screen bg-background">
-          <Routes>
+          <Suspense fallback={<PageLoadingFallback />}>
+            <Routes>
             <Route path="/login" element={<AuthWrapper><LoginPage /></AuthWrapper>} />
             <Route path="/register" element={<AuthWrapper><RegisterPage /></AuthWrapper>} />
             <Route path="/update-password" element={<UpdatePasswordPage />} />
@@ -132,6 +162,7 @@ const AppLayout = () => {
             <Route path="/" element={<Navigate to={getHomePath()} replace />} />
             <Route path="*" element={<Navigate to={getHomePath()} replace />} />
           </Routes>
+          </Suspense>
           <Toaster />
         </div>
     </ChatProvider>

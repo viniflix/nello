@@ -20,6 +20,8 @@ import PatientUpdatesWidget from '@/components/nutritionist/PatientUpdatesWidget
 import NutritionistActivityFeed from '@/components/nutritionist/NutritionistActivityFeed';
 import { format, parseISO, isToday } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { Skeleton } from '@/components/ui/skeleton';
+import { StatCardSkeleton, AlertCardSkeleton } from '@/components/ui/card-skeleton';
 
 // --- WIDGET (DIREITA): Próximas Consultas ---
 const UpcomingAppointmentsWidget = ({ appointments }) => {
@@ -79,96 +81,121 @@ export default function NutritionistDashboard() {
   const navigate = useNavigate();
   const [patients, setPatients] = useState([]);
   const [appointments, setAppointments] = useState([]);
-  const [alertsCount, setAlertsCount] = useState(0); 
-  const [adherence, setAdherence] = useState('--%'); 
-  const [loading, setLoading] = useState(true);
+  const [alertsCount, setAlertsCount] = useState(0);
+  const [adherence, setAdherence] = useState('--%');
   const [showNotifications, setShowNotifications] = useState(false);
+
+  // OTIMIZADO: Loading states independentes para carregamento progressivo
+  const [statsLoading, setStatsLoading] = useState(true);
+  const [appointmentsLoading, setAppointmentsLoading] = useState(true);
   
-  const fetchData = useCallback(async () => {
+  // OTIMIZADO: Função separada para carregar estatísticas
+  const fetchStats = useCallback(async () => {
     if (!user || !user.id) return;
-    setLoading(true);
+    setStatsLoading(true);
     try {
-      const today = new Date().toISOString(); 
+      const today = new Date().toISOString();
       const todayDateOnly = new Date().toISOString().split('T')[0];
-      const todayMonthDay = format(new Date(), 'MM-dd'); 
+      const todayMonthDay = format(new Date(), 'MM-dd');
 
-      // Busca de Pacientes (com birth_date)
-      const { data: patientData, error: patientError } = await supabase
-        .from('user_profiles')
-        .select('id, name, birth_date')
-        .eq('nutritionist_id', user.id)
-        .eq('is_active', true)
-        .order('name', { ascending: true });
-      if (patientError) throw patientError;
-      setPatients(patientData || []);
+      // Buscar dados em paralelo
+      const [patientData, notifCount, todayApptCount, adherenceData] = await Promise.all([
+        // Pacientes
+        supabase
+          .from('user_profiles')
+          .select('id, name, birth_date')
+          .eq('nutritionist_id', user.id)
+          .eq('is_active', true)
+          .order('name', { ascending: true })
+          .then(({ data, error }) => {
+            if (error) throw error;
+            return data || [];
+          }),
 
-      // Busca de Consultas (Próximas 3)
-      const { data: apptData, error: apptError } = await supabase
+        // Notificações não lidas
+        supabase
+          .from('notifications')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .eq('is_read', false)
+          .then(({ count, error }) => {
+            if (error) throw error;
+            return count || 0;
+          }),
+
+        // Consultas de hoje
+        supabase
+          .from('appointments')
+          .select('*', { count: 'exact', head: true })
+          .eq('nutritionist_id', user.id)
+          .gte('appointment_time', `${todayDateOnly}T00:00:00`)
+          .lte('appointment_time', `${todayDateOnly}T23:59:59`)
+          .then(({ count, error }) => {
+            if (error) throw error;
+            return count || 0;
+          }),
+
+        // Adesão diária
+        supabase
+          .rpc('get_daily_adherence', { p_nutritionist_id: user.id })
+          .then(({ data, error }) => {
+            if (error) throw error;
+            return data;
+          })
+      ]);
+
+      setPatients(patientData);
+
+      // Contagem de aniversários
+      const birthdayCount = patientData.filter(p => {
+        if (!p.birth_date) return false;
+        const birthDate = new Date(p.birth_date);
+        birthDate.setHours(birthDate.getHours() + 4);
+        return format(birthDate, 'MM-dd') === todayMonthDay;
+      }).length;
+
+      setAlertsCount(notifCount + todayApptCount + birthdayCount);
+      setAdherence(adherenceData ? Math.round(adherenceData) + '%' : '--%');
+
+    } catch (error) {
+      console.error('Erro ao carregar estatísticas:', error);
+      toast({ title: "Erro ao carregar estatísticas", description: error.message, variant: "destructive" });
+    } finally {
+      setStatsLoading(false);
+    }
+  }, [user, toast]);
+
+  // OTIMIZADO: Função separada para carregar agendamentos
+  const fetchAppointments = useCallback(async () => {
+    if (!user || !user.id) return;
+    setAppointmentsLoading(true);
+    try {
+      const today = new Date().toISOString();
+      const { data, error } = await supabase
         .from('appointments')
         .select('id, appointment_time, patient:appointments_patient_id_fkey(id, name, avatar_url)')
         .eq('nutritionist_id', user.id)
-        .gte('appointment_time', today) 
-        .order('appointment_time', { ascending: true }) 
+        .gte('appointment_time', today)
+        .order('appointment_time', { ascending: true })
         .limit(3);
-      if (apptError) throw apptError;
-      setAppointments(apptData || []);
-      
-      // Busca de Notificações
-      const { count: notifCount, error: notifError } = await supabase
-        .from('notifications')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-        .eq('is_read', false);
-      if (notifError) throw notifError;
-      
-      // Contar consultas de HOJE
-      const { count: todayApptCount, error: todayApptError } = await supabase
-        .from('appointments')
-        .select('*', { count: 'exact', head: true })
-        .eq('nutritionist_id', user.id)
-        .gte('appointment_time', `${todayDateOnly}T00:00:00`)
-        .lte('appointment_time', `${todayDateOnly}T23:59:59`);
-      if (todayApptError) throw todayApptError;
 
-      // Contagem de Aniversário
-      const birthdayCount = (patientData || []).filter(p => {
-          if (!p.birth_date) return false;
-          const birthDate = new Date(p.birth_date);
-          birthDate.setHours(birthDate.getHours() + 4); // Corrige fuso
-          return format(birthDate, 'MM-dd') === todayMonthDay;
-        }
-      ).length;
-      
-      // Soma tudo para os "Alertas do Dia"
-      setAlertsCount((notifCount || 0) + (todayApptCount || 0) + birthdayCount);
-
-      // 5. *** MUDANÇA: Busca de Adesão (Real) ***
-      const { data: adherenceData, error: adherenceError } = await supabase
-        .rpc('get_daily_adherence', { p_nutritionist_id: user.id });
-
-      if (adherenceError) {
-        console.error('Erro ao buscar adesão:', adherenceError);
-        setAdherence('--%');
-      } else {
-        setAdherence(Math.round(adherenceData) + '%'); // Arredonda e adiciona '%'
-      }
-
+      if (error) throw error;
+      setAppointments(data || []);
     } catch (error) {
-      toast({ title: "Erro ao carregar dados", description: error.message, variant: "destructive" });
+      console.error('Erro ao carregar agendamentos:', error);
+      toast({ title: "Erro ao carregar agendamentos", description: error.message, variant: "destructive" });
     } finally {
-      setLoading(false);
+      setAppointmentsLoading(false);
     }
   }, [user, toast]);
 
   useEffect(() => {
-    if(user?.id) { 
-      fetchData();
+    if (user?.id) {
+      // OTIMIZADO: Carrega dados em paralelo de forma independente
+      fetchStats();
+      fetchAppointments();
     }
-  }, [user, fetchData]); 
-
-  if (loading || !user?.profile) {
-    return <div className="flex items-center justify-center h-screen bg-background"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
-  }
+  }, [user?.id, fetchStats, fetchAppointments]);
 
   return (
     <div className="flex flex-col min-h-screen bg-background"> 
@@ -212,7 +239,12 @@ export default function NutritionistDashboard() {
           
           {/* Coluna Lateral */}
           <div className="lg:col-span-1 space-y-8 lg:order-last">
-            <UpcomingAppointmentsWidget appointments={appointments} />
+            {/* OTIMIZADO: Skeleton para appointments enquanto carrega */}
+            {appointmentsLoading ? (
+              <AlertCardSkeleton />
+            ) : (
+              <UpcomingAppointmentsWidget appointments={appointments} />
+            )}
             <PatientUpdatesWidget />
           </div>
 
@@ -220,59 +252,70 @@ export default function NutritionistDashboard() {
           <div className="lg:col-span-2 space-y-8 lg:order-first">
             {/* Cards de Estatística - Design com Cores Vibrantes */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mb-6">
-              {/* Card 1: Pacientes (Verde) */}
-              <Card className="bg-primary text-white border-0 shadow-card-dark">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="font-heading uppercase text-sm font-medium text-white/80 whitespace-nowrap tracking-wide">
-                    Total de Pacientes
-                  </CardTitle>
-                  <Users className="h-6 w-6 text-white/80" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-4xl font-bold text-white">
-                    {patients.length}
-                  </div>
-                  <p className="text-xs text-white/70">
-                    Pacientes ativos
-                  </p>
-                </CardContent>
-              </Card>
+              {/* OTIMIZADO: Mostra skeletons enquanto carrega, depois mostra dados reais */}
+              {statsLoading ? (
+                <>
+                  <StatCardSkeleton />
+                  <StatCardSkeleton />
+                  <StatCardSkeleton />
+                </>
+              ) : (
+                <>
+                  {/* Card 1: Pacientes (Verde) */}
+                  <Card className="bg-primary text-white border-0 shadow-card-dark">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="font-heading uppercase text-sm font-medium text-white/80 whitespace-nowrap tracking-wide">
+                        Total de Pacientes
+                      </CardTitle>
+                      <Users className="h-6 w-6 text-white/80" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-4xl font-bold text-white">
+                        {patients.length}
+                      </div>
+                      <p className="text-xs text-white/70">
+                        Pacientes ativos
+                      </p>
+                    </CardContent>
+                  </Card>
 
-              {/* Card 2: Consultas (Laranja) */}
-              <Card className="bg-secondary text-white border-0 shadow-card-dark">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="font-heading uppercase text-sm font-medium text-white/80 whitespace-nowrap tracking-wide">
-                    Consultas Agendadas
-                  </CardTitle>
-                  <CalendarDays className="h-6 w-6 text-white/80" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-4xl font-bold text-white">
-                    {appointments.length}
-                  </div>
-                  <p className="text-xs text-white/70">
-                    Próximas consultas
-                  </p>
-                </CardContent>
-              </Card>
+                  {/* Card 2: Consultas (Laranja) */}
+                  <Card className="bg-secondary text-white border-0 shadow-card-dark">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="font-heading uppercase text-sm font-medium text-white/80 whitespace-nowrap tracking-wide">
+                        Consultas Agendadas
+                      </CardTitle>
+                      <CalendarDays className="h-6 w-6 text-white/80" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-4xl font-bold text-white">
+                        {appointments.length}
+                      </div>
+                      <p className="text-xs text-white/70">
+                        Próximas consultas
+                      </p>
+                    </CardContent>
+                  </Card>
 
-              {/* Card 3: Alertas (Neutro Escuro) */}
-              <Card className="bg-neutral-800 text-white border-0 shadow-card-dark">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="font-heading uppercase text-sm font-medium text-white/80 whitespace-nowrap tracking-wide">
-                    Alertas do Dia
-                  </CardTitle>
-                  <Bell className="h-6 w-6 text-white/80" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-4xl font-bold text-white">
-                    {alertsCount}
-                  </div>
-                  <p className="text-xs text-white/70">
-                    Consultas e notificações
-                  </p>
-                </CardContent>
-              </Card>
+                  {/* Card 3: Alertas (Neutro Escuro) */}
+                  <Card className="bg-neutral-800 text-white border-0 shadow-card-dark">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="font-heading uppercase text-sm font-medium text-white/80 whitespace-nowrap tracking-wide">
+                        Alertas do Dia
+                      </CardTitle>
+                      <Bell className="h-6 w-6 text-white/80" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-4xl font-bold text-white">
+                        {alertsCount}
+                      </div>
+                      <p className="text-xs text-white/70">
+                        Consultas e notificações
+                      </p>
+                    </CardContent>
+                  </Card>
+                </>
+              )}
             </div>
 
             {/* Feed do Nutricionista (Alertas e Pendências) */}
