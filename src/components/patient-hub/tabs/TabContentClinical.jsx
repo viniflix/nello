@@ -88,7 +88,7 @@ const TabContentClinical = ({ patientId, modulesStatus = {} }) => {
                                     alergias, condições de saúde e medicações em uso.
                                 </p>
                                 <Button
-                                    onClick={() => navigate(`/nutritionist/patients/${patientId}/anamnesis`)}
+                                    onClick={() => navigate(`/nutritionist/patients/${patientId}/anamnese`)}
                                     className="gap-2"
                                 >
                                     <FileText className="w-4 h-4" />
@@ -122,7 +122,7 @@ const TabContentClinical = ({ patientId, modulesStatus = {} }) => {
                         <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => navigate(`/nutritionist/patients/${patientId}/anamnesis`)}
+                            onClick={() => navigate(`/nutritionist/patients/${patientId}/anamnese`)}
                             className="gap-1"
                         >
                             Ver Histórico
@@ -155,7 +155,7 @@ const TabContentClinical = ({ patientId, modulesStatus = {} }) => {
                         <Button
                             variant="link"
                             size="sm"
-                            onClick={() => navigate(`/nutritionist/patients/${patientId}/anamnesis`)}
+                            onClick={() => navigate(`/nutritionist/patients/${patientId}/anamnese`)}
                             className="h-auto p-0 text-xs"
                         >
                             Ver completo →

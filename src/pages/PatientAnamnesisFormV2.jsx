@@ -1,8 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Save, FileCheck, Loader2, AlertCircle, ChevronLeft, Plus, Trash2 } from 'lucide-react';
+import {
+    Accordion,
+    AccordionContent,
+    AccordionItem,
+    AccordionTrigger,
+} from '@/components/ui/accordion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,12 +16,6 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import {
-    Accordion,
-    AccordionContent,
-    AccordionItem,
-    AccordionTrigger,
-} from '@/components/ui/accordion';
 import {
     Select,
     SelectContent,
@@ -26,7 +26,11 @@ import {
 import {
     getAnamnesisById,
     createAnamnesis,
-    updateAnamnesis
+    updateAnamnesis,
+    getAnamneseFields,
+    getAnamneseAnswers,
+    upsertAnamneseAnswers,
+    getFieldOptions
 } from '@/lib/supabase/anamnesis-queries';
 import { getPatientProfile } from '@/lib/supabase/patient-queries';
 import { useAuth } from '@/contexts/AuthContext';
@@ -50,9 +54,13 @@ import { useToast } from '@/hooks/use-toast';
 const PatientAnamnesisFormV2 = () => {
     const navigate = useNavigate();
     const { patientId, anamnesisId } = useParams();
+    const [searchParams] = useSearchParams();
     const { user } = useAuth();
     const { toast } = useToast();
 
+    // Check if this is a custom form
+    const customTemplateId = searchParams.get('customTemplateId');
+    const isCustomForm = !!customTemplateId;
     const isEditMode = !!anamnesisId;
 
     const [patient, setPatient] = useState(null);
@@ -60,6 +68,11 @@ const PatientAnamnesisFormV2 = () => {
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState(null);
     const [openSections, setOpenSections] = useState(['section-0']);
+
+    // Custom form fields and answers
+    const [customFields, setCustomFields] = useState([]);
+    const [customAnswers, setCustomAnswers] = useState({});
+    const [fieldOptions, setFieldOptions] = useState({}); // { fieldId: [options] }
 
     // Referências para scroll automático
     const formRef = useRef(null);
@@ -178,8 +191,43 @@ const PatientAnamnesisFormV2 = () => {
                 if (patientError) throw new Error('Erro ao buscar dados do paciente');
                 setPatient(patientData);
 
-                if (isEditMode) {
-                    // MODO EDIÇÃO: Buscar anamnese existente
+                // Se for formulário personalizado, carregar campos e respostas
+                if (isCustomForm) {
+                    const { data: fieldsData, error: fieldsError } = await getAnamneseFields(user.id, customTemplateId);
+                    if (fieldsError) throw new Error('Erro ao buscar campos personalizados');
+                    setCustomFields(fieldsData || []);
+
+                    // Carregar opções para campos de seleção
+                    const optionsMap = {};
+                    for (const field of fieldsData || []) {
+                        if (field.field_type === 'selecao_unica' || field.field_type === 'selecao_multipla') {
+                            const { data: options, error: optionsError } = await getFieldOptions(field.id);
+                            if (!optionsError && options) {
+                                optionsMap[field.id] = options;
+                            }
+                        }
+                    }
+                    setFieldOptions(optionsMap);
+
+                    // Carregar respostas existentes (se houver)
+                    const { data: answersData, error: answersError } = await getAnamneseAnswers(patientId);
+                    if (answersError) throw new Error('Erro ao buscar respostas');
+
+                    // Converter array de respostas para objeto {fieldId: valor}
+                    const answersMap = {};
+                    (answersData || []).forEach(answer => {
+                        // Parse JSON para seleção múltipla
+                        try {
+                            const parsedValue = JSON.parse(answer.answer_value);
+                            answersMap[answer.field_id] = parsedValue;
+                        } catch {
+                            answersMap[answer.field_id] = answer.answer_value;
+                        }
+                    });
+                    setCustomAnswers(answersMap);
+
+                } else if (isEditMode) {
+                    // MODO EDIÇÃO: Buscar anamnese existente (formulário padrão)
                     const { data: anamnesisData, error: anamnesisError } = await getAnamnesisById(anamnesisId);
                     if (anamnesisError) throw new Error('Erro ao buscar anamnese');
 
@@ -199,7 +247,7 @@ const PatientAnamnesisFormV2 = () => {
         };
 
         fetchData();
-    }, [patientId, anamnesisId, user?.id, isEditMode, reset]);
+    }, [patientId, anamnesisId, user?.id, isEditMode, isCustomForm, reset]);
 
     // ============================================================
     // LIMPAR CAMPOS CONDICIONAIS QUANDO MUDAREM
@@ -281,6 +329,84 @@ const PatientAnamnesisFormV2 = () => {
         setError(null);
 
         try {
+            // Se for formulário personalizado, salvar respostas na tabela anamnese_answers
+            if (isCustomForm) {
+                // Validar campos obrigatórios apenas se não for rascunho
+                if (status === 'completed') {
+                    const missingRequired = customFields.filter(field =>
+                        field.is_required && (!customAnswers[field.id] ||
+                        (Array.isArray(customAnswers[field.id]) && customAnswers[field.id].length === 0) ||
+                        (typeof customAnswers[field.id] === 'string' && customAnswers[field.id].trim() === ''))
+                    );
+
+                    if (missingRequired.length > 0) {
+                        toast({
+                            variant: 'destructive',
+                            title: 'Campos obrigatórios não preenchidos',
+                            description: `Preencha todos os campos obrigatórios: ${missingRequired.map(f => f.field_label).join(', ')}`,
+                        });
+                        setSaving(false);
+                        return;
+                    }
+                }
+
+                // IMPORTANTE: Criar registro na tabela anamnesis_records primeiro
+                // para que o formulário apareça na lista de anamneses
+                if (isEditMode) {
+                    // Se está editando, atualizar o registro existente
+                    const updateData = {
+                        status,
+                        updated_at: new Date().toISOString()
+                    };
+                    const { error: updateError } = await updateAnamnesis(anamnesisId, updateData);
+                    if (updateError) throw updateError;
+                } else {
+                    // Se é novo, criar registro na anamnesis_records
+                    const recordData = {
+                        patientId,
+                        nutritionistId: user.id,
+                        templateId: customTemplateId, // ID do template personalizado
+                        date: new Date().toISOString().split('T')[0],
+                        notes: '',
+                        content: {}, // Formulário personalizado usa anamnese_answers, não content
+                        status
+                    };
+                    const { error: createError } = await createAnamnesis(recordData);
+                    if (createError) throw createError;
+                }
+
+                // Agora salvar as respostas dos campos personalizados
+                const answersToSave = customFields.map(field => {
+                    let answerValue = customAnswers[field.id] || '';
+
+                    // Se for seleção múltipla, converter array para JSON
+                    if (field.field_type === 'selecao_multipla' && Array.isArray(answerValue)) {
+                        answerValue = JSON.stringify(answerValue);
+                    }
+
+                    return {
+                        patient_id: patientId,
+                        field_id: field.id,
+                        answer_value: typeof answerValue === 'string' ? answerValue : String(answerValue)
+                    };
+                });
+
+                const { error: saveError } = await upsertAnamneseAnswers(answersToSave);
+                if (saveError) throw saveError;
+
+                toast({
+                    title: status === 'draft' ? 'Rascunho salvo!' : 'Anamnese salva!',
+                    description: status === 'draft'
+                        ? 'Rascunho salvo com sucesso. Você pode continuar depois.'
+                        : 'As respostas do formulário personalizado foram salvas com sucesso.',
+                });
+
+                // Voltar para a página de anamnese do paciente
+                navigate(`/nutritionist/patients/${patientId}/anamnese`);
+                return;
+            }
+
+            // Formulário padrão - salvar na tabela anamnesis_records
             const submitData = {
                 patientId,
                 nutritionistId: user.id,
@@ -318,8 +444,8 @@ const PatientAnamnesisFormV2 = () => {
                 });
             }
 
-            // Sucesso - voltar para hub do paciente
-            navigate(`/nutritionist/patients/${patientId}/hub`);
+            // Sucesso - voltar para a página de anamnese do paciente
+            navigate(`/nutritionist/patients/${patientId}/anamnese`);
         } catch (err) {
             console.error('Erro ao salvar anamnese:', err);
             setError('Erro ao salvar anamnese. Tente novamente.');
@@ -379,18 +505,18 @@ const PatientAnamnesisFormV2 = () => {
                         <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => navigate(`/nutritionist/patients/${patientId}/hub`)}
+                            onClick={() => navigate(isCustomForm ? `/nutritionist/patients/${patientId}/anamnese` : `/nutritionist/patients/${patientId}/hub`)}
                             className="mb-3"
                         >
                             <ChevronLeft className="w-4 h-4 mr-1" />
-                            Voltar ao Prontuário
+                            {isCustomForm ? 'Voltar para Anamneses' : 'Voltar ao Prontuário'}
                         </Button>
                         <h1 className="text-3xl font-bold text-foreground">
-                            {isEditMode ? 'Editar Anamnese' : 'Nova Anamnese'}
+                            {isCustomForm ? 'Formulário Personalizado' : (isEditMode ? 'Editar Anamnese' : 'Nova Anamnese')}
                         </h1>
                         {patient && (
                             <p className="text-sm text-muted-foreground mt-1">
-                                Paciente: <span className="font-medium text-foreground">{patient.full_name || patient.name || 'Nome não disponível'}</span>
+                                Paciente: <span className="font-medium text-foreground">{patient.name || 'Nome não disponível'}</span>
                             </p>
                         )}
                     </div>
@@ -416,35 +542,203 @@ const PatientAnamnesisFormV2 = () => {
 
                 {/* Formulário */}
                 <form className="space-y-6">
-                    {/* Metadados da Anamnese */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-base">Informações da Anamnese</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="date">Data da Anamnese<RequiredAsterisk /></Label>
-                                    <Input
-                                        id="date"
-                                        type="date"
-                                        {...register('date')}
-                                        className={cn(errors.date && "border-red-500")}
-                                    />
-                                    <FieldError error={errors.date} />
-                                </div>
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="notes">Observações Gerais (opcional)</Label>
-                                <Textarea
-                                    id="notes"
-                                    {...register('notes')}
-                                    placeholder="Anotações adicionais sobre esta anamnese..."
-                                    rows={3}
-                                />
-                            </div>
-                        </CardContent>
-                    </Card>
+                    {/* CUSTOM FORM: Render custom fields */}
+                    {isCustomForm ? (
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Formulário Personalizado</CardTitle>
+                                <p className="text-sm text-muted-foreground">
+                                    Preencha os campos abaixo. Campos com <span className="text-red-500">*</span> são obrigatórios.
+                                </p>
+                            </CardHeader>
+                            <CardContent>
+                                {customFields.length === 0 ? (
+                                    <Alert>
+                                        <AlertCircle className="h-4 w-4" />
+                                        <AlertDescription>
+                                            Este formulário ainda não possui campos. Volte para a página de gerenciamento e adicione perguntas.
+                                        </AlertDescription>
+                                    </Alert>
+                                ) : (
+                                    <Accordion type="multiple" defaultValue={['geral', 'identificacao', 'historico_clinico', 'historico_familiar', 'habitos_vida', 'objetivos', 'habitos_alimentares']} className="w-full">
+                                        {/* Agrupar campos por categoria */}
+                                        {Object.entries(
+                                            customFields.reduce((acc, field) => {
+                                                const category = field.category || 'geral';
+                                                if (!acc[category]) acc[category] = [];
+                                                acc[category].push(field);
+                                                return acc;
+                                            }, {})
+                                        ).map(([category, fields], categoryIndex) => {
+                                            const categoryNames = {
+                                                geral: 'Geral',
+                                                identificacao: 'Identificação',
+                                                historico_clinico: 'Histórico Clínico',
+                                                historico_familiar: 'Histórico Familiar',
+                                                habitos_vida: 'Hábitos de Vida',
+                                                objetivos: 'Objetivos',
+                                                habitos_alimentares: 'Hábitos Alimentares'
+                                            };
+
+                                            return (
+                                                <AccordionItem key={category} value={category} className="border-b">
+                                                    <AccordionTrigger className="hover:no-underline">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className={cn(
+                                                                "w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold bg-[#5f6f52]/10 text-[#5f6f52]"
+                                                            )}>
+                                                                {categoryIndex + 1}
+                                                            </div>
+                                                            <span className="font-semibold text-left">{categoryNames[category] || category}</span>
+                                                        </div>
+                                                    </AccordionTrigger>
+                                                    <AccordionContent className="pt-4 pb-6">
+                                                        <div className="space-y-6 pl-11">
+                                                            {fields.map((field, index) => (
+                                                                <div key={field.id} className="space-y-2">
+                                                                    <Label htmlFor={`field-${field.id}`} className="text-base">
+                                                                        {field.field_label}
+                                                                        {field.is_required && <span className="text-red-500 ml-1">*</span>}
+                                                                    </Label>
+
+                                            {field.field_type === 'texto_curto' && (
+                                                <Input
+                                                    id={`field-${field.id}`}
+                                                    value={customAnswers[field.id] || ''}
+                                                    onChange={(e) => setCustomAnswers({
+                                                        ...customAnswers,
+                                                        [field.id]: e.target.value
+                                                    })}
+                                                    placeholder="Digite sua resposta..."
+                                                    className="max-w-2xl"
+                                                />
+                                            )}
+
+                                            {field.field_type === 'texto_longo' && (
+                                                <Textarea
+                                                    id={`field-${field.id}`}
+                                                    value={customAnswers[field.id] || ''}
+                                                    onChange={(e) => setCustomAnswers({
+                                                        ...customAnswers,
+                                                        [field.id]: e.target.value
+                                                    })}
+                                                    placeholder="Digite sua resposta..."
+                                                    rows={4}
+                                                    className="max-w-2xl"
+                                                />
+                                            )}
+
+                                            {field.field_type === 'selecao_unica' && fieldOptions[field.id] && (
+                                                <Controller
+                                                    name={`field-${field.id}`}
+                                                    control={control}
+                                                    defaultValue={customAnswers[field.id] || ''}
+                                                    render={({ field: controllerField }) => (
+                                                        <Select
+                                                            value={customAnswers[field.id] || ''}
+                                                            onValueChange={(value) => {
+                                                                setCustomAnswers({
+                                                                    ...customAnswers,
+                                                                    [field.id]: value
+                                                                });
+                                                                controllerField.onChange(value);
+                                                            }}
+                                                        >
+                                                            <SelectTrigger className="max-w-2xl">
+                                                                <SelectValue placeholder="Selecione uma opção..." />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                {fieldOptions[field.id].map((option) => (
+                                                                    <SelectItem key={option.id} value={option.option_text}>
+                                                                        {option.option_text}
+                                                                    </SelectItem>
+                                                                ))}
+                                                            </SelectContent>
+                                                        </Select>
+                                                    )}
+                                                />
+                                            )}
+
+                                            {field.field_type === 'selecao_multipla' && fieldOptions[field.id] && (
+                                                <div className="space-y-2 max-w-2xl">
+                                                    {fieldOptions[field.id].map((option) => {
+                                                        const selectedValues = Array.isArray(customAnswers[field.id])
+                                                            ? customAnswers[field.id]
+                                                            : [];
+                                                        const isChecked = selectedValues.includes(option.option_text);
+
+                                                        return (
+                                                            <div key={option.id} className="flex items-center space-x-2">
+                                                                <Checkbox
+                                                                    id={`${field.id}-${option.id}`}
+                                                                    checked={isChecked}
+                                                                    onCheckedChange={(checked) => {
+                                                                        let newValues = [...selectedValues];
+                                                                        if (checked) {
+                                                                            newValues.push(option.option_text);
+                                                                        } else {
+                                                                            newValues = newValues.filter(v => v !== option.option_text);
+                                                                        }
+                                                                        setCustomAnswers({
+                                                                            ...customAnswers,
+                                                                            [field.id]: newValues
+                                                                        });
+                                                                    }}
+                                                                />
+                                                                <Label
+                                                                    htmlFor={`${field.id}-${option.id}`}
+                                                                    className="text-sm font-normal cursor-pointer"
+                                                                >
+                                                                    {option.option_text}
+                                                                </Label>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </AccordionContent>
+                                                </AccordionItem>
+                                            );
+                                        })}
+                                    </Accordion>
+                                )}
+                            </CardContent>
+                        </Card>
+                    ) : (
+                        <>
+                            {/* STANDARD FORM: Original hardcoded form */}
+                            {/* Metadados da Anamnese */}
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="text-base">Informações da Anamnese</CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="date">Data da Anamnese<RequiredAsterisk /></Label>
+                                            <Input
+                                                id="date"
+                                                type="date"
+                                                {...register('date')}
+                                                className={cn(errors.date && "border-red-500")}
+                                            />
+                                            <FieldError error={errors.date} />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="notes">Observações Gerais (opcional)</Label>
+                                        <Textarea
+                                            id="notes"
+                                            {...register('notes')}
+                                            placeholder="Anotações adicionais sobre esta anamnese..."
+                                            rows={3}
+                                        />
+                                    </div>
+                                </CardContent>
+                            </Card>
 
                     {/* Accordion de Seções */}
                     <Card>
@@ -1514,6 +1808,8 @@ const PatientAnamnesisFormV2 = () => {
                             </Accordion>
                         </CardContent>
                     </Card>
+                        </>
+                    )}
 
                     {/* Botões de Ação */}
                     <Card>
@@ -1522,7 +1818,7 @@ const PatientAnamnesisFormV2 = () => {
                                 <Button
                                     type="button"
                                     variant="outline"
-                                    onClick={() => navigate(`/nutritionist/patients/${patientId}/hub`)}
+                                    onClick={() => navigate(isCustomForm ? `/nutritionist/patients/${patientId}/anamnese` : `/nutritionist/patients/${patientId}/hub`)}
                                     disabled={saving}
                                 >
                                     Cancelar
@@ -1531,8 +1827,8 @@ const PatientAnamnesisFormV2 = () => {
                                     <Button
                                         type="button"
                                         variant="outline"
-                                        onClick={handleSaveDraft}
-                                        disabled={saving}
+                                        onClick={isCustomForm ? () => onSubmit({}, 'draft') : handleSaveDraft}
+                                        disabled={saving || (isCustomForm && customFields.length === 0)}
                                         className="gap-2"
                                     >
                                         {saving ? (
@@ -1544,8 +1840,8 @@ const PatientAnamnesisFormV2 = () => {
                                     </Button>
                                     <Button
                                         type="button"
-                                        onClick={handleSaveCompleted}
-                                        disabled={saving}
+                                        onClick={isCustomForm ? () => onSubmit({}, 'completed') : handleSaveCompleted}
+                                        disabled={saving || (isCustomForm && customFields.length === 0)}
                                         className="gap-2"
                                     >
                                         {saving ? (
@@ -1553,7 +1849,7 @@ const PatientAnamnesisFormV2 = () => {
                                         ) : (
                                             <FileCheck className="w-4 h-4" />
                                         )}
-                                        Concluir e Salvar
+                                        {isCustomForm ? 'Salvar Respostas' : 'Concluir e Salvar'}
                                     </Button>
                                 </div>
                             </div>

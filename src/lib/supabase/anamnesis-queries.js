@@ -309,3 +309,426 @@ export const getLatestAnamnesis = async (patientId) => {
         return { data: null, error };
     }
 };
+
+// ============================================================
+// ANAMNESE FIELDS (Sistema Modular)
+// ============================================================
+
+/**
+ * Buscar todos os campos de anamnese de um nutricionista
+ * Se customTemplateId fornecido, busca apenas campos associados ao template
+ */
+export const getAnamneseFields = async (nutritionistId, customTemplateId = null) => {
+    try {
+        if (customTemplateId) {
+            // Buscar campos associados ao template específico
+            const { data, error } = await supabase
+                .from('anamnesis_template_fields')
+                .select(`
+                    field_id,
+                    field_order,
+                    anamnese_fields (*)
+                `)
+                .eq('template_id', customTemplateId)
+                .order('field_order', { ascending: true });
+
+            if (error) throw error;
+
+            // Extrair os campos da relação
+            const fields = (data || []).map(item => item.anamnese_fields).filter(Boolean);
+            return { data: fields, error: null };
+        } else {
+            // Buscar todos os campos do nutricionista (sem filtro de template)
+            const { data, error } = await supabase
+                .from('anamnese_fields')
+                .select('*')
+                .eq('nutritionist_id', nutritionistId)
+                .order('id', { ascending: true });
+
+            if (error) throw error;
+            return { data: data || [], error: null };
+        }
+    } catch (error) {
+        console.error('Erro ao buscar campos de anamnese:', error);
+        return { data: null, error };
+    }
+};
+
+/**
+ * Criar novo campo de anamnese
+ */
+export const createAnamneseField = async (fieldData) => {
+    try {
+        const { data, error } = await supabase
+            .from('anamnese_fields')
+            .insert([{
+                nutritionist_id: fieldData.nutritionistId,
+                field_label: fieldData.fieldLabel,
+                field_type: fieldData.fieldType,
+                category: fieldData.category || 'geral',
+                is_required: fieldData.isRequired || false
+            }])
+            .select()
+            .single();
+
+        if (error) throw error;
+        return { data, error: null };
+    } catch (error) {
+        console.error('Erro ao criar campo de anamnese:', error);
+        return { data: null, error };
+    }
+};
+
+/**
+ * Atualizar campo de anamnese
+ */
+export const updateAnamneseField = async (fieldId, fieldData) => {
+    try {
+        const updateData = {
+            field_label: fieldData.fieldLabel,
+            field_type: fieldData.fieldType
+        };
+
+        // Adicionar category e is_required se fornecidos
+        if (fieldData.category !== undefined) {
+            updateData.category = fieldData.category;
+        }
+        if (fieldData.isRequired !== undefined) {
+            updateData.is_required = fieldData.isRequired;
+        }
+
+        const { data, error } = await supabase
+            .from('anamnese_fields')
+            .update(updateData)
+            .eq('id', fieldId)
+            .select()
+            .single();
+
+        if (error) throw error;
+        return { data, error: null };
+    } catch (error) {
+        console.error('Erro ao atualizar campo de anamnese:', error);
+        return { data: null, error };
+    }
+};
+
+/**
+ * Deletar campo de anamnese
+ */
+export const deleteAnamneseField = async (fieldId) => {
+    try {
+        const { error } = await supabase
+            .from('anamnese_fields')
+            .delete()
+            .eq('id', fieldId);
+
+        if (error) throw error;
+        return { error: null };
+    } catch (error) {
+        console.error('Erro ao deletar campo de anamnese:', error);
+        return { error };
+    }
+};
+
+/**
+ * Associar campo a um template personalizado
+ */
+export const addFieldToTemplate = async (templateId, fieldId, fieldOrder = 0) => {
+    try {
+        const { data, error } = await supabase
+            .from('anamnesis_template_fields')
+            .insert([{
+                template_id: templateId,
+                field_id: fieldId,
+                field_order: fieldOrder
+            }])
+            .select();
+
+        if (error) throw error;
+        return { data, error: null };
+    } catch (error) {
+        console.error('Erro ao associar campo ao template:', error);
+        return { data: null, error };
+    }
+};
+
+/**
+ * Remover campo de um template personalizado
+ */
+export const removeFieldFromTemplate = async (templateId, fieldId) => {
+    try {
+        const { error } = await supabase
+            .from('anamnesis_template_fields')
+            .delete()
+            .eq('template_id', templateId)
+            .eq('field_id', fieldId);
+
+        if (error) throw error;
+        return { error: null };
+    } catch (error) {
+        console.error('Erro ao remover campo do template:', error);
+        return { error };
+    }
+};
+
+// ============================================================
+// FIELD OPTIONS (Opções para campos de seleção)
+// ============================================================
+
+/**
+ * Buscar opções de um campo específico
+ */
+export const getFieldOptions = async (fieldId) => {
+    try {
+        const { data, error } = await supabase
+            .from('anamnese_field_options')
+            .select('*')
+            .eq('field_id', fieldId)
+            .order('option_order', { ascending: true });
+
+        if (error) throw error;
+        return { data, error: null };
+    } catch (error) {
+        console.error('Erro ao buscar opções do campo:', error);
+        return { data: null, error };
+    }
+};
+
+/**
+ * Criar opções para um campo (usado após criar campo de seleção)
+ */
+export const createFieldOptions = async (fieldId, options) => {
+    try {
+        // options é um array de strings: ['Opção 1', 'Opção 2', ...]
+        const optionsData = options.map((optionText, index) => ({
+            field_id: fieldId,
+            option_text: optionText,
+            option_order: index
+        }));
+
+        const { data, error } = await supabase
+            .from('anamnese_field_options')
+            .insert(optionsData)
+            .select();
+
+        if (error) throw error;
+        return { data, error: null };
+    } catch (error) {
+        console.error('Erro ao criar opções do campo:', error);
+        return { data: null, error };
+    }
+};
+
+/**
+ * Atualizar opções de um campo (deleta antigas e cria novas)
+ */
+export const updateFieldOptions = async (fieldId, options) => {
+    try {
+        // Deletar opções antigas
+        const { error: deleteError } = await supabase
+            .from('anamnese_field_options')
+            .delete()
+            .eq('field_id', fieldId);
+
+        if (deleteError) throw deleteError;
+
+        // Criar novas opções
+        if (options && options.length > 0) {
+            const { data, error: createError } = await createFieldOptions(fieldId, options);
+            if (createError) throw createError;
+            return { data, error: null };
+        }
+
+        return { data: [], error: null };
+    } catch (error) {
+        console.error('Erro ao atualizar opções do campo:', error);
+        return { data: null, error };
+    }
+};
+
+/**
+ * Copiar campos de um nutricionista para outro (importação)
+ */
+export const copyFieldsBetweenForms = async (sourceNutritionistId, targetNutritionistId) => {
+    try {
+        // Buscar campos do formulário fonte
+        const { data: sourceFields, error: fetchError } = await supabase
+            .from('anamnese_fields')
+            .select('*')
+            .eq('nutritionist_id', sourceNutritionistId);
+
+        if (fetchError) throw fetchError;
+
+        // Copiar para o formulário destino
+        const fieldsToInsert = sourceFields.map(field => ({
+            nutritionist_id: targetNutritionistId,
+            field_label: field.field_label,
+            field_type: field.field_type,
+            category: field.category,
+            is_required: field.is_required
+        }));
+
+        const { data, error } = await supabase
+            .from('anamnese_fields')
+            .insert(fieldsToInsert)
+            .select();
+
+        if (error) throw error;
+
+        // Copiar opções se existirem
+        for (let i = 0; i < sourceFields.length; i++) {
+            const sourceField = sourceFields[i];
+            const newField = data[i];
+
+            if (sourceField.field_type === 'selecao_unica' || sourceField.field_type === 'selecao_multipla') {
+                const { data: options } = await getFieldOptions(sourceField.id);
+                if (options && options.length > 0) {
+                    await createFieldOptions(newField.id, options.map(opt => opt.option_text));
+                }
+            }
+        }
+
+        return { data, error: null };
+    } catch (error) {
+        console.error('Erro ao copiar campos:', error);
+        return { data: null, error };
+    }
+};
+
+// ============================================================
+// ANAMNESE ANSWERS (Sistema Modular)
+// ============================================================
+
+/**
+ * Buscar respostas de anamnese para um paciente específico
+ */
+export const getAnamneseAnswers = async (patientId) => {
+    try {
+        const { data, error } = await supabase
+            .from('anamnese_answers')
+            .select('*')
+            .eq('patient_id', patientId);
+
+        if (error) throw error;
+        return { data, error: null };
+    } catch (error) {
+        console.error('Erro ao buscar respostas de anamnese:', error);
+        return { data: null, error };
+    }
+};
+
+/**
+ * Salvar/atualizar respostas de anamnese (upsert)
+ * Usa (patient_id, field_id) como constraint para evitar duplicatas
+ */
+export const upsertAnamneseAnswers = async (answersData) => {
+    try {
+        const { data, error } = await supabase
+            .from('anamnese_answers')
+            .upsert(answersData, {
+                onConflict: 'patient_id,field_id'
+            })
+            .select();
+
+        if (error) throw error;
+        return { data, error: null };
+    } catch (error) {
+        console.error('Erro ao salvar respostas de anamnese:', error);
+        return { data: null, error };
+    }
+};
+
+// ============================================================
+// CUSTOM TEMPLATES (Formulários Personalizados)
+// ============================================================
+
+/**
+ * Buscar formulários personalizados de um nutricionista
+ * Retorna templates customizados criados pelo nutricionista (não do sistema)
+ */
+export const getCustomTemplates = async (nutritionistId) => {
+    try {
+        const { data, error } = await supabase
+            .from('anamnesis_templates')
+            .select('*')
+            .eq('nutritionist_id', nutritionistId)
+            .eq('is_system_default', false)
+            .eq('is_active', true)
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        return { data, error: null };
+    } catch (error) {
+        console.error('Erro ao buscar formulários personalizados:', error);
+        return { data: null, error };
+    }
+};
+
+/**
+ * Criar novo formulário personalizado
+ */
+export const createCustomFormTemplate = async (templateData) => {
+    try {
+        const { data, error } = await supabase
+            .from('anamnesis_templates')
+            .insert([{
+                nutritionist_id: templateData.nutritionistId,
+                title: templateData.title,
+                description: templateData.description || null,
+                is_system_default: false,
+                is_active: true,
+                sections: [] // Vazio pois usa anamnese_fields
+            }])
+            .select()
+            .single();
+
+        if (error) throw error;
+        return { data, error: null };
+    } catch (error) {
+        console.error('Erro ao criar formulário personalizado:', error);
+        return { data: null, error };
+    }
+};
+
+/**
+ * Atualizar formulário personalizado
+ */
+export const updateCustomFormTemplate = async (templateId, templateData) => {
+    try {
+        const { data, error } = await supabase
+            .from('anamnesis_templates')
+            .update({
+                title: templateData.title,
+                description: templateData.description || null
+            })
+            .eq('id', templateId)
+            .select()
+            .single();
+
+        if (error) throw error;
+        return { data, error: null };
+    } catch (error) {
+        console.error('Erro ao atualizar formulário personalizado:', error);
+        return { data: null, error };
+    }
+};
+
+/**
+ * Deletar formulário personalizado
+ * Por enquanto apenas deleta o template (campos ficam órfãos até implementarmos a relação)
+ */
+export const deleteCustomFormTemplate = async (templateId) => {
+    try {
+        // Deletar o template
+        const { error } = await supabase
+            .from('anamnesis_templates')
+            .delete()
+            .eq('id', templateId);
+
+        if (error) throw error;
+        return { error: null };
+    } catch (error) {
+        console.error('Erro ao deletar formulário personalizado:', error);
+        return { error };
+    }
+};
