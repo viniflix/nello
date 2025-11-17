@@ -1,68 +1,85 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { UtensilsCrossed } from 'lucide-react';
+import { translateMealType, translateUnit } from '@/utils/mealTranslations';
 
+/**
+ * MealPlanView - Visualização do plano alimentar
+ *
+ * Estrutura esperada:
+ * meal_plan_meals: [
+ *   {
+ *     id, name, meal_type, meal_time,
+ *     meal_plan_foods: [
+ *       { quantity, unit, foods: { name } }
+ *     ]
+ *   }
+ * ]
+ */
 const MealPlanView = ({ mealPlanItems }) => {
+  // mealPlanItems agora é meal_plan_meals
+  console.log('MealPlanView received:', mealPlanItems); // Debug
+
   if (!mealPlanItems || mealPlanItems.length === 0) {
     return (
       <div className="text-center py-10">
         <UtensilsCrossed className="mx-auto h-12 w-12 text-muted-foreground" />
-        <p className="mt-4 text-muted-foreground">Nenhum plano alimentar detalhado foi adicionado a esta prescrição.</p>
+        <p className="mt-4 text-muted-foreground">Nenhuma refeição foi adicionada a este plano alimentar.</p>
       </div>
     );
   }
 
-  const dayOrder = ['Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado', 'Domingo'];
-  const mealOrder = ['Café da Manhã', 'Lanche da Manhã', 'Almoço', 'Lanche da Tarde', 'Jantar', 'Ceia'];
+  const mealOrder = ['breakfast', 'cafe_da_manha', 'morning_snack', 'lanche_da_manha', 'lunch', 'almoco', 'afternoon_snack', 'lanche_da_tarde', 'dinner', 'jantar', 'supper', 'ceia'];
 
-  const planByDay = mealPlanItems.reduce((acc, item) => {
-    const day = item.day_of_week;
-    if (!acc[day]) {
-      acc[day] = [];
+  // Agrupar por tipo de refeição
+  const mealsByType = mealPlanItems.reduce((acc, meal) => {
+    const mealType = meal.meal_type;
+    if (!acc[mealType]) {
+      acc[mealType] = [];
     }
-    acc[day].push(item);
+    acc[mealType].push(meal);
     return acc;
   }, {});
 
-  const sortedDays = Object.keys(planByDay).sort((a, b) => dayOrder.indexOf(a) - dayOrder.indexOf(b));
+  // Ordenar pelos tipos conhecidos
+  const sortedMealTypes = Object.keys(mealsByType).sort(
+    (a, b) => mealOrder.indexOf(a) - mealOrder.indexOf(b)
+  );
 
   return (
-    <div className="space-y-6">
-      {sortedDays.map((day) => {
-        const mealsForDay = planByDay[day].reduce((acc, item) => {
-          const mealType = item.meal_type;
-          if (!acc[mealType]) {
-            acc[mealType] = [];
-          }
-          acc[mealType].push(item);
-          return acc;
-        }, {});
-        
-        const sortedMealTypes = Object.keys(mealsForDay).sort((a, b) => mealOrder.indexOf(a) - mealOrder.indexOf(b));
+    <div className="space-y-4">
+      {sortedMealTypes.map((mealType) => (
+        <div key={mealType} className="border-l-4 border-primary/30 pl-4 py-2">
+          <h4 className="font-semibold text-lg mb-3 text-foreground">
+            {translateMealType(mealType)}
+          </h4>
 
-        return (
-          <Card key={day} className="bg-background/50">
-            <CardHeader>
-              <CardTitle className="text-xl">{day}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {sortedMealTypes.map((mealType) => (
-                <div key={mealType}>
-                  <h4 className="font-semibold text-md mb-2">{mealType}</h4>
-                  <ul className="space-y-2 pl-4 border-l-2 border-primary/20">
-                    {mealsForDay[mealType].map((item, index) => (
-                      <li key={index} className="flex justify-between items-center text-sm">
-                        <span>{item.foods.name}</span>
-                        <span className="font-semibold text-muted-foreground">{item.quantity} {item.measure}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        );
-      })}
+          {mealsByType[mealType].map((meal) => (
+            <div key={meal.id} className="mb-4">
+              {meal.name && (
+                <p className="text-sm text-muted-foreground mb-2 italic">{meal.name}</p>
+              )}
+
+              {meal.meal_plan_foods && meal.meal_plan_foods.length > 0 ? (
+                <ul className="space-y-1.5">
+                  {meal.meal_plan_foods.map((foodItem, index) => (
+                    <li key={index} className="flex justify-between items-center text-sm">
+                      <span className="text-foreground">
+                        {foodItem.foods?.name || 'Alimento sem nome'}
+                      </span>
+                      <span className="font-medium text-primary">
+                        {foodItem.quantity} {translateUnit(foodItem.unit)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-xs text-muted-foreground italic">Nenhum alimento cadastrado</p>
+              )}
+            </div>
+          ))}
+        </div>
+      ))}
     </div>
   );
 };

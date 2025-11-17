@@ -84,7 +84,7 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-slate-50 text-foreground;
   }
 
   /* Estilo base para os Títulos (ClashDisplay) */

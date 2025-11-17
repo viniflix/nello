@@ -338,62 +338,153 @@ const ChatPage = () => {
   if (!recipient) return <div className="flex items-center justify-center h-screen p-4 text-center text-muted-foreground">Você não tem um {user.profile.user_type === 'patient' ? 'nutricionista' : 'paciente'} associado.</div>;
 
   return (
-    <div className="h-screen flex flex-col bg-background">
+    <div className="flex flex-col h-full bg-slate-50">
       {/* --- MUDANÇA NA CHAMADA DO MODAL --- */}
-      <ImageModal 
-        mediaPath={modalMedia.path} 
+      <ImageModal
+        mediaPath={modalMedia.path}
         mediaType={modalMedia.type}
-        onClose={() => setModalMedia({ path: null, type: null })} 
+        onClose={() => setModalMedia({ path: null, type: null })}
       />
-      
-      <header className="bg-card/80 backdrop-blur-md border-b border-border p-4 flex items-center sticky top-0 z-10">
-        <Button variant="ghost" size="icon" onClick={handleBack} className="mr-2"><ArrowLeft className="w-5 h-5" /></Button>
-        <div className="w-10 h-10 bg-secondary rounded-full mr-3 flex items-center justify-center font-bold text-primary overflow-hidden">
-            {recipient.avatar_url ? <img src={recipient.avatar_url} alt={recipient.name} className="w-full h-full object-cover" /> : <UserIcon className="w-6 h-6 text-muted-foreground" />}
+
+      {/* Header fixo - sticky no topo com safe-area para mobile */}
+      <header className="sticky top-0 flex-shrink-0 bg-white border-b p-4 pt-safe flex items-center shadow-md z-30">
+        <Button variant="ghost" size="icon" onClick={handleBack} className="mr-2 ">
+          <ArrowLeft className="w-5 h-5" />
+        </Button>
+        <div className="w-10 h-10 bg-primary/10 rounded-full mr-3 flex items-center justify-center font-bold overflow-hidden">
+          {recipient.avatar_url ? (
+            <img src={recipient.avatar_url} alt={recipient.name} className="w-full h-full object-cover" />
+          ) : (
+            <UserIcon className="w-6 h-6 text-primary" />
+          )}
         </div>
         <div>
           <h2 className="font-semibold text-foreground">{recipient.name}</h2>
-          <p className="text-xs text-muted-foreground">{recipient.user_type === 'nutritionist' ? 'Nutricionista' : 'Paciente'}</p>
+          <p className="text-xs text-muted-foreground">
+            {recipient.user_type === 'nutritionist' ? 'Nutricionista' : 'Paciente'}
+          </p>
         </div>
       </header>
 
-      <main className="flex-1 overflow-y-auto p-4 space-y-2">
-         {Object.entries(groupedMessages).map(([date, msgs]) => (
-            <Fragment key={date}>
-              <DateSeparator date={date} />
-              {/* --- MUDANÇA NO onImageClick --- */}
-              <div className="space-y-4">{msgs.map((msg) => (<ChatMessage key={msg.id} msg={msg} isSender={msg.from_id === user.id} onImageClick={(path, type) => setModalMedia({ path, type })} />))}</div>
-            </Fragment>
+      {/* Main com scroll */}
+      <main className="flex-1 overflow-y-auto p-4 space-y-2 ">
+        {Object.entries(groupedMessages).map(([date, msgs]) => (
+          <Fragment key={date}>
+            <DateSeparator date={date} />
+            {/* --- MUDANÇA NO onImageClick --- */}
+            <div className="space-y-4">
+              {msgs.map((msg) => {
+                // Detectar se é mensagem de aviso (consulta agendada)
+                const isAppointmentNotice = msg.message && msg.message.includes('Consulta agendada');
+
+                if (isAppointmentNotice) {
+                  return (
+                    <div key={msg.id} className="text-center">
+                      <div className="inline-block px-4 py-2 bg-blue-100 text-blue-600 rounded-lg text-sm">
+                        {msg.message}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {format(parseISO(msg.created_at), 'HH:mm')}
+                      </p>
+                    </div>
+                  );
+                }
+
+                return (
+                  <ChatMessage
+                    key={msg.id}
+                    msg={msg}
+                    isSender={msg.from_id === user.id}
+                    onImageClick={(path, type) => setModalMedia({ path, type })}
+                  />
+                );
+              })}
+            </div>
+          </Fragment>
         ))}
         <div ref={messagesEndRef} />
       </main>
 
-      <footer className="bg-card p-4 border-t">
+      {/* Footer fixo - acima do BottomNav no mobile */}
+      <footer className="flex-shrink-0 bg-white p-4 border-t shadow-lg z-20 mb-16 md:mb-0">
         {mediaPreview && (
-          <div className="relative p-2 mb-2 border rounded-lg max-w-sm flex items-center gap-2">
+          <div className="relative p-2 mb-2 border rounded-lg max-w-sm flex items-center gap-2 bg-slate-50">
             {mediaType === 'image' && <img src={mediaPreview} alt="Preview" className="max-h-24 rounded" />}
             {mediaType === 'video' && <video src={mediaPreview} className="max-h-24 rounded" muted loop autoPlay />}
             {mediaType === 'audio' && <AudioPlayer src={mediaPreview} />}
-            {mediaType === 'pdf' && <div className="flex items-center gap-2"><FileText className="w-8 h-8 text-destructive" /> <span className="text-sm text-muted-foreground truncate">{mediaFile?.name}</span></div>}
-            <Button variant="ghost" size="icon" className="absolute -top-3 -right-3 bg-card rounded-full h-6 w-6" onClick={() => { setMediaFile(null); setMediaPreview(null); setMediaType(null); if(fileInputRef.current) fileInputRef.current.value = ""; }}>
+            {mediaType === 'pdf' && (
+              <div className="flex items-center gap-2">
+                <FileText className="w-8 h-8 text-destructive" />
+                <span className="text-sm text-muted-foreground truncate">{mediaFile?.name}</span>
+              </div>
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute -top-3 -right-3 bg-white rounded-full h-6 w-6 shadow-md"
+              onClick={() => {
+                setMediaFile(null);
+                setMediaPreview(null);
+                setMediaType(null);
+                if(fileInputRef.current) fileInputRef.current.value = "";
+              }}
+            >
               <X className="w-4 h-4" />
             </Button>
           </div>
         )}
         <form onSubmit={handleSendMessage} className="flex items-center space-x-3">
-          <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*,video/*,audio/*,application/pdf" />
-          <Button type="button" variant="ghost" size="icon" onClick={() => fileInputRef.current.click()} disabled={isSending}><Paperclip className="w-5 h-5" /></Button>
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            className="hidden"
+            accept="image/*,video/*,audio/*,application/pdf"
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={() => fileInputRef.current.click()}
+            disabled={isSending}
+          >
+            <Paperclip className="w-5 h-5" />
+          </Button>
           {isRecording ? (
-             <div className="flex items-center gap-2 flex-1"><div className="w-2 h-2 bg-destructive rounded-full animate-pulse"></div><p className="text-sm text-destructive">Gravando...</p></div>
+            <div className="flex items-center gap-2 flex-1">
+              <div className="w-2 h-2 bg-destructive rounded-full animate-pulse"></div>
+              <p className="text-sm text-destructive">Gravando...</p>
+            </div>
           ) : (
-             <Input type="text" value={newMessage} onChange={(e) => setNewMessage(e.target.value)} placeholder="Digite sua mensagem..." className="flex-1 bg-background" autoComplete="off" disabled={isSending} />
+            <Input
+              type="text"
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              placeholder="Digite sua mensagem..."
+              className="flex-1 bg-slate-50 border-gray-200 focus:border-primary focus:ring-primary"
+              autoComplete="off"
+              disabled={isSending}
+            />
           )}
-          {newMessage.trim() === '' && !mediaFile ? 
-            <Button type="button" variant="ghost" size="icon" onClick={isRecording ? stopRecording : startRecording} disabled={isSending}>
-                {isRecording ? <Square className="w-5 h-5 text-destructive" /> : <Mic className="w-5 h-5" />}
+          {newMessage.trim() === '' && !mediaFile ?
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={isRecording ? stopRecording : startRecording}
+              disabled={isSending}
+            >
+              {isRecording ? <Square className="w-5 h-5 text-destructive" /> : <Mic className="w-5 h-5" />}
             </Button>
-            : 
-            <Button type="submit" size="icon" disabled={isSending || (newMessage.trim() === '' && !mediaFile)}>{isSending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}</Button>
+            :
+            <Button
+              type="submit"
+              size="icon"
+              disabled={isSending || (newMessage.trim() === '' && !mediaFile)}
+              className=""
+            >
+              {isSending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+            </Button>
           }
         </form>
       </footer>

@@ -17,16 +17,17 @@ const TabContentFeed = ({ patientId, activities, loading, onLoadMore }) => {
     const [recentMeals, setRecentMeals] = useState([]);
     const [mealsLoading, setMealsLoading] = useState(true);
 
-    // Buscar refeições recentes do paciente
+    // Buscar ações recentes do paciente no diário alimentar (CREATE, UPDATE, DELETE)
     useEffect(() => {
         const fetchRecentMeals = async () => {
             if (!patientId) return;
 
             setMealsLoading(true);
             try {
+                // Buscar do audit log para mostrar TODAS as ações (criar, editar, deletar)
                 const { data, error } = await supabase
-                    .from('meals')
-                    .select('id, meal_type, created_at, total_calories')
+                    .from('meal_audit_log')
+                    .select('id, action, meal_type, meal_date, meal_time, details, created_at')
                     .eq('patient_id', patientId)
                     .order('created_at', { ascending: false })
                     .limit(4);
@@ -55,6 +56,26 @@ const TabContentFeed = ({ patientId, activities, loading, onLoadMore }) => {
             'supper': 'Ceia'
         };
         return translations[mealType] || mealType;
+    };
+
+    // Traduzir tipo de ação
+    const translateAction = (action) => {
+        const translations = {
+            'create': 'Registrado',
+            'update': 'Editado',
+            'delete': 'Deletado'
+        };
+        return translations[action] || action;
+    };
+
+    // Cor do badge por ação
+    const getActionBadgeColor = (action) => {
+        const colors = {
+            'create': 'bg-[#5f6f52]', // Verde
+            'update': 'bg-blue-600',  // Azul
+            'delete': 'bg-red-600'    // Vermelho
+        };
+        return colors[action] || 'bg-gray-600';
     };
 
     // ============================================================
@@ -92,6 +113,7 @@ const TabContentFeed = ({ patientId, activities, loading, onLoadMore }) => {
                         <>
                             {recentMeals.map((meal) => {
                                 const createdDate = new Date(meal.created_at);
+                                const totalCalories = meal.details?.total_calories || 0;
                                 return (
                                     <div
                                         key={meal.id}
@@ -102,7 +124,9 @@ const TabContentFeed = ({ patientId, activities, loading, onLoadMore }) => {
                                                 <span className="text-sm font-medium text-foreground truncate">
                                                     {translateMealType(meal.meal_type)}
                                                 </span>
-                                                <Badge className="bg-[#5f6f52] text-white text-xs">Registrado</Badge>
+                                                <Badge className={`${getActionBadgeColor(meal.action)} text-white text-xs`}>
+                                                    {translateAction(meal.action)}
+                                                </Badge>
                                             </div>
                                             <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                                 <Clock className="w-3 h-3" />
@@ -116,7 +140,7 @@ const TabContentFeed = ({ patientId, activities, loading, onLoadMore }) => {
                                             <div className="flex items-center gap-1">
                                                 <Flame className="w-3 h-3 text-[#c4661f]" />
                                                 <span className="text-sm font-bold text-[#5f6f52]">
-                                                    {meal.total_calories || 0}
+                                                    {totalCalories}
                                                 </span>
                                             </div>
                                         </div>

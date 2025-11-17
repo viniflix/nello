@@ -9,6 +9,7 @@ import { Loader2 } from 'lucide-react';
 // Mantém imports críticos para auth e layouts (não lazy load)
 import MainLayout from '@/components/MainLayout.jsx';
 import PatientLayout from '@/components/patient/PatientLayout.jsx';
+import PatientMobileLayout from '@/components/patient/PatientMobileLayout.jsx';
 
 // CODE SPLITTING: Lazy load de todas as páginas
 const LoginPage = lazy(() => import('@/pages/LoginPage.jsx'));
@@ -46,11 +47,20 @@ const FoodBankPage = lazy(() => import('@/pages/FoodBankPage.jsx'));
 // Chat
 const ChatPage = lazy(() => import('@/pages/ChatPage.jsx'));
 
-// Páginas do Paciente
+// Páginas do Paciente (Antigas - mantidas para compatibilidade)
 const PatientProfile = lazy(() => import('@/pages/PatientProfile.jsx'));
 const PatientRecords = lazy(() => import('@/pages/PatientRecords.jsx'));
 const PatientSearch = lazy(() => import('@/pages/PatientSearch.jsx'));
 const AddFoodPage = lazy(() => import('@/pages/AddFoodPage.jsx'));
+
+// Páginas do Paciente (Nova Arquitetura Mobile-First)
+const PatientHomePage = lazy(() => import('@/pages/patient/PatientHomePage.jsx'));
+const PatientDiaryPage = lazy(() => import('@/pages/patient/PatientDiaryPage.jsx'));
+const PatientProgressPage = lazy(() => import('@/pages/patient/PatientProgressPage.jsx'));
+const PatientProfilePage = lazy(() => import('@/pages/patient/PatientProfilePage.jsx'));
+const PatientEditProfilePage = lazy(() => import('@/pages/patient/PatientEditProfilePage.jsx'));
+const PatientAchievementsPage = lazy(() => import('@/pages/patient/PatientAchievementsPage.jsx'));
+const AddMealPage = lazy(() => import('@/pages/patient/AddMealPage.jsx'));
 
 
 // Fallback de carregamento para Suspense
@@ -146,17 +156,28 @@ const AppLayout = () => {
               <Route path="/nutritionist/agenda" element={<AgendaPage />} />
             </Route>
 
-            {/* --- ROTAS DO PACIENTE --- */}
+            {/* --- ROTAS DO PACIENTE (Nova Arquitetura Mobile-First) --- */}
+            <Route element={<ProtectedRoute userType="patient"><PatientMobileLayout /></ProtectedRoute>}>
+              <Route path="/patient" element={<PatientHomePage />} />
+              <Route path="/patient/diario" element={<PatientDiaryPage />} />
+              <Route path="/patient/progresso" element={<PatientProgressPage />} />
+              <Route path="/patient/chat" element={<ChatPage />} />
+              <Route path="/patient/perfil" element={<PatientProfilePage />} />
+              <Route path="/patient/editar-perfil" element={<PatientEditProfilePage />} />
+              <Route path="/patient/conquistas" element={<PatientAchievementsPage />} />
+            </Route>
+
+            {/* Rotas do Paciente (Fora do layout - páginas completas) */}
+            <Route path="/patient/add-food/:mealId?" element={<ProtectedRoute userType="patient"><AddFoodPage /></ProtectedRoute>} />
+            <Route path="/patient/add-meal" element={<ProtectedRoute userType="patient"><AddMealPage /></ProtectedRoute>} />
+
+            {/* Rotas Antigas do Paciente (mantidas para compatibilidade) */}
             <Route element={<ProtectedRoute userType="patient"><PatientLayout /></ProtectedRoute>}>
-              <Route path="/patient" element={<PatientDashboard />} />
               <Route path="/patient/search" element={<PatientSearch />} />
               <Route path="/patient/records" element={<PatientRecords />} />
               <Route path="/patient/profile" element={<PatientProfile />} />
               <Route path="/patient/notifications" element={<NotificationsPage />} />
             </Route>
-            
-            <Route path="/chat/patient" element={<ProtectedRoute userType="patient"><ChatPage /></ProtectedRoute>} />
-            <Route path="/patient/add-food/:mealId?" element={<ProtectedRoute userType="patient"><AddFoodPage /></ProtectedRoute>} />
 
             {/* --- ROTAS DE REDIRECIONAMENTO (Sem mudança) --- */}
             <Route path="/" element={<Navigate to={getHomePath()} replace />} />

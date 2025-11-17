@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/customSupabaseClient';
+import { translateMealType } from '@/utils/mealTranslations';
 
 /**
  * Busca o perfil completo do paciente
@@ -124,11 +125,12 @@ export const getModulesStatus = async (patientId) => {
             .limit(1)
             .maybeSingle();
 
-        // Verificar se tem refeições registradas
+        // Verificar se tem refeições registradas (não deletadas)
         const { data: mealsData } = await supabase
             .from('meals')
             .select('id')
             .eq('patient_id', patientId)
+            .is('deleted_at', null)
             .limit(1)
             .maybeSingle();
 
@@ -167,23 +169,40 @@ export const getPatientActivities = async (patientId, limit = 10) => {
     try {
         const activities = [];
 
-        // Buscar últimas refeições (aumentado para cobrir mais tempo)
-        const { data: mealsData } = await supabase
-            .from('meals')
-            .select('id, meal_type, created_at, total_calories')
+        // Buscar auditoria de refeições (CREATE, UPDATE, DELETE)
+        const { data: mealAuditData } = await supabase
+            .from('meal_audit_log')
+            .select('id, action, meal_type, details, created_at')
             .eq('patient_id', patientId)
             .order('created_at', { ascending: false })
             .limit(30);
 
-        if (mealsData) {
-            mealsData.forEach((meal) => {
+        if (mealAuditData) {
+            mealAuditData.forEach((audit) => {
+                const totalCalories = audit.details?.total_calories || 0;
+                const mealTypeTranslated = translateMealType(audit.meal_type);
+
+                let title = '';
+                let description = '';
+
+                if (audit.action === 'create') {
+                    title = 'Refeição Registrada';
+                    description = `${mealTypeTranslated} - ${totalCalories} kcal`;
+                } else if (audit.action === 'update') {
+                    title = 'Refeição Editada';
+                    description = `${mealTypeTranslated} - ${totalCalories} kcal`;
+                } else if (audit.action === 'delete') {
+                    title = 'Refeição Deletada';
+                    description = `${mealTypeTranslated} - ${totalCalories} kcal`;
+                }
+
                 activities.push({
-                    id: `meal-${meal.id}`,
+                    id: `audit-${audit.id}`,
                     type: 'meal',
-                    title: 'Refeição Registrada',
-                    description: `${meal.meal_type} - ${meal.total_calories || 0} kcal`,
-                    timestamp: meal.created_at,
-                    metadata: [meal.meal_type, `${meal.total_calories || 0} kcal`]
+                    title: title,
+                    description: description,
+                    timestamp: audit.created_at,
+                    metadata: [mealTypeTranslated, `${totalCalories} kcal`, audit.action === 'create' ? 'Registrado' : audit.action === 'update' ? 'Editado' : 'Deletado']
                 });
             });
         }
