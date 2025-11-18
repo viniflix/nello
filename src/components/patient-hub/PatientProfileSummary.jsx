@@ -1,7 +1,7 @@
 import React from 'react';
 import { format, differenceInYears } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { User, Mail, Phone, MapPin, Calendar, Weight, Target, Activity } from 'lucide-react';
+import { User, Mail, Phone, MapPin, Calendar, Weight, Target, Activity, Edit } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -94,8 +94,18 @@ const PatientProfileSummary = ({
     const imcCategory = getIMCCategory(imc);
 
     return (
-        <Card className="bg-card shadow-lg border-border">
+        <Card className="bg-card shadow-lg border-border relative">
             <CardContent className="p-6">
+                {/* Botão de Editar no topo direito - Apenas Mobile */}
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={onEditProfile}
+                    className="md:hidden absolute top-4 right-4 h-8 w-8 rounded-full hover:bg-primary/10"
+                >
+                    <Edit className="w-4 h-4" />
+                </Button>
+
                 {/* Header com Avatar e Info Básica */}
                 <div className="flex flex-col md:flex-row gap-6 mb-6">
                     {/* Avatar */}
@@ -115,7 +125,7 @@ const PatientProfileSummary = ({
 
                     {/* Informações Básicas */}
                     <div className="flex-1">
-                        <h2 className="text-2xl font-bold text-foreground mb-2">
+                        <h2 className="text-2xl font-bold text-foreground mb-2 pr-10">
                             {patientData?.name || 'Paciente'}
                         </h2>
 
@@ -242,16 +252,8 @@ const PatientProfileSummary = ({
                     </div>
                 </div>
 
-                {/* Botões de Ação - Mobile */}
-                <div className="flex md:hidden flex-col sm:flex-row gap-2">
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={onEditProfile}
-                        className="flex-1"
-                    >
-                        Editar Perfil
-                    </Button>
+                {/* Botões de Ação - Mobile (apenas Chat e Agendar lado a lado) */}
+                <div className="flex md:hidden flex-row gap-2">
                     <Button
                         variant="outline"
                         size="sm"

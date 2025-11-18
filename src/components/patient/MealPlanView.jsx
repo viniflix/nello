@@ -1,7 +1,8 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { UtensilsCrossed } from 'lucide-react';
-import { translateMealType, translateUnit } from '@/utils/mealTranslations';
+import { translateMealType } from '@/utils/mealTranslations';
+import { formatQuantityWithUnit } from '@/lib/utils/measureTranslations';
 
 /**
  * MealPlanView - Visualização do plano alimentar
@@ -68,7 +69,7 @@ const MealPlanView = ({ mealPlanItems }) => {
                         {foodItem.foods?.name || 'Alimento sem nome'}
                       </span>
                       <span className="font-medium text-primary">
-                        {foodItem.quantity} {translateUnit(foodItem.unit)}
+                        {formatQuantityWithUnit(foodItem.quantity || 0, foodItem.unit || '', foodItem.measure)}
                       </span>
                     </li>
                   ))}

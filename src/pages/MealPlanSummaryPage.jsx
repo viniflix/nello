@@ -14,6 +14,7 @@ import {
     TableRow
 } from '@/components/ui/table';
 import ReferenceValuesModal from '@/components/meal-plan/ReferenceValuesModal';
+import { MicronutrientsCard } from '@/components/meal-plan/MicronutrientsCard';
 import { getMealPlanById, getReferenceValues, deleteReferenceValues } from '@/lib/supabase/meal-plan-queries';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -420,6 +421,9 @@ const MealPlanSummaryPage = () => {
                     </Table>
                 </CardContent>
             </Card>
+
+            {/* Micronutrientes e DRI */}
+            <MicronutrientsCard plan={plan} />
 
             {/* Aviso se não tiver valores de referência */}
             {!referenceValues && (

@@ -15,12 +15,12 @@ const MainLayout = () => {
     <div className="flex min-h-screen w-full flex-col">
       {/* 1. Apenas o Header (que agora tem a navegação) */}
       <DashboardHeader
-        user={user.profile}
+        user={user}
         logout={signOut}
       />
 
       {/* 2. O conteúdo principal da página */}
-      <main className="flex-1 p-4 md:p-6">
+      <main className="flex-1">
         <Outlet />
       </main>
 

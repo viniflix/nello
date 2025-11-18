@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, X } from 'lucide-react';
+import { Plus, Trash2, X, Edit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -34,6 +34,7 @@ const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null }) => {
 
     const [foods, setFoods] = useState([]);
     const [showAddFood, setShowAddFood] = useState(false);
+    const [editingFood, setEditingFood] = useState(null);
     const [errors, setErrors] = useState({});
 
     const mealTypes = [
@@ -81,8 +82,27 @@ const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null }) => {
         setFoods(prev => [...prev, { ...foodData, tempId: Date.now() }]);
     };
 
+    const handleEditFood = (food) => {
+        setEditingFood(food);
+        setShowAddFood(true);
+    };
+
+    const handleUpdateFood = (updatedFoodData) => {
+        setFoods(prev => prev.map(f =>
+            f.tempId === editingFood.tempId
+                ? { ...updatedFoodData, tempId: f.tempId }
+                : f
+        ));
+        setEditingFood(null);
+    };
+
     const handleRemoveFood = (tempId) => {
         setFoods(prev => prev.filter(f => f.tempId !== tempId));
+    };
+
+    const handleFoodDialogClose = () => {
+        setShowAddFood(false);
+        setEditingFood(null);
     };
 
     const calculateTotals = () => {
@@ -269,7 +289,7 @@ const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null }) => {
                                         {foods.map((food) => (
                                             <div
                                                 key={food.tempId}
-                                                className="flex items-center justify-between p-3 border rounded-lg"
+                                                className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
                                             >
                                                 <div className="flex-1">
                                                     <div className="font-semibold">{food.food.name}</div>
@@ -286,13 +306,24 @@ const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null }) => {
                                                         </div>
                                                     )}
                                                 </div>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() => handleRemoveFood(food.tempId)}
-                                                >
-                                                    <Trash2 className="h-4 w-4 text-destructive" />
-                                                </Button>
+                                                <div className="flex gap-2">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => handleEditFood(food)}
+                                                        title="Editar alimento"
+                                                    >
+                                                        <Edit className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => handleRemoveFood(food.tempId)}
+                                                        title="Remover alimento"
+                                                    >
+                                                        <Trash2 className="h-4 w-4 text-destructive" />
+                                                    </Button>
+                                                </div>
                                             </div>
                                         ))}
 
@@ -340,11 +371,12 @@ const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null }) => {
                 </DialogContent>
             </Dialog>
 
-            {/* Dialog para adicionar alimento */}
+            {/* Dialog para adicionar/editar alimento */}
             <AddFoodToMealDialog
                 isOpen={showAddFood}
-                onClose={() => setShowAddFood(false)}
-                onAdd={handleAddFood}
+                onClose={handleFoodDialogClose}
+                onAdd={editingFood ? handleUpdateFood : handleAddFood}
+                initialData={editingFood}
                 mealName={formData.meal_type === 'other' ? formData.name : mealTypes.find(t => t.value === formData.meal_type)?.label}
             />
         </>

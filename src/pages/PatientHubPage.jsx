@@ -207,26 +207,41 @@ const PatientHubPage = () => {
                 {/* BLOCO 3 - Tabs de Navegação */}
                 <section>
                     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                        <TabsList className="grid w-full grid-cols-3 lg:grid-cols-5 gap-2 h-auto p-1 bg-muted/50">
-                            <TabsTrigger value="feed" className="flex items-center gap-2 data-[state=active]:bg-background">
-                                <Activity className="h-4 w-4" />
-                                <span className="hidden sm:inline">Feed</span>
+                        <TabsList className="grid w-full grid-cols-3 lg:grid-cols-5 gap-2 h-auto p-2 bg-muted/50">
+                            <TabsTrigger
+                                value="feed"
+                                className="flex flex-col items-center justify-center gap-1 py-2 data-[state=active]:bg-background"
+                            >
+                                <Activity className="h-5 w-5" />
+                                <span className="text-xs font-medium">Feed</span>
                             </TabsTrigger>
-                            <TabsTrigger value="clinical" className="flex items-center gap-2 data-[state=active]:bg-background">
-                                <Stethoscope className="h-4 w-4" />
-                                <span className="hidden sm:inline">Clínico</span>
+                            <TabsTrigger
+                                value="clinical"
+                                className="flex flex-col items-center justify-center gap-1 py-2 data-[state=active]:bg-background"
+                            >
+                                <Stethoscope className="h-5 w-5" />
+                                <span className="text-xs font-medium">Clínico</span>
                             </TabsTrigger>
-                            <TabsTrigger value="body" className="flex items-center gap-2 data-[state=active]:bg-background">
-                                <User className="h-4 w-4" />
-                                <span className="hidden sm:inline">Corporal</span>
+                            <TabsTrigger
+                                value="body"
+                                className="flex flex-col items-center justify-center gap-1 py-2 data-[state=active]:bg-background"
+                            >
+                                <User className="h-5 w-5" />
+                                <span className="text-xs font-medium">Corporal</span>
                             </TabsTrigger>
-                            <TabsTrigger value="nutrition" className="flex items-center gap-2 data-[state=active]:bg-background">
-                                <Utensils className="h-4 w-4" />
-                                <span className="hidden sm:inline">Nutrição</span>
+                            <TabsTrigger
+                                value="nutrition"
+                                className="flex flex-col items-center justify-center gap-1 py-2 data-[state=active]:bg-background"
+                            >
+                                <Utensils className="h-5 w-5" />
+                                <span className="text-xs font-medium">Nutrição</span>
                             </TabsTrigger>
-                            <TabsTrigger value="adherence" className="flex items-center gap-2 data-[state=active]:bg-background">
-                                <Heart className="h-4 w-4" />
-                                <span className="hidden sm:inline">Adesão</span>
+                            <TabsTrigger
+                                value="adherence"
+                                className="flex flex-col items-center justify-center gap-1 py-2 data-[state=active]:bg-background"
+                            >
+                                <Heart className="h-5 w-5" />
+                                <span className="text-xs font-medium">Adesão</span>
                             </TabsTrigger>
                         </TabsList>
 

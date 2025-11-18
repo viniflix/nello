@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Plus, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -13,28 +13,44 @@ import {
 } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import FoodSelector from './FoodSelector';
-import CascadeMeasureSelector from './CascadeMeasureSelector';
+import { PortionSelector } from '@/components/nutrition';
 
-const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName }) => {
+const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName, initialData = null }) => {
     const [selectedFood, setSelectedFood] = useState(null);
-    const [quantity, setQuantity] = useState('');
-    const [unit, setUnit] = useState('');
-    const [selectedMeasure, setSelectedMeasure] = useState(null);
+    const [portion, setPortion] = useState({ quantity: 100, measureId: null });
     const [notes, setNotes] = useState('');
     const [calculatedNutrition, setCalculatedNutrition] = useState(null);
     const [showFoodSelector, setShowFoodSelector] = useState(false);
     const [errors, setErrors] = useState({});
 
+    // Popular campos quando está editando
+    useEffect(() => {
+        if (initialData) {
+            setSelectedFood(initialData.food);
+            setPortion({
+                quantity: initialData.quantity || 100,
+                measureId: initialData.unit === 'gram' ? null : initialData.unit
+            });
+            setNotes(initialData.notes || '');
+            setCalculatedNutrition({
+                calories: initialData.calories || 0,
+                protein: initialData.protein || 0,
+                carbs: initialData.carbs || 0,
+                fat: initialData.fat || 0
+            });
+        }
+    }, [initialData]);
+
     const handleFoodSelect = (food) => {
         setSelectedFood(food);
         setShowFoodSelector(false);
-        // Resetar quantidade e unidade ao trocar alimento
-        setQuantity('');
-        setUnit('');
+        // Resetar porção ao trocar alimento
+        setPortion({ quantity: 100, measureId: null });
         setCalculatedNutrition(null);
     };
 
-    const handleNutritionCalculated = (nutrition) => {
+    // Receber nutrição calculada do PortionSelector (fonte única de verdade)
+    const handleNutritionChange = (nutrition) => {
         setCalculatedNutrition(nutrition);
     };
 
@@ -45,12 +61,8 @@ const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName }) => {
             newErrors.food = 'Selecione um alimento';
         }
 
-        if (!quantity || parseFloat(quantity) <= 0) {
-            newErrors.quantity = 'Quantidade deve ser maior que zero';
-        }
-
-        if (!unit) {
-            newErrors.unit = 'Selecione uma medida';
+        if (!portion.quantity || portion.quantity <= 0) {
+            newErrors.portion = 'Quantidade deve ser maior que zero';
         }
 
         setErrors(newErrors);
@@ -63,9 +75,8 @@ const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName }) => {
         const foodData = {
             food_id: selectedFood.id,
             food: selectedFood, // Para exibição
-            quantity: parseFloat(quantity),
-            unit,
-            measure: selectedMeasure, // Objeto measure completo para tradução
+            quantity: portion.quantity,
+            unit: portion.measureId || 'gram', // ID da medida ou 'gram'
             calories: calculatedNutrition?.calories || 0,
             protein: calculatedNutrition?.protein || 0,
             carbs: calculatedNutrition?.carbs || 0,
@@ -79,8 +90,7 @@ const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName }) => {
 
     const handleClose = () => {
         setSelectedFood(null);
-        setQuantity('');
-        setUnit('');
+        setPortion({ quantity: 100, measureId: null });
         setNotes('');
         setCalculatedNutrition(null);
         setErrors({});
@@ -92,9 +102,14 @@ const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName }) => {
             <Dialog open={isOpen} onOpenChange={handleClose}>
                 <DialogContent className="max-w-2xl">
                     <DialogHeader>
-                        <DialogTitle>Adicionar Alimento</DialogTitle>
+                        <DialogTitle>{initialData ? 'Editar Alimento' : 'Adicionar Alimento'}</DialogTitle>
                         <DialogDescription>
-                            {mealName ? `Adicionar alimento à refeição: ${mealName}` : 'Adicionar novo alimento'}
+                            {initialData
+                                ? `Editar alimento: ${initialData.food?.name || ''}`
+                                : mealName
+                                    ? `Adicionar alimento à refeição: ${mealName}`
+                                    : 'Adicionar novo alimento'
+                            }
                         </DialogDescription>
                     </DialogHeader>
 
@@ -141,22 +156,17 @@ const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName }) => {
                             )}
                         </div>
 
-                        {/* Seletor de Quantidade e Medida em Cascata */}
+                        {/* Seletor de Porção (Novo - Mais Simples) */}
                         <div className="space-y-2">
-                            <CascadeMeasureSelector
+                            <PortionSelector
                                 food={selectedFood}
-                                quantity={quantity}
-                                unit={unit}
-                                onQuantityChange={setQuantity}
-                                onUnitChange={setUnit}
-                                onMeasureChange={setSelectedMeasure}
-                                onNutritionCalculated={handleNutritionCalculated}
+                                value={portion}
+                                onChange={setPortion}
+                                showNutrition={false}
+                                onNutritionChange={handleNutritionChange}
                             />
-                            {errors.quantity && (
-                                <p className="text-xs text-destructive">{errors.quantity}</p>
-                            )}
-                            {errors.unit && (
-                                <p className="text-xs text-destructive">{errors.unit}</p>
+                            {errors.portion && (
+                                <p className="text-xs text-destructive">{errors.portion}</p>
                             )}
                         </div>
 
@@ -164,26 +174,26 @@ const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName }) => {
                         {calculatedNutrition && (
                             <Alert className="bg-primary/5">
                                 <AlertDescription>
-                                    <div className="font-semibold mb-2">Valores Nutricionais (porção):</div>
+                                    <div className="font-semibold mb-2">Valores Nutricionais:</div>
                                     <div className="grid grid-cols-4 gap-4 text-sm">
                                         <div>
-                                            <div className="text-muted-foreground">Calorias</div>
-                                            <div className="font-bold text-lg">{calculatedNutrition.calories}</div>
+                                            <div className="text-muted-foreground text-xs">Calorias</div>
+                                            <div className="font-bold text-lg">{Math.round(calculatedNutrition.calories)}</div>
                                             <div className="text-xs text-muted-foreground">kcal</div>
                                         </div>
                                         <div>
-                                            <div className="text-muted-foreground">Proteínas</div>
-                                            <div className="font-bold text-lg">{calculatedNutrition.protein}</div>
+                                            <div className="text-muted-foreground text-xs">Proteínas</div>
+                                            <div className="font-bold text-lg">{calculatedNutrition.protein.toFixed(1)}</div>
                                             <div className="text-xs text-muted-foreground">g</div>
                                         </div>
                                         <div>
-                                            <div className="text-muted-foreground">Carboidratos</div>
-                                            <div className="font-bold text-lg">{calculatedNutrition.carbs}</div>
+                                            <div className="text-muted-foreground text-xs">Carboidratos</div>
+                                            <div className="font-bold text-lg">{calculatedNutrition.carbs.toFixed(1)}</div>
                                             <div className="text-xs text-muted-foreground">g</div>
                                         </div>
                                         <div>
-                                            <div className="text-muted-foreground">Gorduras</div>
-                                            <div className="font-bold text-lg">{calculatedNutrition.fat}</div>
+                                            <div className="text-muted-foreground text-xs">Gorduras</div>
+                                            <div className="font-bold text-lg">{calculatedNutrition.fat.toFixed(1)}</div>
                                             <div className="text-xs text-muted-foreground">g</div>
                                         </div>
                                     </div>
@@ -211,7 +221,7 @@ const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName }) => {
                         </Button>
                         <Button onClick={handleAdd}>
                             <Plus className="h-4 w-4 mr-2" />
-                            Adicionar
+                            {initialData ? 'Atualizar' : 'Adicionar'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

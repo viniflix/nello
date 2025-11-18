@@ -463,11 +463,23 @@ const ReferenceValuesModal = ({ isOpen, onClose, planId }) => {
                                 <div className="space-y-6 pt-4">
                                     {/* Proteínas */}
                                     <div className="space-y-3">
-                                        <div className="flex items-center justify-between">
-                                            <Label>Proteínas</Label>
-                                            <span className="text-2xl font-bold text-blue-600">
-                                                {formData.protein_pct.toFixed(1)}%
-                                            </span>
+                                        <div className="flex items-center justify-between gap-4">
+                                            <Label className="flex-1">Proteínas</Label>
+                                            <div className="flex items-center gap-2">
+                                                <Input
+                                                    type="number"
+                                                    min="5"
+                                                    max="50"
+                                                    step="0.1"
+                                                    value={formData.protein_pct}
+                                                    onChange={(e) => {
+                                                        const value = parseFloat(e.target.value) || 0;
+                                                        handleProteinChange([Math.max(5, Math.min(50, value))]);
+                                                    }}
+                                                    className="w-20 text-center"
+                                                />
+                                                <span className="text-sm font-medium text-blue-600">%</span>
+                                            </div>
                                         </div>
                                         <Slider
                                             value={[formData.protein_pct]}
@@ -478,17 +490,29 @@ const ReferenceValuesModal = ({ isOpen, onClose, planId }) => {
                                             className="w-full"
                                         />
                                         <p className="text-xs text-muted-foreground">
-                                            Arraste para ajustar. Os outros macros ajustam automaticamente.
+                                            Arraste ou digite o valor. Os outros macros ajustam automaticamente.
                                         </p>
                                     </div>
 
                                     {/* Carboidratos */}
                                     <div className="space-y-3">
-                                        <div className="flex items-center justify-between">
-                                            <Label>Carboidratos</Label>
-                                            <span className="text-2xl font-bold text-green-600">
-                                                {formData.carbs_pct.toFixed(1)}%
-                                            </span>
+                                        <div className="flex items-center justify-between gap-4">
+                                            <Label className="flex-1">Carboidratos</Label>
+                                            <div className="flex items-center gap-2">
+                                                <Input
+                                                    type="number"
+                                                    min="5"
+                                                    max="75"
+                                                    step="0.1"
+                                                    value={formData.carbs_pct}
+                                                    onChange={(e) => {
+                                                        const value = parseFloat(e.target.value) || 0;
+                                                        handleCarbsChange([Math.max(5, Math.min(75, value))]);
+                                                    }}
+                                                    className="w-20 text-center"
+                                                />
+                                                <span className="text-sm font-medium text-green-600">%</span>
+                                            </div>
                                         </div>
                                         <Slider
                                             value={[formData.carbs_pct]}
@@ -499,17 +523,29 @@ const ReferenceValuesModal = ({ isOpen, onClose, planId }) => {
                                             className="w-full"
                                         />
                                         <p className="text-xs text-muted-foreground">
-                                            Arraste para ajustar. Os outros macros ajustam automaticamente.
+                                            Arraste ou digite o valor. Os outros macros ajustam automaticamente.
                                         </p>
                                     </div>
 
                                     {/* Gorduras */}
                                     <div className="space-y-3">
-                                        <div className="flex items-center justify-between">
-                                            <Label>Gorduras</Label>
-                                            <span className="text-2xl font-bold text-orange-600">
-                                                {formData.fat_pct.toFixed(1)}%
-                                            </span>
+                                        <div className="flex items-center justify-between gap-4">
+                                            <Label className="flex-1">Gorduras</Label>
+                                            <div className="flex items-center gap-2">
+                                                <Input
+                                                    type="number"
+                                                    min="5"
+                                                    max="50"
+                                                    step="0.1"
+                                                    value={formData.fat_pct}
+                                                    onChange={(e) => {
+                                                        const value = parseFloat(e.target.value) || 0;
+                                                        handleFatChange([Math.max(5, Math.min(50, value))]);
+                                                    }}
+                                                    className="w-20 text-center"
+                                                />
+                                                <span className="text-sm font-medium text-orange-600">%</span>
+                                            </div>
                                         </div>
                                         <Slider
                                             value={[formData.fat_pct]}
@@ -520,7 +556,7 @@ const ReferenceValuesModal = ({ isOpen, onClose, planId }) => {
                                             className="w-full"
                                         />
                                         <p className="text-xs text-muted-foreground">
-                                            Arraste para ajustar. Os outros macros ajustam automaticamente.
+                                            Arraste ou digite o valor. Os outros macros ajustam automaticamente.
                                         </p>
                                     </div>
 
@@ -612,30 +648,30 @@ const ReferenceValuesModal = ({ isOpen, onClose, planId }) => {
                                 <CardDescription>Valores alvo diários em gramas</CardDescription>
                             </CardHeader>
                             <CardContent>
-                                <div className="grid grid-cols-3 gap-4 mb-4">
-                                    <div className="text-center p-4 bg-white rounded-lg border">
-                                        <div className="text-sm text-muted-foreground mb-1">Proteínas</div>
-                                        <div className="text-3xl font-bold text-blue-600">{targets.protein}g</div>
-                                        <div className="text-xs text-muted-foreground mt-1">
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-4">
+                                    <div className="text-center p-3 sm:p-4 bg-white rounded-lg border">
+                                        <div className="text-xs sm:text-sm text-muted-foreground mb-1">Proteínas</div>
+                                        <div className="text-2xl sm:text-3xl font-bold text-blue-600 break-words">{targets.protein}g</div>
+                                        <div className="text-[10px] sm:text-xs text-muted-foreground mt-1 break-words">
                                             {targets.proteinCal} kcal ({formData.macro_mode === 'percentage' ? `${formData.protein_pct.toFixed(1)}%` : `${formData.protein_g_per_kg}g/kg`})
                                         </div>
                                     </div>
-                                    <div className="text-center p-4 bg-white rounded-lg border">
-                                        <div className="text-sm text-muted-foreground mb-1">Carboidratos</div>
-                                        <div className="text-3xl font-bold text-green-600">{targets.carbs}g</div>
-                                        <div className="text-xs text-muted-foreground mt-1">
+                                    <div className="text-center p-3 sm:p-4 bg-white rounded-lg border">
+                                        <div className="text-xs sm:text-sm text-muted-foreground mb-1">Carboidratos</div>
+                                        <div className="text-2xl sm:text-3xl font-bold text-green-600 break-words">{targets.carbs}g</div>
+                                        <div className="text-[10px] sm:text-xs text-muted-foreground mt-1 break-words">
                                             {targets.carbsCal} kcal ({formData.macro_mode === 'percentage' ? `${formData.carbs_pct.toFixed(1)}%` : `${formData.carbs_g_per_kg}g/kg`})
                                         </div>
                                     </div>
-                                    <div className="text-center p-4 bg-white rounded-lg border">
-                                        <div className="text-sm text-muted-foreground mb-1">Gorduras</div>
-                                        <div className="text-3xl font-bold text-orange-600">{targets.fat}g</div>
-                                        <div className="text-xs text-muted-foreground mt-1">
+                                    <div className="text-center p-3 sm:p-4 bg-white rounded-lg border">
+                                        <div className="text-xs sm:text-sm text-muted-foreground mb-1">Gorduras</div>
+                                        <div className="text-2xl sm:text-3xl font-bold text-orange-600 break-words">{targets.fat}g</div>
+                                        <div className="text-[10px] sm:text-xs text-muted-foreground mt-1 break-words">
                                             {targets.fatCal} kcal ({formData.macro_mode === 'percentage' ? `${formData.fat_pct.toFixed(1)}%` : `${formData.fat_g_per_kg}g/kg`})
                                         </div>
                                     </div>
                                 </div>
-                                <div className="text-center text-sm text-muted-foreground">
+                                <div className="text-center text-xs sm:text-sm text-muted-foreground">
                                     Total energético calculado: <strong>{targets.totalCal} kcal</strong>
                                 </div>
                             </CardContent>

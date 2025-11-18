@@ -519,7 +519,7 @@ export default function AddMealPage() {
                       <div>
                         <p className="font-medium text-sm">{food.foods?.name}</p>
                         <p className="text-xs text-muted-foreground">
-                          {formatQuantityWithUnit(food.quantity, food.unit)}
+                          {formatQuantityWithUnit(food.quantity, food.unit, food.measure)}
                         </p>
                       </div>
                       <Button

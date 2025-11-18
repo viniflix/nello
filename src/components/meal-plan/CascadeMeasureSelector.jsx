@@ -8,8 +8,9 @@ import {
     SelectTrigger,
     SelectValue
 } from '@/components/ui/select';
-import { supabase } from '@/lib/customSupabaseClient';
 import { calculateNutrition } from '@/lib/supabase/meal-plan-queries';
+import { useHouseholdMeasures } from '@/hooks/useHouseholdMeasures';
+import { useFoodMeasures } from '@/hooks/useFoodMeasures';
 
 /**
  * Seletor de medidas em cascata (3 etapas):
@@ -26,58 +27,36 @@ const CascadeMeasureSelector = ({
     onMeasureChange,
     onNutritionCalculated
 }) => {
+    // Buscar medidas genéricas usando hook
+    const { data: standardMeasures = [], isLoading: loadingStandard } = useHouseholdMeasures();
+
+    // Buscar medidas específicas do alimento usando hook
+    const { data: foodMeasures = [], isLoading: loadingFood } = useFoodMeasures(food?.id);
+
     const [measures, setMeasures] = useState([]);
-    const [loading, setLoading] = useState(true);
     const [selectedCategory, setSelectedCategory] = useState('');
 
+    const loading = loadingStandard || loadingFood;
+
     useEffect(() => {
-        loadMeasures();
-    }, [food]);
+        // Combinar medidas padrão com flags de conversão específica
+        if (standardMeasures.length > 0) {
+            const measuresWithFlags = standardMeasures.map(measure => ({
+                ...measure,
+                hasSpecificConversion: foodMeasures.some(
+                    fm => fm.measure_id === measure.id
+                )
+            }));
+
+            setMeasures(measuresWithFlags);
+        }
+    }, [standardMeasures, foodMeasures]);
 
     useEffect(() => {
         if (food && quantity && unit) {
             calculateAndUpdate();
         }
     }, [food, quantity, unit]);
-
-    const loadMeasures = async () => {
-        setLoading(true);
-        try {
-            // Buscar medidas padrão
-            const { data: standardMeasures, error } = await supabase
-                .from('household_measures')
-                .select('*')
-                .eq('is_active', true)
-                .order('order_index', { ascending: true });
-
-            if (error) throw error;
-
-            // Verificar se há conversões específicas para este alimento
-            if (food) {
-                const { data: specificConversions } = await supabase
-                    .from('food_measure_conversions')
-                    .select('measure_code, household_measures(name, description)')
-                    .eq('food_id', food.id);
-
-                // Marcar medidas que têm conversão específica
-                const measuresWithFlags = (standardMeasures || []).map(measure => ({
-                    ...measure,
-                    hasSpecificConversion: (specificConversions || []).some(
-                        conv => conv.measure_code === measure.code
-                    )
-                }));
-
-                setMeasures(measuresWithFlags);
-            } else {
-                setMeasures(standardMeasures || []);
-            }
-        } catch (error) {
-            console.error('Erro ao carregar medidas:', error);
-            setMeasures([]);
-        } finally {
-            setLoading(false);
-        }
-    };
 
     const calculateAndUpdate = async () => {
         if (!food || !quantity || !unit) return;

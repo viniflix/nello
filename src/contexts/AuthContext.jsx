@@ -18,17 +18,41 @@ export function AuthProvider({ children }) {
   const navigate = useNavigate();
 
   const signOut = useCallback(async () => {
+    // 1. PRIMEIRO: Limpar estado local
+    setUser(null);
+
+    // 2. Limpar storage do Supabase manualmente (força limpeza completa)
     try {
-      const { error } = await supabase.auth.signOut();
-      if (error && error.message !== 'Auth session not found') {
-        throw error;
+      // Limpar todas as chaves do Supabase do localStorage
+      const keysToRemove = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (key.startsWith('sb-') || key.includes('supabase'))) {
+          keysToRemove.push(key);
+        }
       }
-    } catch (error) {
-      console.error('Error during sign out:', error.message);
-    } finally {
-      setUser(null);
-      navigate('/login', { replace: true });
+      keysToRemove.forEach(key => localStorage.removeItem(key));
+
+      // Limpar sessionStorage também
+      const sessionKeysToRemove = [];
+      for (let i = 0; i < sessionStorage.length; i++) {
+        const key = sessionStorage.key(i);
+        if (key && (key.startsWith('sb-') || key.includes('supabase'))) {
+          sessionKeysToRemove.push(key);
+        }
+      }
+      sessionKeysToRemove.forEach(key => sessionStorage.removeItem(key));
+    } catch (e) {
+      console.log('Erro ao limpar storage, continuando logout');
     }
+
+    // 3. Redirecionar IMEDIATAMENTE
+    navigate('/login', { replace: true });
+
+    // 4. DEPOIS: Tentar limpar no servidor (sem bloquear, sem await)
+    supabase.auth.signOut().catch(() => {
+      // Ignorar completamente erros do servidor
+    });
   }, [navigate]);
 
   useEffect(() => {

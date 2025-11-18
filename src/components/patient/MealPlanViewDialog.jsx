@@ -48,28 +48,74 @@ export default function MealPlanViewDialog({ open, onOpenChange, mealPlan, patie
   }, { calories: 0, protein: 0, carbs: 0, fat: 0 });
 
   /**
-   * Exportar plano alimentar para PDF
+   * Exportar plano alimentar para PDF com identidade visual HipoZero
    */
-  const handleExportPDF = () => {
+  const handleExportPDF = async () => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.width;
+    const pageHeight = doc.internal.pageSize.height;
+
+    // Cores do projeto HipoZero
+    const PRIMARY_COLOR = [70, 125, 70];      // Verde
+    const SECONDARY_COLOR = [238, 103, 6];    // Laranja
+    const TEXT_COLOR = [68, 64, 60];          // Stone-800
+    const MUTED_COLOR = [120, 113, 108];      // Stone-500
+    const LIGHT_BG = [245, 245, 244];         // Stone-100
+
     let yPosition = 20;
 
     // Configurar fonte
     doc.setFont('helvetica');
 
+    // Logo do HipoZero
+    try {
+      const logoUrl = 'https://afyoidxrshkmplxhcyeh.supabase.co/storage/v1/object/public/IDV/HIPOZERO%20(2).png';
+      const response = await fetch(logoUrl);
+      const blob = await response.blob();
+
+      // Carregar a imagem para obter dimensões reais
+      await new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+          // Calcular largura como 20% da largura da página
+          const logoWidth = pageWidth * 0.20;
+          // Calcular altura proporcionalmente baseado na proporção da imagem
+          const logoHeight = (img.height / img.width) * logoWidth;
+
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const base64data = reader.result;
+            doc.addImage(base64data, 'PNG', 14, 10, logoWidth, logoHeight);
+            resolve();
+          };
+          reader.readAsDataURL(blob);
+        };
+        img.src = URL.createObjectURL(blob);
+      });
+    } catch (error) {
+      console.error('Erro ao carregar logo:', error);
+    }
+
     // Título
-    doc.setFontSize(18);
-    doc.setTextColor(99, 111, 82); // #5f6f52
-    doc.text('Plano Alimentar', pageWidth / 2, yPosition, { align: 'center' });
-    yPosition += 10;
+    doc.setFontSize(20);
+    doc.setTextColor(...PRIMARY_COLOR);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Plano Alimentar', pageWidth / 2, 20, { align: 'center' });
+
+    // Linha decorativa
+    doc.setDrawColor(...PRIMARY_COLOR);
+    doc.setLineWidth(0.5);
+    doc.line(14, 24, pageWidth - 14, 24);
+
+    yPosition = 32;
 
     // Nome do paciente
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.setTextColor(...TEXT_COLOR);
     if (patientName) {
-      doc.setFontSize(12);
-      doc.setTextColor(100, 100, 100);
-      doc.text(`Paciente: ${patientName}`, pageWidth / 2, yPosition, { align: 'center' });
-      yPosition += 7;
+      doc.text(`Paciente: ${patientName}`, 14, yPosition);
+      yPosition += 5;
     }
 
     // Período do plano
@@ -78,120 +124,130 @@ export default function MealPlanViewDialog({ open, onOpenChange, mealPlan, patie
       ? format(new Date(mealPlan.end_date), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
       : 'Indeterminado';
 
-    doc.setFontSize(10);
-    doc.text(`Período: ${startDate} até ${endDate}`, pageWidth / 2, yPosition, { align: 'center' });
-    yPosition += 12;
+    doc.text(`Período: ${startDate} até ${endDate}`, 14, yPosition);
+    yPosition += 5;
 
-    // Resumo de Macros (Box)
-    doc.setFillColor(245, 245, 245);
-    doc.rect(15, yPosition, pageWidth - 30, 25, 'F');
+    // Data de geração
+    doc.text(`Gerado em: ${format(new Date(), "dd/MM/yyyy 'às' HH:mm")}`, 14, yPosition);
+    yPosition += 10;
 
-    doc.setFontSize(10);
-    doc.setTextColor(60, 60, 60);
-    doc.text('Meta Diária Total', 20, yPosition + 7);
+    // Resumo de Macros
+    doc.setFillColor(...LIGHT_BG);
+    doc.roundedRect(14, yPosition, pageWidth - 28, 20, 2, 2, 'F');
 
     doc.setFontSize(9);
-    doc.setTextColor(100, 100, 100);
-    const macroText = `${Math.round(planTotals.calories)} kcal | Proteínas: ${Math.round(planTotals.protein)}g | Carboidratos: ${Math.round(planTotals.carbs)}g | Gorduras: ${Math.round(planTotals.fat)}g`;
-    doc.text(macroText, 20, yPosition + 15);
+    doc.setTextColor(...TEXT_COLOR);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Meta Diária Total:', 18, yPosition + 6);
 
-    yPosition += 35;
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...MUTED_COLOR);
+    const macroText = `${Math.round(planTotals.calories)} kcal  •  Proteínas: ${Math.round(planTotals.protein)}g  •  Carboidratos: ${Math.round(planTotals.carbs)}g  •  Gorduras: ${Math.round(planTotals.fat)}g`;
+    doc.text(macroText, 18, yPosition + 13);
+
+    yPosition += 28;
 
     // Refeições
-    sortedMeals.forEach((meal, index) => {
-      // Verificar se precisa de nova página
-      if (yPosition > 250) {
+    for (let index = 0; index < sortedMeals.length; index++) {
+      const meal = sortedMeals[index];
+      const foods = meal.meal_plan_foods || [];
+
+      // Estimar altura necessária para esta refeição
+      const estimatedHeight = 15 + (foods.length + 1) * 7 + (meal.notes ? 10 : 0);
+
+      // Se não couber na página, adicionar nova página
+      if (yPosition + estimatedHeight > pageHeight - 30) {
         doc.addPage();
         yPosition = 20;
       }
 
-      // Nome da refeição
+      // Nome da refeição e horário
       doc.setFontSize(12);
-      doc.setTextColor(99, 111, 82); // #5f6f52
+      doc.setTextColor(...PRIMARY_COLOR);
+      doc.setFont('helvetica', 'bold');
       const mealName = translateMealType(meal.meal_type);
       const mealTime = meal.meal_time || '';
-      doc.text(`${mealName}${mealTime ? ` - ${mealTime}` : ''}`, 15, yPosition);
+      doc.text(`${mealName}${mealTime ? ` • ${mealTime}` : ''}`, 14, yPosition);
       yPosition += 7;
 
-      // Descrição (se houver)
-      if (meal.name) {
-        doc.setFontSize(9);
-        doc.setTextColor(120, 120, 120);
-        doc.text(meal.name, 15, yPosition);
-        yPosition += 6;
-      }
-
       // Tabela de alimentos
-      const foods = meal.meal_plan_foods || [];
       if (foods.length > 0) {
         const tableData = foods.map(food => [
           food.foods?.name || 'Alimento',
-          formatQuantityWithUnit(food.quantity || 0, food.unit || ''),
-          `${Math.round(food.calories || 0)} kcal`,
-          `${Math.round(food.protein || 0)}g`,
-          `${Math.round(food.carbs || 0)}g`,
-          `${Math.round(food.fat || 0)}g`
+          formatQuantityWithUnit(food.quantity || 0, food.unit || '', food.measure),
+          Math.round(food.calories || 0),
+          Math.round(food.protein || 0),
+          Math.round(food.carbs || 0),
+          Math.round(food.fat || 0)
         ]);
 
         autoTable(doc, {
           startY: yPosition,
-          head: [['Alimento', 'Quantidade', 'Calorias', 'Prot.', 'Carb.', 'Gord.']],
+          head: [['Alimento', 'Quantidade', 'Calorias', 'Proteína', 'Carboidrato', 'Gordura']],
           body: tableData,
-          theme: 'grid',
+          theme: 'striped',
           headStyles: {
-            fillColor: [169, 179, 136], // #a9b388
+            fillColor: PRIMARY_COLOR,
             textColor: [255, 255, 255],
             fontSize: 9,
-            fontStyle: 'bold'
+            fontStyle: 'bold',
+            halign: 'center',
+            font: 'helvetica'
           },
           bodyStyles: {
             fontSize: 8,
-            textColor: [60, 60, 60]
+            textColor: TEXT_COLOR,
+            font: 'helvetica'
+          },
+          columnStyles: {
+            0: { halign: 'left', cellWidth: 'auto' },
+            1: { halign: 'center', cellWidth: 30 },
+            2: { halign: 'center', cellWidth: 23 },
+            3: { halign: 'center', cellWidth: 23 },
+            4: { halign: 'center', cellWidth: 28 },
+            5: { halign: 'center', cellWidth: 23 }
           },
           alternateRowStyles: {
-            fillColor: [250, 250, 250]
+            fillColor: LIGHT_BG
           },
-          margin: { left: 15, right: 15 }
+          margin: { left: 14, right: 14 }
         });
 
-        yPosition = doc.lastAutoTable.finalY + 10;
-      } else {
+        yPosition = doc.lastAutoTable.finalY + 3;
+      }
+
+      // Observação (se houver)
+      if (meal.notes) {
         doc.setFontSize(8);
-        doc.setTextColor(150, 150, 150);
-        doc.text('Nenhum alimento cadastrado', 15, yPosition);
-        yPosition += 10;
+        doc.setTextColor(...MUTED_COLOR);
+        doc.setFont('helvetica', 'italic');
+        doc.text(`Obs: ${meal.notes}`, 14, yPosition);
+        yPosition += 6;
       }
 
-      // Separador entre refeições
+      // Espaço entre refeições
       if (index < sortedMeals.length - 1) {
-        doc.setDrawColor(220, 220, 220);
-        doc.line(15, yPosition, pageWidth - 15, yPosition);
-        yPosition += 8;
+        yPosition += 5;
       }
-    });
+    }
 
-    // Rodapé
+    // Rodapé em todas as páginas
     const pageCount = doc.internal.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
       doc.setPage(i);
       doc.setFontSize(8);
-      doc.setTextColor(150, 150, 150);
-      doc.text(
-        `Gerado em ${format(new Date(), "dd/MM/yyyy 'às' HH:mm")}`,
-        pageWidth / 2,
-        doc.internal.pageSize.height - 10,
-        { align: 'center' }
-      );
+      doc.setTextColor(...MUTED_COLOR);
+      doc.setFont('helvetica', 'normal');
       doc.text(
         `Página ${i} de ${pageCount}`,
-        pageWidth - 15,
-        doc.internal.pageSize.height - 10,
+        pageWidth - 14,
+        pageHeight - 10,
         { align: 'right' }
       );
     }
 
     // Salvar PDF
-    const fileName = `plano-alimentar-${format(new Date(), 'dd-MM-yyyy')}.pdf`;
+    const fileName = `plano-alimentar-${patientName?.replace(/\s+/g, '-').toLowerCase() || 'paciente'}-${format(new Date(), 'dd-MM-yyyy')}.pdf`;
     doc.save(fileName);
   };
 
@@ -325,7 +381,7 @@ export default function MealPlanViewDialog({ open, onOpenChange, mealPlan, patie
                                   <tr key={idx} className="border-b last:border-0 hover:bg-muted/30">
                                     <td className="p-2">{food.foods?.name || 'Alimento'}</td>
                                     <td className="p-2 text-right whitespace-nowrap">
-                                      {formatQuantityWithUnit(food.quantity || 0, food.unit || '')}
+                                      {formatQuantityWithUnit(food.quantity || 0, food.unit || '', food.measure)}
                                     </td>
                                     <td className="p-2 text-right font-medium whitespace-nowrap">
                                       {Math.round(food.calories || 0)} kcal

@@ -100,7 +100,7 @@ const TabContentNutrition = ({ patientId, modulesStatus = {} }) => {
                             onClick={() => navigate(`/nutritionist/patients/${patientId}/meal-plan`)}
                             className="gap-1"
                         >
-                            Editar
+                            Gerenciar
                             <ArrowRight className="w-3 h-3" />
                         </Button>
                     </div>
@@ -108,23 +108,23 @@ const TabContentNutrition = ({ patientId, modulesStatus = {} }) => {
 
                 <CardContent>
                     {/* Métricas Principais */}
-                    <div className="grid grid-cols-4 gap-4 mb-4">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
                         {/* Calorias Totais */}
-                        <div className="col-span-1 text-center p-3 bg-[#fefae0] rounded-lg border border-[#c4661f]">
-                            <Flame className="w-5 h-5 text-[#c4661f] mx-auto mb-1" />
-                            <div className="text-2xl font-bold text-foreground">
+                        <div className="text-center p-2.5 bg-[#fefae0] rounded-lg border border-[#c4661f]">
+                            <Flame className="w-4 h-4 text-[#c4661f] mx-auto mb-0.5" />
+                            <div className="text-xl md:text-2xl font-bold text-foreground">
                                 {activePlan.daily_calories ? Math.round(activePlan.daily_calories) : 0}
                             </div>
                             <div className="text-xs text-muted-foreground">kcal/dia</div>
                         </div>
 
                         {/* Proteínas */}
-                        <div className="text-center p-3 bg-[#fefae0] rounded-lg border border-[#b99470]">
-                            <div className="text-xs text-[#783d19] font-medium mb-1">Proteínas</div>
-                            <div className="text-xl font-bold text-[#783d19]">
+                        <div className="text-center p-2.5 bg-[#fefae0] rounded-lg border border-[#8B3BF2]">
+                            <div className="text-xs text-[#8B3BF2] font-medium mb-0.5">Proteínas</div>
+                            <div className="text-lg md:text-xl font-bold text-[#8B3BF2]">
                                 {activePlan.daily_protein ? Math.round(activePlan.daily_protein) : 0}g
                             </div>
-                            <div className="text-xs text-[#b99470]">
+                            <div className="text-xs text-[#8B3BF2]">
                                 {activePlan.daily_calories
                                     ? Math.round((activePlan.daily_protein * 4 / activePlan.daily_calories) * 100)
                                     : 0}%
@@ -132,12 +132,12 @@ const TabContentNutrition = ({ patientId, modulesStatus = {} }) => {
                         </div>
 
                         {/* Carboidratos */}
-                        <div className="text-center p-3 bg-[#a9b388]/10 rounded-lg border border-[#a9b388]">
-                            <div className="text-xs text-[#5f6f52] font-medium mb-1">Carboidratos</div>
-                            <div className="text-xl font-bold text-[#5f6f52]">
+                        <div className="text-center p-2.5 bg-[#a9b388]/10 rounded-lg border border-[#3B6FF2]">
+                            <div className="text-xs text-[#3B6FF2] font-medium mb-0.5">Carboidratos</div>
+                            <div className="text-lg md:text-xl font-bold text-[#3B6FF2]">
                                 {activePlan.daily_carbs ? Math.round(activePlan.daily_carbs) : 0}g
                             </div>
-                            <div className="text-xs text-[#5f6f52]">
+                            <div className="text-xs text-[#3B6FF2]">
                                 {activePlan.daily_calories
                                     ? Math.round((activePlan.daily_carbs * 4 / activePlan.daily_calories) * 100)
                                     : 0}%
@@ -145,12 +145,12 @@ const TabContentNutrition = ({ patientId, modulesStatus = {} }) => {
                         </div>
 
                         {/* Gorduras */}
-                        <div className="text-center p-3 bg-[#f9ebc7] rounded-lg border border-[#b99470]">
-                            <div className="text-xs text-[#b99470] font-medium mb-1">Gorduras</div>
-                            <div className="text-xl font-bold text-[#b99470]">
+                        <div className="text-center p-2.5 bg-[#f9ebc7] rounded-lg border border-[#F28B3B]">
+                            <div className="text-xs text-[#F28B3B] font-medium mb-0.5">Gorduras</div>
+                            <div className="text-lg md:text-xl font-bold text-[#F28B3B]">
                                 {activePlan.daily_fat ? Math.round(activePlan.daily_fat) : 0}g
                             </div>
-                            <div className="text-xs text-[#b99470]">
+                            <div className="text-xs text-[#F28B3B]">
                                 {activePlan.daily_calories
                                     ? Math.round((activePlan.daily_fat * 9 / activePlan.daily_calories) * 100)
                                     : 0}%

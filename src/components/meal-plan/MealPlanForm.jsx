@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Save, X, Plus, Trash2, Edit, Calendar } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import MealPlanMealForm from './MealPlanMealForm';
 import MacrosChart from './MacrosChart';
+import { getReferenceValues } from '@/lib/supabase/meal-plan-queries';
 
 const MealPlanForm = ({ patientId, nutritionistId, initialData = null, onSubmit, onCancel, loading = false }) => {
     const [formData, setFormData] = useState({
@@ -23,6 +24,7 @@ const MealPlanForm = ({ patientId, nutritionistId, initialData = null, onSubmit,
     const [showMealForm, setShowMealForm] = useState(false);
     const [editingMeal, setEditingMeal] = useState(null);
     const [errors, setErrors] = useState({});
+    const [referenceValues, setReferenceValues] = useState(null);
 
     const daysOfWeek = [
         { value: 'monday', label: 'Segunda' },
@@ -33,6 +35,14 @@ const MealPlanForm = ({ patientId, nutritionistId, initialData = null, onSubmit,
         { value: 'saturday', label: 'Sábado' },
         { value: 'sunday', label: 'Domingo' }
     ];
+
+    // Carregar valores de referência
+    const loadReferenceValues = useCallback(async () => {
+        if (initialData?.id) {
+            const { data } = await getReferenceValues(initialData.id);
+            setReferenceValues(data);
+        }
+    }, [initialData?.id]);
 
     useEffect(() => {
         if (initialData) {
@@ -55,8 +65,9 @@ const MealPlanForm = ({ patientId, nutritionistId, initialData = null, onSubmit,
             }));
 
             setMeals(mealsWithTempId);
+            loadReferenceValues();
         }
-    }, [initialData]);
+    }, [initialData, loadReferenceValues]);
 
     const handleChange = (field, value) => {
         setFormData(prev => ({ ...prev, [field]: value }));
@@ -208,7 +219,7 @@ const MealPlanForm = ({ patientId, nutritionistId, initialData = null, onSubmit,
                         </div>
 
                         {/* Datas */}
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label htmlFor="start_date">
                                     Data de Início <span className="text-destructive">*</span>
@@ -244,16 +255,17 @@ const MealPlanForm = ({ patientId, nutritionistId, initialData = null, onSubmit,
 
                         {/* Dias da Semana */}
                         <div className="space-y-3">
-                            <div className="flex items-center justify-between">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                                 <Label>
                                     Dias Ativos <span className="text-destructive">*</span>
                                 </Label>
-                                <div className="flex gap-2">
+                                <div className="flex gap-2 flex-shrink-0">
                                     <Button
                                         type="button"
                                         variant="outline"
                                         size="sm"
                                         onClick={handleSelectWeekdays}
+                                        className="flex-1 sm:flex-none text-xs sm:text-sm"
                                     >
                                         Dias úteis
                                     </Button>
@@ -262,6 +274,7 @@ const MealPlanForm = ({ patientId, nutritionistId, initialData = null, onSubmit,
                                         variant="outline"
                                         size="sm"
                                         onClick={handleSelectWeekends}
+                                        className="flex-1 sm:flex-none text-xs sm:text-sm"
                                     >
                                         Fins de semana
                                     </Button>
@@ -270,18 +283,19 @@ const MealPlanForm = ({ patientId, nutritionistId, initialData = null, onSubmit,
                                         variant="outline"
                                         size="sm"
                                         onClick={handleSelectAllDays}
+                                        className="flex-1 sm:flex-none text-xs sm:text-sm"
                                     >
                                         {formData.active_days.length === 7 ? 'Limpar' : 'Todos'}
                                     </Button>
                                 </div>
                             </div>
 
-                            <div className="flex flex-wrap gap-2">
+                            <div className="grid grid-cols-7 gap-1 sm:gap-2">
                                 {daysOfWeek.map((day) => (
                                     <label
                                         key={day.value}
                                         className={`
-                                            flex items-center gap-2 px-3 py-2 border rounded-lg cursor-pointer transition-colors
+                                            flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 px-1 sm:px-3 py-2 border rounded-lg cursor-pointer transition-colors text-xs sm:text-sm
                                             ${formData.active_days.includes(day.value)
                                                 ? 'bg-primary text-primary-foreground border-primary'
                                                 : 'hover:bg-muted'
@@ -292,8 +306,9 @@ const MealPlanForm = ({ patientId, nutritionistId, initialData = null, onSubmit,
                                             checked={formData.active_days.includes(day.value)}
                                             onCheckedChange={() => handleDayToggle(day.value)}
                                             disabled={loading}
+                                            className="h-3 w-3 sm:h-4 sm:w-4"
                                         />
-                                        <span>{day.label}</span>
+                                        <span className="text-[10px] sm:text-sm leading-tight text-center">{day.label}</span>
                                     </label>
                                 ))}
                             </div>
@@ -304,11 +319,11 @@ const MealPlanForm = ({ patientId, nutritionistId, initialData = null, onSubmit,
                     </CardContent>
                 </Card>
 
-                {/* Grid: Refeições (70%) + Gráfico de Macros (30%) */}
+                {/* Grid: Refeições (60%) + Gráfico de Macros (40%) */}
                 {meals.length > 0 && (
                     <div className="grid grid-cols-1 lg:grid-cols-10 gap-6">
-                        {/* Card de Refeições - 70% */}
-                        <div className="lg:col-span-7">
+                        {/* Card de Refeições - 60% */}
+                        <div className="lg:col-span-6">
                             <Card>
                                 <CardHeader>
                                     <div className="flex items-center justify-between">
@@ -382,16 +397,17 @@ const MealPlanForm = ({ patientId, nutritionistId, initialData = null, onSubmit,
                             </Card>
                         </div>
 
-                        {/* Gráfico de Macronutrientes - 30% */}
-                        <div className="lg:col-span-3">
+                        {/* Gráfico de Macronutrientes - 40% */}
+                        <div className="lg:col-span-4">
                             <MacrosChart
                                 protein={dailyTotals.protein}
                                 carbs={dailyTotals.carbs}
                                 fat={dailyTotals.fat}
                                 calories={dailyTotals.calories}
                                 patientId={patientId}
-                                referenceValues={null}
-                                onReferenceUpdate={() => {}}
+                                planId={initialData?.id}
+                                referenceValues={referenceValues}
+                                onReferenceUpdate={loadReferenceValues}
                             />
                         </div>
                     </div>

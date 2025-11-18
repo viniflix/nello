@@ -123,7 +123,30 @@ export const getMealPlanById = async (planId) => {
                             name,
                             group,
                             description,
-                            source
+                            source,
+                            portion_size,
+                            calories,
+                            protein,
+                            carbs,
+                            fat,
+                            fiber,
+                            sodium,
+                            saturated_fat,
+                            trans_fat,
+                            cholesterol,
+                            sugar,
+                            calcium,
+                            iron,
+                            magnesium,
+                            phosphorus,
+                            potassium,
+                            zinc,
+                            vitamin_a,
+                            vitamin_c,
+                            vitamin_d,
+                            vitamin_e,
+                            vitamin_b12,
+                            folate
                         )
                     `)
                     .eq('meal_plan_meal_id', meal.id)
@@ -142,10 +165,29 @@ export const getMealPlanById = async (planId) => {
                     };
                 }
 
+                // Buscar medidas caseiras para os alimentos (quando unit é um ID numérico)
+                const measureIds = (foods || [])
+                    .filter(f => f.unit && typeof f.unit === 'number')
+                    .map(f => f.unit);
+
+                let measuresMap = {};
+                if (measureIds.length > 0) {
+                    const { data: measures } = await supabase
+                        .from('household_measures')
+                        .select('id, name, code, grams_equivalent')
+                        .in('id', measureIds);
+
+                    measuresMap = (measures || []).reduce((acc, m) => {
+                        acc[m.id] = m;
+                        return acc;
+                    }, {});
+                }
+
                 // Transformar estrutura dos alimentos: foods (plural) -> food (singular)
                 const transformedFoods = (foods || []).map(f => ({
                     ...f,
-                    food: f.foods  // Renomear foods (join) para food (esperado pelo componente)
+                    food: f.foods,  // Renomear foods (join) para food (esperado pelo componente)
+                    measure: typeof f.unit === 'number' ? measuresMap[f.unit] : null  // Incluir dados da medida caseira
                 }));
 
                 return {
@@ -668,9 +710,10 @@ export const recalculatePlanNutrition = async (planId) => {
 
 /**
  * Calcula valores nutricionais com base em quantidade e unidade
+ * ATUALIZADO: Usa food_household_measures (nova arquitetura)
  * @param {object} food - Alimento da tabela foods
  * @param {number} quantity - Quantidade
- * @param {string} unit - Unidade (code da household_measures)
+ * @param {string|number} unit - Code da medida (string) OU ID (number). 'gram'/'ml' para gramas direto
  * @returns {Promise<{calories, protein, carbs, fat}>}
  */
 export const calculateNutrition = async (food, quantity, unit) => {
@@ -681,31 +724,50 @@ export const calculateNutrition = async (food, quantity, unit) => {
         if (unit === 'gram' || unit === 'ml') {
             gramsEquivalent = quantity;
         } else {
-            // Buscar conversão específica do alimento
-            const { data: conversion } = await supabase
-                .from('food_measure_conversions')
-                .select('grams_equivalent')
-                .eq('food_id', food.id)
-                .eq('measure_code', unit)
-                .maybeSingle();
+            // Primeiro, tentar buscar conversão específica do alimento
+            let measureId = unit;
 
-            if (conversion) {
-                gramsEquivalent = conversion.grams_equivalent * quantity;
-            } else {
-                // Usar conversão padrão da medida
+            // Se unit é string (código), converter para ID
+            if (typeof unit === 'string') {
                 const { data: measure } = await supabase
                     .from('household_measures')
-                    .select('grams_equivalent')
+                    .select('id')
                     .eq('code', unit)
                     .maybeSingle();
 
-                if (measure && measure.grams_equivalent) {
-                    gramsEquivalent = measure.grams_equivalent * quantity;
+                measureId = measure?.id;
+            }
+
+            if (measureId) {
+                // Buscar conversão específica do alimento na nova tabela
+                const { data: foodMeasure } = await supabase
+                    .from('food_household_measures')
+                    .select('quantity, grams')
+                    .eq('food_id', food.id)
+                    .eq('measure_id', measureId)
+                    .maybeSingle();
+
+                if (foodMeasure) {
+                    // Usar conversão específica
+                    gramsEquivalent = foodMeasure.grams * (quantity / foodMeasure.quantity);
                 } else {
-                    // Para unidades sem conversão (unidade, fatia, etc.),
-                    // usar portion_size do alimento como fallback
-                    gramsEquivalent = (food.portion_size || 100) * quantity;
+                    // Fallback: usar conversão padrão da medida
+                    const { data: measure } = await supabase
+                        .from('household_measures')
+                        .select('grams_equivalent')
+                        .eq('id', measureId)
+                        .maybeSingle();
+
+                    if (measure && measure.grams_equivalent) {
+                        gramsEquivalent = measure.grams_equivalent * quantity;
+                    } else {
+                        // Último fallback: usar portion_size do alimento
+                        gramsEquivalent = (food.portion_size || 100) * quantity;
+                    }
                 }
+            } else {
+                // Se não encontrou a medida, usar portion_size
+                gramsEquivalent = (food.portion_size || 100) * quantity;
             }
         }
 

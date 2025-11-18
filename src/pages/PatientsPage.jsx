@@ -68,29 +68,29 @@ const PatientsPage = () => {
 
     return (
         <div className="flex flex-col min-h-screen bg-background">
-            
+
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
-                className="max-w-4xl mx-auto w-full p-4 md:p-8" 
+                className="max-w-7xl mx-auto w-full px-4 md:px-8 pt-8"
             >
-                <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-8 mb-8">
-                    
-                    <div className="flex flex-col justify-center flex-1">
-                        <h1 className="font-clash text-4xl sm:text-5xl font-semibold text-primary">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4 mb-8">
+
+                    <div className="flex flex-col justify-center flex-1 text-center sm:text-left">
+                        <h1 className="text-3xl font-bold font-heading uppercase tracking-wide text-primary">
                             Meus Pacientes
                             <span className="text-3xl font-medium text-destructive ml-2">• {patients.length}</span>
                         </h1>
-                        <p className="text-lg text-accent mt-2">
+                        <p className="text-neutral-600 mt-1">
                             Gerencie, adicione ou visualize seus pacientes.
                         </p>
                     </div>
 
-                    <div className="flex-shrink-0 mt-4 lg:mt-0">
-                        <Button 
-                            onClick={() => setShowAddPatientModal(true)} 
-                            className="bg-primary text-primary-foreground rounded-5px shadow-card font-semibold hover:bg-primary/90 w-full lg:w-auto"
+                    <div className="flex-shrink-0 flex justify-center sm:justify-end">
+                        <Button
+                            onClick={() => setShowAddPatientModal(true)}
+                            className="bg-primary text-primary-foreground rounded-5px shadow-card font-semibold hover:bg-primary/90"
                         >
                             <Plus className="w-4 h-4 mr-2" />
                             Adicionar Paciente
@@ -103,8 +103,8 @@ const PatientsPage = () => {
                         <div className="flex flex-col md:flex-row gap-4">
                             <div className="relative flex-1">
                                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                                <Input 
-                                    placeholder="Buscar por nome, email, CPF ou telefone..." 
+                                <Input
+                                    placeholder="Buscar por nome, email, CPF ou telefone..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     className="pl-10 bg-muted"
@@ -125,41 +125,41 @@ const PatientsPage = () => {
                             </div>
                         </div>
                     </CardHeader>
-                    
+
                     <CardContent>
                         {loading ? (
                             <div className="flex justify-center items-center h-40">
                                 <Loader2 className="w-8 h-8 animate-spin text-primary" />
                             </div>
                         ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                 {filteredPatients.length > 0 ? filteredPatients.map(patient => (
-                                    <Link 
-                                        to={`/nutritionist/patients/${patient.id}/hub`} 
-                                        key={patient.id} 
+                                    <Link
+                                        to={`/nutritionist/patients/${patient.id}/hub`}
+                                        key={patient.id}
                                         className="block p-4 border bg-background rounded-lg hover:shadow-lg hover:border-primary transition-all"
                                     >
-                                        <div className="flex justify-between items-center gap-4">
-                                            <div className="flex items-center gap-3 flex-1">
-                                                <div className="w-10 h-10 bg-secondary rounded-full flex items-center justify-center font-bold text-primary overflow-hidden">
+                                        <div className="flex justify-between items-center gap-3">
+                                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                                                <div className="w-10 h-10 bg-secondary rounded-full flex items-center justify-center font-bold text-primary overflow-hidden flex-shrink-0">
                                                     {patient.avatar_url ? (
                                                         <img src={patient.avatar_url} alt={patient.name} className="w-full h-full object-cover"/>
                                                     ) : (
                                                         <UserIcon className="w-6 h-6 text-primary/70" />
                                                     )}
                                                 </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <h3 className="font-semibold text-lg text-foreground truncate">{patient.name}</h3>
+                                                <div className="flex-1 min-w-0 overflow-hidden">
+                                                    <h3 className="font-semibold text-base text-foreground truncate">{patient.name}</h3>
                                                     <p className="text-sm text-muted-foreground truncate">
                                                         {patient.email}
                                                     </p>
                                                 </div>
                                             </div>
-                                            <ChevronRight className="h-5 h-5 text-muted-foreground" />
+                                            <ChevronRight className="h-5 w-5 text-muted-foreground flex-shrink-0" />
                                         </div>
                                     </Link>
                                 )) : (
-                                    <p className="text-muted-foreground text-center py-8 md:col-span-2">
+                                    <p className="text-muted-foreground text-center py-8 md:col-span-2 lg:col-span-3">
                                         {searchTerm ? "Nenhum paciente encontrado." : "Você ainda não cadastrou nenhum paciente."}
                                     </p>
                                 )}
@@ -168,12 +168,12 @@ const PatientsPage = () => {
                     </CardContent>
                 </Card>
             </motion.div>
-            
-            <AddPatientModal 
-                isOpen={showAddPatientModal} 
-                setIsOpen={setShowAddPatientModal} 
+
+            <AddPatientModal
+                isOpen={showAddPatientModal}
+                setIsOpen={setShowAddPatientModal}
                 onPatientAdded={fetchPatients} // Para recarregar a lista
-            /> 
+            />
         </div>
     );
 };

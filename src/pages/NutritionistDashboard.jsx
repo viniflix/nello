@@ -206,29 +206,25 @@ export default function NutritionistDashboard() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="max-w-7xl mx-auto w-full px-4 md:px-8" 
+        className="max-w-7xl mx-auto w-full px-4 md:px-8 pt-8"
       >
         {/* Zona de Ação Rápida */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8 text-center sm:text-left">
           {/* Lado Esquerdo: Título e Descrição */}
           <div>
             <h2 className="text-3xl font-bold font-heading uppercase tracking-wide text-primary">
               Dashboard
             </h2>
             <p className="text-neutral-600">
-              Visualize as informações mais importantes da sua operação.
+              Gerencie seus pacientes, Planos e Análises.
             </p>
           </div>
 
-          {/* Lado Direito: Ações Rápidas */}
-          <div className="flex gap-2 flex-wrap">
-            <Button variant="outline" onClick={() => navigate('/nutritionist/patients')}>
+          {/* Lado Direito: Ação Rápida */}
+          <div className="flex gap-2 flex-wrap justify-center sm:justify-end">
+            <Button variant="secondary" onClick={() => navigate('/nutritionist/patients')}>
               <Users className="h-4 w-4 mr-2" />
               Ver todos os pacientes
-            </Button>
-            <Button variant="secondary" onClick={() => navigate('/nutritionist/patients')}>
-              <Plus className="h-4 w-4 mr-2" />
-              Novo Paciente
             </Button>
           </div>
         </div>
@@ -236,41 +232,45 @@ export default function NutritionistDashboard() {
 
         {/* --- Conteúdo da Página --- */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          
-          {/* Coluna Lateral */}
-          <div className="lg:col-span-1 space-y-8 lg:order-last">
-            {/* OTIMIZADO: Skeleton para appointments enquanto carrega */}
-            {appointmentsLoading ? (
-              <AlertCardSkeleton />
-            ) : (
-              <UpcomingAppointmentsWidget appointments={appointments} />
-            )}
+
+          {/* Coluna Lateral - Desktop à direita, Mobile: apenas Registros Recentes */}
+          <div className="lg:col-span-1 space-y-8 lg:order-last order-3">
+            {/* Próximas Consultas - Apenas Desktop */}
+            <div className="hidden lg:block">
+              {appointmentsLoading ? (
+                <AlertCardSkeleton />
+              ) : (
+                <UpcomingAppointmentsWidget appointments={appointments} />
+              )}
+            </div>
             <PatientUpdatesWidget />
           </div>
 
-          {/* Coluna Principal*/}
-          <div className="lg:col-span-2 space-y-8 lg:order-first">
-            {/* Cards de Estatística - Design com Cores Vibrantes */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mb-6">
+          {/* Coluna Principal - Desktop à esquerda, Mobile no início */}
+          <div className="lg:col-span-2 space-y-8 lg:order-first order-1">
+            {/* Cards de Estatística - Layout 2x1 no mobile, 3 colunas no desktop */}
+            <div className="grid gap-4 grid-cols-2 lg:grid-cols-3 mb-6">
               {/* OTIMIZADO: Mostra skeletons enquanto carrega, depois mostra dados reais */}
               {statsLoading ? (
                 <>
                   <StatCardSkeleton />
                   <StatCardSkeleton />
-                  <StatCardSkeleton />
+                  <div className="col-span-2 lg:col-span-1">
+                    <StatCardSkeleton />
+                  </div>
                 </>
               ) : (
                 <>
                   {/* Card 1: Pacientes (Verde) */}
                   <Card className="bg-primary text-white border-0 shadow-card-dark">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="font-heading uppercase text-sm font-medium text-white/80 whitespace-nowrap tracking-wide">
-                        Total de Pacientes
+                      <CardTitle className="font-heading uppercase text-xs lg:text-sm font-medium text-white/80 tracking-wide leading-tight">
+                        Total de<br className="lg:hidden" /> Pacientes
                       </CardTitle>
-                      <Users className="h-6 w-6 text-white/80" />
+                      <Users className="h-5 w-5 lg:h-6 lg:w-6 text-white/80 flex-shrink-0" />
                     </CardHeader>
                     <CardContent>
-                      <div className="text-4xl font-bold text-white">
+                      <div className="text-3xl lg:text-4xl font-bold text-white">
                         {patients.length}
                       </div>
                       <p className="text-xs text-white/70">
@@ -279,16 +279,34 @@ export default function NutritionistDashboard() {
                     </CardContent>
                   </Card>
 
-                  {/* Card 2: Consultas (Laranja) */}
-                  <Card className="bg-secondary text-white border-0 shadow-card-dark">
+                  {/* Card 2: Alertas (Neutro Escuro) - Mobile: posição 2, Desktop: posição 3 */}
+                  <Card className="bg-neutral-800 text-white border-0 shadow-card-dark lg:order-3">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="font-heading uppercase text-sm font-medium text-white/80 whitespace-nowrap tracking-wide">
-                        Consultas Agendadas
+                      <CardTitle className="font-heading uppercase text-xs lg:text-sm font-medium text-white/80 tracking-wide leading-tight">
+                        Alertas do<br className="lg:hidden" /> Dia
                       </CardTitle>
-                      <CalendarDays className="h-6 w-6 text-white/80" />
+                      <Bell className="h-5 w-5 lg:h-6 lg:w-6 text-white/80 flex-shrink-0" />
                     </CardHeader>
                     <CardContent>
-                      <div className="text-4xl font-bold text-white">
+                      <div className="text-3xl lg:text-4xl font-bold text-white">
+                        {alertsCount}
+                      </div>
+                      <p className="text-xs text-white/70 leading-tight">
+                        Consultas e<br className="lg:hidden" /> notificações
+                      </p>
+                    </CardContent>
+                  </Card>
+
+                  {/* Card 3: Consultas (Laranja) - Mobile: ocupa 2 colunas embaixo, Desktop: posição 2 */}
+                  <Card className="bg-secondary text-white border-0 shadow-card-dark col-span-2 lg:col-span-1 lg:order-2">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="font-heading uppercase text-xs lg:text-sm font-medium text-white/80 tracking-wide leading-tight">
+                        Consultas Agendadas
+                      </CardTitle>
+                      <CalendarDays className="h-5 w-5 lg:h-6 lg:w-6 text-white/80 flex-shrink-0" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-3xl lg:text-4xl font-bold text-white">
                         {appointments.length}
                       </div>
                       <p className="text-xs text-white/70">
@@ -296,33 +314,24 @@ export default function NutritionistDashboard() {
                       </p>
                     </CardContent>
                   </Card>
-
-                  {/* Card 3: Alertas (Neutro Escuro) */}
-                  <Card className="bg-neutral-800 text-white border-0 shadow-card-dark">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="font-heading uppercase text-sm font-medium text-white/80 whitespace-nowrap tracking-wide">
-                        Alertas do Dia
-                      </CardTitle>
-                      <Bell className="h-6 w-6 text-white/80" />
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-4xl font-bold text-white">
-                        {alertsCount}
-                      </div>
-                      <p className="text-xs text-white/70">
-                        Consultas e notificações
-                      </p>
-                    </CardContent>
-                  </Card>
                 </>
               )}
             </div>
 
-            {/* Feed do Nutricionista (Alertas e Pendências) */}
+            {/* Feed do Nutricionista (Alertas e Pendências) - Desktop e Mobile no final */}
             <NutritionistActivityFeed />
 
           </div>
-          
+
+          {/* Mobile: Próximas Consultas entre Cards e Feed */}
+          <div className="lg:hidden order-2">
+            {appointmentsLoading ? (
+              <AlertCardSkeleton />
+            ) : (
+              <UpcomingAppointmentsWidget appointments={appointments} />
+            )}
+          </div>
+
         </div>
       </motion.div>
       
