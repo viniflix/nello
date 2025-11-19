@@ -1337,40 +1337,41 @@ const PatientAnamnesePage = () => {
 
     return (
         <div className="min-h-screen bg-background">
-            <div className="max-w-5xl mx-auto p-6 space-y-6">
+            <div className="max-w-5xl mx-auto p-4 sm:p-6 space-y-6">
                 {/* Header */}
-                <div className="flex items-center justify-between">
-                    <div>
-                        <div className="flex items-center gap-3 mb-2">
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => navigate(`/nutritionist/patients/${patientId}/hub`)}
-                            >
-                                <ArrowLeft className="w-4 h-4 mr-2" />
-                                Voltar ao Prontuário
-                            </Button>
-                        </div>
-                        <h1 className="text-3xl font-bold text-foreground flex items-center gap-3">
-                            <ClipboardList className="w-8 h-8 text-[#5f6f52]" />
-                            Anamnese
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => navigate(`/nutritionist/patients/${patientId}/hub`)}
+                            className="mb-3 -ml-2 text-[#5f6f52] hover:text-[#5f6f52] hover:bg-[#5f6f52]/10"
+                        >
+                            <ArrowLeft className="w-4 h-4 mr-1" />
+                            Voltar
+                        </Button>
+                        <h1 className="text-2xl sm:text-3xl font-bold text-foreground flex items-center gap-2 sm:gap-3">
+                            <ClipboardList className="w-6 h-6 sm:w-8 sm:h-8 text-[#5f6f52]" />
+                            <span className="truncate">Anamnese</span>
                         </h1>
                         {patient && (
-                            <p className="text-sm text-muted-foreground mt-1">
+                            <p className="text-sm text-muted-foreground mt-1 truncate">
                                 Paciente: <span className="font-medium text-foreground">{patient.name}</span>
                             </p>
                         )}
                     </div>
 
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-wrap">
                         {/* Botão Gerenciar Formulários */}
                         {customTemplates.length > 0 && (
                             <Button
                                 variant="outline"
                                 onClick={() => setShowManageCustomModal(true)}
+                                className="flex-1 sm:flex-none"
                             >
                                 <FolderCog className="w-4 h-4 mr-2" />
-                                Gerenciar Formulários
+                                <span className="hidden sm:inline">Gerenciar Formulários</span>
+                                <span className="sm:hidden">Gerenciar</span>
                             </Button>
                         )}
 
@@ -1379,7 +1380,7 @@ const PatientAnamnesePage = () => {
                             <Button
                                 onClick={handleCreateNew}
                                 size="lg"
-                                className="gap-2"
+                                className="gap-2 flex-1 sm:flex-none"
                             >
                                 <Plus className="w-5 h-5" />
                                 Nova Anamnese

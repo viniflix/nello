@@ -23,8 +23,7 @@ const navigationLinks = [
   { name: 'Dashboard', path: '/nutritionist' },
   { name: 'Pacientes', path: '/nutritionist/patients' },
   { name: 'Agenda', path: '/nutritionist/agenda' },
-  { name: 'Financeiro', path: '/nutritionist/financeiro' },
-  { name: 'Calculadora', path: '/nutritionist/macro-calculator' },
+  { name: 'Financeiro', path: '/nutritionist/financial' },
   { name: 'Banco de Alimentos', path: '/nutritionist/food-bank' },
 ];
 

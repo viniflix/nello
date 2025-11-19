@@ -1,22 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FileText, Droplet, Activity, CheckCircle2, AlertCircle, Calendar, ArrowRight } from 'lucide-react';
+import { FileText, Droplet, CheckCircle2, AlertCircle, Calendar, ArrowRight, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { getLatestAnamnesis } from '@/lib/supabase/anamnesis-queries';
+import { getRecentLabResults } from '@/lib/supabase/lab-results-queries';
 
-/**
- * TabContentClinical - Dashboard de Dados Clínicos
- * Estilo: Prontuário moderno com status visual claro
- */
 const TabContentClinical = ({ patientId, modulesStatus = {} }) => {
     const navigate = useNavigate();
     const [latestAnamnesis, setLatestAnamnesis] = useState(null);
     const [anamnesisLoading, setAnamnesisLoading] = useState(true);
+    const [labResults, setLabResults] = useState([]);
+    const [labsLoading, setLabsLoading] = useState(true);
 
-    // Buscar última anamnese do paciente
     useEffect(() => {
         const fetchLatestAnamnesis = async () => {
             if (!patientId) return;
@@ -32,34 +30,31 @@ const TabContentClinical = ({ patientId, modulesStatus = {} }) => {
             }
         };
 
+        const fetchLabResults = async () => {
+            if (!patientId) return;
+
+            setLabsLoading(true);
+            try {
+                const { data } = await getRecentLabResults(patientId);
+                setLabResults(data || []);
+            } catch (error) {
+                console.error('Erro ao buscar exames:', error);
+                setLabResults([]);
+            } finally {
+                setLabsLoading(false);
+            }
+        };
+
         fetchLatestAnamnesis();
+        fetchLabResults();
     }, [patientId]);
 
-    // ============================================================
-    // MOCK DATA - Substituir por dados reais quando integrado
-    // ============================================================
-    const mockClinicalData = {
-        labs: {
-            completed: modulesStatus.lab_results === 'completed',
-            lastUpdate: '2024-12-20',
-            recentTests: [
-                { name: 'Glicemia', value: '95 mg/dL', status: 'normal' },
-                { name: 'Colesterol Total', value: '185 mg/dL', status: 'normal' },
-                { name: 'Vitamina D', value: '22 ng/mL', status: 'low' }
-            ]
-        }
-    };
-
-    // ============================================================
-    // CARD 1: ANAMNESE
-    // ============================================================
     const AnamnesisCard = () => {
         const hasAnamnesis = !anamnesisLoading && latestAnamnesis;
 
         if (anamnesisLoading) {
-            // Loading state
             return (
-                <Card className="border-l-4 border-l-[#a9b388]">
+                <Card className="border-l-4 border-l-[#a9b388] h-full">
                     <CardContent className="py-8 text-center">
                         <p className="text-sm text-muted-foreground">Carregando anamnese...</p>
                     </CardContent>
@@ -68,9 +63,11 @@ const TabContentClinical = ({ patientId, modulesStatus = {} }) => {
         }
 
         if (!hasAnamnesis) {
-            // Estado Pendente
             return (
-                <Card className="border-l-4 border-l-[#c4661f] bg-[#fefae0]/30 hover:shadow-md transition-all">
+                <Card
+                    className="border-l-4 border-l-[#c4661f] bg-[#fefae0]/30 hover:shadow-md transition-all cursor-pointer h-full"
+                    onClick={() => navigate(`/nutritionist/patients/${patientId}/anamnese`)}
+                >
                     <CardContent className="py-8">
                         <div className="flex items-start gap-4">
                             <div className="w-12 h-12 rounded-full bg-[#fefae0] flex items-center justify-center flex-shrink-0">
@@ -87,13 +84,11 @@ const TabContentClinical = ({ patientId, modulesStatus = {} }) => {
                                     Histórico clínico ainda não registrado. Complete a anamnese para identificar
                                     alergias, condições de saúde e medicações em uso.
                                 </p>
-                                <Button
-                                    onClick={() => navigate(`/nutritionist/patients/${patientId}/anamnese`)}
-                                    className="gap-2"
-                                >
+                                <span className="inline-flex items-center gap-2 text-sm font-medium text-[#c4661f]">
                                     <FileText className="w-4 h-4" />
                                     Iniciar Anamnese
-                                </Button>
+                                    <ArrowRight className="w-4 h-4" />
+                                </span>
                             </div>
                         </div>
                     </CardContent>
@@ -101,7 +96,6 @@ const TabContentClinical = ({ patientId, modulesStatus = {} }) => {
             );
         }
 
-        // Estado Completo - Com dados reais
         const statusConfig = {
             draft: { label: 'Rascunho', color: 'bg-yellow-100 text-yellow-800 border-yellow-300' },
             completed: { label: 'Completa', color: 'bg-[#a9b388]/20 text-[#5f6f52] border-[#5f6f52]' }
@@ -109,30 +103,21 @@ const TabContentClinical = ({ patientId, modulesStatus = {} }) => {
         const config = statusConfig[latestAnamnesis.status] || statusConfig.draft;
 
         return (
-            <Card className="border-l-4 border-l-[#5f6f52] hover:shadow-xl transition-all">
+            <Card
+                className="border-l-4 border-l-[#5f6f52] hover:shadow-xl transition-all cursor-pointer h-full"
+                onClick={() => navigate(`/nutritionist/patients/${patientId}/anamnese`)}
+            >
                 <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-2">
-                            <CheckCircle2 className="w-5 h-5 text-[#5f6f52]" />
-                            <CardTitle className="text-lg">Anamnese</CardTitle>
-                            <Badge variant="outline" className={config.color}>
-                                {config.label}
-                            </Badge>
-                        </div>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => navigate(`/nutritionist/patients/${patientId}/anamnese`)}
-                            className="gap-1"
-                        >
-                            Ver Histórico
-                            <ArrowRight className="w-3 h-3" />
-                        </Button>
+                    <div className="flex items-center gap-2">
+                        <CheckCircle2 className="w-5 h-5 text-[#5f6f52]" />
+                        <CardTitle className="text-lg">Anamnese</CardTitle>
+                        <Badge variant="outline" className={config.color}>
+                            {config.label}
+                        </Badge>
                     </div>
                 </CardHeader>
 
                 <CardContent>
-                    {/* Informações sobre o documento usado */}
                     <div className="bg-[#fefae0] border border-[#a9b388] rounded-lg p-3 mb-3">
                         <div className="text-xs font-semibold text-[#5f6f52] mb-1 uppercase tracking-wide">
                             📋 Documento
@@ -142,7 +127,6 @@ const TabContentClinical = ({ patientId, modulesStatus = {} }) => {
                         </p>
                     </div>
 
-                    {/* Data de Atualização */}
                     <div className="flex items-center justify-between text-xs text-muted-foreground pt-3 mt-3 border-t">
                         <span className="flex items-center gap-1">
                             <Calendar className="w-3 h-3" />
@@ -152,30 +136,35 @@ const TabContentClinical = ({ patientId, modulesStatus = {} }) => {
                                 year: 'numeric'
                             })}
                         </span>
-                        <Button
-                            variant="link"
-                            size="sm"
-                            onClick={() => navigate(`/nutritionist/patients/${patientId}/anamnese`)}
-                            className="h-auto p-0 text-xs"
-                        >
-                            Ver completo →
-                        </Button>
+                        <span className="flex items-center gap-1 text-[#5f6f52] font-medium">
+                            Abrir <ArrowRight className="w-3 h-3" />
+                        </span>
                     </div>
                 </CardContent>
             </Card>
         );
     };
 
-    // ============================================================
-    // CARD 2: EXAMES LABORATORIAIS
-    // ============================================================
     const LabsCard = () => {
-        const isComplete = mockClinicalData.labs.completed;
-
-        if (!isComplete) {
-            // Estado Vazio
+        if (labsLoading) {
             return (
-                <Card className="border-dashed border-2 border-[#a9b388] bg-[#fefae0]/30 hover:shadow-md transition-all">
+                <Card className="border-l-4 border-l-[#b99470] h-full">
+                    <CardContent className="py-8 text-center">
+                        <Loader2 className="w-6 h-6 animate-spin text-primary mx-auto mb-2" />
+                        <p className="text-sm text-muted-foreground">Carregando exames...</p>
+                    </CardContent>
+                </Card>
+            );
+        }
+
+        const hasLabResults = labResults && labResults.length > 0;
+
+        if (!hasLabResults) {
+            return (
+                <Card
+                    className="border-dashed border-2 border-[#a9b388] bg-[#fefae0]/30 hover:shadow-md transition-all cursor-pointer h-full"
+                    onClick={() => navigate(`/nutritionist/patients/${patientId}/lab-results`)}
+                >
                     <CardContent className="py-8 text-center">
                         <div className="w-12 h-12 rounded-full bg-[#fefae0] flex items-center justify-center mx-auto mb-3">
                             <Droplet className="w-6 h-6 text-[#b99470]" />
@@ -187,132 +176,93 @@ const TabContentClinical = ({ patientId, modulesStatus = {} }) => {
                             Nenhum exame registrado. Adicione resultados de análises clínicas
                             para um acompanhamento mais completo.
                         </p>
-                        <Button
-                            variant="outline"
-                            onClick={() => navigate(`/nutritionist/patients/${patientId}/lab-results`)}
-                            className="gap-2"
-                        >
+                        <span className="inline-flex items-center gap-2 text-sm font-medium text-[#b99470]">
                             <Droplet className="w-4 h-4" />
                             Adicionar Exames
-                        </Button>
+                            <ArrowRight className="w-4 h-4" />
+                        </span>
                     </CardContent>
                 </Card>
             );
         }
 
-        // Estado Preenchido
+        // Mostrar apenas os 3 mais recentes
+        const recentTests = labResults.slice(0, 3);
+        const mostRecentDate = labResults[0]?.test_date;
+
         return (
-            <Card className="border-l-4 border-l-[#b99470] hover:shadow-xl transition-all">
+            <Card
+                className="border-l-4 border-l-[#b99470] hover:shadow-xl transition-all cursor-pointer h-full"
+                onClick={() => navigate(`/nutritionist/patients/${patientId}/lab-results`)}
+            >
                 <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-2">
-                            <Droplet className="w-5 h-5 text-[#b99470]" />
-                            <CardTitle className="text-base">Exames Laboratoriais</CardTitle>
-                        </div>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => navigate(`/nutritionist/patients/${patientId}/lab-results`)}
-                            className="gap-1"
-                        >
-                            Ver Todos
-                            <ArrowRight className="w-3 h-3" />
-                        </Button>
+                    <div className="flex items-center gap-2">
+                        <Droplet className="w-5 h-5 text-[#b99470]" />
+                        <CardTitle className="text-base">Exames Laboratoriais</CardTitle>
                     </div>
                 </CardHeader>
 
                 <CardContent>
-                    {/* Últimos Exames */}
                     <div className="space-y-2 mb-3">
-                        {mockClinicalData.labs.recentTests.map((test, idx) => (
+                        {recentTests.map((test) => (
                             <div
-                                key={idx}
+                                key={test.id}
                                 className={cn(
                                     "flex items-center justify-between p-3 rounded-lg border",
-                                    test.status === 'normal' ? "bg-[#a9b388]/10 border-[#a9b388]" :
-                                    test.status === 'low' ? "bg-[#fefae0] border-[#b99470]" :
-                                    "bg-red-50 border-red-200"
+                                    test.status === 'normal' ? "bg-emerald-50 border-emerald-200" :
+                                    test.status === 'low' ? "bg-amber-50 border-amber-200" :
+                                    test.status === 'high' ? "bg-red-50 border-red-200" :
+                                    "bg-gray-50 border-gray-200"
                                 )}
                             >
-                                <div>
-                                    <div className="text-sm font-medium text-foreground">{test.name}</div>
-                                    <div className="text-xs text-muted-foreground">{test.value}</div>
+                                <div className="flex-1 min-w-0">
+                                    <div className="text-sm font-medium text-foreground truncate">{test.test_name}</div>
+                                    <div className="text-xs text-muted-foreground">
+                                        {test.test_value} {test.test_unit || ''}
+                                    </div>
                                 </div>
                                 <Badge variant="outline" className={cn(
-                                    "text-xs",
-                                    test.status === 'normal' ? "bg-[#5f6f52]/10 text-[#5f6f52] border-[#5f6f52]" :
-                                    test.status === 'low' ? "bg-[#b99470]/10 text-[#b99470] border-[#b99470]" :
-                                    "bg-red-100 text-red-800 border-red-300"
+                                    "text-xs ml-2",
+                                    test.status === 'normal' ? "bg-emerald-100 text-emerald-800 border-emerald-300" :
+                                    test.status === 'low' ? "bg-amber-100 text-amber-800 border-amber-300" :
+                                    test.status === 'high' ? "bg-red-100 text-red-800 border-red-300" :
+                                    "bg-gray-100 text-gray-800 border-gray-300"
                                 )}>
                                     {test.status === 'normal' ? 'Normal' :
-                                     test.status === 'low' ? 'Baixo' : 'Alto'}
+                                     test.status === 'low' ? 'Baixo' :
+                                     test.status === 'high' ? 'Alto' : 'Pendente'}
                                 </Badge>
                             </div>
                         ))}
                     </div>
 
-                    {/* Data de Atualização */}
                     <div className="text-xs text-muted-foreground pt-3 border-t flex items-center justify-between">
                         <span className="flex items-center gap-1">
                             <Calendar className="w-3 h-3" />
-                            Últimos exames: {new Date(mockClinicalData.labs.lastUpdate).toLocaleDateString('pt-BR')}
+                            {mostRecentDate && `Últimos exames: ${new Date(mostRecentDate).toLocaleDateString('pt-BR')}`}
+                            {!mostRecentDate && 'Nenhum exame recente'}
                         </span>
-                        <Button
-                            variant="link"
-                            size="sm"
-                            onClick={() => navigate(`/nutritionist/patients/${patientId}/lab-results`)}
-                            className="h-auto p-0 text-xs"
-                        >
-                            Adicionar novos →
-                        </Button>
+                        <span className="flex items-center gap-1 text-[#b99470] font-medium">
+                            Abrir <ArrowRight className="w-3 h-3" />
+                        </span>
                     </div>
                 </CardContent>
             </Card>
         );
     };
 
-    // ============================================================
-    // CARD 3: RASTREAMENTO METABÓLICO (Placeholder)
-    // ============================================================
-    const MetabolicCard = () => {
-        return (
-            <Card className="border-dashed border-2 hover:shadow-md transition-all opacity-60">
-                <CardContent className="py-8 text-center">
-                    <Activity className="w-10 h-10 text-muted-foreground mx-auto mb-3 opacity-50" />
-                    <h3 className="text-sm font-semibold text-foreground mb-1">
-                        Rastreamento Metabólico
-                    </h3>
-                    <p className="text-xs text-muted-foreground">
-                        Em desenvolvimento
-                    </p>
-                </CardContent>
-            </Card>
-        );
-    };
-
-    // ============================================================
-    // RENDER PRINCIPAL
-    // ============================================================
     return (
         <div className="space-y-6">
-            {/* Header da Seção */}
             <div>
                 <h3 className="text-xl font-bold text-foreground mb-1">Dados Clínicos</h3>
                 <p className="text-sm text-muted-foreground">
-                    Histórico de saúde, exames e rastreamentos metabólicos
+                    Histórico de saúde e exames laboratoriais
                 </p>
             </div>
 
-            {/* Grid de Cards */}
-            <div className="space-y-4">
-                {/* Anamnese - Full Width */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <AnamnesisCard />
-
-                {/* Grid 2 Colunas */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <LabsCard />
-                    <MetabolicCard />
-                </div>
+                <LabsCard />
             </div>
         </div>
     );

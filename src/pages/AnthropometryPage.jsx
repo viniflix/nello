@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, RefreshCw, AlertCircle } from 'lucide-react';
+import { ArrowLeft, RefreshCw, AlertCircle, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/components/ui/use-toast';
@@ -151,34 +151,39 @@ const AnthropometryPage = () => {
     };
 
     return (
-        <div className="container mx-auto p-6 max-w-7xl space-y-6">
+        <div className="container mx-auto p-4 sm:p-6 max-w-7xl space-y-6">
             {/* Header */}
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
+            <div className="flex flex-col gap-4">
+                <div className="flex items-center justify-between">
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => navigate(`/nutritionist/patients/${patientId}/hub`)}
+                        className="-ml-2 text-[#5f6f52] hover:text-[#5f6f52] hover:bg-[#5f6f52]/10"
+                    >
+                        <ArrowLeft className="w-4 h-4 mr-1" />
+                        Voltar
+                    </Button>
                     <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => navigate(`/nutritionist/patients/${patientId}/hub`)}
+                        onClick={loadData}
+                        disabled={loading}
+                        className="flex-shrink-0"
                     >
-                        <ArrowLeft className="w-4 h-4 mr-2" />
-                        Voltar ao Hub
+                        <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                        <span className="hidden sm:inline">Atualizar</span>
                     </Button>
-                    <div>
-                        <h1 className="text-3xl font-bold">Avaliação Antropométrica</h1>
-                        <p className="text-muted-foreground">
-                            Acompanhamento de peso, altura e IMC
-                        </p>
-                    </div>
                 </div>
-                <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={loadData}
-                    disabled={loading}
-                >
-                    <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-                    Atualizar
-                </Button>
+                <div className="flex-1 min-w-0">
+                    <h1 className="text-2xl sm:text-3xl font-bold text-foreground flex items-center gap-2">
+                        <BarChart3 className="w-6 h-6 sm:w-8 sm:h-8 text-[#5f6f52]" />
+                        <span className="truncate">Avaliação Antropométrica</span>
+                    </h1>
+                    <p className="text-sm text-muted-foreground mt-1">
+                        Acompanhamento de peso, altura e IMC
+                    </p>
+                </div>
             </div>
 
             {/* Erro geral */}

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Trash2, Copy, Archive, RefreshCw, Edit, BarChart3, Download, FileText, MoreVertical } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Copy, Archive, RefreshCw, Edit, BarChart3, Download, FileText, MoreVertical, Utensils } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -454,29 +454,37 @@ const MealPlanPage = () => {
     }
 
     return (
-        <div className="container mx-auto px-4 py-8 max-w-6xl">
+        <div className="container mx-auto px-4 py-6 sm:py-8 max-w-6xl">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-                <div className="flex items-center gap-2 sm:gap-4 min-w-0">
-                    <Button variant="ghost" size="sm" onClick={() => navigate(`/nutritionist/patients/${patientId}/hub`)}>
-                        <ArrowLeft className="h-4 w-4 sm:mr-2" />
-                        <span className="hidden sm:inline">Voltar</span>
+            <div className="flex flex-col gap-4 mb-6">
+                <div className="flex items-center justify-between">
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => navigate(`/nutritionist/patients/${patientId}/hub`)}
+                        className="-ml-2 text-[#5f6f52] hover:text-[#5f6f52] hover:bg-[#5f6f52]/10"
+                    >
+                        <ArrowLeft className="h-4 w-4 mr-1" />
+                        Voltar
                     </Button>
-                    <div className="min-w-0">
-                        <h1 className="text-xl sm:text-3xl font-bold truncate">Planos Alimentares</h1>
-                        <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">
+                    <Button variant="outline" size="sm" onClick={loadPlans} className="flex-shrink-0">
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        <span className="hidden sm:inline">Atualizar</span>
+                    </Button>
+                </div>
+                <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                        <h1 className="text-2xl sm:text-3xl font-bold text-foreground flex items-center gap-2">
+                            <Utensils className="w-6 h-6 sm:w-8 sm:h-8 text-[#5f6f52]" />
+                            <span className="truncate">Planos Alimentares</span>
+                        </h1>
+                        <p className="text-sm text-muted-foreground mt-1">
                             Gerencie os planos alimentares do paciente
                         </p>
                     </div>
-                </div>
-                <div className="flex gap-2 flex-shrink-0">
-                    <Button variant="outline" size="icon" onClick={loadPlans}>
-                        <RefreshCw className="h-4 w-4" />
-                    </Button>
-                    <Button size="sm" onClick={() => setShowForm(true)}>
+                    <Button size="sm" onClick={() => setShowForm(true)} className="w-full sm:w-auto">
                         <Plus className="h-4 w-4 mr-2" />
-                        <span className="hidden sm:inline">Novo Plano</span>
-                        <span className="sm:hidden">Novo</span>
+                        Novo Plano
                     </Button>
                 </div>
             </div>

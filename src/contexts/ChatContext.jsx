@@ -122,9 +122,6 @@ export function ChatProvider({ children }) {
              }
         }
     }).subscribe((status, err) => {
-        if (status === 'SUBSCRIBED') {
-            // console.log('Subscribed to chat channel!');
-        }
         if (status === 'CHANNEL_ERROR') {
           console.error(`Channel error:`, err);
         }

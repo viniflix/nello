@@ -8,7 +8,6 @@ import { Loader2 } from 'lucide-react';
 
 // Mantém imports críticos para auth e layouts (não lazy load)
 import MainLayout from '@/components/MainLayout.jsx';
-import PatientLayout from '@/components/patient/PatientLayout.jsx';
 import PatientMobileLayout from '@/components/patient/PatientMobileLayout.jsx';
 
 // CODE SPLITTING: Lazy load de todas as páginas
@@ -39,18 +38,18 @@ const PatientAnamnesisForm = lazy(() => import('@/pages/PatientAnamnesisFormV2.j
 const AnthropometryPage = lazy(() => import('@/pages/AnthropometryPage.jsx'));
 const MealPlanPage = lazy(() => import('@/pages/MealPlanPage.jsx'));
 const MealPlanSummaryPage = lazy(() => import('@/pages/MealPlanSummaryPage.jsx'));
+const EnergyExpenditurePage = lazy(() => import('@/pages/EnergyExpenditurePage.jsx'));
+const LabResultsPage = lazy(() => import('@/pages/LabResultsPage.jsx'));
+const GoalsPage = lazy(() => import('@/pages/GoalsPage.jsx'));
+const FoodDiaryPage = lazy(() => import('@/pages/FoodDiaryPage.jsx'));
 
 // Ferramentas
-const MacroCalculatorPage = lazy(() => import('@/pages/MacroCalculatorPage.jsx'));
 const FoodBankPage = lazy(() => import('@/pages/FoodBankPage.jsx'));
 
 // Chat
 const ChatPage = lazy(() => import('@/pages/ChatPage.jsx'));
 
 // Páginas do Paciente (Antigas - mantidas para compatibilidade)
-const PatientProfile = lazy(() => import('@/pages/PatientProfile.jsx'));
-const PatientRecords = lazy(() => import('@/pages/PatientRecords.jsx'));
-const PatientSearch = lazy(() => import('@/pages/PatientSearch.jsx'));
 const AddFoodPage = lazy(() => import('@/pages/AddFoodPage.jsx'));
 
 // Páginas do Paciente (Nova Arquitetura Mobile-First)
@@ -148,9 +147,12 @@ const AppLayout = () => {
               <Route path="/nutritionist/patients/:patientId/anthropometry" element={<AnthropometryPage />} />
               <Route path="/nutritionist/patients/:patientId/meal-plan" element={<MealPlanPage />} />
               <Route path="/nutritionist/patients/:patientId/meal-plan/:planId/summary" element={<MealPlanSummaryPage />} />
-              <Route path="/nutritionist/alerts" element={<AlertsPage />} />  
+              <Route path="/nutritionist/patients/:patientId/energy-expenditure" element={<EnergyExpenditurePage />} />
+              <Route path="/nutritionist/patients/:patientId/lab-results" element={<LabResultsPage />} />
+              <Route path="/nutritionist/patients/:patientId/goals" element={<GoalsPage />} />
+              <Route path="/nutritionist/patients/:patientId/food-diary" element={<FoodDiaryPage />} />
+              <Route path="/nutritionist/alerts" element={<AlertsPage />} />
               <Route path="/chat/nutritionist/:patientId" element={<ChatPage />} />
-              <Route path="/nutritionist/calculator" element={<MacroCalculatorPage />} />
               <Route path="/nutritionist/food-bank" element={<FoodBankPage />} />
               <Route path="/nutritionist/financial" element={<FinancialPage />} />
               <Route path="/nutritionist/agenda" element={<AgendaPage />} />
@@ -170,14 +172,6 @@ const AppLayout = () => {
             {/* Rotas do Paciente (Fora do layout - páginas completas) */}
             <Route path="/patient/add-food/:mealId?" element={<ProtectedRoute userType="patient"><AddFoodPage /></ProtectedRoute>} />
             <Route path="/patient/add-meal" element={<ProtectedRoute userType="patient"><AddMealPage /></ProtectedRoute>} />
-
-            {/* Rotas Antigas do Paciente (mantidas para compatibilidade) */}
-            <Route element={<ProtectedRoute userType="patient"><PatientLayout /></ProtectedRoute>}>
-              <Route path="/patient/search" element={<PatientSearch />} />
-              <Route path="/patient/records" element={<PatientRecords />} />
-              <Route path="/patient/profile" element={<PatientProfile />} />
-              <Route path="/patient/notifications" element={<NotificationsPage />} />
-            </Route>
 
             {/* --- ROTAS DE REDIRECIONAMENTO (Sem mudança) --- */}
             <Route path="/" element={<Navigate to={getHomePath()} replace />} />

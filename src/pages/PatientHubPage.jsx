@@ -33,10 +33,8 @@ const PatientHubPage = () => {
         loadActivities
     } = usePatientHub(patientId);
 
-    // Handlers para ações do perfil
     const handleEditProfile = () => {
         // TODO: Implementar edição de perfil (Fase 2)
-        console.log('Editar perfil do paciente:', patientId);
     };
 
     const handleOpenChat = () => {

@@ -57,9 +57,6 @@ export default function PatientHomePage() {
       .or(`end_date.is.null,end_date.gte.${todayStr}`)
       .maybeSingle();
 
-    console.log('Meal plan data:', mealPlanData); // Debug
-    console.log('Meal plan error:', mealPlanError); // Debug
-
     setPrescription(mealPlanData);
 
     // 2. Buscar próxima consulta

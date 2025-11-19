@@ -142,12 +142,29 @@ export const getModulesStatus = async (patientId) => {
             .limit(1)
             .maybeSingle();
 
+        // Verificar se tem gasto energético calculado
+        const { data: energyData } = await supabase
+            .from('energy_expenditure_calculations')
+            .select('id')
+            .eq('patient_id', patientId)
+            .limit(1)
+            .maybeSingle();
+
+        // Verificar se tem exames laboratoriais
+        const { data: labResultsData } = await supabase
+            .from('lab_results')
+            .select('id')
+            .eq('patient_id', patientId)
+            .limit(1)
+            .maybeSingle();
+
         const status = {
             anamnese: anamneseData ? 'completed' : 'not_started',
             anthropometry: anthropometryData ? 'completed' : 'not_started',
-            meal_plan: 'not_started', // Será implementado quando houver tabela de planos
+            energy_expenditure: energyData ? 'completed' : 'not_started',
+            meal_plan: prescriptionData ? 'completed' : 'not_started',
             food_diary: mealsData ? 'completed' : 'not_started',
-            lab_results: 'not_started', // Será implementado quando houver tabela de exames
+            lab_results: labResultsData ? 'completed' : 'not_started',
             prescriptions: prescriptionData ? 'completed' : 'not_started',
             achievements: achievementsData ? 'completed' : 'not_started'
         };

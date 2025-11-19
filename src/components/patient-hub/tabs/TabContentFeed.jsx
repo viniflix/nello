@@ -8,23 +8,17 @@ import { cn } from '@/lib/utils';
 import PatientActivityFeed from '@/components/patient-hub/PatientActivityFeed';
 import { supabase } from '@/lib/customSupabaseClient';
 
-/**
- * TabContentFeed - Feed de Atividades + Histórico de Diário Alimentar
- * Layout: Feed principal (esquerda) + Card de diário (direita)
- */
 const TabContentFeed = ({ patientId, activities, loading, onLoadMore }) => {
     const navigate = useNavigate();
     const [recentMeals, setRecentMeals] = useState([]);
     const [mealsLoading, setMealsLoading] = useState(true);
 
-    // Buscar ações recentes do paciente no diário alimentar (CREATE, UPDATE, DELETE)
     useEffect(() => {
         const fetchRecentMeals = async () => {
             if (!patientId) return;
 
             setMealsLoading(true);
             try {
-                // Buscar do audit log para mostrar TODAS as ações (criar, editar, deletar)
                 const { data, error } = await supabase
                     .from('meal_audit_log')
                     .select('id, action, meal_type, meal_date, meal_time, details, created_at')
@@ -45,7 +39,6 @@ const TabContentFeed = ({ patientId, activities, loading, onLoadMore }) => {
         fetchRecentMeals();
     }, [patientId]);
 
-    // Traduzir tipo de refeição
     const translateMealType = (mealType) => {
         const translations = {
             'breakfast': 'Café da Manhã',
@@ -58,7 +51,6 @@ const TabContentFeed = ({ patientId, activities, loading, onLoadMore }) => {
         return translations[mealType] || mealType;
     };
 
-    // Traduzir tipo de ação
     const translateAction = (action) => {
         const translations = {
             'create': 'Registrado',
@@ -68,19 +60,15 @@ const TabContentFeed = ({ patientId, activities, loading, onLoadMore }) => {
         return translations[action] || action;
     };
 
-    // Cor do badge por ação
     const getActionBadgeColor = (action) => {
         const colors = {
-            'create': 'bg-[#5f6f52]', // Verde
-            'update': 'bg-blue-600',  // Azul
-            'delete': 'bg-red-600'    // Vermelho
+            'create': 'bg-[#5f6f52]',
+            'update': 'bg-blue-600',
+            'delete': 'bg-red-600'
         };
         return colors[action] || 'bg-gray-600';
     };
 
-    // ============================================================
-    // CARD SECUNDÁRIO: HISTÓRICO DE DIÁRIO ALIMENTAR
-    // ============================================================
     const FoodDiaryHistoryCard = () => {
         return (
             <Card className="border-l-4 border-l-[#b99470] bg-gradient-to-br from-[#fefae0]/30 to-[#f9ebc7]/20">
@@ -179,12 +167,8 @@ const TabContentFeed = ({ patientId, activities, loading, onLoadMore }) => {
         );
     };
 
-    // ============================================================
-    // RENDER PRINCIPAL - GRID 2 COLUNAS
-    // ============================================================
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Coluna Esquerda (Principal) - Feed de Atividades */}
             <div className="lg:col-span-2">
                 <PatientActivityFeed
                     patientId={patientId}
@@ -194,7 +178,6 @@ const TabContentFeed = ({ patientId, activities, loading, onLoadMore }) => {
                 />
             </div>
 
-            {/* Coluna Direita (Secundária) - Histórico de Diário */}
             <div className="lg:col-span-1">
                 <FoodDiaryHistoryCard />
             </div>

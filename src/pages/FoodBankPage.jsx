@@ -65,7 +65,7 @@ const FoodForm = ({ onSave, foodToEdit, nutritionistId }) => {
                 <div className="space-y-2"><Label htmlFor="calories">Calorias</Label><Input id="calories" type="number" value={foodData.calories} onChange={e => setFoodData({...foodData, calories: e.target.value})} placeholder="165" /></div>
                 <div className="space-y-2"><Label htmlFor="protein">Proteínas</Label><Input id="protein" type="number" value={foodData.protein} onChange={e => setFoodData({...foodData, protein: e.target.value})} placeholder="31" /></div>
                 <div className="space-y-2"><Label htmlFor="fat">Gorduras</Label><Input id="fat" type="number" value={foodData.fat} onChange={e => setFoodData({...foodData, fat: e.target.value})} placeholder="3.6" /></div>
-                <div className="space-y-2"><Label htmlFor="carbs">Carbs</Label><Input id="carbs" type="number" value={foodData.carbs} onChange={e => setFoodData({...foodData, carbs: e.target.value})} placeholder="0" /></div>
+                <div className="space-y-2"><Label htmlFor="carbs">Carboidratos</Label><Input id="carbs" type="number" value={foodData.carbs} onChange={e => setFoodData({...foodData, carbs: e.target.value})} placeholder="0" /></div>
             </div>
             <Button onClick={handleSave} disabled={loading}>{loading ? 'Salvando...' : 'Salvar Alimento'}</Button>
         </div>
@@ -140,22 +140,27 @@ const FoodBankPage = () => {
     };
 
     return (
-        <div className="min-h-screen bg-background">
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-                    
-                    <div className="flex flex-col justify-center flex-1">
-                        <h1 className="font-clash text-4xl sm:text-5xl font-semibold text-primary">
-                        BANCO DE ALIMENTOS
+        <div className="flex flex-col min-h-screen bg-background">
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+                className="max-w-7xl mx-auto w-full px-4 md:px-8 pt-8"
+            >
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4 mb-8">
+                    <div className="flex flex-col justify-center flex-1 text-center sm:text-left">
+                        <h1 className="text-3xl font-bold font-heading uppercase tracking-wide text-primary">
+                            Banco de Alimentos
                         </h1>
-                        <p className="text-lg text-accent mt-2 gap-8 mb-8">
-                        Gerencie seus alimentos personalizados, e verifique o banco de alimentos público.
+                        <p className="text-neutral-600 mt-1">
+                            Gerencie seus alimentos personalizados e consulte o banco público.
                         </p>
                     </div>
+                </div>
                     <Card className="mb-8">
                         <CardHeader>
-                            <CardTitle className="font-clash font-semibold text-primary">Adicionar Novo Alimento</CardTitle>
-                            <CardDescription className="text-accent mt-2 gap-8 mb-8">Adicione itens personalizados ao seu banco de alimentos. Eles estarão disponíveis apenas para você e seus pacientes.</CardDescription>
+                            <CardTitle className="font-clash text-lg font-semibold text-primary">Adicionar Novo Alimento</CardTitle>
+                            <CardDescription className="text-muted-foreground">Adicione itens personalizados ao seu banco de alimentos. Eles estarão disponíveis apenas para você e seus pacientes.</CardDescription>
                         </CardHeader>
                         <CardContent className="text-primary">
                             <FoodForm onSave={fetchFoods} nutritionistId={user.id} />
@@ -164,7 +169,7 @@ const FoodBankPage = () => {
 
                     <Card>
                         <CardHeader>
-                            <CardTitle className="font-clash font-semibold text-primary">Consultar Banco de Alimentos</CardTitle>
+                            <CardTitle className="font-clash text-lg font-semibold text-primary">Consultar Banco de Alimentos</CardTitle>
                             <div className="mt-4">
                                 <Input placeholder="Buscar alimento..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
                             </div>
@@ -173,8 +178,8 @@ const FoodBankPage = () => {
                             <h3 className="text-lg font-semibold mb-4 text-primary">Meus Alimentos Personalizados</h3>
                             <div className="space-y-2 mb-6">
                                 {customFoods.length > 0 ? customFoods.map(food => (
-                                    <div key={food.id} className="flex justify-between items-center text-accent p-3 bg-muted rounded-lg">
-                                        <p>{food.name}</p>
+                                    <div key={food.id} className="flex justify-between items-center p-3 bg-muted rounded-lg">
+                                        <p className="text-foreground font-medium">{food.name}</p>
                                         <div className="flex items-center gap-2">
                                             <p className="text-sm text-muted-foreground hidden sm:block">{food.calories}kcal | P:{food.protein}g F:{food.fat}g C:{food.carbs}g</p>
                                             <EditFoodDialog food={food} onSaved={fetchFoods} nutritionistId={user.id} />
@@ -187,16 +192,15 @@ const FoodBankPage = () => {
                             <h3 className="text-lg font-semibold mb-4 text-primary">Banco de Dados Público</h3>
                             <div className="space-y-2 max-h-96 overflow-y-auto">
                                 {publicFoods.map(food => (
-                                    <div key={food.id} className="flex justify-between text-accent items-center p-3 bg-muted/50 rounded-lg">
-                                        <p>{food.name}</p>
+                                    <div key={food.id} className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
+                                        <p className="text-foreground font-medium">{food.name}</p>
                                         <p className="text-sm text-muted-foreground hidden sm:block">{food.calories}kcal | P:{food.protein}g F:{food.fat}g C:{food.carbs}g</p>
                                     </div>
                                 ))}
                             </div>
                         </CardContent>
                     </Card>
-                </motion.div>
-            </main>
+            </motion.div>
         </div>
     );
 };

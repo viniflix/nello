@@ -18,9 +18,6 @@ import { formatQuantityWithUnit } from '@/lib/utils/measureTranslations';
  * ]
  */
 const MealPlanView = ({ mealPlanItems }) => {
-  // mealPlanItems agora é meal_plan_meals
-  console.log('MealPlanView received:', mealPlanItems); // Debug
-
   if (!mealPlanItems || mealPlanItems.length === 0) {
     return (
       <div className="text-center py-10">
