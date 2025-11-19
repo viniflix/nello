@@ -136,9 +136,14 @@ const TabContentClinical = ({ patientId, modulesStatus = {} }) => {
                                 year: 'numeric'
                             })}
                         </span>
-                        <span className="flex items-center gap-1 text-[#5f6f52] font-medium">
-                            Abrir <ArrowRight className="w-3 h-3" />
-                        </span>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 text-[#5f6f52] hover:bg-[#5f6f52]/10"
+                            onClick={() => navigate(`/nutritionist/patients/${patientId}/anamnesis`)}
+                        >
+                            Abrir <ArrowRight className="w-3 h-3 ml-1" />
+                        </Button>
                     </div>
                 </CardContent>
             </Card>
@@ -242,9 +247,14 @@ const TabContentClinical = ({ patientId, modulesStatus = {} }) => {
                             {mostRecentDate && `Últimos exames: ${new Date(mostRecentDate).toLocaleDateString('pt-BR')}`}
                             {!mostRecentDate && 'Nenhum exame recente'}
                         </span>
-                        <span className="flex items-center gap-1 text-[#b99470] font-medium">
-                            Abrir <ArrowRight className="w-3 h-3" />
-                        </span>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 text-[#b99470] hover:bg-[#b99470]/10"
+                            onClick={() => navigate(`/nutritionist/patients/${patientId}/lab-results`)}
+                        >
+                            Abrir <ArrowRight className="w-3 h-3 ml-1" />
+                        </Button>
                     </div>
                 </CardContent>
             </Card>

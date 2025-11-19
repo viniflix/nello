@@ -104,7 +104,10 @@ const EnergyExpenditureSummaryCard = ({ patientId }) => {
     // Estado: Sem dados suficientes
     if (!hasRequiredData) {
         return (
-            <Card className="hover:shadow-md transition-all border-dashed border-2 border-amber-300 bg-amber-50/30">
+            <Card
+                className="hover:shadow-md transition-all border-dashed border-2 border-amber-300 bg-amber-50/30 cursor-pointer"
+                onClick={handleNavigateToFullPage}
+            >
                 <CardHeader className="pb-3">
                     <div className="flex items-center gap-2">
                         <Calculator className="w-5 h-5 text-amber-600" />
@@ -153,7 +156,10 @@ const EnergyExpenditureSummaryCard = ({ patientId }) => {
         const hasVENTA = calculatedData.target_weight && calculatedData.venta_adjusted;
 
         return (
-            <Card className="hover:shadow-md transition-all border-l-4 border-l-[#5f6f52]">
+            <Card
+                className="hover:shadow-md transition-all border-l-4 border-l-[#5f6f52] cursor-pointer"
+                onClick={handleNavigateToFullPage}
+            >
                 <CardHeader className="pb-3">
                     <div className="flex items-center gap-2 flex-wrap">
                         <Calculator className="w-5 h-5 text-[#5f6f52]" />
@@ -238,7 +244,10 @@ const EnergyExpenditureSummaryCard = ({ patientId }) => {
 
     // Estado: Tem dados mas nunca calculou
     return (
-        <Card className="hover:shadow-md transition-all border-dashed border-2 border-[#a9b388] bg-[#fefae0]/30">
+        <Card
+            className="hover:shadow-md transition-all border-dashed border-2 border-[#a9b388] bg-[#fefae0]/30 cursor-pointer"
+            onClick={handleNavigateToFullPage}
+        >
             <CardHeader className="pb-3">
                 <div className="flex items-center gap-2">
                     <Calculator className="w-5 h-5 text-[#5f6f52]" />

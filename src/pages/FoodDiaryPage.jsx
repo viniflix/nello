@@ -179,18 +179,7 @@ const FoodDiaryPage = () => {
         return colors[type] || { bg: 'bg-[#5f6f52]', border: '#5f6f52' };
     };
 
-    if (loading) {
-        return (
-            <div className="flex items-center justify-center min-h-screen">
-                <div className="text-center">
-                    <Activity className="w-12 h-12 animate-spin text-[#5f6f52] mx-auto mb-4" />
-                    <p className="text-muted-foreground">Carregando diário alimentar...</p>
-                </div>
-            </div>
-        );
-    }
-
-    return (
+    return loading ? null : (
         <div className="flex flex-col min-h-screen bg-background">
             <div className="max-w-7xl mx-auto w-full px-4 md:px-6 py-4 md:py-6">
                 {/* Header */}
@@ -198,7 +187,7 @@ const FoodDiaryPage = () => {
                     <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => navigate(`/nutritionist/patients/${patientId}/hub`)}
+                        onClick={() => navigate(`/nutritionist/patients/${patientId}/hub?tab=nutrition`)}
                         className="mb-3 -ml-2 text-[#5f6f52] hover:text-[#5f6f52] hover:bg-[#5f6f52]/10"
                     >
                         <ArrowLeft className="w-4 h-4 mr-1" />
@@ -396,7 +385,37 @@ const FoodDiaryPage = () => {
                         ) : (
                             <div className="space-y-3">
                                 {auditHistory.map((log, index) => (
-                                    <AuditLogCard key={log.id || index} log={log} getMealTypeLabel={getMealTypeLabel} />
+                                    <AuditLogCard
+                                        key={log.id || index}
+                                        log={log}
+                                        getMealTypeLabel={getMealTypeLabel}
+                                        onClick={async () => {
+                                            if (log.meal_id && log.action !== 'delete') {
+                                                // Buscar dados completos da refeição
+                                                const { data: mealData } = await getPatientMeals(patientId, {}, 1, 0);
+                                                const fullMeal = mealData?.find(m => m.id === log.meal_id);
+                                                if (fullMeal) {
+                                                    await handleMealClick(fullMeal);
+                                                }
+                                            } else if (log.action === 'delete') {
+                                                // Para refeições deletadas, mostrar modal com dados do log
+                                                const deletedMeal = {
+                                                    meal_type: log.meal_type,
+                                                    meal_date: log.meal_date,
+                                                    meal_time: log.meal_time,
+                                                    total_calories: log.details?.total_calories || 0,
+                                                    total_protein: log.details?.total_protein || 0,
+                                                    total_carbs: log.details?.total_carbs || 0,
+                                                    total_fat: log.details?.total_fat || 0,
+                                                    meal_items: log.details?.meal_items || [],
+                                                    notes: log.details?.notes
+                                                };
+                                                setSelectedMeal(deletedMeal);
+                                                setMealHistory([log]);
+                                                setShowDetailsModal(true);
+                                            }
+                                        }}
+                                    />
                                 ))}
                             </div>
                         )}
@@ -483,17 +502,30 @@ const MealCard = ({ meal, onClick, getMealTypeLabel, getMealTypeColor }) => {
 };
 
 // Componente Card de Auditoria
-const AuditLogCard = ({ log, getMealTypeLabel }) => {
+const AuditLogCard = ({ log, getMealTypeLabel, onClick }) => {
     const actionInfo = formatAuditAction(log);
     const changes = extractChanges(log.details);
 
+    const getBadgeVariant = (action) => {
+        if (action === 'create') return 'default';
+        if (action === 'update') return 'secondary';
+        return 'destructive';
+    };
+
     return (
-        <Card className={cn("border-l-4", actionInfo.borderColor.replace('border-', 'border-l-'))}>
+        <Card
+            className={cn(
+                "border-l-4 transition-shadow",
+                actionInfo.borderColor.replace('border-', 'border-l-'),
+                onClick && "cursor-pointer hover:shadow-md"
+            )}
+            onClick={onClick}
+        >
             <CardContent className="p-4">
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-3">
                     <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                            <Badge className={actionInfo.color}>
+                            <Badge variant={getBadgeVariant(log.action)}>
                                 {actionInfo.label}
                             </Badge>
                             {log.meal_type && (

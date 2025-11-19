@@ -148,14 +148,19 @@ const TabContentBody = ({ patientId, modulesStatus = {}, latestMetrics = {} }) =
                     )}
 
                     {anthropometryData.lastUpdate && (
-                        <div className="text-xs text-muted-foreground pt-3 mt-3 border-t flex items-center justify-between">
-                            <span className="flex items-center gap-1">
+                        <div className="text-xs pt-3 mt-3 border-t flex items-center justify-between">
+                            <span className="flex items-center gap-1 text-muted-foreground">
                                 <Calendar className="w-3 h-3" />
                                 {new Date(anthropometryData.lastUpdate).toLocaleDateString('pt-BR')}
                             </span>
-                            <span className="flex items-center gap-1 text-[#5f6f52] font-medium">
-                                Abrir <ArrowRight className="w-3 h-3" />
-                            </span>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 text-[#5f6f52] hover:bg-[#5f6f52]/10"
+                                onClick={() => navigate(`/nutritionist/patients/${patientId}/anthropometry`)}
+                            >
+                                Abrir <ArrowRight className="w-3 h-3 ml-1" />
+                            </Button>
                         </div>
                     )}
                 </CardContent>

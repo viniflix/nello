@@ -169,14 +169,19 @@ const TabContentNutrition = ({ patientId, modulesStatus = {} }) => {
                         </div>
                     </div>
 
-                    <div className="flex items-center justify-between text-xs text-muted-foreground pt-3 border-t">
-                        <span className="flex items-center gap-1">
+                    <div className="flex items-center justify-between text-xs pt-3 border-t">
+                        <span className="flex items-center gap-1 text-muted-foreground">
                             <Calendar className="w-3 h-3" />
                             Iniciado em {new Date(activePlan.start_date).toLocaleDateString('pt-BR')}
                         </span>
-                        <span className="flex items-center gap-1 text-[#5f6f52] font-medium">
-                            Abrir <ArrowRight className="w-3 h-3" />
-                        </span>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 text-[#5f6f52] hover:text-[#5f6f52] hover:bg-[#5f6f52]/10"
+                            onClick={() => navigate(`/nutritionist/patients/${patientId}/meal-plan`)}
+                        >
+                            Abrir <ArrowRight className="w-3 h-3 ml-1" />
+                        </Button>
                     </div>
                 </CardContent>
             </Card>
@@ -198,7 +203,7 @@ const TabContentNutrition = ({ patientId, modulesStatus = {} }) => {
 
         return (
             <Card
-                className="border-l-4 border-l-[#c4661f] hover:shadow-lg transition-all cursor-pointer h-full bg-gradient-to-br from-[#fefae0]/20 to-white"
+                className="border-l-4 border-l-[#c4661f] hover:shadow-lg transition-all h-full bg-gradient-to-br from-[#fefae0]/20 to-white cursor-pointer"
                 onClick={() => navigate(`/nutritionist/patients/${patientId}/food-diary`)}
             >
                 <CardHeader className="pb-3">
@@ -256,11 +261,16 @@ const TabContentNutrition = ({ patientId, modulesStatus = {} }) => {
                                 </div>
                             </div>
 
-                            <div className="pt-3 border-t">
-                                <span className="inline-flex items-center gap-1 text-sm font-medium text-[#5f6f52]">
+                            <div className="pt-3 border-t flex justify-center">
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-[#5f6f52] hover:bg-[#5f6f52]/10"
+                                    onClick={() => navigate(`/nutritionist/patients/${patientId}/food-diary`)}
+                                >
                                     Ver Diário Completo
-                                    <ArrowRight className="w-3 h-3" />
-                                </span>
+                                    <ArrowRight className="w-3 h-3 ml-1" />
+                                </Button>
                             </div>
                         </>
                     ) : (
@@ -274,10 +284,15 @@ const TabContentNutrition = ({ patientId, modulesStatus = {} }) => {
                             <p className="text-xs text-muted-foreground mb-4">
                                 Paciente ainda não registrou refeições nos últimos 7 dias
                             </p>
-                            <span className="inline-flex items-center gap-2 text-sm font-medium text-[#c4661f]">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="border-[#c4661f] text-[#c4661f] hover:bg-[#c4661f]/10"
+                                onClick={() => navigate(`/nutritionist/patients/${patientId}/food-diary`)}
+                            >
                                 Abrir Diário
-                                <ArrowRight className="w-3 h-3" />
-                            </span>
+                                <ArrowRight className="w-3 h-3 ml-1" />
+                            </Button>
                         </div>
                     )}
                 </CardContent>

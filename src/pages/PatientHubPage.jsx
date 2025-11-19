@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Loader2, RefreshCw, AlertCircle, Activity, Stethoscope, User, Utensils, Heart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -18,7 +18,16 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 const PatientHubPage = () => {
     const { patientId } = useParams();
     const navigate = useNavigate();
-    const [activeTab, setActiveTab] = useState('feed');
+    const [searchParams, setSearchParams] = useSearchParams();
+    const [activeTab, setActiveTab] = useState(() => {
+        // Ler tab dos query params (quando volta de um módulo)
+        const tabFromUrl = searchParams.get('tab');
+        if (tabFromUrl) {
+            return tabFromUrl;
+        }
+        // Sempre iniciar no feed se não vier de um módulo
+        return 'feed';
+    });
 
     // Hook customizado que gerencia todos os dados do hub
     const {
@@ -49,6 +58,14 @@ const PatientHubPage = () => {
     const handleLoadMoreActivities = () => {
         loadActivities(activities.length + 20);
     };
+
+    // Limpar query param da URL após ler
+    useEffect(() => {
+        if (searchParams.get('tab')) {
+            searchParams.delete('tab');
+            setSearchParams(searchParams, { replace: true });
+        }
+    }, [searchParams, setSearchParams]);
 
     // OTIMIZADO: Skeleton loader ao invés de spinner
     if (loading) {
@@ -205,38 +222,38 @@ const PatientHubPage = () => {
                 {/* BLOCO 3 - Tabs de Navegação */}
                 <section>
                     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                        <TabsList className="grid w-full grid-cols-3 lg:grid-cols-5 gap-2 h-auto p-2 bg-muted/50">
+                        <TabsList className="grid w-full grid-cols-3 lg:grid-cols-5 gap-1 h-auto p-1 bg-muted/30 rounded-lg">
                             <TabsTrigger
                                 value="feed"
-                                className="flex flex-col items-center justify-center gap-1 py-2 data-[state=active]:bg-background"
+                                className="flex flex-col items-center justify-center gap-1.5 py-3 px-2 rounded-md transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-[#5f6f52] data-[state=inactive]:text-muted-foreground hover:text-foreground"
                             >
                                 <Activity className="h-5 w-5" />
                                 <span className="text-xs font-medium">Feed</span>
                             </TabsTrigger>
                             <TabsTrigger
                                 value="clinical"
-                                className="flex flex-col items-center justify-center gap-1 py-2 data-[state=active]:bg-background"
+                                className="flex flex-col items-center justify-center gap-1.5 py-3 px-2 rounded-md transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-[#5f6f52] data-[state=inactive]:text-muted-foreground hover:text-foreground"
                             >
                                 <Stethoscope className="h-5 w-5" />
                                 <span className="text-xs font-medium">Clínico</span>
                             </TabsTrigger>
                             <TabsTrigger
                                 value="body"
-                                className="flex flex-col items-center justify-center gap-1 py-2 data-[state=active]:bg-background"
+                                className="flex flex-col items-center justify-center gap-1.5 py-3 px-2 rounded-md transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-[#5f6f52] data-[state=inactive]:text-muted-foreground hover:text-foreground"
                             >
                                 <User className="h-5 w-5" />
                                 <span className="text-xs font-medium">Corporal</span>
                             </TabsTrigger>
                             <TabsTrigger
                                 value="nutrition"
-                                className="flex flex-col items-center justify-center gap-1 py-2 data-[state=active]:bg-background"
+                                className="flex flex-col items-center justify-center gap-1.5 py-3 px-2 rounded-md transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-[#5f6f52] data-[state=inactive]:text-muted-foreground hover:text-foreground"
                             >
                                 <Utensils className="h-5 w-5" />
                                 <span className="text-xs font-medium">Nutrição</span>
                             </TabsTrigger>
                             <TabsTrigger
                                 value="adherence"
-                                className="flex flex-col items-center justify-center gap-1 py-2 data-[state=active]:bg-background"
+                                className="flex flex-col items-center justify-center gap-1.5 py-3 px-2 rounded-md transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-[#5f6f52] data-[state=inactive]:text-muted-foreground hover:text-foreground"
                             >
                                 <Heart className="h-5 w-5" />
                                 <span className="text-xs font-medium">Adesão</span>

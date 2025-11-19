@@ -895,21 +895,10 @@ const EnergyExpenditurePage = () => {
         { value: '1.725', label: 'Muito Ativo', description: 'Exercício intenso 6-7 dias/semana' }
     ];
 
-    if (loading) {
-        return (
-            <div className="flex items-center justify-center min-h-screen">
-                <div className="text-center">
-                    <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-                    <p className="text-muted-foreground">Carregando...</p>
-                </div>
-            </div>
-        );
-    }
-
     const isFormValid = formData.weight && formData.height && formData.age && formData.gender;
     const isEERProtocol = formData.protocol.startsWith('eer-iom');
 
-    return (
+    return loading ? null : (
         <div className="flex flex-col min-h-screen bg-background">
             <div className="max-w-6xl mx-auto w-full px-4 md:px-8 py-6 md:py-8">
                 {/* Header */}

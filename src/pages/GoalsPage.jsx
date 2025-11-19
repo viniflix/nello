@@ -11,6 +11,16 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
 import {
@@ -63,6 +73,9 @@ const GoalsPage = () => {
     // Modal de atualização de progresso
     const [showProgressModal, setShowProgressModal] = useState(false);
     const [newWeight, setNewWeight] = useState('');
+
+    // Modal de cancelamento
+    const [showCancelDialog, setShowCancelDialog] = useState(false);
 
     // Obter ID do nutricionista
     useEffect(() => {
@@ -370,19 +383,17 @@ const GoalsPage = () => {
     const handleCancelGoal = async () => {
         if (!activeGoal) return;
 
-        const reason = prompt('Motivo do cancelamento (opcional):');
-        if (reason === null) return; // Usuário cancelou
-
         try {
-            const { error } = await cancelGoal(activeGoal.id, reason);
+            const { error } = await cancelGoal(activeGoal.id, null);
             if (error) throw error;
 
             toast({
                 title: 'Meta cancelada',
-                description: 'Meta foi cancelada.',
+                description: 'Meta foi cancelada com sucesso.',
                 variant: 'success'
             });
 
+            setShowCancelDialog(false);
             await loadData();
         } catch (error) {
             console.error('Erro ao cancelar meta:', error);
@@ -428,18 +439,7 @@ const GoalsPage = () => {
         return 'Baixa viabilidade';
     };
 
-    if (loading) {
-        return (
-            <div className="flex items-center justify-center min-h-screen">
-                <div className="text-center">
-                    <Activity className="w-12 h-12 animate-spin text-[#5f6f52] mx-auto mb-4" />
-                    <p className="text-muted-foreground">Carregando metas...</p>
-                </div>
-            </div>
-        );
-    }
-
-    return (
+    return loading ? null : (
         <div className="flex flex-col min-h-screen bg-background">
             <div className="max-w-7xl mx-auto w-full px-4 md:px-8 py-6 md:py-8">
                 {/* Header */}
@@ -447,7 +447,7 @@ const GoalsPage = () => {
                     <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => navigate(`/nutritionist/patients/${patientId}/hub`)}
+                        onClick={() => navigate(`/nutritionist/patients/${patientId}/hub?tab=adherence`)}
                         className="-ml-2 w-fit text-[#5f6f52] hover:text-[#5f6f52] hover:bg-[#5f6f52]/10"
                     >
                         <ArrowLeft className="w-4 h-4 mr-1" />
@@ -777,7 +777,7 @@ const GoalsPage = () => {
                         onUpdateProgress={() => setShowProgressModal(true)}
                         onComplete={handleCompleteGoal}
                         onPause={handlePauseGoal}
-                        onCancel={handleCancelGoal}
+                        onCancel={() => setShowCancelDialog(true)}
                     />
                 )}
 
@@ -886,6 +886,27 @@ const GoalsPage = () => {
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
+
+                {/* Modal de Cancelamento */}
+                <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Cancelar meta?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                Tem certeza que deseja cancelar esta meta? Esta ação não pode ser desfeita.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Não, manter meta</AlertDialogCancel>
+                            <AlertDialogAction
+                                onClick={handleCancelGoal}
+                                className="bg-red-600 hover:bg-red-700"
+                            >
+                                Sim, cancelar meta
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
             </div>
         </div>
     );
@@ -904,7 +925,7 @@ const ActiveGoalCard = ({ goal, onUpdateProgress, onComplete, onPause, onCancel 
 
     return (
         <Card className="shadow-md bg-gradient-to-br from-[#fefae0]/30 to-white">
-            <CardHeader className="bg-[#5f6f52] text-white">
+            <CardHeader className="bg-[#5f6f52] text-white rounded-t-lg">
                 <div className="flex flex-col md:flex-row md:items-start justify-between gap-3">
                     <div className="flex items-center gap-3">
                         <div className="w-12 h-12 rounded-lg bg-white/10 flex items-center justify-center">

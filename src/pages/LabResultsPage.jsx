@@ -322,18 +322,7 @@ const LabResultsPage = () => {
         return <Badge variant="outline" className={cn('text-xs', config.className)}>{config.label}</Badge>;
     };
 
-    if (loading) {
-        return (
-            <div className="flex items-center justify-center min-h-screen">
-                <div className="text-center">
-                    <Loader2 className="w-12 h-12 border-4 border-primary animate-spin mx-auto mb-4" />
-                    <p className="text-muted-foreground">Carregando exames...</p>
-                </div>
-            </div>
-        );
-    }
-
-    return (
+    return loading ? null : (
         <div className="flex flex-col min-h-screen bg-background">
             <div className="max-w-7xl mx-auto w-full px-4 md:px-8 py-6 md:py-8">
                 {/* Header */}

@@ -161,11 +161,16 @@ const TabContentAdherence = ({ patientId, modulesStatus = {} }) => {
                         )}
                     </div>
 
-                    <div className="text-xs text-muted-foreground pt-3 mt-3 border-t flex items-center justify-between">
-                        <span>Meta criada em {new Date(activeGoal.start_date).toLocaleDateString('pt-BR')}</span>
-                        <span className="flex items-center gap-1 text-[#5f6f52] font-medium">
-                            Abrir <ArrowRight className="w-3 h-3" />
-                        </span>
+                    <div className="text-xs pt-3 mt-3 border-t flex items-center justify-between">
+                        <span className="text-muted-foreground">Meta criada em {new Date(activeGoal.start_date).toLocaleDateString('pt-BR')}</span>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 text-[#5f6f52] hover:bg-[#5f6f52]/10"
+                            onClick={() => navigate(`/nutritionist/patients/${patientId}/goals`)}
+                        >
+                            Abrir <ArrowRight className="w-3 h-3 ml-1" />
+                        </Button>
                     </div>
                 </CardContent>
             </Card>

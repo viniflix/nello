@@ -405,17 +405,17 @@ export const getPatientsPendingData = async (nutritionistId) => {
                     'anthropometry': {
                         type: 'anthropometry',
                         label: 'Avaliação Antropométrica Pendente',
-                        route: `/nutritionist/patients/${patient.patient_id}`
+                        route: `/nutritionist/patients/${patient.patient_id}/anthropometry`
                     },
                     'meal_plan': {
                         type: 'meal_plan',
                         label: 'Plano Alimentar Pendente',
-                        route: `/nutritionist/patients/${patient.patient_id}`
+                        route: `/nutritionist/patients/${patient.patient_id}/meal-plan`
                     },
                     'prescription': {
                         type: 'prescription',
                         label: 'Cálculo de Necessidades Pendente',
-                        route: `/nutritionist/patients/${patient.patient_id}`
+                        route: `/nutritionist/patients/${patient.patient_id}/energy-expenditure`
                     }
                 };
 
