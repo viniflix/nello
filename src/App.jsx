@@ -1,14 +1,16 @@
 import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
-import { Toaster } from '@/components/ui/toaster';
+import SmartToaster from '@/components/SmartToaster';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { ChatProvider } from '@/contexts/ChatContext';
+import { AdminModeProvider } from '@/contexts/AdminModeContext';
 import { Loader2 } from 'lucide-react';
 
 // Mantém imports críticos para auth e layouts (não lazy load)
 import MainLayout from '@/components/MainLayout.jsx';
 import PatientMobileLayout from '@/components/patient/PatientMobileLayout.jsx';
+import AdminLayout from '@/components/admin/AdminLayout.jsx';
 
 // CODE SPLITTING: Lazy load de todas as páginas
 const LoginPage = lazy(() => import('@/pages/LoginPage.jsx'));
@@ -28,6 +30,10 @@ const NotificationsPage = lazy(() => import('@/pages/NotificationsPage.jsx'));
 const CalculationInfoPage = lazy(() => import('@/pages/CalculationInfoPage.jsx'));
 const AgendaPage = lazy(() => import('@/pages/AgendaPage.jsx'));
 const FinancialPage = lazy(() => import('@/pages/FinancialPage.jsx'));
+const NutritionistFoodsPage = lazy(() => import('@/pages/nutritionist/NutritionistFoodsPage.jsx'));
+
+// Páginas Admin
+const AdminDashboard = lazy(() => import('@/pages/admin/AdminDashboard.jsx'));
 
 // Anamnese
 const PatientAnamnesePage = lazy(() => import('@/pages/PatientAnamnesePage.jsx'));
@@ -87,7 +93,8 @@ const AuthWrapper = ({ children }) => {
     return children;
 };
 
-const ProtectedRoute = ({ children, userType }) => {
+
+const ProtectedRoute = ({ children, userType, requireAdmin = false, allowAnyUserType = false }) => {
   const { user, loading } = useAuth();
 
   if (loading) {
@@ -98,6 +105,22 @@ const ProtectedRoute = ({ children, userType }) => {
     return <Navigate to="/login" replace />;
   }
 
+  const isAdmin = user.profile.is_admin === true;
+
+  // CRITICAL: If user is admin, allow access to ANY route (God Mode)
+  // The AdminModeContext will handle the visual masking
+  if (isAdmin) {
+    console.log('[ProtectedRoute] Admin access granted, bypassing user_type check');
+    return children;
+  }
+
+  // Admin-only routes: require admin flag
+  if (requireAdmin) {
+    const correctDashboard = user.profile.user_type === 'nutritionist' ? '/nutritionist' : '/patient';
+    return <Navigate to={correctDashboard} replace />;
+  }
+
+  // Regular routes: check user_type
   if (userType && user.profile.user_type !== userType) {
     const correctDashboard = user.profile.user_type === 'nutritionist' ? '/nutritionist' : '/patient';
     return <Navigate to={correctDashboard} replace />;
@@ -156,6 +179,15 @@ const AppLayout = () => {
               <Route path="/nutritionist/food-bank" element={<FoodBankPage />} />
               <Route path="/nutritionist/financial" element={<FinancialPage />} />
               <Route path="/nutritionist/agenda" element={<AgendaPage />} />
+              {/* Admin-only routes (nutritionist layout) */}
+              <Route 
+                path="/nutritionist/foods" 
+                element={
+                  <ProtectedRoute userType="nutritionist" requireAdmin={true}>
+                    <NutritionistFoodsPage />
+                  </ProtectedRoute>
+                } 
+              />
             </Route>
 
             {/* --- ROTAS DO PACIENTE (Nova Arquitetura Mobile-First) --- */}
@@ -169,6 +201,24 @@ const AppLayout = () => {
               <Route path="/patient/conquistas" element={<PatientAchievementsPage />} />
             </Route>
 
+            {/* --- ROTAS ADMIN (Layout dedicado, não aninhado em outros layouts) --- */}
+            <Route 
+              path="/admin" 
+              element={<Navigate to="/admin/dashboard" replace />} 
+            />
+            <Route 
+              element={
+                <ProtectedRoute requireAdmin={true}>
+                  <AdminLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route 
+                path="/admin/dashboard" 
+                element={<AdminDashboard />} 
+              />
+            </Route>
+
             {/* Rotas do Paciente (Fora do layout - páginas completas) */}
             <Route path="/patient/add-food/:mealId?" element={<ProtectedRoute userType="patient"><AddFoodPage /></ProtectedRoute>} />
             <Route path="/patient/add-meal" element={<ProtectedRoute userType="patient"><AddMealPage /></ProtectedRoute>} />
@@ -178,7 +228,6 @@ const AppLayout = () => {
             <Route path="*" element={<Navigate to={getHomePath()} replace />} />
           </Routes>
           </Suspense>
-          <Toaster />
         </div>
     </ChatProvider>
   );
@@ -188,11 +237,15 @@ const App = () => {
   return (
     <Router>
       <AuthProvider>
-        <Helmet>
-          <title>HipoZero - Controle Nutricional Inteligente</title>
-          <meta name="description" content="Plataforma moderna para nutricionistas e pacientes com controle alimentar, prescrição de dietas e acompanhamento nutricional baseado na Tabela TACO." />
-        </Helmet>
-        <AppLayout />
+        <AdminModeProvider>
+          <Helmet>
+            <title>HipoZero - Controle Nutricional Inteligente</title>
+            <meta name="description" content="Plataforma moderna para nutricionistas e pacientes com controle alimentar, prescrição de dietas e acompanhamento nutricional baseado na Tabela TACO." />
+          </Helmet>
+          <AppLayout />
+          {/* Smart Toaster with dynamic positioning based on admin state */}
+          <SmartToaster />
+        </AdminModeProvider>
       </AuthProvider>
     </Router>
   );

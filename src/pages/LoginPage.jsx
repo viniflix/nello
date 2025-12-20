@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Eye, EyeOff, ArrowRight, Mail, Lock } from 'lucide-react';
+import { Eye, EyeOff, ArrowRight, Mail, Lock, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -29,9 +29,32 @@ export default function LoginPage() {
   const [resetEmail, setResetEmail] = useState('');
   const [isAlertOpen, setIsAlertOpen] = useState(false);
 
-  const { signIn } = useAuth();
+  const { signIn, user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  // Smart redirect logic: wait for auth to finish loading, then redirect if user has profile
+  useEffect(() => {
+    // Don't redirect while AuthContext is still loading (checking session, fetching profile, etc.)
+    if (authLoading) {
+      return;
+    }
+
+    // If user exists and profile is loaded, redirect based on user_type
+    if (user?.profile) {
+      const dashboard = user.profile.user_type === 'nutritionist' ? '/nutritionist' : '/patient';
+      console.log('Redirecting authenticated user to dashboard:', dashboard);
+      navigate(dashboard, { replace: true });
+      return;
+    }
+
+    // If user exists but profile is not loaded yet (self-healing in progress), wait
+    // The AuthContext will update user when profile is ready, triggering this effect again
+    if (user && !user.profile) {
+      console.log('User authenticated but profile not loaded yet, waiting...');
+      return;
+    }
+  }, [user, authLoading, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -67,7 +90,7 @@ export default function LoginPage() {
     setLoading(true);
 
     const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
-      redirectTo: window.location.origin + '/update-password',
+      redirectTo: `${window.location.origin}/update-password`,
     });
 
     setLoading(false);
@@ -87,6 +110,18 @@ export default function LoginPage() {
       setResetEmail('');
     }
   };
+
+  // Show loading state while AuthContext is loading (checking session, fetching profile, self-healing)
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-background">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">Carregando...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>

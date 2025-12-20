@@ -1,9 +1,10 @@
-import { Outlet, NavLink } from 'react-router-dom';
-import { Home, BookMarked, LineChart, MessagesSquare, User, Bell, LogOut } from 'lucide-react';
+import { Outlet, NavLink, useLocation } from 'react-router-dom';
+import { Home, BookMarked, LineChart, MessagesSquare, User, Bell, LogOut, Shield } from 'lucide-react';
 import { useChat } from '@/contexts/ChatContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import NotificationsPanel from '@/components/NotificationsPanel';
+import AdminControlBar from '@/components/admin/AdminControlBar';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useState, useEffect } from 'react';
 
@@ -16,9 +17,25 @@ import { useState, useEffect } from 'react';
 export default function PatientMobileLayout() {
   const { user, signOut } = useAuth();
   const { unreadSenders } = useChat();
+  const location = useLocation();
   const unreadCount = unreadSenders?.size || 0;
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [showNotifications, setShowNotifications] = useState(false);
+
+  // Debug: Log admin status
+  useEffect(() => {
+    if (user?.profile) {
+      console.log('[PatientMobileLayout] User profile:', {
+        id: user.profile.id,
+        user_type: user.profile.user_type,
+        is_admin: user.profile.is_admin,
+        hasIsAdmin: 'is_admin' in (user.profile || {})
+      });
+    }
+  }, [user]);
+
+  // Check if current route is chat page (chat handles its own internal scroll)
+  const isChatPage = location.pathname.includes('/chat');
 
   // Buscar notificações não lidas
   useEffect(() => {
@@ -71,7 +88,7 @@ export default function PatientMobileLayout() {
     {
       to: '/patient/diario',
       icon: BookMarked,
-      label: 'Diário'
+      label: 'Plano'
     },
     {
       to: '/patient/progresso',
@@ -92,14 +109,14 @@ export default function PatientMobileLayout() {
   ];
 
   return (
-    <div className="flex h-screen bg-slate-50">
+    <div className="flex flex-col md:flex-row h-[100dvh] md:h-screen overflow-hidden bg-slate-50">
       {/* SIDEBAR (Desktop apenas) */}
       <aside className="hidden md:flex md:flex-col md:w-64 bg-white border-r border-gray-200 fixed inset-y-0 left-0 z-30">
         <div className="p-6 border-b border-gray-200">
           <h1 className="text-xl font-bold text-primary">Área do Paciente</h1>
         </div>
 
-        <nav className="flex-1 p-4 space-y-2">
+        <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
           {navItems.map((item) => {
             const Icon = item.icon;
             return (
@@ -147,14 +164,12 @@ export default function PatientMobileLayout() {
       </aside>
 
       {/* MAIN CONTENT AREA */}
-      <main className="flex-1 md:ml-64 overflow-y-auto">
-        <div className="h-full pb-20 md:pb-0">
-          <Outlet />
-        </div>
+      <main className={`flex-1 md:ml-64 ${isChatPage ? 'overflow-hidden' : 'overflow-y-auto'}`}>
+        <Outlet />
       </main>
 
       {/* BOTTOM NAV (Mobile apenas) */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-30 safe-area-inset-bottom">
+      <nav className="md:hidden w-full shrink-0 bg-white border-t border-gray-200 z-50 safe-area-inset-bottom">
         <div className="flex items-center justify-around h-16 px-2">
           {navItems.map((item) => {
             const Icon = item.icon;
@@ -192,6 +207,9 @@ export default function PatientMobileLayout() {
 
       {/* PAINEL DE NOTIFICAÇÕES */}
       <NotificationsPanel isOpen={showNotifications} setIsOpen={setShowNotifications} />
+
+      {/* ADMIN CONTROL BAR (apenas para admins) */}
+      <AdminControlBar />
     </div>
   );
 }

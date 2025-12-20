@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { LogOut, User, Menu, X } from 'lucide-react';
+import { useAdminMode } from '@/contexts/AdminModeContext';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -18,23 +19,55 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet';
 
-// Links de navegação principal
-const navigationLinks = [
-  { name: 'Dashboard', path: '/nutritionist' },
-  { name: 'Pacientes', path: '/nutritionist/patients' },
-  { name: 'Agenda', path: '/nutritionist/agenda' },
-  { name: 'Financeiro', path: '/nutritionist/financial' },
-  { name: 'Banco de Alimentos', path: '/nutritionist/food-bank' },
-];
+// Links de navegação principal (Nutritionist)
+const getNutritionistLinks = () => {
+  return [
+    { name: 'Dashboard', path: '/nutritionist' },
+    { name: 'Pacientes', path: '/nutritionist/patients' },
+    { name: 'Agenda', path: '/nutritionist/agenda' },
+    { name: 'Financeiro', path: '/nutritionist/financial' },
+    { name: 'Banco de Alimentos', path: '/nutritionist/food-bank' },
+  ];
+};
+
+// Admin navigation links (removed - access only via Control Bar)
+const getAdminLinks = () => {
+  return [];
+};
 
 // --- Componente Principal do Header (Nova Versão CLEAN) ---
 const DashboardHeader = ({ user, logout }) => {
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { viewMode, isAdmin } = useAdminMode();
 
   if (!user) return null;
 
   const initials = (user.profile?.name || 'U').substring(0, 2).toUpperCase();
+  
+  // Determine which links to show based on viewMode (for admins) or user_type (for regular users)
+  let navigationLinks = [];
+  let adminLinks = [];
+  
+  if (isAdmin && viewMode) {
+    // Admin in God Mode: show links based on viewMode
+    if (viewMode === 'admin') {
+      adminLinks = getAdminLinks();
+    } else if (viewMode === 'nutritionist') {
+      navigationLinks = getNutritionistLinks();
+      // Also show admin links if admin wants to access admin features
+      adminLinks = getAdminLinks();
+    }
+    // If viewMode === 'patient', don't show nutritionist links (patient uses different layout)
+  } else {
+    // Regular user: show links based on user_type
+    if (user.profile?.user_type === 'nutritionist') {
+      navigationLinks = getNutritionistLinks();
+      if (isAdmin) {
+        adminLinks = getAdminLinks();
+      }
+    }
+  }
 
   // Handler para logout que previne comportamentos inesperados
   const handleLogout = async (e) => {
@@ -79,6 +112,32 @@ const DashboardHeader = ({ user, logout }) => {
                       {link.name}
                     </NavLink>
                   ))}
+                  {adminLinks.length > 0 && (
+                    <>
+                      <div className="px-4 py-2 mt-4 border-t">
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                          Administração
+                        </p>
+                      </div>
+                      {adminLinks.map((link) => (
+                        <NavLink
+                          key={link.path}
+                          to={link.path}
+                          end={link.path === '/admin/dashboard'}
+                          onClick={() => setMobileMenuOpen(false)}
+                          className={({ isActive }) =>
+                            `px-4 py-3 rounded-md text-sm font-medium transition-colors ${
+                              isActive
+                                ? 'text-primary bg-primary/10'
+                                : 'text-muted-foreground hover:text-primary hover:bg-accent'
+                            }`
+                          }
+                        >
+                          {link.name}
+                        </NavLink>
+                      ))}
+                    </>
+                  )}
                 </nav>
               </SheetContent>
             </Sheet>
@@ -110,6 +169,27 @@ const DashboardHeader = ({ user, logout }) => {
                   {link.name}
                 </NavLink>
               ))}
+              {adminLinks.length > 0 && (
+                <>
+                  <div className="h-6 w-px bg-border mx-2" />
+                  {adminLinks.map((link) => (
+                    <NavLink
+                      key={link.path}
+                      to={link.path}
+                      end={link.path === '/admin/dashboard'}
+                      className={({ isActive }) =>
+                        `px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                          isActive
+                            ? 'text-primary bg-primary/10'
+                            : 'text-muted-foreground hover:text-primary hover:bg-accent'
+                        }`
+                      }
+                    >
+                      {link.name}
+                    </NavLink>
+                  ))}
+                </>
+              )}
             </nav>
           </div>
 

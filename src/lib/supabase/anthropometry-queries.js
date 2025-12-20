@@ -72,19 +72,37 @@ export const getAnthropometryChartData = async (patientId) => {
  */
 export const createAnthropometryRecord = async (recordData) => {
     try {
-        const { patient_id, weight, height, record_date, notes } = recordData;
+        const {
+            patient_id,
+            weight,
+            height,
+            record_date,
+            notes,
+            circumferences,
+            skinfolds,
+            bone_diameters,
+            bioimpedance,
+            photos,
+            results
+        } = recordData;
+
+        const insertData = {
+            patient_id,
+            weight,
+            height,
+            record_date,
+            notes: notes || null,
+            ...(circumferences && { circumferences }),
+            ...(skinfolds && { skinfolds }),
+            ...(bone_diameters && { bone_diameters }),
+            ...(bioimpedance && { bioimpedance }),
+            ...(photos && { photos }),
+            ...(results && { results })
+        };
 
         const { data, error } = await supabase
             .from('growth_records')
-            .insert([
-                {
-                    patient_id,
-                    weight,
-                    height,
-                    record_date,
-                    notes: notes || null
-                }
-            ])
+            .insert([insertData])
             .select()
             .single();
 
@@ -104,13 +122,30 @@ export const createAnthropometryRecord = async (recordData) => {
  */
 export const updateAnthropometryRecord = async (recordId, recordData) => {
     try {
-        const { weight, height, record_date, notes } = recordData;
+        const {
+            weight,
+            height,
+            record_date,
+            notes,
+            circumferences,
+            skinfolds,
+            bone_diameters,
+            bioimpedance,
+            photos,
+            results
+        } = recordData;
 
         const updateData = {
             ...(weight !== undefined && { weight }),
             ...(height !== undefined && { height }),
             ...(record_date !== undefined && { record_date }),
-            ...(notes !== undefined && { notes })
+            ...(notes !== undefined && { notes }),
+            ...(circumferences !== undefined && { circumferences }),
+            ...(skinfolds !== undefined && { skinfolds }),
+            ...(bone_diameters !== undefined && { bone_diameters }),
+            ...(bioimpedance !== undefined && { bioimpedance }),
+            ...(photos !== undefined && { photos }),
+            ...(results !== undefined && { results })
         };
 
         const { data, error } = await supabase

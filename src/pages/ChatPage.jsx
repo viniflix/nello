@@ -190,6 +190,7 @@ const ChatPage = () => {
   const [mediaPreview, setMediaPreview] = useState(null);
   const [mediaType, setMediaType] = useState(null);
   const messagesEndRef = useRef(null);
+  const messagesContainerRef = useRef(null);
   const fileInputRef = useRef(null);
   const [isSending, setIsSending] = useState(false);
   // --- MUDANÇA NO ESTADO DO MODAL ---
@@ -232,7 +233,26 @@ const ChatPage = () => {
   }, [recipientId, fetchRecipient]);
 
   useEffect(() => { if (user && recipientId) fetchMessages(user.id, recipientId); }, [user, recipientId, fetchMessages]);
-  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'auto' }); }, [messages]);
+  
+  // Auto-scroll to bottom when messages change or on mount
+  useEffect(() => {
+    if (messagesContainerRef.current && messages.length > 0) {
+      // Use setTimeout to ensure DOM is updated
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
+    }
+  }, [messages]);
+
+  // Scroll to bottom on initial load
+  useEffect(() => {
+    if (messagesContainerRef.current && !messagesLoading && messages.length > 0) {
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+      }, 200);
+    }
+  }, [messagesLoading, messages.length]);
+
   useEffect(() => { if(recipientId) markChatAsRead(recipientId); }, [recipientId, markChatAsRead, messages]);
 
 
@@ -346,8 +366,8 @@ const ChatPage = () => {
         onClose={() => setModalMedia({ path: null, type: null })}
       />
 
-      {/* Header fixo - sticky no topo com safe-area para mobile */}
-      <header className="sticky top-0 flex-shrink-0 bg-white border-b p-4 pt-safe flex items-center shadow-md z-30">
+      {/* Header - Fixed at top of container */}
+      <header className="shrink-0 bg-white border-b p-4 flex items-center shadow-md z-30">
         <Button variant="ghost" size="icon" onClick={handleBack} className="mr-2 ">
           <ArrowLeft className="w-5 h-5" />
         </Button>
@@ -366,8 +386,8 @@ const ChatPage = () => {
         </div>
       </header>
 
-      {/* Main com scroll */}
-      <main className="flex-1 overflow-y-auto p-4 space-y-2 ">
+      {/* Message List - Scrollable area */}
+      <main ref={messagesContainerRef} className="flex-1 overflow-y-auto p-4 space-y-2">
         {Object.entries(groupedMessages).map(([date, msgs]) => (
           <Fragment key={date}>
             <DateSeparator date={date} />
@@ -405,8 +425,8 @@ const ChatPage = () => {
         <div ref={messagesEndRef} />
       </main>
 
-      {/* Footer fixo - acima do BottomNav no mobile */}
-      <footer className="flex-shrink-0 bg-white p-4 border-t shadow-lg z-20 mb-16 md:mb-0">
+      {/* Input Area - Fixed at bottom of container */}
+      <footer className="shrink-0 bg-white p-4 border-t shadow-lg z-20">
         {mediaPreview && (
           <div className="relative p-2 mb-2 border rounded-lg max-w-sm flex items-center gap-2 bg-slate-50">
             {mediaType === 'image' && <img src={mediaPreview} alt="Preview" className="max-h-24 rounded" />}

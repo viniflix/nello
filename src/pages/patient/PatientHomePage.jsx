@@ -196,36 +196,62 @@ export default function PatientHomePage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Coluna Principal */}
           <div className="lg:col-span-2 space-y-6">
-            {/* 1. Card de Progresso Diário */}
-            {prescriptionGoal && currentProgress && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-              >
-                <DailyAdherenceCard
-                  goal={prescriptionGoal}
-                  current={currentProgress}
-                />
-              </motion.div>
-            )}
-
-            {/* 2. Card: Próxima Refeição */}
+            {/* 1. Card: Registrar Alimentação (TOP PRIORITY) */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
+              transition={{ delay: 0.1 }}
+            >
+              <Card
+                className="shadow-card-dark rounded-xl bg-card cursor-pointer hover:shadow-lg transition-shadow border-2 border-primary/20"
+                onClick={() => navigate('/patient/diario')}
+              >
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <UtensilsCrossed className="w-5 h-5 text-primary" />
+                      <CardTitle className="text-lg font-semibold">Registrar Alimentação</CardTitle>
+                    </div>
+                  </div>
+                  <CardDescription>
+                    Registre suas refeições do dia
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Adicione alimentos e quantidades para suas refeições
+                  </p>
+                  <Button
+                    size="sm"
+                    className="w-full bg-primary hover:bg-primary/90"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate('/patient/diario');
+                    }}
+                  >
+                    <UtensilsCrossed className="w-4 h-4 mr-2" />
+                    Registrar Refeição
+                  </Button>
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            {/* 2. Card: Plano Alimentar (SECOND) */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
             >
               <Card className="shadow-card-dark rounded-xl bg-card">
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <UtensilsCrossed className="w-5 h-5 text-primary" />
-                      <CardTitle className="text-lg font-semibold">Próxima Refeição</CardTitle>
+                      <BookMarked className="w-5 h-5 text-primary" />
+                      <CardTitle className="text-lg font-semibold">Plano Alimentar</CardTitle>
                     </div>
                   </div>
                   <CardDescription>
-                    Veja o que está planejado para sua próxima refeição
+                    Veja o que está planejado para suas refeições
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -249,6 +275,20 @@ export default function PatientHomePage() {
               </Card>
             </motion.div>
 
+            {/* 3. Card de Progresso Diário (THIRD) */}
+            {prescriptionGoal && currentProgress && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+              >
+                <DailyAdherenceCard
+                  goal={prescriptionGoal}
+                  current={currentProgress}
+                />
+              </motion.div>
+            )}
+
             {/* 2.5. Widget de Conquistas (Mobile e Desktop) */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -259,7 +299,7 @@ export default function PatientHomePage() {
               <RecentAchievementsWidget />
             </motion.div>
 
-            {/* 3. Card: Diário Alimentar */}
+            {/* 4. Card: Diário Alimentar */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}

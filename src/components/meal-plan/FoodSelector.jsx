@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, X, Check } from 'lucide-react';
+import { Search, X, Check, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/lib/customSupabaseClient';
+import QuickFoodCreateDialog from './QuickFoodCreateDialog';
 
 const FoodSelector = ({ isOpen, onClose, onSelect }) => {
     const [searchTerm, setSearchTerm] = useState('');
@@ -21,6 +22,7 @@ const FoodSelector = ({ isOpen, onClose, onSelect }) => {
     const [loading, setLoading] = useState(false);
     const [selectedFood, setSelectedFood] = useState(null);
     const [sourceFilter, setSourceFilter] = useState(null);
+    const [quickCreateOpen, setQuickCreateOpen] = useState(false);
 
     const sources = [
         { value: null, label: 'Todos' },
@@ -85,6 +87,22 @@ const FoodSelector = ({ isOpen, onClose, onSelect }) => {
         onClose();
     };
 
+    const handleFoodCreated = async (newFood) => {
+        // Close quick create dialog
+        setQuickCreateOpen(false);
+        
+        // Add the new food to the list (at the top)
+        setFoods([newFood, ...foods]);
+        
+        // Automatically select it
+        setSelectedFood(newFood);
+        
+        // Optionally refresh search to ensure consistency
+        if (searchTerm) {
+            await searchFoods();
+        }
+    };
+
     return (
         <Dialog open={isOpen} onOpenChange={handleClose}>
             <DialogContent className="max-w-3xl max-h-[80vh]">
@@ -141,8 +159,18 @@ const FoodSelector = ({ isOpen, onClose, onSelect }) => {
                         )}
 
                         {!loading && searchTerm.length >= 2 && foods.length === 0 && (
-                            <div className="text-center py-8 text-muted-foreground">
-                                Nenhum alimento encontrado
+                            <div className="text-center py-8 space-y-4">
+                                <p className="text-muted-foreground">
+                                    Nenhum alimento encontrado
+                                </p>
+                                <Button
+                                    variant="outline"
+                                    onClick={() => setQuickCreateOpen(true)}
+                                    className="mx-auto"
+                                >
+                                    <Plus className="h-4 w-4 mr-2" />
+                                    Cadastrar '{searchTerm}' agora
+                                </Button>
                             </div>
                         )}
 
@@ -209,6 +237,14 @@ const FoodSelector = ({ isOpen, onClose, onSelect }) => {
                     </Button>
                 </DialogFooter>
             </DialogContent>
+
+            {/* Quick Create Dialog */}
+            <QuickFoodCreateDialog
+                open={quickCreateOpen}
+                onOpenChange={setQuickCreateOpen}
+                initialName={searchTerm}
+                onFoodCreated={handleFoodCreated}
+            />
         </Dialog>
     );
 };

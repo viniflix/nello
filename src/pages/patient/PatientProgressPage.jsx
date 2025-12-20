@@ -53,6 +53,8 @@ export default function PatientProgressPage() {
 
   // Form state para novo registro
   const [newWeight, setNewWeight] = useState('');
+  const [newHeight, setNewHeight] = useState('');
+  const [newHeadCircumference, setNewHeadCircumference] = useState('');
   const [newGlycemia, setNewGlycemia] = useState('');
   const [recordDate, setRecordDate] = useState(format(new Date(), 'yyyy-MM-dd'));
 
@@ -72,13 +74,33 @@ export default function PatientProgressPage() {
     // 2. Meta de peso - por enquanto null (precisa ser adicionada ao growth_records ou meal_plans)
     setGoalWeight(null);
 
-    // 3. Glicemia - tabela não existe ainda
-    setGlycemiaData([]);
+    // 3. Glicemia - tentar buscar (tabela pode não existir ainda)
+    try {
+      const { data: glycemiaRecords } = await supabase
+        .from('glycemia_records')
+        .select('*')
+        .eq('patient_id', user.id)
+        .order('record_date', { ascending: true });
+      setGlycemiaData(glycemiaRecords || []);
+    } catch (error) {
+      // Tabela não existe ainda
+      setGlycemiaData([]);
+    }
 
-    // 4. Fotos de progresso - tabela não existe ainda
-    setPhotosData([]);
+    // 4. Fotos de progresso - tentar buscar (tabela pode não existir ainda)
+    try {
+      const { data: photoRecords } = await supabase
+        .from('progress_photos')
+        .select('*')
+        .eq('patient_id', user.id)
+        .order('photo_date', { ascending: false });
+      setPhotosData(photoRecords || []);
+    } catch (error) {
+      // Tabela não existe ainda
+      setPhotosData([]);
+    }
 
-    // 5. Medidas (usando growth_records para IMC, etc)
+    // 5. Medidas (usando growth_records com height, head_circumference, etc)
     setMeasurementsData(weightRecords || []);
 
     setLoading(false);
@@ -124,6 +146,44 @@ export default function PatientProgressPage() {
     }
   };
 
+  const handleAddMeasurementRecord = async (e) => {
+    e.preventDefault();
+
+    if (!newHeight || !recordDate) {
+      toast({
+        title: 'Erro',
+        description: 'Preencha todos os campos obrigatórios.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    const { error } = await supabase.from('growth_records').insert({
+      patient_id: user.id,
+      record_date: recordDate,
+      height: parseFloat(newHeight),
+      head_circumference: newHeadCircumference ? parseFloat(newHeadCircumference) : null
+    });
+
+    if (error) {
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível adicionar o registro.',
+        variant: 'destructive'
+      });
+    } else {
+      toast({
+        title: 'Sucesso',
+        description: 'Registro de medidas adicionado com sucesso!'
+      });
+      setDialogOpen(false);
+      setNewHeight('');
+      setNewHeadCircumference('');
+      setRecordDate(format(new Date(), 'yyyy-MM-dd'));
+      loadProgressData();
+    }
+  };
+
   const handleAddGlycemiaRecord = async (e) => {
     e.preventDefault();
 
@@ -136,19 +196,17 @@ export default function PatientProgressPage() {
       return;
     }
 
-    const { error } = await supabase.from('glycemia_records').insert({
-      patient_id: user.id,
-      record_date: recordDate,
-      glycemia_value: parseFloat(newGlycemia)
-    });
-
-    if (error) {
-      toast({
-        title: 'Erro',
-        description: 'Não foi possível adicionar o registro.',
-        variant: 'destructive'
+    try {
+      const { error } = await supabase.from('glycemia_records').insert({
+        patient_id: user.id,
+        record_date: recordDate,
+        glycemia_value: parseFloat(newGlycemia)
       });
-    } else {
+
+      if (error) {
+        throw error;
+      }
+
       toast({
         title: 'Sucesso',
         description: 'Registro de glicemia adicionado com sucesso!'
@@ -157,6 +215,61 @@ export default function PatientProgressPage() {
       setNewGlycemia('');
       setRecordDate(format(new Date(), 'yyyy-MM-dd'));
       loadProgressData();
+    } catch (error) {
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível adicionar o registro. A tabela pode não estar disponível ainda.',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const handleAddPhotoRecord = async (file) => {
+    if (!file || !recordDate) {
+      toast({
+        title: 'Erro',
+        description: 'Selecione uma foto e uma data.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    try {
+      // Upload photo to storage
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+      const { error: uploadError } = await supabase.storage
+        .from('progress-photos')
+        .upload(fileName, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('progress-photos')
+        .getPublicUrl(fileName);
+
+      // Save record to database
+      const { error: dbError } = await supabase.from('progress_photos').insert({
+        patient_id: user.id,
+        photo_date: recordDate,
+        photo_url: publicUrl
+      });
+
+      if (dbError) throw dbError;
+
+      toast({
+        title: 'Sucesso',
+        description: 'Foto de progresso adicionada com sucesso!'
+      });
+      setDialogOpen(false);
+      setRecordDate(format(new Date(), 'yyyy-MM-dd'));
+      loadProgressData();
+    } catch (error) {
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível adicionar a foto. A funcionalidade pode não estar disponível ainda.',
+        variant: 'destructive'
+      });
     }
   };
 
@@ -203,9 +316,53 @@ export default function PatientProgressPage() {
               animate={{ opacity: 1, y: 0 }}
             >
               {weightData.length > 0 ? (
-                <WeightChart data={weightData} goalWeight={goalWeight} />
+                <div className="space-y-4">
+                  <Card className="shadow-sm">
+                    <CardHeader>
+                      <CardTitle>Evolução de Peso</CardTitle>
+                      <CardDescription>Acompanhe sua evolução ao longo do tempo</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <WeightChart data={weightData} goalWeight={goalWeight} />
+                    </CardContent>
+                  </Card>
+
+                  {/* Recent Records List */}
+                  <Card className="shadow-sm">
+                    <CardHeader>
+                      <CardTitle className="text-lg">Registros Recentes</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        {weightData
+                          .sort((a, b) => new Date(b.record_date) - new Date(a.record_date))
+                          .slice(0, 10)
+                          .map((record, idx) => (
+                            <div
+                              key={idx}
+                              className="flex justify-between items-center p-3 bg-muted/50 rounded-lg border border-border hover:bg-muted transition-colors"
+                            >
+                              <div>
+                                <p className="text-sm font-semibold text-foreground">
+                                  {format(new Date(record.record_date), 'dd/MM/yyyy')}
+                                </p>
+                                {record.notes && (
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    {record.notes}
+                                  </p>
+                                )}
+                              </div>
+                              <p className="text-lg font-bold text-primary">
+                                {parseFloat(record.weight).toFixed(1)} kg
+                              </p>
+                            </div>
+                          ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
               ) : (
-                <Card>
+                <Card className="shadow-sm">
                   <CardHeader>
                     <CardTitle>Evolução de Peso</CardTitle>
                     <CardDescription>Nenhum registro encontrado</CardDescription>
@@ -214,7 +371,7 @@ export default function PatientProgressPage() {
                     <div className="text-center py-12">
                       <Scale className="mx-auto h-12 w-12 text-muted-foreground mb-3" />
                       <p className="text-sm text-muted-foreground">
-                        Adicione seu primeiro registro de peso usando o botão abaixo
+                        Adicione seu primeiro registro de peso usando o botão +
                       </p>
                     </div>
                   </CardContent>
@@ -229,7 +386,7 @@ export default function PatientProgressPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
             >
-              <Card>
+              <Card className="shadow-sm">
                 <CardHeader>
                   <CardTitle>Evolução da Glicemia</CardTitle>
                   <CardDescription>
@@ -238,27 +395,57 @@ export default function PatientProgressPage() {
                 </CardHeader>
                 <CardContent>
                   {glycemiaChartData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={300}>
-                      <LineChart data={glycemiaChartData}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="date" tick={{ fontSize: 12 }} />
-                        <YAxis tick={{ fontSize: 12 }} />
-                        <Tooltip />
-                        <Line
-                          type="monotone"
-                          dataKey="value"
-                          name="Glicemia (mg/dL)"
-                          stroke="#ef4444"
-                          strokeWidth={2}
-                          dot={{ fill: '#ef4444', r: 4 }}
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
+                    <div className="space-y-4">
+                      <ResponsiveContainer width="100%" height={300}>
+                        <LineChart data={glycemiaChartData}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+                          <YAxis tick={{ fontSize: 12 }} />
+                          <Tooltip />
+                          <Line
+                            type="monotone"
+                            dataKey="value"
+                            name="Glicemia (mg/dL)"
+                            stroke="#ef4444"
+                            strokeWidth={2}
+                            dot={{ fill: '#ef4444', r: 4 }}
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
+
+                      {/* Recent Records List */}
+                      <div className="mt-6">
+                        <h3 className="text-sm font-semibold text-muted-foreground mb-3">
+                          Registros Recentes
+                        </h3>
+                        <div className="space-y-2">
+                          {glycemiaData
+                            .sort((a, b) => new Date(b.record_date) - new Date(a.record_date))
+                            .slice(0, 10)
+                            .map((record, idx) => (
+                              <div
+                                key={idx}
+                                className="flex justify-between items-center p-3 bg-muted/50 rounded-lg border border-border hover:bg-muted transition-colors"
+                              >
+                                <p className="text-sm font-semibold text-foreground">
+                                  {format(new Date(record.record_date), 'dd/MM/yyyy')}
+                                </p>
+                                <p className="text-lg font-bold text-red-600">
+                                  {parseFloat(record.glycemia_value).toFixed(0)} mg/dL
+                                </p>
+                              </div>
+                            ))}
+                        </div>
+                      </div>
+                    </div>
                   ) : (
                     <div className="text-center py-12">
                       <Droplet className="mx-auto h-12 w-12 text-muted-foreground mb-3" />
                       <p className="text-sm text-muted-foreground">
                         Nenhum registro de glicemia encontrado
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Use o botão + para adicionar seu primeiro registro
                       </p>
                     </div>
                   )}
@@ -273,36 +460,98 @@ export default function PatientProgressPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
             >
-              <Card>
+              <Card className="shadow-sm">
                 <CardHeader>
                   <CardTitle>Medidas Corporais</CardTitle>
-                  <CardDescription>Histórico de medidas</CardDescription>
+                  <CardDescription>Histórico de medidas antropométricas</CardDescription>
                 </CardHeader>
                 <CardContent>
                   {measurementsData.length > 0 ? (
-                    <div className="space-y-3">
-                      {measurementsData.slice(0, 5).map((record, idx) => (
-                        <div
-                          key={idx}
-                          className="flex justify-between items-center p-3 bg-muted/50 rounded-lg"
-                        >
-                          <div>
-                            <p className="text-sm font-medium">
-                              {format(new Date(record.record_date), 'dd/MM/yyyy')}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              Peso: {record.weight} kg
-                              {record.height && ` | Altura: ${record.height} cm`}
-                            </p>
-                          </div>
+                    <div className="space-y-4">
+                      {/* Chart for Height evolution */}
+                      {measurementsData.filter(r => r.height).length > 0 && (
+                        <div className="mb-6">
+                          <h3 className="text-sm font-semibold text-muted-foreground mb-3">
+                            Evolução da Altura
+                          </h3>
+                          <ResponsiveContainer width="100%" height={250}>
+                            <LineChart
+                              data={measurementsData
+                                .filter(r => r.height)
+                                .map((record) => ({
+                                  date: format(new Date(record.record_date), 'dd/MM/yy'),
+                                  height: parseFloat(record.height)
+                                }))}
+                            >
+                              <CartesianGrid strokeDasharray="3 3" />
+                              <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+                              <YAxis tick={{ fontSize: 12 }} />
+                              <Tooltip />
+                              <Line
+                                type="monotone"
+                                dataKey="height"
+                                name="Altura (cm)"
+                                stroke="#3b82f6"
+                                strokeWidth={2}
+                                dot={{ fill: '#3b82f6', r: 4 }}
+                              />
+                            </LineChart>
+                          </ResponsiveContainer>
                         </div>
-                      ))}
+                      )}
+
+                      {/* History List */}
+                      <div className="space-y-2">
+                        <h3 className="text-sm font-semibold text-muted-foreground mb-3">
+                          Histórico Completo
+                        </h3>
+                        {measurementsData
+                          .sort((a, b) => new Date(b.record_date) - new Date(a.record_date))
+                          .map((record, idx) => (
+                            <div
+                              key={idx}
+                              className="flex justify-between items-center p-4 bg-muted/50 rounded-lg border border-border hover:bg-muted transition-colors"
+                            >
+                              <div className="flex-1">
+                                <p className="text-sm font-semibold text-foreground">
+                                  {format(new Date(record.record_date), 'dd/MM/yyyy')}
+                                </p>
+                                <div className="flex flex-wrap gap-3 mt-1">
+                                  {record.weight && (
+                                    <p className="text-xs text-muted-foreground">
+                                      <span className="font-medium">Peso:</span> {parseFloat(record.weight).toFixed(1)} kg
+                                    </p>
+                                  )}
+                                  {record.height && (
+                                    <p className="text-xs text-muted-foreground">
+                                      <span className="font-medium">Altura:</span> {parseFloat(record.height).toFixed(1)} cm
+                                    </p>
+                                  )}
+                                  {record.head_circumference && (
+                                    <p className="text-xs text-muted-foreground">
+                                      <span className="font-medium">PC:</span> {parseFloat(record.head_circumference).toFixed(1)} cm
+                                    </p>
+                                  )}
+                                  {record.weight && record.height && (
+                                    <p className="text-xs text-muted-foreground">
+                                      <span className="font-medium">IMC:</span>{' '}
+                                      {(parseFloat(record.weight) / Math.pow(parseFloat(record.height) / 100, 2)).toFixed(1)}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                      </div>
                     </div>
                   ) : (
                     <div className="text-center py-12">
                       <Ruler className="mx-auto h-12 w-12 text-muted-foreground mb-3" />
                       <p className="text-sm text-muted-foreground">
                         Nenhuma medida registrada
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Use o botão + para adicionar seu primeiro registro
                       </p>
                     </div>
                   )}
@@ -317,18 +566,18 @@ export default function PatientProgressPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
             >
-              <Card>
+              <Card className="shadow-sm">
                 <CardHeader>
                   <CardTitle>Fotos de Progresso</CardTitle>
                   <CardDescription>Registros visuais da evolução</CardDescription>
                 </CardHeader>
                 <CardContent>
                   {photosData.length > 0 ? (
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                       {photosData.map((photo, idx) => (
                         <div
                           key={idx}
-                          className="relative aspect-square rounded-lg overflow-hidden bg-muted"
+                          className="relative aspect-square rounded-lg overflow-hidden bg-muted border border-border hover:shadow-md transition-shadow group"
                         >
                           <img
                             src={photo.photo_url}
@@ -338,7 +587,7 @@ export default function PatientProgressPage() {
                             )}`}
                             className="w-full h-full object-cover"
                           />
-                          <div className="absolute bottom-0 left-0 right-0 bg-black/60 p-2">
+                          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3">
                             <p className="text-xs text-white font-medium">
                               {format(new Date(photo.photo_date), 'dd/MM/yyyy')}
                             </p>
@@ -352,6 +601,9 @@ export default function PatientProgressPage() {
                       <p className="text-sm text-muted-foreground">
                         Nenhuma foto de progresso
                       </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Use o botão + para adicionar sua primeira foto
+                      </p>
                     </div>
                   )}
                 </CardContent>
@@ -361,25 +613,33 @@ export default function PatientProgressPage() {
         </Tabs>
       </div>
 
-      {/* FAB - Floating Action Button */}
+      {/* FAB - Floating Action Button - Dynamic based on activeTab */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogTrigger asChild>
           <Button
             size="lg"
-            className="fixed bottom-20 right-4 h-14 w-14 rounded-full shadow-lg z-40 bg-primary hover:bg-primary/90 text-white"
+            className="fixed bottom-20 right-4 h-14 w-14 rounded-full shadow-lg z-40 bg-primary hover:bg-primary/90 text-white md:bottom-24"
           >
             <Plus className="h-6 w-6 text-white" />
           </Button>
         </DialogTrigger>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Registrar Progresso</DialogTitle>
+            <DialogTitle>
+              {activeTab === 'peso' && 'Registrar Peso'}
+              {activeTab === 'glicemia' && 'Registrar Glicemia'}
+              {activeTab === 'medidas' && 'Registrar Medidas'}
+              {activeTab === 'fotos' && 'Adicionar Foto de Progresso'}
+            </DialogTitle>
             <DialogDescription>
               {activeTab === 'peso' && 'Adicione um novo registro de peso'}
               {activeTab === 'glicemia' && 'Adicione um novo registro de glicemia'}
+              {activeTab === 'medidas' && 'Adicione um novo registro de medidas corporais'}
+              {activeTab === 'fotos' && 'Adicione uma nova foto de progresso'}
             </DialogDescription>
           </DialogHeader>
 
+          {/* Form: Weight */}
           {activeTab === 'peso' && (
             <form onSubmit={handleAddWeightRecord} className="space-y-4">
               <div>
@@ -410,6 +670,7 @@ export default function PatientProgressPage() {
             </form>
           )}
 
+          {/* Form: Glycemia */}
           {activeTab === 'glicemia' && (
             <form onSubmit={handleAddGlycemiaRecord} className="space-y-4">
               <div>
@@ -431,6 +692,85 @@ export default function PatientProgressPage() {
                   value={newGlycemia}
                   onChange={(e) => setNewGlycemia(e.target.value)}
                   placeholder="Ex: 95"
+                  required
+                />
+              </div>
+              <DialogFooter>
+                <Button type="submit">Adicionar</Button>
+              </DialogFooter>
+            </form>
+          )}
+
+          {/* Form: Measurements */}
+          {activeTab === 'medidas' && (
+            <form onSubmit={handleAddMeasurementRecord} className="space-y-4">
+              <div>
+                <Label htmlFor="date">Data</Label>
+                <Input
+                  id="date"
+                  type="date"
+                  value={recordDate}
+                  onChange={(e) => setRecordDate(e.target.value)}
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="height">Altura (cm)</Label>
+                <Input
+                  id="height"
+                  type="number"
+                  step="0.1"
+                  value={newHeight}
+                  onChange={(e) => setNewHeight(e.target.value)}
+                  placeholder="Ex: 170"
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="headCircumference">Perímetro Cefálico (cm) - Opcional</Label>
+                <Input
+                  id="headCircumference"
+                  type="number"
+                  step="0.1"
+                  value={newHeadCircumference}
+                  onChange={(e) => setNewHeadCircumference(e.target.value)}
+                  placeholder="Ex: 55"
+                />
+              </div>
+              <DialogFooter>
+                <Button type="submit">Adicionar</Button>
+              </DialogFooter>
+            </form>
+          )}
+
+          {/* Form: Photos */}
+          {activeTab === 'fotos' && (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const fileInput = document.getElementById('photoFile');
+                if (fileInput?.files?.[0]) {
+                  handleAddPhotoRecord(fileInput.files[0]);
+                }
+              }}
+              className="space-y-4"
+            >
+              <div>
+                <Label htmlFor="date">Data</Label>
+                <Input
+                  id="date"
+                  type="date"
+                  value={recordDate}
+                  onChange={(e) => setRecordDate(e.target.value)}
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="photoFile">Foto</Label>
+                <Input
+                  id="photoFile"
+                  type="file"
+                  accept="image/*"
                   required
                 />
               </div>

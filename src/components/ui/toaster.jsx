@@ -28,6 +28,7 @@ export function Toaster() {
 					</Toast>
 				);
 			})}
+			{/* ToastViewport handles positioning internally based on admin state */}
 			<ToastViewport />
 		</ToastProvider>
 	);

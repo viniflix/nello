@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Trash2, Copy, Archive, RefreshCw, Edit, BarChart3, Download, FileText, MoreVertical, Utensils } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Copy, Archive, RefreshCw, Edit, BarChart3, Download, FileText, MoreVertical, Utensils, Save, FolderOpen, ShoppingCart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -34,6 +35,7 @@ import {
 import MealPlanForm from '@/components/meal-plan/MealPlanForm';
 import MacrosChart from '@/components/meal-plan/MacrosChart';
 import CopyModelDialog from '@/components/meal-plan/CopyModelDialog';
+import TemplateManagerDialog from '@/components/meal-plan/TemplateManagerDialog';
 import {
     getMealPlans,
     getActiveMealPlan,
@@ -47,10 +49,12 @@ import {
     copyMealPlan,
     copyMealPlanToPatient,
     addMealToPlan,
-    addFoodToMeal
+    addFoodToMeal,
+    savePlanAsTemplate
 } from '@/lib/supabase/meal-plan-queries';
 import { supabase } from '@/lib/customSupabaseClient';
 import { exportMealPlanToPdf } from '@/lib/pdfUtils';
+import { generateShoppingList } from '@/lib/pdf/shoppingListGenerator';
 import { translateMealType } from '@/utils/mealTranslations';
 import { formatQuantityWithUnit } from '@/lib/utils/measureTranslations';
 import { useAuth } from '@/contexts/AuthContext';
@@ -75,6 +79,10 @@ const MealPlanPage = () => {
     const [copyModelDialogOpen, setCopyModelDialogOpen] = useState(false);
     const [planToCopy, setPlanToCopy] = useState(null);
     const [exportDialogOpen, setExportDialogOpen] = useState(false);
+    const [templateManagerOpen, setTemplateManagerOpen] = useState(false);
+    const [saveTemplateDialogOpen, setSaveTemplateDialogOpen] = useState(false);
+    const [templateName, setTemplateName] = useState('');
+    const [templateTags, setTemplateTags] = useState('');
 
     // Obter ID do nutricionista
     useEffect(() => {
@@ -327,6 +335,39 @@ const MealPlanPage = () => {
         }
     };
 
+    // Gerar lista de compras em PDF
+    const handleGenerateShoppingList = async () => {
+        if (!activePlan) {
+            toast({
+                title: 'Erro',
+                description: 'Nenhum plano ativo encontrado.',
+                variant: 'destructive'
+            });
+            return;
+        }
+
+        try {
+            // Carregar dados completos do plano (com foods detalhados)
+            const result = await getMealPlanById(activePlan.id);
+            if (result.error) throw result.error;
+
+            const fullPlan = result.data;
+
+            await generateShoppingList(fullPlan, patientName);
+            toast({
+                title: 'Lista de Compras gerada!',
+                description: 'O PDF foi baixado com sucesso.',
+            });
+        } catch (error) {
+            console.error('Erro ao gerar lista de compras:', error);
+            toast({
+                title: 'Erro',
+                description: 'Não foi possível gerar a lista de compras. Tente novamente.',
+                variant: 'destructive'
+            });
+        }
+    };
+
     // Exportar plano para PDF
     const handleExportPDF = async (includeNutrients) => {
         if (!activePlan) return;
@@ -412,6 +453,49 @@ const MealPlanPage = () => {
         if (isWeekends) return 'Fins de semana';
 
         return `${activeDays.length} dias`;
+    };
+
+    // Salvar plano como template
+    const handleSaveAsTemplate = async () => {
+        if (!activePlan || !templateName.trim()) return;
+
+        setSubmitting(true);
+        try {
+            // Converter tags de string separada por vírgula para array
+            const tagsArray = templateTags
+                ? templateTags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0)
+                : [];
+
+            const { data, error } = await savePlanAsTemplate(activePlan.id, templateName.trim(), tagsArray);
+            if (error) throw error;
+
+            toast({
+                title: 'Template Salvo',
+                description: `O plano foi salvo como template "${templateName}" com sucesso.`,
+                variant: 'success'
+            });
+
+            setSaveTemplateDialogOpen(false);
+            setTemplateName('');
+            setTemplateTags('');
+        } catch (error) {
+            console.error('Erro ao salvar template:', error);
+            toast({
+                title: 'Erro',
+                description: 'Não foi possível salvar o template.',
+                variant: 'destructive'
+            });
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    // Handler quando template é aplicado
+    const handleTemplateApplied = async (newPlan) => {
+        await loadPlans();
+        if (newPlan) {
+            setActivePlan(newPlan);
+        }
     };
 
     if (loading) {
@@ -520,6 +604,15 @@ const MealPlanPage = () => {
                                         <BarChart3 className="h-4 w-4 mr-2" />
                                         Resumo Nutricional
                                     </Button>
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={handleGenerateShoppingList}
+                                        className="hidden sm:flex"
+                                    >
+                                        <ShoppingCart className="h-4 w-4 mr-2" />
+                                        Lista de Compras
+                                    </Button>
 
                                     {/* Dropdown de Ações Secundárias */}
                                     <DropdownMenu>
@@ -546,6 +639,10 @@ const MealPlanPage = () => {
                                             <DropdownMenuItem onClick={() => setExportDialogOpen(true)}>
                                                 <Download className="h-4 w-4 mr-2" />
                                                 Exportar PDF
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem onClick={handleGenerateShoppingList}>
+                                                <ShoppingCart className="h-4 w-4 mr-2" />
+                                                Gerar Lista de Compras
                                             </DropdownMenuItem>
                                             <DropdownMenuItem onClick={() => handleCopy(activePlan.id)}>
                                                 <Copy className="h-4 w-4 mr-2" />
@@ -760,6 +857,75 @@ const MealPlanPage = () => {
                 onCopy={handleCopyToPatient}
             />
 
+            {/* Dialog: Salvar como Template */}
+            <Dialog open={saveTemplateDialogOpen} onOpenChange={setSaveTemplateDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Salvar Plano como Modelo</DialogTitle>
+                        <DialogDescription>
+                            Salve este plano como um template para reutilizar em outros pacientes.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <label htmlFor="template-name" className="text-sm font-medium">
+                                Nome do Modelo <span className="text-destructive">*</span>
+                            </label>
+                            <Input
+                                id="template-name"
+                                placeholder="Ex: Hipertrofia 3000kcal"
+                                value={templateName}
+                                onChange={(e) => setTemplateName(e.target.value)}
+                                disabled={submitting}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label htmlFor="template-tags" className="text-sm font-medium">
+                                Tags (separadas por vírgula)
+                            </label>
+                            <Input
+                                id="template-tags"
+                                placeholder="Ex: hipertrofia, ganho de peso, 3000kcal"
+                                value={templateTags}
+                                onChange={(e) => setTemplateTags(e.target.value)}
+                                disabled={submitting}
+                            />
+                            <p className="text-xs text-muted-foreground">
+                                Use tags para facilitar a busca dos templates
+                            </p>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                setSaveTemplateDialogOpen(false);
+                                setTemplateName('');
+                                setTemplateTags('');
+                            }}
+                            disabled={submitting}
+                        >
+                            Cancelar
+                        </Button>
+                        <Button
+                            onClick={handleSaveAsTemplate}
+                            disabled={submitting || !templateName.trim()}
+                        >
+                            {submitting ? 'Salvando...' : 'Salvar Modelo'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Dialog: Gerenciador de Templates */}
+            <TemplateManagerDialog
+                open={templateManagerOpen}
+                onOpenChange={setTemplateManagerOpen}
+                patientId={patientId}
+                nutritionistId={nutritionistId}
+                onTemplateApplied={handleTemplateApplied}
+            />
+
             {/* Dialog de Exportação PDF */}
             <Dialog open={exportDialogOpen} onOpenChange={setExportDialogOpen}>
                 <DialogContent className="sm:max-w-md">
@@ -811,6 +977,75 @@ const MealPlanPage = () => {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {/* Dialog: Salvar como Template */}
+            <Dialog open={saveTemplateDialogOpen} onOpenChange={setSaveTemplateDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Salvar Plano como Modelo</DialogTitle>
+                        <DialogDescription>
+                            Salve este plano como um template para reutilizar em outros pacientes.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <label htmlFor="template-name" className="text-sm font-medium">
+                                Nome do Modelo <span className="text-destructive">*</span>
+                            </label>
+                            <Input
+                                id="template-name"
+                                placeholder="Ex: Hipertrofia 3000kcal"
+                                value={templateName}
+                                onChange={(e) => setTemplateName(e.target.value)}
+                                disabled={submitting}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label htmlFor="template-tags" className="text-sm font-medium">
+                                Tags (separadas por vírgula)
+                            </label>
+                            <Input
+                                id="template-tags"
+                                placeholder="Ex: hipertrofia, ganho de peso, 3000kcal"
+                                value={templateTags}
+                                onChange={(e) => setTemplateTags(e.target.value)}
+                                disabled={submitting}
+                            />
+                            <p className="text-xs text-muted-foreground">
+                                Use tags para facilitar a busca dos templates
+                            </p>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                setSaveTemplateDialogOpen(false);
+                                setTemplateName('');
+                                setTemplateTags('');
+                            }}
+                            disabled={submitting}
+                        >
+                            Cancelar
+                        </Button>
+                        <Button
+                            onClick={handleSaveAsTemplate}
+                            disabled={submitting || !templateName.trim()}
+                        >
+                            {submitting ? 'Salvando...' : 'Salvar Modelo'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Dialog: Gerenciador de Templates */}
+            <TemplateManagerDialog
+                open={templateManagerOpen}
+                onOpenChange={setTemplateManagerOpen}
+                patientId={patientId}
+                nutritionistId={nutritionistId}
+                onTemplateApplied={handleTemplateApplied}
+            />
         </div>
     );
 };

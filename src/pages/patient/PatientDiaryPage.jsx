@@ -3,13 +3,15 @@ import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { format, addDays, subDays, isToday, isYesterday, isTomorrow, startOfDay, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { CalendarDays, Plus, Utensils, Trash2, MoreHorizontal, ChevronLeft, ChevronRight, FileText, Eye, Bell } from 'lucide-react';
+import { CalendarDays, Plus, Utensils, Trash2, MoreHorizontal, ChevronLeft, ChevronRight, FileText, Eye, Bell, Edit, Flame, Beef, Wheat, Droplet } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Progress } from '@/components/ui/progress';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useToast } from '@/hooks/use-toast';
@@ -41,6 +43,7 @@ export default function PatientDiaryPage() {
   const [planDialogOpen, setPlanDialogOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const { unreadCount } = useNotifications();
+  const [prescriptionGoal, setPrescriptionGoal] = useState(null);
 
   // Todos os tipos possíveis (para modal)
   const ALL_MEAL_TYPES = [
@@ -79,6 +82,24 @@ export default function PatientDiaryPage() {
       .maybeSingle();
 
     setMealPlan(mealPlanData);
+
+    // Load prescription goals for progress bars
+    const { data: prescriptionData } = await supabase
+      .from('prescriptions')
+      .select('calories, protein, carbs, fat, start_date, end_date')
+      .eq('patient_id', user.id)
+      .lte('start_date', todayStr)
+      .or(`end_date.is.null,end_date.gte.${todayStr}`)
+      .maybeSingle();
+
+    if (prescriptionData) {
+      setPrescriptionGoal({
+        calories: prescriptionData.calories || 0,
+        protein: prescriptionData.protein || 0,
+        carbs: prescriptionData.carbs || 0,
+        fat: prescriptionData.fat || 0
+      });
+    }
   }, [user]);
 
   const loadMeals = useCallback(async () => {
@@ -277,176 +298,191 @@ export default function PatientDiaryPage() {
               Registre suas refeições do dia
             </p>
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setShowNotifications(true)}
-            className="relative -mt-1"
-          >
-            <Bell className="w-6 h-6 text-gray-700" />
-            {unreadCount > 0 && (
-              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
+          <div className="flex items-center gap-2">
+            {/* My Plan Button - Secondary, Non-intrusive */}
+            {mealPlan && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setPlanDialogOpen(true)}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <Eye className="w-4 h-4 mr-2" />
+                <span className="hidden sm:inline">Ver Plano</span>
+              </Button>
             )}
-          </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowNotifications(true)}
+              className="relative"
+            >
+              <Bell className="w-6 h-6 text-gray-700" />
+              {unreadCount > 0 && (
+                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
+              )}
+            </Button>
+          </div>
         </div>
 
-        {/* Card: Meu Plano Alimentar */}
-        {mealPlan && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
-            <Card className="bg-gradient-to-r from-[#5f6f52]/10 via-[#a9b388]/10 to-[#b99470]/10 border-[#5f6f52]/30">
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <div className="p-2 rounded-lg bg-gradient-to-br from-[#5f6f52] to-[#a9b388]">
-                      <FileText className="w-5 h-5 text-white" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <CardTitle className="text-base text-[#5f6f52]">
-                        Meu Plano Alimentar
-                      </CardTitle>
-                      <CardDescription className="text-xs truncate">
-                        {mealPlan.meal_plan_meals?.length || 0} refeições planejadas •{' '}
-                        Vigente desde {format(new Date(mealPlan.start_date), "dd 'de' MMM", { locale: ptBR })}
-                      </CardDescription>
-                    </div>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setPlanDialogOpen(true)}
-                    className="border-[#5f6f52] text-[#5f6f52] hover:bg-[#5f6f52] hover:text-white flex-shrink-0"
-                  >
-                    <Eye className="w-4 h-4 mr-2" />
-                    <span className="hidden sm:inline">Ver Plano Completo</span>
-                    <span className="sm:hidden">Ver Plano</span>
-                  </Button>
-                </div>
-              </CardHeader>
-            </Card>
-          </motion.div>
-        )}
-
-        {/* Navegação de Data com Histórico */}
+        {/* Date Navigation - Cleaner Design */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <Card>
-            <CardContent className="pt-6 space-y-3">
-              {/* Label da Data (HOJE, ONTEM, etc) */}
-              <div className="text-center">
-                <h2 className="text-2xl font-bold text-primary">
-                  {getDateLabel(selectedDate)}
-                </h2>
-                <p className="text-sm text-muted-foreground capitalize">
-                  {getDateSubtitle(selectedDate)}
-                </p>
-              </div>
-
-              {/* Navegação com Botões */}
-              <div className="flex items-center gap-2">
+          <Card className="border-0 shadow-sm">
+            <CardContent className="pt-6 pb-4">
+              <div className="flex items-center justify-between gap-4">
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   size="icon"
                   onClick={goToPreviousDay}
                   className="flex-shrink-0"
                 >
-                  <ChevronLeft className="h-4 w-4" />
+                  <ChevronLeft className="h-5 w-5" />
                 </Button>
 
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className="flex-1 justify-center"
-                    >
-                      <CalendarDays className="mr-2 h-4 w-4" />
-                      Selecionar Data
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="center">
-                    <Calendar
-                      mode="single"
-                      selected={selectedDate}
-                      onSelect={(date) => date && setSelectedDate(date)}
-                      initialFocus
-                      locale={ptBR}
-                    />
-                  </PopoverContent>
-                </Popover>
+                <div className="flex-1 text-center">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button className="hover:opacity-80 transition-opacity">
+                        <h2 className="text-2xl font-bold text-primary">
+                          {getDateLabel(selectedDate)}
+                        </h2>
+                        <p className="text-sm text-muted-foreground capitalize mt-1">
+                          {getDateSubtitle(selectedDate)}
+                        </p>
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="center">
+                      <Calendar
+                        mode="single"
+                        selected={selectedDate}
+                        onSelect={(date) => date && setSelectedDate(date)}
+                        initialFocus
+                        locale={ptBR}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
 
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   size="icon"
                   onClick={goToNextDay}
                   className="flex-shrink-0"
                   disabled={isSameDay(selectedDate, new Date())}
                 >
-                  <ChevronRight className="h-4 w-4" />
+                  <ChevronRight className="h-5 w-5" />
                 </Button>
               </div>
 
-              {/* Botão "Ir para Hoje" */}
               {!isToday(selectedDate) && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={goToToday}
-                  className="w-full text-primary"
-                >
-                  Ir para Hoje
-                </Button>
+                <div className="mt-4 text-center">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={goToToday}
+                    className="text-primary hover:text-primary/80"
+                  >
+                    Ir para Hoje
+                  </Button>
+                </div>
               )}
             </CardContent>
           </Card>
         </motion.div>
 
-        {/* Resumo de Macros */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-        >
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg">Resumo do Dia</CardTitle>
-              <CardDescription>Total de nutrientes consumidos</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="text-center p-3 bg-primary/5 rounded-lg">
-                  <p className="text-2xl font-bold text-primary">
-                    {Math.round(dailyTotals.calories)}
-                  </p>
-                  <p className="text-xs text-muted-foreground">Calorias</p>
+        {/* Daily Summary with Progress Bars */}
+        {prescriptionGoal && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+          >
+            <Card className="border-[#5f6f52]/20 shadow-sm">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-lg text-[#5f6f52]">Progresso do Dia</CardTitle>
+                <CardDescription>Consumido vs Meta</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Calories */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Flame className="w-4 h-4 text-orange-500" />
+                      <span className="text-sm font-medium text-foreground">Calorias</span>
+                    </div>
+                    <span className="text-sm font-semibold text-foreground">
+                      {Math.round(dailyTotals.calories)} / {Math.round(prescriptionGoal.calories)} kcal
+                    </span>
+                  </div>
+                  <Progress
+                    value={Math.min((dailyTotals.calories / prescriptionGoal.calories) * 100, 100)}
+                    className="h-3"
+                    indicatorClassName="bg-gradient-to-r from-orange-500 to-red-500"
+                  />
                 </div>
-                <div className="text-center p-3 bg-primary/5 rounded-lg">
-                  <p className="text-2xl font-bold text-primary">
-                    {Math.round(dailyTotals.protein)}g
-                  </p>
-                  <p className="text-xs text-muted-foreground">Proteínas</p>
-                </div>
-                <div className="text-center p-3 bg-primary/5 rounded-lg">
-                  <p className="text-2xl font-bold text-primary">
-                    {Math.round(dailyTotals.carbs)}g
-                  </p>
-                  <p className="text-xs text-muted-foreground">Carboidratos</p>
-                </div>
-                <div className="text-center p-3 bg-primary/5 rounded-lg">
-                  <p className="text-2xl font-bold text-primary">
-                    {Math.round(dailyTotals.fat)}g
-                  </p>
-                  <p className="text-xs text-muted-foreground">Gorduras</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
 
-        {/* Lista de Refeições por Tipo */}
+                {/* Protein */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Beef className="w-4 h-4 text-sky-500" />
+                      <span className="text-sm font-medium text-foreground">Proteínas</span>
+                    </div>
+                    <span className="text-sm font-semibold text-foreground">
+                      {Math.round(dailyTotals.protein)} / {Math.round(prescriptionGoal.protein)}g
+                    </span>
+                  </div>
+                  <Progress
+                    value={Math.min((dailyTotals.protein / prescriptionGoal.protein) * 100, 100)}
+                    className="h-3"
+                    indicatorClassName="bg-sky-500"
+                  />
+                </div>
+
+                {/* Carbs */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Wheat className="w-4 h-4 text-amber-500" />
+                      <span className="text-sm font-medium text-foreground">Carboidratos</span>
+                    </div>
+                    <span className="text-sm font-semibold text-foreground">
+                      {Math.round(dailyTotals.carbs)} / {Math.round(prescriptionGoal.carbs)}g
+                    </span>
+                  </div>
+                  <Progress
+                    value={Math.min((dailyTotals.carbs / prescriptionGoal.carbs) * 100, 100)}
+                    className="h-3"
+                    indicatorClassName="bg-amber-500"
+                  />
+                </div>
+
+                {/* Fat */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Droplet className="w-4 h-4 text-yellow-500" />
+                      <span className="text-sm font-medium text-foreground">Gorduras</span>
+                    </div>
+                    <span className="text-sm font-semibold text-foreground">
+                      {Math.round(dailyTotals.fat)} / {Math.round(prescriptionGoal.fat)}g
+                    </span>
+                  </div>
+                  <Progress
+                    value={Math.min((dailyTotals.fat / prescriptionGoal.fat) * 100, 100)}
+                    className="h-3"
+                    indicatorClassName="bg-yellow-500"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+
+        {/* Meal Cards - Ghost Cards for Empty, Clean Cards for Filled */}
         <div className="space-y-4">
           {displayMealTypes.map((mealType, index) => {
             const mealsOfType = mealsByType[mealType] || [];
@@ -455,99 +491,145 @@ export default function PatientDiaryPage() {
             return (
               <motion.div
                 key={mealType}
+                layout
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 + index * 0.05 }}
               >
-                <Card>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Utensils className="w-5 h-5 text-primary" />
-                        <CardTitle className="text-base">{translateMealType(mealType)}</CardTitle>
+                {!hasMeals ? (
+                  // Ghost Card - Empty State (Acts as Button)
+                  <Card
+                    className="border-2 border-dashed border-muted-foreground/30 bg-muted/20 hover:bg-muted/30 hover:border-primary/40 transition-all cursor-pointer"
+                    onClick={() => handleAddMeal(mealType)}
+                  >
+                    <CardContent className="py-8 text-center">
+                      <div className="flex flex-col items-center gap-3">
+                        <div className="p-3 rounded-full bg-primary/10">
+                          <Utensils className="w-6 h-6 text-primary/60" />
+                        </div>
+                        <div>
+                          <p className="text-base font-semibold text-muted-foreground">
+                            Registrar {translateMealType(mealType)}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Clique para adicionar alimentos
+                          </p>
+                        </div>
+                        <Button
+                          size="sm"
+                          className="mt-2 bg-primary hover:bg-primary/90"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleAddMeal(mealType);
+                          }}
+                        >
+                          <Plus className="w-4 h-4 mr-2" />
+                          Adicionar
+                        </Button>
                       </div>
-                      <Button
-                        size="sm"
-                        className={hasMeals ? '' : 'bg-primary hover:bg-primary/90'}
-                        variant={hasMeals ? 'outline' : 'default'}
-                        onClick={() => handleAddMeal(mealType)}
-                      >
-                        <Plus className="w-4 h-4 mr-1" />
-                        {hasMeals ? 'Adicionar mais' : 'Registrar'}
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    {hasMeals ? (
+                    </CardContent>
+                  </Card>
+                ) : (
+                  // Filled Card - Registered Meals
+                  <Card className="shadow-sm hover:shadow-md transition-shadow">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Utensils className="w-5 h-5 text-[#5f6f52]" />
+                          <CardTitle className="text-base">{translateMealType(mealType)}</CardTitle>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleAddMeal(mealType)}
+                          className="border-[#5f6f52]/30 text-[#5f6f52] hover:bg-[#5f6f52]/10"
+                        >
+                          <Plus className="w-4 h-4 mr-1" />
+                          Adicionar mais
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
                       <div className="space-y-3">
                         {mealsOfType.map((meal) => (
-                          <div
+                          <motion.div
                             key={meal.id}
-                            className="border rounded-lg p-3 bg-background"
+                            layout
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            className="border rounded-lg p-4 bg-background hover:bg-muted/30 transition-colors"
                           >
-                            <div className="flex items-start justify-between mb-2">
+                            <div className="flex items-start justify-between mb-3">
                               <div className="flex-1">
-                                <p className="text-sm font-medium">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <h4 className="text-sm font-semibold text-foreground">
+                                    {translateMealType(mealType)}
+                                  </h4>
+                                </div>
+                                <p className="text-lg font-bold text-[#5f6f52]">
                                   {meal.total_calories?.toFixed(0)} kcal
                                 </p>
-                                <p className="text-xs text-muted-foreground">
-                                  P: {meal.total_protein?.toFixed(1)}g | C:{' '}
-                                  {meal.total_carbs?.toFixed(1)}g | G:{' '}
-                                  {meal.total_fat?.toFixed(1)}g
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  P: {meal.total_protein?.toFixed(1)}g • C: {meal.total_carbs?.toFixed(1)}g • G: {meal.total_fat?.toFixed(1)}g
                                 </p>
                               </div>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => setMealToDelete(meal.id)}
-                                className="text-destructive hover:text-destructive"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8"
+                                  >
+                                    <MoreHorizontal className="w-4 h-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem
+                                    onClick={() => navigate('/patient/add-meal', {
+                                      state: {
+                                        editMode: true,
+                                        mealId: meal.id
+                                      }
+                                    })}
+                                  >
+                                    <Edit className="w-4 h-4 mr-2" />
+                                    Editar
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => setMealToDelete(meal.id)}
+                                    className="text-destructive focus:text-destructive"
+                                  >
+                                    <Trash2 className="w-4 h-4 mr-2" />
+                                    Excluir
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                             </div>
 
                             {/* Lista de alimentos */}
                             {meal.meal_items?.length > 0 && (
-                              <div className="space-y-1 mt-2 pl-2 border-l-2 border-primary/20">
+                              <div className="space-y-2 mt-3 pt-3 border-t">
                                 {meal.meal_items.map((item, idx) => (
                                   <div
                                     key={idx}
-                                    className="flex justify-between text-xs"
+                                    className="flex justify-between items-center text-sm"
                                   >
-                                    <span className="text-muted-foreground">
+                                    <span className="text-foreground">
                                       {item.foods?.name || 'Alimento desconhecido'}
                                     </span>
-                                    <span className="font-medium">
+                                    <span className="font-medium text-muted-foreground">
                                       {item.quantity} {item.measure}
                                     </span>
                                   </div>
                                 ))}
                               </div>
                             )}
-
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="w-full mt-2"
-                              onClick={() => navigate('/patient/add-meal', {
-                                state: {
-                                  editMode: true,
-                                  mealId: meal.id
-                                }
-                              })}
-                            >
-                              Editar refeição
-                            </Button>
-                          </div>
+                          </motion.div>
                         ))}
                       </div>
-                    ) : (
-                      <p className="text-sm text-muted-foreground text-center py-4">
-                        Nenhum alimento registrado
-                      </p>
-                    )}
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
+                )}
               </motion.div>
             );
           })}

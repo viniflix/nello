@@ -277,23 +277,33 @@ export const checkPatientHasAnamnesis = async (patientId) => {
 /**
  * Buscar última anamnese de um paciente
  * Útil para exibir no dashboard
+ * @param {string} patientId - ID do paciente
+ * @param {boolean} includeContent - Se true, inclui o campo 'content' completo (JSONB)
+ * @returns {Promise<{data: object|null, error: object|null}>}
  */
-export const getLatestAnamnesis = async (patientId) => {
+export const getLatestAnamnesis = async (patientId, includeContent = false) => {
     try {
+        let selectFields = `
+            id,
+            date,
+            status,
+            version,
+            template:anamnesis_templates(title)
+        `;
+        
+        // Incluir content se solicitado
+        if (includeContent) {
+            selectFields += ', content';
+        }
+
         const { data, error } = await supabase
             .from('anamnesis_records')
-            .select(`
-                id,
-                date,
-                status,
-                version,
-                template:anamnesis_templates(title)
-            `)
+            .select(selectFields)
             .eq('patient_id', patientId)
             .order('date', { ascending: false })
             .order('version', { ascending: false })
             .limit(1)
-            .single();
+            .maybeSingle();
 
         if (error) {
             // Se não encontrar registros, não é erro

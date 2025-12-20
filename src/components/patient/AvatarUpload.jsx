@@ -5,14 +5,16 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCallback } from 'react';
 
 /**
  * AvatarUpload - Componente para exibir e fazer upload de foto de perfil
  */
 export default function AvatarUpload({ size = 'large', showChangeButton = true }) {
-  const { user } = useAuth();
+  const { user, updateUserProfile } = useAuth();
   const { toast } = useToast();
   const [uploading, setUploading] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState(null); // For optimistic update
   const fileInputRef = useRef(null);
 
   const sizeClasses = {
@@ -52,54 +54,80 @@ export default function AvatarUpload({ size = 'large', showChangeButton = true }
 
       setUploading(true);
 
-      // Criar nome único para o arquivo
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${user.id}-${Math.random()}.${fileExt}`;
-      const filePath = `avatars/${fileName}`;
+      // Optimistic update: Show preview immediately
+      const objectUrl = URL.createObjectURL(file);
+      setPreviewUrl(objectUrl);
 
-      // Upload para Supabase Storage
+      // Remove old avatar if exists
+      const { data: existingFiles } = await supabase.storage
+        .from('avatars')
+        .list(user.id);
+      
+      if (existingFiles && existingFiles.length > 0) {
+        const filesToRemove = existingFiles.map(f => `${user.id}/${f.name}`);
+        await supabase.storage.from('avatars').remove(filesToRemove);
+      }
+
+      // Create unique file name
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const filePath = `${user.id}/${fileName}`;
+
+      // Upload to Supabase Storage (avatars bucket)
       const { error: uploadError } = await supabase.storage
-        .from('profile-pictures')
+        .from('avatars')
         .upload(filePath, file, { upsert: true });
 
       if (uploadError) {
+        // Revert optimistic update on error
+        setPreviewUrl(null);
+        URL.revokeObjectURL(objectUrl);
         throw uploadError;
       }
 
-      // Obter URL pública
+      // Get public URL
       const { data: { publicUrl } } = supabase.storage
-        .from('profile-pictures')
+        .from('avatars')
         .getPublicUrl(filePath);
 
-      // Atualizar perfil do usuário
-      const { error: updateError } = await supabase
+      // Update user profile in database
+      const { data: updatedProfile, error: updateError } = await supabase
         .from('user_profiles')
         .update({ avatar_url: publicUrl })
-        .eq('id', user.id);
+        .eq('id', user.id)
+        .select()
+        .single();
 
       if (updateError) {
+        // Revert optimistic update on error
+        setPreviewUrl(null);
+        URL.revokeObjectURL(objectUrl);
         throw updateError;
       }
+
+      // Update context with new profile data (if function exists)
+      if (updateUserProfile) {
+        updateUserProfile(updatedProfile);
+      }
+
+      // Clean up object URL
+      URL.revokeObjectURL(objectUrl);
+      setPreviewUrl(null);
 
       toast({
         title: 'Sucesso!',
         description: 'Foto de perfil atualizada com sucesso.'
       });
-
-      // Recarregar página para atualizar o avatar
-      setTimeout(() => {
-        window.location.reload();
-      }, 1500);
     } catch (error) {
       console.error('Erro ao fazer upload:', error);
       toast({
         title: 'Erro',
-        description: 'Não foi possível atualizar a foto de perfil.',
+        description: error.message || 'Não foi possível atualizar a foto de perfil.',
         variant: 'destructive'
       });
     } finally {
       setUploading(false);
-      // Limpar input
+      // Clear input
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -119,7 +147,10 @@ export default function AvatarUpload({ size = 'large', showChangeButton = true }
     <div className="flex flex-col items-center gap-3">
       <div className="relative">
         <Avatar className={sizeClasses[size]}>
-          <AvatarImage src={user?.profile?.avatar_url} alt={user?.profile?.name} />
+          <AvatarImage 
+            src={previewUrl || user?.profile?.avatar_url} 
+            alt={user?.profile?.name}
+          />
           <AvatarFallback className="bg-primary/10 text-primary text-2xl font-semibold">
             {uploading ? (
               <Loader2 className="w-8 h-8 animate-spin" />

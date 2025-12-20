@@ -8,6 +8,8 @@ import AnthropometryForm from '@/components/anthropometry/AnthropometryForm';
 import AnthropometryTable from '@/components/anthropometry/AnthropometryTable';
 import WeightChart from '@/components/anthropometry/WeightChart';
 import IMCChart from '@/components/anthropometry/IMCChart';
+import CompositionCharts from '@/components/anthropometry/CompositionCharts';
+import { supabase } from '@/lib/customSupabaseClient';
 import {
     getAnthropometryRecords,
     getAnthropometryChartData,
@@ -27,6 +29,9 @@ const AnthropometryPage = () => {
     const [chartData, setChartData] = useState([]);
     const [editingRecord, setEditingRecord] = useState(null);
     const [error, setError] = useState(null);
+    const [latestRecord, setLatestRecord] = useState(null);
+    const [idealWeightRange, setIdealWeightRange] = useState(null);
+    const [patientProfile, setPatientProfile] = useState(null);
 
     // Carregar dados
     const loadData = useCallback(async () => {
@@ -34,6 +39,17 @@ const AnthropometryPage = () => {
         setError(null);
 
         try {
+            // Buscar perfil do paciente para gender e age
+            const { data: profile } = await supabase
+                .from('user_profiles')
+                .select('gender, birth_date')
+                .eq('id', patientId)
+                .single();
+            
+            if (profile) {
+                setPatientProfile(profile);
+            }
+
             const [recordsResult, chartResult] = await Promise.all([
                 getAnthropometryRecords(patientId, { limit: 50 }),
                 getAnthropometryChartData(patientId)
@@ -52,6 +68,28 @@ const AnthropometryPage = () => {
             // Dados vazios não são erro - apenas defina arrays vazios
             setRecords(recordsResult.data || []);
             setChartData(chartResult.data || []);
+
+            // Calcular peso ideal do último registro
+            if (recordsResult.data && recordsResult.data.length > 0) {
+                const latest = recordsResult.data[0]; // Já ordenado por data desc
+                setLatestRecord(latest);
+                
+                if (latest.height && latest.weight) {
+                    const heightM = parseFloat(latest.height) / 100;
+                    const minIdealWeight = 18.5 * Math.pow(heightM, 2);
+                    const maxIdealWeight = 24.9 * Math.pow(heightM, 2);
+                    setIdealWeightRange({
+                        min: minIdealWeight,
+                        max: maxIdealWeight,
+                        current: parseFloat(latest.weight)
+                    });
+                } else {
+                    setIdealWeightRange(null);
+                }
+            } else {
+                setLatestRecord(null);
+                setIdealWeightRange(null);
+            }
         } catch (err) {
             console.error('Erro ao carregar dados:', err);
             const errorMessage = err.message || 'Erro ao carregar dados';
@@ -180,9 +218,40 @@ const AnthropometryPage = () => {
                         <BarChart3 className="w-6 h-6 sm:w-8 sm:h-8 text-[#5f6f52]" />
                         <span className="truncate">Avaliação Antropométrica</span>
                     </h1>
-                    <p className="text-sm text-muted-foreground mt-1">
-                        Acompanhamento de peso, altura e IMC
-                    </p>
+                    <div className="flex flex-wrap items-center gap-4 mt-2">
+                        <p className="text-sm text-muted-foreground">
+                            Acompanhamento de peso, altura e IMC
+                        </p>
+                        {latestRecord && latestRecord.weight && (
+                            <div className="flex items-center gap-2 text-sm">
+                                <span className="text-muted-foreground">Peso atual:</span>
+                                <span className="font-semibold">{latestRecord.weight} kg</span>
+                            </div>
+                        )}
+                        {idealWeightRange && (
+                            <div className="flex items-center gap-2 text-sm">
+                                <span className="text-muted-foreground">Peso ideal:</span>
+                                <span className="font-semibold text-[#5f6f52]">
+                                    {idealWeightRange.min.toFixed(1)} - {idealWeightRange.max.toFixed(1)} kg
+                                </span>
+                                {idealWeightRange.current && (
+                                    <span className={`text-xs px-2 py-0.5 rounded ${
+                                        idealWeightRange.current < idealWeightRange.min
+                                            ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
+                                            : idealWeightRange.current > idealWeightRange.max
+                                            ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300'
+                                            : 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
+                                    }`}>
+                                        {idealWeightRange.current < idealWeightRange.min
+                                            ? 'Abaixo'
+                                            : idealWeightRange.current > idealWeightRange.max
+                                            ? 'Acima'
+                                            : 'Ideal'}
+                                    </span>
+                                )}
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 
@@ -201,12 +270,21 @@ const AnthropometryPage = () => {
                 onSubmit={handleSubmit}
                 onCancel={handleCancelEdit}
                 loading={submitting}
+                patientGender={patientProfile?.gender}
+                patientBirthDate={patientProfile?.birth_date}
             />
 
             {/* Gráficos */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <WeightChart data={chartData} />
-                <IMCChart data={chartData} />
+            <div className="space-y-6">
+                {/* Composição Corporal (se houver dados) */}
+                {records.some(r => r.results || r.bioimpedance) && (
+                    <CompositionCharts data={records} />
+                )}
+                {/* Gráficos tradicionais */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <WeightChart data={chartData} />
+                    <IMCChart data={chartData} />
+                </div>
             </div>
 
             {/* Tabela de Registros */}

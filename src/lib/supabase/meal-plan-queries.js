@@ -1139,3 +1139,207 @@ export const deleteReferenceValues = async (planId) => {
     }
 };
 
+// =====================================================
+// TEMPLATE FUNCTIONS - Funções de Templates
+// =====================================================
+
+/**
+ * Salva um plano como template
+ * @param {number} planId - ID do plano a salvar como template
+ * @param {string} templateName - Nome do template
+ * @param {array} tags - Tags do template (array de strings)
+ * @returns {Promise<{data: object, error: object}>}
+ */
+export const savePlanAsTemplate = async (planId, templateName, tags = []) => {
+    try {
+        // Buscar plano completo com todas as refeições e alimentos
+        const { data: originalPlan, error: planError } = await getMealPlanById(planId);
+        if (planError) throw planError;
+
+        // Criar novo plano como template (patient_id = null, is_template = true)
+        const { data: templatePlan, error: createError } = await supabase
+            .from('meal_plans')
+            .insert([{
+                patient_id: null,
+                nutritionist_id: originalPlan.nutritionist_id,
+                name: templateName,
+                description: originalPlan.description || null,
+                active_days: originalPlan.active_days,
+                start_date: null, // Templates não têm data de início
+                end_date: null,
+                is_active: false, // Templates não são "ativos" no sentido de plano de paciente
+                is_template: true,
+                template_tags: tags.length > 0 ? tags : null
+            }])
+            .select()
+            .single();
+
+        if (createError) throw createError;
+
+        // Copiar refeições e alimentos
+        for (const meal of originalPlan.meals || []) {
+            const { data: newMeal, error: mealError } = await addMealToPlan({
+                meal_plan_id: templatePlan.id,
+                name: meal.name,
+                meal_type: meal.meal_type,
+                meal_time: meal.meal_time,
+                notes: meal.notes,
+                order_index: meal.order_index
+            });
+
+            if (mealError) throw mealError;
+
+            // Copiar alimentos
+            for (const food of meal.foods || []) {
+                await addFoodToMeal({
+                    meal_plan_meal_id: newMeal.id,
+                    food_id: food.food_id,
+                    quantity: food.quantity,
+                    unit: food.unit,
+                    calories: food.calories,
+                    protein: food.protein,
+                    carbs: food.carbs,
+                    fat: food.fat,
+                    notes: food.notes,
+                    order_index: food.order_index
+                });
+            }
+        }
+
+        // Buscar template completo criado
+        return getMealPlanById(templatePlan.id);
+    } catch (error) {
+        console.error('Erro ao salvar plano como template:', error);
+        return { data: null, error };
+    }
+};
+
+/**
+ * Busca todos os templates de um nutricionista
+ * @param {string} nutritionistId - ID do nutricionista
+ * @returns {Promise<{data: array, error: object}>}
+ */
+export const getTemplates = async (nutritionistId) => {
+    try {
+        const { data, error } = await supabase
+            .from('meal_plans')
+            .select('*')
+            .eq('nutritionist_id', nutritionistId)
+            .eq('is_template', true)
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        return { data: data || [], error: null };
+    } catch (error) {
+        console.error('Erro ao buscar templates:', error);
+        return { data: [], error };
+    }
+};
+
+/**
+ * Aplica um template a um paciente, criando um novo plano
+ * @param {number} templateId - ID do template
+ * @param {string} patientId - ID do paciente
+ * @param {string} startDate - Data de início (opcional, padrão: hoje)
+ * @param {number} scaleFactor - Fator de escala para ajustar quantidades (padrão: 1.0)
+ * @param {number[]} selectedMealIds - Array de IDs das refeições a importar (opcional, padrão: todas)
+ * @returns {Promise<{data: object, error: object}>}
+ */
+export const applyTemplateToPatient = async (templateId, patientId, startDate = null, scaleFactor = 1.0, selectedMealIds = null) => {
+    try {
+        // Buscar template completo
+        const { data: template, error: templateError } = await getMealPlanById(templateId);
+        if (templateError) throw templateError;
+
+        if (!template.is_template) {
+            throw new Error('O plano selecionado não é um template');
+        }
+
+        // Desativar outros planos ativos do paciente
+        const { error: deactivateError } = await supabase
+            .from('meal_plans')
+            .update({ is_active: false })
+            .eq('patient_id', patientId)
+            .eq('is_active', true);
+
+        if (deactivateError) {
+            console.warn('Erro ao desativar planos anteriores:', deactivateError);
+        }
+
+        // Criar novo plano para o paciente (clonando o template)
+        const targetStartDate = startDate || new Date().toISOString().split('T')[0];
+        
+        const { data: newPlan, error: createError } = await supabase
+            .from('meal_plans')
+            .insert([{
+                patient_id: patientId,
+                nutritionist_id: template.nutritionist_id,
+                name: template.name,
+                description: template.description || null,
+                active_days: template.active_days,
+                start_date: targetStartDate,
+                end_date: null,
+                is_active: true,
+                is_template: false
+            }])
+            .select()
+            .single();
+
+        if (createError) throw createError;
+
+        // Filtrar refeições se selectedMealIds foi fornecido
+        const mealsToImport = selectedMealIds && selectedMealIds.length > 0
+            ? (template.meals || []).filter(meal => selectedMealIds.includes(meal.id))
+            : (template.meals || []);
+
+        if (mealsToImport.length === 0) {
+            throw new Error('Nenhuma refeição selecionada para importar');
+        }
+
+        // Copiar refeições e alimentos (aplicando scaleFactor se necessário)
+        for (const meal of mealsToImport) {
+            const { data: newMeal, error: mealError } = await addMealToPlan({
+                meal_plan_id: newPlan.id,
+                name: meal.name,
+                meal_type: meal.meal_type,
+                meal_time: meal.meal_time,
+                notes: meal.notes,
+                order_index: meal.order_index
+            });
+
+            if (mealError) throw mealError;
+
+            // Copiar alimentos (aplicando scaleFactor nas quantidades)
+            for (const food of meal.foods || []) {
+                // Aplicar scaleFactor na quantidade
+                const scaledQuantity = Math.round((parseFloat(food.quantity) || 0) * scaleFactor * 100) / 100;
+                
+                // Recalcular valores nutricionais proporcionalmente
+                const scaledCalories = Math.round((parseFloat(food.calories) || 0) * scaleFactor * 100) / 100;
+                const scaledProtein = Math.round((parseFloat(food.protein) || 0) * scaleFactor * 100) / 100;
+                const scaledCarbs = Math.round((parseFloat(food.carbs) || 0) * scaleFactor * 100) / 100;
+                const scaledFat = Math.round((parseFloat(food.fat) || 0) * scaleFactor * 100) / 100;
+
+                await addFoodToMeal({
+                    meal_plan_meal_id: newMeal.id,
+                    food_id: food.food_id,
+                    quantity: scaledQuantity,
+                    unit: food.unit,
+                    calories: scaledCalories,
+                    protein: scaledProtein,
+                    carbs: scaledCarbs,
+                    fat: scaledFat,
+                    notes: food.notes,
+                    order_index: food.order_index
+                });
+            }
+        }
+
+        // Buscar plano completo criado
+        return getMealPlanById(newPlan.id);
+    } catch (error) {
+        console.error('Erro ao aplicar template ao paciente:', error);
+        return { data: null, error };
+    }
+};
+

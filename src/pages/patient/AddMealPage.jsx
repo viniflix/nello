@@ -130,54 +130,7 @@ export default function AddMealPage() {
     }
   };
 
-  // Buscar alimentos
-  // Adicionar alimento recomendado DIRETO (sem modal)
-  const handleAddRecommended = async (recommendedFood) => {
-    // Buscar dados completos do alimento
-    const { data: foodData } = await supabase
-      .from('foods')
-      .select('*')
-      .eq('id', recommendedFood.foods.id)
-      .single();
-
-    if (!foodData) {
-      toast({
-        title: 'Erro',
-        description: 'Não foi possível carregar os dados do alimento',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    // Calcular nutrientes usando a função do nutricionista
-    const { calculateNutrition } = await import('@/lib/supabase/meal-plan-queries');
-    const nutrition = await calculateNutrition(
-      foodData,
-      parseFloat(recommendedFood.quantity),
-      recommendedFood.unit
-    );
-
-    // Adicionar direto na lista
-    const newFood = {
-      id: Date.now(),
-      food_id: foodData.id,
-      food_name: foodData.name,
-      quantity: parseFloat(recommendedFood.quantity),
-      unit: recommendedFood.unit,
-      measure: null, // Será preenchido se necessário
-      base_calories: foodData.calories || 0,
-      base_protein: foodData.protein || 0,
-      base_carbs: foodData.carbs || 0,
-      base_fat: foodData.fat || 0,
-      calories: nutrition.calories,
-      protein: nutrition.protein,
-      carbs: nutrition.carbs,
-      fat: nutrition.fat,
-      notes: null
-    };
-
-    setAddedFoods(prev => [...prev, newFood]);
-  };
+  // Buscar alimentos - função removida (honest registration: users must manually add foods)
 
   // Abrir modal para adicionar novo alimento
   const handleOpenAddDialog = () => {
@@ -469,7 +422,7 @@ export default function AddMealPage() {
         <div className="text-center">
           <p className="text-muted-foreground mb-4">Tipo de refeição não especificado</p>
           <Button onClick={() => navigate('/patient/diario')}>
-            Voltar ao Diário
+            Voltar ao Plano Alimentar
           </Button>
         </div>
       </div>
@@ -501,34 +454,32 @@ export default function AddMealPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Coluna principal */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Alimentos Recomendados */}
+            {/* Alimentos Recomendados - READ ONLY REFERENCE */}
             {recommendedFoods && recommendedFoods.length > 0 && (
               <Card>
                 <CardHeader>
-                  <CardTitle>Alimentos Recomendados</CardTitle>
+                  <CardTitle>Refeição Planejada</CardTitle>
                   <CardDescription>
-                    Seu nutricionista sugeriu estes alimentos
+                    Visualize sua meta abaixo e busque os alimentos manualmente para registrar.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-2">
+                  <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-sm text-blue-900 font-medium">
+                      💡 Visualize sua meta abaixo e busque os alimentos manualmente para registrar.
+                    </p>
+                  </div>
                   {recommendedFoods.map((food, index) => (
                     <div
                       key={index}
-                      className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg"
+                      className="flex items-center justify-between p-3 bg-muted border border-border rounded-lg"
                     >
-                      <div>
-                        <p className="font-medium text-sm">{food.foods?.name}</p>
+                      <div className="flex-1">
+                        <p className="font-medium text-sm text-foreground">{food.foods?.name}</p>
                         <p className="text-xs text-muted-foreground">
                           {formatQuantityWithUnit(food.quantity, food.unit, food.measure)}
                         </p>
                       </div>
-                      <Button
-                        size="sm"
-                        onClick={() => handleAddRecommended(food)}
-                      >
-                        <Plus className="w-4 h-4 mr-1" />
-                        Adicionar
-                      </Button>
                     </div>
                   ))}
                 </CardContent>
