@@ -82,21 +82,22 @@ export default function PatientHomePage() {
     setTodayMealsCount(count || 0);
     setRegisteredMeals(mealsData || []);
 
-    // 4. Buscar prescrição nutricional (metas de macros do dia)
-    const { data: prescriptionData } = await supabase
-      .from('prescriptions')
-      .select('calories, protein, carbs, fat, start_date, end_date')
-      .eq('patient_id', user.id)
-      .lte('start_date', todayStr)
-      .or(`end_date.is.null,end_date.gte.${todayStr}`)
-      .maybeSingle();
-
-    if (prescriptionData) {
+    // 4. Definir metas nutricionais (prioridade: plano alimentar ativo > padrão)
+    if (mealPlanData && mealPlanData.daily_calories > 0) {
+      // Usar metas do plano alimentar ativo
       setPrescriptionGoal({
-        calories: prescriptionData.calories || 0,
-        protein: prescriptionData.protein || 0,
-        carbs: prescriptionData.carbs || 0,
-        fat: prescriptionData.fat || 0
+        calories: mealPlanData.daily_calories || 0,
+        protein: mealPlanData.daily_protein || 0,
+        carbs: mealPlanData.daily_carbs || 0,
+        fat: mealPlanData.daily_fat || 0
+      });
+    } else {
+      // Valores padrão para pacientes sem plano alimentar
+      setPrescriptionGoal({
+        calories: 2000,
+        protein: 0,
+        carbs: 0,
+        fat: 0
       });
     }
 

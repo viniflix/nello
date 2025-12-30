@@ -535,3 +535,104 @@ export const getComprehensiveActivityFeed = async (nutritionistId, limit = 20) =
         return { data: [], error };
     }
 };
+
+/**
+ * Busca a última anamnese do paciente para extrair informações de atividade física
+ * @param {string} patientId - ID do paciente
+ * @returns {Promise<{data: object, error: object}>}
+ */
+export const getLatestAnamnesisForEnergy = async (patientId) => {
+    try {
+        // Buscar último registro de anamnese
+        const { data: anamnesisRecord, error: recordError } = await supabase
+            .from('anamnesis_records')
+            .select('id, content, date')
+            .eq('patient_id', patientId)
+            .order('date', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+        if (recordError) throw recordError;
+
+        if (!anamnesisRecord || !anamnesisRecord.content) {
+            return { data: null, error: null };
+        }
+
+        // Tentar extrair informações de atividade física do conteúdo JSONB
+        const content = anamnesisRecord.content;
+        let exerciseFrequency = null;
+        let activityLevel = null;
+
+        // Buscar em diferentes campos possíveis
+        if (typeof content === 'object') {
+            // Tentar encontrar campos relacionados a exercício
+            const searchFields = [
+                'exercise_frequency',
+                'exerciseFrequency',
+                'frequencia_exercicio',
+                'atividade_fisica',
+                'physical_activity',
+                'nivel_atividade',
+                'activity_level'
+            ];
+
+            for (const field of searchFields) {
+                if (content[field]) {
+                    exerciseFrequency = content[field];
+                    break;
+                }
+            }
+
+            // Buscar em seções aninhadas
+            if (!exerciseFrequency && content.sections) {
+                for (const section of content.sections) {
+                    if (section.fields) {
+                        for (const field of section.fields) {
+                            if (searchFields.includes(field.key || field.id)) {
+                                exerciseFrequency = field.value || field.answer;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return {
+            data: {
+                exerciseFrequency,
+                activityLevel,
+                date: anamnesisRecord.date
+            },
+            error: null
+        };
+    } catch (error) {
+        console.error('Erro ao buscar anamnese para energia:', error);
+        return { data: null, error };
+    }
+};
+
+/**
+ * Busca o objetivo ativo do paciente para sugerir ajustes calóricos
+ * @param {string} patientId - ID do paciente
+ * @returns {Promise<{data: object, error: object}>}
+ */
+export const getActiveGoalForEnergy = async (patientId) => {
+    try {
+        const { data: goal, error } = await supabase
+            .from('patient_goals')
+            .select('id, type, target_weight, current_weight, description, status')
+            .eq('patient_id', patientId)
+            .eq('status', 'active')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+        if (error) throw error;
+
+        return { data: goal, error: null };
+    } catch (error) {
+        console.error('Erro ao buscar objetivo para energia:', error);
+        return { data: null, error };
+    }
+};

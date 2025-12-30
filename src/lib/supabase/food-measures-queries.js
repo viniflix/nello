@@ -7,6 +7,7 @@
  */
 
 import { supabase } from '@/lib/customSupabaseClient';
+import { calculateNutrition } from '@/lib/utils/nutrition-calculations';
 
 /**
  * Busca todas as medidas genéricas ativas
@@ -261,19 +262,8 @@ export const calculateNutritionFromMeasure = async (food, quantity, measureId, f
       };
     }
 
-    // Calcular multiplicador (base 100g)
-    const multiplier = totalGrams / 100;
-
-    // Calcular todos os nutrientes
-    return {
-      grams: parseFloat(totalGrams.toFixed(2)),
-      calories: parseFloat((food.calories * multiplier).toFixed(2)),
-      protein: parseFloat((food.protein * multiplier).toFixed(2)),
-      carbs: parseFloat((food.carbs * multiplier).toFixed(2)),
-      fat: parseFloat((food.fat * multiplier).toFixed(2)),
-      fiber: food.fiber ? parseFloat((food.fiber * multiplier).toFixed(2)) : null,
-      sodium: food.sodium ? parseFloat((food.sodium * multiplier).toFixed(2)) : null
-    };
+    // Calcular todos os nutrientes (recalcula calorias baseado nos macros)
+    return calculateNutrition(food, totalGrams);
   } catch (error) {
     console.error('Erro ao calcular nutrição:', error);
     return {

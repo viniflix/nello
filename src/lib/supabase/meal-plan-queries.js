@@ -783,12 +783,21 @@ export const calculateNutrition = async (food, quantity, unit) => {
 
         // Calcular valores nutricionais (foods usa base 100g)
         const factor = gramsEquivalent / 100;
+        
+        // Calcular macros primeiro
+        const protein = (food.protein || 0) * factor;
+        const carbs = (food.carbs || 0) * factor;
+        const fat = (food.fat || 0) * factor;
+        
+        // RECALCULAR calorias baseado nos macros (não usar food.calories diretamente)
+        // Fórmula: (Proteína × 4) + (Carboidratos × 4) + (Gorduras × 9)
+        const calories = (protein * 4) + (carbs * 4) + (fat * 9);
 
         return {
-            calories: parseFloat((food.calories * factor).toFixed(2)),
-            protein: parseFloat((food.protein * factor).toFixed(2)),
-            carbs: parseFloat((food.carbs * factor).toFixed(2)),
-            fat: parseFloat((food.fat * factor).toFixed(2))
+            calories: parseFloat(calories.toFixed(2)),
+            protein: parseFloat(protein.toFixed(2)),
+            carbs: parseFloat(carbs.toFixed(2)),
+            fat: parseFloat(fat.toFixed(2))
         };
     } catch (error) {
         console.error('Erro ao calcular nutrição:', error);

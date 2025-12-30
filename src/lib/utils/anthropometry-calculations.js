@@ -77,6 +77,31 @@ export function calculateBodyDensityWeltman(triceps, biceps, subscapular, suprai
 }
 
 /**
+ * Calcula densidade corporal usando protocolo selecionado
+ * @param {object} skinfolds - Objeto com as dobras cutâneas
+ * @param {number} age - Idade (anos)
+ * @param {boolean} isMale - Gênero (true = masculino)
+ * @param {string} protocol - Protocolo: 'pollock3', 'pollock7', 'weltman'
+ * @returns {number|null} Densidade corporal (g/cm³)
+ */
+export function calculateBodyDensity(skinfolds, age, isMale, protocol = 'pollock7') {
+  if (!age) return null;
+
+  if (protocol === 'pollock3') {
+    const { triceps, subescapular, suprailiaca } = skinfolds;
+    return calculateBodyDensityPollock3(triceps, subescapular, suprailiaca, age, isMale);
+  } else if (protocol === 'pollock7') {
+    const { peito, axilar, triceps, subescapular, abdominal, suprailiaca, coxa } = skinfolds;
+    return calculateBodyDensityPollock7(peito, axilar, triceps, subescapular, abdominal, suprailiaca, coxa, age, isMale);
+  } else if (protocol === 'weltman') {
+    const { triceps, biceps, subescapular, suprailiaca } = skinfolds;
+    return calculateBodyDensityWeltman(triceps, biceps, subescapular, suprailiaca, isMale);
+  }
+
+  return null;
+}
+
+/**
  * Converte densidade corporal em % de gordura (Siri Equation, 1961)
  * @param {number} bodyDensity - Densidade corporal (g/cm³)
  * @returns {number|null} Percentual de gordura corporal

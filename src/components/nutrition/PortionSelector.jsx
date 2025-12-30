@@ -98,7 +98,7 @@ export function PortionSelector({
         return 0;
     }, [food, value, foodMeasures, allMeasures]);
 
-    // Calcular todos os nutrientes (não apenas calorias)
+    // Calcular todos os nutrientes (recalcula calorias baseado nos macros)
     const nutrition = useMemo(() => {
         if (!food || totalGrams === 0) {
             return {
@@ -113,15 +113,22 @@ export function PortionSelector({
         }
 
         const multiplier = totalGrams / 100;
+        const protein = (food.protein || 0) * multiplier;
+        const carbs = (food.carbs || 0) * multiplier;
+        const fat = (food.fat || 0) * multiplier;
+        
+        // RECALCULAR calorias baseado nos macros (não usar food.calories diretamente)
+        // Fórmula: (Proteína × 4) + (Carboidratos × 4) + (Gorduras × 9)
+        const calories = (protein * 4) + (carbs * 4) + (fat * 9);
 
         return {
             grams: totalGrams,
-            calories: food.calories * multiplier,
-            protein: food.protein * multiplier,
-            carbs: food.carbs * multiplier,
-            fat: food.fat * multiplier,
-            fiber: food.fiber ? food.fiber * multiplier : 0,
-            sodium: food.sodium ? food.sodium * multiplier : 0
+            calories: parseFloat(calories.toFixed(2)),
+            protein: parseFloat(protein.toFixed(2)),
+            carbs: parseFloat(carbs.toFixed(2)),
+            fat: parseFloat(fat.toFixed(2)),
+            fiber: food.fiber ? parseFloat((food.fiber * multiplier).toFixed(2)) : 0,
+            sodium: food.sodium ? parseFloat((food.sodium * multiplier).toFixed(2)) : 0
         };
     }, [food, totalGrams]);
 

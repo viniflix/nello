@@ -178,7 +178,7 @@ const PatientAddFoodDialog = ({
     };
 
     // Calculate nutrition when quantity or unit changes
-    const calculateNutrition = useCallback(() => {
+    const calculateNutrition = useCallback(async () => {
         if (!selectedFood || !quantity || parseFloat(quantity) <= 0) {
             setCalculatedNutrition(null);
             setRealWeight(null);
@@ -200,15 +200,11 @@ const PatientAddFoodDialog = ({
             totalGrams = qty;
         }
 
-        // Calculate nutrition (foods table uses base 100g)
-        const factor = totalGrams / 100;
-
-        const nutrition = {
-            calories: parseFloat((selectedFood.calories * factor).toFixed(2)),
-            protein: parseFloat((selectedFood.protein * factor).toFixed(2)),
-            carbs: parseFloat((selectedFood.carbs * factor).toFixed(2)),
-            fat: parseFloat((selectedFood.fat * factor).toFixed(2))
-        };
+        // Importar função de cálculo correto dinamicamente (para evitar bundle grande)
+        const { calculateNutrition: calcNutrition } = await import('@/lib/utils/nutrition-calculations');
+        
+        // Calcular nutrição (recalcula calorias baseado nos macros)
+        const nutrition = calcNutrition(selectedFood, totalGrams);
 
         setCalculatedNutrition(nutrition);
         setRealWeight(totalGrams);

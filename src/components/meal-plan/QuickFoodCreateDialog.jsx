@@ -1,21 +1,19 @@
-import React, { useState, useRef } from 'react';
-import { Plus, X, Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import React, { useRef } from 'react';
+import { Plus } from 'lucide-react';
 import {
     Dialog,
     DialogContent,
     DialogDescription,
     DialogHeader,
-    DialogTitle,
-    DialogFooter
+    DialogTitle
 } from '@/components/ui/dialog';
 import SmartFoodForm from '@/components/nutrition/SmartFoodForm';
 
 /**
- * QuickFoodCreateDialog - Dialog rápido para criar alimentos customizados
+ * QuickFoodCreateDialog - Dialog para criar alimentos customizados
  * 
- * Refatorado para usar SmartFoodForm (unified component)
- * Mantém a mesma interface externa para compatibilidade
+ * Usa SmartFoodForm com wizard completo (5 passos)
+ * O próprio SmartFoodForm gerencia os botões de navegação
  */
 export default function QuickFoodCreateDialog({ 
     open, 
@@ -23,69 +21,39 @@ export default function QuickFoodCreateDialog({
     initialName = '',
     onFoodCreated 
 }) {
-    const [isSubmitting, setIsSubmitting] = useState(false);
     const formRef = useRef(null);
 
     // Handle form submission (SmartFoodForm handles the actual save)
     const handleFoodCreated = (food) => {
-        setIsSubmitting(false);
         if (onFoodCreated) {
             onFoodCreated(food);
         }
         handleClose();
     };
 
-    const handleSubmit = () => {
-        if (formRef.current) {
-            setIsSubmitting(true);
-            formRef.current.submit();
-        }
-    };
-
     const handleClose = () => {
-        setIsSubmitting(false);
         onOpenChange(false);
     };
 
     return (
         <Dialog open={open} onOpenChange={handleClose}>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-4xl max-h-[95vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <Plus className="h-5 w-5" />
-                        Cadastrar Alimento Rápido
+                        Cadastrar Alimento Personalizado
                     </DialogTitle>
                     <DialogDescription>
-                        Crie um alimento customizado com busca por código de barras e cálculo automático
+                        Preencha o formulário passo a passo para criar um alimento customizado. Você pode buscar produtos no OpenFoodFacts ou preencher manualmente.
                     </DialogDescription>
                 </DialogHeader>
 
                 <SmartFoodForm
                     ref={formRef}
-                    mode="compact"
+                    mode="full"
                     initialName={initialName}
                     onSuccess={handleFoodCreated}
                 />
-
-                <DialogFooter>
-                    <Button variant="outline" onClick={handleClose} disabled={isSubmitting}>
-                        <X className="h-4 w-4 mr-2" />
-                        Cancelar
-                    </Button>
-                    <Button onClick={handleSubmit} disabled={isSubmitting}>
-                        {isSubmitting ? (
-                            <>
-                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                Criando...
-                            </>
-                        ) : (
-                            <>
-                                <Plus className="h-4 w-4 mr-2" />
-                                Criar Alimento
-                            </>
-                        )}
-                    </Button>
-                </DialogFooter>
             </DialogContent>
         </Dialog>
     );

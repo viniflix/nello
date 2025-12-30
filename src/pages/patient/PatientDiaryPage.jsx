@@ -83,21 +83,22 @@ export default function PatientDiaryPage() {
 
     setMealPlan(mealPlanData);
 
-    // Load prescription goals for progress bars
-    const { data: prescriptionData } = await supabase
-      .from('prescriptions')
-      .select('calories, protein, carbs, fat, start_date, end_date')
-      .eq('patient_id', user.id)
-      .lte('start_date', todayStr)
-      .or(`end_date.is.null,end_date.gte.${todayStr}`)
-      .maybeSingle();
-
-    if (prescriptionData) {
+    // Definir metas nutricionais (prioridade: plano alimentar ativo > padrão)
+    if (mealPlanData && mealPlanData.daily_calories > 0) {
+      // Usar metas do plano alimentar ativo
       setPrescriptionGoal({
-        calories: prescriptionData.calories || 0,
-        protein: prescriptionData.protein || 0,
-        carbs: prescriptionData.carbs || 0,
-        fat: prescriptionData.fat || 0
+        calories: mealPlanData.daily_calories || 0,
+        protein: mealPlanData.daily_protein || 0,
+        carbs: mealPlanData.daily_carbs || 0,
+        fat: mealPlanData.daily_fat || 0
+      });
+    } else {
+      // Valores padrão para pacientes sem plano alimentar
+      setPrescriptionGoal({
+        calories: 2000,
+        protein: 0,
+        carbs: 0,
+        fat: 0
       });
     }
   }, [user]);
@@ -293,7 +294,7 @@ export default function PatientDiaryPage() {
         {/* Header */}
         <div className="mb-2 flex items-start justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Diário Alimentar</h1>
+            <h1 className="text-3xl font-bold text-foreground">Plano Alimentar</h1>
             <p className="text-muted-foreground mt-1">
               Registre suas refeições do dia
             </p>
@@ -418,7 +419,7 @@ export default function PatientDiaryPage() {
                     </span>
                   </div>
                   <Progress
-                    value={Math.min((dailyTotals.calories / prescriptionGoal.calories) * 100, 100)}
+                    value={prescriptionGoal.calories > 0 ? Math.min((dailyTotals.calories / prescriptionGoal.calories) * 100, 100) : 0}
                     className="h-3"
                     indicatorClassName="bg-gradient-to-r from-orange-500 to-red-500"
                   />
@@ -436,7 +437,7 @@ export default function PatientDiaryPage() {
                     </span>
                   </div>
                   <Progress
-                    value={Math.min((dailyTotals.protein / prescriptionGoal.protein) * 100, 100)}
+                    value={prescriptionGoal.protein > 0 ? Math.min((dailyTotals.protein / prescriptionGoal.protein) * 100, 100) : 0}
                     className="h-3"
                     indicatorClassName="bg-sky-500"
                   />
@@ -454,7 +455,7 @@ export default function PatientDiaryPage() {
                     </span>
                   </div>
                   <Progress
-                    value={Math.min((dailyTotals.carbs / prescriptionGoal.carbs) * 100, 100)}
+                    value={prescriptionGoal.carbs > 0 ? Math.min((dailyTotals.carbs / prescriptionGoal.carbs) * 100, 100) : 0}
                     className="h-3"
                     indicatorClassName="bg-amber-500"
                   />
@@ -472,7 +473,7 @@ export default function PatientDiaryPage() {
                     </span>
                   </div>
                   <Progress
-                    value={Math.min((dailyTotals.fat / prescriptionGoal.fat) * 100, 100)}
+                    value={prescriptionGoal.fat > 0 ? Math.min((dailyTotals.fat / prescriptionGoal.fat) * 100, 100) : 0}
                     className="h-3"
                     indicatorClassName="bg-yellow-500"
                   />

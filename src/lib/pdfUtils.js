@@ -51,13 +51,18 @@ export const exportFinancialsToPdf = (transactions, summary, period) => {
     doc.text(`Gerado por: ${user}`, 14, 30);
     doc.text(`Data: ${new Date().toLocaleDateString('pt-BR')}`, 14, 36);
 
+    // Calculate values safely
+    const income = summary?.income || 0;
+    const expenses = summary?.expenses || 0;
+    const netResult = summary?.netResult || (income - expenses);
+
     autoTable(doc, {
         startY: 45,
         head: [['Resumo', 'Valor']],
         body: [
-            ['Receitas', `R$ ${summary.income.toFixed(2)}`],
-            ['Despesas', `R$ ${summary.expense.toFixed(2)}`],
-            ['Saldo', `R$ ${summary.balance.toFixed(2)}`],
+            ['Receitas', `R$ ${income.toFixed(2)}`],
+            ['Despesas', `R$ ${expenses.toFixed(2)}`],
+            ['Saldo', `R$ ${netResult.toFixed(2)}`],
         ],
         theme: 'striped'
     });
@@ -66,12 +71,13 @@ export const exportFinancialsToPdf = (transactions, summary, period) => {
     const tableRows = [];
 
     transactions.forEach(t => {
+        const amount = t.amount || 0;
         const transactionData = [
             new Date(t.transaction_date + 'T00:00:00').toLocaleDateString('pt-BR'),
             t.type === 'income' ? 'Receita' : 'Despesa',
-            t.description,
+            t.description || '',
             t.category || (t.income_source === 'patient_payment' ? 'Pag. Paciente' : 'Outra'),
-            t.amount.toFixed(2)
+            amount.toFixed(2)
         ];
         tableRows.push(transactionData);
     });

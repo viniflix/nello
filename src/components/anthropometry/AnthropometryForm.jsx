@@ -473,10 +473,11 @@ const AnthropometryForm = ({
             <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-6">
                     <Tabs defaultValue="basico" className="w-full">
-                        <TabsList className="grid w-full grid-cols-4">
+                        <TabsList className="grid w-full grid-cols-5">
                             <TabsTrigger value="basico">Básico</TabsTrigger>
                             <TabsTrigger value="circunferencias">Circunferências</TabsTrigger>
                             <TabsTrigger value="dobras">Dobras & Composição</TabsTrigger>
+                            <TabsTrigger value="diametros">Diâmetros Ósseos</TabsTrigger>
                             <TabsTrigger value="fotos">Fotos</TabsTrigger>
                         </TabsList>
 
@@ -718,74 +719,6 @@ const AnthropometryForm = ({
                                     </Alert>
                                 )}
 
-                                {/* Diâmetros Ósseos */}
-                                <div>
-                                    <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                                        <Ruler className="w-4 h-4" />
-                                        Diâmetros Ósseos (cm)
-                                    </h3>
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                        <div className="space-y-2">
-                                            <Label htmlFor="bone_punho">Punho (Estiloide) (cm)</Label>
-                                            <Input
-                                                id="bone_punho"
-                                                type="number"
-                                                step="0.1"
-                                                min="0"
-                                                placeholder="0.0"
-                                                value={formData.bone_diameters?.punho || ''}
-                                                onChange={(e) => handleNestedChange('bone_diameters', 'punho', e.target.value)}
-                                                disabled={loading}
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="bone_femur">Fêmur (Biepicondilar) (cm)</Label>
-                                            <Input
-                                                id="bone_femur"
-                                                type="number"
-                                                step="0.1"
-                                                min="0"
-                                                placeholder="0.0"
-                                                value={formData.bone_diameters?.femur || ''}
-                                                onChange={(e) => handleNestedChange('bone_diameters', 'femur', e.target.value)}
-                                                disabled={loading}
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="bone_umero">Úmero (Biepicondilar) (cm)</Label>
-                                            <Input
-                                                id="bone_umero"
-                                                type="number"
-                                                step="0.1"
-                                                min="0"
-                                                placeholder="0.0"
-                                                value={formData.bone_diameters?.umero || ''}
-                                                onChange={(e) => handleNestedChange('bone_diameters', 'umero', e.target.value)}
-                                                disabled={loading}
-                                            />
-                                        </div>
-                                    </div>
-
-                                    {/* Frame Size Calculado */}
-                                    {frameSize && (
-                                        <Alert className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800 mt-4">
-                                            <Calculator className="h-4 w-4 text-blue-600" />
-                                            <AlertDescription>
-                                                <div className="space-y-1">
-                                                    <div className="font-semibold text-blue-900 dark:text-blue-100">
-                                                        Compleição Óssea (Frame Size):
-                                                    </div>
-                                                    <div className="text-lg font-bold text-blue-800 dark:text-blue-200">
-                                                        {frameSize.label}
-                                                    </div>
-                                                    <div className="text-xs text-blue-700 dark:text-blue-300">
-                                                        Ratio Altura/Punho: {frameSize.ratio.toFixed(2)}
-                                                    </div>
-                                                </div>
-                                            </AlertDescription>
-                                        </Alert>
-                                    )}
-                                </div>
                             </div>
                         </TabsContent>
 
@@ -948,53 +881,66 @@ const AnthropometryForm = ({
                                 </div>
                             </div>
 
-                            {/* Resultados Calculados */}
-                            {compositionResults && (
-                                <Card className="bg-gradient-to-br from-emerald-50 to-blue-50 dark:from-emerald-950/20 dark:to-blue-950/20 border-emerald-200 dark:border-emerald-800">
-                                    <CardHeader>
-                                        <CardTitle className="text-lg flex items-center gap-2">
-                                            <Calculator className="w-5 h-5 text-emerald-600" />
-                                            Resultados Calculados
-                                        </CardTitle>
-                                        <p className="text-sm text-muted-foreground">
-                                            Protocolo: {protocol === 'pollock3' ? 'Pollock 3 Dobras' : protocol === 'pollock7' ? 'Pollock 7 Dobras' : protocol === 'weltman' ? 'Weltman 4 Dobras' : 'Bioimpedância'}
-                                        </p>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                                            <div className="space-y-1">
-                                                <p className="text-xs text-muted-foreground">Densidade Corporal</p>
-                                                <p className="text-2xl font-bold text-emerald-700 dark:text-emerald-300">
-                                                    {compositionResults.body_density?.toFixed(4) || 'N/A'}
-                                                </p>
+                            {/* Resultados Calculados em Tempo Real */}
+                            <Card className="bg-gradient-to-br from-emerald-50 to-blue-50 dark:from-emerald-950/20 dark:to-blue-950/20 border-emerald-200 dark:border-emerald-800">
+                                <CardHeader>
+                                    <CardTitle className="text-lg flex items-center gap-2">
+                                        <Calculator className="w-5 h-5 text-emerald-600" />
+                                        Resultados Calculados em Tempo Real
+                                    </CardTitle>
+                                    <p className="text-sm text-muted-foreground">
+                                        Protocolo: {protocol === 'pollock3' ? 'Pollock 3 Dobras' : protocol === 'pollock7' ? 'Pollock 7 Dobras' : protocol === 'weltman' ? 'Weltman 4 Dobras' : 'Bioimpedância'}
+                                    </p>
+                                </CardHeader>
+                                <CardContent>
+                                    {compositionResults ? (
+                                        <div className="space-y-4">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                                <div className="space-y-1 p-3 bg-white/50 dark:bg-black/20 rounded-lg">
+                                                    <p className="text-xs text-muted-foreground">Densidade Corporal</p>
+                                                    <p className="text-2xl font-bold text-emerald-700 dark:text-emerald-300">
+                                                        {compositionResults.body_density?.toFixed(4) || 'N/A'}
+                                                    </p>
+                                                    <p className="text-xs text-muted-foreground">g/cm³</p>
+                                                </div>
+                                                <div className="space-y-1 p-3 bg-white/50 dark:bg-black/20 rounded-lg">
+                                                    <p className="text-xs text-muted-foreground">% Gordura Corporal</p>
+                                                    <p className="text-2xl font-bold text-red-600 dark:text-red-400">
+                                                        {compositionResults.body_fat_percent?.toFixed(1) || 'N/A'}%
+                                                    </p>
+                                                    <p className="text-xs text-muted-foreground">Percentual de gordura</p>
+                                                </div>
+                                                <div className="space-y-1 p-3 bg-white/50 dark:bg-black/20 rounded-lg">
+                                                    <p className="text-xs text-muted-foreground">Massa Gorda</p>
+                                                    <p className="text-2xl font-bold text-red-600 dark:text-red-400">
+                                                        {compositionResults.fat_mass_kg?.toFixed(1) || 'N/A'} kg
+                                                    </p>
+                                                    <p className="text-xs text-muted-foreground">Peso de gordura</p>
+                                                </div>
+                                                <div className="space-y-1 p-3 bg-white/50 dark:bg-black/20 rounded-lg">
+                                                    <p className="text-xs text-muted-foreground">Massa Magra</p>
+                                                    <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                                                        {compositionResults.lean_mass_kg?.toFixed(1) || 'N/A'} kg
+                                                    </p>
+                                                    <p className="text-xs text-muted-foreground">Peso sem gordura</p>
+                                                </div>
                                             </div>
-                                            <div className="space-y-1">
-                                                <p className="text-xs text-muted-foreground">% Gordura Corporal</p>
-                                                <p className="text-2xl font-bold text-red-600 dark:text-red-400">
-                                                    {compositionResults.body_fat_percent?.toFixed(1) || 'N/A'}%
-                                                </p>
-                                            </div>
-                                            <div className="space-y-1">
-                                                <p className="text-xs text-muted-foreground">Massa Gorda</p>
-                                                <p className="text-2xl font-bold text-red-600 dark:text-red-400">
-                                                    {compositionResults.fat_mass_kg?.toFixed(1) || 'N/A'} kg
-                                                </p>
-                                            </div>
-                                            <div className="space-y-1">
-                                                <p className="text-xs text-muted-foreground">Massa Magra</p>
-                                                <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-                                                    {compositionResults.lean_mass_kg?.toFixed(1) || 'N/A'} kg
+                                            <div className="pt-4 border-t border-emerald-200 dark:border-emerald-800">
+                                                <p className="text-xs text-muted-foreground">
+                                                    *Cálculos baseados em {protocol === 'pollock3' ? 'Jackson & Pollock (1985) - 3 dobras' : protocol === 'pollock7' ? 'Jackson & Pollock (1985) - 7 dobras' : protocol === 'weltman' ? 'Weltman et al. (1988)' : 'Bioimpedância direta'} e equação de Siri (1961) para conversão de densidade em % de gordura.
                                                 </p>
                                             </div>
                                         </div>
-                                        <div className="mt-4 pt-4 border-t border-emerald-200 dark:border-emerald-800">
-                                            <p className="text-xs text-muted-foreground">
-                                                *Cálculos baseados em {protocol === 'pollock3' ? 'Jackson & Pollock (1985) - 3 dobras' : protocol === 'pollock7' ? 'Jackson & Pollock (1985) - 7 dobras' : protocol === 'weltman' ? 'Weltman et al. (1988)' : 'Bioimpedância direta'} e equação de Siri (1961) para conversão de densidade em % de gordura.
+                                    ) : (
+                                        <div className="text-center py-8 text-muted-foreground">
+                                            <AlertCircle className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                                            <p className="text-sm">
+                                                Preencha os dados necessários para ver os resultados calculados
                                             </p>
                                         </div>
-                                    </CardContent>
-                                </Card>
-                            )}
+                                    )}
+                                </CardContent>
+                            </Card>
 
                             {/* Aviso se faltar dados */}
                             {!compositionResults && protocol !== 'bioimpedance' && (
@@ -1062,7 +1008,87 @@ const AnthropometryForm = ({
                             )}
                         </TabsContent>
 
-                        {/* TAB 4: Fotos */}
+                        {/* TAB 4: Diâmetros Ósseos */}
+                        <TabsContent value="diametros" className="space-y-6 mt-4">
+                            <div>
+                                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                                    <Ruler className="w-4 h-4" />
+                                    Diâmetros Ósseos (cm)
+                                </h3>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="bone_punho">Punho (Estiloide) (cm)</Label>
+                                        <Input
+                                            id="bone_punho"
+                                            type="number"
+                                            step="0.1"
+                                            min="0"
+                                            placeholder="0.0"
+                                            value={formData.bone_diameters?.punho || ''}
+                                            onChange={(e) => handleNestedChange('bone_diameters', 'punho', e.target.value)}
+                                            disabled={loading}
+                                        />
+                                        <p className="text-xs text-muted-foreground">
+                                            Medida do processo estilóide do rádio
+                                        </p>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="bone_femur">Fêmur (Biepicondilar) (cm)</Label>
+                                        <Input
+                                            id="bone_femur"
+                                            type="number"
+                                            step="0.1"
+                                            min="0"
+                                            placeholder="0.0"
+                                            value={formData.bone_diameters?.femur || ''}
+                                            onChange={(e) => handleNestedChange('bone_diameters', 'femur', e.target.value)}
+                                            disabled={loading}
+                                        />
+                                        <p className="text-xs text-muted-foreground">
+                                            Largura biepicondilar do fêmur
+                                        </p>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="bone_umero">Úmero (Biepicondilar) (cm)</Label>
+                                        <Input
+                                            id="bone_umero"
+                                            type="number"
+                                            step="0.1"
+                                            min="0"
+                                            placeholder="0.0"
+                                            value={formData.bone_diameters?.umero || ''}
+                                            onChange={(e) => handleNestedChange('bone_diameters', 'umero', e.target.value)}
+                                            disabled={loading}
+                                        />
+                                        <p className="text-xs text-muted-foreground">
+                                            Largura biepicondilar do úmero
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {/* Frame Size Calculado */}
+                                {frameSize && (
+                                    <Alert className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800 mt-4">
+                                        <Calculator className="h-4 w-4 text-blue-600" />
+                                        <AlertDescription>
+                                            <div className="space-y-1">
+                                                <div className="font-semibold text-blue-900 dark:text-blue-100">
+                                                    Compleição Óssea (Frame Size):
+                                                </div>
+                                                <div className="text-lg font-bold text-blue-800 dark:text-blue-200">
+                                                    {frameSize.label}
+                                                </div>
+                                                <div className="text-xs text-blue-700 dark:text-blue-300">
+                                                    Ratio Altura/Punho: {frameSize.ratio.toFixed(2)}
+                                                </div>
+                                            </div>
+                                        </AlertDescription>
+                                    </Alert>
+                                )}
+                            </div>
+                        </TabsContent>
+
+                        {/* TAB 5: Fotos */}
                         <TabsContent value="fotos" className="mt-4">
                             <PhotoGallery
                                 recordId={initialData?.id || `temp-${Date.now()}`}
