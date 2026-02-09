@@ -78,7 +78,7 @@ export function calculateBodyDensityWeltman(triceps, biceps, subscapular, suprai
 
 /**
  * Calcula densidade corporal usando protocolo selecionado
- * @param {object} skinfolds - Objeto com as dobras cutâneas
+ * @param {object} skinfolds - Objeto com as dobras cutâneas (ex.: subescapular, suprailiaca)
  * @param {number} age - Idade (anos)
  * @param {boolean} isMale - Gênero (true = masculino)
  * @param {string} protocol - Protocolo: 'pollock3', 'pollock7', 'weltman'
@@ -247,4 +247,3 @@ export function getSomatotypeDescription(endo, meso, ecto) {
     return 'Ectomorfo';
   }
 }
-

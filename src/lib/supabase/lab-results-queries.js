@@ -89,7 +89,7 @@ export async function createLabResult(labResult) {
     try {
         // Calcular status apenas se houver valores manuais
         let status = 'pending';
-        if (labResult.test_value) {
+        if (labResult.test_value !== null && labResult.test_value !== undefined && labResult.test_value !== '') {
             status = calculateStatus(
                 labResult.test_value,
                 labResult.reference_min,
@@ -126,8 +126,9 @@ export async function updateLabResult(labResultId, updates) {
 
         // Recalcular status apenas se houver valores manuais e mudaram
         const finalTestValue = updates.test_value !== undefined ? updates.test_value : current?.test_value;
+        const hasManualValue = finalTestValue !== null && finalTestValue !== undefined && finalTestValue !== '';
         const shouldRecalculateStatus =
-            finalTestValue &&
+            hasManualValue &&
             (updates.test_value !== undefined || updates.reference_min !== undefined || updates.reference_max !== undefined);
 
         if (shouldRecalculateStatus && current) {
@@ -136,7 +137,7 @@ export async function updateLabResult(labResultId, updates) {
                 updates.reference_min !== undefined ? updates.reference_min : current.reference_min,
                 updates.reference_max !== undefined ? updates.reference_max : current.reference_max
             );
-        } else if (!finalTestValue && updates.test_value === null) {
+        } else if (!hasManualValue && updates.test_value === null) {
             // Se removeu o test_value, setar status como pending
             updates.status = 'pending';
         }

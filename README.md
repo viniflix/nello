@@ -99,7 +99,7 @@ Para rodar o projeto HipoZero na sua máquina local, siga estes passos:
     Crie um arquivo `.env` na raiz do projeto, copiando o arquivo `.env.example`. Você precisará das suas próprias chaves do Supabase.
 
     ```.env
-    VITE_SUPABASE_URL="[https://afyoidxrshkmplxhcyeh.supabase.co](https://afyoidxrshkmplxhcyeh.supabase.co)"
+    VITE_SUPABASE_URL="https://afyoidxrshkmplxhcyeh.supabase.co"
     VITE_SUPABASE_ANON_KEY="eyJhbGciOiJIZDI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFmeW9pZHhyc2hrbXBseGhjeWVoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjMyMDQ0MjcsImV4cCI6MjAzODc4MDQyN30.jH9Z5L4i5v-4a4Co3Cn_l2sbQZ22Y2j23aJq3Tf2A2A"
     ```
     *(**Nota:** As chaves acima são do arquivo `.env.example`. Substitua pelas chaves reais do seu projeto Supabase.)*
