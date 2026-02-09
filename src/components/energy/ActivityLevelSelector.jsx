@@ -36,54 +36,50 @@ const SELECTED_COLORS = {
 
 export default function ActivityLevelSelector({ value, onChange }) {
     return (
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
             {ACTIVITY_FACTORS.map((factor) => {
                 const Icon = ACTIVITY_ICONS[factor.value] || Activity;
                 const isSelected = value === factor.value;
                 
                 return (
-                    <button
+                    <Card
                         key={factor.value}
-                        type="button"
-                        onClick={() => onChange && onChange(factor.value)}
                         className={cn(
-                            "w-full p-4 rounded-lg border-2 transition-all duration-200 text-left",
-                            "hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
+                            "cursor-pointer transition-all duration-200",
                             isSelected 
-                                ? "border-primary bg-primary/5 shadow-sm" 
-                                : "border-border bg-card hover:border-primary/50"
+                                ? SELECTED_COLORS[factor.value] 
+                                : ACTIVITY_COLORS[factor.value]
                         )}
+                        onClick={() => onChange && onChange(factor.value)}
                     >
-                        <div className="flex items-start gap-3">
-                            <div className={cn(
-                                "flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center",
-                                isSelected ? "bg-primary text-primary-foreground" : "bg-muted"
-                            )}>
-                                <Icon className="w-5 h-5" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <div className="flex items-center justify-between gap-2 mb-1">
+                        <CardContent className="p-4">
+                            <div className="flex flex-col items-center text-center space-y-2">
+                                <Icon className={cn(
+                                    "w-8 h-8",
+                                    isSelected ? "text-primary" : "text-muted-foreground"
+                                )} />
+                                <div>
                                     <p className={cn(
                                         "font-semibold text-sm",
-                                        isSelected ? "text-foreground" : "text-foreground"
+                                        isSelected ? "text-foreground" : "text-muted-foreground"
                                     )}>
                                         {factor.label}
                                     </p>
-                                    <span className={cn(
-                                        "text-xs font-mono px-2 py-0.5 rounded flex-shrink-0",
-                                        isSelected 
-                                            ? "bg-primary text-primary-foreground" 
-                                            : "bg-muted text-muted-foreground"
-                                    )}>
-                                        x{factor.value}
-                                    </span>
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                        {factor.desc}
+                                    </p>
                                 </div>
-                                <p className="text-xs text-muted-foreground leading-relaxed">
-                                    {factor.desc}
-                                </p>
+                                <div className={cn(
+                                    "text-xs font-mono px-2 py-1 rounded",
+                                    isSelected 
+                                        ? "bg-primary text-primary-foreground" 
+                                        : "bg-muted text-muted-foreground"
+                                )}>
+                                    x{factor.value}
+                                </div>
                             </div>
-                        </div>
-                    </button>
+                        </CardContent>
+                    </Card>
                 );
             })}
         </div>

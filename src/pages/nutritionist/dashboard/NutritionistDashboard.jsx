@@ -173,15 +173,7 @@ export default function NutritionistDashboard() {
       const today = new Date().toISOString();
       const { data, error } = await supabase
         .from('appointments')
-        .select(`
-          id,
-          appointment_time,
-          patient:user_profiles!appointments_patient_id_fkey(
-            id,
-            name,
-            avatar_url
-          )
-        `)
+        .select('id, appointment_time, patient:appointments_patient_id_fkey(id, name, avatar_url)')
         .eq('nutritionist_id', user.id)
         .gte('appointment_time', today)
         .order('appointment_time', { ascending: true })
