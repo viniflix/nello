@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { DateInputWithCalendar } from '@/components/ui/date-input';
 import { Label } from '@/components/ui/label';
 import { CheckCircle2, XCircle, Calendar, AlertCircle } from 'lucide-react';
 import { format, parseISO, isToday, isYesterday } from 'date-fns';
@@ -282,12 +283,11 @@ export default function PendingPaymentsWidget({ nutritionistId, onUpdate }) {
                     <div className="space-y-4 py-4">
                         <div>
                             <Label htmlFor="reschedule_date">Nova Data *</Label>
-                            <Input
+                            <DateInputWithCalendar
                                 id="reschedule_date"
-                                type="date"
                                 required
                                 value={rescheduleDate || (rescheduleDialog ? rescheduleDialog.date : '')}
-                                onChange={(e) => setRescheduleDate(e.target.value)}
+                                onChange={(value) => setRescheduleDate(value)}
                                 min={format(new Date(), 'yyyy-MM-dd')}
                             />
                         </div>

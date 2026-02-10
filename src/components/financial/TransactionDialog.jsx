@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DateInputWithCalendar } from '@/components/ui/date-input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
@@ -421,12 +422,11 @@ export default function TransactionDialog({
                         </div>
                         <div>
                             <Label htmlFor="transaction_date">Data *</Label>
-                            <Input
+                            <DateInputWithCalendar
                                 id="transaction_date"
-                                type="date"
                                 required
                                 value={formData.transaction_date}
-                                onChange={(e) => setFormData(prev => ({ ...prev, transaction_date: e.target.value }))}
+                                onChange={(value) => setFormData(prev => ({ ...prev, transaction_date: value }))}
                             />
                         </div>
                     </div>
@@ -499,12 +499,11 @@ export default function TransactionDialog({
                     {!formData.isPaid && !formData.isInstallment && (
                         <div>
                             <Label htmlFor="due_date">Data de Vencimento *</Label>
-                            <Input
+                            <DateInputWithCalendar
                                 id="due_date"
-                                type="date"
                                 required={!formData.isPaid}
                                 value={formData.due_date}
-                                onChange={(e) => setFormData(prev => ({ ...prev, due_date: e.target.value }))}
+                                onChange={(value) => setFormData(prev => ({ ...prev, due_date: value }))}
                                 min={formData.transaction_date}
                             />
                         </div>

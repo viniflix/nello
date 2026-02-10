@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DateInputWithCalendar, TimeInput } from '@/components/ui/date-input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Search } from 'lucide-react';
@@ -218,22 +219,20 @@ export default function AppointmentDialog({
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <Label htmlFor="date">Data *</Label>
-                            <Input
+                            <DateInputWithCalendar
                                 id="date"
-                                type="date"
                                 required
                                 value={formData.appointment_time_date}
-                                onChange={(e) => setFormData(prev => ({ ...prev, appointment_time_date: e.target.value }))}
+                                onChange={(value) => setFormData(prev => ({ ...prev, appointment_time_date: value }))}
                             />
                         </div>
                         <div>
                             <Label htmlFor="time">Hora *</Label>
-                            <Input
+                            <TimeInput
                                 id="time"
-                                type="time"
                                 required
                                 value={formData.appointment_time_hour}
-                                onChange={(e) => setFormData(prev => ({ ...prev, appointment_time_hour: e.target.value }))}
+                                onChange={(value) => setFormData(prev => ({ ...prev, appointment_time_hour: value }))}
                             />
                         </div>
                     </div>

@@ -3,6 +3,7 @@ import { Save, X, Calculator, Ruler, Scissors, Image as ImageIcon, AlertCircle }
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DateInputWithCalendar } from '@/components/ui/date-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -533,12 +534,16 @@ const AnthropometryForm = ({
                                     <Label htmlFor="record_date">
                                         Data <span className="text-destructive">*</span>
                                     </Label>
-                                    <Input
+                                    <DateInputWithCalendar
                                         id="record_date"
                                         name="record_date"
-                                        type="date"
                                         value={formData.record_date}
-                                        onChange={handleChange}
+                                        onChange={(value) => {
+                                            setFormData(prev => ({ ...prev, record_date: value }));
+                                            if (errors.record_date) {
+                                                setErrors(prev => ({ ...prev, record_date: null }));
+                                            }
+                                        }}
                                         className={errors.record_date ? 'border-destructive' : ''}
                                         disabled={loading}
                                     />
