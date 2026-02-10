@@ -1,13 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { format, addDays, subDays, isToday, isYesterday, isTomorrow, startOfDay, isSameDay } from 'date-fns';
+import { format, addDays, subDays, isToday, isYesterday, isTomorrow, startOfDay, isSameDay, parseISO, isValid } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { CalendarDays, Plus, Utensils, Trash2, MoreHorizontal, ChevronLeft, ChevronRight, FileText, Eye, Bell, Edit, Flame, Beef, Wheat, Droplet } from 'lucide-react';
+import { Plus, Utensils, Trash2, MoreHorizontal, ChevronLeft, ChevronRight, FileText, Eye, Bell, Edit, Flame, Beef, Wheat, Droplet } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { DateInputWithCalendar } from '@/components/ui/date-input';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Progress } from '@/components/ui/progress';
@@ -344,27 +343,28 @@ export default function PatientDiaryPage() {
                 </Button>
 
                 <div className="flex-1 text-center">
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <button className="hover:opacity-80 transition-opacity">
-                        <h2 className="text-2xl font-bold text-primary">
-                          {getDateLabel(selectedDate)}
-                        </h2>
-                        <p className="text-sm text-muted-foreground capitalize mt-1">
-                          {getDateSubtitle(selectedDate)}
-                        </p>
-                      </button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="center">
-                      <Calendar
-                        mode="single"
-                        selected={selectedDate}
-                        onSelect={(date) => date && setSelectedDate(date)}
-                        initialFocus
-                        locale={ptBR}
+                  <div className="space-y-2">
+                    <div>
+                      <h2 className="text-2xl font-bold text-primary">
+                        {getDateLabel(selectedDate)}
+                      </h2>
+                      <p className="text-sm text-muted-foreground capitalize mt-1">
+                        {getDateSubtitle(selectedDate)}
+                      </p>
+                    </div>
+                    <div className="flex justify-center">
+                      <DateInputWithCalendar
+                        value={format(selectedDate, 'yyyy-MM-dd')}
+                        onChange={(value) => {
+                          const parsed = parseISO(value);
+                          if (isValid(parsed)) {
+                            setSelectedDate(parsed);
+                          }
+                        }}
+                        className="max-w-[170px]"
                       />
-                    </PopoverContent>
-                  </Popover>
+                    </div>
+                  </div>
                 </div>
 
                 <Button

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Trash2, X, Edit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { TimeInput } from '@/components/ui/date-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -223,11 +224,10 @@ const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null }) => {
                                     {/* Horário */}
                                     <div className="space-y-2">
                                         <Label htmlFor="meal_time">Horário (opcional)</Label>
-                                        <Input
+                                        <TimeInput
                                             id="meal_time"
-                                            type="time"
                                             value={formData.meal_time}
-                                            onChange={(e) => handleChange('meal_time', e.target.value)}
+                                            onChange={(value) => handleChange('meal_time', value)}
                                         />
                                     </div>
                                 </div>

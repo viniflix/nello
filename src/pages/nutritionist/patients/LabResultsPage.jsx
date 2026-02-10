@@ -4,6 +4,7 @@ import { ArrowLeft, Droplet, Plus, Edit, Trash2, Calendar, Activity, AlertCircle
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { DateInputWithCalendar } from '@/components/ui/date-input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
@@ -707,11 +708,10 @@ const LabResultsPage = () => {
                         {/* Data do Exame */}
                         <div className="space-y-2">
                             <Label htmlFor="test_date">Data do Exame *</Label>
-                            <Input
+                            <DateInputWithCalendar
                                 id="test_date"
-                                type="date"
                                 value={formData.test_date}
-                                onChange={(e) => handleInputChange('test_date', e.target.value)}
+                                onChange={(value) => handleInputChange('test_date', value)}
                                 max={new Date().toISOString().split('T')[0]}
                             />
                         </div>

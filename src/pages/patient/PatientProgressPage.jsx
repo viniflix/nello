@@ -15,6 +15,7 @@ import {
   DialogTrigger
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { DateInputWithCalendar } from '@/components/ui/date-input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/customSupabaseClient';
@@ -644,11 +645,10 @@ export default function PatientProgressPage() {
             <form onSubmit={handleAddWeightRecord} className="space-y-4">
               <div>
                 <Label htmlFor="date">Data</Label>
-                <Input
+                <DateInputWithCalendar
                   id="date"
-                  type="date"
                   value={recordDate}
-                  onChange={(e) => setRecordDate(e.target.value)}
+                  onChange={(value) => setRecordDate(value)}
                   required
                 />
               </div>
@@ -675,11 +675,10 @@ export default function PatientProgressPage() {
             <form onSubmit={handleAddGlycemiaRecord} className="space-y-4">
               <div>
                 <Label htmlFor="date">Data</Label>
-                <Input
+                <DateInputWithCalendar
                   id="date"
-                  type="date"
                   value={recordDate}
-                  onChange={(e) => setRecordDate(e.target.value)}
+                  onChange={(value) => setRecordDate(value)}
                   required
                 />
               </div>
@@ -706,11 +705,10 @@ export default function PatientProgressPage() {
             <form onSubmit={handleAddMeasurementRecord} className="space-y-4">
               <div>
                 <Label htmlFor="date">Data</Label>
-                <Input
+                <DateInputWithCalendar
                   id="date"
-                  type="date"
                   value={recordDate}
-                  onChange={(e) => setRecordDate(e.target.value)}
+                  onChange={(value) => setRecordDate(value)}
                   required
                 />
               </div>
@@ -757,11 +755,10 @@ export default function PatientProgressPage() {
             >
               <div>
                 <Label htmlFor="date">Data</Label>
-                <Input
+                <DateInputWithCalendar
                   id="date"
-                  type="date"
                   value={recordDate}
-                  onChange={(e) => setRecordDate(e.target.value)}
+                  onChange={(value) => setRecordDate(value)}
                   required
                 />
               </div>

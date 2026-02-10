@@ -5,6 +5,7 @@ import { ArrowLeft, Save, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DateInputWithCalendar } from '@/components/ui/date-input';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -241,11 +242,10 @@ export default function PatientEditProfilePage() {
                   {/* Data de Nascimento */}
                   <div className="space-y-2">
                     <Label htmlFor="birth_date">Data de Nascimento</Label>
-                    <Input
+                    <DateInputWithCalendar
                       id="birth_date"
-                      type="date"
                       value={formData.birth_date}
-                      onChange={(e) => handleChange('birth_date', e.target.value)}
+                      onChange={(value) => handleChange('birth_date', value)}
                     />
                   </div>
                 </div>

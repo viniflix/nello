@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { MonthInputWithCalendar } from '@/components/ui/date-input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
@@ -385,10 +386,9 @@ export default function FinancialPage() {
 
                     {/* Month Selector */}
                     <div className="mb-6">
-                        <Input
-                            type="month"
+                        <MonthInputWithCalendar
                             value={format(selectedMonth, 'yyyy-MM')}
-                            onChange={(e) => setSelectedMonth(new Date(e.target.value + '-02'))}
+                            onChange={(value) => value && setSelectedMonth(new Date(value + '-02'))}
                             className="w-full sm:w-auto"
                         />
                     </div>

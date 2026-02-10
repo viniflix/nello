@@ -7,6 +7,7 @@ import { supabase } from '@/lib/customSupabaseClient';
 import { useToast } from '@/components/ui/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { TimeInput } from '@/components/ui/date-input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -309,7 +310,7 @@ const AddFoodPage = () => {
                                 <CardHeader><CardTitle>Resumo da Refeição</CardTitle></CardHeader>
                                 <CardContent className="space-y-4">
                                     <div className="grid grid-cols-2 gap-4">
-                                        <div><Label htmlFor="meal-time">Horário</Label><Input id="meal-time" type="time" value={mealDetails.time} onChange={e => setMealDetails({...mealDetails, time: e.target.value})} /></div>
+                                        <div><Label htmlFor="meal-time">Horário</Label><TimeInput id="meal-time" value={mealDetails.time} onChange={(value) => setMealDetails({ ...mealDetails, time: value })} /></div>
                                         <div><Label htmlFor="meal-type">Tipo</Label><Select value={mealDetails.type} onValueChange={value => setMealDetails({...mealDetails, type: value})}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{mealTypes.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent></Select></div>
                                     </div>
                                     <div><Label htmlFor="meal-notes">Observações</Label><Textarea id="meal-notes" placeholder="Ex: senti muita fome, comi antes do treino..." value={mealDetails.notes} onChange={e => setMealDetails({...mealDetails, notes: e.target.value})} /></div>

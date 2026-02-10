@@ -12,6 +12,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DateInputWithCalendar } from '@/components/ui/date-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -719,11 +720,17 @@ const PatientAnamnesisForm = () => {
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-2">
                                             <Label htmlFor="date">Data da Anamnese<RequiredAsterisk /></Label>
-                                            <Input
-                                                id="date"
-                                                type="date"
-                                                {...register('date')}
-                                                className={cn(errors.date && "border-red-500")}
+                                            <Controller
+                                                name="date"
+                                                control={control}
+                                                render={({ field }) => (
+                                                    <DateInputWithCalendar
+                                                        id="date"
+                                                        value={field.value || ''}
+                                                        onChange={field.onChange}
+                                                        className={cn(errors.date && "border-red-500")}
+                                                    />
+                                                )}
                                             />
                                             <FieldError error={errors.date} />
                                         </div>
@@ -778,10 +785,16 @@ const PatientAnamnesisForm = () => {
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                 <div className="space-y-2">
                                                     <Label htmlFor="data_nascimento">Data de Nascimento</Label>
-                                                    <Input
-                                                        id="data_nascimento"
-                                                        type="date"
-                                                        {...register('identificacao.data_nascimento')}
+                                                    <Controller
+                                                        name="identificacao.data_nascimento"
+                                                        control={control}
+                                                        render={({ field }) => (
+                                                            <DateInputWithCalendar
+                                                                id="data_nascimento"
+                                                                value={field.value || ''}
+                                                                onChange={field.onChange}
+                                                            />
+                                                        )}
                                                     />
                                                 </div>
                                                 <div className="space-y-2">

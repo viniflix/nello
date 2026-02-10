@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { TimeInput } from '@/components/ui/date-input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -125,20 +125,18 @@ export default function ProfileAgendaTab({ userId, onUpdate }) {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label htmlFor="startTime">Horário de Início</Label>
-                            <Input
+                            <TimeInput
                                 id="startTime"
-                                type="time"
                                 value={formData.startTime}
-                                onChange={(e) => setFormData(prev => ({ ...prev, startTime: e.target.value }))}
+                                onChange={(value) => setFormData(prev => ({ ...prev, startTime: value }))}
                             />
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="endTime">Horário de Término</Label>
-                            <Input
+                            <TimeInput
                                 id="endTime"
-                                type="time"
                                 value={formData.endTime}
-                                onChange={(e) => setFormData(prev => ({ ...prev, endTime: e.target.value }))}
+                                onChange={(value) => setFormData(prev => ({ ...prev, endTime: value }))}
                             />
                         </div>
                     </div>

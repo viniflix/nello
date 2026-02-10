@@ -7,6 +7,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { DateInputWithCalendar } from '@/components/ui/date-input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
@@ -287,21 +288,19 @@ const FoodDiaryPage = () => {
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="start_date" className="text-sm">Data Inicial</Label>
-                                    <Input
+                                    <DateInputWithCalendar
                                         id="start_date"
-                                        type="date"
                                         value={filters.startDate}
-                                        onChange={(e) => handleFilterChange('startDate', e.target.value)}
+                                        onChange={(value) => handleFilterChange('startDate', value)}
                                         className="h-9"
                                     />
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="end_date" className="text-sm">Data Final</Label>
-                                    <Input
+                                    <DateInputWithCalendar
                                         id="end_date"
-                                        type="date"
                                         value={filters.endDate}
-                                        onChange={(e) => handleFilterChange('endDate', e.target.value)}
+                                        onChange={(value) => handleFilterChange('endDate', value)}
                                         className="h-9"
                                     />
                                 </div>

@@ -3,6 +3,7 @@ import { Save, X, Plus, Trash2, Edit, Calendar } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DateInputWithCalendar } from '@/components/ui/date-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -224,11 +225,10 @@ const MealPlanForm = ({ patientId, nutritionistId, initialData = null, onSubmit,
                                 <Label htmlFor="start_date">
                                     Data de Início <span className="text-destructive">*</span>
                                 </Label>
-                                <Input
+                                <DateInputWithCalendar
                                     id="start_date"
-                                    type="date"
                                     value={formData.start_date}
-                                    onChange={(e) => handleChange('start_date', e.target.value)}
+                                    onChange={(value) => handleChange('start_date', value)}
                                     className={errors.start_date ? 'border-destructive' : ''}
                                     disabled={loading}
                                 />
@@ -239,11 +239,10 @@ const MealPlanForm = ({ patientId, nutritionistId, initialData = null, onSubmit,
 
                             <div className="space-y-2">
                                 <Label htmlFor="end_date">Data de Término (opcional)</Label>
-                                <Input
+                                <DateInputWithCalendar
                                     id="end_date"
-                                    type="date"
                                     value={formData.end_date}
-                                    onChange={(e) => handleChange('end_date', e.target.value)}
+                                    onChange={(value) => handleChange('end_date', value)}
                                     className={errors.end_date ? 'border-destructive' : ''}
                                     disabled={loading}
                                 />

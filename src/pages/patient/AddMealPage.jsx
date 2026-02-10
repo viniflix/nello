@@ -6,6 +6,7 @@ import { ArrowLeft, Plus, Trash2, Search, Clock, MessageSquare, Save, X } from '
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { TimeInput } from '@/components/ui/date-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/contexts/AuthContext';
@@ -591,10 +592,9 @@ export default function AddMealPage() {
                     <Clock className="w-4 h-4" />
                     Horário
                   </Label>
-                  <Input
-                    type="time"
+                  <TimeInput
                     value={mealDateTime}
-                    onChange={(e) => setMealDateTime(e.target.value)}
+                    onChange={(value) => setMealDateTime(value)}
                   />
                 </div>
 

@@ -4,6 +4,7 @@ import { ArrowLeft, Target, TrendingDown, TrendingUp, Calendar, AlertCircle, Che
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { DateInputWithCalendar } from '@/components/ui/date-input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
@@ -641,21 +642,19 @@ const GoalsPage = () => {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <Label htmlFor="start_date" className="text-sm font-medium">Data de Início</Label>
-                                        <Input
+                                        <DateInputWithCalendar
                                             id="start_date"
-                                            type="date"
                                             value={formData.start_date}
-                                            onChange={(e) => handleInputChange('start_date', e.target.value)}
+                                            onChange={(value) => handleInputChange('start_date', value)}
                                             className="h-10"
                                         />
                                     </div>
                                     <div className="space-y-2">
                                         <Label htmlFor="target_date" className="text-sm font-medium">Data Meta</Label>
-                                        <Input
+                                        <DateInputWithCalendar
                                             id="target_date"
-                                            type="date"
                                             value={formData.target_date}
-                                            onChange={(e) => handleInputChange('target_date', e.target.value)}
+                                            onChange={(value) => handleInputChange('target_date', value)}
                                             min={formData.start_date}
                                             className="h-10"
                                         />

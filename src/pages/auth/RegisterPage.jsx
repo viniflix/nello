@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Eye, EyeOff, Mail, Lock, User, UserCircle, Calendar, Scale, Ruler, Target } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, User, UserCircle, Scale, Ruler, Target } from 'lucide-react';
+import { DateInputWithCalendar } from '@/components/ui/date-input';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -193,17 +194,13 @@ export default function RegisterPage() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="birthDate" className="text-sm font-medium">Data de nascimento</Label>
-                        <div className="relative">
-                          <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                          <Input
-                            id="birthDate"
-                            type="date"
-                            value={formData.birth_date}
-                            onChange={(e) => handleInputChange('birth_date', e.target.value)}
-                            required
-                            className="pl-10 h-10"
-                          />
-                        </div>
+                        <DateInputWithCalendar
+                          id="birthDate"
+                          value={formData.birth_date}
+                          onChange={(value) => handleInputChange('birth_date', value)}
+                          required
+                          className="h-10"
+                        />
                       </div>
 
                       <div className="space-y-2">
