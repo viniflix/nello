@@ -209,13 +209,18 @@ const NutritionistActivityFeed = () => {
 
     return (
         <Card className="bg-card shadow-card-dark rounded-xl">
-            <CardHeader>
-                <CardTitle className="font-clash text-lg font-semibold text-primary">
-                    Feed de Atividades
-                </CardTitle>
-                <CardDescription className="text-muted-foreground">
-                    Macroview do consultório: pendências, alertas e atividades recentes
-                </CardDescription>
+            <CardHeader className="flex flex-row items-start justify-between gap-4">
+                <div>
+                    <CardTitle className="font-clash text-lg font-semibold text-primary">
+                        Feed de Atividades
+                    </CardTitle>
+                    <CardDescription className="text-muted-foreground">
+                        Macroview do consultório: pendências, alertas e atividades recentes
+                    </CardDescription>
+                </div>
+                <Badge variant="outline" className="text-xs">
+                    {feedItems.length} eventos
+                </Badge>
             </CardHeader>
             <CardContent>
                 {feedItems.length === 0 ? (
@@ -229,21 +234,27 @@ const NutritionistActivityFeed = () => {
                         </p>
                     </div>
                 ) : (
-                    <div className="space-y-2">
+                    <div className="relative">
+                        <div className="max-h-[520px] overflow-y-auto pr-2 space-y-2">
                         {feedItems.map(item => {
                             const Icon = iconByType[item.type] || iconByType.default;
                             return (
                                 <div
                                     key={item.id}
-                                    className="flex items-start gap-3 rounded-lg border border-border p-3 hover:bg-muted/40 transition-colors"
+                                    className="flex items-start gap-3 rounded-xl border border-border/70 bg-background/60 p-4 shadow-sm hover:shadow-md hover:border-primary/30 transition-all"
                                 >
-                                    <div className="mt-1 rounded-full border border-border bg-background p-2">
-                                        <Icon className="h-4 w-4 text-muted-foreground" />
+                                    <div className="mt-1 flex items-center gap-3">
+                                        <div className="h-10 w-10 rounded-full border border-border bg-muted/40 flex items-center justify-center text-xs font-semibold text-muted-foreground">
+                                            {item.patientName ? item.patientName.substring(0, 2).toUpperCase() : 'HT'}
+                                        </div>
+                                        <div className="rounded-full border border-border bg-background p-2">
+                                            <Icon className="h-4 w-4 text-muted-foreground" />
+                                        </div>
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-start justify-between gap-2">
                                             <div>
-                                                <p className="text-sm font-medium text-foreground">
+                                                <p className="text-sm font-semibold text-foreground">
                                                     {item.patientName ? (
                                                         <>
                                                             <span className="text-primary font-semibold">{item.patientName}</span>
@@ -268,7 +279,7 @@ const NutritionistActivityFeed = () => {
                                                 <Button
                                                     size="sm"
                                                     variant="outline"
-                                                    className="h-7 px-2 text-xs"
+                                                    className="h-7 px-2 text-xs hover:border-primary/40"
                                                     onClick={() => navigate(item.ctaRoute)}
                                                 >
                                                     {item.ctaLabel || 'Ver detalhes'}
@@ -280,6 +291,8 @@ const NutritionistActivityFeed = () => {
                                 </div>
                             );
                         })}
+                        </div>
+                        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-background to-transparent" />
                     </div>
                 )}
             </CardContent>

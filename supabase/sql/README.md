@@ -16,6 +16,7 @@
 13. `phase-13-fk-indexes.sql` (recomendado)
 14. `phase-14-unused-index-cleanup-extra.sql` (opcional)
 15. `phase-15-rls-helper-functions.sql`
+16. `phase-16-rebuild-activity-feed.sql`
 
 ---
 
@@ -178,6 +179,14 @@
 ### Recursao de policies
 - Recarregar dashboard e verificar se 500/stack depth sumiu.
 - Rodar `get_daily_adherence` novamente.
+
+---
+
+## Fase 16 - Testes do feed
+
+### Feed de atividades
+- Rodar `get_comprehensive_activity_feed_optimized` e abrir o dashboard.
+- Validar CTAs para anamnese, diário, plano e agenda.
 
 ---
 
