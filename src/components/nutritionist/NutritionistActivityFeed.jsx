@@ -55,6 +55,74 @@ const labelByType = {
     achievement: 'Conquista'
 };
 
+const toneByType = {
+    pending: {
+        card: 'bg-amber-50/60 border-amber-200/60',
+        badge: 'bg-amber-50 text-amber-700 border-amber-200',
+        icon: 'text-amber-600'
+    },
+    low_adherence: {
+        card: 'bg-rose-50/60 border-rose-200/60',
+        badge: 'bg-rose-50 text-rose-700 border-rose-200',
+        icon: 'text-rose-600'
+    },
+    birthday: {
+        card: 'bg-violet-50/60 border-violet-200/60',
+        badge: 'bg-violet-50 text-violet-700 border-violet-200',
+        icon: 'text-violet-600'
+    },
+    appointment_upcoming: {
+        card: 'bg-sky-50/60 border-sky-200/60',
+        badge: 'bg-sky-50 text-sky-700 border-sky-200',
+        icon: 'text-sky-600'
+    },
+    meal: {
+        card: 'bg-orange-50/60 border-orange-200/60',
+        badge: 'bg-orange-50 text-orange-700 border-orange-200',
+        icon: 'text-orange-600'
+    },
+    anthropometry: {
+        card: 'bg-emerald-50/60 border-emerald-200/60',
+        badge: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+        icon: 'text-emerald-600'
+    },
+    anamnesis: {
+        card: 'bg-indigo-50/60 border-indigo-200/60',
+        badge: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+        icon: 'text-indigo-600'
+    },
+    meal_plan: {
+        card: 'bg-cyan-50/60 border-cyan-200/60',
+        badge: 'bg-cyan-50 text-cyan-700 border-cyan-200',
+        icon: 'text-cyan-600'
+    },
+    prescription: {
+        card: 'bg-yellow-50/60 border-yellow-200/60',
+        badge: 'bg-yellow-50 text-yellow-700 border-yellow-200',
+        icon: 'text-yellow-600'
+    },
+    appointment: {
+        card: 'bg-blue-50/60 border-blue-200/60',
+        badge: 'bg-blue-50 text-blue-700 border-blue-200',
+        icon: 'text-blue-600'
+    },
+    message: {
+        card: 'bg-slate-50/60 border-slate-200/60',
+        badge: 'bg-slate-50 text-slate-700 border-slate-200',
+        icon: 'text-slate-600'
+    },
+    achievement: {
+        card: 'bg-amber-50/60 border-amber-200/60',
+        badge: 'bg-amber-50 text-amber-700 border-amber-200',
+        icon: 'text-amber-600'
+    },
+    default: {
+        card: 'bg-muted/40 border-border/70',
+        badge: 'bg-muted text-muted-foreground border-border',
+        icon: 'text-muted-foreground'
+    }
+};
+
 const NutritionistActivityFeed = () => {
     const { user } = useAuth();
     const navigate = useNavigate();
@@ -215,7 +283,7 @@ const NutritionistActivityFeed = () => {
                         Feed de Atividades
                     </CardTitle>
                     <CardDescription className="text-muted-foreground">
-                        Macroview do consultório: pendências, alertas e atividades recentes
+                        Tudo o que precisa ver ao iniciar o dia
                     </CardDescription>
                 </div>
                 <Badge variant="outline" className="text-xs">
@@ -238,17 +306,18 @@ const NutritionistActivityFeed = () => {
                         <div className="max-h-[520px] overflow-y-auto pr-2 space-y-2">
                         {feedItems.map(item => {
                             const Icon = iconByType[item.type] || iconByType.default;
+                            const tone = toneByType[item.type] || toneByType.default;
                             return (
                                 <div
                                     key={item.id}
-                                    className="flex items-start gap-3 rounded-xl border border-border/70 bg-background/60 p-4 shadow-sm hover:shadow-md hover:border-primary/30 transition-all"
+                                    className={`flex items-start gap-3 rounded-xl border p-4 shadow-sm hover:shadow-md transition-all ${tone.card}`}
                                 >
                                     <div className="mt-1 flex items-center gap-3">
                                         <div className="h-10 w-10 rounded-full border border-border bg-muted/40 flex items-center justify-center text-xs font-semibold text-muted-foreground">
                                             {item.patientName ? item.patientName.substring(0, 2).toUpperCase() : 'HT'}
                                         </div>
                                         <div className="rounded-full border border-border bg-background p-2">
-                                            <Icon className="h-4 w-4 text-muted-foreground" />
+                                            <Icon className={`h-4 w-4 ${tone.icon}`} />
                                         </div>
                                     </div>
                                     <div className="flex-1 min-w-0">
@@ -267,15 +336,26 @@ const NutritionistActivityFeed = () => {
                                                     {item.description}
                                                 </p>
                                             </div>
-                                            <span className="text-xs text-muted-foreground whitespace-nowrap">
-                                                {renderTimestamp(item.timestamp)}
-                                            </span>
+                                            {item.type === 'pending' && item.ctaRoute ? (
+                                                <Button
+                                                    size="sm"
+                                                    className="h-7 px-2 text-xs"
+                                                    onClick={() => navigate(item.ctaRoute)}
+                                                >
+                                                    {item.ctaLabel || 'Resolver'}
+                                                    <ChevronRight className="ml-1 h-3 w-3" />
+                                                </Button>
+                                            ) : (
+                                                <span className="text-xs text-muted-foreground whitespace-nowrap">
+                                                    {renderTimestamp(item.timestamp)}
+                                                </span>
+                                            )}
                                         </div>
                                         <div className="mt-2 flex items-center gap-2">
-                                            <Badge variant="outline" className="text-xs">
+                                            <Badge variant="outline" className={`text-xs ${tone.badge}`}>
                                                 {labelByType[item.type] || 'Atividade'}
                                             </Badge>
-                                            {item.ctaRoute ? (
+                                            {item.type !== 'pending' && item.ctaRoute ? (
                                                 <Button
                                                     size="sm"
                                                     variant="outline"
