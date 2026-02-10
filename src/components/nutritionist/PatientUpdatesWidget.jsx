@@ -14,6 +14,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Utensils, Weight, Loader2, Edit3, Search, X, Filter, Trash2 } from 'lucide-react';
 import { translateMealType } from '@/utils/mealTranslations';
+import { useNavigate } from 'react-router-dom';
 
 /**
  * Widget que mostra TODOS os registros DOS PACIENTES com filtros e pesquisa
@@ -24,6 +25,13 @@ const PatientUpdatesWidget = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [activeFilter, setActiveFilter] = useState('all'); // 'all', 'meal', 'weight', 'edit'
     const { user } = useAuth();
+    const navigate = useNavigate();
+
+    const formatCalories = (value) => {
+        const parsed = Number.parseFloat(value);
+        if (Number.isNaN(parsed)) return value ? `${value} kcal` : null;
+        return `${parsed.toFixed(2)} kcal`;
+    };
 
     useEffect(() => {
         const fetchUpdates = async () => {
@@ -74,7 +82,7 @@ const PatientUpdatesWidget = () => {
                     mealAuditData.data.forEach(audit => {
                         const patient = patientMap[audit.patient_id];
                         if (patient) {
-                            const totalCalories = audit.details?.total_calories || 0;
+                            const totalCalories = audit.details?.total_calories ?? 0;
 
                             // Descrição e tipo baseado na ação
                             let description = '';
@@ -94,10 +102,11 @@ const PatientUpdatesWidget = () => {
                             activities.push({
                                 id: `audit-${audit.id}`,
                                 type: type,
+                                patient_id: audit.patient_id,
                                 patient_name: patient.name,
                                 description: description,
                                 meal_type: translateMealType(audit.meal_type),
-                                detail: `${totalCalories} kcal`,
+                                detail: formatCalories(totalCalories),
                                 timestamp: audit.created_at
                             });
                         }
@@ -112,6 +121,7 @@ const PatientUpdatesWidget = () => {
                             activities.push({
                                 id: `weight-${record.id}`,
                                 type: 'weight',
+                                patient_id: record.patient_id,
                                 patient_name: patient.name,
                                 description: 'registrou peso',
                                 detail: `${record.weight} kg`,
@@ -279,7 +289,17 @@ const PatientUpdatesWidget = () => {
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <p className="text-sm">
-                                            <span className="font-semibold text-primary">{update.patient_name}</span>
+                                            {update.patient_id ? (
+                                                <button
+                                                    type="button"
+                                                    className="font-semibold text-primary hover:underline"
+                                                    onClick={() => navigate(`/nutritionist/patients/${update.patient_id}/hub`)}
+                                                >
+                                                    {update.patient_name}
+                                                </button>
+                                            ) : (
+                                                <span className="font-semibold text-primary">{update.patient_name}</span>
+                                            )}
                                             {' '}
                                             <span className="text-foreground">{update.description}</span>
                                             {update.meal_type && (
