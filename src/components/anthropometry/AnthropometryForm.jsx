@@ -467,19 +467,19 @@ const AnthropometryForm = ({
     return (
         <Card>
             <CardHeader>
-                <CardTitle className="text-lg">
+                <CardTitle className="text-lg md:text-lg tracking-wide" style={{ wordSpacing: '0.2em' }}>
                     {initialData ? 'Editar Registro' : 'Novo Registro Antropométrico'}
                 </CardTitle>
             </CardHeader>
             <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-6">
                     <Tabs defaultValue="basico" className="w-full">
-                        <TabsList className="grid w-full grid-cols-5">
-                            <TabsTrigger value="basico">Básico</TabsTrigger>
-                            <TabsTrigger value="circunferencias">Circunferências</TabsTrigger>
-                            <TabsTrigger value="dobras">Dobras & Composição</TabsTrigger>
-                            <TabsTrigger value="diametros">Diâmetros Ósseos</TabsTrigger>
-                            <TabsTrigger value="fotos">Fotos</TabsTrigger>
+                        <TabsList className="flex w-full flex-nowrap overflow-x-auto gap-1 p-1 md:grid md:grid-cols-5 md:overflow-visible">
+                            <TabsTrigger value="basico" className="whitespace-nowrap shrink-0 text-xs md:text-sm px-2 md:px-3">Básico</TabsTrigger>
+                            <TabsTrigger value="circunferencias" className="whitespace-nowrap shrink-0 text-xs md:text-sm px-2 md:px-3">Circunferências</TabsTrigger>
+                            <TabsTrigger value="dobras" className="whitespace-nowrap shrink-0 text-xs md:text-sm px-2 md:px-3">Dobras & Comp.</TabsTrigger>
+                            <TabsTrigger value="diametros" className="whitespace-nowrap shrink-0 text-xs md:text-sm px-2 md:px-3">Diâmetros</TabsTrigger>
+                            <TabsTrigger value="fotos" className="whitespace-nowrap shrink-0 text-xs md:text-sm px-2 md:px-3">Fotos</TabsTrigger>
                         </TabsList>
 
                         {/* TAB 1: Básico */}
