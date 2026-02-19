@@ -1,9 +1,12 @@
 import { useState, useEffect } from "react"
 import { toPortugueseError } from "@/lib/utils/errorMessages"
 
-const TOAST_LIMIT = 1
+const TOAST_LIMIT = 3
+const DUPLICATE_WINDOW_MS = 1200
 
 let count = 0
+let lastToastFingerprint = ""
+let lastToastAt = 0
 function generateId() {
   count = (count + 1) % Number.MAX_VALUE
   return count.toString()
@@ -64,6 +67,7 @@ const normalizeToastPayload = (props) => {
 
   if (level === "error") {
     normalized.title = "Erro"
+    normalized.variant = "destructive"
   } else if (level === "warning") {
     normalized.title = "Aviso"
   } else if (level === "success") {
@@ -77,12 +81,36 @@ const normalizeToastPayload = (props) => {
     )
   }
 
+  if (normalized.duration !== Infinity && typeof normalized.duration !== "number") {
+    if (level === "error") normalized.duration = 6500
+    else if (level === "warning") normalized.duration = 5500
+    else if (level === "success") normalized.duration = 4200
+    else normalized.duration = 5000
+  }
+
   return normalized
 }
 
 export const toast = ({ ...props }) => {
   const id = generateId()
   const normalizedProps = normalizeToastPayload(props)
+  const fingerprint = `${normalizedProps.title || ""}::${normalizedProps.description || ""}::${normalizedProps.variant || ""}`
+  const now = Date.now()
+
+  // Evita "explosão" de mensagens iguais em sequência curta.
+  if (
+    fingerprint === lastToastFingerprint &&
+    (now - lastToastAt) < DUPLICATE_WINDOW_MS
+  ) {
+    return {
+      id,
+      dismiss: () => {},
+      update: () => {},
+    }
+  }
+
+  lastToastFingerprint = fingerprint
+  lastToastAt = now
 
   const update = (props) =>
     toastStore.setState((state) => ({
