@@ -20,6 +20,7 @@ import { useToast } from '@/hooks/use-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createGhostPatient, fillDailyDiary, fillMealHistory, createGhostSquad, cleanupDemoData, unlockRandomAchievement } from '@/services/demoDataService';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { toPortugueseError } from '@/lib/utils/errorMessages';
 
 /**
  * AdminControlBar - Premium Command Center
@@ -98,7 +99,7 @@ export default function AdminControlBar() {
         console.error('[AdminControlBar] Erro ao criar paciente fantasma:', error);
         toast({
           title: 'Erro',
-          description: error.message || 'Não foi possível criar o paciente fantasma.',
+          description: toPortugueseError(error, 'Não foi possível criar o paciente fantasma.'),
           variant: 'destructive'
         });
         return;
@@ -150,7 +151,7 @@ export default function AdminControlBar() {
         console.error('[AdminControlBar] Erro ao preencher diário:', error);
         toast({
           title: 'Erro',
-          description: error.message || 'Não foi possível preencher o diário.',
+          description: toPortugueseError(error, 'Não foi possível preencher o diário.'),
           variant: 'destructive'
         });
         return;
@@ -202,7 +203,7 @@ export default function AdminControlBar() {
         console.error('[AdminControlBar] Erro ao preencher histórico:', error);
         toast({
           title: 'Erro',
-          description: error.message || 'Não foi possível preencher o histórico.',
+          description: toPortugueseError(error, 'Não foi possível preencher o histórico.'),
           variant: 'destructive'
         });
         return;
@@ -249,7 +250,7 @@ export default function AdminControlBar() {
         console.error('[AdminControlBar] Erro ao criar squad:', error);
         toast({
           title: 'Erro',
-          description: error?.message || 'Não foi possível criar nenhum paciente.',
+          description: toPortugueseError(error, 'Não foi possível criar nenhum paciente.'),
           variant: 'destructive'
         });
         return;
@@ -372,7 +373,7 @@ export default function AdminControlBar() {
         console.error('[AdminControlBar] Erro ao limpar dados:', error);
         toast({
           title: 'Erro',
-          description: error.message || 'Não foi possível limpar os dados de demo.',
+          description: toPortugueseError(error, 'Não foi possível limpar os dados de demonstração.'),
           variant: 'destructive'
         });
         return;

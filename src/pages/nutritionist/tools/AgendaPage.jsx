@@ -20,6 +20,7 @@ import { exportAgendaToPdf } from '@/lib/pdfUtils';
 import AppointmentDialog from '@/components/agenda/AppointmentDialog';
 import { createAppointmentWithFinance, updateAppointment } from '@/lib/supabase/agenda-queries';
 import { getServices } from '@/lib/supabase/financial-queries';
+import { toPortugueseError } from '@/lib/utils/errorMessages';
 
 export default function AgendaPage() {
     const { user, signOut } = useAuth();
@@ -152,7 +153,7 @@ export default function AgendaPage() {
             console.error('Error saving appointment:', error);
             toast({ 
                 title: "Erro", 
-                description: `Não foi possível salvar o agendamento. ${error.message}`, 
+                description: toPortugueseError(error, 'Não foi possível salvar o agendamento.'), 
                 variant: "destructive" 
             });
         }

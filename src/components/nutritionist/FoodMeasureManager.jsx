@@ -15,6 +15,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useToast } from '@/hooks/use-toast';
+import { toPortugueseError } from '@/lib/utils/errorMessages';
 
 /**
  * FoodMeasureManager - Modal para gerenciar medidas caseiras de um alimento
@@ -103,7 +104,7 @@ export default function FoodMeasureManager({ food, isOpen, onClose }) {
       console.error('Erro ao adicionar medida:', error);
       toast({
         title: 'Erro',
-        description: error.message || 'Não foi possível adicionar a medida.',
+        description: toPortugueseError(error, 'Não foi possível adicionar a medida.'),
         variant: 'destructive'
       });
     } finally {
@@ -135,7 +136,7 @@ export default function FoodMeasureManager({ food, isOpen, onClose }) {
       console.error('Erro ao excluir medida:', error);
       toast({
         title: 'Erro',
-        description: error.message || 'Não foi possível excluir a medida.',
+        description: toPortugueseError(error, 'Não foi possível excluir a medida.'),
         variant: 'destructive'
       });
     } finally {

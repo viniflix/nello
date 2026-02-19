@@ -47,6 +47,7 @@ import { exportFinancialsToPdf } from '@/lib/pdfUtils';
 import { generateReceipt } from '@/lib/pdf/receiptGenerator';
 import { exportFinancialReport } from '@/lib/utils/exportUtils';
 import { getClinicSettings } from '@/lib/supabase/profile-queries';
+import { toPortugueseError } from '@/lib/utils/errorMessages';
 
 export default function FinancialPage() {
     const { user } = useAuth();
@@ -188,7 +189,7 @@ export default function FinancialPage() {
             console.error('Error saving transaction:', error);
             toast({
                 title: "Erro",
-                description: `Não foi possível salvar a transação: ${error.message}`,
+                description: toPortugueseError(error, 'Não foi possível salvar a transação.'),
                 variant: "destructive"
             });
         }
@@ -251,7 +252,7 @@ export default function FinancialPage() {
             console.error('Error exporting report:', error);
             toast({
                 title: "Erro",
-                description: error.message || "Não foi possível exportar o relatório.",
+                description: toPortugueseError(error, "Não foi possível exportar o relatório."),
                 variant: "destructive"
             });
         }
@@ -297,7 +298,7 @@ export default function FinancialPage() {
             console.error('Error generating receipt:', error);
             toast({
                 title: "Erro",
-                description: error.message || "Não foi possível gerar o recibo.",
+                description: toPortugueseError(error, "Não foi possível gerar o recibo."),
                 variant: "destructive"
             });
         }

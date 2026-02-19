@@ -6,6 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCallback } from 'react';
+import { toPortugueseError } from '@/lib/utils/errorMessages';
 
 /**
  * AvatarUpload - Componente para exibir e fazer upload de foto de perfil
@@ -122,7 +123,7 @@ export default function AvatarUpload({ size = 'large', showChangeButton = true }
       console.error('Erro ao fazer upload:', error);
       toast({
         title: 'Erro',
-        description: error.message || 'Não foi possível atualizar a foto de perfil.',
+        description: toPortugueseError(error, 'Não foi possível atualizar a foto de perfil.'),
         variant: 'destructive'
       });
     } finally {

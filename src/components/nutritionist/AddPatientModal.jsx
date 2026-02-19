@@ -21,6 +21,7 @@ import {
 import { format, parse } from "date-fns";
 import { ptBR } from 'date-fns/locale';
 import { cn } from "@/lib/utils"; 
+import { toPortugueseError } from '@/lib/utils/errorMessages';
 
 const IconInputWrapper = ({ icon: Icon, children }) => (
     <div className="relative">
@@ -172,7 +173,7 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded }) => {
             handleClose(); 
 
         } catch (error) {
-            toast({ title: "Erro ao enviar convite", description: error.message, variant: "destructive" });
+            toast({ title: "Erro ao enviar convite", description: toPortugueseError(error, 'Não foi possível enviar o convite.'), variant: "destructive" });
         } finally {
             setLoading(false);
         }

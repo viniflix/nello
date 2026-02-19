@@ -11,6 +11,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { formatCurrency } from '@/lib/utils';
 import { getServices, saveService, deleteService } from '@/lib/supabase/financial-queries';
 import { useToast } from '@/components/ui/use-toast';
+import { toPortugueseError } from '@/lib/utils/errorMessages';
 
 const SERVICE_CATEGORIES = [
     { value: 'consulta', label: 'Consulta' },
@@ -110,7 +111,7 @@ export default function ServicesManager({ open, onOpenChange, nutritionistId }) 
         } catch (error) {
             toast({
                 title: "Erro",
-                description: `Não foi possível salvar o serviço: ${error.message}`,
+                description: toPortugueseError(error, 'Não foi possível salvar o serviço.'),
                 variant: "destructive"
             });
         }

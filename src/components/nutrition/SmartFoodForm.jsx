@@ -13,6 +13,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { createFood } from '@/lib/supabase/foodService';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
+import { toPortugueseError } from '@/lib/utils/errorMessages';
 
 /**
  * SmartFoodForm - Formulário inteligente passo a passo para criar/editar alimentos
@@ -810,7 +811,7 @@ const SmartFoodForm = forwardRef(function SmartFoodForm({
             console.error('Erro ao salvar alimento:', error);
             toast({
                 title: 'Erro',
-                description: error.message || 'Não foi possível salvar o alimento.',
+                description: toPortugueseError(error, 'Não foi possível salvar o alimento.'),
                 variant: 'destructive'
             });
         } finally {

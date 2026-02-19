@@ -41,6 +41,7 @@ import {
     calculateIdealDeadline
 } from '@/lib/supabase/goals-queries';
 import { cn } from '@/lib/utils';
+import { toPortugueseError } from '@/lib/utils/errorMessages';
 
 const GoalsPage = () => {
     const { patientId } = useParams();
@@ -293,7 +294,7 @@ const GoalsPage = () => {
             console.error('Erro ao criar meta:', error);
             toast({
                 title: 'Erro',
-                description: error.message || 'Não foi possível criar a meta.',
+                description: toPortugueseError(error, 'Não foi possível criar a meta.'),
                 variant: 'destructive'
             });
         } finally {

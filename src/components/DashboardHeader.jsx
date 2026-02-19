@@ -37,25 +37,166 @@ const getAdminLinks = () => {
   return [];
 };
 
-const getNotificationText = (notification) => {
+const getMessageSenderId = (notification) => {
+  const fromId = notification?.content?.from_id;
+  return fromId ? String(fromId) : null;
+};
+
+const formatNotificationTime = (createdAt) => {
+  const now = new Date();
+  const created = new Date(createdAt);
+  const diffMs = now.getTime() - created.getTime();
+  const diffHours = diffMs / (1000 * 60 * 60);
+
+  if (diffHours < 24) {
+    const minutes = Math.max(1, Math.floor(diffMs / (1000 * 60)));
+    if (minutes < 60) return `há ${minutes} min atrás`;
+    const hours = Math.max(1, Math.floor(diffHours));
+    return `há ${hours} hora${hours > 1 ? 's' : ''} atrás`;
+  }
+
+  const day = String(created.getDate()).padStart(2, '0');
+  const month = String(created.getMonth() + 1).padStart(2, '0');
+  const year = String(created.getFullYear()).slice(-2);
+  const hour = String(created.getHours()).padStart(2, '0');
+  const minute = String(created.getMinutes()).padStart(2, '0');
+  return `${day}/${month}/${year} - às ${hour}:${minute}`;
+};
+
+const getNotificationMeta = (notification) => {
+  const fallbackMessage = notification?.content?.message || notification?.message || 'Você recebeu uma atualização.';
+  const fallbackTitle = notification?.title || 'Nova notificação';
+  const fallbackPath = notification?.link_url || '/nutritionist';
+
   const typeMap = {
-    appointment_scheduled: 'Nova consulta agendada',
-    appointment_rescheduled: 'Consulta reagendada',
-    appointment_canceled: 'Consulta cancelada',
-    appointment_reminder: 'Lembrete de consulta',
-    new_message: 'Nova mensagem',
-    new_meal_plan: 'Novo plano alimentar',
-    meal_plan_updated: 'Plano alimentar atualizado',
-    new_prescription: 'Nova prescrição de macros',
-    prescription_updated: 'Metas atualizadas',
-    nutritionist_note: 'Nova orientação',
-    daily_log_reminder: 'Lembrete diário',
-    measurement_reminder: 'Lembrete de medidas'
+    appointment_scheduled: {
+      title: 'Nova consulta agendada',
+      description: fallbackMessage,
+      ctaLabel: 'Abrir Agenda',
+      ctaPath: '/nutritionist/agenda'
+    },
+    appointment_rescheduled: {
+      title: 'Consulta reagendada',
+      description: fallbackMessage,
+      ctaLabel: 'Ver Agenda',
+      ctaPath: '/nutritionist/agenda'
+    },
+    appointment_canceled: {
+      title: 'Consulta cancelada',
+      description: fallbackMessage,
+      ctaLabel: 'Ver Agenda',
+      ctaPath: '/nutritionist/agenda'
+    },
+    appointment_reminder: {
+      title: 'Lembrete de consulta',
+      description: fallbackMessage,
+      ctaLabel: 'Abrir Agenda',
+      ctaPath: '/nutritionist/agenda'
+    },
+    new_meal_plan: {
+      title: 'Novo plano alimentar',
+      description: fallbackMessage,
+      ctaLabel: 'Abrir Pacientes',
+      ctaPath: '/nutritionist/patients'
+    },
+    meal_plan_updated: {
+      title: 'Plano alimentar atualizado',
+      description: fallbackMessage,
+      ctaLabel: 'Abrir Pacientes',
+      ctaPath: '/nutritionist/patients'
+    },
+    new_prescription: {
+      title: 'Nova prescrição',
+      description: fallbackMessage,
+      ctaLabel: 'Abrir Pacientes',
+      ctaPath: '/nutritionist/patients'
+    },
+    prescription_updated: {
+      title: 'Prescrição atualizada',
+      description: fallbackMessage,
+      ctaLabel: 'Abrir Pacientes',
+      ctaPath: '/nutritionist/patients'
+    },
+    nutritionist_note: {
+      title: 'Nova orientação',
+      description: fallbackMessage,
+      ctaLabel: 'Abrir Chat',
+      ctaPath: '/chat/nutritionist'
+    },
+    goal_achieved: {
+      title: 'Meta alcançada',
+      description: fallbackMessage,
+      ctaLabel: 'Abrir Pacientes',
+      ctaPath: '/nutritionist/patients'
+    },
+    new_achievement: {
+      title: 'Nova conquista',
+      description: fallbackMessage,
+      ctaLabel: 'Abrir Pacientes',
+      ctaPath: '/nutritionist/patients'
+    },
+    new_weekly_summary: {
+      title: 'Resumo semanal',
+      description: fallbackMessage,
+      ctaLabel: 'Ver Pacientes',
+      ctaPath: '/nutritionist/patients'
+    },
+    daily_log_reminder: {
+      title: 'Lembrete diário',
+      description: fallbackMessage,
+      ctaLabel: 'Abrir Pacientes',
+      ctaPath: '/nutritionist/patients'
+    },
+    measurement_reminder: {
+      title: 'Lembrete de medidas',
+      description: fallbackMessage,
+      ctaLabel: 'Abrir Pacientes',
+      ctaPath: '/nutritionist/patients'
+    },
+    info: {
+      title: fallbackTitle,
+      description: fallbackMessage,
+      ctaLabel: 'Ver detalhes',
+      ctaPath: fallbackPath
+    },
+    success: {
+      title: fallbackTitle,
+      description: fallbackMessage,
+      ctaLabel: 'Ver detalhes',
+      ctaPath: fallbackPath
+    },
+    warning: {
+      title: fallbackTitle,
+      description: fallbackMessage,
+      ctaLabel: 'Ver detalhes',
+      ctaPath: fallbackPath
+    },
+    error: {
+      title: fallbackTitle,
+      description: fallbackMessage,
+      ctaLabel: 'Ver detalhes',
+      ctaPath: fallbackPath
+    }
   };
 
-  const title = typeMap[notification.type] || 'Nova notificação';
-  const message = notification?.content?.message || 'Você recebeu uma atualização.';
-  return { title, message };
+  if (notification.type === 'new_message') {
+    const senderId = getMessageSenderId(notification);
+    return {
+      title: 'Nova mensagem',
+      description: fallbackMessage,
+      ctaLabel: 'Abrir conversa',
+      ctaPath: senderId ? `/chat/nutritionist/${senderId}` : '/chat/nutritionist',
+      isMessage: true,
+      senderId
+    };
+  }
+
+  return typeMap[notification.type] || {
+    title: fallbackTitle,
+    description: fallbackMessage,
+    ctaLabel: 'Ver detalhes',
+    ctaPath: fallbackPath
+  };
 };
 
 // --- Componente Principal do Header (Nova Versão CLEAN) ---
@@ -64,6 +205,7 @@ const DashboardHeader = ({ user, logout }) => {
   const { toast } = useToast();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
+  const [senderProfiles, setSenderProfiles] = useState({});
   const [loadingNotifications, setLoadingNotifications] = useState(false);
   const { viewMode, isAdmin } = useAdminMode();
 
@@ -110,7 +252,31 @@ const DashboardHeader = ({ user, logout }) => {
     if (error) {
       toast({ title: 'Erro', description: 'Não foi possível carregar notificações.', variant: 'destructive' });
     } else {
-      setNotifications(data || []);
+      const items = data || [];
+      setNotifications(items);
+
+      const senderIds = Array.from(new Set(
+        items
+          .map((notification) => getMessageSenderId(notification))
+          .filter(Boolean)
+      ));
+
+      if (senderIds.length > 0) {
+        const { data: profiles, error: profilesError } = await supabase
+          .from('user_profiles')
+          .select('id, name, avatar_url')
+          .in('id', senderIds);
+
+        if (!profilesError) {
+          const profileMap = profiles.reduce((acc, profile) => {
+            acc[String(profile.id)] = profile;
+            return acc;
+          }, {});
+          setSenderProfiles(profileMap);
+        }
+      } else {
+        setSenderProfiles({});
+      }
     }
     setLoadingNotifications(false);
   }, [shouldShowNotifications, user?.id, toast]);
@@ -143,6 +309,28 @@ const DashboardHeader = ({ user, logout }) => {
       return;
     }
     setNotifications((prev) => prev.map((n) => (n.id === notificationId ? { ...n, is_read: true } : n)));
+  };
+
+  const deleteNotification = async (notificationId) => {
+    const { error } = await supabase.from('notifications').delete().eq('id', notificationId);
+    if (!error) {
+      setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
+    }
+  };
+
+  const handleNotificationAction = async (notification) => {
+    const meta = getNotificationMeta(notification);
+
+    if (notification.type === 'new_message') {
+      if (meta.senderId) {
+        await supabase.rpc('mark_chat_notifications_as_read', { p_user_id: user.id, p_sender_id: meta.senderId });
+      }
+      await deleteNotification(notification.id);
+    } else if (!notification.is_read) {
+      await handleMarkAsRead(notification.id);
+    }
+
+    navigate(meta.ctaPath);
   };
 
   const handleMarkAllAsRead = async () => {
@@ -327,19 +515,69 @@ const DashboardHeader = ({ user, logout }) => {
                       <p className="px-2 py-6 text-center text-sm text-muted-foreground">Carregando...</p>
                     ) : notifications.length > 0 ? (
                       notifications.map((notification) => {
-                        const details = getNotificationText(notification);
+                        const meta = getNotificationMeta(notification);
+                        const senderId = meta.senderId;
+                        const sender = senderId ? senderProfiles[senderId] : null;
+                        const senderInitials = (sender?.name || 'P').substring(0, 2).toUpperCase();
                         return (
-                          <button
+                          <div
                             key={notification.id}
-                            type="button"
-                            onClick={() => handleMarkAsRead(notification.id)}
+                            onClick={() => handleNotificationAction(notification)}
                             className={`mb-1 w-full rounded-md border p-2 text-left transition-colors hover:bg-muted/60 ${
                               notification.is_read ? 'opacity-70' : 'bg-primary/5'
-                            }`}
+                            } cursor-pointer`}
                           >
-                            <p className="text-sm font-medium leading-tight">{details.title}</p>
-                            <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{details.message}</p>
-                          </button>
+                            <div className="flex items-start gap-2">
+                              {meta.isMessage ? (
+                                sender?.avatar_url ? (
+                                  <img src={sender.avatar_url} alt={sender?.name || 'Paciente'} className="h-9 w-9 rounded-full object-cover" />
+                                ) : (
+                                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/15 text-xs font-semibold text-primary">
+                                    {senderInitials}
+                                  </div>
+                                )
+                              ) : (
+                                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/15 text-primary">
+                                  <Bell className="h-4 w-4" />
+                                </div>
+                              )}
+
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center justify-between gap-2">
+                                  <p className="truncate text-sm font-medium leading-tight">
+                                    {meta.isMessage ? sender?.name || meta.title : meta.title}
+                                  </p>
+                                  <p className="shrink-0 text-[10px] text-muted-foreground">
+                                    {formatNotificationTime(notification.created_at)}
+                                  </p>
+                                </div>
+
+                                {meta.isMessage && (
+                                  <p className="mt-0.5 text-[11px] font-medium text-primary/80">
+                                    Nova mensagem
+                                  </p>
+                                )}
+
+                                <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                                  {meta.description}
+                                </p>
+
+                                <div className="mt-2 flex justify-end">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-7 px-2 text-[11px]"
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      handleNotificationAction(notification);
+                                    }}
+                                  >
+                                    {meta.ctaLabel}
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
                         );
                       })
                     ) : (

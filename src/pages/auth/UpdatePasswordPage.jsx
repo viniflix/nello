@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Leaf, Eye, EyeOff } from 'lucide-react';
+import { toPortugueseError } from '@/lib/utils/errorMessages';
 
 export default function UpdatePasswordPage() {
   const [password, setPassword] = useState('');
@@ -73,7 +74,7 @@ export default function UpdatePasswordPage() {
     if (error) {
       toast({
         title: "Erro ao atualizar senha",
-        description: error.message,
+        description: toPortugueseError(error, 'Não foi possível atualizar a senha.'),
         variant: "destructive",
       });
     } else {

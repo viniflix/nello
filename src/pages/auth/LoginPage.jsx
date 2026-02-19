@@ -20,6 +20,7 @@ import {
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/customSupabaseClient';
+import { toPortugueseError } from '@/lib/utils/errorMessages';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -65,7 +66,7 @@ export default function LoginPage() {
     if (error) {
       toast({
         title: "Erro no login",
-        description: error.message || "Email ou senha incorretos.",
+        description: toPortugueseError(error, "E-mail ou senha incorretos."),
         variant: "destructive",
       });
     } else if (data.user) {
@@ -98,7 +99,7 @@ export default function LoginPage() {
     if (error) {
       toast({
         title: "Erro ao enviar e-mail",
-        description: error.message,
+        description: toPortugueseError(error, 'Não foi possível enviar o e-mail de recuperação.'),
         variant: "destructive",
       });
     } else {

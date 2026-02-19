@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import PatientUpdatesWidget from '@/components/nutritionist/PatientUpdatesWidget';
 import NutritionistActivityFeed from '@/components/nutritionist/NutritionistActivityFeed';
+import { toPortugueseError } from '@/lib/utils/errorMessages';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { StatCardSkeleton, AlertCardSkeleton } from '@/components/ui/card-skeleton';
@@ -300,7 +301,7 @@ export default function NutritionistDashboard() {
 
     } catch (error) {
       console.error('Erro ao carregar estatísticas:', error);
-      toast({ title: "Erro ao carregar estatísticas", description: error.message, variant: "destructive" });
+      toast({ title: "Erro ao carregar estatísticas", description: toPortugueseError(error, 'Não foi possível carregar as estatísticas.'), variant: "destructive" });
     } finally {
       setStatsLoading(false);
     }
@@ -344,7 +345,7 @@ export default function NutritionistDashboard() {
       setAppointmentsTodayCount(todayCount || 0);
     } catch (error) {
       console.error('Erro ao carregar agendamentos:', error);
-      toast({ title: "Erro ao carregar agendamentos", description: error.message, variant: "destructive" });
+      toast({ title: "Erro ao carregar agendamentos", description: toPortugueseError(error, 'Não foi possível carregar os agendamentos.'), variant: "destructive" });
     } finally {
       setAppointmentsLoading(false);
     }

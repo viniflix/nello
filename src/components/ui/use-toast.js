@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react"
+import { toPortugueseError } from "@/lib/utils/errorMessages"
 
 const TOAST_LIMIT = 1
 
@@ -34,8 +35,54 @@ const toastStore = {
   }
 }
 
+const classifyToastLevel = ({ title, description, variant }) => {
+  const titleText = typeof title === "string" ? title : ""
+  const descText = typeof description === "string" ? description : ""
+  const joined = `${titleText} ${descText}`.toLowerCase()
+
+  if (
+    variant === "destructive" ||
+    /(erro|falha|não foi possível|inval|inválid|obrigat|expirad|permiss|failed|error|invalid|forbidden|not found|denied)/i.test(joined)
+  ) {
+    return "error"
+  }
+
+  if (/(aviso|atenção|warning|pendente|conflito|alerta)/i.test(joined)) {
+    return "warning"
+  }
+
+  if (/(sucesso|conclu|criad|atualiz|exclu|salv|exportad|enviad|adicionad|realizad|desbloquead|confirmad)/i.test(joined)) {
+    return "success"
+  }
+
+  return "neutral"
+}
+
+const normalizeToastPayload = (props) => {
+  const normalized = { ...props }
+  const level = classifyToastLevel(normalized)
+
+  if (level === "error") {
+    normalized.title = "Erro"
+  } else if (level === "warning") {
+    normalized.title = "Aviso"
+  } else if (level === "success") {
+    normalized.title = "Sucesso"
+  }
+
+  if (typeof normalized.description === "string" && level === "error") {
+    normalized.description = toPortugueseError(
+      normalized.description,
+      "Ocorreu um erro. Tente novamente."
+    )
+  }
+
+  return normalized
+}
+
 export const toast = ({ ...props }) => {
   const id = generateId()
+  const normalizedProps = normalizeToastPayload(props)
 
   const update = (props) =>
     toastStore.setState((state) => ({
@@ -53,7 +100,7 @@ export const toast = ({ ...props }) => {
   toastStore.setState((state) => ({
     ...state,
     toasts: [
-      { ...props, id, dismiss },
+      { ...normalizedProps, id, dismiss },
       ...state.toasts,
     ].slice(0, TOAST_LIMIT),
   }))

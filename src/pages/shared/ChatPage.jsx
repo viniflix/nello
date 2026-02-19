@@ -11,6 +11,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { isToday, isYesterday, format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import ImageModal from '@/components/ImageModal';
+import { toPortugueseError } from '@/lib/utils/errorMessages';
 
 const DateSeparator = ({ date }) => {
   const parsedDate = parseISO(date);
@@ -218,7 +219,7 @@ const ChatPage = () => {
       console.error('Erro ao buscar destinatário:', error);
       toast({
         title: "Erro",
-        description: `Não foi possível carregar os dados do destinatário: ${error.message}`,
+        description: toPortugueseError(error, 'Não foi possível carregar os dados do destinatário.'),
         variant: "destructive"
       });
       setRecipient(null);
@@ -293,7 +294,7 @@ const ChatPage = () => {
       const fileExtension = mediaFile.name.split('.').pop();
       const filePath = `${user.id}/${Date.now()}.${fileExtension}`;
       const { error } = await supabase.storage.from('chat_media').upload(filePath, mediaFile);
-      if (error) { toast({ title: "Erro no upload", description: error.message, variant: "destructive" }); setIsSending(false); return; }
+      if (error) { toast({ title: "Erro no upload", description: toPortugueseError(error, 'Não foi possível enviar o arquivo.'), variant: "destructive" }); setIsSending(false); return; }
       mediaPath = filePath;
       
       if (mediaType === 'audio') {

@@ -30,6 +30,14 @@ export function ChatProvider({ children }) {
         console.error("Failed to mark chat as read:", error);
         return;
       }
+
+      // Remove notificações de mensagem já tratadas ao abrir/interagir com a conversa.
+      await supabase
+        .from('notifications')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('type', 'new_message')
+        .filter('content->>from_id', 'eq', String(senderId));
       
       setUnreadSenders(prev => {
           const newSet = new Set(prev);

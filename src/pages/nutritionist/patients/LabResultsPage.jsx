@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
+import { toPortugueseError } from '@/lib/utils/errorMessages';
 import { cn } from '@/lib/utils';
 import {
     getPatientLabResults,
@@ -278,7 +279,7 @@ const LabResultsPage = () => {
             console.error('Erro ao salvar exame:', error);
             toast({
                 title: 'Erro',
-                description: error.message || 'Não foi possível salvar o exame.',
+                description: toPortugueseError(error, 'Não foi possível salvar o exame.'),
                 variant: 'destructive'
             });
         } finally {
