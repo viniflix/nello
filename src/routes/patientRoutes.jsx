@@ -13,12 +13,14 @@ const PatientAchievementsPage = lazy(() => import('@/pages/patient/PatientAchiev
 const AddMealPage = lazy(() => import('@/pages/patient/AddMealPage.jsx'));
 const AddFoodPage = lazy(() => import('@/pages/patient/AddFoodPage.jsx'));
 const ChatPage = lazy(() => import('@/pages/shared/ChatPage.jsx'));
+const PatientInvitesPage = lazy(() => import('@/pages/patient/PatientInvitesPage.jsx'));
 
 export const patientRoutes = (
     <>
         {/* Rotas dentro do layout mobile */}
         <Route element={<ProtectedRoute userType="patient"><PatientMobileLayout /></ProtectedRoute>}>
             <Route path="/patient" element={<PatientHomePage />} />
+            <Route path="/patient/invites" element={<PatientInvitesPage />} />
             <Route path="/patient/diario" element={<PatientDiaryPage />} />
             <Route path="/patient/progresso" element={<PatientProgressPage />} />
             <Route path="/patient/chat" element={<ChatPage />} />

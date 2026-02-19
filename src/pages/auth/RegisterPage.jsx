@@ -49,10 +49,13 @@ export default function RegisterPage() {
       return;
     }
 
+    const role = ['patient', 'nutritionist'].includes(formData.type) ? formData.type : 'patient';
     const profileData = {
+      full_name: formData.name,
       name: formData.name,
-      display_name: formData.name, // Supabase sometimes uses display_name
-      user_type: formData.type, // CRITICAL: must be 'patient' or 'nutritionist'
+      display_name: formData.name,
+      role,
+      user_type: role,
       crn: null,
       birth_date: formData.type === 'patient' ? formData.birth_date : null,
       gender: formData.type === 'patient' ? formData.gender : null,
@@ -61,8 +64,7 @@ export default function RegisterPage() {
       goal: formData.type === 'patient' ? formData.goal : null,
     };
 
-    // Ensure user_type is set (required for DB trigger and self-healing)
-    if (!profileData.user_type || !['patient', 'nutritionist'].includes(profileData.user_type)) {
+    if (!role || !['patient', 'nutritionist'].includes(role)) {
       toast({
         title: "Erro no cadastro",
         description: "Tipo de usuário inválido. Por favor, selecione um tipo válido.",

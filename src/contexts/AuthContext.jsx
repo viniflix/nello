@@ -42,25 +42,13 @@ export function AuthProvider({ children }) {
       console.error('Invalid user_type in metadata:', userType, 'Defaulting to "patient"');
     }
     
-    // Extract required fields from metadata
+    // Extract required fields from metadata (DB usa full_name e role)
     const profileData = {
       id: sessionUser.id,
       email: sessionUser.email,
-      name: metadata.name || metadata.display_name || metadata.full_name || 'Usuário',
-      user_type: ['patient', 'nutritionist'].includes(userType) ? userType : 'patient', // Fallback to 'patient' if invalid
-      crn: metadata.crn || null,
-      birth_date: metadata.birth_date || null,
-      gender: metadata.gender || null,
-      height: metadata.height ? parseFloat(metadata.height) : null,
-      weight: metadata.weight ? parseFloat(metadata.weight) : null,
-      goal: metadata.goal || null,
-      nutritionist_id: metadata.nutritionist_id || null,
-      phone: metadata.phone || null,
-      cpf: metadata.cpf || null,
-      occupation: metadata.occupation || null,
-      civil_status: metadata.civil_status || null,
-      observations: metadata.observations || null,
-      address: metadata.address || null,
+      full_name: metadata.full_name || metadata.name || metadata.display_name || 'Usuário',
+      role: ['patient', 'nutritionist'].includes(userType) ? userType : 'patient',
+      avatar_url: metadata.avatar_url || null,
     };
 
     console.log('Attempting self-healing profile creation with data:', {
@@ -112,42 +100,26 @@ export function AuthProvider({ children }) {
           }
 
           if (existingProfile) {
-            console.log('Profile fetched successfully after race condition:', {
-              id: existingProfile.id,
-              name: existingProfile.name,
-              user_type: existingProfile.user_type,
-            });
-            return existingProfile;
+            const normalized = { ...existingProfile, name: existingProfile.full_name ?? existingProfile.name, user_type: existingProfile.role ?? existingProfile.user_type, is_admin: existingProfile.role === 'super_admin' };
+            return normalized;
           }
 
-          // If we still can't find it, return null
           console.error('Profile not found after conflict resolution');
           return null;
         }
 
-        // For other errors (not conflicts), log and return null
         console.error('Error creating profile (self-healing):', {
           code: insertError.code,
           message: insertError.message,
           details: insertError.details,
-          hint: insertError.hint,
           status: insertError.status,
-          profileData: {
-            id: profileData.id,
-            name: profileData.name,
-            user_type: profileData.user_type,
-            email: profileData.email,
-          },
+          profileData: { id: profileData.id, full_name: profileData.full_name, role: profileData.role, email: profileData.email },
         });
         return null;
       }
 
-      console.log('Profile created successfully (self-healing):', {
-        id: newProfile.id,
-        name: newProfile.name,
-        user_type: newProfile.user_type,
-      });
-      return newProfile;
+      const normalizedNew = { ...newProfile, name: newProfile.full_name ?? newProfile.name, user_type: newProfile.role ?? newProfile.user_type, is_admin: newProfile.role === 'super_admin' };
+      return normalizedNew;
     } catch (error) {
       // Check if it's a conflict error in the catch block too
       const isConflictError = 
@@ -180,29 +152,19 @@ export function AuthProvider({ children }) {
         }
 
         if (existingProfile) {
-          console.log('Profile fetched successfully after race condition (exception):', {
-            id: existingProfile.id,
-            name: existingProfile.name,
-            user_type: existingProfile.user_type,
-          });
-          return existingProfile;
+          const normalized = { ...existingProfile, name: existingProfile.full_name ?? existingProfile.name, user_type: existingProfile.role ?? existingProfile.user_type, is_admin: existingProfile.role === 'super_admin' };
+          return normalized;
         }
 
         return null;
       }
 
-      // For other exceptions, log and return null
       console.error('Exception during profile creation (self-healing):', {
         error,
         message: error.message,
-        stack: error.stack,
         code: error.code,
         status: error.status,
-        profileData: {
-          id: profileData.id,
-          name: profileData.name,
-          user_type: profileData.user_type,
-        },
+        profileData: { id: profileData.id, full_name: profileData.full_name, role: profileData.role },
       });
       return null;
     }
@@ -217,17 +179,16 @@ export function AuthProvider({ children }) {
       .eq('id', sessionUser.id)
       .single();
 
-    // If profile exists, return it
+    // If profile exists, return it (normalizado para compatibilidade: name/user_type)
     if (profile && !error) {
-      // Debug: Log is_admin status
-      console.log('[AuthContext] Profile loaded:', {
-        id: profile.id,
-        email: profile.email,
-        user_type: profile.user_type,
-        is_admin: profile.is_admin,
-        hasIsAdmin: 'is_admin' in profile
-      });
-      return profile;
+      const normalized = {
+        ...profile,
+        name: profile.full_name ?? profile.name,
+        user_type: profile.role ?? profile.user_type,
+        is_admin: profile.role === 'super_admin',
+      };
+      console.log('[AuthContext] Profile loaded:', { id: normalized.id, email: normalized.email, user_type: normalized.user_type, is_admin: normalized.is_admin });
+      return normalized;
     }
 
     // If error is PGRST116 (no rows found), try self-healing

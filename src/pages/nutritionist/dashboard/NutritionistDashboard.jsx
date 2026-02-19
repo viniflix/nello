@@ -4,6 +4,7 @@ import {
   Plus, Calendar, MessageSquare, UserCheck, Loader2, BookOpen, BrainCircuit,
   Users, // Ícone para Total de Pacientes
   Bell, // Ícone para Alertas do Calendário
+  TrendingUp,
   PieChart, // Ícone para Adesão
   CalendarDays, // Ícone para Consultas Agendadas
   DollarSign // Ícone para Faturamento
@@ -23,8 +24,95 @@ import { ptBR } from 'date-fns/locale';
 import { Skeleton } from '@/components/ui/skeleton';
 import { StatCardSkeleton, AlertCardSkeleton } from '@/components/ui/card-skeleton';
 
+const numericValue = (value) => {
+  const onlyDigits = String(value ?? '').replace(/[^\d]/g, '');
+  const parsed = Number(onlyDigits);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const getCardTrend = (value) => {
+  const base = Math.max(1, numericValue(value));
+  return Array.from({ length: 7 }, (_, idx) => {
+    const wave = Math.sin((base + idx) * 0.7);
+    const trend = ((base + idx * 2) % 9) + 2;
+    return Math.max(2, Math.round((wave + 1.2) * 3 + trend));
+  });
+};
+
+const StatCardDecoration = ({ value }) => {
+  const bars = getCardTrend(value);
+  return (
+    <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-lg">
+      <div className="absolute -right-1 -bottom-2 flex items-end gap-1 opacity-25">
+        {bars.map((height, idx) => (
+          <div
+            // eslint-disable-next-line react/no-array-index-key
+            key={`trend-${idx}`}
+            className="w-1.5 rounded-t-full bg-white/90"
+            style={{ height: `${height * 4}px` }}
+          />
+        ))}
+      </div>
+      <svg
+        viewBox="0 0 160 80"
+        className="absolute -left-8 bottom-3 h-16 w-48 opacity-20"
+        aria-hidden="true"
+      >
+        <path
+          d={`M 0 64 ${bars
+            .map((h, idx) => `L ${idx * 24 + 10} ${76 - h * 3}`)
+            .join(' ')}`}
+          fill="none"
+          stroke="white"
+          strokeWidth="4"
+          strokeLinecap="round"
+        />
+      </svg>
+    </div>
+  );
+};
+
+const getUrgencyMeta = (appointmentTime) => {
+  const diffMs = new Date(appointmentTime).getTime() - Date.now();
+  const diffHours = diffMs / (1000 * 60 * 60);
+
+  if (diffHours <= 2) {
+    return {
+      label: 'Muito próxima',
+      rowClass: 'border-red-300/80 bg-red-50/70',
+      badgeClass: 'bg-red-100 text-red-700 border-red-200',
+      dotClass: 'bg-red-500'
+    };
+  }
+
+  if (diffHours <= 24) {
+    return {
+      label: 'Hoje',
+      rowClass: 'border-orange-300/80 bg-orange-50/70',
+      badgeClass: 'bg-orange-100 text-orange-700 border-orange-200',
+      dotClass: 'bg-orange-500'
+    };
+  }
+
+  if (diffHours <= 72) {
+    return {
+      label: 'Em breve',
+      rowClass: 'border-amber-300/80 bg-amber-50/70',
+      badgeClass: 'bg-amber-100 text-amber-700 border-amber-200',
+      dotClass: 'bg-amber-500'
+    };
+  }
+
+  return {
+    label: 'Programada',
+    rowClass: 'border-emerald-300/80 bg-emerald-50/70',
+    badgeClass: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+    dotClass: 'bg-emerald-500'
+  };
+};
+
 // --- WIDGET (DIREITA): Próximas Consultas ---
-const UpcomingAppointmentsWidget = ({ appointments }) => {
+const UpcomingAppointmentsWidget = ({ appointments, totalUpcoming, todayAppointments }) => {
   const navigate = useNavigate();
   
   return (
@@ -38,12 +126,30 @@ const UpcomingAppointmentsWidget = ({ appointments }) => {
         </CardDescription>
       </CardHeader>
       <CardContent>
+        <div className="mb-4 grid grid-cols-2 gap-3">
+          <div className="rounded-lg border border-border/70 bg-muted/30 p-3">
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Total</p>
+            <p className="text-xl font-semibold text-foreground">{totalUpcoming}</p>
+          </div>
+          <div className="rounded-lg border border-border/70 bg-muted/30 p-3">
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Hoje</p>
+            <p className="text-xl font-semibold text-foreground">{todayAppointments}</p>
+          </div>
+        </div>
         {appointments.length > 0 ? (
           <div className="space-y-4">
             {appointments.map(appt => {
               const profile = appt.patient; 
+              const urgency = getUrgencyMeta(appt.appointment_time);
               return (
-                <div key={appt.id} className="flex items-center space-x-3">
+                <div key={appt.id} className={`rounded-lg border p-2.5 ${urgency.rowClass}`}>
+                  <div className="mb-2 flex justify-end">
+                    <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium ${urgency.badgeClass}`}>
+                      <span className={`h-1.5 w-1.5 rounded-full ${urgency.dotClass}`} />
+                      {urgency.label}
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-3">
                   <div className="w-10 h-10 rounded-full bg-emerald-100 flex-shrink-0 flex items-center justify-center">
                     <span className="font-semibold text-emerald-700">
                       {(profile?.name || 'P').substring(0, 2).toUpperCase()}
@@ -55,6 +161,7 @@ const UpcomingAppointmentsWidget = ({ appointments }) => {
                       {format(parseISO(appt.appointment_time), "d 'de' MMMM 'às' HH:mm", { locale: ptBR })}
                     </p>
                   </div>
+                </div>
                 </div>
               );
             })}
@@ -81,7 +188,9 @@ export default function NutritionistDashboard() {
   const navigate = useNavigate();
   const [patients, setPatients] = useState([]);
   const [appointments, setAppointments] = useState([]);
-  const [alertsCount, setAlertsCount] = useState(0);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [appointmentsTodayCount, setAppointmentsTodayCount] = useState(0);
+  const [appointmentsTotalCount, setAppointmentsTotalCount] = useState(0);
   const [adherence, setAdherence] = useState('--%');
   const [showNotifications, setShowNotifications] = useState(false);
 
@@ -94,16 +203,12 @@ export default function NutritionistDashboard() {
     if (!user || !user.id) return;
     setStatsLoading(true);
     try {
-      const today = new Date().toISOString();
-      const todayDateOnly = new Date().toISOString().split('T')[0];
-      const todayMonthDay = format(new Date(), 'MM-dd');
-
       // Buscar dados em paralelo
-      const [patientData, notifCount, todayApptCount, adherenceData] = await Promise.all([
+      const [patientData, notifCount, adherenceData] = await Promise.all([
         // Pacientes
         supabase
           .from('user_profiles')
-          .select('id, name, birth_date')
+          .select('id, name')
           .eq('nutritionist_id', user.id)
           .eq('is_active', true)
           .order('name', { ascending: true })
@@ -123,18 +228,6 @@ export default function NutritionistDashboard() {
             return count || 0;
           }),
 
-        // Consultas de hoje
-        supabase
-          .from('appointments')
-          .select('*', { count: 'exact', head: true })
-          .eq('nutritionist_id', user.id)
-          .gte('appointment_time', `${todayDateOnly}T00:00:00`)
-          .lte('appointment_time', `${todayDateOnly}T23:59:59`)
-          .then(({ count, error }) => {
-            if (error) throw error;
-            return count || 0;
-          }),
-
         // Adesão diária
         supabase
           .rpc('get_daily_adherence', { p_nutritionist_id: user.id })
@@ -145,16 +238,7 @@ export default function NutritionistDashboard() {
       ]);
 
       setPatients(patientData);
-
-      // Contagem de aniversários
-      const birthdayCount = patientData.filter(p => {
-        if (!p.birth_date) return false;
-        const birthDate = new Date(p.birth_date);
-        birthDate.setHours(birthDate.getHours() + 4);
-        return format(birthDate, 'MM-dd') === todayMonthDay;
-      }).length;
-
-      setAlertsCount(notifCount + todayApptCount + birthdayCount);
+      setUnreadNotifications(notifCount);
       setAdherence(adherenceData ? Math.round(adherenceData) + '%' : '--%');
 
     } catch (error) {
@@ -181,6 +265,26 @@ export default function NutritionistDashboard() {
 
       if (error) throw error;
       setAppointments(data || []);
+
+      const todayDateOnly = new Date().toISOString().split('T')[0];
+      const [{ count: totalUpcomingCount, error: totalError }, { count: todayCount, error: todayError }] = await Promise.all([
+        supabase
+          .from('appointments')
+          .select('*', { count: 'exact', head: true })
+          .eq('nutritionist_id', user.id)
+          .gte('appointment_time', today),
+        supabase
+          .from('appointments')
+          .select('*', { count: 'exact', head: true })
+          .eq('nutritionist_id', user.id)
+          .gte('appointment_time', `${todayDateOnly}T00:00:00`)
+          .lte('appointment_time', `${todayDateOnly}T23:59:59`)
+      ]);
+
+      if (totalError) throw totalError;
+      if (todayError) throw todayError;
+      setAppointmentsTotalCount(totalUpcomingCount || 0);
+      setAppointmentsTodayCount(todayCount || 0);
     } catch (error) {
       console.error('Erro ao carregar agendamentos:', error);
       toast({ title: "Erro ao carregar agendamentos", description: error.message, variant: "destructive" });
@@ -240,7 +344,11 @@ export default function NutritionistDashboard() {
               {appointmentsLoading ? (
                 <AlertCardSkeleton />
               ) : (
-                <UpcomingAppointmentsWidget appointments={appointments} />
+                <UpcomingAppointmentsWidget
+                  appointments={appointments}
+                  totalUpcoming={appointmentsTotalCount}
+                  todayAppointments={appointmentsTodayCount}
+                />
               )}
             </div>
             <PatientUpdatesWidget />
@@ -262,14 +370,15 @@ export default function NutritionistDashboard() {
               ) : (
                 <>
                   {/* Card 1: Pacientes (Verde) */}
-                  <Card className="bg-primary text-white border-0 shadow-card-dark">
+                  <Card className="relative overflow-hidden bg-primary text-white border-0 shadow-card-dark">
+                    <StatCardDecoration value={patients.length} />
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                       <CardTitle className="font-heading uppercase text-xs lg:text-sm font-medium text-white/80 tracking-wide leading-tight">
-                        Total de<br className="lg:hidden" /> Pacientes
+                        Total Pacientes
                       </CardTitle>
                       <Users className="h-5 w-5 lg:h-6 lg:w-6 text-white/80 flex-shrink-0" />
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="relative">
                       <div className="text-3xl lg:text-4xl font-bold text-white">
                         {patients.length}
                       </div>
@@ -279,38 +388,40 @@ export default function NutritionistDashboard() {
                     </CardContent>
                   </Card>
 
-                  {/* Card 2: Alertas (Neutro Escuro) - Mobile: posição 2, Desktop: posição 3 */}
-                  <Card className="bg-neutral-800 text-white border-0 shadow-card-dark lg:order-3">
+                  {/* Card 2: Mensagens (Neutro Escuro) - Mobile: posição 2, Desktop: posição 3 */}
+                  <Card className="relative overflow-hidden bg-neutral-800 text-white border-0 shadow-card-dark lg:order-3">
+                    <StatCardDecoration value={unreadNotifications} />
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                       <CardTitle className="font-heading uppercase text-xs lg:text-sm font-medium text-white/80 tracking-wide leading-tight">
-                        Alertas do<br className="lg:hidden" /> Dia
+                        Não Lidas
                       </CardTitle>
                       <Bell className="h-5 w-5 lg:h-6 lg:w-6 text-white/80 flex-shrink-0" />
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="relative">
                       <div className="text-3xl lg:text-4xl font-bold text-white">
-                        {alertsCount}
+                        {unreadNotifications}
                       </div>
                       <p className="text-xs text-white/70 leading-tight">
-                        Consultas e<br className="lg:hidden" /> notificações
+                        Notificações pendentes
                       </p>
                     </CardContent>
                   </Card>
 
-                  {/* Card 3: Consultas (Laranja) - Mobile: ocupa 2 colunas embaixo, Desktop: posição 2 */}
-                  <Card className="bg-secondary text-white border-0 shadow-card-dark col-span-2 lg:col-span-1 lg:order-2">
+                  {/* Card 3: Adesão (Laranja) - Mobile: ocupa 2 colunas embaixo, Desktop: posição 2 */}
+                  <Card className="relative overflow-hidden bg-secondary text-white border-0 shadow-card-dark col-span-2 lg:col-span-1 lg:order-2">
+                    <StatCardDecoration value={adherence} />
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                       <CardTitle className="font-heading uppercase text-xs lg:text-sm font-medium text-white/80 tracking-wide leading-tight">
-                        Consultas Agendadas
+                        Adesão Hoje
                       </CardTitle>
-                      <CalendarDays className="h-5 w-5 lg:h-6 lg:w-6 text-white/80 flex-shrink-0" />
+                      <TrendingUp className="h-5 w-5 lg:h-6 lg:w-6 text-white/80 flex-shrink-0" />
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="relative">
                       <div className="text-3xl lg:text-4xl font-bold text-white">
-                        {appointments.length}
+                        {adherence}
                       </div>
                       <p className="text-xs text-white/70">
-                        Próximas consultas
+                        Meta diária de adesão
                       </p>
                     </CardContent>
                   </Card>
@@ -328,7 +439,11 @@ export default function NutritionistDashboard() {
             {appointmentsLoading ? (
               <AlertCardSkeleton />
             ) : (
-              <UpcomingAppointmentsWidget appointments={appointments} />
+              <UpcomingAppointmentsWidget
+                appointments={appointments}
+                totalUpcoming={appointmentsTotalCount}
+                todayAppointments={appointmentsTodayCount}
+              />
             )}
           </div>
 
