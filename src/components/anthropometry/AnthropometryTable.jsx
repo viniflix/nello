@@ -1,6 +1,5 @@
 import React from 'react';
 import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { Pencil, Trash2, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import {
     Table,
@@ -28,14 +27,6 @@ const AnthropometryTable = ({ records = [], onEdit, onDelete, loading = false })
         if (Math.abs(diff) < 0.1) return { icon: Minus, color: 'text-gray-500', text: 'Estável' };
         if (diff > 0) return { icon: TrendingUp, color: 'text-red-500', text: `+${diff.toFixed(1)} kg` };
         return { icon: TrendingDown, color: 'text-green-500', text: `${diff.toFixed(1)} kg` };
-    };
-
-    const formatDate = (dateString) => {
-        try {
-            return format(new Date(dateString), "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
-        } catch {
-            return dateString;
-        }
     };
 
     const formatDateNumeric = (dateString) => {
@@ -67,7 +58,7 @@ const AnthropometryTable = ({ records = [], onEdit, onDelete, loading = false })
         );
     }
 
-    // Mobile: lista compacta em uma linha por registro (sem scroll horizontal)
+    // Mobile: cards compactos e legíveis (sem scroll horizontal)
     const mobileRow = (record, index) => {
         const bmi = record.bmi || (record.height
             ? (record.weight / Math.pow(record.height / 100, 2))
@@ -79,29 +70,61 @@ const AnthropometryTable = ({ records = [], onEdit, onDelete, loading = false })
         return (
             <div
                 key={record.id}
-                className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border/60 py-3 last:border-b-0 text-sm"
+                className="rounded-lg border bg-card p-3"
             >
-                <span className="font-medium text-foreground shrink-0">{formatDateNumeric(record.record_date)}</span>
-                <span className="shrink-0"><span className="font-semibold">{record.weight}</span> kg</span>
-                <span className="shrink-0 text-muted-foreground">{record.height ? `${record.height} cm` : 'N/A'}</span>
-                <span className="shrink-0 font-semibold">{bmi ? bmi.toFixed(1) : 'N/A'}</span>
-                <Badge variant={imcCategory.variant} className="text-[10px] px-1.5 py-0 shrink-0">
-                    {imcCategory.short}
-                </Badge>
-                {trend && (
-                    <span className={`flex items-center gap-0.5 shrink-0 ${trend.color}`}>
-                        <TrendIcon className="w-3.5 h-3.5" />
-                        <span className="text-xs">{trend.text}</span>
+                <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-semibold text-foreground whitespace-nowrap">
+                        {formatDateNumeric(record.record_date)}
                     </span>
-                )}
-                <div className="flex gap-1 ml-auto shrink-0">
-                    <Button variant="ghost" size="sm" onClick={() => onEdit(record)} className="h-7 w-7 p-0">
-                        <Pencil className="w-3.5 h-3.5" />
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => onDelete(record)} className="h-7 w-7 p-0 text-destructive hover:text-destructive">
-                        <Trash2 className="w-3.5 h-3.5" />
-                    </Button>
+                    <Badge variant={imcCategory.variant} className="text-[10px] px-1.5 py-0 h-5 whitespace-nowrap">
+                        {imcCategory.short}
+                    </Badge>
                 </div>
+
+                <div className="mt-2 grid grid-cols-3 gap-2">
+                    <div>
+                        <p className="text-[10px] text-muted-foreground">Peso</p>
+                        <p className="text-sm font-semibold">{record.weight} kg</p>
+                    </div>
+                    <div>
+                        <p className="text-[10px] text-muted-foreground">Altura</p>
+                        <p className="text-sm font-semibold">{record.height ? `${record.height} cm` : 'N/A'}</p>
+                    </div>
+                    <div>
+                        <p className="text-[10px] text-muted-foreground">IMC</p>
+                        <p className="text-sm font-semibold">{bmi ? bmi.toFixed(1) : 'N/A'}</p>
+                    </div>
+                </div>
+
+                <div className="mt-2 flex items-center justify-between gap-2">
+                    {trend ? (
+                        <span className={`flex items-center gap-1 ${trend.color}`}>
+                            <TrendIcon className="w-3.5 h-3.5" />
+                            <span className="text-xs">{trend.text}</span>
+                        </span>
+                    ) : (
+                        <span className="text-xs text-muted-foreground">Sem tendência</span>
+                    )}
+
+                    <div className="flex gap-1">
+                        <Button variant="ghost" size="sm" onClick={() => onEdit(record)} className="h-8 w-8 p-0">
+                            <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => onDelete(record)} className="h-8 w-8 p-0 text-destructive hover:text-destructive">
+                            <Trash2 className="w-4 h-4" />
+                        </Button>
+                    </div>
+                </div>
+
+                {record.notes ? (
+                    <p className="mt-2 text-xs text-muted-foreground line-clamp-2">
+                        {record.notes}
+                    </p>
+                ) : (
+                    <p className="mt-2 text-[11px] text-muted-foreground italic">
+                        Sem observações
+                    </p>
+                )}
             </div>
         );
     };
@@ -109,16 +132,11 @@ const AnthropometryTable = ({ records = [], onEdit, onDelete, loading = false })
     return (
         <>
             {/* Mobile: lista compacta */}
-            <div className="md:hidden border rounded-lg overflow-hidden bg-card">
-                <div className="px-3 py-2 border-b bg-muted/40 text-xs font-medium text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-1">
-                    <span>Data</span>
-                    <span>Peso</span>
-                    <span>Alt.</span>
-                    <span>IMC</span>
-                    <span>Classif.</span>
-                    <span className="ml-auto">Ações</span>
+            <div className="md:hidden space-y-2">
+                <div className="px-1 text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
+                    Histórico de registros
                 </div>
-                <div className="divide-y divide-border/60">
+                <div className="space-y-2">
                     {records.map((record, index) => mobileRow(record, index))}
                 </div>
             </div>

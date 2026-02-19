@@ -474,12 +474,25 @@ const AnthropometryForm = ({
             <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-6">
                     <Tabs defaultValue="basico" className="w-full">
-                        <TabsList className="flex w-full flex-nowrap overflow-x-auto gap-1 p-1 md:grid md:grid-cols-5 md:overflow-visible">
-                            <TabsTrigger value="basico" className="whitespace-nowrap shrink-0 text-xs md:text-sm px-2 md:px-3">Básico</TabsTrigger>
-                            <TabsTrigger value="circunferencias" className="whitespace-nowrap shrink-0 text-xs md:text-sm px-2 md:px-3">Circunferências</TabsTrigger>
-                            <TabsTrigger value="dobras" className="whitespace-nowrap shrink-0 text-xs md:text-sm px-2 md:px-3">Dobras & Comp.</TabsTrigger>
-                            <TabsTrigger value="diametros" className="whitespace-nowrap shrink-0 text-xs md:text-sm px-2 md:px-3">Diâmetros</TabsTrigger>
-                            <TabsTrigger value="fotos" className="whitespace-nowrap shrink-0 text-xs md:text-sm px-2 md:px-3">Fotos</TabsTrigger>
+                        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1 h-auto p-1">
+                            <TabsTrigger value="basico" className="text-xs sm:text-sm px-2 py-2 text-center whitespace-nowrap">
+                                Básico
+                            </TabsTrigger>
+                            <TabsTrigger value="circunferencias" className="text-xs sm:text-sm px-2 py-2 text-center whitespace-nowrap">
+                                <span className="sm:hidden">Circ.</span>
+                                <span className="hidden sm:inline">Circunferências</span>
+                            </TabsTrigger>
+                            <TabsTrigger value="dobras" className="text-xs sm:text-sm px-2 py-2 text-center whitespace-nowrap">
+                                <span className="sm:hidden">Dobras</span>
+                                <span className="hidden sm:inline">Dobras & Composição</span>
+                            </TabsTrigger>
+                            <TabsTrigger value="diametros" className="text-xs sm:text-sm px-2 py-2 text-center whitespace-nowrap">
+                                <span className="sm:hidden">Diâm.</span>
+                                <span className="hidden sm:inline">Diâmetros Ósseos</span>
+                            </TabsTrigger>
+                            <TabsTrigger value="fotos" className="text-xs sm:text-sm px-2 py-2 text-center whitespace-nowrap">
+                                Fotos
+                            </TabsTrigger>
                         </TabsList>
 
                         {/* TAB 1: Básico */}
