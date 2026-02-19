@@ -146,15 +146,15 @@ export default function PendingPaymentsWidget({ nutritionistId, onUpdate }) {
 
     return (
         <>
-            <Card className="mb-6 border-2 border-orange-200 dark:border-orange-800 bg-orange-50/50 dark:bg-orange-950/20">
+            <Card className="mb-6 border-2 border-orange-200 dark:border-orange-800 bg-orange-50/50 dark:bg-orange-950/20 overflow-hidden">
                 <CardHeader className="pb-3">
-                    <div className="flex items-center gap-2">
-                        <AlertCircle className="w-5 h-5 text-orange-600 dark:text-orange-400" />
-                        <CardTitle className="text-lg font-semibold text-orange-900 dark:text-orange-100">
+                    <div className="flex items-center gap-2 min-w-0">
+                        <AlertCircle className="w-5 h-5 text-orange-600 dark:text-orange-400 shrink-0" />
+                        <CardTitle className="text-base md:text-lg font-semibold text-orange-900 dark:text-orange-100 break-words">
                             Pagamentos Pendentes
                         </CardTitle>
                     </div>
-                    <CardDescription className="text-orange-700 dark:text-orange-300">
+                    <CardDescription className="text-orange-700 dark:text-orange-300 text-xs md:text-sm">
                         Consultas realizadas aguardando confirmação de pagamento
                     </CardDescription>
                 </CardHeader>

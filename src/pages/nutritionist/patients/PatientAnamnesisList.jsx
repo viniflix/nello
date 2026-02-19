@@ -370,12 +370,12 @@ const PatientAnamnesisList = () => {
     // RENDER PRINCIPAL
     // ============================================================
     return (
-        <div className="min-h-screen bg-background">
-            <div className="max-w-5xl mx-auto p-6 space-y-6">
+        <div className="min-h-screen bg-background overflow-x-hidden">
+            <div className="max-w-5xl mx-auto p-4 md:p-6 space-y-6 min-w-0">
                 {/* Header */}
-                <div className="flex items-center justify-between">
-                    <div>
-                        <div className="flex items-center gap-3 mb-2">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div className="min-w-0">
+                        <div className="flex items-center gap-2 md:gap-3 mb-2">
                             <Button
                                 variant="ghost"
                                 size="sm"
@@ -384,12 +384,12 @@ const PatientAnamnesisList = () => {
                                 ← Voltar ao Prontuário
                             </Button>
                         </div>
-                        <h1 className="text-3xl font-bold text-foreground flex items-center gap-3">
-                            <ClipboardList className="w-8 h-8 text-[#5f6f52]" />
+                        <h1 className="text-2xl md:text-3xl font-bold text-foreground flex items-center gap-2 md:gap-3 break-words">
+                            <ClipboardList className="w-6 h-6 md:w-8 md:h-8 text-[#5f6f52] shrink-0" />
                             Histórico de Anamneses
                         </h1>
                         {patient && (
-                            <p className="text-sm text-muted-foreground mt-1">
+                            <p className="text-sm text-muted-foreground mt-1 truncate">
                                 Paciente: <span className="font-medium text-foreground">{patient.full_name}</span>
                             </p>
                         )}

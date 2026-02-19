@@ -42,16 +42,16 @@ export default function FinancialKPIs({ summary, loading }) {
     ];
 
     return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 min-w-0">
             {kpis.map((kpi, index) => {
                 const Icon = kpi.icon;
                 return (
                     <Card 
                         key={index} 
-                        className={`${kpi.bgColor} ${kpi.borderColor} border-2 transition-all hover:shadow-md`}
+                        className={`${kpi.bgColor} ${kpi.borderColor} border-2 transition-all hover:shadow-md overflow-hidden min-w-0`}
                     >
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium text-muted-foreground">
+                            <CardTitle className="text-xs md:text-sm font-medium text-muted-foreground break-words">
                                 {kpi.title}
                             </CardTitle>
                             <Icon className={`h-4 w-4 ${kpi.color}`} />
@@ -60,8 +60,8 @@ export default function FinancialKPIs({ summary, loading }) {
                             {loading ? (
                                 <div className="h-8 w-24 bg-muted animate-pulse rounded" />
                             ) : (
-                                <div>
-                                    <div className={`text-2xl font-bold ${kpi.color}`}>
+                                <div className="min-w-0">
+                                    <div className={`text-xl md:text-2xl font-bold break-all ${kpi.color}`}>
                                         {formatCurrency(kpi.value)}
                                     </div>
                                     {kpi.showNet && kpi.netValue !== kpi.value && (

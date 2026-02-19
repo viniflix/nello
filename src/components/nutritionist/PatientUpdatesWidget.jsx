@@ -178,7 +178,7 @@ const PatientUpdatesWidget = () => {
 
     if (loading) {
         return (
-            <Card className="bg-card shadow-card-dark rounded-xl">
+            <Card className="bg-card shadow-card-dark rounded-xl overflow-hidden">
                 <CardHeader>
                     <CardTitle className="font-clash text-lg font-semibold text-primary">
                         Registros Recentes
@@ -195,24 +195,24 @@ const PatientUpdatesWidget = () => {
     }
 
     return (
-        <Card className="bg-card shadow-card-dark rounded-xl">
+        <Card className="bg-card shadow-card-dark rounded-xl overflow-hidden">
             <CardHeader className="pb-3">
-                <CardTitle className="font-clash text-lg font-semibold text-primary">
+                <CardTitle className="font-clash text-base md:text-lg font-semibold text-primary break-words">
                     Registros Recentes
                 </CardTitle>
-                <CardDescription className="text-muted-foreground">
+                <CardDescription className="text-muted-foreground text-xs md:text-sm">
                     Últimos registros dos seus pacientes
                 </CardDescription>
 
                 {/* Campo de Pesquisa com Dropdown de Filtros */}
-                <div className="flex gap-2 mt-3">
-                    <div className="relative flex-1">
+                <div className="flex gap-2 mt-3 min-w-0">
+                    <div className="relative flex-1 min-w-0">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
                             placeholder="Pesquisar por paciente..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="pl-9 pr-9"
+                            className="pl-9 pr-9 min-w-0"
                         />
                         {searchTerm && (
                             <button
@@ -283,12 +283,12 @@ const PatientUpdatesWidget = () => {
                         </p>
                         <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
                             {filteredUpdates.map(update => (
-                                <div key={update.id} className="flex items-start gap-3">
+                                <div key={update.id} className="flex items-start gap-3 min-w-0">
                                     <div className="bg-muted p-2 rounded-full flex-shrink-0">
                                         {getIcon(update.type)}
                                     </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-sm">
+                                    <div className="flex-1 min-w-0 overflow-hidden">
+                                        <p className="text-sm break-words">
                                             {update.patient_id ? (
                                                 <button
                                                     type="button"

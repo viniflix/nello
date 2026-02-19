@@ -366,11 +366,11 @@ const DashboardHeader = ({ user, logout }) => {
   };
 
   return (
-    <header className="sticky top-0 z-40 flex h-16 items-center justify-between gap-4 border-b bg-card px-4 md:px-6">
-      <div className="max-w-7xl mx-auto w-full flex items-center justify-between">
+    <header className="sticky top-0 z-40 flex h-16 items-center justify-between gap-2 border-b bg-card px-3 md:px-6 min-w-0 overflow-hidden">
+      <div className="max-w-7xl mx-auto w-full flex items-center justify-between min-w-0 gap-2">
 
           {/* Lado Esquerdo: Menu Hamburger (Mobile) + Logo + Navegação */}
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2 md:space-x-4 min-w-0 flex-1">
             {/* Menu Hamburger - Apenas Mobile */}
             <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
               <SheetTrigger asChild className="md:hidden">
@@ -431,11 +431,11 @@ const DashboardHeader = ({ user, logout }) => {
             </Sheet>
 
             {/* Logo */}
-            <Link to="/nutritionist" className="h-10 flex items-center overflow-hidden">
+            <Link to="/nutritionist" className="h-10 flex items-center min-w-0 shrink overflow-hidden max-w-[140px] md:max-w-none">
               <img
                 src="https://afyoidxrshkmplxhcyeh.supabase.co/storage/v1/object/public/IDV/HIPOZERO%20(2).png"
                 alt="HipoZero Logo"
-                className="h-10 w-auto"
+                className="h-10 w-auto max-h-10 object-contain object-left"
               />
             </Link>
 
@@ -482,7 +482,7 @@ const DashboardHeader = ({ user, logout }) => {
           </div>
 
           {/* Lado Direito: Dropdown de Perfil */}
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-1 md:space-x-4 shrink-0">
             {shouldShowNotifications && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -495,7 +495,7 @@ const DashboardHeader = ({ user, logout }) => {
                     )}
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-[360px] p-0" align="end">
+                <DropdownMenuContent className="w-[min(360px,calc(100vw-2rem))] max-w-[360px] p-0" align="end">
                   <div className="border-b px-3 py-2">
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-sm font-semibold">Notificações</p>
@@ -615,9 +615,9 @@ const DashboardHeader = ({ user, logout }) => {
 
               <DropdownMenuContent className="w-56" align="end" forceMount>
                 <DropdownMenuLabel>
-                  <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none">{user.profile?.name}</p>
-                    <p className="text-xs leading-none text-muted-foreground">
+                  <div className="flex flex-col space-y-1 min-w-0">
+                    <p className="text-sm font-medium leading-none truncate">{user.profile?.name}</p>
+                    <p className="text-xs leading-none text-muted-foreground truncate">
                       {user.email}
                     </p>
                   </div>

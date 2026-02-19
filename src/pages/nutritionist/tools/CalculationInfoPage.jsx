@@ -30,7 +30,7 @@ const CalculationInfoPage = () => {
     const { user, signOut } = useAuth();
     
     return (
-        <div className="min-h-screen bg-background">
+        <div className="min-h-screen bg-background overflow-x-hidden">
             <main className="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
                 <CalculationCard 
                     title="Cálculo Nutricional de Refeições"

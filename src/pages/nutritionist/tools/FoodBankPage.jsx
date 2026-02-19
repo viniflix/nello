@@ -323,23 +323,23 @@ const FoodBankPage = () => {
     const publicColumns = useMemo(() => splitIntoColumns(publicFoods), [publicFoods]);
 
     return (
-        <div className="flex flex-col min-h-screen bg-background">
+        <div className="flex flex-col min-h-screen bg-background overflow-x-hidden">
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
-                className="max-w-7xl mx-auto w-full px-4 md:px-8 pt-8 pb-12 space-y-6"
+                className="max-w-7xl mx-auto w-full px-4 md:px-8 pt-4 md:pt-8 pb-8 md:pb-12 space-y-6 min-w-0"
             >
                 {/* Header */}
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
-                    <div className="flex flex-col">
-                        <div className="flex items-center gap-3 mb-2">
-                            <Database className="w-8 h-8 text-primary" />
-                            <h1 className="text-3xl font-bold text-foreground">
+                    <div className="flex flex-col min-w-0">
+                        <div className="flex items-center gap-2 md:gap-3 mb-2">
+                            <Database className="w-7 h-7 md:w-8 md:h-8 text-primary shrink-0" />
+                            <h1 className="text-2xl md:text-3xl font-bold text-foreground break-words">
                                 Banco de Alimentos
                             </h1>
                         </div>
-                        <p className="text-muted-foreground">
+                        <p className="text-muted-foreground text-sm md:text-base">
                             Gerencie seus alimentos personalizados e consulte o banco público de alimentos
                         </p>
                     </div>
@@ -350,47 +350,47 @@ const FoodBankPage = () => {
                 </div>
 
                 {/* Stats Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-                    <Card>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 min-w-0">
+                    <Card className="overflow-hidden">
                         <CardContent className="pt-6">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm font-medium text-muted-foreground">
+                            <div className="flex items-center justify-between gap-2 min-w-0">
+                                <div className="min-w-0">
+                                    <p className="text-xs md:text-sm font-medium text-muted-foreground truncate">
                                         Meus Alimentos Personalizados
                                     </p>
-                                    <p className="text-3xl font-bold mt-1">{stats.custom}</p>
+                                    <p className="text-2xl md:text-3xl font-bold mt-1">{stats.custom}</p>
                                 </div>
-                                <Package className="w-10 h-10 text-primary opacity-50" />
+                                <Package className="w-8 h-8 md:w-10 md:h-10 text-primary opacity-50 shrink-0" />
                             </div>
                         </CardContent>
                     </Card>
-                    <Card>
+                    <Card className="overflow-hidden">
                         <CardContent className="pt-6">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm font-medium text-muted-foreground">
+                            <div className="flex items-center justify-between gap-2 min-w-0">
+                                <div className="min-w-0">
+                                    <p className="text-xs md:text-sm font-medium text-muted-foreground truncate">
                                         Banco de Dados Público
                                     </p>
-                                    <p className="text-3xl font-bold mt-1">{stats.public}</p>
+                                    <p className="text-2xl md:text-3xl font-bold mt-1">{stats.public}</p>
                                 </div>
-                                <Database className="w-10 h-10 text-primary opacity-50" />
+                                <Database className="w-8 h-8 md:w-10 md:h-10 text-primary opacity-50 shrink-0" />
                             </div>
                         </CardContent>
                     </Card>
                 </div>
 
                 {/* Search and Filters */}
-                <Card>
+                <Card className="overflow-hidden">
                     <CardContent className="pt-4 sm:pt-6">
-                        <div className="space-y-3 sm:space-y-4">
+                        <div className="space-y-3 sm:space-y-4 min-w-0">
                             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-                                <div className="flex-1 relative">
+                                <div className="flex-1 relative min-w-0">
                                     <Search className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
                                     <Input
                                         placeholder="Buscar alimento por nome, grupo ou descrição..."
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
-                                        className="pl-10"
+                                        className="pl-10 min-w-0"
                                     />
                                 </div>
                                 <Select value={sourceFilter} onValueChange={setSourceFilter}>

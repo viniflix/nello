@@ -245,15 +245,15 @@ export default function NutritionistFoodsPage() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-background">
-      <div className="max-w-7xl mx-auto w-full px-4 md:px-8 py-8 space-y-6">
+    <div className="flex flex-col min-h-screen bg-background overflow-x-hidden">
+      <div className="max-w-7xl mx-auto w-full px-4 md:px-8 py-4 md:py-8 space-y-6 min-w-0">
         {/* Header */}
         <div className="mb-2">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <Database className="w-8 h-8 text-primary" />
-              <div>
-                <h1 className="text-3xl font-bold text-foreground">Admin: Alimentos</h1>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4 min-w-0">
+            <div className="flex items-center gap-2 md:gap-3 min-w-0">
+              <Database className="w-7 h-7 md:w-8 md:h-8 text-primary shrink-0" />
+              <div className="min-w-0">
+                <h1 className="text-2xl md:text-3xl font-bold text-foreground break-words">Admin: Alimentos</h1>
                 <span className="inline-flex items-center px-2 py-1 rounded-md bg-primary/10 text-primary text-xs font-medium mt-1">
                   Administrador
                 </span>

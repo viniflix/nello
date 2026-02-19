@@ -121,14 +121,14 @@ const UpcomingAppointmentsWidget = ({ appointments, totalUpcoming, todayAppointm
   const hasTotalTag = totalUpcoming > 0;
   
   return (
-    <Card className="bg-card shadow-card-dark rounded-xl">
-      <CardHeader>
-        <div className="flex items-start justify-between gap-2">
-          <div>
-            <CardTitle className="font-clash text-lg font-semibold text-primary">
+    <Card className="bg-card shadow-card-dark rounded-xl overflow-hidden">
+      <CardHeader className="pb-2">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 min-w-0">
+          <div className="min-w-0">
+            <CardTitle className="font-clash text-base md:text-lg font-semibold text-primary break-words">
               Próximas Consultas
             </CardTitle>
-            <CardDescription className="text-muted-foreground">
+            <CardDescription className="text-muted-foreground text-xs md:text-sm">
               Seus próximos agendamentos.
             </CardDescription>
           </div>
@@ -160,15 +160,15 @@ const UpcomingAppointmentsWidget = ({ appointments, totalUpcoming, todayAppointm
                       {urgency.label}
                     </span>
                   </div>
-                  <div className="flex items-center space-x-3">
+                  <div className="flex items-center space-x-3 min-w-0">
                   <div className="w-10 h-10 rounded-full bg-emerald-100 flex-shrink-0 flex items-center justify-center">
-                    <span className="font-semibold text-emerald-700">
+                    <span className="font-semibold text-emerald-700 text-xs">
                       {(profile?.name || 'P').substring(0, 2).toUpperCase()}
                     </span>
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-foreground">{profile?.name || 'Paciente (Excluído)'}</p>
-                    <p className="text-xs text-muted-foreground">
+                  <div className="min-w-0 flex-1 overflow-hidden">
+                    <p className="text-sm font-medium text-foreground truncate">{profile?.name || 'Paciente (Excluído)'}</p>
+                    <p className="text-xs text-muted-foreground truncate">
                       {format(parseISO(appt.appointment_time), "d 'de' MMMM 'às' HH:mm", { locale: ptBR })}
                     </p>
                   </div>
@@ -368,16 +368,16 @@ export default function NutritionistDashboard() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="max-w-7xl mx-auto w-full px-4 md:px-8 pt-8"
+        className="max-w-7xl mx-auto w-full px-4 md:px-8 pt-4 md:pt-8 min-w-0 overflow-x-hidden"
       >
         {/* Zona de Ação Rápida */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8 text-center sm:text-left">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 md:mb-8 text-center sm:text-left">
           {/* Lado Esquerdo: Título e Descrição */}
-          <div>
-            <h2 className="text-3xl font-bold font-heading uppercase tracking-wide text-primary">
+          <div className="min-w-0">
+            <h2 className="text-2xl md:text-3xl font-bold font-heading uppercase tracking-wide text-primary break-words">
               Dashboard
             </h2>
-            <p className="text-neutral-600">
+            <p className="text-neutral-600 text-sm md:text-base mt-0.5">
               Gerencie seus pacientes, Planos e Análises.
             </p>
           </div>

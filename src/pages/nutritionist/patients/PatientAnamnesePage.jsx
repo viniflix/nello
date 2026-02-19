@@ -1336,8 +1336,8 @@ const PatientAnamnesePage = () => {
     }
 
     return (
-        <div className="min-h-screen bg-background">
-            <div className="max-w-5xl mx-auto p-4 sm:p-6 space-y-6">
+        <div className="min-h-screen bg-background overflow-x-hidden">
+            <div className="max-w-5xl mx-auto p-4 sm:p-6 space-y-6 min-w-0">
                 {/* Header */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div className="flex-1 min-w-0">

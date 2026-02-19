@@ -55,20 +55,20 @@ export default function TransactionList({
     const hasActiveFilters = filters?.type || filters?.status || filters?.search;
 
     return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Histórico de Transações</CardTitle>
+        <Card className="overflow-hidden">
+            <CardHeader className="pb-2">
+                <CardTitle className="text-base md:text-lg break-words">Histórico de Transações</CardTitle>
             </CardHeader>
             <CardContent>
                 {/* Filters */}
-                <div className="flex flex-col sm:flex-row gap-3 mb-4">
-                    <div className="flex-1 relative">
+                <div className="flex flex-col sm:flex-row gap-3 mb-4 min-w-0">
+                    <div className="flex-1 relative min-w-0">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
                             placeholder="Buscar por descrição..."
                             value={localSearch}
                             onChange={(e) => handleSearchChange(e.target.value)}
-                            className="pl-9"
+                            className="pl-9 min-w-0"
                         />
                     </div>
                     <Select 

@@ -9,9 +9,8 @@ const AlertsPage = () => {
     const { user, signOut } = useAuth();
 
     return (
-        <div className="flex flex-col min-h-screen bg-background">
-            
-            <main className="max-w-4xl mx-auto w-full p-4 md:p-8">
+        <div className="flex flex-col min-h-screen bg-background overflow-x-hidden">
+            <main className="max-w-4xl mx-auto w-full p-4 md:p-8 min-w-0">
                 <div className="mb-4">
                     <Button asChild variant="outline" size="sm">
                         <Link to="/nutritionist">
@@ -21,12 +20,12 @@ const AlertsPage = () => {
                     </Button>
                 </div>
 
-                <Card className="bg-card shadow-card-dark rounded-xl">
+                <Card className="bg-card shadow-card-dark rounded-xl overflow-hidden">
                     <CardHeader>
-                        <CardTitle className="font-clash text-2xl font-semibold text-primary">
+                        <CardTitle className="font-clash text-xl md:text-2xl font-semibold text-primary break-words">
                             Alertas e Notificações
                         </CardTitle>
-                        <CardDescription className="text-muted-foreground">
+                        <CardDescription className="text-muted-foreground text-sm md:text-base">
                             Avisos importantes, aniversários e pendências.
                         </CardDescription>
                     </CardHeader>

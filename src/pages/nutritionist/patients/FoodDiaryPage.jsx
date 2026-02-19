@@ -181,10 +181,10 @@ const FoodDiaryPage = () => {
     };
 
     return loading ? null : (
-        <div className="flex flex-col min-h-screen bg-background">
-            <div className="max-w-7xl mx-auto w-full px-4 md:px-6 py-4 md:py-6">
+        <div className="flex flex-col min-h-screen bg-background overflow-x-hidden">
+            <div className="max-w-7xl mx-auto w-full px-4 md:px-6 py-4 md:py-6 min-w-0">
                 {/* Header */}
-                <div className="mb-6">
+                <div className="mb-6 min-w-0">
                     <Button
                         variant="ghost"
                         size="sm"
@@ -194,12 +194,12 @@ const FoodDiaryPage = () => {
                         <ArrowLeft className="w-4 h-4 mr-1" />
                         Voltar
                     </Button>
-                    <div>
-                        <h1 className="text-2xl md:text-3xl font-bold text-foreground flex items-center gap-2">
-                            <Utensils className="w-7 h-7 text-[#5f6f52]" />
+                    <div className="min-w-0">
+                        <h1 className="text-2xl md:text-3xl font-bold text-foreground flex items-center gap-2 break-words">
+                            <Utensils className="w-6 h-6 md:w-7 md:h-7 text-[#5f6f52] shrink-0" />
                             Diário Alimentar
                         </h1>
-                        <p className="text-sm text-muted-foreground mt-1">
+                        <p className="text-sm text-muted-foreground mt-1 truncate">
                             {patientName}
                         </p>
                     </div>

@@ -409,20 +409,20 @@ export default function AgendaPage() {
     };
 
     return (
-        <div className="min-h-screen bg-background">
+        <div className="min-h-screen bg-background overflow-x-hidden">
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
-                className="max-w-7xl mx-auto w-full px-4 md:px-8 pt-8"
+                className="max-w-7xl mx-auto w-full px-4 md:px-8 pt-4 md:pt-8 min-w-0 overflow-x-hidden"
             >
                 {/* Cabeçalho com Título e Descrição */}
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8 text-center sm:text-left">
-                    <div>
-                        <h2 className="text-3xl font-bold font-heading uppercase tracking-wide text-primary">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 md:mb-8 text-center sm:text-left">
+                    <div className="min-w-0">
+                        <h2 className="text-2xl md:text-3xl font-bold font-heading uppercase tracking-wide text-primary break-words">
                             Agenda de Consultas
                         </h2>
-                        <p className="text-neutral-600 mt-1">
+                        <p className="text-neutral-600 mt-1 text-sm md:text-base">
                             Visualize e gerencie todos os seus agendamentos.
                         </p>
                     </div>
@@ -448,7 +448,7 @@ export default function AgendaPage() {
 
                 {/* Selecionador de Data Mobile */}
                 <div className="lg:hidden mb-6">
-                    <Card className="bg-card shadow-card-dark rounded-xl">
+                    <Card className="bg-card shadow-card-dark rounded-xl overflow-hidden">
                         <CardContent className="p-4">
                             <div className="flex items-center justify-between gap-3">
                                 <Button
@@ -582,8 +582,8 @@ export default function AgendaPage() {
                 {/* Grid Principal - Layout invertido: 70% esquerda (agendamentos), 30% direita (calendário/resumo) */}
                 <div className="grid grid-cols-1 lg:grid-cols-10 gap-6">
                     {/* Lista de Agendamentos - 70% (7 colunas) */}
-                    <div className="lg:col-span-7 order-1">
-                        <Card className="bg-card shadow-card-dark rounded-xl">
+                    <div className="lg:col-span-7 order-1 min-w-0">
+                        <Card className="bg-card shadow-card-dark rounded-xl overflow-hidden">
                             <CardHeader className="pb-3">
                                 <div className="flex flex-col gap-3">
                                     <div>

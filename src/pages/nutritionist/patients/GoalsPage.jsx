@@ -442,8 +442,8 @@ const GoalsPage = () => {
     };
 
     return loading ? null : (
-        <div className="flex flex-col min-h-screen bg-background">
-            <div className="max-w-7xl mx-auto w-full px-4 md:px-8 py-6 md:py-8">
+        <div className="flex flex-col min-h-screen bg-background overflow-x-hidden">
+            <div className="max-w-7xl mx-auto w-full px-4 md:px-8 py-4 md:py-8 min-w-0">
                 {/* Header */}
                 <div className="flex flex-col gap-4 mb-6">
                     <Button

@@ -166,18 +166,18 @@ const PatientHubPage = () => {
     }
 
     return (
-        <div className="min-h-screen bg-background">
+        <div className="min-h-screen bg-background overflow-x-hidden">
             {/* Header Sticky */}
-            <header className="bg-card/80 backdrop-blur-md border-b border-border p-4 sticky top-0 z-10">
-                <div className="max-w-7xl mx-auto flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <Link to="/nutritionist/patients">
+            <header className="bg-card/80 backdrop-blur-md border-b border-border p-3 md:p-4 sticky top-0 z-10">
+                <div className="max-w-7xl mx-auto flex items-center justify-between min-w-0 gap-2">
+                    <div className="flex items-center gap-2 md:gap-3 min-w-0 flex-1">
+                        <Link to="/nutritionist/patients" className="shrink-0">
                             <Button variant="ghost" size="icon">
                                 <ArrowLeft className="w-5 h-5" />
                             </Button>
                         </Link>
-                        <div>
-                            <h1 className="font-semibold text-foreground text-lg">
+                        <div className="min-w-0 overflow-hidden">
+                            <h1 className="font-semibold text-foreground text-base md:text-lg truncate">
                                 {patientData.name}
                             </h1>
                             <p className="text-xs text-muted-foreground">
@@ -198,7 +198,7 @@ const PatientHubPage = () => {
             </header>
 
             {/* Conteúdo Principal */}
-            <main className="max-w-7xl mx-auto w-full p-4 md:p-8 space-y-8">
+            <main className="max-w-7xl mx-auto w-full p-4 md:p-8 space-y-8 min-w-0 overflow-x-hidden">
                 {/* BLOCO 1 - Perfil do Paciente */}
                 <section>
                     <PatientProfileSummary

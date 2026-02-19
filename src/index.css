@@ -91,4 +91,21 @@
   h1, h2, h3, h4, h5, h6 {
     @apply font-heading font-semibold uppercase tracking-wide;
   }
+
+  /* Evitar overflow horizontal em mobile (layout base) */
+  html, body {
+    @apply overflow-x-hidden;
+  }
+}
+
+/* Utilitários para layout mobile-friendly (apenas onde aplicados) */
+@layer utilities {
+  /* Conteúdo que não deve vazar em cards/containers */
+  .mobile-truncate {
+    @apply min-w-0 overflow-hidden text-ellipsis whitespace-nowrap;
+  }
+  .mobile-break-words {
+    word-break: break-word;
+    overflow-wrap: break-word;
+  }
 }

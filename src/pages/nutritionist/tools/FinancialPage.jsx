@@ -327,18 +327,19 @@ export default function FinancialPage() {
     }, [summary.income, monthlyGoal]);
 
     return (
-        <div className="min-h-screen bg-background">
-            <main className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+        <div className="min-h-screen bg-background overflow-x-hidden">
+            <main className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 min-w-0 overflow-x-hidden">
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.5 }}
+                    className="min-w-0"
                 >
                     {/* Header */}
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-                        <div>
-                            <h1 className="text-3xl font-bold">Financeiro</h1>
-                            <p className="text-muted-foreground mt-1">
+                        <div className="min-w-0">
+                            <h1 className="text-2xl md:text-3xl font-bold break-words">Financeiro</h1>
+                            <p className="text-muted-foreground mt-1 text-sm md:text-base">
                                 Gerencie receitas, despesas e acompanhe o fluxo de caixa
                             </p>
                         </div>
@@ -396,29 +397,29 @@ export default function FinancialPage() {
 
                     {/* Financial Goal Bar - Above KPIs */}
                     <div className="mb-4">
-                        <Card className="border-2">
+                        <Card className="border-2 overflow-hidden">
                             <CardContent className="p-4">
                                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                                    <div className="flex-1 min-w-0">
+                                    <div className="flex-1 min-w-0 w-full">
                                         <div className="flex items-center gap-2 mb-2">
-                                            <Target className="w-4 h-4 text-primary" />
-                                            <span className="text-sm font-semibold">Meta Financeira Mensal</span>
+                                            <Target className="w-4 h-4 text-primary shrink-0" />
+                                            <span className="text-sm font-semibold break-words">Meta Financeira Mensal</span>
                                         </div>
-                                        <div className="flex items-center gap-4 text-sm">
-                                            <div>
+                                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+                                            <div className="min-w-0">
                                                 <span className="text-muted-foreground">Receita Atual: </span>
-                                                <span className="font-semibold text-primary">
+                                                <span className="font-semibold text-primary break-all">
                                                     R$ {summary.income.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                                 </span>
                                             </div>
-                                            <div>
+                                            <div className="min-w-0">
                                                 <span className="text-muted-foreground">Meta: </span>
-                                                <span className="font-semibold">
+                                                <span className="font-semibold break-all">
                                                     R$ {monthlyGoal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                                 </span>
                                             </div>
-                                            <div>
-                                                <span className={`font-semibold ${
+                                            <div className="min-w-0">
+                                                <span className={`font-semibold break-all ${
                                                     monthlyGoal - summary.income > 0 
                                                         ? 'text-orange-600' 
                                                         : 'text-green-600'

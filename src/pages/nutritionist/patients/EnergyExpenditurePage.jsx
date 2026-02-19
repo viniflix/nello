@@ -367,20 +367,21 @@ const EnergyExpenditurePage = () => {
     }
 
     return (
-        <div className="min-h-screen bg-background">
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="min-h-screen bg-background overflow-x-hidden">
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 md:py-8 min-w-0">
                 {/* Header */}
-                <div className="flex items-center gap-4 mb-6">
+                <div className="flex items-center gap-2 md:gap-4 mb-6 min-w-0">
                     <Button
                         variant="ghost"
                         size="icon"
                         onClick={() => navigate(-1)}
+                        className="shrink-0"
                     >
                         <ArrowLeft className="w-5 h-5" />
                     </Button>
-                    <div>
-                        <h1 className="text-3xl font-bold">Centro de Controle Metabólico</h1>
-                        <p className="text-muted-foreground">
+                    <div className="min-w-0">
+                        <h1 className="text-2xl md:text-3xl font-bold break-words">Centro de Controle Metabólico</h1>
+                        <p className="text-muted-foreground text-sm md:text-base truncate">
                             {patientName} - Análise e Planejamento Energético
                         </p>
                     </div>

@@ -73,16 +73,16 @@ const PatientsPage = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
-                className="max-w-7xl mx-auto w-full px-4 md:px-8 pt-8"
+                className="max-w-7xl mx-auto w-full px-4 md:px-8 pt-4 md:pt-8 min-w-0 overflow-x-hidden"
             >
-                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4 mb-8">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4 mb-6 md:mb-8">
 
-                    <div className="flex flex-col justify-center flex-1 text-center sm:text-left">
-                        <h1 className="text-3xl font-bold font-heading uppercase tracking-wide text-primary">
+                    <div className="flex flex-col justify-center flex-1 min-w-0 text-center sm:text-left">
+                        <h1 className="text-2xl md:text-3xl font-bold font-heading uppercase tracking-wide text-primary break-words">
                             Meus Pacientes
-                            <span className="text-3xl font-medium text-destructive ml-2">• {patients.length}</span>
+                            <span className="text-2xl md:text-3xl font-medium text-destructive ml-1 md:ml-2">• {patients.length}</span>
                         </h1>
-                        <p className="text-neutral-600 mt-1">
+                        <p className="text-neutral-600 mt-1 text-sm md:text-base">
                             Gerencie, adicione ou visualize seus pacientes.
                         </p>
                     </div>
@@ -98,16 +98,16 @@ const PatientsPage = () => {
                     </div>
                 </div>
 
-                <Card className="bg-card shadow-card-dark rounded-xl">
-                    <CardHeader>
+                <Card className="bg-card shadow-card-dark rounded-xl overflow-hidden">
+                    <CardHeader className="pb-2">
                         <div className="flex flex-col md:flex-row gap-4">
-                            <div className="relative flex-1">
-                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                            <div className="relative flex-1 min-w-0">
+                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 shrink-0" />
                                 <Input
                                     placeholder="Buscar por nome, email, CPF ou telefone..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="pl-10 bg-muted"
+                                    className="pl-10 bg-muted min-w-0"
                                 />
                             </div>
                             <div className="flex items-center gap-2">

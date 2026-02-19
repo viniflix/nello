@@ -12,7 +12,7 @@ const MainLayout = () => {
   }
 
   return (
-    <div className="flex min-h-screen w-full flex-col">
+    <div className="flex min-h-screen w-full flex-col overflow-x-hidden">
       {/* 1. Apenas o Header (que agora tem a navegação) */}
       <DashboardHeader
         user={user}
@@ -20,7 +20,7 @@ const MainLayout = () => {
       />
 
       {/* 2. O conteúdo principal da página */}
-      <main className="flex-1">
+      <main className="flex-1 min-w-0 overflow-x-hidden">
         <Outlet />
       </main>
 

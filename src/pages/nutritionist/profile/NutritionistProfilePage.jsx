@@ -46,24 +46,24 @@ const NutritionistProfilePage = () => {
     const currentProfile = profile || {};
 
     return (
-        <div className="min-h-screen bg-background">
-            <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="min-h-screen bg-background overflow-x-hidden">
+            <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 md:py-8 min-w-0">
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.5 }}
-                    className="space-y-6"
+                    className="space-y-6 min-w-0"
                 >
                     {/* Header */}
-                    <Card>
+                    <Card className="overflow-hidden">
                         <CardHeader>
-                            <div className="flex items-center gap-4">
-                                <div className="p-3 rounded-lg bg-primary/10">
-                                    <Settings className="w-8 h-8 text-primary" />
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-4 min-w-0">
+                                <div className="p-3 rounded-lg bg-primary/10 shrink-0">
+                                    <Settings className="w-7 h-7 md:w-8 md:h-8 text-primary" />
                                 </div>
-                                <div>
-                                    <CardTitle className="text-3xl">Ajustes do Consultório</CardTitle>
-                                    <CardDescription className="text-base mt-1">
+                                <div className="min-w-0">
+                                    <CardTitle className="text-2xl md:text-3xl break-words">Ajustes do Consultório</CardTitle>
+                                    <CardDescription className="text-sm md:text-base mt-1">
                                         Configure todas as informações e preferências do seu consultório em um só lugar
                                     </CardDescription>
                                 </div>

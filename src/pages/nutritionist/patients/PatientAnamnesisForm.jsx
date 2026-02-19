@@ -498,11 +498,11 @@ const PatientAnamnesisForm = () => {
     // RENDER PRINCIPAL
     // ============================================================
     return (
-        <div className="min-h-screen bg-background-page" ref={formRef}>
-            <div className="max-w-4xl mx-auto p-6 space-y-6">
+        <div className="min-h-screen bg-background-page overflow-x-hidden" ref={formRef}>
+            <div className="max-w-4xl mx-auto p-4 md:p-6 space-y-6 min-w-0">
                 {/* Header */}
-                <div className="flex items-start justify-between">
-                    <div>
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                    <div className="min-w-0">
                         <Button
                             variant="ghost"
                             size="sm"
@@ -512,11 +512,11 @@ const PatientAnamnesisForm = () => {
                             <ChevronLeft className="w-4 h-4 mr-1" />
                             {isCustomForm ? 'Voltar para Anamneses' : 'Voltar ao Prontuário'}
                         </Button>
-                        <h1 className="text-3xl font-bold text-foreground">
+                        <h1 className="text-2xl md:text-3xl font-bold text-foreground break-words">
                             {isCustomForm ? 'Formulário Personalizado' : (isEditMode ? 'Editar Anamnese' : 'Nova Anamnese')}
                         </h1>
                         {patient && (
-                            <p className="text-sm text-muted-foreground mt-1">
+                            <p className="text-sm text-muted-foreground mt-1 truncate">
                                 Paciente: <span className="font-medium text-foreground">{patient.name || 'Nome não disponível'}</span>
                             </p>
                         )}
