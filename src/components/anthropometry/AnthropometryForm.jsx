@@ -28,6 +28,7 @@ const AnthropometryForm = ({
     patientGender = null,
     patientBirthDate = null
 }) => {
+    const [activeTab, setActiveTab] = useState('basico');
     const [formData, setFormData] = useState({
         weight: '',
         height: '',
@@ -350,17 +351,33 @@ const AnthropometryForm = ({
 
     const validate = () => {
         const newErrors = {};
-
-        if (!formData.weight || parseFloat(formData.weight) <= 0) {
-            newErrors.weight = 'Peso é obrigatório e deve ser maior que zero';
-        }
-
-        if (!formData.height || parseFloat(formData.height) <= 0) {
-            newErrors.height = 'Altura é obrigatória e deve ser maior que zero';
-        }
+        const hasWeight = formData.weight && parseFloat(formData.weight) > 0;
+        const hasHeight = formData.height && parseFloat(formData.height) > 0;
+        const hasCircumferences = Object.values(formData.circumferences || {}).some((v) => v && v !== '');
+        const hasSkinfolds = Object.values(formData.skinfolds || {}).some((v) => v && v !== '');
+        const hasBoneDiameters = Object.values(formData.bone_diameters || {}).some((v) => v && v !== '');
+        const hasBioimpedance = Object.values(formData.bioimpedance || {}).some((v) => v && v !== '');
+        const hasPhotos = Array.isArray(formData.photos) && formData.photos.length > 0;
 
         if (!formData.record_date) {
             newErrors.record_date = 'Data é obrigatória';
+        }
+
+        if ((hasWeight && !hasHeight) || (!hasWeight && hasHeight)) {
+            newErrors.weight = 'Para seção básica, preencha peso e altura juntos';
+            newErrors.height = 'Para seção básica, preencha peso e altura juntos';
+        }
+
+        const hasAnySectionData =
+            (hasWeight && hasHeight) ||
+            hasCircumferences ||
+            hasSkinfolds ||
+            hasBoneDiameters ||
+            hasBioimpedance ||
+            hasPhotos;
+
+        if (!hasAnySectionData) {
+            newErrors.form = 'Preencha ao menos uma seção (básico, circunferências, dobras, diâmetros ou fotos).';
         }
 
         setErrors(newErrors);
@@ -385,10 +402,17 @@ const AnthropometryForm = ({
             Object.entries(formData.bioimpedance).filter(([_, v]) => v && v !== '')
         );
 
+        const parsedWeight = formData.weight && parseFloat(formData.weight) > 0
+            ? parseFloat(formData.weight)
+            : null;
+        const parsedHeight = formData.height && parseFloat(formData.height) > 0
+            ? parseFloat(formData.height)
+            : null;
+
         const submitData = {
             patient_id: patientId,
-            weight: parseFloat(formData.weight),
-            height: parseFloat(formData.height),
+            weight: parsedWeight,
+            height: parsedHeight,
             record_date: formData.record_date,
             notes: formData.notes.trim() || null,
             circumferences: Object.keys(cleanCircumferences).length > 0 ? cleanCircumferences : null,
@@ -467,30 +491,58 @@ const AnthropometryForm = ({
     return (
         <Card>
             <CardHeader>
-                <CardTitle className="text-lg md:text-lg tracking-wide" style={{ wordSpacing: '0.2em' }}>
-                    {initialData ? 'Editar Registro' : 'Novo Registro Antropométrico'}
+                <CardTitle className="text-lg md:text-xl tracking-wide" style={{ wordSpacing: '0.16em' }}>
+                    {initialData ? 'Revisão de Registro' : 'Registro Antropométrico'}
                 </CardTitle>
             </CardHeader>
             <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-6">
-                    <Tabs defaultValue="basico" className="w-full">
-                        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1 h-auto p-1">
-                            <TabsTrigger value="basico" className="text-xs sm:text-sm px-2 py-2 text-center whitespace-nowrap">
+                    {errors.form && (
+                        <Alert variant="destructive">
+                            <AlertCircle className="h-4 w-4" />
+                            <AlertDescription>{errors.form}</AlertDescription>
+                        </Alert>
+                    )}
+
+                    <div className="rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+                        Você pode registrar tudo de uma vez ou apenas as seções avaliadas nesta consulta.
+                    </div>
+
+                    <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                        {/* Mobile: seletor único de seção (mais limpo que grade de botões) */}
+                        <div className="md:hidden mb-3">
+                            <Label className="text-xs text-muted-foreground mb-1.5 block">
+                                Seção do registro
+                            </Label>
+                            <Select value={activeTab} onValueChange={setActiveTab}>
+                                <SelectTrigger className="h-10">
+                                    <SelectValue placeholder="Selecione uma seção" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="basico">Básico</SelectItem>
+                                    <SelectItem value="circunferencias">Circunferências</SelectItem>
+                                    <SelectItem value="dobras">Dobras & Composição</SelectItem>
+                                    <SelectItem value="diametros">Diâmetros Ósseos</SelectItem>
+                                    <SelectItem value="fotos">Fotos</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        {/* Desktop: mantém abas clássicas */}
+                        <TabsList className="hidden md:grid w-full md:grid-cols-5 gap-1 h-auto p-1">
+                            <TabsTrigger value="basico" className="text-sm px-3 py-2 text-center whitespace-nowrap">
                                 Básico
                             </TabsTrigger>
-                            <TabsTrigger value="circunferencias" className="text-xs sm:text-sm px-2 py-2 text-center whitespace-nowrap">
-                                <span className="sm:hidden">Circ.</span>
-                                <span className="hidden sm:inline">Circunferências</span>
+                            <TabsTrigger value="circunferencias" className="text-sm px-3 py-2 text-center whitespace-nowrap">
+                                Circunferências
                             </TabsTrigger>
-                            <TabsTrigger value="dobras" className="text-xs sm:text-sm px-2 py-2 text-center whitespace-nowrap">
-                                <span className="sm:hidden">Dobras</span>
-                                <span className="hidden sm:inline">Dobras & Composição</span>
+                            <TabsTrigger value="dobras" className="text-sm px-3 py-2 text-center whitespace-nowrap">
+                                Dobras & Composição
                             </TabsTrigger>
-                            <TabsTrigger value="diametros" className="text-xs sm:text-sm px-2 py-2 text-center whitespace-nowrap">
-                                <span className="sm:hidden">Diâm.</span>
-                                <span className="hidden sm:inline">Diâmetros Ósseos</span>
+                            <TabsTrigger value="diametros" className="text-sm px-3 py-2 text-center whitespace-nowrap">
+                                Diâmetros Ósseos
                             </TabsTrigger>
-                            <TabsTrigger value="fotos" className="text-xs sm:text-sm px-2 py-2 text-center whitespace-nowrap">
+                            <TabsTrigger value="fotos" className="text-sm px-3 py-2 text-center whitespace-nowrap">
                                 Fotos
                             </TabsTrigger>
                         </TabsList>
@@ -500,9 +552,7 @@ const AnthropometryForm = ({
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 {/* Peso */}
                                 <div className="space-y-2">
-                                    <Label htmlFor="weight">
-                                        Peso (kg) <span className="text-destructive">*</span>
-                                    </Label>
+                                    <Label htmlFor="weight">Peso (kg)</Label>
                                     <Input
                                         id="weight"
                                         name="weight"
@@ -522,9 +572,7 @@ const AnthropometryForm = ({
 
                                 {/* Altura */}
                                 <div className="space-y-2">
-                                    <Label htmlFor="height">
-                                        Altura (cm) <span className="text-destructive">*</span>
-                                    </Label>
+                                    <Label htmlFor="height">Altura (cm)</Label>
                                     <Input
                                         id="height"
                                         name="height"

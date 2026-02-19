@@ -1,6 +1,6 @@
 import React from 'react';
 import { format } from 'date-fns';
-import { Pencil, Trash2, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { Pencil, Trash2, TrendingUp, TrendingDown, Minus, Eye } from 'lucide-react';
 import {
     Table,
     TableBody,
@@ -12,7 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
-const AnthropometryTable = ({ records = [], onEdit, onDelete, loading = false }) => {
+const AnthropometryTable = ({ records = [], onEdit, onDelete, onView, highlightSections = [], loading = false }) => {
     const getIMCCategory = (bmi) => {
         if (!bmi) return { label: 'N/A', short: 'N/A', variant: 'outline' };
         if (bmi < 18.5) return { label: 'Abaixo do peso', short: 'Abaixo', variant: 'secondary' };
@@ -35,6 +35,35 @@ const AnthropometryTable = ({ records = [], onEdit, onDelete, loading = false })
         } catch {
             return dateString;
         }
+    };
+
+    const getFilledCount = (obj) => Object.values(obj || {}).filter((v) => v !== null && v !== undefined && v !== '').length;
+
+    const getSectionSummary = (record) => {
+        const sections = [
+            Boolean(record?.weight || record?.height),
+            getFilledCount(record?.circumferences) > 0,
+            getFilledCount(record?.skinfolds) > 0 || getFilledCount(record?.bioimpedance) > 0,
+            getFilledCount(record?.bone_diameters) > 0,
+            Array.isArray(record?.photos) && record.photos.length > 0
+        ];
+        const total = sections.filter(Boolean).length;
+        return `${total}/5 seções`;
+    };
+
+    const getRecordSections = (record) => ({
+        basico: Boolean(record?.weight || record?.height),
+        circunferencias: getFilledCount(record?.circumferences) > 0,
+        dobras: getFilledCount(record?.skinfolds) > 0 || getFilledCount(record?.bioimpedance) > 0,
+        diametros: getFilledCount(record?.bone_diameters) > 0,
+        fotos: Array.isArray(record?.photos) && record.photos.length > 0
+    });
+
+    const sectionBadgeClass = (isPresent, key) => {
+        if (!isPresent) return 'bg-muted/30 text-muted-foreground border-border';
+        if (highlightSections.length === 0) return 'bg-primary/15 text-primary border-primary/30';
+        if (highlightSections.includes(key)) return 'bg-[#5f6f52]/15 text-[#5f6f52] border-[#5f6f52]/30';
+        return 'bg-muted/40 text-muted-foreground border-border';
     };
 
     if (loading) {
@@ -96,6 +125,21 @@ const AnthropometryTable = ({ records = [], onEdit, onDelete, loading = false })
                     </div>
                 </div>
 
+                <p className="mt-2 text-[11px] text-muted-foreground">
+                    {getSectionSummary(record)}
+                </p>
+                <div className="mt-2 flex flex-wrap gap-1">
+                    {Object.entries(getRecordSections(record)).map(([key, enabled]) => (
+                        <Badge key={`${record.id}-${key}`} variant="outline" className={`text-[10px] h-5 ${sectionBadgeClass(enabled, key)}`}>
+                            {key === 'basico' && 'Básico'}
+                            {key === 'circunferencias' && 'Circ.'}
+                            {key === 'dobras' && 'Dobras'}
+                            {key === 'diametros' && 'Diâm.'}
+                            {key === 'fotos' && 'Fotos'}
+                        </Badge>
+                    ))}
+                </div>
+
                 <div className="mt-2 flex items-center justify-between gap-2">
                     {trend ? (
                         <span className={`flex items-center gap-1 ${trend.color}`}>
@@ -107,6 +151,9 @@ const AnthropometryTable = ({ records = [], onEdit, onDelete, loading = false })
                     )}
 
                     <div className="flex gap-1">
+                        <Button variant="ghost" size="sm" onClick={() => onView?.(record)} className="h-8 w-8 p-0">
+                            <Eye className="w-4 h-4" />
+                        </Button>
                         <Button variant="ghost" size="sm" onClick={() => onEdit(record)} className="h-8 w-8 p-0">
                             <Pencil className="w-4 h-4" />
                         </Button>
@@ -172,6 +219,20 @@ const AnthropometryTable = ({ records = [], onEdit, onDelete, loading = false })
                                 <TableRow key={record.id}>
                                     <TableCell className="font-medium whitespace-nowrap">
                                         {formatDateNumeric(record.record_date)}
+                                        <p className="mt-1 text-[11px] text-muted-foreground">
+                                            {getSectionSummary(record)}
+                                        </p>
+                                        <div className="mt-1 flex flex-wrap gap-1">
+                                            {Object.entries(getRecordSections(record)).map(([key, enabled]) => (
+                                                <Badge key={`${record.id}-${key}`} variant="outline" className={`text-[10px] h-5 ${sectionBadgeClass(enabled, key)}`}>
+                                                    {key === 'basico' && 'Básico'}
+                                                    {key === 'circunferencias' && 'Circ.'}
+                                                    {key === 'dobras' && 'Dobras'}
+                                                    {key === 'diametros' && 'Diâm.'}
+                                                    {key === 'fotos' && 'Fotos'}
+                                                </Badge>
+                                            ))}
+                                        </div>
                                     </TableCell>
                                     <TableCell>
                                         <span className="font-semibold">{record.weight}</span> kg
@@ -214,6 +275,14 @@ const AnthropometryTable = ({ records = [], onEdit, onDelete, loading = false })
                                     </TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex justify-end gap-2">
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => onView?.(record)}
+                                                className="h-8 w-8 p-0"
+                                            >
+                                                <Eye className="h-4 w-4" />
+                                            </Button>
                                             <Button
                                                 variant="ghost"
                                                 size="sm"
