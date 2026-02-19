@@ -1,75 +1,77 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Plus, Calendar, MessageSquare, UserCheck, Loader2, BookOpen, BrainCircuit,
-  Users, // Ícone para Total de Pacientes
-  Bell, // Ícone para Alertas do Calendário
+  Users,
+  UserCheck,
   TrendingUp,
-  PieChart, // Ícone para Adesão
-  CalendarDays, // Ícone para Consultas Agendadas
-  DollarSign // Ícone para Faturamento
 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { useChat } from '@/contexts/ChatContext';
 import { supabase } from '@/lib/customSupabaseClient';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Link, useNavigate } from 'react-router-dom';
-import NotificationsPanel from '@/components/NotificationsPanel';
+import { useNavigate } from 'react-router-dom';
 import PatientUpdatesWidget from '@/components/nutritionist/PatientUpdatesWidget';
 import NutritionistActivityFeed from '@/components/nutritionist/NutritionistActivityFeed';
-import { format, parseISO, isToday } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Skeleton } from '@/components/ui/skeleton';
 import { StatCardSkeleton, AlertCardSkeleton } from '@/components/ui/card-skeleton';
 
-const numericValue = (value) => {
-  const onlyDigits = String(value ?? '').replace(/[^\d]/g, '');
-  const parsed = Number(onlyDigits);
-  return Number.isFinite(parsed) ? parsed : 0;
-};
+const buildDailySeries = (days, dateValues = []) => {
+  const start = new Date();
+  start.setDate(start.getDate() - (days - 1));
 
-const getCardTrend = (value) => {
-  const base = Math.max(1, numericValue(value));
-  return Array.from({ length: 7 }, (_, idx) => {
-    const wave = Math.sin((base + idx) * 0.7);
-    const trend = ((base + idx * 2) % 9) + 2;
-    return Math.max(2, Math.round((wave + 1.2) * 3 + trend));
+  const labels = Array.from({ length: days }, (_, idx) => {
+    const d = new Date(start);
+    d.setDate(start.getDate() + idx);
+    return format(d, 'yyyy-MM-dd');
   });
+
+  const counter = {};
+  dateValues.forEach((value) => {
+    if (!value) return;
+    const key = format(new Date(value), 'yyyy-MM-dd');
+    counter[key] = (counter[key] || 0) + 1;
+  });
+
+  return labels.map((label) => counter[label] || 0);
 };
 
-const StatCardDecoration = ({ value }) => {
-  const bars = getCardTrend(value);
+const Sparkline = ({ data = [] }) => {
+  if (!data.length) return null;
+
+  const max = Math.max(...data, 1);
+  const width = 140;
+  const height = 44;
+  const step = width / Math.max(1, data.length - 1);
+  const points = data
+    .map((value, index) => {
+      const x = index * step;
+      const y = height - (value / max) * (height - 4);
+      return `${x},${y}`;
+    })
+    .join(' ');
+
   return (
-    <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-lg">
-      <div className="absolute -right-1 -bottom-2 flex items-end gap-1 opacity-25">
-        {bars.map((height, idx) => (
-          <div
-            // eslint-disable-next-line react/no-array-index-key
-            key={`trend-${idx}`}
-            className="w-1.5 rounded-t-full bg-white/90"
-            style={{ height: `${height * 4}px` }}
-          />
-        ))}
-      </div>
-      <svg
-        viewBox="0 0 160 80"
-        className="absolute -left-8 bottom-3 h-16 w-48 opacity-20"
-        aria-hidden="true"
-      >
-        <path
-          d={`M 0 64 ${bars
-            .map((h, idx) => `L ${idx * 24 + 10} ${76 - h * 3}`)
-            .join(' ')}`}
+    <div className="pointer-events-none absolute right-2 bottom-2 opacity-35">
+      <svg viewBox={`0 0 ${width} ${height}`} className="h-11 w-36" aria-hidden="true">
+        <polyline
+          points={points}
           fill="none"
           stroke="white"
-          strokeWidth="4"
+          strokeWidth="3"
           strokeLinecap="round"
+          strokeLinejoin="round"
         />
       </svg>
     </div>
   );
+};
+
+const getAgendaCountTagClass = (count) => {
+  if (count >= 5) return 'bg-secondary/15 text-secondary border-secondary/30';
+  if (count >= 3) return 'bg-yellow-100 text-yellow-800 border-yellow-300';
+  return 'bg-primary/15 text-primary border-primary/30';
 };
 
 const getUrgencyMeta = (appointmentTime) => {
@@ -114,28 +116,36 @@ const getUrgencyMeta = (appointmentTime) => {
 // --- WIDGET (DIREITA): Próximas Consultas ---
 const UpcomingAppointmentsWidget = ({ appointments, totalUpcoming, todayAppointments }) => {
   const navigate = useNavigate();
+  const hasTodayTag = todayAppointments > 0;
+  const hasTotalTag = totalUpcoming > 0;
   
   return (
     <Card className="bg-card shadow-card-dark rounded-xl">
       <CardHeader>
-        <CardTitle className="font-clash text-lg font-semibold text-primary">
-          Próximas Consultas
-        </CardTitle>
-        <CardDescription className="text-muted-foreground">
-          Seus próximos agendamentos.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="mb-4 grid grid-cols-2 gap-3">
-          <div className="rounded-lg border border-border/70 bg-muted/30 p-3">
-            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Total</p>
-            <p className="text-xl font-semibold text-foreground">{totalUpcoming}</p>
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <CardTitle className="font-clash text-lg font-semibold text-primary">
+              Próximas Consultas
+            </CardTitle>
+            <CardDescription className="text-muted-foreground">
+              Seus próximos agendamentos.
+            </CardDescription>
           </div>
-          <div className="rounded-lg border border-border/70 bg-muted/30 p-3">
-            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Hoje</p>
-            <p className="text-xl font-semibold text-foreground">{todayAppointments}</p>
+          <div className="mt-0.5 flex flex-wrap justify-end gap-1.5">
+            {hasTodayTag && (
+              <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${getAgendaCountTagClass(todayAppointments)}`}>
+                Hoje: {todayAppointments}
+              </span>
+            )}
+            {hasTotalTag && (
+              <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${getAgendaCountTagClass(totalUpcoming)}`}>
+                Total: {totalUpcoming}
+              </span>
+            )}
           </div>
         </div>
+      </CardHeader>
+      <CardContent>
         {appointments.length > 0 ? (
           <div className="space-y-4">
             {appointments.map(appt => {
@@ -183,16 +193,19 @@ const UpcomingAppointmentsWidget = ({ appointments, totalUpcoming, todayAppointm
 // --- COMPONENTE PRINCIPAL DO DASHBOARD ---
 export default function NutritionistDashboard() {
   const { toast } = useToast();
-  const { user, signOut } = useAuth();
-  const { unreadSenders } = useChat();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [patients, setPatients] = useState([]);
   const [appointments, setAppointments] = useState([]);
-  const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [appointmentsTodayCount, setAppointmentsTodayCount] = useState(0);
   const [appointmentsTotalCount, setAppointmentsTotalCount] = useState(0);
-  const [adherence, setAdherence] = useState('--%');
-  const [showNotifications, setShowNotifications] = useState(false);
+  const [activePatients24h, setActivePatients24h] = useState(0);
+  const [adherencePercent24h, setAdherencePercent24h] = useState('--%');
+  const [adherentPatients24h, setAdherentPatients24h] = useState(0);
+  const [newPatients30Days, setNewPatients30Days] = useState(0);
+  const [patients90DaysSeries, setPatients90DaysSeries] = useState([]);
+  const [active24hSeries, setActive24hSeries] = useState([]);
+  const [adherence24hSeries, setAdherence24hSeries] = useState([]);
 
   // OTIMIZADO: Loading states independentes para carregamento progressivo
   const [statsLoading, setStatsLoading] = useState(true);
@@ -203,43 +216,87 @@ export default function NutritionistDashboard() {
     if (!user || !user.id) return;
     setStatsLoading(true);
     try {
-      // Buscar dados em paralelo
-      const [patientData, notifCount, adherenceData] = await Promise.all([
-        // Pacientes
-        supabase
-          .from('user_profiles')
-          .select('id, name')
-          .eq('nutritionist_id', user.id)
-          .eq('is_active', true)
-          .order('name', { ascending: true })
+      const patientData = await supabase
+        .from('user_profiles')
+        .select('id, name, created_at')
+        .eq('nutritionist_id', user.id)
+        .eq('is_active', true)
+        .order('name', { ascending: true })
+        .then(({ data, error }) => {
+          if (error) throw error;
+          return data || [];
+        });
+
+      const patientIds = patientData.map((patient) => patient.id);
+      const since24hIso = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
+      const mealLogs = patientIds.length
+        ? await supabase
+          .from('meals')
+          .select('patient_id, created_at')
+          .in('patient_id', patientIds)
+          .gte('created_at', since24hIso)
           .then(({ data, error }) => {
             if (error) throw error;
             return data || [];
-          }),
-
-        // Notificações não lidas
-        supabase
-          .from('notifications')
-          .select('*', { count: 'exact', head: true })
-          .eq('user_id', user.id)
-          .eq('is_read', false)
-          .then(({ count, error }) => {
-            if (error) throw error;
-            return count || 0;
-          }),
-
-        // Adesão diária
-        supabase
-          .rpc('get_daily_adherence', { p_nutritionist_id: user.id })
-          .then(({ data, error }) => {
-            if (error) throw error;
-            return data;
           })
-      ]);
+        : [];
 
       setPatients(patientData);
-      setUnreadNotifications(notifCount);
-      setAdherence(adherenceData ? Math.round(adherenceData) + '%' : '--%');
+
+      const last90DaysNew = patientData
+        .filter((p) => p.created_at && new Date(p.created_at) >= new Date(Date.now() - 90 * 24 * 60 * 60 * 1000))
+        .map((p) => p.created_at);
+      const dailyNew90 = buildDailySeries(90, last90DaysNew);
+      const baseTotal = Math.max(0, patientData.length - last90DaysNew.length);
+      const cumulative90 = dailyNew90.reduce((acc, dayNew, index) => {
+        const prev = index === 0 ? baseTotal : acc[index - 1];
+        acc.push(prev + dayNew);
+        return acc;
+      }, []);
+      setPatients90DaysSeries(cumulative90);
+
+      const last30DaysNew = patientData.filter(
+        (p) => p.created_at && new Date(p.created_at) >= new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+      ).length;
+      setNewPatients30Days(last30DaysNew);
+
+      const interactionCounterByPatient = mealLogs.reduce((acc, log) => {
+        acc[log.patient_id] = (acc[log.patient_id] || 0) + 1;
+        return acc;
+      }, {});
+
+      const active24h = Object.values(interactionCounterByPatient).filter((count) => count >= 1).length;
+      const adherent24h = Object.values(interactionCounterByPatient).filter((count) => count >= 2).length;
+      const adherencePercent = patientIds.length
+        ? Math.round((adherent24h / patientIds.length) * 100)
+        : 0;
+
+      setActivePatients24h(active24h);
+      setAdherentPatients24h(adherent24h);
+      setAdherencePercent24h(`${adherencePercent}%`);
+
+      const hourLabels = Array.from({ length: 24 }, (_, idx) => {
+        const hourDate = new Date(Date.now() - (23 - idx) * 60 * 60 * 1000);
+        return format(hourDate, 'yyyy-MM-dd HH');
+      });
+      const activeByHour = {};
+      const interactionsByHour = {};
+
+      mealLogs.forEach((log) => {
+        const key = format(new Date(log.created_at), 'yyyy-MM-dd HH');
+        interactionsByHour[key] = (interactionsByHour[key] || 0) + 1;
+        if (!activeByHour[key]) {
+          activeByHour[key] = new Set();
+        }
+        activeByHour[key].add(log.patient_id);
+      });
+
+      const activeSeries = hourLabels.map((key) => activeByHour[key]?.size || 0);
+      const adherenceSeries = hourLabels.map((key) => interactionsByHour[key] || 0);
+
+      setActive24hSeries(activeSeries);
+      setAdherence24hSeries(adherenceSeries);
 
     } catch (error) {
       console.error('Erro ao carregar estatísticas:', error);
@@ -371,7 +428,7 @@ export default function NutritionistDashboard() {
                 <>
                   {/* Card 1: Pacientes (Verde) */}
                   <Card className="relative overflow-hidden bg-primary text-white border-0 shadow-card-dark">
-                    <StatCardDecoration value={patients.length} />
+                    <Sparkline data={patients90DaysSeries} />
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                       <CardTitle className="font-heading uppercase text-xs lg:text-sm font-medium text-white/80 tracking-wide leading-tight">
                         Total Pacientes
@@ -383,45 +440,45 @@ export default function NutritionistDashboard() {
                         {patients.length}
                       </div>
                       <p className="text-xs text-white/70">
-                        Pacientes ativos
+                        Evolução dos últimos 90 dias
                       </p>
                     </CardContent>
                   </Card>
 
-                  {/* Card 2: Mensagens (Neutro Escuro) - Mobile: posição 2, Desktop: posição 3 */}
+                  {/* Card 2: Pacientes Ativos (Neutro Escuro) - Mobile: posição 2, Desktop: posição 3 */}
                   <Card className="relative overflow-hidden bg-neutral-800 text-white border-0 shadow-card-dark lg:order-3">
-                    <StatCardDecoration value={unreadNotifications} />
+                    <Sparkline data={active24hSeries} />
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                       <CardTitle className="font-heading uppercase text-xs lg:text-sm font-medium text-white/80 tracking-wide leading-tight">
-                        Não Lidas
+                        Pacientes Ativos
                       </CardTitle>
-                      <Bell className="h-5 w-5 lg:h-6 lg:w-6 text-white/80 flex-shrink-0" />
+                      <UserCheck className="h-5 w-5 lg:h-6 lg:w-6 text-white/80 flex-shrink-0" />
                     </CardHeader>
                     <CardContent className="relative">
                       <div className="text-3xl lg:text-4xl font-bold text-white">
-                        {unreadNotifications}
+                        {activePatients24h}
                       </div>
                       <p className="text-xs text-white/70 leading-tight">
-                        Notificações pendentes
+                        {newPatients30Days} novos nos últimos 30 dias
                       </p>
                     </CardContent>
                   </Card>
 
                   {/* Card 3: Adesão (Laranja) - Mobile: ocupa 2 colunas embaixo, Desktop: posição 2 */}
                   <Card className="relative overflow-hidden bg-secondary text-white border-0 shadow-card-dark col-span-2 lg:col-span-1 lg:order-2">
-                    <StatCardDecoration value={adherence} />
+                    <Sparkline data={adherence24hSeries} />
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                       <CardTitle className="font-heading uppercase text-xs lg:text-sm font-medium text-white/80 tracking-wide leading-tight">
-                        Adesão Hoje
+                        Adesão 24h
                       </CardTitle>
                       <TrendingUp className="h-5 w-5 lg:h-6 lg:w-6 text-white/80 flex-shrink-0" />
                     </CardHeader>
                     <CardContent className="relative">
                       <div className="text-3xl lg:text-4xl font-bold text-white">
-                        {adherence}
+                        {adherencePercent24h}
                       </div>
                       <p className="text-xs text-white/70">
-                        Meta diária de adesão
+                        {adherentPatients24h}/{patients.length} com 2+ registros
                       </p>
                     </CardContent>
                   </Card>
@@ -449,8 +506,6 @@ export default function NutritionistDashboard() {
 
         </div>
       </motion.div>
-      
-      <NotificationsPanel isOpen={showNotifications} setIsOpen={setShowNotifications} />
     </div>
   );
 }
