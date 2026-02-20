@@ -15,7 +15,7 @@ import { ProtocolComparisonTable } from '@/components/energy';
 import ActivityLevelSelector from '@/components/energy/ActivityLevelSelector';
 import WeightProjectionCard from '@/components/energy/WeightProjectionCard';
 import CalculationInfoTooltip from '@/components/energy/CalculationInfoTooltip';
-import { getLatestAnamnesisForEnergy, getActiveGoalForEnergy } from '@/lib/supabase/patient-queries';
+import { getLatestAnamnesisForEnergy, getActiveGoalForEnergy, logActivityEvent } from '@/lib/supabase/patient-queries';
 import { getPatientModuleSyncFlags, clearPatientModuleSyncFlags } from '@/lib/supabase/anthropometry-queries';
 import { 
     calculateAllProtocols, 
@@ -363,6 +363,18 @@ const EnergyExpenditurePage = () => {
             }
 
             if (error) throw error;
+
+            await logActivityEvent({
+                eventName: existing ? 'energy.calculation.updated' : 'energy.calculation.created',
+                sourceModule: 'energy',
+                patientId,
+                payload: {
+                    protocol: dataToSave.protocol,
+                    activity_level: dataToSave.activity_level,
+                    get: dataToSave.get,
+                    get_with_activities: dataToSave.get_with_activities
+                }
+            });
 
             const { error: clearError } = await clearPatientModuleSyncFlags(patientId, { energy: true });
             if (clearError) {

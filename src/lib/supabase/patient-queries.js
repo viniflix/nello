@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/customSupabaseClient';
 import { translateMealType } from '@/utils/mealTranslations';
-import { logSupabaseError } from '@/lib/supabase/query-helpers';
+import { buildActivityEventPayload, logSupabaseError } from '@/lib/supabase/query-helpers';
 
 /**
  * Busca o perfil completo do paciente
@@ -436,6 +436,56 @@ export const getPatientsPendingData = async (nutritionistId) => {
     } catch (error) {
         logSupabaseError('Erro ao detectar pendências', error);
         return { data: [], error };
+    }
+};
+
+/**
+ * Busca regras de prioridade do feed (globais + específicas do nutricionista)
+ * @param {string} nutritionistId - ID do nutricionista
+ * @returns {Promise<{data: array, error: object}>}
+ */
+export const getFeedPriorityRules = async (nutritionistId) => {
+    try {
+        const { data, error } = await supabase
+            .from('notification_rules')
+            .select('id, scope, nutritionist_id, rule_key, weight, config, is_active, updated_at')
+            .eq('scope', 'feed_priority')
+            .eq('is_active', true)
+            .or(`nutritionist_id.is.null,nutritionist_id.eq.${nutritionistId}`)
+            .order('nutritionist_id', { ascending: true })
+            .order('weight', { ascending: false });
+
+        if (error) throw error;
+        return { data: data || [], error: null };
+    } catch (error) {
+        logSupabaseError('Erro ao buscar regras de prioridade do feed', error);
+        return { data: [], error };
+    }
+};
+
+/**
+ * Registra evento de atividade no contrato unificado de eventos
+ * @param {object} eventInput - dados do evento
+ * @returns {Promise<{data: string|null, error: object|null}>}
+ */
+export const logActivityEvent = async (eventInput) => {
+    try {
+        const normalized = buildActivityEventPayload(eventInput || {});
+
+        const { data, error } = await supabase.rpc('log_activity_event', {
+            p_event_name: normalized.event_name,
+            p_event_version: normalized.event_version,
+            p_source_module: normalized.source_module,
+            p_patient_id: normalized.patient_id,
+            p_nutritionist_id: normalized.nutritionist_id,
+            p_payload: normalized.payload
+        });
+
+        if (error) throw error;
+        return { data: data || null, error: null };
+    } catch (error) {
+        logSupabaseError('Erro ao registrar evento de atividade', error);
+        return { data: null, error };
     }
 };
 

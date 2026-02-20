@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/customSupabaseClient';
 import { getTodayIsoDate } from '@/lib/utils/date';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
+import { logActivityEvent } from '@/lib/supabase/patient-queries';
 
 // =============================================
 // CONSTANTES
@@ -241,6 +242,17 @@ export const createGoal = async (goalData, patientId, nutritionistId) => {
 
         if (error) throw error;
 
+        await logActivityEvent({
+            eventName: 'goal.created',
+            sourceModule: 'goals',
+            patientId: data?.patient_id || patientId,
+            nutritionistId: data?.nutritionist_id || nutritionistId || null,
+            payload: {
+                goal_id: data?.id || null,
+                goal_type: data?.goal_type || goalData.goal_type || null
+            }
+        });
+
         return { data, error: null };
     } catch (error) {
         logSupabaseError('Erro ao criar meta', error);
@@ -373,6 +385,18 @@ export const updateGoalProgress = async (goalId, currentWeight) => {
             await completeGoal(goalId);
         }
 
+        await logActivityEvent({
+            eventName: 'goal.progress.updated',
+            sourceModule: 'goals',
+            patientId: data?.patient_id || goal?.patient_id || null,
+            nutritionistId: data?.nutritionist_id || goal?.nutritionist_id || null,
+            payload: {
+                goal_id: data?.id || goalId,
+                progress_percentage: progressData,
+                current_weight: Number(currentWeight)
+            }
+        });
+
         return { data, error: null };
     } catch (error) {
         logSupabaseError('Erro ao atualizar progresso', error);
@@ -393,6 +417,17 @@ export const updateGoal = async (goalId, updates) => {
             .single();
 
         if (error) throw error;
+
+        await logActivityEvent({
+            eventName: 'goal.updated',
+            sourceModule: 'goals',
+            patientId: data?.patient_id || null,
+            nutritionistId: data?.nutritionist_id || null,
+            payload: {
+                goal_id: data?.id || goalId,
+                updated_fields: Object.keys(updates || {})
+            }
+        });
 
         return { data, error: null };
     } catch (error) {
@@ -418,6 +453,16 @@ export const completeGoal = async (goalId) => {
 
         if (error) throw error;
 
+        await logActivityEvent({
+            eventName: 'goal.completed',
+            sourceModule: 'goals',
+            patientId: data?.patient_id || null,
+            nutritionistId: data?.nutritionist_id || null,
+            payload: {
+                goal_id: data?.id || goalId
+            }
+        });
+
         return { data, error: null };
     } catch (error) {
         logSupabaseError('Erro ao completar meta', error);
@@ -442,6 +487,17 @@ export const cancelGoal = async (goalId, reason = '') => {
 
         if (error) throw error;
 
+        await logActivityEvent({
+            eventName: 'goal.cancelled',
+            sourceModule: 'goals',
+            patientId: data?.patient_id || null,
+            nutritionistId: data?.nutritionist_id || null,
+            payload: {
+                goal_id: data?.id || goalId,
+                reason: reason || null
+            }
+        });
+
         return { data, error: null };
     } catch (error) {
         logSupabaseError('Erro ao cancelar meta', error);
@@ -462,6 +518,16 @@ export const pauseGoal = async (goalId) => {
             .single();
 
         if (error) throw error;
+
+        await logActivityEvent({
+            eventName: 'goal.paused',
+            sourceModule: 'goals',
+            patientId: data?.patient_id || null,
+            nutritionistId: data?.nutritionist_id || null,
+            payload: {
+                goal_id: data?.id || goalId
+            }
+        });
 
         return { data, error: null };
     } catch (error) {
@@ -484,6 +550,16 @@ export const resumeGoal = async (goalId) => {
 
         if (error) throw error;
 
+        await logActivityEvent({
+            eventName: 'goal.resumed',
+            sourceModule: 'goals',
+            patientId: data?.patient_id || null,
+            nutritionistId: data?.nutritionist_id || null,
+            payload: {
+                goal_id: data?.id || goalId
+            }
+        });
+
         return { data, error: null };
     } catch (error) {
         logSupabaseError('Erro ao reativar meta', error);
@@ -500,12 +576,24 @@ export const resumeGoal = async (goalId) => {
  */
 export const deleteGoal = async (goalId) => {
     try {
+        const { data: existingGoal } = await getGoalById(goalId);
+
         const { error } = await supabase
             .from('patient_goals')
             .delete()
             .eq('id', goalId);
 
         if (error) throw error;
+
+        await logActivityEvent({
+            eventName: 'goal.deleted',
+            sourceModule: 'goals',
+            patientId: existingGoal?.patient_id || null,
+            nutritionistId: existingGoal?.nutritionist_id || null,
+            payload: {
+                goal_id: goalId
+            }
+        });
 
         return { error: null };
     } catch (error) {

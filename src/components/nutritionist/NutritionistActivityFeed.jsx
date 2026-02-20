@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
-import { getPatientsWithLowAdherence, getPatientsPendingData, getComprehensiveActivityFeed } from '@/lib/supabase/patient-queries';
+import { getPatientsWithLowAdherence, getPatientsPendingData, getComprehensiveActivityFeed, getFeedPriorityRules } from '@/lib/supabase/patient-queries';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useNavigate } from 'react-router-dom';
 import { format, formatDistanceToNow, isValid, parseISO } from 'date-fns';
@@ -136,7 +136,7 @@ const NutritionistActivityFeed = () => {
 
             try {
                 const today = new Date();
-                const [activitiesRes, lowAdherenceRes, pendingRes, appointmentsRes, patientsRes] = await Promise.all([
+                const [activitiesRes, lowAdherenceRes, pendingRes, appointmentsRes, patientsRes, priorityRulesRes] = await Promise.all([
                     getComprehensiveActivityFeed(user.id, 40),
                     getPatientsWithLowAdherence(user.id),
                     getPatientsPendingData(user.id),
@@ -151,7 +151,8 @@ const NutritionistActivityFeed = () => {
                         .from('user_profiles')
                         .select('id, name, birth_date, avatar_url')
                         .eq('nutritionist_id', user.id)
-                        .eq('is_active', true)
+                        .eq('is_active', true),
+                    getFeedPriorityRules(user.id)
                 ]);
 
                 if (activitiesRes.error) throw activitiesRes.error;
@@ -160,8 +161,10 @@ const NutritionistActivityFeed = () => {
                 if (appointmentsRes.error) throw appointmentsRes.error;
                 if (patientsRes.error) throw patientsRes.error;
 
+                const priorityRules = priorityRulesRes?.data || [];
                 const activityItems = (activitiesRes.data || []).map((activity) => {
                     const cta = getCtaForActivity(activity);
+                    const priorityMeta = getPriorityMeta('activity', activity, priorityRules);
                     return {
                         id: `activity-${activity.id}`,
                         type: activity.type,
@@ -173,7 +176,9 @@ const NutritionistActivityFeed = () => {
                         timestamp: activity.timestamp,
                         ctaLabel: cta.label,
                         ctaRoute: cta.route,
-                        priority: 5
+                        priority: 5,
+                        priorityScore: priorityMeta.score,
+                        priorityReason: priorityMeta.reason
                     };
                 });
 
@@ -188,7 +193,9 @@ const NutritionistActivityFeed = () => {
                         timestamp: null,
                         ctaLabel: 'Resolver',
                         ctaRoute: item.route,
-                        priority: 1
+                        priority: 1,
+                        priorityScore: getPriorityMeta('pending', item, priorityRules).score,
+                        priorityReason: getPriorityMeta('pending', item, priorityRules).reason
                     }))
                 );
 
@@ -204,7 +211,9 @@ const NutritionistActivityFeed = () => {
                     timestamp: null,
                     ctaLabel: 'Ver diário',
                     ctaRoute: `/nutritionist/patients/${patient.id}/food-diary`,
-                    priority: 4
+                    priority: 4,
+                    priorityScore: getPriorityMeta('low_adherence', patient, priorityRules).score,
+                    priorityReason: getPriorityMeta('low_adherence', patient, priorityRules).reason
                 }));
 
                 const appointmentItems = (appointmentsRes.data || []).map(appointment => ({
@@ -220,7 +229,9 @@ const NutritionistActivityFeed = () => {
                     timestamp: appointment.appointment_time,
                     ctaLabel: 'Ver agenda',
                     ctaRoute: '/nutritionist/agenda',
-                    priority: 2
+                    priority: 2,
+                    priorityScore: getPriorityMeta('appointment_upcoming', appointment, priorityRules).score,
+                    priorityReason: getPriorityMeta('appointment_upcoming', appointment, priorityRules).reason
                 }));
 
                 const birthdayItems = getBirthdayItems(patientsRes.data || []);
@@ -234,6 +245,9 @@ const NutritionistActivityFeed = () => {
                 ];
 
                 const sorted = allItems.sort((a, b) => {
+                    const scoreA = Number(a.priorityScore || 0);
+                    const scoreB = Number(b.priorityScore || 0);
+                    if (scoreA !== scoreB) return scoreB - scoreA;
                     if (a.priority !== b.priority) return a.priority - b.priority;
                     const aTime = a.timestamp ? new Date(a.timestamp).getTime() : 0;
                     const bTime = b.timestamp ? new Date(b.timestamp).getTime() : 0;
@@ -335,6 +349,11 @@ const NutritionistActivityFeed = () => {
                                                 <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
                                                     {item.description}
                                                 </p>
+                                                {item.priorityReason ? (
+                                                    <p className="text-[11px] text-muted-foreground mt-1">
+                                                        Prioridade: {item.priorityReason}
+                                                    </p>
+                                                ) : null}
                                             </div>
                                             {item.type === 'pending' && item.ctaRoute ? (
                                                 <Button
@@ -435,6 +454,37 @@ const getBirthdayItems = (patients) => {
     });
 
     return items;
+};
+
+const getPriorityMeta = (kind, item, rules = []) => {
+    const getRule = (ruleKey) => rules.find((rule) => rule.rule_key === ruleKey && rule.is_active !== false);
+
+    if (kind === 'pending') {
+        const rule = getRule('pending_data');
+        return { score: Number(rule?.weight || 5), reason: 'Pendencia de dados essenciais' };
+    }
+
+    if (kind === 'low_adherence') {
+        const rule = getRule('low_adherence');
+        return { score: Number(rule?.weight || 4), reason: 'Baixa adesao recente' };
+    }
+
+    if (kind === 'appointment_upcoming') {
+        const rule = getRule('appointment_upcoming');
+        return { score: Number(rule?.weight || 3), reason: 'Consulta proxima' };
+    }
+
+    const typeToRule = {
+        meal: 'recent_activity',
+        anthropometry: 'recent_activity',
+        anamnesis: 'recent_activity',
+        meal_plan: 'recent_activity',
+        appointment: 'appointment_upcoming',
+        message: 'recent_activity',
+        achievement: 'recent_activity'
+    };
+    const rule = getRule(typeToRule[item?.type] || 'recent_activity');
+    return { score: Number(rule?.weight || 1), reason: 'Atividade recente' };
 };
 
 export default NutritionistActivityFeed;

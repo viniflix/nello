@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/customSupabaseClient';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
+import { logActivityEvent } from '@/lib/supabase/patient-queries';
 
 const isMissingColumnError = (error) => {
     const message = String(error?.message || '').toLowerCase();
@@ -158,6 +159,18 @@ export const createAnthropometryRecord = async (recordData) => {
         }
 
         if (error) throw error;
+
+        await logActivityEvent({
+            eventName: 'anthropometry.record.created',
+            sourceModule: 'anthropometry',
+            patientId: data?.patient_id || patient_id,
+            nutritionistId: data?.nutritionist_id || null,
+            payload: {
+                record_id: data?.id || null,
+                record_date: data?.record_date || record_date || null
+            }
+        });
+
         return { data, error: null };
     } catch (error) {
         logSupabaseError('Erro ao criar registro antropométrico', error);
@@ -207,6 +220,18 @@ export const updateAnthropometryRecord = async (recordId, recordData) => {
             .single();
 
         if (error) throw error;
+
+        await logActivityEvent({
+            eventName: 'anthropometry.record.updated',
+            sourceModule: 'anthropometry',
+            patientId: data?.patient_id || null,
+            nutritionistId: data?.nutritionist_id || null,
+            payload: {
+                record_id: data?.id || recordId,
+                record_date: data?.record_date || null
+            }
+        });
+
         return { data, error: null };
     } catch (error) {
         logSupabaseError('Erro ao atualizar registro antropométrico', error);
@@ -229,6 +254,17 @@ export const deleteAnthropometryRecord = async (recordId) => {
             .single();
 
         if (error) throw error;
+
+        await logActivityEvent({
+            eventName: 'anthropometry.record.deleted',
+            sourceModule: 'anthropometry',
+            patientId: data?.patient_id || null,
+            nutritionistId: data?.nutritionist_id || null,
+            payload: {
+                record_id: data?.id || recordId
+            }
+        });
+
         return { data, error: null };
     } catch (error) {
         logSupabaseError('Erro ao deletar registro antropométrico', error);
