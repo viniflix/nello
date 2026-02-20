@@ -43,6 +43,21 @@ export default function AgendaPage() {
     const [exportWeekStart, setExportWeekStart] = useState(startOfWeek(new Date(), { locale: ptBR }));
     const [exportMonth, setExportMonth] = useState(new Date());
 
+    const normalizeAppointment = useCallback((appointment) => {
+        const startValue = appointment?.start_time || appointment?.appointment_time || null;
+        const startDate = startValue ? new Date(startValue) : null;
+        const endDate = appointment?.end_time ? new Date(appointment.end_time) : null;
+        const computedDuration = startDate && endDate
+            ? Math.max(1, Math.round((endDate.getTime() - startDate.getTime()) / 60000))
+            : null;
+
+        return {
+            ...appointment,
+            appointment_time: startValue,
+            duration: Number(appointment?.duration || computedDuration || 60)
+        };
+    }, []);
+
     const loadData = useCallback(async () => {
         if (!user) return;
         setLoading(true);
@@ -53,7 +68,7 @@ export default function AgendaPage() {
             .limit(1000);
 
         if (apptsError) toast({ title: "Erro", description: apptsError.message, variant: "destructive" });
-        else setAppointments(apptsData || []);
+        else setAppointments((apptsData || []).map(normalizeAppointment));
 
         const { data: patientsData, error: patientsError } = await supabase
             .from('user_profiles')
@@ -74,7 +89,7 @@ export default function AgendaPage() {
         }
 
         setLoading(false);
-    }, [user, toast]);
+    }, [user, toast, normalizeAppointment]);
 
     useEffect(() => {
         loadData();
@@ -262,6 +277,7 @@ export default function AgendaPage() {
             'confirmed': { label: 'Confirmada', variant: 'default', color: 'text-green-600 bg-green-50' },
             'awaiting_confirmation': { label: 'Aguardando', variant: 'secondary', color: 'text-yellow-600 bg-yellow-50' },
             'completed': { label: 'Realizada', variant: 'secondary', color: 'text-gray-600 bg-gray-100' },
+            'canceled': { label: 'Cancelada', variant: 'destructive', color: 'text-red-600 bg-red-50' },
             'cancelled': { label: 'Cancelada', variant: 'destructive', color: 'text-red-600 bg-red-50' },
             'no_show': { label: 'Faltou', variant: 'destructive', color: 'text-orange-600 bg-orange-50' }
         };

@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Droplet, Plus, Edit, Trash2, Calendar, Activity, AlertCircle, Search, Filter, Loader2, Save, X, FileText, Upload, Eye, Download } from 'lucide-react';
+import { ArrowLeft, Droplet, Plus, Edit, Trash2, Calendar, Activity, AlertCircle, Search, Filter, Loader2, Save, X, FileText, Upload, Eye, Download, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -10,12 +10,15 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/customSupabaseClient';
 import { toPortugueseError } from '@/lib/utils/errorMessages';
 import { cn } from '@/lib/utils';
 import { getTodayIsoDate } from '@/lib/utils/date';
 import {
     getPatientLabResults,
+    getLabRiskRules,
+    classifyLabResultsRiskBatch,
     createLabResult,
     updateLabResult,
     deleteLabResult,
@@ -28,12 +31,15 @@ const LabResultsPage = () => {
     const { patientId } = useParams();
     const navigate = useNavigate();
     const { toast } = useToast();
+    const { user } = useAuth();
 
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [patientName, setPatientName] = useState('');
     const [labResults, setLabResults] = useState([]);
     const [filteredResults, setFilteredResults] = useState([]);
+    const [riskSummary, setRiskSummary] = useState({ total: 0, high: 0, medium: 0, low: 0, highest_risk: 'none' });
+    const [selectedMarkerKey, setSelectedMarkerKey] = useState('');
 
     // Modal states
     const [modalOpen, setModalOpen] = useState(false);
@@ -65,7 +71,7 @@ const LabResultsPage = () => {
     useEffect(() => {
         loadPatientData();
         loadLabResults();
-    }, [patientId]);
+    }, [patientId, user?.id]);
 
     useEffect(() => {
         applyFilters();
@@ -91,10 +97,13 @@ const LabResultsPage = () => {
         setLoading(true);
         try {
             const { data, error } = await getPatientLabResults(patientId);
+            const { data: riskRules } = await getLabRiskRules(user?.id || null);
 
             if (error) throw error;
 
-            setLabResults(data || []);
+            const classified = classifyLabResultsRiskBatch(data || [], riskRules || []);
+            setLabResults(classified.data || []);
+            setRiskSummary(classified.summary || { total: 0, high: 0, medium: 0, low: 0, highest_risk: 'none' });
         } catch (error) {
             console.error('Erro ao carregar exames:', error);
             toast({
@@ -124,6 +133,66 @@ const LabResultsPage = () => {
 
         setFilteredResults(filtered);
     };
+
+    const timelineByMarker = useMemo(() => {
+        const grouped = {};
+        (labResults || []).forEach((item) => {
+            const markerKey = item.marker_key || item.test_name || 'marcador_desconhecido';
+            if (!grouped[markerKey]) grouped[markerKey] = [];
+            grouped[markerKey].push(item);
+        });
+
+        Object.keys(grouped).forEach((markerKey) => {
+            grouped[markerKey].sort((a, b) => new Date(a.test_date) - new Date(b.test_date));
+        });
+
+        return grouped;
+    }, [labResults]);
+
+    const markerOptions = useMemo(() => (
+        Object.keys(timelineByMarker).map((markerKey) => {
+            const items = timelineByMarker[markerKey] || [];
+            const last = items[items.length - 1];
+            return {
+                markerKey,
+                label: last?.test_name || markerKey,
+                count: items.length
+            };
+        })
+    ), [timelineByMarker]);
+
+    useEffect(() => {
+        if (!markerOptions.length) {
+            setSelectedMarkerKey('');
+            return;
+        }
+        if (!selectedMarkerKey || !markerOptions.some((item) => item.markerKey === selectedMarkerKey)) {
+            setSelectedMarkerKey(markerOptions[0].markerKey);
+        }
+    }, [markerOptions, selectedMarkerKey]);
+
+    const selectedTimeline = useMemo(() => timelineByMarker[selectedMarkerKey] || [], [timelineByMarker, selectedMarkerKey]);
+
+    const selectedTrend = useMemo(() => {
+        if (!selectedTimeline.length) return null;
+        const latest = selectedTimeline[selectedTimeline.length - 1];
+        const previous = selectedTimeline.length > 1 ? selectedTimeline[selectedTimeline.length - 2] : null;
+        const latestValue = Number(latest?.test_value);
+        const previousValue = Number(previous?.test_value);
+
+        if (!Number.isFinite(latestValue) || !Number.isFinite(previousValue)) {
+            return {
+                latest,
+                previous,
+                direction: 'stable',
+                delta: null
+            };
+        }
+
+        const delta = latestValue - previousValue;
+        const direction = delta > 0 ? 'up' : delta < 0 ? 'down' : 'stable';
+        return { latest, previous, direction, delta };
+    }, [selectedTimeline]);
 
     const handleOpenModal = (lab = null) => {
         if (lab) {
@@ -325,6 +394,23 @@ const LabResultsPage = () => {
         return <Badge variant="outline" className={cn('text-xs', config.className)}>{config.label}</Badge>;
     };
 
+    const getRiskBadge = (riskLevel) => {
+        const configs = {
+            none: { label: 'Risco baixo', className: 'bg-emerald-100 text-emerald-800 border-emerald-300' },
+            low: { label: 'Risco leve', className: 'bg-sky-100 text-sky-800 border-sky-300' },
+            medium: { label: 'Risco moderado', className: 'bg-amber-100 text-amber-800 border-amber-300' },
+            high: { label: 'Risco alto', className: 'bg-red-100 text-red-800 border-red-300' }
+        };
+        const config = configs[riskLevel] || configs.none;
+        return <Badge variant="outline" className={cn('text-xs', config.className)}>{config.label}</Badge>;
+    };
+
+    const getTrendMeta = (direction) => {
+        if (direction === 'up') return { icon: TrendingUp, label: 'Em alta', className: 'text-red-600' };
+        if (direction === 'down') return { icon: TrendingDown, label: 'Em queda', className: 'text-emerald-600' };
+        return { icon: Minus, label: 'Estável', className: 'text-muted-foreground' };
+    };
+
     return loading ? null : (
         <div className="flex flex-col min-h-screen bg-background overflow-x-hidden">
             <div className="max-w-7xl mx-auto w-full px-4 md:px-8 py-4 md:py-8 min-w-0">
@@ -392,6 +478,102 @@ const LabResultsPage = () => {
                     </CardContent>
                 </Card>
 
+                {/* Risco + Timeline por marcador */}
+                {labResults.length > 0 && (
+                    <Card className="mb-6">
+                        <CardHeader>
+                            <CardTitle className="text-lg">Risco Laboratorial e Tendência</CardTitle>
+                            <CardDescription>
+                                Semáforo de risco por regra e evolução temporal por marcador.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="flex flex-wrap items-center gap-2">
+                                {getRiskBadge('high')} <span className="text-sm text-muted-foreground">{riskSummary.high}</span>
+                                {getRiskBadge('medium')} <span className="text-sm text-muted-foreground">{riskSummary.medium}</span>
+                                {getRiskBadge('low')} <span className="text-sm text-muted-foreground">{riskSummary.low}</span>
+                                {getRiskBadge('none')} <span className="text-sm text-muted-foreground">
+                                    {Math.max(0, (riskSummary.total || 0) - (riskSummary.high || 0) - (riskSummary.medium || 0) - (riskSummary.low || 0))}
+                                </span>
+                            </div>
+
+                            {markerOptions.length > 0 && (
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="marker-select">Marcador</Label>
+                                        <Select value={selectedMarkerKey} onValueChange={setSelectedMarkerKey}>
+                                            <SelectTrigger id="marker-select">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {markerOptions.map((option) => (
+                                                    <SelectItem key={option.markerKey} value={option.markerKey}>
+                                                        {option.label} ({option.count})
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="md:col-span-2 rounded-lg border p-3">
+                                        {selectedTrend ? (
+                                            (() => {
+                                                const trendMeta = getTrendMeta(selectedTrend.direction);
+                                                const TrendIcon = trendMeta.icon;
+                                                return (
+                                                    <div className="flex items-center justify-between gap-3">
+                                                        <div>
+                                                            <p className="text-xs text-muted-foreground">Último valor</p>
+                                                            <p className="text-lg font-semibold">
+                                                                {selectedTrend.latest?.test_value ?? '--'} {selectedTrend.latest?.test_unit || ''}
+                                                            </p>
+                                                            <p className="text-xs text-muted-foreground">
+                                                                {selectedTrend.latest?.test_date ? new Date(selectedTrend.latest.test_date).toLocaleDateString('pt-BR') : 'sem data'}
+                                                            </p>
+                                                        </div>
+                                                        <div className={cn('flex items-center gap-1 text-sm font-medium', trendMeta.className)}>
+                                                            <TrendIcon className="w-4 h-4" />
+                                                            {trendMeta.label}
+                                                            {selectedTrend.delta != null ? ` (${selectedTrend.delta > 0 ? '+' : ''}${selectedTrend.delta.toFixed(2)})` : ''}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })()
+                                        ) : (
+                                            <p className="text-sm text-muted-foreground">Sem dados para tendência.</p>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
+                            {selectedTimeline.length > 0 && (
+                                <div className="space-y-2 rounded-lg border p-3">
+                                    <p className="text-sm font-medium">Linha do tempo</p>
+                                    <div className="space-y-2 max-h-44 overflow-y-auto pr-1">
+                                        {[...selectedTimeline].reverse().slice(0, 8).map((item) => (
+                                            <div key={item.id} className="flex items-center justify-between rounded-md border p-2">
+                                                <div>
+                                                    <p className="text-sm font-medium">
+                                                        {item.test_value ?? '--'} {item.test_unit || ''}
+                                                    </p>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        {item.test_date ? new Date(item.test_date).toLocaleDateString('pt-BR') : 'sem data'}
+                                                    </p>
+                                                </div>
+                                                <div className="flex flex-col items-end gap-1">
+                                                    {getRiskBadge(item.risk_level || 'none')}
+                                                    {item.risk_reason ? (
+                                                        <span className="text-[11px] text-muted-foreground">{item.risk_reason}</span>
+                                                    ) : null}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                )}
+
                 {/* Results */}
                 {filteredResults.length === 0 ? (
                     <Card className="border-dashed">
@@ -430,7 +612,8 @@ const LabResultsPage = () => {
                                                         PDF
                                                     </Badge>
                                                 )}
-                                                {lab.test_value && lab.status && getStatusBadge(lab.status)}
+                                                {(lab.test_value !== null && lab.test_value !== undefined && lab.test_value !== '') && lab.status && getStatusBadge(lab.status)}
+                                                {(lab.test_value !== null && lab.test_value !== undefined && lab.test_value !== '') && getRiskBadge(lab.risk_level || 'none')}
                                             </div>
 
                                             <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">

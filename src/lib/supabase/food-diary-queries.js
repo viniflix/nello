@@ -1,6 +1,18 @@
 import { supabase } from '@/lib/customSupabaseClient';
 import { formatDateToIsoDate, getTodayIsoDate } from '@/lib/utils/date';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
+import { logOperationalEvent } from './observability-queries';
+
+const DEFAULT_REMINDER_PREFERENCES = {
+    daily_log_enabled: true,
+    measurement_enabled: true,
+    daily_log_time: '20:00',
+    measurement_time: '09:00',
+    channel_in_app: true,
+    timezone: 'America/Sao_Paulo',
+    quiet_hours_start: null,
+    quiet_hours_end: null
+};
 
 /**
  * Busca todas as refeições de um paciente com paginação
@@ -10,6 +22,7 @@ import { logSupabaseError } from '@/lib/supabase/query-helpers';
  * @param {number} offset - Offset para paginação
  */
 export const getPatientMeals = async (patientId, filters = {}, limit = 50, offset = 0) => {
+    const startedAt = Date.now();
     try {
         let query = supabase
             .from('meals')
@@ -39,9 +52,28 @@ export const getPatientMeals = async (patientId, filters = {}, limit = 50, offse
 
         if (error) throw error;
 
+        await logOperationalEvent({
+            module: 'food_diary',
+            operation: 'get_patient_meals',
+            eventType: 'success',
+            latencyMs: Date.now() - startedAt,
+            patientId: patientId || null,
+            metadata: {
+                items_count: Array.isArray(data) ? data.length : 0
+            }
+        });
+
         return { data, error: null, count };
     } catch (error) {
         logSupabaseError('Erro ao buscar refeições', error);
+        await logOperationalEvent({
+            module: 'food_diary',
+            operation: 'get_patient_meals',
+            eventType: 'error',
+            latencyMs: Date.now() - startedAt,
+            patientId: patientId || null,
+            errorMessage: error?.message || String(error)
+        });
         return { data: null, error };
     }
 };
@@ -285,6 +317,71 @@ export const formatAuditAction = (auditLog) => {
     };
 
     return actionMap[auditLog.action] || actionMap.create;
+};
+
+/**
+ * Busca preferências de lembrete do paciente.
+ * Retorna defaults quando ainda não existe registro.
+ */
+export const getPatientReminderPreferences = async (patientId) => {
+    try {
+        const { data, error } = await supabase
+            .from('patient_reminder_preferences')
+            .select('*')
+            .eq('patient_id', patientId)
+            .maybeSingle();
+
+        if (error) throw error;
+        return {
+            data: data ? { ...DEFAULT_REMINDER_PREFERENCES, ...data } : { ...DEFAULT_REMINDER_PREFERENCES, patient_id: patientId },
+            error: null
+        };
+    } catch (error) {
+        logSupabaseError('Erro ao buscar preferências de lembrete', error);
+        return { data: { ...DEFAULT_REMINDER_PREFERENCES, patient_id: patientId }, error };
+    }
+};
+
+/**
+ * Salva preferências de lembrete do paciente (idempotente por patient_id).
+ */
+export const upsertPatientReminderPreferences = async (patientId, preferences = {}) => {
+    try {
+        const payload = {
+            patient_id: patientId,
+            ...DEFAULT_REMINDER_PREFERENCES,
+            ...(preferences && typeof preferences === 'object' ? preferences : {})
+        };
+
+        const { data, error } = await supabase
+            .from('patient_reminder_preferences')
+            .upsert(payload, { onConflict: 'patient_id' })
+            .select('*')
+            .single();
+
+        if (error) throw error;
+        return { data, error: null };
+    } catch (error) {
+        logSupabaseError('Erro ao salvar preferências de lembrete', error);
+        return { data: null, error };
+    }
+};
+
+/**
+ * Processa lembretes in-app para o paciente atual (idempotente por dia/tipo).
+ */
+export const processPatientReminders = async (patientId) => {
+    try {
+        const { data, error } = await supabase.rpc('process_patient_reminders', {
+            p_patient_id: patientId
+        });
+
+        if (error) throw error;
+        return { data, error: null };
+    } catch (error) {
+        logSupabaseError('Erro ao processar lembretes do paciente', error);
+        return { data: null, error };
+    }
 };
 
 /**

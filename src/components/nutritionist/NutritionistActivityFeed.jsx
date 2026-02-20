@@ -3,11 +3,27 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
-import { getPatientsWithLowAdherence, getPatientsPendingData, getComprehensiveActivityFeed, getFeedPriorityRules } from '@/lib/supabase/patient-queries';
+import {
+    getPatientsWithLowAdherence,
+    getPatientsPendingData,
+    getComprehensiveActivityFeed,
+    getFeedPriorityRules,
+    getNutritionistPatientsForFeed,
+    getPatientsHighRiskLabAlerts,
+    getFeedTaskStates,
+    syncFeedTasksFromItems,
+    resolveFeedTask,
+    resolveFeedTasksBatch,
+    snoozeFeedTask,
+    snoozeFeedTasksBatch,
+    getFeedTaskAuditTrail,
+    attachFeedPriorityMeta
+} from '@/lib/supabase/patient-queries';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useNavigate } from 'react-router-dom';
 import { format, formatDistanceToNow, isValid, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useToast } from '@/components/ui/use-toast';
 import {
     AlertTriangle,
     Calendar,
@@ -37,6 +53,7 @@ const iconByType = {
     appointment: Calendar,
     message: MessageSquare,
     achievement: Activity,
+    lab_high_risk: AlertTriangle,
     default: Stethoscope
 };
 
@@ -52,7 +69,8 @@ const labelByType = {
     prescription: 'Cálculo',
     appointment: 'Consulta',
     message: 'Mensagem',
-    achievement: 'Conquista'
+    achievement: 'Conquista',
+    lab_high_risk: 'Risco laboratorial'
 };
 
 const toneByType = {
@@ -116,6 +134,11 @@ const toneByType = {
         badge: 'bg-amber-50 text-amber-700 border-amber-200',
         icon: 'text-amber-600'
     },
+    lab_high_risk: {
+        card: 'bg-red-50/60 border-red-200/70',
+        badge: 'bg-red-50 text-red-700 border-red-200',
+        icon: 'text-red-600'
+    },
     default: {
         card: 'bg-muted/40 border-border/70',
         badge: 'bg-muted text-muted-foreground border-border',
@@ -126,8 +149,16 @@ const toneByType = {
 const NutritionistActivityFeed = () => {
     const { user } = useAuth();
     const navigate = useNavigate();
+    const { toast } = useToast();
     const [loading, setLoading] = useState(true);
     const [feedItems, setFeedItems] = useState([]);
+    const [actionLoadingId, setActionLoadingId] = useState(null);
+    const [feedFilter, setFeedFilter] = useState('all');
+    const [selectedItemIds, setSelectedItemIds] = useState([]);
+    const [bulkActionLoading, setBulkActionLoading] = useState(false);
+    const [expandedAuditItemId, setExpandedAuditItemId] = useState(null);
+    const [auditLoadingItemId, setAuditLoadingItemId] = useState(null);
+    const [auditTrailByKey, setAuditTrailByKey] = useState({});
 
     useEffect(() => {
         const fetchFeed = async () => {
@@ -136,23 +167,20 @@ const NutritionistActivityFeed = () => {
 
             try {
                 const today = new Date();
-                const [activitiesRes, lowAdherenceRes, pendingRes, appointmentsRes, patientsRes, priorityRulesRes] = await Promise.all([
+                const [activitiesRes, lowAdherenceRes, pendingRes, appointmentsRes, patientsRes, priorityRulesRes, feedStateRes] = await Promise.all([
                     getComprehensiveActivityFeed(user.id, 40),
                     getPatientsWithLowAdherence(user.id),
                     getPatientsPendingData(user.id),
                     supabase
                         .from('appointments')
-                        .select('id, appointment_time, patient_id, patient:appointments_patient_id_fkey(id, name, avatar_url)')
+                        .select('id, start_time, patient_id, patient:appointments_patient_id_fkey(id, name, avatar_url)')
                         .eq('nutritionist_id', user.id)
-                        .gte('appointment_time', today.toISOString())
-                        .order('appointment_time', { ascending: true })
+                        .gte('start_time', today.toISOString())
+                        .order('start_time', { ascending: true })
                         .limit(5),
-                    supabase
-                        .from('user_profiles')
-                        .select('id, name, birth_date, avatar_url')
-                        .eq('nutritionist_id', user.id)
-                        .eq('is_active', true),
-                    getFeedPriorityRules(user.id)
+                    getNutritionistPatientsForFeed(user.id),
+                    getFeedPriorityRules(user.id),
+                    getFeedTaskStates(user.id)
                 ]);
 
                 if (activitiesRes.error) throw activitiesRes.error;
@@ -160,11 +188,29 @@ const NutritionistActivityFeed = () => {
                 if (pendingRes.error) throw pendingRes.error;
                 if (appointmentsRes.error) throw appointmentsRes.error;
                 if (patientsRes.error) throw patientsRes.error;
+                if (feedStateRes.error) throw feedStateRes.error;
+
+                const patients = patientsRes.data || [];
+                const patientIds = patients.map((patient) => patient.id).filter(Boolean);
+                const patientNameMap = new Map(patients.map((patient) => [patient.id, patient.name || 'Paciente']));
+
+                let labRiskAlerts = [];
+                if (patientIds.length) {
+                    const highRiskRes = await getPatientsHighRiskLabAlerts({
+                        nutritionistId: user.id,
+                        patientIds,
+                        daysWindow: 120
+                    });
+                    if (highRiskRes.error) {
+                        console.warn('Não foi possível carregar alertas laboratoriais de alto risco:', highRiskRes.error);
+                    } else {
+                        labRiskAlerts = highRiskRes.data || [];
+                    }
+                }
 
                 const priorityRules = priorityRulesRes?.data || [];
                 const activityItems = (activitiesRes.data || []).map((activity) => {
                     const cta = getCtaForActivity(activity);
-                    const priorityMeta = getPriorityMeta('activity', activity, priorityRules);
                     return {
                         id: `activity-${activity.id}`,
                         type: activity.type,
@@ -177,8 +223,8 @@ const NutritionistActivityFeed = () => {
                         ctaLabel: cta.label,
                         ctaRoute: cta.route,
                         priority: 5,
-                        priorityScore: priorityMeta.score,
-                        priorityReason: priorityMeta.reason
+                        sourceType: 'activity',
+                        sourceId: `activity-${activity.id}`
                     };
                 });
 
@@ -193,9 +239,10 @@ const NutritionistActivityFeed = () => {
                         timestamp: null,
                         ctaLabel: 'Resolver',
                         ctaRoute: item.route,
+                        pendingType: item.type,
                         priority: 1,
-                        priorityScore: getPriorityMeta('pending', item, priorityRules).score,
-                        priorityReason: getPriorityMeta('pending', item, priorityRules).reason
+                        sourceType: 'pending',
+                        sourceId: `pending-${patient.patient_id}-${item.type}`
                     }))
                 );
 
@@ -208,12 +255,13 @@ const NutritionistActivityFeed = () => {
                     description: patient.days_inactive === null
                         ? 'Sem registros de refeição'
                         : `Sem registros há ${patient.days_inactive} dia${patient.days_inactive !== 1 ? 's' : ''}`,
+                    daysInactive: patient.days_inactive,
                     timestamp: null,
                     ctaLabel: 'Ver diário',
                     ctaRoute: `/nutritionist/patients/${patient.id}/food-diary`,
                     priority: 4,
-                    priorityScore: getPriorityMeta('low_adherence', patient, priorityRules).score,
-                    priorityReason: getPriorityMeta('low_adherence', patient, priorityRules).reason
+                    sourceType: 'low_adherence',
+                    sourceId: `low-adherence-${patient.id}`
                 }));
 
                 const appointmentItems = (appointmentsRes.data || []).map(appointment => ({
@@ -223,28 +271,85 @@ const NutritionistActivityFeed = () => {
                     patientName: appointment.patient?.name || 'Paciente',
                     patientAvatar: appointment.patient?.avatar_url || null,
                     title: 'Consulta próxima',
-                    description: appointment.appointment_time
-                        ? format(parseISO(appointment.appointment_time), "d 'de' MMMM 'às' HH:mm", { locale: ptBR })
+                    description: appointment.start_time
+                        ? format(parseISO(appointment.start_time), "d 'de' MMMM 'às' HH:mm", { locale: ptBR })
                         : 'Consulta agendada',
-                    timestamp: appointment.appointment_time,
+                    timestamp: appointment.start_time,
                     ctaLabel: 'Ver agenda',
                     ctaRoute: '/nutritionist/agenda',
                     priority: 2,
-                    priorityScore: getPriorityMeta('appointment_upcoming', appointment, priorityRules).score,
-                    priorityReason: getPriorityMeta('appointment_upcoming', appointment, priorityRules).reason
+                    sourceType: 'appointment_upcoming',
+                    sourceId: `appt-${appointment.id}`
                 }));
 
-                const birthdayItems = getBirthdayItems(patientsRes.data || []);
+                const birthdayItems = getBirthdayItems(patientsRes.data || []).map((item) => ({
+                    ...item,
+                    sourceType: 'birthday',
+                    sourceId: item.id
+                }));
 
-                const allItems = [
+                const labRiskItems = (labRiskAlerts || []).map((alert) => ({
+                    id: `lab-risk-${alert.patient_id}-${alert.marker_key}`,
+                    type: 'lab_high_risk',
+                    patientId: alert.patient_id,
+                    patientName: patientNameMap.get(alert.patient_id) || 'Paciente',
+                    title: 'Exame com risco alto',
+                    description: `${alert.test_name || 'Marcador'}: ${alert.test_value ?? '--'} ${alert.test_unit || ''}`.trim(),
+                    timestamp: alert.test_date || alert.created_at || null,
+                    ctaLabel: 'Ver exames',
+                    ctaRoute: `/nutritionist/patients/${alert.patient_id}/lab-results`,
+                    priority: 1,
+                    sourceType: 'lab_high_risk',
+                    sourceId: `${alert.patient_id}-${alert.marker_key}`,
+                    riskReason: alert.risk_reason
+                }));
+
+                const allItemsRaw = [
                     ...pendingItems,
                     ...appointmentItems,
                     ...birthdayItems,
                     ...lowAdherenceItems,
+                    ...labRiskItems,
                     ...activityItems
                 ];
+                const allItems = attachFeedPriorityMeta(allItemsRaw, priorityRules);
 
-                const sorted = allItems.sort((a, b) => {
+                const syncRes = await syncFeedTasksFromItems(user.id, allItems, feedStateRes?.data || []);
+                if (syncRes.error) {
+                    console.warn('Não foi possível sincronizar snapshot do feed:', syncRes.error);
+                }
+
+                const mergedStateMap = new Map(
+                    [
+                        ...(feedStateRes?.data || []),
+                        ...(syncRes?.data || [])
+                    ].map((state) => [`${state.source_type}:${state.source_id}`, state])
+                );
+
+                const hydratedItems = allItems.map((item) => {
+                    const key = `${item.sourceType}:${item.sourceId}`;
+                    const state = mergedStateMap.get(key);
+                    return {
+                        ...item,
+                        persistedStatus: state?.status || 'open',
+                        firstSeenAt: state?.first_seen_at || state?.created_at || item.timestamp || null,
+                        snoozeUntil: state?.snooze_until || null
+                    };
+                });
+
+                const filteredItems = hydratedItems.filter((item) => {
+                    const key = `${item.sourceType}:${item.sourceId}`;
+                    const state = mergedStateMap.get(key);
+                    if (!state) return true;
+                    if (state.status === 'resolved') return false;
+                    if (state.status === 'snoozed') {
+                        if (!state.snooze_until) return false;
+                        return new Date(state.snooze_until).getTime() <= Date.now();
+                    }
+                    return true;
+                });
+
+                const sorted = filteredItems.sort((a, b) => {
                     const scoreA = Number(a.priorityScore || 0);
                     const scoreB = Number(b.priorityScore || 0);
                     if (scoreA !== scoreB) return scoreB - scoreA;
@@ -271,6 +376,205 @@ const NutritionistActivityFeed = () => {
         const date = typeof timestamp === 'string' ? new Date(timestamp) : timestamp;
         if (!isValid(date)) return 'Pendente';
         return formatDistanceToNow(date, { addSuffix: true, locale: ptBR });
+    };
+
+    const visibleFeedItems = useMemo(() => {
+        if (feedFilter === 'high') {
+            return feedItems.filter((item) => Number(item.priorityScore || 0) >= 4);
+        }
+        if (feedFilter === 'pending') {
+            return feedItems.filter((item) => item.type === 'pending');
+        }
+        if (feedFilter === 'adherence') {
+            return feedItems.filter((item) => item.type === 'low_adherence');
+        }
+        if (feedFilter === 'lab_risk') {
+            return feedItems.filter((item) => item.type === 'lab_high_risk');
+        }
+        return feedItems;
+    }, [feedItems, feedFilter]);
+
+    useEffect(() => {
+        setSelectedItemIds((prev) => prev.filter((id) => visibleFeedItems.some((item) => item.id === id)));
+    }, [visibleFeedItems]);
+
+    const filterChips = useMemo(() => {
+        const total = feedItems.length;
+        const high = feedItems.filter((item) => Number(item.priorityScore || 0) >= 4).length;
+        const pending = feedItems.filter((item) => item.type === 'pending').length;
+        const adherence = feedItems.filter((item) => item.type === 'low_adherence').length;
+        const labRisk = feedItems.filter((item) => item.type === 'lab_high_risk').length;
+        return [
+            { id: 'all', label: 'Todos', count: total },
+            { id: 'high', label: 'Alta prioridade', count: high },
+            { id: 'pending', label: 'Pendências', count: pending },
+            { id: 'adherence', label: 'Baixa adesão', count: adherence },
+            { id: 'lab_risk', label: 'Risco exame', count: labRisk }
+        ];
+    }, [feedItems]);
+
+    const buildTaskInputFromItem = (item) => ({
+        nutritionistId: user?.id,
+        patientId: item?.patientId || null,
+        sourceType: item?.sourceType || item?.type || 'activity',
+        sourceId: item?.sourceId || item?.id,
+        title: item?.title || 'Item do feed',
+        description: item?.description || null,
+        priorityScore: Number(item?.priorityScore || 0),
+        priorityReason: item?.priorityReason || null,
+        metadata: {
+            item_type: item?.type || null,
+            cta_route: item?.ctaRoute || null
+        }
+    });
+
+    const toggleItemSelection = (itemId) => {
+        setSelectedItemIds((prev) => (
+            prev.includes(itemId)
+                ? prev.filter((id) => id !== itemId)
+                : [...prev, itemId]
+        ));
+    };
+
+    const selectedItems = useMemo(
+        () => visibleFeedItems.filter((item) => selectedItemIds.includes(item.id)),
+        [visibleFeedItems, selectedItemIds]
+    );
+
+    const handleResolveSelected = async () => {
+        if (!selectedItems.length || !user?.id) return;
+        setBulkActionLoading(true);
+        try {
+            const payload = selectedItems.map((item) => buildTaskInputFromItem(item));
+            const result = await resolveFeedTasksBatch(payload);
+            if (result.error && result.failedCount === payload.length) throw result.error;
+
+            setFeedItems((prev) => prev.filter((item) => !selectedItemIds.includes(item.id)));
+            setSelectedItemIds([]);
+            toast({
+                title: 'Ação em lote concluída',
+                description: `${payload.length - (result.failedCount || 0)} itens resolvidos.`
+            });
+        } catch (error) {
+            toast({
+                title: 'Erro ao resolver em lote',
+                description: 'Não foi possível concluir a ação em lote.',
+                variant: 'destructive'
+            });
+        } finally {
+            setBulkActionLoading(false);
+        }
+    };
+
+    const handleSnoozeSelected = async (minutes = 120) => {
+        if (!selectedItems.length || !user?.id) return;
+        setBulkActionLoading(true);
+        try {
+            const payload = selectedItems.map((item) => buildTaskInputFromItem(item));
+            const snoozeUntil = new Date(Date.now() + minutes * 60 * 1000).toISOString();
+            const result = await snoozeFeedTasksBatch(payload, snoozeUntil);
+            if (result.error && result.failedCount === payload.length) throw result.error;
+
+            setFeedItems((prev) => prev.filter((item) => !selectedItemIds.includes(item.id)));
+            setSelectedItemIds([]);
+            toast({
+                title: 'Ação em lote concluída',
+                description: `${payload.length - (result.failedCount || 0)} itens adiados por ${minutes} minutos.`
+            });
+        } catch (error) {
+            toast({
+                title: 'Erro ao adiar em lote',
+                description: 'Não foi possível concluir a ação em lote.',
+                variant: 'destructive'
+            });
+        } finally {
+            setBulkActionLoading(false);
+        }
+    };
+
+    const handleResolveInline = async (item) => {
+        if (!user?.id) return;
+        setActionLoadingId(item.id);
+        try {
+            const taskInput = buildTaskInputFromItem(item);
+            const { error } = await resolveFeedTask(taskInput);
+            if (error) throw error;
+            setFeedItems((prev) => prev.filter((feedItem) => feedItem.id !== item.id));
+            toast({
+                title: 'Pendência resolvida',
+                description: 'O item foi marcado como resolvido.'
+            });
+        } catch (error) {
+            toast({
+                title: 'Erro ao resolver item',
+                description: 'Não foi possível atualizar o status agora.',
+                variant: 'destructive'
+            });
+        } finally {
+            setActionLoadingId(null);
+        }
+    };
+
+    const handleSnoozeInline = async (item, minutes = 120) => {
+        if (!user?.id) return;
+        setActionLoadingId(item.id);
+        try {
+            const snoozeUntil = new Date(Date.now() + minutes * 60 * 1000).toISOString();
+            const taskInput = buildTaskInputFromItem(item);
+            const { error } = await snoozeFeedTask({
+                ...taskInput,
+                snoozeUntil
+            });
+            if (error) throw error;
+            setFeedItems((prev) => prev.filter((feedItem) => feedItem.id !== item.id));
+            toast({
+                title: 'Item adiado',
+                description: `O item voltará ao feed em aproximadamente ${minutes} minutos.`
+            });
+        } catch (error) {
+            toast({
+                title: 'Erro ao adiar item',
+                description: 'Não foi possível adiar o item agora.',
+                variant: 'destructive'
+            });
+        } finally {
+            setActionLoadingId(null);
+        }
+    };
+
+    const buildAuditKey = (item) => `${item?.sourceType || 'activity'}:${item?.sourceId || item?.id}`;
+
+    const handleToggleAudit = async (item) => {
+        if (!user?.id) return;
+        const key = buildAuditKey(item);
+
+        if (expandedAuditItemId === item.id) {
+            setExpandedAuditItemId(null);
+            return;
+        }
+
+        setExpandedAuditItemId(item.id);
+        if (auditTrailByKey[key]) return;
+
+        setAuditLoadingItemId(item.id);
+        try {
+            const { data, error } = await getFeedTaskAuditTrail({
+                nutritionistId: user.id,
+                sourceType: item.sourceType,
+                sourceId: item.sourceId,
+                limit: 6
+            });
+            if (error) throw error;
+            setAuditTrailByKey((prev) => ({ ...prev, [key]: data || [] }));
+        } catch (error) {
+            toast({
+                title: 'Erro ao carregar histórico',
+                description: 'Não foi possível buscar a auditoria desse item.',
+                variant: 'destructive'
+            });
+        } finally {
+            setAuditLoadingItemId(null);
+        }
     };
 
     if (loading) {
@@ -301,11 +605,58 @@ const NutritionistActivityFeed = () => {
                     </CardDescription>
                 </div>
                 <Badge variant="outline" className="text-xs">
-                    {feedItems.length} eventos
+                    {visibleFeedItems.length} eventos
                 </Badge>
             </CardHeader>
             <CardContent>
-                {feedItems.length === 0 ? (
+                <div className="mb-3 flex flex-wrap gap-2">
+                    {filterChips.map((chip) => (
+                        <Button
+                            key={chip.id}
+                            size="sm"
+                            variant={feedFilter === chip.id ? 'default' : 'outline'}
+                            className="h-7 px-2 text-xs"
+                            onClick={() => setFeedFilter(chip.id)}
+                        >
+                            {chip.label} ({chip.count})
+                        </Button>
+                    ))}
+                </div>
+                {selectedItems.length > 0 ? (
+                    <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/30 p-2">
+                        <span className="text-xs text-muted-foreground">
+                            {selectedItems.length} selecionado(s)
+                        </span>
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 px-2 text-xs"
+                            disabled={bulkActionLoading}
+                            onClick={handleResolveSelected}
+                        >
+                            Resolver selecionados
+                        </Button>
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 px-2 text-xs"
+                            disabled={bulkActionLoading}
+                            onClick={() => handleSnoozeSelected(120)}
+                        >
+                            Adiar selecionados 2h
+                        </Button>
+                        <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 px-2 text-xs"
+                            disabled={bulkActionLoading}
+                            onClick={() => setSelectedItemIds([])}
+                        >
+                            Limpar seleção
+                        </Button>
+                    </div>
+                ) : null}
+                {visibleFeedItems.length === 0 ? (
                     <div className="text-center py-12">
                         <AlertTriangle className="w-12 h-12 text-muted-foreground/50 mx-auto mb-3" />
                         <p className="text-muted-foreground font-medium mb-1">
@@ -318,9 +669,10 @@ const NutritionistActivityFeed = () => {
                 ) : (
                     <div className="relative">
                         <div className="max-h-[520px] overflow-y-auto pr-2 space-y-2">
-                        {feedItems.map(item => {
+                        {visibleFeedItems.map(item => {
                             const Icon = iconByType[item.type] || iconByType.default;
                             const tone = toneByType[item.type] || toneByType.default;
+                            const slaMeta = getSlaMeta(item);
                             return (
                                 <div
                                     key={item.id}
@@ -354,6 +706,11 @@ const NutritionistActivityFeed = () => {
                                                         Prioridade: {item.priorityReason}
                                                     </p>
                                                 ) : null}
+                                                {item.type === 'lab_high_risk' && item.riskReason ? (
+                                                    <p className="text-[11px] text-muted-foreground mt-1">
+                                                        {item.riskReason}
+                                                    </p>
+                                                ) : null}
                                             </div>
                                             {item.type === 'pending' && item.ctaRoute ? (
                                                 <Button
@@ -370,10 +727,51 @@ const NutritionistActivityFeed = () => {
                                                 </span>
                                             )}
                                         </div>
-                                        <div className="mt-2 flex items-center gap-2">
+                                        <div className="mt-2 flex items-center gap-2 flex-wrap">
                                             <Badge variant="outline" className={`text-xs ${tone.badge}`}>
                                                 {labelByType[item.type] || 'Atividade'}
                                             </Badge>
+                                            {slaMeta ? (
+                                                <Badge variant="outline" className={`text-xs ${slaMeta.badgeClass}`}>
+                                                    {slaMeta.label}
+                                                </Badge>
+                                            ) : null}
+                                            <Button
+                                                size="sm"
+                                                variant={selectedItemIds.includes(item.id) ? 'default' : 'outline'}
+                                                className="h-7 px-2 text-xs"
+                                                disabled={bulkActionLoading}
+                                                onClick={() => toggleItemSelection(item.id)}
+                                            >
+                                                {selectedItemIds.includes(item.id) ? 'Selecionado' : 'Selecionar'}
+                                            </Button>
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                className="h-7 px-2 text-xs hover:border-primary/40"
+                                                disabled={actionLoadingId === item.id || bulkActionLoading}
+                                                onClick={() => handleResolveInline(item)}
+                                            >
+                                                Resolver
+                                            </Button>
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                className="h-7 px-2 text-xs hover:border-primary/40"
+                                                disabled={actionLoadingId === item.id || bulkActionLoading}
+                                                onClick={() => handleSnoozeInline(item)}
+                                            >
+                                                Adiar 2h
+                                            </Button>
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                className="h-7 px-2 text-xs hover:border-primary/40"
+                                                disabled={auditLoadingItemId === item.id}
+                                                onClick={() => handleToggleAudit(item)}
+                                            >
+                                                {expandedAuditItemId === item.id ? 'Ocultar histórico' : 'Histórico'}
+                                            </Button>
                                             {item.type !== 'pending' && item.ctaRoute ? (
                                                 <Button
                                                     size="sm"
@@ -386,6 +784,27 @@ const NutritionistActivityFeed = () => {
                                                 </Button>
                                             ) : null}
                                         </div>
+                                        {expandedAuditItemId === item.id ? (
+                                            <div className="mt-2 rounded-lg border border-border/70 bg-background/70 p-2">
+                                                {auditLoadingItemId === item.id ? (
+                                                    <p className="text-xs text-muted-foreground">Carregando histórico...</p>
+                                                ) : (
+                                                    (auditTrailByKey[buildAuditKey(item)] || []).length > 0 ? (
+                                                        <div className="space-y-1.5">
+                                                            {(auditTrailByKey[buildAuditKey(item)] || []).map((entry, idx) => (
+                                                                <div key={`${entry?.at || 'entry'}-${idx}`} className="text-xs text-muted-foreground">
+                                                                    <span className="font-medium text-foreground">{translateAuditAction(entry?.action)}</span>
+                                                                    {' · '}
+                                                                    {entry?.at ? renderTimestamp(entry.at) : 'agora'}
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    ) : (
+                                                        <p className="text-xs text-muted-foreground">Sem histórico operacional registrado ainda.</p>
+                                                    )
+                                                )}
+                                            </div>
+                                        ) : null}
                                     </div>
                                 </div>
                             );
@@ -456,35 +875,41 @@ const getBirthdayItems = (patients) => {
     return items;
 };
 
-const getPriorityMeta = (kind, item, rules = []) => {
-    const getRule = (ruleKey) => rules.find((rule) => rule.rule_key === ruleKey && rule.is_active !== false);
+const getSlaMeta = (item) => {
+    if (!item?.firstSeenAt) return null;
+    if (!['pending', 'low_adherence'].includes(item.type)) return null;
 
-    if (kind === 'pending') {
-        const rule = getRule('pending_data');
-        return { score: Number(rule?.weight || 5), reason: 'Pendencia de dados essenciais' };
+    const ageMs = Date.now() - new Date(item.firstSeenAt).getTime();
+    if (Number.isNaN(ageMs)) return null;
+    const ageHours = ageMs / (1000 * 60 * 60);
+
+    if (ageHours >= 48) {
+        return {
+            label: 'SLA crítico',
+            badgeClass: 'bg-red-50 text-red-700 border-red-200'
+        };
     }
-
-    if (kind === 'low_adherence') {
-        const rule = getRule('low_adherence');
-        return { score: Number(rule?.weight || 4), reason: 'Baixa adesao recente' };
+    if (ageHours >= 24) {
+        return {
+            label: 'SLA atenção',
+            badgeClass: 'bg-amber-50 text-amber-700 border-amber-200'
+        };
     }
-
-    if (kind === 'appointment_upcoming') {
-        const rule = getRule('appointment_upcoming');
-        return { score: Number(rule?.weight || 3), reason: 'Consulta proxima' };
-    }
-
-    const typeToRule = {
-        meal: 'recent_activity',
-        anthropometry: 'recent_activity',
-        anamnesis: 'recent_activity',
-        meal_plan: 'recent_activity',
-        appointment: 'appointment_upcoming',
-        message: 'recent_activity',
-        achievement: 'recent_activity'
+    return {
+        label: 'Dentro do SLA',
+        badgeClass: 'bg-emerald-50 text-emerald-700 border-emerald-200'
     };
-    const rule = getRule(typeToRule[item?.type] || 'recent_activity');
-    return { score: Number(rule?.weight || 1), reason: 'Atividade recente' };
+};
+
+const translateAuditAction = (action) => {
+    const actionMap = {
+        resolved: 'Resolvido',
+        snoozed: 'Adiado',
+        reopened: 'Reaberto',
+        resolved_batch: 'Resolvido em lote',
+        snoozed_batch: 'Adiado em lote'
+    };
+    return actionMap[action] || 'Atualizado';
 };
 
 export default NutritionistActivityFeed;

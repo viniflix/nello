@@ -2,6 +2,7 @@ import { supabase } from '@/lib/customSupabaseClient';
 import { calculateCaloriesFromMacros } from '@/lib/utils/nutrition-calculations';
 import { getTodayIsoDate } from '@/lib/utils/date';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
+import { logOperationalEvent } from './observability-queries';
 
 // =====================================================
 // MEAL PLANS - Planos Alimentares
@@ -52,6 +53,105 @@ const getFoodsMapByIds = async (foodIds) => {
         acc[String(food.id)] = food;
         return acc;
     }, {});
+};
+
+const toNumber = (value) => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const round2 = (value) => Math.round(toNumber(value) * 100) / 100;
+
+const calculateTotalsFromMeals = (meals = []) => {
+    return (meals || []).reduce((acc, meal) => ({
+        calories: acc.calories + toNumber(meal?.calories),
+        protein: acc.protein + toNumber(meal?.protein),
+        carbs: acc.carbs + toNumber(meal?.carbs),
+        fat: acc.fat + toNumber(meal?.fat)
+    }), { calories: 0, protein: 0, carbs: 0, fat: 0 });
+};
+
+const getEntityId = (entity) => entity?.tempId ?? entity?.id ?? null;
+
+/**
+ * Simula ajuste de porções no plano (escala linear por fator).
+ * Suporta escopo total, por refeição ou por alimento.
+ * Retorna refeições ajustadas + resumo before/after para preview clínico.
+ */
+export const simulateMealPlanPortionAdjustment = (meals = [], scaleFactor = 1, options = {}) => {
+    const safeFactor = Number.isFinite(Number(scaleFactor)) && Number(scaleFactor) > 0
+        ? Number(scaleFactor)
+        : 1;
+    const scope = options?.scope || 'all';
+    const targetMealId = options?.mealId ?? null;
+    const targetFoodId = options?.foodId ?? null;
+
+    const beforeTotals = calculateTotalsFromMeals(meals);
+
+    const adjustedMeals = (meals || []).map((meal) => {
+        const mealId = getEntityId(meal);
+        const matchMeal = scope === 'all' || (scope !== 'all' && String(mealId) === String(targetMealId));
+
+        const adjustedFoods = (meal?.foods || []).map((food) => {
+            const foodId = getEntityId(food);
+            const shouldScaleFood = scope === 'all'
+                || (scope === 'meal' && matchMeal)
+                || (scope === 'food' && matchMeal && String(foodId) === String(targetFoodId));
+
+            if (!shouldScaleFood) return food;
+
+            return {
+                ...food,
+                quantity: round2(toNumber(food?.quantity) * safeFactor),
+                calories: round2(toNumber(food?.calories) * safeFactor),
+                protein: round2(toNumber(food?.protein) * safeFactor),
+                carbs: round2(toNumber(food?.carbs) * safeFactor),
+                fat: round2(toNumber(food?.fat) * safeFactor)
+            };
+        });
+
+        const hasFoods = adjustedFoods.length > 0;
+        const scaledMealOnly = scope === 'all' || (scope === 'meal' && matchMeal);
+
+        const mealFromFoods = hasFoods
+            ? adjustedFoods.reduce((acc, food) => ({
+                calories: acc.calories + toNumber(food?.calories),
+                protein: acc.protein + toNumber(food?.protein),
+                carbs: acc.carbs + toNumber(food?.carbs),
+                fat: acc.fat + toNumber(food?.fat)
+            }), { calories: 0, protein: 0, carbs: 0, fat: 0 })
+            : {
+                calories: scaledMealOnly ? toNumber(meal?.calories) * safeFactor : toNumber(meal?.calories),
+                protein: scaledMealOnly ? toNumber(meal?.protein) * safeFactor : toNumber(meal?.protein),
+                carbs: scaledMealOnly ? toNumber(meal?.carbs) * safeFactor : toNumber(meal?.carbs),
+                fat: scaledMealOnly ? toNumber(meal?.fat) * safeFactor : toNumber(meal?.fat)
+            };
+
+        return {
+            ...meal,
+            calories: round2(mealFromFoods.calories),
+            protein: round2(mealFromFoods.protein),
+            carbs: round2(mealFromFoods.carbs),
+            fat: round2(mealFromFoods.fat),
+            foods: adjustedFoods
+        };
+    });
+
+    const afterTotals = calculateTotalsFromMeals(adjustedMeals);
+
+    return {
+        scaleFactor: safeFactor,
+        scope,
+        meals: adjustedMeals,
+        totalsBefore: beforeTotals,
+        totalsAfter: afterTotals,
+        delta: {
+            calories: round2(afterTotals.calories - beforeTotals.calories),
+            protein: round2(afterTotals.protein - beforeTotals.protein),
+            carbs: round2(afterTotals.carbs - beforeTotals.carbs),
+            fat: round2(afterTotals.fat - beforeTotals.fat)
+        }
+    };
 };
 
 /**
@@ -953,6 +1053,126 @@ export const copyMealPlan = async (planId, newName) => {
     }
 };
 
+const normalizeMealPlanVersionSnapshot = (plan) => {
+    if (!plan) return null;
+
+    const normalizedMeals = (plan.meals || []).map((meal) => ({
+        id: meal.id,
+        name: meal.name,
+        meal_type: meal.meal_type,
+        meal_time: meal.meal_time || null,
+        notes: meal.notes || null,
+        order_index: meal.order_index ?? 0,
+        total_calories: meal.total_calories ?? meal.calories ?? 0,
+        total_protein: meal.total_protein ?? meal.protein ?? 0,
+        total_carbs: meal.total_carbs ?? meal.carbs ?? 0,
+        total_fat: meal.total_fat ?? meal.fat ?? 0,
+        foods: (meal.foods || []).map((food) => ({
+            id: food.id,
+            food_id: food.food_id,
+            quantity: food.quantity ?? 0,
+            unit: food.unit || null,
+            calories: food.calories ?? 0,
+            protein: food.protein ?? 0,
+            carbs: food.carbs ?? 0,
+            fat: food.fat ?? 0,
+            notes: food.notes || null,
+            order_index: food.order_index ?? 0
+        }))
+    }));
+
+    return {
+        plan: {
+            id: plan.id,
+            patient_id: plan.patient_id,
+            nutritionist_id: plan.nutritionist_id,
+            name: plan.name,
+            description: plan.description || null,
+            active_days: plan.active_days || [],
+            start_date: plan.start_date,
+            end_date: plan.end_date || null,
+            is_active: Boolean(plan.is_active),
+            daily_calories: plan.daily_calories ?? 0,
+            daily_protein: plan.daily_protein ?? 0,
+            daily_carbs: plan.daily_carbs ?? 0,
+            daily_fat: plan.daily_fat ?? 0
+        },
+        meals: normalizedMeals
+    };
+};
+
+const getLatestMealPlanVersion = async (planId) => {
+    const { data, error } = await supabase
+        .from('meal_plan_versions')
+        .select('id, version_number')
+        .eq('meal_plan_id', planId)
+        .order('version_number', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+    if (error) throw error;
+    return data || null;
+};
+
+export const createMealPlanVersionSnapshot = async ({
+    mealPlan,
+    versionNumber,
+    changeReason = null,
+    createdBy = null,
+    isRollback = false,
+    metadata = {}
+}) => {
+    try {
+        if (!mealPlan?.id) {
+            return { data: null, error: new Error('Plano inválido para gerar versão') };
+        }
+
+        const snapshot = normalizeMealPlanVersionSnapshot(mealPlan);
+        if (!snapshot) {
+            return { data: null, error: new Error('Snapshot inválido para versão do plano') };
+        }
+
+        const { data, error } = await supabase
+            .from('meal_plan_versions')
+            .insert([{
+                meal_plan_id: mealPlan.id,
+                nutritionist_id: mealPlan.nutritionist_id,
+                patient_id: mealPlan.patient_id,
+                version_number: versionNumber,
+                change_reason: changeReason,
+                snapshot,
+                is_rollback: Boolean(isRollback),
+                metadata: metadata && typeof metadata === 'object' ? metadata : {},
+                created_by: createdBy || null
+            }])
+            .select()
+            .single();
+
+        if (error) throw error;
+        return { data, error: null };
+    } catch (error) {
+        logSupabaseError('Erro ao criar versão do plano alimentar', error);
+        return { data: null, error };
+    }
+};
+
+export const getMealPlanVersions = async (planId, limit = 20) => {
+    try {
+        const { data, error } = await supabase
+            .from('meal_plan_versions')
+            .select('*')
+            .eq('meal_plan_id', planId)
+            .order('version_number', { ascending: false })
+            .limit(limit);
+
+        if (error) throw error;
+        return { data: data || [], error: null };
+    } catch (error) {
+        logSupabaseError('Erro ao buscar versões do plano alimentar', error);
+        return { data: [], error };
+    }
+};
+
 /**
  * Atualiza um plano alimentar completo
  * @param {number} planId - ID do plano a atualizar
@@ -960,7 +1180,32 @@ export const copyMealPlan = async (planId, newName) => {
  * @returns {Promise<{data: object, error: object}>}
  */
 export const updateFullMealPlan = async (planId, planData) => {
+    const startedAt = Date.now();
     try {
+        const [{ data: currentPlan, error: currentPlanError }, { data: authData }] = await Promise.all([
+            getMealPlanById(planId),
+            supabase.auth.getUser()
+        ]);
+        if (currentPlanError) throw currentPlanError;
+        if (!currentPlan) throw new Error('Plano não encontrado para versionamento');
+
+        const latestVersion = await getLatestMealPlanVersion(planId);
+        const actorId = authData?.user?.id || null;
+        let nextVersion = (latestVersion?.version_number || 0) + 1;
+
+        // Se ainda não existe histórico, salva baseline antes da primeira alteração.
+        if (!latestVersion) {
+            const baselineRes = await createMealPlanVersionSnapshot({
+                mealPlan: currentPlan,
+                versionNumber: 1,
+                changeReason: 'baseline_inicial',
+                createdBy: actorId,
+                metadata: { origin: 'updateFullMealPlan' }
+            });
+            if (baselineRes.error) throw baselineRes.error;
+            nextVersion = 2;
+        }
+
         // 1. Atualizar informações básicas do plano
         const { error: updateError } = await supabase
             .from('meal_plans')
@@ -1014,9 +1259,49 @@ export const updateFullMealPlan = async (planId, planData) => {
         }
 
         // 4. Buscar plano completo atualizado
-        return getMealPlanById(planId);
+        const updatedResult = await getMealPlanById(planId);
+        if (updatedResult.error) throw updatedResult.error;
+
+        // 5. Gravar nova versão após atualização
+        const versionRes = await createMealPlanVersionSnapshot({
+            mealPlan: updatedResult.data,
+            versionNumber: nextVersion,
+            changeReason: planData?.change_reason || 'edicao_manual_plano',
+            createdBy: actorId,
+            isRollback: Boolean(planData?.is_rollback),
+            metadata: { origin: 'updateFullMealPlan' }
+        });
+        if (versionRes.error) throw versionRes.error;
+
+        await logOperationalEvent({
+            module: 'meal_plan',
+            operation: 'update_full_meal_plan',
+            eventType: 'success',
+            latencyMs: Date.now() - startedAt,
+            nutritionistId: actorId,
+            patientId: updatedResult?.data?.patient_id || null,
+            metadata: {
+                plan_id: planId,
+                meals_count: Array.isArray(planData?.meals) ? planData.meals.length : 0,
+                is_rollback: Boolean(planData?.is_rollback)
+            }
+        });
+
+        return updatedResult;
     } catch (error) {
         logSupabaseError('Erro ao atualizar plano alimentar', error);
+        await logOperationalEvent({
+            module: 'meal_plan',
+            operation: 'update_full_meal_plan',
+            eventType: 'error',
+            latencyMs: Date.now() - startedAt,
+            nutritionistId: null,
+            patientId: null,
+            errorMessage: error?.message || String(error),
+            metadata: {
+                plan_id: planId
+            }
+        });
         return { data: null, error };
     }
 };
@@ -1367,6 +1652,63 @@ export const applyTemplateToPatient = async (templateId, patientId, startDate = 
         return getMealPlanById(newPlan.id);
     } catch (error) {
         logSupabaseError('Erro ao aplicar template ao paciente', error);
+        return { data: null, error };
+    }
+};
+
+/**
+ * Restaura um plano alimentar a partir de uma versão salva.
+ * A restauração gera uma nova versão com flag de rollback.
+ */
+export const restoreMealPlanVersion = async (versionId) => {
+    try {
+        const { data: version, error: versionError } = await supabase
+            .from('meal_plan_versions')
+            .select('*')
+            .eq('id', versionId)
+            .single();
+
+        if (versionError) throw versionError;
+
+        const snapshot = version?.snapshot;
+        const planSnapshot = snapshot?.plan;
+        const mealsSnapshot = Array.isArray(snapshot?.meals) ? snapshot.meals : [];
+
+        if (!version?.meal_plan_id || !planSnapshot) {
+            throw new Error('Versão inválida para restauração');
+        }
+
+        const planData = {
+            name: planSnapshot.name,
+            description: planSnapshot.description || '',
+            active_days: planSnapshot.active_days || [],
+            start_date: planSnapshot.start_date || getTodayIsoDate(),
+            end_date: planSnapshot.end_date || null,
+            meals: mealsSnapshot.map((meal, mealIndex) => ({
+                name: meal.name,
+                meal_type: meal.meal_type,
+                meal_time: meal.meal_time || null,
+                notes: meal.notes || null,
+                order_index: meal.order_index ?? mealIndex,
+                foods: (meal.foods || []).map((food, foodIndex) => ({
+                    food_id: food.food_id,
+                    quantity: food.quantity ?? 0,
+                    unit: food.unit || null,
+                    calories: food.calories ?? 0,
+                    protein: food.protein ?? 0,
+                    carbs: food.carbs ?? 0,
+                    fat: food.fat ?? 0,
+                    notes: food.notes || null,
+                    order_index: food.order_index ?? foodIndex
+                }))
+            })),
+            change_reason: `rollback_versao_${version.version_number}`,
+            is_rollback: true
+        };
+
+        return updateFullMealPlan(version.meal_plan_id, planData);
+    } catch (error) {
+        logSupabaseError('Erro ao restaurar versão do plano alimentar', error);
         return { data: null, error };
     }
 };

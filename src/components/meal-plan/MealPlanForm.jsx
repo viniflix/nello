@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Save, X, Plus, Trash2, Edit, Calendar } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,7 +10,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import MealPlanMealForm from './MealPlanMealForm';
 import MacrosChart from './MacrosChart';
-import { getReferenceValues } from '@/lib/supabase/meal-plan-queries';
+import { getReferenceValues, simulateMealPlanPortionAdjustment } from '@/lib/supabase/meal-plan-queries';
 
 const MealPlanForm = ({ patientId, nutritionistId, initialData = null, onSubmit, onCancel, loading = false }) => {
     const [formData, setFormData] = useState({
@@ -26,6 +26,10 @@ const MealPlanForm = ({ patientId, nutritionistId, initialData = null, onSubmit,
     const [editingMeal, setEditingMeal] = useState(null);
     const [errors, setErrors] = useState({});
     const [referenceValues, setReferenceValues] = useState(null);
+    const [portionScaleFactor, setPortionScaleFactor] = useState(1);
+    const [portionScope, setPortionScope] = useState('all');
+    const [portionMealId, setPortionMealId] = useState('');
+    const [portionFoodId, setPortionFoodId] = useState('');
 
     const daysOfWeek = [
         { value: 'monday', label: 'Segunda' },
@@ -178,6 +182,66 @@ const MealPlanForm = ({ patientId, nutritionistId, initialData = null, onSubmit,
     };
 
     const dailyTotals = calculateDailyTotals();
+    const mealOptions = useMemo(
+        () => meals.map((meal) => ({ id: String(meal.tempId ?? meal.id), name: meal.name || 'Refeição' })),
+        [meals]
+    );
+    const selectedMeal = useMemo(
+        () => meals.find((meal) => String(meal.tempId ?? meal.id) === String(portionMealId)) || null,
+        [meals, portionMealId]
+    );
+    const foodOptions = useMemo(
+        () => (selectedMeal?.foods || []).map((food) => ({ id: String(food.tempId ?? food.id), name: food.food?.name || food.foods?.name || 'Alimento' })),
+        [selectedMeal]
+    );
+
+    useEffect(() => {
+        if (!mealOptions.length) {
+            setPortionMealId('');
+            return;
+        }
+        if (!portionMealId || !mealOptions.some((item) => item.id === String(portionMealId))) {
+            setPortionMealId(mealOptions[0].id);
+        }
+    }, [mealOptions, portionMealId]);
+
+    useEffect(() => {
+        if (portionScope !== 'food') return;
+        if (!foodOptions.length) {
+            setPortionFoodId('');
+            return;
+        }
+        if (!portionFoodId || !foodOptions.some((item) => item.id === String(portionFoodId))) {
+            setPortionFoodId(foodOptions[0].id);
+        }
+    }, [foodOptions, portionFoodId, portionScope]);
+
+    const portionSimulation = useMemo(() => {
+        if (!meals.length) return null;
+        return simulateMealPlanPortionAdjustment(meals, portionScaleFactor, {
+            scope: portionScope,
+            mealId: portionMealId || null,
+            foodId: portionFoodId || null
+        });
+    }, [meals, portionScaleFactor, portionScope, portionMealId, portionFoodId]);
+
+    const parseScaleInput = (value) => {
+        const parsed = Number(value);
+        if (!Number.isFinite(parsed)) return 1;
+        return Math.min(3, Math.max(0.3, parsed));
+    };
+
+    const handleApplyPortionAdjustment = () => {
+        if (!portionSimulation?.meals?.length) return;
+        setMeals(portionSimulation.meals);
+        setPortionScaleFactor(1);
+    };
+
+    const formatDelta = (value, unit = '') => {
+        const numeric = Number(value || 0);
+        const signal = numeric > 0 ? '+' : '';
+        return `${signal}${numeric.toFixed(unit === 'kcal' ? 0 : 1)}${unit ? ` ${unit}` : ''}`;
+    };
 
     return (
         <>
@@ -319,6 +383,112 @@ const MealPlanForm = ({ patientId, nutritionistId, initialData = null, onSubmit,
                 </Card>
 
                 {/* Grid: Refeições (60%) + Gráfico de Macros (40%) */}
+                {meals.length > 0 && portionSimulation ? (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="text-lg">Simulador de Ajuste de Porções</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                <div className="space-y-2">
+                                    <Label htmlFor="portion-factor">Fator de ajuste</Label>
+                                    <Input
+                                        id="portion-factor"
+                                        type="number"
+                                        min={0.3}
+                                        max={3}
+                                        step={0.05}
+                                        value={portionScaleFactor}
+                                        onChange={(e) => setPortionScaleFactor(parseScaleInput(e.target.value))}
+                                        disabled={loading}
+                                    />
+                                    <p className="text-xs text-muted-foreground">
+                                        Ex.: 1.10 aumenta 10%, 0.90 reduz 10%
+                                    </p>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="portion-scope">Aplicar em</Label>
+                                    <select
+                                        id="portion-scope"
+                                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                        value={portionScope}
+                                        onChange={(e) => setPortionScope(e.target.value)}
+                                        disabled={loading}
+                                    >
+                                        <option value="all">Plano completo</option>
+                                        <option value="meal">Refeição específica</option>
+                                        <option value="food">Alimento específico</option>
+                                    </select>
+                                </div>
+                                {portionScope === 'meal' || portionScope === 'food' ? (
+                                    <div className="space-y-2">
+                                        <Label htmlFor="portion-meal">Refeição alvo</Label>
+                                        <select
+                                            id="portion-meal"
+                                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                            value={portionMealId}
+                                            onChange={(e) => setPortionMealId(e.target.value)}
+                                            disabled={loading || mealOptions.length === 0}
+                                        >
+                                            {mealOptions.map((meal) => (
+                                                <option key={meal.id} value={meal.id}>{meal.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                ) : null}
+                                {portionScope === 'food' ? (
+                                    <div className="space-y-2 md:col-span-3">
+                                        <Label htmlFor="portion-food">Alimento alvo</Label>
+                                        <select
+                                            id="portion-food"
+                                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                            value={portionFoodId}
+                                            onChange={(e) => setPortionFoodId(e.target.value)}
+                                            disabled={loading || foodOptions.length === 0}
+                                        >
+                                            {foodOptions.length ? (
+                                                foodOptions.map((food) => (
+                                                    <option key={food.id} value={food.id}>{food.name}</option>
+                                                ))
+                                            ) : (
+                                                <option value="">Sem alimentos nesta refeição</option>
+                                            )}
+                                        </select>
+                                    </div>
+                                ) : null}
+                                <div className="rounded-lg border p-3">
+                                    <p className="text-xs text-muted-foreground">Antes</p>
+                                    <p className="text-sm font-medium">{portionSimulation.totalsBefore.calories.toFixed(0)} kcal</p>
+                                    <p className="text-xs text-muted-foreground">
+                                        P {portionSimulation.totalsBefore.protein.toFixed(1)}g · C {portionSimulation.totalsBefore.carbs.toFixed(1)}g · G {portionSimulation.totalsBefore.fat.toFixed(1)}g
+                                    </p>
+                                </div>
+                                <div className="rounded-lg border p-3 bg-muted/20">
+                                    <p className="text-xs text-muted-foreground">Depois (preview)</p>
+                                    <p className="text-sm font-medium">{portionSimulation.totalsAfter.calories.toFixed(0)} kcal</p>
+                                    <p className="text-xs text-muted-foreground">
+                                        P {portionSimulation.totalsAfter.protein.toFixed(1)}g · C {portionSimulation.totalsAfter.carbs.toFixed(1)}g · G {portionSimulation.totalsAfter.fat.toFixed(1)}g
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3 bg-muted/10">
+                                <p className="text-xs text-muted-foreground">
+                                    Delta: {formatDelta(portionSimulation.delta.calories, 'kcal')} · {formatDelta(portionSimulation.delta.protein, 'g')} proteína · {formatDelta(portionSimulation.delta.carbs, 'g')} carboidrato · {formatDelta(portionSimulation.delta.fat, 'g')} gordura
+                                </p>
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={handleApplyPortionAdjustment}
+                                    disabled={loading || Math.abs(Number(portionScaleFactor || 1) - 1) < 0.001}
+                                >
+                                    Aplicar ajuste ao plano
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+                ) : null}
+
                 {meals.length > 0 && (
                     <div className="grid grid-cols-1 lg:grid-cols-10 gap-6">
                         {/* Card de Refeições - 60% */}

@@ -40,9 +40,11 @@ import {
     getMealPlans,
     getActiveMealPlan,
     getMealPlanById,
+    getMealPlanVersions,
     getReferenceValues,
     createMealPlan,
     updateFullMealPlan,
+    restoreMealPlanVersion,
     deleteMealPlan,
     archiveMealPlan,
     setActiveMealPlan,
@@ -86,6 +88,10 @@ const MealPlanPage = () => {
     const [saveTemplateDialogOpen, setSaveTemplateDialogOpen] = useState(false);
     const [templateName, setTemplateName] = useState('');
     const [templateTags, setTemplateTags] = useState('');
+    const [mealPlanVersions, setMealPlanVersions] = useState([]);
+    const [versionsLoading, setVersionsLoading] = useState(false);
+    const [selectedVersionId, setSelectedVersionId] = useState('');
+    const [restoringVersion, setRestoringVersion] = useState(false);
     const [energyCalculation, setEnergyCalculation] = useState(null);
     const [syncFlags, setSyncFlags] = useState(null);
 
@@ -164,6 +170,34 @@ const MealPlanPage = () => {
             }
         };
         loadReferenceValues();
+    }, [activePlan?.id]);
+
+    useEffect(() => {
+        const loadVersions = async () => {
+            if (!activePlan?.id) {
+                setMealPlanVersions([]);
+                setSelectedVersionId('');
+                return;
+            }
+
+            setVersionsLoading(true);
+            try {
+                const { data, error } = await getMealPlanVersions(activePlan.id, 20);
+                if (error) throw error;
+                const versions = data || [];
+                setMealPlanVersions(versions);
+
+                const preferred = versions.length > 1 ? versions[1] : versions[0];
+                setSelectedVersionId(preferred ? String(preferred.id) : '');
+            } catch (error) {
+                console.error('Erro ao carregar versões do plano:', error);
+                setMealPlanVersions([]);
+                setSelectedVersionId('');
+            } finally {
+                setVersionsLoading(false);
+            }
+        };
+        loadVersions();
     }, [activePlan?.id]);
 
     // Carregar cálculo de energia
@@ -577,6 +611,62 @@ const MealPlanPage = () => {
         }
     };
 
+    const getMetricsFromSnapshot = (snapshot) => {
+        const plan = snapshot?.plan || {};
+        const meals = Array.isArray(snapshot?.meals) ? snapshot.meals : [];
+        return {
+            calories: Number(plan.daily_calories || 0),
+            protein: Number(plan.daily_protein || 0),
+            carbs: Number(plan.daily_carbs || 0),
+            fat: Number(plan.daily_fat || 0),
+            mealsCount: meals.length
+        };
+    };
+
+    const selectedVersion = mealPlanVersions.find((version) => String(version.id) === String(selectedVersionId)) || null;
+    const currentMetrics = activePlan ? {
+        calories: Number(activePlan.daily_calories || 0),
+        protein: Number(activePlan.daily_protein || 0),
+        carbs: Number(activePlan.daily_carbs || 0),
+        fat: Number(activePlan.daily_fat || 0),
+        mealsCount: Number(activePlan.meals?.length || 0)
+    } : null;
+    const baseMetrics = selectedVersion ? getMetricsFromSnapshot(selectedVersion.snapshot) : null;
+
+    const buildDelta = (currentValue, baseValue) => {
+        const delta = Number(currentValue || 0) - Number(baseValue || 0);
+        return `${delta > 0 ? '+' : ''}${delta.toFixed(1)}`;
+    };
+
+    const handleRestoreVersion = async () => {
+        if (!selectedVersion) return;
+        const confirmRestore = window.confirm(`Deseja restaurar a versão ${selectedVersion.version_number}? Isso criará uma nova versão de rollback.`);
+        if (!confirmRestore) return;
+
+        setRestoringVersion(true);
+        try {
+            const result = await restoreMealPlanVersion(selectedVersion.id);
+            if (result.error) throw result.error;
+
+            toast({
+                title: 'Versão restaurada',
+                description: `O plano foi restaurado a partir da versão ${selectedVersion.version_number}.`,
+                variant: 'success'
+            });
+
+            await loadPlans();
+        } catch (error) {
+            console.error('Erro ao restaurar versão do plano:', error);
+            toast({
+                title: 'Erro ao restaurar versão',
+                description: 'Não foi possível concluir a restauração desta versão.',
+                variant: 'destructive'
+            });
+        } finally {
+            setRestoringVersion(false);
+        }
+    };
+
     if (loading) {
         return (
             <div className="container mx-auto px-4 py-8">
@@ -869,6 +959,80 @@ const MealPlanPage = () => {
                                 />
                             </div>
                         </div>
+                    </CardContent>
+                </Card>
+            )}
+
+            {activePlan && (
+                <Card className="mb-6">
+                    <CardHeader>
+                        <CardTitle className="text-lg">Histórico de Versões do Plano</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        {versionsLoading ? (
+                            <p className="text-sm text-muted-foreground">Carregando versões...</p>
+                        ) : mealPlanVersions.length === 0 ? (
+                            <p className="text-sm text-muted-foreground">
+                                Nenhuma versão registrada ainda. Ao salvar edições, o histórico será criado automaticamente.
+                            </p>
+                        ) : (
+                            <>
+                                <div className="grid gap-3 md:grid-cols-[1fr_auto] items-end">
+                                    <div>
+                                        <label className="text-sm font-medium text-foreground">Comparar plano atual com versão</label>
+                                        <select
+                                            className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                            value={selectedVersionId}
+                                            onChange={(event) => setSelectedVersionId(event.target.value)}
+                                        >
+                                            {mealPlanVersions.map((version) => (
+                                                <option key={version.id} value={String(version.id)}>
+                                                    Versão {version.version_number} • {new Date(version.created_at).toLocaleString('pt-BR')}
+                                                    {version.is_rollback ? ' • rollback' : ''}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <Button
+                                        variant="outline"
+                                        disabled={!selectedVersion || restoringVersion}
+                                        onClick={handleRestoreVersion}
+                                    >
+                                        {restoringVersion ? 'Restaurando...' : 'Restaurar versão'}
+                                    </Button>
+                                </div>
+
+                                {selectedVersion && currentMetrics && baseMetrics ? (
+                                    <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+                                        <div className="rounded-lg border p-3">
+                                            <p className="text-xs text-muted-foreground">Kcal/dia</p>
+                                            <p className="text-lg font-semibold">{currentMetrics.calories.toFixed(0)}</p>
+                                            <p className="text-xs text-muted-foreground">Delta: {buildDelta(currentMetrics.calories, baseMetrics.calories)}</p>
+                                        </div>
+                                        <div className="rounded-lg border p-3">
+                                            <p className="text-xs text-muted-foreground">Proteína</p>
+                                            <p className="text-lg font-semibold">{currentMetrics.protein.toFixed(1)} g</p>
+                                            <p className="text-xs text-muted-foreground">Delta: {buildDelta(currentMetrics.protein, baseMetrics.protein)}</p>
+                                        </div>
+                                        <div className="rounded-lg border p-3">
+                                            <p className="text-xs text-muted-foreground">Carboidratos</p>
+                                            <p className="text-lg font-semibold">{currentMetrics.carbs.toFixed(1)} g</p>
+                                            <p className="text-xs text-muted-foreground">Delta: {buildDelta(currentMetrics.carbs, baseMetrics.carbs)}</p>
+                                        </div>
+                                        <div className="rounded-lg border p-3">
+                                            <p className="text-xs text-muted-foreground">Gorduras</p>
+                                            <p className="text-lg font-semibold">{currentMetrics.fat.toFixed(1)} g</p>
+                                            <p className="text-xs text-muted-foreground">Delta: {buildDelta(currentMetrics.fat, baseMetrics.fat)}</p>
+                                        </div>
+                                        <div className="rounded-lg border p-3">
+                                            <p className="text-xs text-muted-foreground">Refeições</p>
+                                            <p className="text-lg font-semibold">{currentMetrics.mealsCount}</p>
+                                            <p className="text-xs text-muted-foreground">Delta: {buildDelta(currentMetrics.mealsCount, baseMetrics.mealsCount)}</p>
+                                        </div>
+                                    </div>
+                                ) : null}
+                            </>
+                        )}
                     </CardContent>
                 </Card>
             )}

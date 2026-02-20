@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
+import { processPatientReminders } from '@/lib/supabase/food-diary-queries';
+
+const REMINDER_PROCESS_TTL_MS = 15 * 60 * 1000;
 
 /**
  * Hook para gerenciar notificações do paciente
@@ -21,6 +24,20 @@ export function useNotifications() {
       setUnreadCount(count || 0);
     };
 
+    const maybeProcessReminders = async () => {
+      if (!user || user?.profile?.user_type !== 'patient') return;
+      const cacheKey = `reminder-process:${user.id}`;
+      const lastRunAt = Number(window.localStorage.getItem(cacheKey) || 0);
+      const now = Date.now();
+      if (Number.isFinite(lastRunAt) && now - lastRunAt < REMINDER_PROCESS_TTL_MS) return;
+
+      const { error } = await processPatientReminders(user.id);
+      if (!error) {
+        window.localStorage.setItem(cacheKey, String(now));
+      }
+    };
+
+    maybeProcessReminders();
     fetchUnread();
 
     // Realtime subscription

@@ -64,8 +64,8 @@ export default function PatientHomePage() {
       .from('appointments')
       .select('*')
       .eq('patient_id', user.id)
-      .gte('appointment_time', today.toISOString())
-      .order('appointment_time', { ascending: true })
+      .gte('start_time', today.toISOString())
+      .order('start_time', { ascending: true })
       .limit(1)
       .maybeSingle();
 
@@ -184,7 +184,7 @@ export default function PatientHomePage() {
               <CardContent>
                 <p className="text-sm font-medium text-blue-900">
                   {format(
-                    new Date(nextAppointment.appointment_time),
+                    new Date(nextAppointment.start_time || nextAppointment.appointment_time),
                     "dd 'de' MMMM 'às' HH:mm",
                     { locale: ptBR }
                   )}

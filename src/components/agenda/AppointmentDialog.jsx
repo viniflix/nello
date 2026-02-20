@@ -54,9 +54,8 @@ export default function AppointmentDialog({
     const statusOptions = [
         { value: 'scheduled', label: 'Agendada' },
         { value: 'confirmed', label: 'Confirmada' },
-        { value: 'awaiting_confirmation', label: 'Aguardando Confirmação' },
         { value: 'completed', label: 'Realizada' },
-        { value: 'cancelled', label: 'Cancelada' },
+        { value: 'canceled', label: 'Cancelada' },
         { value: 'no_show', label: 'Faltou' }
     ];
 
@@ -70,13 +69,14 @@ export default function AppointmentDialog({
 
     useEffect(() => {
         if (appointment) {
+            const appointmentStart = appointment.start_time || appointment.appointment_time;
             setFormData({
                 patient_id: appointment.patient_id || '',
-                appointment_time_date: appointment.appointment_time
-                    ? format(new Date(appointment.appointment_time), 'yyyy-MM-dd')
+                appointment_time_date: appointmentStart
+                    ? format(new Date(appointmentStart), 'yyyy-MM-dd')
                     : format(new Date(), 'yyyy-MM-dd'),
-                appointment_time_hour: appointment.appointment_time
-                    ? format(new Date(appointment.appointment_time), 'HH:mm')
+                appointment_time_hour: appointmentStart
+                    ? format(new Date(appointmentStart), 'HH:mm')
                     : '',
                 duration: appointment.duration || 60,
                 appointment_type: appointment.appointment_type || 'first_appointment',

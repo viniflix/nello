@@ -1,6 +1,8 @@
 import { supabase } from '@/lib/customSupabaseClient';
 import { translateMealType } from '@/utils/mealTranslations';
 import { buildActivityEventPayload, logSupabaseError } from '@/lib/supabase/query-helpers';
+import { classifyLabResultsRiskBatch, getLabRiskRules } from '@/lib/supabase/lab-results-queries';
+import { logOperationalEvent } from './observability-queries';
 
 /**
  * Busca o perfil completo do paciente
@@ -59,20 +61,20 @@ export const getLatestMetrics = async (patientId) => {
         // Buscar última consulta
         const { data: lastAppointment, error: lastAppError } = await supabase
             .from('appointments')
-            .select('appointment_time, status')
+            .select('start_time, status')
             .eq('patient_id', patientId)
-            .lte('appointment_time', new Date().toISOString())
-            .order('appointment_time', { ascending: false })
+            .lte('start_time', new Date().toISOString())
+            .order('start_time', { ascending: false })
             .limit(1)
             .maybeSingle();
 
         // Buscar próxima consulta
         const { data: nextAppointment, error: nextAppError } = await supabase
             .from('appointments')
-            .select('appointment_time, status')
+            .select('start_time, status')
             .eq('patient_id', patientId)
-            .gte('appointment_time', new Date().toISOString())
-            .order('appointment_time', { ascending: true })
+            .gte('start_time', new Date().toISOString())
+            .order('start_time', { ascending: true })
             .limit(1)
             .maybeSingle();
 
@@ -81,10 +83,10 @@ export const getLatestMetrics = async (patientId) => {
             height: height || null,
             last_measurement: growthData?.record_date || null,
             last_appointment: lastAppointment
-                ? new Date(lastAppointment.appointment_time).toLocaleDateString('pt-BR')
+                ? new Date(lastAppointment.start_time).toLocaleDateString('pt-BR')
                 : null,
             next_appointment: nextAppointment
-                ? new Date(nextAppointment.appointment_time).toLocaleDateString('pt-BR')
+                ? new Date(nextAppointment.start_time).toLocaleDateString('pt-BR')
                 : null
         };
 
@@ -276,9 +278,9 @@ export const getPatientActivities = async (patientId, limit = 10) => {
         // Buscar consultas recentes (aumentado para cobrir mais tempo)
         const { data: appointmentsData } = await supabase
             .from('appointments')
-            .select('id, appointment_time, status, notes')
+            .select('id, start_time, status, notes')
             .eq('patient_id', patientId)
-            .order('appointment_time', { ascending: false })
+            .order('start_time', { ascending: false })
             .limit(15);
 
         if (appointmentsData) {
@@ -288,7 +290,7 @@ export const getPatientActivities = async (patientId, limit = 10) => {
                     type: 'appointment',
                     title: 'Consulta Realizada',
                     description: appointment.notes || 'Consulta de acompanhamento',
-                    timestamp: appointment.appointment_time,
+                    timestamp: appointment.start_time,
                     metadata: [appointment.status || 'Concluída']
                 });
             });
@@ -440,6 +442,71 @@ export const getPatientsPendingData = async (nutritionistId) => {
 };
 
 /**
+ * Busca alertas de exames com risco alto para pacientes de um nutricionista.
+ * Consolida por paciente + marcador (último exame mais recente).
+ */
+export const getPatientsHighRiskLabAlerts = async ({
+    nutritionistId,
+    patientIds = [],
+    daysWindow = 120
+}) => {
+    try {
+        const scopedPatientIds = (patientIds || []).filter(Boolean);
+        if (!nutritionistId || !scopedPatientIds.length) {
+            return { data: [], error: null };
+        }
+
+        const cutoff = new Date(Date.now() - Math.max(1, Number(daysWindow) || 120) * 24 * 60 * 60 * 1000)
+            .toISOString()
+            .slice(0, 10);
+
+        const [{ data: rules, error: rulesError }, { data: rows, error: rowsError }] = await Promise.all([
+            getLabRiskRules(nutritionistId),
+            supabase
+                .from('lab_results')
+                .select('id, patient_id, test_name, test_value, test_unit, reference_min, reference_max, test_date, created_at')
+                .in('patient_id', scopedPatientIds)
+                .gte('test_date', cutoff)
+                .order('test_date', { ascending: false })
+                .limit(500)
+        ]);
+
+        if (rulesError) throw rulesError;
+        if (rowsError) throw rowsError;
+
+        const classified = classifyLabResultsRiskBatch(rows || [], rules || []);
+        const highRiskRows = (classified.data || []).filter((item) => item.risk_level === 'high');
+
+        const dedupedMap = new Map();
+        highRiskRows.forEach((row) => {
+            const markerKey = row.marker_key || String(row.test_name || '').toLowerCase();
+            const dedupeKey = `${row.patient_id}:${markerKey}`;
+            if (!dedupedMap.has(dedupeKey)) {
+                dedupedMap.set(dedupeKey, {
+                    patient_id: row.patient_id,
+                    marker_key: markerKey,
+                    test_name: row.test_name,
+                    test_value: row.test_value,
+                    test_unit: row.test_unit,
+                    risk_reason: row.risk_reason,
+                    test_date: row.test_date,
+                    created_at: row.created_at,
+                    risk_level: row.risk_level
+                });
+            }
+        });
+
+        return {
+            data: Array.from(dedupedMap.values()),
+            error: null
+        };
+    } catch (error) {
+        logSupabaseError('Erro ao buscar alertas de risco laboratorial alto', error);
+        return { data: [], error };
+    }
+};
+
+/**
  * Busca regras de prioridade do feed (globais + específicas do nutricionista)
  * @param {string} nutritionistId - ID do nutricionista
  * @returns {Promise<{data: array, error: object}>}
@@ -489,7 +556,329 @@ export const logActivityEvent = async (eventInput) => {
     }
 };
 
+const buildFeedTaskIdentity = ({ nutritionistId, sourceType, sourceId }) => {
+    return {
+        nutritionist_id: nutritionistId,
+        source_type: sourceType,
+        source_id: sourceId
+    };
+};
+
+const pushFeedTaskAuditEntry = (metadata, entry) => {
+    const safeMetadata = metadata && typeof metadata === 'object' ? metadata : {};
+    const previous = Array.isArray(safeMetadata.audit_history) ? safeMetadata.audit_history : [];
+    const nextHistory = [entry, ...previous].slice(0, 10);
+    return {
+        ...safeMetadata,
+        audit_history: nextHistory,
+        last_action: entry.action,
+        last_action_at: entry.at
+    };
+};
+
+/**
+ * Busca estado persistido das tarefas do feed para o nutricionista
+ * @param {string} nutritionistId
+ * @returns {Promise<{data: array, error: object|null}>}
+ */
+export const getFeedTaskStates = async (nutritionistId) => {
+    try {
+        const { data, error } = await supabase
+            .from('feed_tasks')
+            .select('id, source_type, source_id, status, snooze_until, first_seen_at, created_at, updated_at, priority_score, priority_reason')
+            .eq('nutritionist_id', nutritionistId);
+
+        if (error) throw error;
+        return { data: data || [], error: null };
+    } catch (error) {
+        logSupabaseError('Erro ao buscar estados do feed', error);
+        return { data: [], error };
+    }
+};
+
+/**
+ * Busca pacientes vinculados ao nutricionista para cards auxiliares do feed
+ * com fallback para schemas sem colunas legadas em user_profiles.
+ */
+export const getNutritionistPatientsForFeed = async (nutritionistId) => {
+    try {
+        const { data, error } = await supabase
+            .from('user_profiles')
+            .select('id, name, birth_date, avatar_url')
+            .eq('nutritionist_id', nutritionistId)
+            .eq('is_active', true);
+
+        if (!error) {
+            return { data: data || [], error: null };
+        }
+
+        const { data: links, error: linksError } = await supabase
+            .from('nutritionist_patients')
+            .select('patient_id')
+            .eq('nutritionist_id', nutritionistId);
+
+        if (linksError) throw linksError;
+
+        const patientIds = (links || []).map((link) => link.patient_id).filter(Boolean);
+        if (!patientIds.length) {
+            return { data: [], error: null };
+        }
+
+        const { data: profiles, error: profileError } = await supabase
+            .from('user_profiles')
+            .select('id, full_name, birth_date, avatar_url')
+            .in('id', patientIds);
+
+        if (profileError) throw profileError;
+
+        const normalized = (profiles || []).map((profile) => ({
+            id: profile.id,
+            name: profile.full_name || 'Paciente',
+            birth_date: profile.birth_date,
+            avatar_url: profile.avatar_url
+        }));
+
+        return { data: normalized, error: null };
+    } catch (error) {
+        logSupabaseError('Erro ao buscar pacientes do nutricionista para feed', error);
+        return { data: [], error };
+    }
+};
+
+/**
+ * Salva/atualiza uma tarefa do feed de forma idempotente por fonte
+ */
+export const upsertFeedTask = async ({
+    nutritionistId,
+    patientId = null,
+    sourceType,
+    sourceId,
+    title,
+    description = null,
+    priorityScore = 0,
+    priorityReason = null,
+    status = 'open',
+    snoozeUntil = null,
+    metadata = {},
+    auditAction = null
+}) => {
+    try {
+        const identity = buildFeedTaskIdentity({ nutritionistId, sourceType, sourceId });
+        const { data: existing, error: existingError } = await supabase
+            .from('feed_tasks')
+            .select('id, metadata')
+            .match(identity)
+            .maybeSingle();
+
+        if (existingError) throw existingError;
+
+        const nowIso = new Date().toISOString();
+        const baseMetadata = {
+            ...(existing?.metadata && typeof existing.metadata === 'object' ? existing.metadata : {}),
+            ...(metadata && typeof metadata === 'object' ? metadata : {})
+        };
+        const metadataWithAudit = auditAction
+            ? pushFeedTaskAuditEntry(baseMetadata, {
+                action: auditAction,
+                at: nowIso,
+                nutritionist_id: nutritionistId || null,
+                patient_id: patientId || null,
+                source_type: sourceType || null,
+                source_id: sourceId || null,
+                status: status || 'open',
+                snooze_until: snoozeUntil || null
+            })
+            : baseMetadata;
+
+        const baseData = {
+            ...identity,
+            patient_id: patientId,
+            title,
+            description,
+            priority_score: Number(priorityScore || 0),
+            priority_reason: priorityReason,
+            status,
+            snooze_until: snoozeUntil,
+            metadata: metadataWithAudit,
+            last_seen_at: nowIso
+        };
+
+        if (status === 'resolved') {
+            baseData.resolved_at = new Date().toISOString();
+        } else {
+            baseData.resolved_at = null;
+        }
+
+        if (existing?.id) {
+            const { data, error } = await supabase
+                .from('feed_tasks')
+                .update(baseData)
+                .eq('id', existing.id)
+                .select()
+                .single();
+            if (error) throw error;
+            return { data, error: null };
+        }
+
+        const insertData = {
+            ...baseData,
+            first_seen_at: new Date().toISOString()
+        };
+        const { data, error } = await supabase
+            .from('feed_tasks')
+            .insert(insertData)
+            .select()
+            .single();
+
+        if (error) throw error;
+        return { data, error: null };
+    } catch (error) {
+        logSupabaseError('Erro ao salvar tarefa do feed', error);
+        return { data: null, error };
+    }
+};
+
+export const resolveFeedTask = async (input) => {
+    return upsertFeedTask({ ...input, status: 'resolved', snoozeUntil: null, auditAction: 'resolved' });
+};
+
+export const snoozeFeedTask = async (input) => {
+    return upsertFeedTask({ ...input, status: 'snoozed', auditAction: 'snoozed' });
+};
+
+export const reopenFeedTask = async (input) => {
+    return upsertFeedTask({ ...input, status: 'open', snoozeUntil: null, auditAction: 'reopened' });
+};
+
+export const resolveFeedTasksBatch = async (inputs = []) => {
+    try {
+        const operations = (inputs || []).map((input) =>
+            upsertFeedTask({ ...input, status: 'resolved', snoozeUntil: null, auditAction: 'resolved_batch' })
+        );
+        const results = await Promise.all(operations);
+        const failed = results.filter((result) => result?.error);
+        return {
+            data: results.map((result) => result?.data).filter(Boolean),
+            error: failed.length ? failed[0].error : null,
+            failedCount: failed.length
+        };
+    } catch (error) {
+        logSupabaseError('Erro ao resolver tarefas em lote', error);
+        return { data: [], error, failedCount: (inputs || []).length };
+    }
+};
+
+export const snoozeFeedTasksBatch = async (inputs = [], snoozeUntil) => {
+    try {
+        const operations = (inputs || []).map((input) =>
+            upsertFeedTask({ ...input, status: 'snoozed', snoozeUntil, auditAction: 'snoozed_batch' })
+        );
+        const results = await Promise.all(operations);
+        const failed = results.filter((result) => result?.error);
+        return {
+            data: results.map((result) => result?.data).filter(Boolean),
+            error: failed.length ? failed[0].error : null,
+            failedCount: failed.length
+        };
+    } catch (error) {
+        logSupabaseError('Erro ao adiar tarefas em lote', error);
+        return { data: [], error, failedCount: (inputs || []).length };
+    }
+};
+
+/**
+ * Sincroniza snapshot atual do feed com feed_tasks.
+ * Regras:
+ * - resolved permanece resolved
+ * - snoozed no futuro permanece snoozed
+ * - snoozed expirado reabre como open
+ * - sem estado prévio cria/atualiza como open
+ */
+export const syncFeedTasksFromItems = async (nutritionistId, items = [], existingStates = []) => {
+    try {
+        if (!nutritionistId) {
+            return { data: [], error: null };
+        }
+
+        const stateMap = new Map(
+            (existingStates || []).map((state) => [`${state.source_type}:${state.source_id}`, state])
+        );
+
+        const syncPayloads = (items || [])
+            .filter((item) => item?.sourceType && item?.sourceId)
+            .map((item) => {
+                const key = `${item.sourceType}:${item.sourceId}`;
+                const existing = stateMap.get(key);
+                let nextStatus = 'open';
+                let nextSnoozeUntil = null;
+
+                if (existing?.status === 'resolved') {
+                    nextStatus = 'resolved';
+                } else if (existing?.status === 'snoozed') {
+                    const dueAt = existing.snooze_until ? new Date(existing.snooze_until).getTime() : 0;
+                    if (dueAt > Date.now()) {
+                        nextStatus = 'snoozed';
+                        nextSnoozeUntil = existing.snooze_until;
+                    }
+                }
+
+                return {
+                    nutritionistId,
+                    patientId: item.patientId || null,
+                    sourceType: item.sourceType,
+                    sourceId: item.sourceId,
+                    title: item.title || 'Item do feed',
+                    description: item.description || null,
+                    priorityScore: Number(item.priorityScore || 0),
+                    priorityReason: item.priorityReason || null,
+                    status: nextStatus,
+                    snoozeUntil: nextSnoozeUntil,
+                    metadata: {
+                        item_type: item.type || null,
+                        cta_route: item.ctaRoute || null
+                    }
+                };
+            });
+
+        const result = await Promise.all(syncPayloads.map((payload) => upsertFeedTask(payload)));
+        const firstError = result.find((entry) => entry?.error)?.error || null;
+        return { data: result.map((entry) => entry?.data).filter(Boolean), error: firstError };
+    } catch (error) {
+        logSupabaseError('Erro ao sincronizar snapshot do feed', error);
+        return { data: [], error };
+    }
+};
+
+/**
+ * Retorna trilha operacional de auditoria por item do feed.
+ */
+export const getFeedTaskAuditTrail = async ({
+    nutritionistId,
+    sourceType,
+    sourceId,
+    limit = 10
+}) => {
+    try {
+        const identity = buildFeedTaskIdentity({ nutritionistId, sourceType, sourceId });
+        const { data, error } = await supabase
+            .from('feed_tasks')
+            .select('id, status, snooze_until, updated_at, metadata')
+            .match(identity)
+            .maybeSingle();
+
+        if (error) throw error;
+        if (!data) return { data: [], error: null };
+
+        const entries = Array.isArray(data?.metadata?.audit_history) ? data.metadata.audit_history : [];
+        return { data: entries.slice(0, Math.max(1, Number(limit) || 10)), error: null };
+    } catch (error) {
+        logSupabaseError('Erro ao buscar auditoria do item do feed', error);
+        return { data: [], error };
+    }
+};
+
 export const getComprehensiveActivityFeed = async (nutritionistId, limit = 20) => {
+    const startedAt = Date.now();
     try {
         // OTIMIZADO: Usa função SQL que consolida 8 queries em 1
         const { data, error } = await supabase
@@ -580,11 +969,113 @@ export const getComprehensiveActivityFeed = async (nutritionistId, limit = 20) =
             }
         });
 
+        await logOperationalEvent({
+            module: 'feed',
+            operation: 'get_comprehensive_activity_feed',
+            eventType: 'success',
+            latencyMs: Date.now() - startedAt,
+            nutritionistId: nutritionistId || null,
+            metadata: {
+                items_count: activities.length
+            }
+        });
+
         return { data: activities, error: null };
     } catch (error) {
         logSupabaseError('Erro ao buscar feed de atividades', error);
+        await logOperationalEvent({
+            module: 'feed',
+            operation: 'get_comprehensive_activity_feed',
+            eventType: 'error',
+            latencyMs: Date.now() - startedAt,
+            nutritionistId: nutritionistId || null,
+            errorMessage: error?.message || String(error)
+        });
         return { data: [], error };
     }
+};
+
+const resolveRuleWeight = (rules = [], ruleKey, fallbackWeight) => {
+    const rule = rules.find((item) => item.rule_key === ruleKey && item.is_active !== false);
+    return Number(rule?.weight ?? fallbackWeight);
+};
+
+const resolveRuleConfig = (rules = [], ruleKey) => {
+    const rule = rules.find((item) => item.rule_key === ruleKey && item.is_active !== false);
+    return (rule?.config && typeof rule.config === 'object') ? rule.config : {};
+};
+
+/**
+ * Enriquecimento centralizado de prioridade para itens do feed.
+ * Mantém a lógica de score fora da UI para facilitar evolução na Sprint 1.
+ */
+export const attachFeedPriorityMeta = (items = [], rules = []) => {
+    return (items || []).map((item) => {
+        if (item?.type === 'pending') {
+            const baseScore = resolveRuleWeight(rules, 'pending_data', 5);
+            const pendingType = String(item?.pendingType || '').toLowerCase();
+            const criticalPendingTypes = ['prescription', 'anthropometry'];
+            const extraScore = criticalPendingTypes.includes(pendingType) ? 1 : 0;
+            return {
+                ...item,
+                priorityScore: baseScore + extraScore,
+                priorityReason: extraScore > 0
+                    ? 'Pendencia de dados essenciais (critica)'
+                    : 'Pendencia de dados essenciais'
+            };
+        }
+
+        if (item?.type === 'low_adherence') {
+            const baseScore = resolveRuleWeight(rules, 'low_adherence', 4);
+            const config = resolveRuleConfig(rules, 'low_adherence');
+            const threshold = Number(config?.days_inactive_threshold ?? 2);
+            const daysInactive = Number(item?.daysInactive ?? 0);
+            let extraScore = 0;
+            if (Number.isFinite(daysInactive)) {
+                if (daysInactive >= threshold + 3) extraScore = 2;
+                else if (daysInactive >= threshold + 1) extraScore = 1;
+            }
+            return {
+                ...item,
+                priorityScore: baseScore + extraScore,
+                priorityReason: Number.isFinite(daysInactive) && daysInactive > 0
+                    ? `Baixa adesao (${daysInactive} dias sem registro)`
+                    : 'Baixa adesao recente'
+            };
+        }
+
+        if (item?.type === 'appointment_upcoming' || item?.type === 'appointment') {
+            const baseScore = resolveRuleWeight(rules, 'appointment_upcoming', 3);
+            const appointmentDate = item?.timestamp ? new Date(item.timestamp) : null;
+            const diffHours = appointmentDate && !Number.isNaN(appointmentDate.getTime())
+                ? (appointmentDate.getTime() - Date.now()) / (1000 * 60 * 60)
+                : null;
+            let extraScore = 0;
+            if (typeof diffHours === 'number') {
+                if (diffHours <= 2) extraScore = 2;
+                else if (diffHours <= 12) extraScore = 1;
+            }
+            return {
+                ...item,
+                priorityScore: baseScore + extraScore,
+                priorityReason: extraScore >= 2 ? 'Consulta muito proxima' : 'Consulta proxima'
+            };
+        }
+
+        if (item?.type === 'lab_high_risk') {
+            return {
+                ...item,
+                priorityScore: resolveRuleWeight(rules, 'lab_high_risk', 5),
+                priorityReason: 'Risco laboratorial alto'
+            };
+        }
+
+        return {
+            ...item,
+            priorityScore: resolveRuleWeight(rules, 'recent_activity', 1),
+            priorityReason: 'Atividade recente'
+        };
+    });
 };
 
 /**

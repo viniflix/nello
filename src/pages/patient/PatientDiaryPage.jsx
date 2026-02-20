@@ -3,14 +3,17 @@ import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { format, addDays, subDays, isToday, isYesterday, isTomorrow, startOfDay, isSameDay, parseISO, isValid } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Plus, Utensils, Trash2, MoreHorizontal, ChevronLeft, ChevronRight, FileText, Eye, Bell, Edit, Flame, Beef, Wheat, Droplet } from 'lucide-react';
+import { Plus, Utensils, Trash2, MoreHorizontal, ChevronLeft, ChevronRight, FileText, Eye, Bell, Edit, Flame, Beef, Wheat, Droplet, Clock } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { DateInputWithCalendar } from '@/components/ui/date-input';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Progress } from '@/components/ui/progress';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useToast } from '@/hooks/use-toast';
@@ -18,6 +21,7 @@ import { translateMealType } from '@/utils/mealTranslations';
 import MealPlanViewDialog from '@/components/patient/MealPlanViewDialog';
 import NotificationsPanel from '@/components/NotificationsPanel';
 import { useNotifications } from '@/hooks/useNotifications';
+import { getPatientReminderPreferences, upsertPatientReminderPreferences } from '@/lib/supabase/food-diary-queries';
 
 /**
  * PatientDiaryPage - Aba 2: Diário
@@ -43,6 +47,18 @@ export default function PatientDiaryPage() {
   const [showNotifications, setShowNotifications] = useState(false);
   const { unreadCount } = useNotifications();
   const [prescriptionGoal, setPrescriptionGoal] = useState(null);
+  const [preferencesDialogOpen, setPreferencesDialogOpen] = useState(false);
+  const [reminderPrefs, setReminderPrefs] = useState({
+    daily_log_enabled: true,
+    measurement_enabled: true,
+    daily_log_time: '20:00',
+    measurement_time: '09:00',
+    channel_in_app: true,
+    timezone: 'America/Sao_Paulo',
+    quiet_hours_start: '',
+    quiet_hours_end: ''
+  });
+  const [savingReminderPrefs, setSavingReminderPrefs] = useState(false);
 
   // Todos os tipos possíveis (para modal)
   const ALL_MEAL_TYPES = [
@@ -148,6 +164,25 @@ export default function PatientDiaryPage() {
   useEffect(() => {
     loadMeals();
   }, [loadMeals]);
+
+  const loadReminderPreferences = useCallback(async () => {
+    if (!user?.id) return;
+    const { data } = await getPatientReminderPreferences(user.id);
+    setReminderPrefs({
+      daily_log_enabled: data?.daily_log_enabled ?? true,
+      measurement_enabled: data?.measurement_enabled ?? true,
+      daily_log_time: data?.daily_log_time || '20:00',
+      measurement_time: data?.measurement_time || '09:00',
+      channel_in_app: data?.channel_in_app ?? true,
+      timezone: data?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Sao_Paulo',
+      quiet_hours_start: data?.quiet_hours_start || '',
+      quiet_hours_end: data?.quiet_hours_end || ''
+    });
+  }, [user?.id]);
+
+  useEffect(() => {
+    loadReminderPreferences();
+  }, [loadReminderPreferences]);
 
   // Calcular totais do dia
   const dailyTotals = meals.reduce(
@@ -287,6 +322,42 @@ export default function PatientDiaryPage() {
     setModalOpen(false);
   };
 
+  const updateReminderPref = (field, value) => {
+    setReminderPrefs((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleSaveReminderPreferences = async () => {
+    if (!user?.id) return;
+    setSavingReminderPrefs(true);
+    try {
+      const { error } = await upsertPatientReminderPreferences(user.id, {
+        daily_log_enabled: reminderPrefs.daily_log_enabled,
+        measurement_enabled: reminderPrefs.measurement_enabled,
+        daily_log_time: reminderPrefs.daily_log_time,
+        measurement_time: reminderPrefs.measurement_time,
+        channel_in_app: reminderPrefs.channel_in_app,
+        timezone: reminderPrefs.timezone,
+        quiet_hours_start: reminderPrefs.quiet_hours_start || null,
+        quiet_hours_end: reminderPrefs.quiet_hours_end || null
+      });
+      if (error) throw error;
+
+      toast({
+        title: 'Preferências salvas',
+        description: 'Seus lembretes foram atualizados com sucesso.'
+      });
+      setPreferencesDialogOpen(false);
+    } catch (error) {
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível salvar as preferências de lembrete.',
+        variant: 'destructive'
+      });
+    } finally {
+      setSavingReminderPrefs(false);
+    }
+  };
+
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <div className="max-w-7xl mx-auto w-full px-4 md:px-8 py-8 space-y-6">
@@ -311,6 +382,15 @@ export default function PatientDiaryPage() {
                 <span className="hidden sm:inline">Ver Plano</span>
               </Button>
             )}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setPreferencesDialogOpen(true)}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <Clock className="w-4 h-4 mr-2" />
+              <span className="hidden sm:inline">Lembretes</span>
+            </Button>
             <Button
               variant="ghost"
               size="icon"
@@ -679,6 +759,99 @@ export default function PatientDiaryPage() {
 
       {/* Painel de Notificações */}
       <NotificationsPanel isOpen={showNotifications} setIsOpen={setShowNotifications} />
+
+      {/* Dialog: Preferências de Lembrete */}
+      <Dialog open={preferencesDialogOpen} onOpenChange={setPreferencesDialogOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Preferências de Lembrete</DialogTitle>
+            <DialogDescription>
+              Configure quais lembretes deseja receber e os horários preferidos.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="rounded-lg border p-3 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium">Lembrete de diário</p>
+                  <p className="text-xs text-muted-foreground">Registrar refeições diariamente</p>
+                </div>
+                <Switch
+                  checked={reminderPrefs.daily_log_enabled}
+                  onCheckedChange={(checked) => updateReminderPref('daily_log_enabled', checked)}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="daily-log-time">Horário</Label>
+                <Input
+                  id="daily-log-time"
+                  type="time"
+                  value={reminderPrefs.daily_log_time}
+                  onChange={(e) => updateReminderPref('daily_log_time', e.target.value)}
+                  disabled={!reminderPrefs.daily_log_enabled}
+                />
+              </div>
+            </div>
+
+            <div className="rounded-lg border p-3 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium">Lembrete de medidas</p>
+                  <p className="text-xs text-muted-foreground">Atualizar dados e evolução</p>
+                </div>
+                <Switch
+                  checked={reminderPrefs.measurement_enabled}
+                  onCheckedChange={(checked) => updateReminderPref('measurement_enabled', checked)}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="measurement-time">Horário</Label>
+                <Input
+                  id="measurement-time"
+                  type="time"
+                  value={reminderPrefs.measurement_time}
+                  onChange={(e) => updateReminderPref('measurement_time', e.target.value)}
+                  disabled={!reminderPrefs.measurement_enabled}
+                />
+              </div>
+            </div>
+
+            <div className="rounded-lg border p-3 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium">Canal in-app</p>
+                  <p className="text-xs text-muted-foreground">Receber lembretes dentro do aplicativo</p>
+                </div>
+                <Switch
+                  checked={reminderPrefs.channel_in_app}
+                  onCheckedChange={(checked) => updateReminderPref('channel_in_app', checked)}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="timezone">Fuso horário</Label>
+                <Input
+                  id="timezone"
+                  type="text"
+                  value={reminderPrefs.timezone}
+                  onChange={(e) => updateReminderPref('timezone', e.target.value)}
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setPreferencesDialogOpen(false)}
+              disabled={savingReminderPrefs}
+            >
+              Cancelar
+            </Button>
+            <Button onClick={handleSaveReminderPreferences} disabled={savingReminderPrefs}>
+              {savingReminderPrefs ? 'Salvando...' : 'Salvar preferências'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* AlertDialog de Confirmação de Exclusão */}
       <AlertDialog open={!!mealToDelete} onOpenChange={() => setMealToDelete(null)}>

@@ -7,6 +7,9 @@ import { supabase } from '@/lib/customSupabaseClient';
 import { formatDateToIsoDate } from '@/lib/utils/date';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
 
+const riskOrder = { none: 0, low: 1, medium: 2, high: 3 };
+const defaultRiskMeta = { risk_level: 'none', risk_reason: null, marker_key: null };
+
 /**
  * Busca todos os exames de um paciente
  * @param {string} patientId - ID do paciente
@@ -260,6 +263,131 @@ export function calculateStatus(testValue, refMin, refMax) {
     } else {
         return 'normal';
     }
+}
+
+const normalizeMarkerKey = (value = '') => (
+    String(value || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '_')
+        .replace(/^_+|_+$/g, '')
+);
+
+/**
+ * Busca regras de risco laboratorial (globais + customizadas do nutricionista).
+ */
+export async function getLabRiskRules(nutritionistId = null) {
+    try {
+        let query = supabase
+            .from('lab_risk_rules')
+            .select('*')
+            .eq('is_active', true);
+
+        if (nutritionistId) {
+            query = query.or(`nutritionist_id.is.null,nutritionist_id.eq.${nutritionistId}`);
+        } else {
+            // Sem escopo do nutricionista, retorna apenas regras globais
+            query = query.is('nutritionist_id', null);
+        }
+
+        const { data, error } = await query;
+        if (error) throw error;
+
+        const sorted = (data || []).sort((a, b) => {
+            // Regra customizada sobrescreve global quando marker_key coincide
+            const aScoped = a?.nutritionist_id ? 1 : 0;
+            const bScoped = b?.nutritionist_id ? 1 : 0;
+            return bScoped - aScoped;
+        });
+
+        return { data: sorted, error: null };
+    } catch (error) {
+        logSupabaseError('Erro ao buscar regras de risco laboratorial', error);
+        return { data: [], error };
+    }
+}
+
+/**
+ * Classifica risco de um exame com base em regras + referência manual.
+ */
+export function classifyLabResultRisk(labResult, rules = []) {
+    if (!labResult) return { ...defaultRiskMeta };
+
+    const markerKey = normalizeMarkerKey(labResult.marker_key || labResult.test_name);
+    const scopedRule = (rules || []).find((rule) => normalizeMarkerKey(rule.marker_key) === markerKey);
+    const testValue = Number(labResult?.test_value);
+    const hasNumericValue = Number.isFinite(testValue);
+
+    if (!hasNumericValue) {
+        return { ...defaultRiskMeta, marker_key: markerKey };
+    }
+
+    if (scopedRule) {
+        const lowThreshold = Number(scopedRule?.low_threshold);
+        const highThreshold = Number(scopedRule?.high_threshold);
+        const hasLow = Number.isFinite(lowThreshold);
+        const hasHigh = Number.isFinite(highThreshold);
+
+        if (hasLow && testValue < lowThreshold) {
+            return {
+                marker_key: markerKey,
+                risk_level: scopedRule.risk_low || 'medium',
+                risk_reason: `Abaixo do limiar (${lowThreshold}${scopedRule.unit ? ` ${scopedRule.unit}` : ''})`
+            };
+        }
+        if (hasHigh && testValue > highThreshold) {
+            return {
+                marker_key: markerKey,
+                risk_level: scopedRule.risk_high || 'high',
+                risk_reason: `Acima do limiar (${highThreshold}${scopedRule.unit ? ` ${scopedRule.unit}` : ''})`
+            };
+        }
+        return { marker_key: markerKey, risk_level: 'none', risk_reason: 'Dentro da faixa esperada' };
+    }
+
+    const refMin = Number(labResult?.reference_min);
+    const refMax = Number(labResult?.reference_max);
+    if (Number.isFinite(refMin) && testValue < refMin) {
+        return { marker_key: markerKey, risk_level: 'medium', risk_reason: 'Abaixo da referência' };
+    }
+    if (Number.isFinite(refMax) && testValue > refMax) {
+        return { marker_key: markerKey, risk_level: 'high', risk_reason: 'Acima da referência' };
+    }
+
+    return { marker_key: markerKey, risk_level: 'none', risk_reason: null };
+}
+
+/**
+ * Classifica uma lista de exames e retorna resumo de risco.
+ */
+export function classifyLabResultsRiskBatch(labResults = [], rules = []) {
+    const enriched = (labResults || []).map((item) => {
+        const risk = classifyLabResultRisk(item, rules);
+        return {
+            ...item,
+            risk_level: risk.risk_level,
+            risk_reason: risk.risk_reason,
+            marker_key: risk.marker_key || normalizeMarkerKey(item?.test_name)
+        };
+    });
+
+    const highestRisk = enriched.reduce((acc, current) => {
+        const accLevel = riskOrder[acc] ?? 0;
+        const currentLevel = riskOrder[current.risk_level] ?? 0;
+        return currentLevel > accLevel ? current.risk_level : acc;
+    }, 'none');
+
+    return {
+        data: enriched,
+        summary: {
+            total: enriched.length,
+            high: enriched.filter((item) => item.risk_level === 'high').length,
+            medium: enriched.filter((item) => item.risk_level === 'medium').length,
+            low: enriched.filter((item) => item.risk_level === 'low').length,
+            highest_risk: highestRisk
+        }
+    };
 }
 
 /**

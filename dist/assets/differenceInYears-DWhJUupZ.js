@@ -1,0 +1,1 @@
+import{c}from"./compareAsc-BbDmGHdd.js";import{a7 as a}from"./index-BvWB-6Y-.js";function i(r,n){const e=a(r),t=a(n);return e.getFullYear()-t.getFullYear()}function Y(r,n){const e=a(r),t=a(n),s=c(e,t),f=Math.abs(i(e,t));e.setFullYear(1584),t.setFullYear(1584);const l=c(e,t)===-s,o=s*(f-+l);return o===0?0:o}export{Y as d};
