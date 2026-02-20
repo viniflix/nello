@@ -1,1 +1,0 @@
-import{a3 as i,a4 as s}from"./index-CzP_nI2M.js";function f(n,o){const t=i(n);if(isNaN(o))return s(n,NaN);if(!o)return t;const r=t.getDate(),e=s(n,t.getTime());e.setMonth(t.getMonth()+o+1,0);const a=e.getDate();return r>=a?e:(t.setFullYear(e.getFullYear(),e.getMonth(),r),t)}export{f as a};

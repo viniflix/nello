@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/customSupabaseClient';
 import { format } from 'date-fns';
 import { saveTransaction } from './financial-queries';
+import { logSupabaseError } from '@/lib/supabase/query-helpers';
 
 /**
  * Create an appointment and automatically create a financial transaction
@@ -28,7 +29,7 @@ export async function createAppointmentWithFinance(appointmentData, financialDat
         .single();
 
     if (appointmentError) {
-        console.error('Error creating appointment:', appointmentError);
+        logSupabaseError('Error creating appointment', appointmentError);
         throw appointmentError;
     }
 
@@ -82,7 +83,7 @@ export async function createAppointmentWithFinance(appointmentData, financialDat
                 due_date: format(appointmentDate, 'yyyy-MM-dd')
             });
         } catch (error) {
-            console.error('Error creating financial transaction:', error);
+            logSupabaseError('Error creating financial transaction', error);
             // Don't throw - appointment was created successfully
             // Transaction can be created manually later
         }
@@ -106,7 +107,7 @@ export async function updateAppointment(appointmentId, appointmentData) {
         .single();
 
     if (error) {
-        console.error('Error updating appointment:', error);
+        logSupabaseError('Error updating appointment', error);
         throw error;
     }
 
@@ -125,7 +126,7 @@ export async function deleteAppointment(appointmentId) {
         .eq('id', appointmentId);
 
     if (error) {
-        console.error('Error deleting appointment:', error);
+        logSupabaseError('Error deleting appointment', error);
         throw error;
     }
 }
@@ -158,7 +159,7 @@ export async function getAppointments(nutritionistId, filters = {}) {
     const { data, error } = await query;
 
     if (error) {
-        console.error('Error fetching appointments:', error);
+        logSupabaseError('Error fetching appointments', error);
         throw error;
     }
 

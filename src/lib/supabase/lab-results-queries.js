@@ -4,6 +4,8 @@
  */
 
 import { supabase } from '@/lib/customSupabaseClient';
+import { formatDateToIsoDate } from '@/lib/utils/date';
+import { logSupabaseError } from '@/lib/supabase/query-helpers';
 
 /**
  * Busca todos os exames de um paciente
@@ -22,7 +24,7 @@ export async function getPatientLabResults(patientId, limit = 50) {
 
         return { data, error };
     } catch (error) {
-        console.error('Erro ao buscar exames:', error);
+        logSupabaseError('Erro ao buscar exames', error);
         return { data: null, error };
     }
 }
@@ -36,7 +38,7 @@ export async function getRecentLabResults(patientId) {
     try {
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        const dateString = thirtyDaysAgo.toISOString().split('T')[0];
+        const dateString = formatDateToIsoDate(thirtyDaysAgo);
 
         const { data, error } = await supabase
             .from('lab_results')
@@ -47,7 +49,7 @@ export async function getRecentLabResults(patientId) {
 
         return { data, error };
     } catch (error) {
-        console.error('Erro ao buscar exames recentes:', error);
+        logSupabaseError('Erro ao buscar exames recentes', error);
         return { data: null, error };
     }
 }
@@ -67,7 +69,7 @@ export async function getLabResultById(labResultId) {
 
         return { data, error };
     } catch (error) {
-        console.error('Erro ao buscar exame:', error);
+        logSupabaseError('Erro ao buscar exame', error);
         return { data: null, error };
     }
 }
@@ -108,7 +110,7 @@ export async function createLabResult(labResult) {
 
         return { data, error };
     } catch (error) {
-        console.error('Erro ao criar exame:', error);
+        logSupabaseError('Erro ao criar exame', error);
         return { data: null, error };
     }
 }
@@ -151,7 +153,7 @@ export async function updateLabResult(labResultId, updates) {
 
         return { data, error };
     } catch (error) {
-        console.error('Erro ao atualizar exame:', error);
+        logSupabaseError('Erro ao atualizar exame', error);
         return { data: null, error };
     }
 }
@@ -181,7 +183,7 @@ export async function deleteLabResult(labResultId) {
 
         return { data, error };
     } catch (error) {
-        console.error('Erro ao deletar exame:', error);
+        logSupabaseError('Erro ao deletar exame', error);
         return { data: null, error };
     }
 }
@@ -203,7 +205,7 @@ export async function getLabResultsByTestName(patientId, testName) {
 
         return { data, error };
     } catch (error) {
-        console.error('Erro ao buscar exames por nome:', error);
+        logSupabaseError('Erro ao buscar exames por nome', error);
         return { data: null, error };
     }
 }
@@ -224,7 +226,7 @@ export async function getAbnormalLabResults(patientId) {
 
         return { data, error };
     } catch (error) {
-        console.error('Erro ao buscar exames anormais:', error);
+        logSupabaseError('Erro ao buscar exames anormais', error);
         return { data: null, error };
     }
 }
@@ -282,7 +284,7 @@ export async function getLabResultsGroupedByName(patientId) {
 
         return { data: grouped, error: null };
     } catch (error) {
-        console.error('Erro ao agrupar exames:', error);
+        logSupabaseError('Erro ao agrupar exames', error);
         return { data: null, error };
     }
 }
@@ -346,7 +348,7 @@ export async function uploadLabResultPDF(patientId, file) {
             error: null
         };
     } catch (error) {
-        console.error('Erro ao fazer upload do PDF:', error);
+        logSupabaseError('Erro ao fazer upload do PDF', error);
         return { url: null, filename: null, error };
     }
 }
@@ -381,7 +383,7 @@ export async function deleteLabResultPDF(pdfUrl) {
 
         return { success: true, error: null };
     } catch (error) {
-        console.error('Erro ao deletar PDF:', error);
+        logSupabaseError('Erro ao deletar PDF', error);
         return { success: false, error };
     }
 }
@@ -402,7 +404,7 @@ export async function getLabResultPDFUrl(filePath, expiresIn = 3600) {
 
         return { url: data.signedUrl, error: null };
     } catch (error) {
-        console.error('Erro ao obter URL do PDF:', error);
+        logSupabaseError('Erro ao obter URL do PDF', error);
         return { url: null, error };
     }
 }

@@ -42,6 +42,7 @@ import {
 } from '@/lib/supabase/goals-queries';
 import { cn } from '@/lib/utils';
 import { toPortugueseError } from '@/lib/utils/errorMessages';
+import { formatDateToIsoDate, getTodayIsoDate } from '@/lib/utils/date';
 
 const GoalsPage = () => {
     const { patientId } = useParams();
@@ -65,7 +66,7 @@ const GoalsPage = () => {
         description: '',
         initial_weight: '',
         target_weight: '',
-        start_date: new Date().toISOString().split('T')[0],
+        start_date: getTodayIsoDate(),
         target_date: ''
     });
     const [viabilityPreview, setViabilityPreview] = useState(null);
@@ -223,8 +224,8 @@ const GoalsPage = () => {
                 setDeadlineRecommendation({
                     minDays,
                     idealDays,
-                    minDate: minDate.toISOString().split('T')[0],
-                    idealDate: idealDate.toISOString().split('T')[0],
+                    minDate: formatDateToIsoDate(minDate),
+                    idealDate: formatDateToIsoDate(idealDate),
                     weightChange: Math.abs(weightChange)
                 });
             } else {
@@ -285,7 +286,7 @@ const GoalsPage = () => {
                 description: '',
                 initial_weight: '',
                 target_weight: '',
-                start_date: new Date().toISOString().split('T')[0],
+                start_date: getTodayIsoDate(),
                 target_date: ''
             });
             setViabilityPreview(null);

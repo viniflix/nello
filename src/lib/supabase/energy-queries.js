@@ -1,4 +1,15 @@
 import { supabase } from '@/lib/customSupabaseClient';
+import { logSupabaseError } from '@/lib/supabase/query-helpers';
+
+const fetchLatestEnergyCalculation = async (patientId) => {
+    return supabase
+        .from('energy_expenditure_calculations')
+        .select('*')
+        .eq('patient_id', patientId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+};
 
 /**
  * Busca o último cálculo de gasto energético do paciente
@@ -7,19 +18,13 @@ import { supabase } from '@/lib/customSupabaseClient';
  */
 export const getLatestEnergyCalculation = async (patientId) => {
     try {
-        const { data, error } = await supabase
-            .from('energy_expenditure_calculations')
-            .select('*')
-            .eq('patient_id', patientId)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle();
+        const { data, error } = await fetchLatestEnergyCalculation(patientId);
 
         if (error) throw error;
 
         return { data, error: null };
     } catch (error) {
-        console.error('Erro ao buscar cálculo de energia:', error);
+        logSupabaseError('Erro ao buscar cálculo de energia', error);
         return { data: null, error };
     }
 };
@@ -31,19 +36,13 @@ export const getLatestEnergyCalculation = async (patientId) => {
  */
 export const getEnergyCalculationWithDetails = async (patientId) => {
     try {
-        const { data, error } = await supabase
-            .from('energy_expenditure_calculations')
-            .select('*')
-            .eq('patient_id', patientId)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle();
+        const { data, error } = await fetchLatestEnergyCalculation(patientId);
 
         if (error) throw error;
 
         return { data, error: null };
     } catch (error) {
-        console.error('Erro ao buscar cálculo de energia:', error);
+        logSupabaseError('Erro ao buscar cálculo de energia', error);
         return { data: null, error };
     }
 };

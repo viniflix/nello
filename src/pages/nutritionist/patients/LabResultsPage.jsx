@@ -13,6 +13,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
 import { toPortugueseError } from '@/lib/utils/errorMessages';
 import { cn } from '@/lib/utils';
+import { getTodayIsoDate } from '@/lib/utils/date';
 import {
     getPatientLabResults,
     createLabResult,
@@ -53,7 +54,7 @@ const LabResultsPage = () => {
         test_unit: '',
         reference_min: '',
         reference_max: '',
-        test_date: new Date().toISOString().split('T')[0],
+        test_date: getTodayIsoDate(),
         notes: ''
     });
 
@@ -147,7 +148,7 @@ const LabResultsPage = () => {
                 test_unit: '',
                 reference_min: '',
                 reference_max: '',
-                test_date: new Date().toISOString().split('T')[0],
+                test_date: getTodayIsoDate(),
                 notes: ''
             });
             setPdfFile(null);
@@ -713,7 +714,7 @@ const LabResultsPage = () => {
                                 id="test_date"
                                 value={formData.test_date}
                                 onChange={(value) => handleInputChange('test_date', value)}
-                                max={new Date().toISOString().split('T')[0]}
+                                max={getTodayIsoDate()}
                             />
                         </div>
 

@@ -1,8 +1,58 @@
 import { supabase } from '@/lib/customSupabaseClient';
+import { calculateCaloriesFromMacros } from '@/lib/utils/nutrition-calculations';
+import { getTodayIsoDate } from '@/lib/utils/date';
+import { logSupabaseError } from '@/lib/supabase/query-helpers';
 
 // =====================================================
 // MEAL PLANS - Planos Alimentares
 // =====================================================
+
+const FOOD_FIELDS = `
+    id,
+    name,
+    source,
+    description,
+    portion_size,
+    calories,
+    protein,
+    carbs,
+    fat,
+    fiber,
+    sodium,
+    saturated_fat,
+    trans_fat,
+    cholesterol,
+    sugar,
+    calcium,
+    iron,
+    magnesium,
+    phosphorus,
+    potassium,
+    zinc,
+    vitamin_a,
+    vitamin_c,
+    vitamin_d,
+    vitamin_e,
+    vitamin_b12,
+    folate
+`;
+
+const getFoodsMapByIds = async (foodIds) => {
+    const ids = [...new Set((foodIds || []).filter(Boolean).map(String))];
+    if (ids.length === 0) return {};
+
+    const { data, error } = await supabase
+        .from('foods')
+        .select(FOOD_FIELDS)
+        .in('id', ids);
+
+    if (error) throw error;
+
+    return (data || []).reduce((acc, food) => {
+        acc[String(food.id)] = food;
+        return acc;
+    }, {});
+};
 
 /**
  * Cria um novo plano alimentar
@@ -43,7 +93,7 @@ export const createMealPlan = async (planData) => {
                 name,
                 description: description || null,
                 active_days: active_days || ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
-                start_date: start_date || new Date().toISOString().split('T')[0],
+                start_date: start_date || getTodayIsoDate(),
                 end_date: end_date || null,
                 is_active: true
             }])
@@ -53,7 +103,7 @@ export const createMealPlan = async (planData) => {
         if (error) throw error;
         return { data, error: null };
     } catch (error) {
-        console.error('Erro ao criar plano alimentar:', error);
+        logSupabaseError('Erro ao criar plano alimentar', error);
         return { data: null, error };
     }
 };
@@ -81,7 +131,7 @@ export const getMealPlans = async (patientId, onlyActive = false) => {
         if (error) throw error;
         return { data: data || [], error: null };
     } catch (error) {
-        console.error('Erro ao buscar planos alimentares:', error);
+        logSupabaseError('Erro ao buscar planos alimentares', error);
         return { data: [], error };
     }
 };
@@ -116,44 +166,12 @@ export const getMealPlanById = async (planId) => {
             (meals || []).map(async (meal) => {
                 const { data: foods, error: foodsError } = await supabase
                     .from('meal_plan_foods')
-                    .select(`
-                        *,
-                        foods (
-                            id,
-                            name,
-                            group,
-                            description,
-                            source,
-                            portion_size,
-                            calories,
-                            protein,
-                            carbs,
-                            fat,
-                            fiber,
-                            sodium,
-                            saturated_fat,
-                            trans_fat,
-                            cholesterol,
-                            sugar,
-                            calcium,
-                            iron,
-                            magnesium,
-                            phosphorus,
-                            potassium,
-                            zinc,
-                            vitamin_a,
-                            vitamin_c,
-                            vitamin_d,
-                            vitamin_e,
-                            vitamin_b12,
-                            folate
-                        )
-                    `)
+                    .select('*')
                     .eq('meal_plan_meal_id', meal.id)
                     .order('order_index', { ascending: true });
 
                 if (foodsError) {
-                    console.error('Erro ao buscar alimentos da refeição:', foodsError);
+                    logSupabaseError('Erro ao buscar alimentos da refeição', foodsError);
                     return {
                         ...meal,
                         // Transformar nomes dos campos para compatibilidade com o form
@@ -164,6 +182,8 @@ export const getMealPlanById = async (planId) => {
                         foods: []
                     };
                 }
+
+                const foodsMap = await getFoodsMapByIds((foods || []).map((f) => f.food_id));
 
                 // Buscar medidas caseiras para os alimentos (quando unit é um ID numérico)
                 const measureIds = (foods || [])
@@ -186,7 +206,8 @@ export const getMealPlanById = async (planId) => {
                 // Transformar estrutura dos alimentos: foods (plural) -> food (singular)
                 const transformedFoods = (foods || []).map(f => ({
                     ...f,
-                    food: f.foods,  // Renomear foods (join) para food (esperado pelo componente)
+                    food: foodsMap[String(f.food_id)] || null,
+                    foods: foodsMap[String(f.food_id)] || null,
                     measure: typeof f.unit === 'number' ? measuresMap[f.unit] : null  // Incluir dados da medida caseira
                 }));
 
@@ -210,7 +231,7 @@ export const getMealPlanById = async (planId) => {
             error: null
         };
     } catch (error) {
-        console.error('Erro ao buscar plano alimentar:', error);
+        logSupabaseError('Erro ao buscar plano alimentar', error);
         return { data: null, error };
     }
 };
@@ -222,7 +243,7 @@ export const getMealPlanById = async (planId) => {
  */
 export const getActiveMealPlan = async (patientId) => {
     try {
-        const today = new Date().toISOString().split('T')[0];
+        const today = getTodayIsoDate();
 
         const { data, error } = await supabase
             .from('meal_plans')
@@ -244,7 +265,7 @@ export const getActiveMealPlan = async (patientId) => {
 
         return { data: null, error: null };
     } catch (error) {
-        console.error('Erro ao buscar plano ativo:', error);
+        logSupabaseError('Erro ao buscar plano ativo', error);
         return { data: null, error };
     }
 };
@@ -267,7 +288,7 @@ export const updateMealPlan = async (planId, updates) => {
         if (error) throw error;
         return { data, error: null };
     } catch (error) {
-        console.error('Erro ao atualizar plano alimentar:', error);
+        logSupabaseError('Erro ao atualizar plano alimentar', error);
         return { data: null, error };
     }
 };
@@ -317,7 +338,7 @@ export const setActiveMealPlan = async (planId) => {
         if (error) throw error;
         return { data, error: null };
     } catch (error) {
-        console.error('Erro ao ativar plano alimentar:', error);
+        logSupabaseError('Erro ao ativar plano alimentar', error);
         return { data: null, error };
     }
 };
@@ -339,7 +360,7 @@ export const deleteMealPlan = async (planId) => {
         if (error) throw error;
         return { data, error: null };
     } catch (error) {
-        console.error('Erro ao deletar plano alimentar:', error);
+        logSupabaseError('Erro ao deletar plano alimentar', error);
         return { data: null, error };
     }
 };
@@ -380,7 +401,7 @@ export const addMealToPlan = async (mealData) => {
         if (error) throw error;
         return { data, error: null };
     } catch (error) {
-        console.error('Erro ao adicionar refeição ao plano:', error);
+        logSupabaseError('Erro ao adicionar refeição ao plano', error);
         return { data: null, error };
     }
 };
@@ -403,7 +424,7 @@ export const updateMealInPlan = async (mealId, updates) => {
         if (error) throw error;
         return { data, error: null };
     } catch (error) {
-        console.error('Erro ao atualizar refeição do plano:', error);
+        logSupabaseError('Erro ao atualizar refeição do plano', error);
         return { data: null, error };
     }
 };
@@ -425,7 +446,7 @@ export const deleteMealFromPlan = async (mealId) => {
         if (error) throw error;
         return { data, error: null };
     } catch (error) {
-        console.error('Erro ao deletar refeição do plano:', error);
+        logSupabaseError('Erro ao deletar refeição do plano', error);
         return { data: null, error };
     }
 };
@@ -446,7 +467,7 @@ export const getMealsInPlan = async (planId) => {
         if (error) throw error;
         return { data: data || [], error: null };
     } catch (error) {
-        console.error('Erro ao buscar refeições do plano:', error);
+        logSupabaseError('Erro ao buscar refeições do plano', error);
         return { data: [], error };
     }
 };
@@ -489,25 +510,24 @@ export const addFoodToMeal = async (foodData) => {
                 notes: notes || null,
                 order_index: order_index || 0
             }])
-            .select(`
-                *,
-                foods (
-                    id,
-                    name,
-                    group,
-                    description
-                )
-            `)
+            .select('*')
             .single();
 
         if (error) throw error;
 
+        const foodsMap = await getFoodsMapByIds([data?.food_id]);
+        const dataWithFood = {
+            ...data,
+            food: foodsMap[String(data?.food_id)] || null,
+            foods: foodsMap[String(data?.food_id)] || null
+        };
+
         // Após adicionar alimento, recalcular totais da refeição
         await recalculateMealNutrition(meal_plan_meal_id);
 
-        return { data, error: null };
+        return { data: dataWithFood, error: null };
     } catch (error) {
-        console.error('Erro ao adicionar alimento à refeição:', error);
+        logSupabaseError('Erro ao adicionar alimento à refeição', error);
         return { data: null, error };
     }
 };
@@ -524,26 +544,26 @@ export const updateFoodInMeal = async (foodId, updates) => {
             .from('meal_plan_foods')
             .update(updates)
             .eq('id', foodId)
-            .select(`
-                *,
-                foods (
-                    id,
-                    name,
-                    group
-                )
-            `)
+            .select('*')
             .single();
 
         if (error) throw error;
 
+        const foodsMap = await getFoodsMapByIds([data?.food_id]);
+        const dataWithFood = {
+            ...data,
+            food: foodsMap[String(data?.food_id)] || null,
+            foods: foodsMap[String(data?.food_id)] || null
+        };
+
         // Após atualizar, recalcular totais da refeição
-        if (data) {
-            await recalculateMealNutrition(data.meal_plan_meal_id);
+        if (dataWithFood) {
+            await recalculateMealNutrition(dataWithFood.meal_plan_meal_id);
         }
 
-        return { data, error: null };
+        return { data: dataWithFood, error: null };
     } catch (error) {
-        console.error('Erro ao atualizar alimento da refeição:', error);
+        logSupabaseError('Erro ao atualizar alimento da refeição', error);
         return { data: null, error };
     }
 };
@@ -578,7 +598,7 @@ export const removeFoodFromMeal = async (foodId) => {
 
         return { data, error: null };
     } catch (error) {
-        console.error('Erro ao remover alimento da refeição:', error);
+        logSupabaseError('Erro ao remover alimento da refeição', error);
         return { data: null, error };
     }
 };
@@ -592,23 +612,22 @@ export const getFoodsInMeal = async (mealId) => {
     try {
         const { data, error } = await supabase
             .from('meal_plan_foods')
-            .select(`
-                *,
-                foods (
-                    id,
-                    name,
-                    group,
-                    description,
-                    source
-                )
-            `)
+            .select('*')
             .eq('meal_plan_meal_id', mealId)
             .order('order_index', { ascending: true });
 
         if (error) throw error;
-        return { data: data || [], error: null };
+
+        const foodsMap = await getFoodsMapByIds((data || []).map((item) => item.food_id));
+        const enriched = (data || []).map((item) => ({
+            ...item,
+            food: foodsMap[String(item.food_id)] || null,
+            foods: foodsMap[String(item.food_id)] || null
+        }));
+
+        return { data: enriched, error: null };
     } catch (error) {
-        console.error('Erro ao buscar alimentos da refeição:', error);
+        logSupabaseError('Erro ao buscar alimentos da refeição', error);
         return { data: [], error };
     }
 };
@@ -660,7 +679,7 @@ export const recalculateMealNutrition = async (mealId) => {
 
         return { data: totals, error: null };
     } catch (error) {
-        console.error('Erro ao recalcular nutrição da refeição:', error);
+        logSupabaseError('Erro ao recalcular nutrição da refeição', error);
         return { data: null, error };
     }
 };
@@ -703,7 +722,7 @@ export const recalculatePlanNutrition = async (planId) => {
 
         return { data, error: null };
     } catch (error) {
-        console.error('Erro ao recalcular nutrição do plano:', error);
+        logSupabaseError('Erro ao recalcular nutrição do plano', error);
         return { data: null, error };
     }
 };
@@ -791,7 +810,7 @@ export const calculateNutrition = async (food, quantity, unit) => {
         
         // RECALCULAR calorias baseado nos macros (não usar food.calories diretamente)
         // Fórmula: (Proteína × 4) + (Carboidratos × 4) + (Gorduras × 9)
-        const calories = (protein * 4) + (carbs * 4) + (fat * 9);
+        const calories = calculateCaloriesFromMacros(protein, carbs, fat);
 
         return {
             calories: parseFloat(calories.toFixed(2)),
@@ -800,7 +819,7 @@ export const calculateNutrition = async (food, quantity, unit) => {
             fat: parseFloat(fat.toFixed(2))
         };
     } catch (error) {
-        console.error('Erro ao calcular nutrição:', error);
+        logSupabaseError('Erro ao calcular nutrição', error);
         return {
             calories: 0,
             protein: 0,
@@ -829,7 +848,7 @@ export const copyMealPlanToPatient = async (planId, targetPatientId) => {
             name: originalPlan.name,
             description: originalPlan.description,
             active_days: originalPlan.active_days,
-            start_date: new Date().toISOString().split('T')[0]
+            start_date: getTodayIsoDate()
         });
 
         if (createError) throw createError;
@@ -867,7 +886,7 @@ export const copyMealPlanToPatient = async (planId, targetPatientId) => {
         // Buscar plano completo criado
         return getMealPlanById(newPlan.id);
     } catch (error) {
-        console.error('Erro ao copiar plano para paciente:', error);
+        logSupabaseError('Erro ao copiar plano para paciente', error);
         return { data: null, error };
     }
 };
@@ -891,7 +910,7 @@ export const copyMealPlan = async (planId, newName) => {
             name: newName,
             description: originalPlan.description,
             active_days: originalPlan.active_days,
-            start_date: new Date().toISOString().split('T')[0]
+            start_date: getTodayIsoDate()
         });
 
         if (createError) throw createError;
@@ -929,7 +948,7 @@ export const copyMealPlan = async (planId, newName) => {
         // Buscar plano completo criado
         return getMealPlanById(newPlan.id);
     } catch (error) {
-        console.error('Erro ao copiar plano alimentar:', error);
+        logSupabaseError('Erro ao copiar plano alimentar', error);
         return { data: null, error };
     }
 };
@@ -997,7 +1016,7 @@ export const updateFullMealPlan = async (planId, planData) => {
         // 4. Buscar plano completo atualizado
         return getMealPlanById(planId);
     } catch (error) {
-        console.error('Erro ao atualizar plano alimentar:', error);
+        logSupabaseError('Erro ao atualizar plano alimentar', error);
         return { data: null, error };
     }
 };
@@ -1081,7 +1100,7 @@ export const saveReferenceValues = async (planId, values) => {
             return { data, error: null };
         }
     } catch (error) {
-        console.error('Erro ao salvar valores de referência:', error);
+        logSupabaseError('Erro ao salvar valores de referência', error);
         return { data: null, error };
     }
 };
@@ -1102,7 +1121,7 @@ export const getReferenceValues = async (planId) => {
         if (error) throw error;
         return { data, error: null };
     } catch (error) {
-        console.error('Erro ao buscar valores de referência:', error);
+        logSupabaseError('Erro ao buscar valores de referência', error);
         return { data: null, error };
     }
 };
@@ -1121,7 +1140,7 @@ export const calculateMacroTargets = async (planId) => {
         if (error) throw error;
         return { data, error: null };
     } catch (error) {
-        console.error('Erro ao calcular valores alvo:', error);
+        logSupabaseError('Erro ao calcular valores alvo', error);
         return { data: null, error };
     }
 };
@@ -1143,7 +1162,7 @@ export const deleteReferenceValues = async (planId) => {
         if (error) throw error;
         return { data, error: null };
     } catch (error) {
-        console.error('Erro ao deletar valores de referência:', error);
+        logSupabaseError('Erro ao deletar valores de referência', error);
         return { data: null, error };
     }
 };
@@ -1218,7 +1237,7 @@ export const savePlanAsTemplate = async (planId, templateName, tags = []) => {
         // Buscar template completo criado
         return getMealPlanById(templatePlan.id);
     } catch (error) {
-        console.error('Erro ao salvar plano como template:', error);
+        logSupabaseError('Erro ao salvar plano como template', error);
         return { data: null, error };
     }
 };
@@ -1240,7 +1259,7 @@ export const getTemplates = async (nutritionistId) => {
         if (error) throw error;
         return { data: data || [], error: null };
     } catch (error) {
-        console.error('Erro ao buscar templates:', error);
+        logSupabaseError('Erro ao buscar templates', error);
         return { data: [], error };
     }
 };
@@ -1276,7 +1295,7 @@ export const applyTemplateToPatient = async (templateId, patientId, startDate = 
         }
 
         // Criar novo plano para o paciente (clonando o template)
-        const targetStartDate = startDate || new Date().toISOString().split('T')[0];
+        const targetStartDate = startDate || getTodayIsoDate();
         
         const { data: newPlan, error: createError } = await supabase
             .from('meal_plans')
@@ -1347,7 +1366,7 @@ export const applyTemplateToPatient = async (templateId, patientId, startDate = 
         // Buscar plano completo criado
         return getMealPlanById(newPlan.id);
     } catch (error) {
-        console.error('Erro ao aplicar template ao paciente:', error);
+        logSupabaseError('Erro ao aplicar template ao paciente', error);
         return { data: null, error };
     }
 };

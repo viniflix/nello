@@ -1,4 +1,6 @@
 import { supabase } from '@/lib/customSupabaseClient';
+import { formatDateToIsoDate, getTodayIsoDate } from '@/lib/utils/date';
+import { logSupabaseError } from '@/lib/supabase/query-helpers';
 
 /**
  * Busca todas as refeições de um paciente com paginação
@@ -39,7 +41,7 @@ export const getPatientMeals = async (patientId, filters = {}, limit = 50, offse
 
         return { data, error: null, count };
     } catch (error) {
-        console.error('Erro ao buscar refeições:', error);
+        logSupabaseError('Erro ao buscar refeições', error);
         return { data: null, error };
     }
 };
@@ -60,7 +62,7 @@ export const getMealAuditHistory = async (mealId) => {
 
         return { data, error: null };
     } catch (error) {
-        console.error('Erro ao buscar histórico de auditoria:', error);
+        logSupabaseError('Erro ao buscar histórico de auditoria', error);
         return { data: null, error };
     }
 };
@@ -96,7 +98,7 @@ export const getPatientAuditHistory = async (patientId, filters = {}, limit = 10
 
         return { data, error: null };
     } catch (error) {
-        console.error('Erro ao buscar histórico completo:', error);
+        logSupabaseError('Erro ao buscar histórico completo', error);
         return { data: null, error };
     }
 };
@@ -110,7 +112,7 @@ export const calculateDiaryAdherence = async (patientId, days = 30) => {
     try {
         const startDate = new Date();
         startDate.setDate(startDate.getDate() - days);
-        const startDateStr = startDate.toISOString().split('T')[0];
+        const startDateStr = formatDateToIsoDate(startDate);
 
         // Buscar todas as refeições no período
         const { data: meals, error } = await supabase
@@ -128,13 +130,13 @@ export const calculateDiaryAdherence = async (patientId, days = 30) => {
 
         // Calcular streak (dias consecutivos)
         let currentStreak = 0;
-        const today = new Date().toISOString().split('T')[0];
+        const today = getTodayIsoDate();
         const sortedDates = Array.from(uniqueDays).sort().reverse();
 
         for (let i = 0; i < days; i++) {
             const checkDate = new Date();
             checkDate.setDate(checkDate.getDate() - i);
-            const checkDateStr = checkDate.toISOString().split('T')[0];
+            const checkDateStr = formatDateToIsoDate(checkDate);
 
             if (sortedDates.includes(checkDateStr)) {
                 currentStreak++;
@@ -155,7 +157,7 @@ export const calculateDiaryAdherence = async (patientId, days = 30) => {
             error: null
         };
     } catch (error) {
-        console.error('Erro ao calcular adesão:', error);
+        logSupabaseError('Erro ao calcular adesão', error);
         return { data: null, error };
     }
 };
@@ -221,7 +223,7 @@ export const getNutritionalSummary = async (patientId, startDate, endDate) => {
             error: null
         };
     } catch (error) {
-        console.error('Erro ao calcular resumo nutricional:', error);
+        logSupabaseError('Erro ao calcular resumo nutricional', error);
         return { data: null, error };
     }
 };
@@ -244,7 +246,7 @@ export const getRecentDiaryActivity = async (patientId, limit = 5) => {
 
         return { data, error: null };
     } catch (error) {
-        console.error('Erro ao buscar atividades recentes:', error);
+        logSupabaseError('Erro ao buscar atividades recentes', error);
         return { data: null, error };
     }
 };

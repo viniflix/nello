@@ -30,6 +30,7 @@ import { getTemplates, getMealPlanById, applyTemplateToPatient } from '@/lib/sup
 import { getLatestAnamnesis } from '@/lib/supabase/anamnesis-queries';
 import { supabase } from '@/lib/customSupabaseClient';
 import { findFirstMatch } from '@/utils/stringUtils';
+import { getTodayIsoDate } from '@/lib/utils/date';
 
 /**
  * TemplateManagerDialog - Gerenciador de Templates de Planos Alimentares
@@ -194,7 +195,7 @@ export default function TemplateManagerDialog({
             }
 
             // Fallback: buscar de prescriptions (prescrição ativa)
-            const today = new Date().toISOString().split('T')[0];
+            const today = getTodayIsoDate();
             const { data: prescription } = await supabase
                 .from('prescriptions')
                 .select('calories')
@@ -213,14 +214,15 @@ export default function TemplateManagerDialog({
             // Fallback: buscar de energy_expenditure_calculations (último cálculo)
             const { data: energyCalc } = await supabase
                 .from('energy_expenditure_calculations')
-                .select('total_daily_energy_expenditure')
+                .select('get_with_activities, get')
                 .eq('patient_id', patientId)
                 .order('created_at', { ascending: false })
                 .limit(1)
                 .maybeSingle();
 
-            if (energyCalc?.total_daily_energy_expenditure) {
-                setPatientCalorieGoal(parseFloat(energyCalc.total_daily_energy_expenditure));
+            const energyGoal = energyCalc?.get_with_activities ?? energyCalc?.get ?? null;
+            if (energyGoal) {
+                setPatientCalorieGoal(parseFloat(energyGoal));
                 return;
             }
 

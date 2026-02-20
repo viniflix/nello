@@ -1,4 +1,6 @@
 import { supabase } from '@/lib/customSupabaseClient';
+import { getTodayIsoDate } from '@/lib/utils/date';
+import { logSupabaseError } from '@/lib/supabase/query-helpers';
 
 /**
  * ============================================================
@@ -28,7 +30,7 @@ export const getAnamnesisTemplates = async (nutritionistId) => {
         if (error) throw error;
         return { data, error: null };
     } catch (error) {
-        console.error('Erro ao buscar templates de anamnese:', error);
+        logSupabaseError('Erro ao buscar templates de anamnese', error);
         return { data: null, error };
     }
 };
@@ -47,7 +49,7 @@ export const getTemplateById = async (templateId) => {
         if (error) throw error;
         return { data, error: null };
     } catch (error) {
-        console.error('Erro ao buscar template:', error);
+        logSupabaseError('Erro ao buscar template', error);
         return { data: null, error };
     }
 };
@@ -73,7 +75,7 @@ export const createCustomTemplate = async (templateData) => {
         if (error) throw error;
         return { data, error: null };
     } catch (error) {
-        console.error('Erro ao criar template:', error);
+        logSupabaseError('Erro ao criar template', error);
         return { data: null, error };
     }
 };
@@ -107,7 +109,7 @@ export const getPatientAnamnesisList = async (patientId) => {
         if (error) throw error;
         return { data, error: null };
     } catch (error) {
-        console.error('Erro ao buscar anamneses do paciente:', error);
+        logSupabaseError('Erro ao buscar anamneses do paciente', error);
         return { data: null, error };
     }
 };
@@ -125,7 +127,7 @@ export const getAnamnesisById = async (anamnesisId) => {
             .single();
 
         if (anamnesisError) {
-            console.error('Erro ao buscar anamnesis_records:', anamnesisError);
+            logSupabaseError('Erro ao buscar anamnesis_records', anamnesisError);
             throw anamnesisError;
         }
 
@@ -166,7 +168,7 @@ export const getAnamnesisById = async (anamnesisId) => {
 
         return { data: combinedData, error: null };
     } catch (error) {
-        console.error('Erro ao buscar anamnese:', error);
+        logSupabaseError('Erro ao buscar anamnese', error);
         return { data: null, error };
     }
 };
@@ -182,7 +184,7 @@ export const createAnamnesis = async (anamnesisData) => {
                 patient_id: anamnesisData.patientId,
                 template_id: anamnesisData.templateId,
                 nutritionist_id: anamnesisData.nutritionistId,
-                date: anamnesisData.date || new Date().toISOString().split('T')[0],
+                date: anamnesisData.date || getTodayIsoDate(),
                 content: anamnesisData.content,
                 notes: anamnesisData.notes || null,
                 status: anamnesisData.status || 'draft',
@@ -194,7 +196,7 @@ export const createAnamnesis = async (anamnesisData) => {
         if (error) throw error;
         return { data, error: null };
     } catch (error) {
-        console.error('Erro ao criar anamnese:', error);
+        logSupabaseError('Erro ao criar anamnese', error);
         return { data: null, error };
     }
 };
@@ -231,7 +233,7 @@ export const updateAnamnesis = async (anamnesisId, updatedData) => {
         if (error) throw error;
         return { data, error: null };
     } catch (error) {
-        console.error('Erro ao atualizar anamnese:', error);
+        logSupabaseError('Erro ao atualizar anamnese', error);
         return { data: null, error };
     }
 };
@@ -249,7 +251,7 @@ export const deleteAnamnesis = async (anamnesisId) => {
         if (error) throw error;
         return { error: null };
     } catch (error) {
-        console.error('Erro ao deletar anamnese:', error);
+        logSupabaseError('Erro ao deletar anamnese', error);
         return { error };
     }
 };
@@ -269,7 +271,7 @@ export const checkPatientHasAnamnesis = async (patientId) => {
         if (error) throw error;
         return { hasAnamnesis: data && data.length > 0, error: null };
     } catch (error) {
-        console.error('Erro ao verificar anamnese do paciente:', error);
+        logSupabaseError('Erro ao verificar anamnese do paciente', error);
         return { hasAnamnesis: false, error };
     }
 };
@@ -315,7 +317,7 @@ export const getLatestAnamnesis = async (patientId, includeContent = false) => {
 
         return { data, error: null };
     } catch (error) {
-        console.error('Erro ao buscar última anamnese:', error);
+        logSupabaseError('Erro ao buscar última anamnese', error);
         return { data: null, error };
     }
 };
@@ -359,7 +361,7 @@ export const getAnamneseFields = async (nutritionistId, customTemplateId = null)
             return { data: data || [], error: null };
         }
     } catch (error) {
-        console.error('Erro ao buscar campos de anamnese:', error);
+        logSupabaseError('Erro ao buscar campos de anamnese', error);
         return { data: null, error };
     }
 };
@@ -384,7 +386,7 @@ export const createAnamneseField = async (fieldData) => {
         if (error) throw error;
         return { data, error: null };
     } catch (error) {
-        console.error('Erro ao criar campo de anamnese:', error);
+        logSupabaseError('Erro ao criar campo de anamnese', error);
         return { data: null, error };
     }
 };
@@ -417,7 +419,7 @@ export const updateAnamneseField = async (fieldId, fieldData) => {
         if (error) throw error;
         return { data, error: null };
     } catch (error) {
-        console.error('Erro ao atualizar campo de anamnese:', error);
+        logSupabaseError('Erro ao atualizar campo de anamnese', error);
         return { data: null, error };
     }
 };
@@ -435,7 +437,7 @@ export const deleteAnamneseField = async (fieldId) => {
         if (error) throw error;
         return { error: null };
     } catch (error) {
-        console.error('Erro ao deletar campo de anamnese:', error);
+        logSupabaseError('Erro ao deletar campo de anamnese', error);
         return { error };
     }
 };
@@ -457,7 +459,7 @@ export const addFieldToTemplate = async (templateId, fieldId, fieldOrder = 0) =>
         if (error) throw error;
         return { data, error: null };
     } catch (error) {
-        console.error('Erro ao associar campo ao template:', error);
+        logSupabaseError('Erro ao associar campo ao template', error);
         return { data: null, error };
     }
 };
@@ -476,7 +478,7 @@ export const removeFieldFromTemplate = async (templateId, fieldId) => {
         if (error) throw error;
         return { error: null };
     } catch (error) {
-        console.error('Erro ao remover campo do template:', error);
+        logSupabaseError('Erro ao remover campo do template', error);
         return { error };
     }
 };
@@ -499,7 +501,7 @@ export const getFieldOptions = async (fieldId) => {
         if (error) throw error;
         return { data, error: null };
     } catch (error) {
-        console.error('Erro ao buscar opções do campo:', error);
+        logSupabaseError('Erro ao buscar opções do campo', error);
         return { data: null, error };
     }
 };
@@ -524,7 +526,7 @@ export const createFieldOptions = async (fieldId, options) => {
         if (error) throw error;
         return { data, error: null };
     } catch (error) {
-        console.error('Erro ao criar opções do campo:', error);
+        logSupabaseError('Erro ao criar opções do campo', error);
         return { data: null, error };
     }
 };
@@ -551,7 +553,7 @@ export const updateFieldOptions = async (fieldId, options) => {
 
         return { data: [], error: null };
     } catch (error) {
-        console.error('Erro ao atualizar opções do campo:', error);
+        logSupabaseError('Erro ao atualizar opções do campo', error);
         return { data: null, error };
     }
 };
@@ -600,7 +602,7 @@ export const copyFieldsBetweenForms = async (sourceNutritionistId, targetNutriti
 
         return { data, error: null };
     } catch (error) {
-        console.error('Erro ao copiar campos:', error);
+        logSupabaseError('Erro ao copiar campos', error);
         return { data: null, error };
     }
 };
@@ -622,7 +624,7 @@ export const getAnamneseAnswers = async (patientId) => {
         if (error) throw error;
         return { data, error: null };
     } catch (error) {
-        console.error('Erro ao buscar respostas de anamnese:', error);
+        logSupabaseError('Erro ao buscar respostas de anamnese', error);
         return { data: null, error };
     }
 };
@@ -643,7 +645,7 @@ export const upsertAnamneseAnswers = async (answersData) => {
         if (error) throw error;
         return { data, error: null };
     } catch (error) {
-        console.error('Erro ao salvar respostas de anamnese:', error);
+        logSupabaseError('Erro ao salvar respostas de anamnese', error);
         return { data: null, error };
     }
 };
@@ -669,7 +671,7 @@ export const getCustomTemplates = async (nutritionistId) => {
         if (error) throw error;
         return { data, error: null };
     } catch (error) {
-        console.error('Erro ao buscar formulários personalizados:', error);
+        logSupabaseError('Erro ao buscar formulários personalizados', error);
         return { data: null, error };
     }
 };
@@ -695,7 +697,7 @@ export const createCustomFormTemplate = async (templateData) => {
         if (error) throw error;
         return { data, error: null };
     } catch (error) {
-        console.error('Erro ao criar formulário personalizado:', error);
+        logSupabaseError('Erro ao criar formulário personalizado', error);
         return { data: null, error };
     }
 };
@@ -718,7 +720,7 @@ export const updateCustomFormTemplate = async (templateId, templateData) => {
         if (error) throw error;
         return { data, error: null };
     } catch (error) {
-        console.error('Erro ao atualizar formulário personalizado:', error);
+        logSupabaseError('Erro ao atualizar formulário personalizado', error);
         return { data: null, error };
     }
 };
@@ -738,7 +740,7 @@ export const deleteCustomFormTemplate = async (templateId) => {
         if (error) throw error;
         return { error: null };
     } catch (error) {
-        console.error('Erro ao deletar formulário personalizado:', error);
+        logSupabaseError('Erro ao deletar formulário personalizado', error);
         return { error };
     }
 };

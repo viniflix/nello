@@ -8,6 +8,7 @@
 
 import { supabase } from '@/lib/customSupabaseClient';
 import { calculateNutrition } from '@/lib/utils/nutrition-calculations';
+import { logSupabaseError } from '@/lib/supabase/query-helpers';
 
 /**
  * Busca todas as medidas genéricas ativas
@@ -25,7 +26,7 @@ export const getAllHouseholdMeasures = async () => {
 
     return { data: data || [], error: null };
   } catch (error) {
-    console.error('Erro ao buscar medidas caseiras:', error);
+    logSupabaseError('Erro ao buscar medidas caseiras', error);
     return { data: null, error };
   }
 };
@@ -65,7 +66,7 @@ export const getFoodMeasures = async (foodId) => {
 
     return { data: data || [], error: null };
   } catch (error) {
-    console.error('Erro ao buscar medidas do alimento:', error);
+    logSupabaseError('Erro ao buscar medidas do alimento', error);
     return { data: null, error };
   }
 };
@@ -90,7 +91,7 @@ export const getFoodMeasureById = async (id) => {
 
     return { data, error: null };
   } catch (error) {
-    console.error('Erro ao buscar medida:', error);
+    logSupabaseError('Erro ao buscar medida', error);
     return { data: null, error };
   }
 };
@@ -135,7 +136,7 @@ export const createFoodMeasure = async (payload) => {
 
     return { data, error: null };
   } catch (error) {
-    console.error('Erro ao criar medida caseira:', error);
+    logSupabaseError('Erro ao criar medida caseira', error);
     return { data: null, error };
   }
 };
@@ -175,7 +176,7 @@ export const updateFoodMeasure = async (id, payload) => {
 
     return { data, error: null };
   } catch (error) {
-    console.error('Erro ao atualizar medida caseira:', error);
+    logSupabaseError('Erro ao atualizar medida caseira', error);
     return { data: null, error };
   }
 };
@@ -198,7 +199,7 @@ export const deleteFoodMeasure = async (id) => {
 
     return { data: true, error: null };
   } catch (error) {
-    console.error('Erro ao deletar medida caseira:', error);
+    logSupabaseError('Erro ao deletar medida caseira', error);
     return { data: false, error };
   }
 };
@@ -265,7 +266,7 @@ export const calculateNutritionFromMeasure = async (food, quantity, measureId, f
     // Calcular todos os nutrientes (recalcula calorias baseado nos macros)
     return calculateNutrition(food, totalGrams);
   } catch (error) {
-    console.error('Erro ao calcular nutrição:', error);
+    logSupabaseError('Erro ao calcular nutrição', error);
     return {
       grams: 0,
       calories: 0,
@@ -294,7 +295,7 @@ export const foodHasMeasures = async (foodId) => {
 
     return count > 0;
   } catch (error) {
-    console.error('Erro ao verificar medidas do alimento:', error);
+    logSupabaseError('Erro ao verificar medidas do alimento', error);
     return false;
   }
 };

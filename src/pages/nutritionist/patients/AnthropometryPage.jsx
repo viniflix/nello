@@ -14,11 +14,14 @@ import IMCChart from '@/components/anthropometry/IMCChart';
 import CompositionCharts from '@/components/anthropometry/CompositionCharts';
 import SomatotypeChart from '@/components/anthropometry/SomatotypeChart';
 import { supabase } from '@/lib/customSupabaseClient';
+import { useAuth } from '@/contexts/AuthContext';
 import {
     getAnthropometryRecords,
     getAnthropometryChartData,
     createAnthropometryRecord,
-    deleteAnthropometryRecord
+    deleteAnthropometryRecord,
+    getAnthropometryLongitudinalScore,
+    getPatientModuleSyncFlags
 } from '@/lib/supabase/anthropometry-queries';
 import { getActiveGoal } from '@/lib/supabase/goals-queries';
 import { getLatestAnamnesis } from '@/lib/supabase/anamnesis-queries';
@@ -28,6 +31,7 @@ const AnthropometryPage = () => {
     const { patientId } = useParams();
     const navigate = useNavigate();
     const { toast } = useToast();
+    const { user } = useAuth();
 
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
@@ -40,6 +44,8 @@ const AnthropometryPage = () => {
     const [patientProfile, setPatientProfile] = useState(null);
     const [patientName, setPatientName] = useState('');
     const [patientObjective, setPatientObjective] = useState('maintenance');
+    const [longitudinalScore, setLongitudinalScore] = useState(null);
+    const [syncFlags, setSyncFlags] = useState(null);
     const [selectedRecord, setSelectedRecord] = useState(null);
     const [recordDetailOpen, setRecordDetailOpen] = useState(false);
     const [compareRecordId, setCompareRecordId] = useState('');
@@ -99,9 +105,9 @@ const AnthropometryPage = () => {
 
     const getPreviousRecord = (record) => {
         if (!record) return null;
-        const currentIndex = records.findIndex((r) => r.id === record.id);
+        const currentIndex = orderedRecords.findIndex((r) => r.id === record.id);
         if (currentIndex < 0) return null;
-        return records[currentIndex + 1] || null;
+        return orderedRecords[currentIndex + 1] || null;
     };
 
     const compareObjectFields = (currentObj = {}, compareObj = {}) => {
@@ -136,7 +142,7 @@ const AnthropometryPage = () => {
         while (cursor && !seen.has(cursor.id)) {
             seen.add(cursor.id);
             result.push(cursor);
-            const parentId = cursor?.results?.audit?.source_record_id;
+            const parentId = cursor?.supersedes_record_id || cursor?.results?.audit?.source_record_id;
             if (!parentId) break;
             cursor = records.find((r) => String(r.id) === String(parentId));
         }
@@ -221,11 +227,20 @@ const AnthropometryPage = () => {
                 setPatientName(profile.name || '');
             }
 
-            const [recordsResult, chartResult, activeGoalResult, latestAnamnesisResult] = await Promise.all([
+            const [
+                recordsResult,
+                chartResult,
+                activeGoalResult,
+                latestAnamnesisResult,
+                longitudinalResult,
+                syncFlagsResult
+            ] = await Promise.all([
                 getAnthropometryRecords(patientId, { limit: 50 }),
                 getAnthropometryChartData(patientId),
                 getActiveGoal(patientId),
-                getLatestAnamnesis(patientId, true)
+                getLatestAnamnesis(patientId, true),
+                getAnthropometryLongitudinalScore(patientId),
+                getPatientModuleSyncFlags(patientId)
             ]);
 
             // Verificar se houve erro real (não apenas lista vazia)
@@ -241,10 +256,20 @@ const AnthropometryPage = () => {
             // Dados vazios não são erro - apenas defina arrays vazios
             setRecords(recordsResult.data || []);
             setChartData(chartResult.data || []);
+            setLongitudinalScore(longitudinalResult.data || null);
+            setSyncFlags(syncFlagsResult.data || null);
 
             // Calcular peso ideal do último registro
+            let latest = null;
             if (recordsResult.data && recordsResult.data.length > 0) {
-                const latest = recordsResult.data[0]; // Já ordenado por data desc
+                latest = [...recordsResult.data].sort((a, b) => {
+                    const dateA = new Date(a.record_date || 0).getTime();
+                    const dateB = new Date(b.record_date || 0).getTime();
+                    if (dateA !== dateB) return dateB - dateA;
+                    const revA = Number(a.revision_number || 1);
+                    const revB = Number(b.revision_number || 1);
+                    return revB - revA;
+                })[0];
                 setLatestRecord(latest);
                 
                 if (latest.height && latest.weight) {
@@ -264,8 +289,8 @@ const AnthropometryPage = () => {
                 setIdealWeightRange(null);
             }
 
-            const latestBmi = recordsResult.data?.[0]?.height && recordsResult.data?.[0]?.weight
-                ? recordsResult.data[0].weight / Math.pow(recordsResult.data[0].height / 100, 2)
+            const latestBmi = latest?.height && latest?.weight
+                ? latest.weight / Math.pow(latest.height / 100, 2)
                 : null;
             const anamnesisObjective = latestAnamnesisResult?.data?.content?.objetivos?.objetivo_principal;
             const goalType = activeGoalResult?.data?.goal_type;
@@ -299,6 +324,9 @@ const AnthropometryPage = () => {
                 // Edição auditável: cria nova versão sem sobrescrever o registro antigo
                 result = await createAnthropometryRecord({
                     ...data,
+                    supersedes_record_id: recordId,
+                    change_reason: 'Revisão clínica via módulo de antropometria',
+                    created_by_user_id: user?.id || null,
                     results: {
                         ...(data.results || {}),
                         audit: {
@@ -347,8 +375,8 @@ const AnthropometryPage = () => {
 
     const handleViewRecord = (record) => {
         setSelectedRecord(record);
-        const currentIndex = records.findIndex((r) => r.id === record.id);
-        const previousRecord = currentIndex >= 0 ? records[currentIndex + 1] : null;
+        const currentIndex = orderedRecords.findIndex((r) => r.id === record.id);
+        const previousRecord = currentIndex >= 0 ? orderedRecords[currentIndex + 1] : null;
         setCompareRecordId(previousRecord ? String(previousRecord.id) : '');
         setRecordDetailOpen(true);
     };
@@ -392,8 +420,21 @@ const AnthropometryPage = () => {
         setEditingRecord(null);
     };
 
+    const orderedRecords = useMemo(
+        () =>
+            [...records].sort((a, b) => {
+                const dateA = new Date(a.record_date || 0).getTime();
+                const dateB = new Date(b.record_date || 0).getTime();
+                if (dateA !== dateB) return dateB - dateA;
+                const revA = Number(a.revision_number || 1);
+                const revB = Number(b.revision_number || 1);
+                return revB - revA;
+            }),
+        [records]
+    );
+
     const compareRecord = compareRecordId
-        ? records.find((r) => String(r.id) === String(compareRecordId))
+        ? orderedRecords.find((r) => String(r.id) === String(compareRecordId))
         : null;
     const comparison = getRecordComparison(selectedRecord, compareRecord);
     const clinicalIndicator = useMemo(
@@ -409,7 +450,7 @@ const AnthropometryPage = () => {
             bioimpedance: compareObjectFields(selectedRecord.bioimpedance, compareRecord.bioimpedance)
         };
     }, [selectedRecord, compareRecord]);
-    const versionTimeline = useMemo(() => getVersionTimeline(selectedRecord), [selectedRecord, records]);
+    const versionTimeline = useMemo(() => getVersionTimeline(selectedRecord), [selectedRecord, orderedRecords]);
     const formatDelta = (value, unit = '') => {
         if (value === null || value === undefined) return 'N/A';
         const n = Number(value);
@@ -420,6 +461,16 @@ const AnthropometryPage = () => {
         if (objective === 'weight_loss') return 'Perda de peso';
         if (objective === 'weight_gain') return 'Ganho de peso';
         return 'Manutenção/Recomposição';
+    };
+    const statusLabel = (status) => {
+        if (status === 'improved') return 'Favorável';
+        if (status === 'worsened') return 'Desfavorável';
+        return 'Estável';
+    };
+    const statusClass = (status) => {
+        if (status === 'improved') return 'bg-green-100 text-green-700';
+        if (status === 'worsened') return 'bg-red-100 text-red-700';
+        return 'bg-amber-100 text-amber-700';
     };
     const toggleSectionHighlight = (sectionKey) => {
         setSectionHighlights((prev) =>
@@ -484,18 +535,18 @@ const AnthropometryPage = () => {
     };
 
     const filteredRecords = useMemo(() => {
-        if (historyFilter === 'all') return records;
+        if (historyFilter === 'all') return orderedRecords;
         if (historyFilter === 'complete') {
-            return records.filter((r) => getRecordSectionCount(r) === 5);
+            return orderedRecords.filter((r) => getRecordSectionCount(r) === 5);
         }
         if (historyFilter === 'partial') {
-            return records.filter((r) => getRecordSectionCount(r) > 0 && getRecordSectionCount(r) < 5);
+            return orderedRecords.filter((r) => getRecordSectionCount(r) > 0 && getRecordSectionCount(r) < 5);
         }
         if (historyFilter === 'versioned') {
-            return records.filter((r) => r?.results?.audit?.source_record_id);
+            return orderedRecords.filter((r) => r?.supersedes_record_id || r?.results?.audit?.source_record_id);
         }
-        return records;
-    }, [records, historyFilter]);
+        return orderedRecords;
+    }, [orderedRecords, historyFilter]);
 
     return (
         <div className="container mx-auto p-4 sm:p-6 max-w-7xl space-y-6">
@@ -568,6 +619,54 @@ const AnthropometryPage = () => {
                             </div>
                         )}
                     </div>
+
+                    {longitudinalScore?.has_data && (
+                        <div className="mt-3 rounded-md border bg-card p-3">
+                            <p className="text-xs uppercase tracking-wide text-muted-foreground mb-2">
+                                Score longitudinal (30/60/90 dias)
+                            </p>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                {[30, 60, 90].map((days) => {
+                                    const item = longitudinalScore?.[`d${days}`];
+                                    if (!item?.has_data) {
+                                        return (
+                                            <div key={days} className="rounded-md border bg-muted/30 p-2">
+                                                <p className="text-xs text-muted-foreground">{days} dias</p>
+                                                <p className="text-sm font-medium text-muted-foreground">Sem base</p>
+                                            </div>
+                                        );
+                                    }
+                                    return (
+                                        <div key={days} className="rounded-md border p-2">
+                                            <p className="text-xs text-muted-foreground">{days} dias</p>
+                                            <div className="mt-1 flex items-center justify-between gap-2">
+                                                <Badge className={`text-xs ${statusClass(item.status)}`}>
+                                                    {statusLabel(item.status)}
+                                                </Badge>
+                                                <span className="text-xs font-semibold">
+                                                    Score {item.score}
+                                                </span>
+                                            </div>
+                                            <p className="text-[11px] text-muted-foreground mt-1">
+                                                Delta peso: {item.weight_delta ?? 'N/A'} kg
+                                            </p>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
+
+                    {(syncFlags?.needs_energy_recalc || syncFlags?.needs_meal_plan_review) && (
+                        <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2">
+                            <p className="text-xs font-semibold text-amber-800">
+                                Sincronização clínica pendente
+                            </p>
+                            <p className="text-xs text-amber-700 mt-0.5">
+                                Há atualização antropométrica pendente de revisão em GET/Plano alimentar.
+                            </p>
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -698,7 +797,7 @@ const AnthropometryPage = () => {
                                 <Badge variant="outline">
                                     Data: {selectedRecord.record_date}
                                 </Badge>
-                                {selectedRecord?.results?.audit?.source_record_id && (
+                                {(selectedRecord?.supersedes_record_id || selectedRecord?.results?.audit?.source_record_id) && (
                                     <Badge className="bg-violet-100 text-violet-700 hover:bg-violet-100">
                                         Versão auditável
                                     </Badge>
@@ -795,7 +894,7 @@ const AnthropometryPage = () => {
                                             <SelectValue placeholder="Selecione uma data para comparar" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            {records
+                                        {orderedRecords
                                                 .filter((r) => r.id !== selectedRecord.id)
                                                 .map((r) => (
                                                     <SelectItem key={r.id} value={String(r.id)}>

@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/customSupabaseClient';
 import { format, startOfMonth, endOfMonth, addDays, parseISO, startOfDay } from 'date-fns';
+import { logSupabaseError } from '@/lib/supabase/query-helpers';
 
 /**
  * Get financial summary for a specific month/year
@@ -24,7 +25,7 @@ export async function getFinancialSummary(monthDate, nutritionistId) {
         .lte('transaction_date', format(end, 'yyyy-MM-dd'));
 
     if (error) {
-        console.error('Error fetching financial summary:', error);
+        logSupabaseError('Error fetching financial summary', error);
         throw error;
     }
 
@@ -109,7 +110,7 @@ export async function getTransactions(nutritionistId, filters = {}, pagination =
     const { data, error, count } = await query;
 
     if (error) {
-        console.error('Error fetching transactions:', error);
+        logSupabaseError('Error fetching transactions', error);
         throw error;
     }
 
@@ -164,7 +165,7 @@ export async function saveTransaction(transactionData) {
     const { data: result, error } = await query;
 
     if (error) {
-        console.error('Error saving transaction:', error);
+        logSupabaseError('Error saving transaction', error);
         throw error;
     }
 
@@ -183,7 +184,7 @@ export async function deleteTransaction(transactionId) {
         .eq('id', transactionId);
 
     if (error) {
-        console.error('Error deleting transaction:', error);
+        logSupabaseError('Error deleting transaction', error);
         throw error;
     }
 }
@@ -208,7 +209,7 @@ export async function getCashFlowData(nutritionistId, monthDate, aggregation = '
         .order('transaction_date', { ascending: true });
 
     if (error) {
-        console.error('Error fetching cash flow data:', error);
+        logSupabaseError('Error fetching cash flow data', error);
         throw error;
     }
 
@@ -259,7 +260,7 @@ export async function getExpenseDistribution(nutritionistId, monthDate) {
         .lte('transaction_date', format(end, 'yyyy-MM-dd'));
 
     if (error) {
-        console.error('Error fetching expense distribution:', error);
+        logSupabaseError('Error fetching expense distribution', error);
         throw error;
     }
 
@@ -299,7 +300,7 @@ export async function getProjectedCashFlow(nutritionistId, startDate) {
         .eq('status', 'paid');
 
     if (paidError) {
-        console.error('Error fetching paid transactions for balance:', paidError);
+        logSupabaseError('Error fetching paid transactions for balance', paidError);
         throw paidError;
     }
 
@@ -335,7 +336,7 @@ export async function getProjectedCashFlow(nutritionistId, startDate) {
         .lte('transaction_date', format(endDate, 'yyyy-MM-dd'));
 
     if (pendingError1 || pendingError2) {
-        console.error('Error fetching pending transactions:', pendingError1 || pendingError2);
+        logSupabaseError('Error fetching pending transactions', pendingError1 || pendingError2);
         throw pendingError1 || pendingError2;
     }
 
@@ -397,7 +398,7 @@ export async function getPatientsForAutocomplete(nutritionistId) {
         .order('name', { ascending: true });
 
     if (error) {
-        console.error('Error fetching patients:', error);
+        logSupabaseError('Error fetching patients', error);
         throw error;
     }
 
@@ -419,7 +420,7 @@ export async function getServices(nutritionistId) {
         .order('name', { ascending: true });
 
     if (error) {
-        console.error('Error fetching services:', error);
+        logSupabaseError('Error fetching services', error);
         throw error;
     }
 
@@ -460,7 +461,7 @@ export async function saveService(serviceData) {
     const { data: result, error } = await query;
 
     if (error) {
-        console.error('Error saving service:', error);
+        logSupabaseError('Error saving service', error);
         throw error;
     }
 
@@ -496,11 +497,11 @@ export async function deleteService(serviceId) {
                 .eq('id', serviceId);
             
             if (error2) {
-                console.error('Error deleting service:', error2);
+                logSupabaseError('Error deleting service', error2);
                 throw error2;
             }
         } else {
-            console.error('Error deleting service:', error);
+            logSupabaseError('Error deleting service', error);
             throw error;
         }
     }
@@ -518,7 +519,7 @@ export async function saveMultipleTransactions(transactions) {
         .select();
 
     if (error) {
-        console.error('Error saving multiple transactions:', error);
+        logSupabaseError('Error saving multiple transactions', error);
         throw error;
     }
 
@@ -549,7 +550,7 @@ export async function getPendingPayments(nutritionistId) {
         .order('transaction_date', { ascending: true });
 
     if (error) {
-        console.error('Error fetching pending payments:', error);
+        logSupabaseError('Error fetching pending payments', error);
         throw error;
     }
 
@@ -571,7 +572,7 @@ export async function updateTransactionStatus(transactionId, status) {
         .single();
 
     if (error) {
-        console.error('Error updating transaction status:', error);
+        logSupabaseError('Error updating transaction status', error);
         throw error;
     }
 
@@ -596,7 +597,7 @@ export async function rescheduleTransaction(transactionId, newDate) {
         .single();
 
     if (error) {
-        console.error('Error rescheduling transaction:', error);
+        logSupabaseError('Error rescheduling transaction', error);
         throw error;
     }
 

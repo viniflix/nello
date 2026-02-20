@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Calculator, Save, Loader2, Target, TrendingUp, Database, User } from 'lucide-react';
+import { ArrowLeft, Calculator, Save, Loader2, Target, TrendingUp, Database, User, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
 import { ProtocolComparisonTable } from '@/components/energy';
@@ -15,6 +16,7 @@ import ActivityLevelSelector from '@/components/energy/ActivityLevelSelector';
 import WeightProjectionCard from '@/components/energy/WeightProjectionCard';
 import CalculationInfoTooltip from '@/components/energy/CalculationInfoTooltip';
 import { getLatestAnamnesisForEnergy, getActiveGoalForEnergy } from '@/lib/supabase/patient-queries';
+import { getPatientModuleSyncFlags, clearPatientModuleSyncFlags } from '@/lib/supabase/anthropometry-queries';
 import { 
     calculateAllProtocols, 
     calculateGET,
@@ -58,6 +60,7 @@ const EnergyExpenditurePage = () => {
     const [suggestedActivity, setSuggestedActivity] = useState(null);
     const [suggestedGoal, setSuggestedGoal] = useState(null);
     const [goalSuggestionSource, setGoalSuggestionSource] = useState(null); // 'goal' | null
+    const [syncFlags, setSyncFlags] = useState(null);
 
     // Resultados calculados
     const [protocols, setProtocols] = useState([]);
@@ -89,6 +92,9 @@ const EnergyExpenditurePage = () => {
     const loadPatientData = async () => {
         setLoading(true);
         try {
+            let hasActivitySuggestion = false;
+            let hasGoalSuggestion = false;
+
             // 1. Buscar perfil do paciente
             const { data: profile, error: profileError } = await supabase
                 .from('user_profiles')
@@ -114,13 +120,29 @@ const EnergyExpenditurePage = () => {
             }
 
             // 2. Buscar último registro de ANTROPOMETRIA (prioridade)
-            const { data: latestAnthropometry } = await supabase
-                .from('growth_records')
-                .select('weight, height, results, record_date')
-                .eq('patient_id', patientId)
-                .order('record_date', { ascending: false })
-                .limit(1)
-                .maybeSingle();
+            let latestAnthropometry = null;
+            {
+                const { data, error } = await supabase
+                    .from('growth_records')
+                    .select('weight, height, results, record_date')
+                    .eq('patient_id', patientId)
+                    .eq('is_latest_revision', true)
+                    .order('record_date', { ascending: false })
+                    .limit(1)
+                    .maybeSingle();
+                if (!error) {
+                    latestAnthropometry = data;
+                } else {
+                    const fallback = await supabase
+                        .from('growth_records')
+                        .select('weight, height, results, record_date')
+                        .eq('patient_id', patientId)
+                        .order('record_date', { ascending: false })
+                        .limit(1)
+                        .maybeSingle();
+                    latestAnthropometry = fallback.data || null;
+                }
+            }
 
             // Lógica: Antropometria > Perfil > Vazio
             if (latestAnthropometry?.weight) {
@@ -159,37 +181,45 @@ const EnergyExpenditurePage = () => {
                 if (freq.includes('sedent') || freq.includes('não') || freq.includes('nao') || freq === '0') {
                     setActivityFactor(1.2);
                     setSuggestedActivity('Sedentário (baseado na anamnese)');
+                    hasActivitySuggestion = true;
                 } else if (freq.includes('1-3') || freq.includes('1 a 3') || freq.includes('leve')) {
                     setActivityFactor(1.375);
                     setSuggestedActivity('Levemente Ativo (baseado na anamnese)');
+                    hasActivitySuggestion = true;
                 } else if (freq.includes('3-5') || freq.includes('3 a 5') || freq.includes('moder')) {
                     setActivityFactor(1.55);
                     setSuggestedActivity('Moderadamente Ativo (baseado na anamnese)');
+                    hasActivitySuggestion = true;
                 } else if (freq.includes('6-7') || freq.includes('6 a 7') || freq.includes('muito')) {
                     setActivityFactor(1.725);
                     setSuggestedActivity('Muito Ativo (baseado na anamnese)');
+                    hasActivitySuggestion = true;
                 } else if (freq.includes('2x') || freq.includes('duas') || freq.includes('extremo')) {
                     setActivityFactor(1.9);
                     setSuggestedActivity('Extremamente Ativo (baseado na anamnese)');
+                    hasActivitySuggestion = true;
                 }
             }
 
             // 5. Auto-ajustar objetivo calórico baseado em meta ativa
             if (goalResult.data) {
-                const goalType = goalResult.data.type?.toLowerCase();
+                const goalType = (goalResult.data.goal_type || goalResult.data.type || '').toLowerCase();
                 
                 if (goalType === 'weight_loss' || goalType === 'perda_peso' || goalType === 'emagrecimento') {
                     setGoalAdjustment(-500);
                     setSuggestedGoal('Perda de Peso');
                     setGoalSuggestionSource('goal');
+                    hasGoalSuggestion = true;
                 } else if (goalType === 'hypertrophy' || goalType === 'hipertrofia' || goalType === 'ganho_massa') {
                     setGoalAdjustment(300);
                     setSuggestedGoal('Hipertrofia');
                     setGoalSuggestionSource('goal');
+                    hasGoalSuggestion = true;
                 } else if (goalType === 'maintenance' || goalType === 'manutencao') {
                     setGoalAdjustment(0);
                     setSuggestedGoal('Manutenção');
                     setGoalSuggestionSource('goal');
+                    hasGoalSuggestion = true;
                 }
             }
 
@@ -204,11 +234,11 @@ const EnergyExpenditurePage = () => {
 
             if (savedCalc) {
                 // Só aplicar se não tivermos sugestão de atividade
-                if (!suggestedActivity) {
+                if (!hasActivitySuggestion) {
                     setActivityFactor(parseFloat(savedCalc.activity_level) || 1.55);
                 }
                 // Só aplicar se não tivermos sugestão de objetivo
-                if (!goalSuggestionSource && savedCalc.get_with_activities && savedCalc.get) {
+                if (!hasGoalSuggestion && savedCalc.get_with_activities && savedCalc.get) {
                     setGoalAdjustment(savedCalc.get_with_activities - savedCalc.get);
                 }
                 // Restaurar protocolo (sempre)
@@ -226,6 +256,9 @@ const EnergyExpenditurePage = () => {
                     setSelectedProtocol(protocolMap[savedCalc.protocol] || 'mifflin');
                 }
             }
+
+            const { data: flagsData } = await getPatientModuleSyncFlags(patientId);
+            setSyncFlags(flagsData || null);
 
         } catch (error) {
             console.error('Erro ao carregar dados:', error);
@@ -331,6 +364,13 @@ const EnergyExpenditurePage = () => {
 
             if (error) throw error;
 
+            const { error: clearError } = await clearPatientModuleSyncFlags(patientId, { energy: true });
+            if (clearError) {
+                console.warn('Não foi possível limpar flag de energia automaticamente:', clearError);
+            } else {
+                setSyncFlags((prev) => ({ ...(prev || {}), needs_energy_recalc: false }));
+            }
+
             toast({
                 title: 'Salvo!',
                 description: 'Planejamento energético salvo com sucesso.'
@@ -346,6 +386,46 @@ const EnergyExpenditurePage = () => {
         } finally {
             setSaving(false);
         }
+    };
+
+    const formatSyncUpdateTime = (isoDate) => {
+        if (!isoDate) return null;
+        const date = new Date(isoDate);
+        if (Number.isNaN(date.getTime())) return null;
+
+        const diffMs = Date.now() - date.getTime();
+        if (diffMs < 0) return `atualizado em ${date.toLocaleString('pt-BR')}`;
+
+        const minutes = Math.floor(diffMs / 60000);
+        if (minutes < 1) return 'atualizado agora';
+        if (minutes < 60) return `atualizado há ${minutes} min`;
+
+        const hours = Math.floor(minutes / 60);
+        if (hours < 24) return `atualizado há ${hours}h`;
+
+        const days = Math.floor(hours / 24);
+        if (days <= 7) return `atualizado há ${days} dia${days > 1 ? 's' : ''}`;
+
+        return `atualizado em ${date.toLocaleDateString('pt-BR')} às ${date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+    };
+
+    const handleMarkEnergyAsReviewed = async () => {
+        const { error } = await clearPatientModuleSyncFlags(patientId, { energy: true });
+        if (error) {
+            toast({
+                title: 'Não foi possível marcar como revisado',
+                description: 'Tente novamente em instantes.',
+                variant: 'destructive'
+            });
+            return;
+        }
+
+        setSyncFlags((prev) => ({ ...(prev || {}), needs_energy_recalc: false }));
+        toast({
+            title: 'Pendência removida',
+            description: 'O módulo de GET foi marcado como revisado.',
+            variant: 'success'
+        });
     };
 
     const getDataSourceBadge = (field) => {
@@ -386,6 +466,44 @@ const EnergyExpenditurePage = () => {
                         </p>
                     </div>
                 </div>
+
+                {syncFlags?.needs_energy_recalc && (
+                    <Alert className="mb-6 border-amber-200 bg-amber-50">
+                        <AlertCircle className="h-4 w-4 text-amber-700" />
+                        <AlertDescription className="text-amber-800">
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                <div>
+                                    <p>A antropometria foi atualizada recentemente. Recomendamos revisar/recalcular o GET e salvar.</p>
+                                    {syncFlags?.anthropometry_updated_at && (
+                                        <p className="mt-1 text-xs text-amber-700/90">
+                                            {formatSyncUpdateTime(syncFlags.anthropometry_updated_at)}
+                                        </p>
+                                    )}
+                                </div>
+                                <div className="flex flex-col gap-2 sm:flex-row">
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="outline"
+                                        className="border-amber-300 bg-white text-amber-800 hover:bg-amber-100"
+                                        onClick={loadPatientData}
+                                    >
+                                        Atualizar dados
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="ghost"
+                                        className="text-amber-900 hover:bg-amber-100"
+                                        onClick={handleMarkEnergyAsReviewed}
+                                    >
+                                        Marcar como revisado
+                                    </Button>
+                                </div>
+                            </div>
+                        </AlertDescription>
+                    </Alert>
+                )}
 
                 {/* Split View Layout */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -450,6 +568,18 @@ const EnergyExpenditurePage = () => {
                                         onChange={(e) => setAge(e.target.value)}
                                         placeholder="30"
                                     />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="gender">Sexo *</Label>
+                                    <Select value={gender || ''} onValueChange={setGender}>
+                                        <SelectTrigger id="gender">
+                                            <SelectValue placeholder="Selecione o sexo" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="female">Feminino</SelectItem>
+                                            <SelectItem value="male">Masculino</SelectItem>
+                                        </SelectContent>
+                                    </Select>
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="leanMass" className="flex items-center">

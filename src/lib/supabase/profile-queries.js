@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/customSupabaseClient';
+import { logSupabaseError } from '@/lib/supabase/query-helpers';
 
 /**
  * Update clinic settings (stored in preferences JSONB or clinic_settings JSONB)
@@ -15,7 +16,7 @@ export async function updateClinicSettings(userId, settingsObject) {
         .single();
 
     if (fetchError) {
-        console.error('Error fetching current settings:', fetchError);
+        logSupabaseError('Error fetching current settings', fetchError);
         throw fetchError;
     }
 
@@ -51,7 +52,7 @@ export async function updateClinicSettings(userId, settingsObject) {
         .single();
 
     if (error) {
-        console.error('Error updating clinic settings:', error);
+        logSupabaseError('Error updating clinic settings', error);
         throw error;
     }
 
@@ -71,7 +72,7 @@ export async function getClinicSettings(userId) {
         .single();
 
     if (error) {
-        console.error('Error fetching clinic settings:', error);
+        logSupabaseError('Error fetching clinic settings', error);
         throw error;
     }
 

@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/customSupabaseClient';
 import { translateMealType } from '@/utils/mealTranslations';
+import { logSupabaseError } from '@/lib/supabase/query-helpers';
 
 /**
  * Busca o perfil completo do paciente
@@ -19,7 +20,7 @@ export const getPatientProfile = async (patientId, nutritionistId) => {
         if (error) throw error;
         return { data, error: null };
     } catch (error) {
-        console.error('Erro ao buscar perfil do paciente:', error);
+        logSupabaseError('Erro ao buscar perfil do paciente', error);
         return { data: null, error };
     }
 };
@@ -89,7 +90,7 @@ export const getLatestMetrics = async (patientId) => {
 
         return { data: metrics, error: null };
     } catch (error) {
-        console.error('Erro ao buscar métricas do paciente:', error);
+        logSupabaseError('Erro ao buscar métricas do paciente', error);
         return { data: null, error };
     }
 };
@@ -171,7 +172,7 @@ export const getModulesStatus = async (patientId) => {
 
         return { data: status, error: null };
     } catch (error) {
-        console.error('Erro ao buscar status dos módulos:', error);
+        logSupabaseError('Erro ao buscar status dos módulos', error);
         return { data: null, error };
     }
 };
@@ -299,7 +300,7 @@ export const getPatientActivities = async (patientId, limit = 10) => {
         // Retornar apenas o limite solicitado
         return { data: activities.slice(0, limit), error: null };
     } catch (error) {
-        console.error('Erro ao buscar atividades do paciente:', error);
+        logSupabaseError('Erro ao buscar atividades do paciente', error);
         return { data: [], error };
     }
 };
@@ -331,7 +332,7 @@ export const getPatientSummary = async (patientId, nutritionistId) => {
             error: null
         };
     } catch (error) {
-        console.error('Erro ao buscar resumo do paciente:', error);
+        logSupabaseError('Erro ao buscar resumo do paciente', error);
         return { data: null, error };
     }
 };
@@ -369,7 +370,7 @@ export const getPatientsWithLowAdherence = async (nutritionistId) => {
 
         return { data: lowAdherencePatients, error: null };
     } catch (error) {
-        console.error('Erro ao detectar baixa adesão:', error);
+        logSupabaseError('Erro ao detectar baixa adesão', error);
         return { data: [], error };
     }
 };
@@ -433,7 +434,7 @@ export const getPatientsPendingData = async (nutritionistId) => {
 
         return { data: pendingData, error: null };
     } catch (error) {
-        console.error('Erro ao detectar pendências:', error);
+        logSupabaseError('Erro ao detectar pendências', error);
         return { data: [], error };
     }
 };
@@ -531,7 +532,7 @@ export const getComprehensiveActivityFeed = async (nutritionistId, limit = 20) =
 
         return { data: activities, error: null };
     } catch (error) {
-        console.error('Erro ao buscar feed de atividades:', error);
+        logSupabaseError('Erro ao buscar feed de atividades', error);
         return { data: [], error };
     }
 };
@@ -607,7 +608,7 @@ export const getLatestAnamnesisForEnergy = async (patientId) => {
             error: null
         };
     } catch (error) {
-        console.error('Erro ao buscar anamnese para energia:', error);
+        logSupabaseError('Erro ao buscar anamnese para energia', error);
         return { data: null, error };
     }
 };
@@ -621,7 +622,7 @@ export const getActiveGoalForEnergy = async (patientId) => {
     try {
         const { data: goal, error } = await supabase
             .from('patient_goals')
-            .select('id, type, target_weight, current_weight, description, status')
+            .select('id, goal_type, target_weight, current_weight, description, status')
             .eq('patient_id', patientId)
             .eq('status', 'active')
             .order('created_at', { ascending: false })
@@ -632,7 +633,7 @@ export const getActiveGoalForEnergy = async (patientId) => {
 
         return { data: goal, error: null };
     } catch (error) {
-        console.error('Erro ao buscar objetivo para energia:', error);
+        logSupabaseError('Erro ao buscar objetivo para energia', error);
         return { data: null, error };
     }
 };

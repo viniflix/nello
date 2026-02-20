@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/customSupabaseClient';
+import { logSupabaseError } from '@/lib/supabase/query-helpers';
 
 /**
  * Food Service - Centralized food search with pagination
@@ -52,7 +53,7 @@ export async function searchFoodsPaginated(searchTerm, page = 0, source = null) 
       total: count || 0
     };
   } catch (error) {
-    console.error('Error searching foods:', error);
+    logSupabaseError('Error searching foods', error);
     throw error;
   }
 }
@@ -86,7 +87,7 @@ export async function createFood(foodData) {
 
     return { data, error: null };
   } catch (error) {
-    console.error('Error creating food:', error);
+    logSupabaseError('Error creating food', error);
     return { data: null, error };
   }
 }

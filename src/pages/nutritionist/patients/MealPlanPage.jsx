@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Trash2, Copy, Archive, RefreshCw, Edit, BarChart3, Download, FileText, MoreVertical, Utensils, Save, FolderOpen, ShoppingCart } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Copy, Archive, RefreshCw, Edit, BarChart3, Download, FileText, MoreVertical, Utensils, Save, FolderOpen, ShoppingCart, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -60,6 +60,7 @@ import { formatQuantityWithUnit } from '@/lib/utils/measureTranslations';
 import { useAuth } from '@/contexts/AuthContext';
 import { getLatestEnergyCalculation } from '@/lib/supabase/energy-queries';
 import PlanTargetMonitor from '@/components/meal-plan/PlanTargetMonitor';
+import { getPatientModuleSyncFlags, clearPatientModuleSyncFlags } from '@/lib/supabase/anthropometry-queries';
 
 const MealPlanPage = () => {
     const { patientId } = useParams();
@@ -86,6 +87,7 @@ const MealPlanPage = () => {
     const [templateName, setTemplateName] = useState('');
     const [templateTags, setTemplateTags] = useState('');
     const [energyCalculation, setEnergyCalculation] = useState(null);
+    const [syncFlags, setSyncFlags] = useState(null);
 
     // Obter ID do nutricionista
     useEffect(() => {
@@ -180,6 +182,55 @@ const MealPlanPage = () => {
         loadEnergyCalculation();
     }, [patientId]);
 
+    useEffect(() => {
+        const loadSyncFlags = async () => {
+            if (!patientId) return;
+            const { data } = await getPatientModuleSyncFlags(patientId);
+            setSyncFlags(data || null);
+        };
+        loadSyncFlags();
+    }, [patientId]);
+
+    const formatSyncUpdateTime = (isoDate) => {
+        if (!isoDate) return null;
+        const date = new Date(isoDate);
+        if (Number.isNaN(date.getTime())) return null;
+
+        const diffMs = Date.now() - date.getTime();
+        if (diffMs < 0) return `atualizado em ${date.toLocaleString('pt-BR')}`;
+
+        const minutes = Math.floor(diffMs / 60000);
+        if (minutes < 1) return 'atualizado agora';
+        if (minutes < 60) return `atualizado há ${minutes} min`;
+
+        const hours = Math.floor(minutes / 60);
+        if (hours < 24) return `atualizado há ${hours}h`;
+
+        const days = Math.floor(hours / 24);
+        if (days <= 7) return `atualizado há ${days} dia${days > 1 ? 's' : ''}`;
+
+        return `atualizado em ${date.toLocaleDateString('pt-BR')} às ${date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+    };
+
+    const handleMarkMealPlanAsReviewed = async () => {
+        const { error } = await clearPatientModuleSyncFlags(patientId, { mealPlan: true });
+        if (error) {
+            toast({
+                title: 'Não foi possível marcar como revisado',
+                description: 'Tente novamente em instantes.',
+                variant: 'destructive'
+            });
+            return;
+        }
+
+        setSyncFlags((prev) => ({ ...(prev || {}), needs_meal_plan_review: false }));
+        toast({
+            title: 'Pendência removida',
+            description: 'O módulo de plano alimentar foi marcado como revisado.',
+            variant: 'success'
+        });
+    };
+
     // Criar ou atualizar plano
     const handleSubmit = async (planData, planId = null) => {
         setSubmitting(true);
@@ -218,7 +269,7 @@ const MealPlanPage = () => {
 
                     // Adicionar alimentos à refeição
                     for (const food of meal.foods || []) {
-                        await addFoodToMeal({
+                        const foodResult = await addFoodToMeal({
                             meal_plan_meal_id: mealResult.data.id,
                             food_id: food.food_id,
                             quantity: food.quantity,
@@ -230,6 +281,8 @@ const MealPlanPage = () => {
                             notes: food.notes,
                             order_index: food.order_index || 0
                         });
+
+                        if (foodResult?.error) throw foodResult.error;
                     }
                 }
             }
@@ -241,6 +294,13 @@ const MealPlanPage = () => {
                     : 'Plano criado com sucesso',
                 variant: 'success'
             });
+
+            const { error: clearError } = await clearPatientModuleSyncFlags(patientId, { mealPlan: true });
+            if (clearError) {
+                console.warn('Não foi possível limpar flag de revisão do plano automaticamente:', clearError);
+            } else {
+                setSyncFlags((prev) => ({ ...(prev || {}), needs_meal_plan_review: false }));
+            }
 
             setShowForm(false);
             setEditingPlan(null);
@@ -591,6 +651,48 @@ const MealPlanPage = () => {
                     </Button>
                 </div>
             </div>
+
+            {syncFlags?.needs_meal_plan_review && (
+                <Alert className="mb-6 border-amber-200 bg-amber-50">
+                    <AlertCircle className="h-4 w-4 text-amber-700" />
+                    <AlertDescription className="text-amber-800">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                                <p>A antropometria foi atualizada recentemente. Revise o plano alimentar e salve para sincronizar.</p>
+                                {syncFlags?.anthropometry_updated_at && (
+                                    <p className="mt-1 text-xs text-amber-700/90">
+                                        {formatSyncUpdateTime(syncFlags.anthropometry_updated_at)}
+                                    </p>
+                                )}
+                            </div>
+                            <div className="flex flex-col gap-2 sm:flex-row">
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="border-amber-300 bg-white text-amber-800 hover:bg-amber-100"
+                                    onClick={() => {
+                                        if (activePlan?.id) {
+                                            handleEdit(activePlan.id);
+                                        } else {
+                                            setShowForm(true);
+                                        }
+                                    }}
+                                >
+                                    Revisar agora
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="text-amber-900 hover:bg-amber-100"
+                                    onClick={handleMarkMealPlanAsReviewed}
+                                >
+                                    Marcar como revisado
+                                </Button>
+                            </div>
+                        </div>
+                    </AlertDescription>
+                </Alert>
+            )}
 
             {/* Target Monitor */}
             <PlanTargetMonitor
@@ -1005,74 +1107,6 @@ const MealPlanPage = () => {
                 </DialogContent>
             </Dialog>
 
-            {/* Dialog: Salvar como Template */}
-            <Dialog open={saveTemplateDialogOpen} onOpenChange={setSaveTemplateDialogOpen}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Salvar Plano como Modelo</DialogTitle>
-                        <DialogDescription>
-                            Salve este plano como um template para reutilizar em outros pacientes.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                            <label htmlFor="template-name" className="text-sm font-medium">
-                                Nome do Modelo <span className="text-destructive">*</span>
-                            </label>
-                            <Input
-                                id="template-name"
-                                placeholder="Ex: Hipertrofia 3000kcal"
-                                value={templateName}
-                                onChange={(e) => setTemplateName(e.target.value)}
-                                disabled={submitting}
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <label htmlFor="template-tags" className="text-sm font-medium">
-                                Tags (separadas por vírgula)
-                            </label>
-                            <Input
-                                id="template-tags"
-                                placeholder="Ex: hipertrofia, ganho de peso, 3000kcal"
-                                value={templateTags}
-                                onChange={(e) => setTemplateTags(e.target.value)}
-                                disabled={submitting}
-                            />
-                            <p className="text-xs text-muted-foreground">
-                                Use tags para facilitar a busca dos templates
-                            </p>
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <Button
-                            variant="outline"
-                            onClick={() => {
-                                setSaveTemplateDialogOpen(false);
-                                setTemplateName('');
-                                setTemplateTags('');
-                            }}
-                            disabled={submitting}
-                        >
-                            Cancelar
-                        </Button>
-                        <Button
-                            onClick={handleSaveAsTemplate}
-                            disabled={submitting || !templateName.trim()}
-                        >
-                            {submitting ? 'Salvando...' : 'Salvar Modelo'}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-
-            {/* Dialog: Gerenciador de Templates */}
-            <TemplateManagerDialog
-                open={templateManagerOpen}
-                onOpenChange={setTemplateManagerOpen}
-                patientId={patientId}
-                nutritionistId={nutritionistId}
-                onTemplateApplied={handleTemplateApplied}
-            />
         </div>
     );
 };
