@@ -10,6 +10,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/AuthContext';
 import {
     getPatientsWithLowAdherence,
@@ -25,6 +26,7 @@ import {
     getFeedTaskAuditTrail,
     attachFeedPriorityMeta
 } from '@/lib/supabase/patient-queries';
+import { getPendingPayments } from '@/lib/supabase/financial-queries';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useNavigate } from 'react-router-dom';
 import { format, formatDistanceToNow, isValid, parseISO } from 'date-fns';
@@ -34,13 +36,18 @@ import {
     AlertTriangle,
     Calendar,
     Clipboard,
+    DollarSign,
+    ExternalLink,
     FileText,
     Filter,
     Gift,
+    History,
     Loader2,
     MessageSquare,
     RefreshCw,
+    Search,
     Stethoscope,
+    Trash2,
     Utensils,
     Weight,
     BookOpen,
@@ -55,6 +62,7 @@ const iconByType = {
     pending: Clipboard,
     low_adherence: Activity,
     birthday: Gift,
+    payment_pending: DollarSign,
     appointment_upcoming: Calendar,
     meal: Utensils,
     anthropometry: Weight,
@@ -72,6 +80,7 @@ const labelByType = {
     pending: 'Pendente',
     low_adherence: 'Baixa adesão',
     birthday: 'Aniversário',
+    payment_pending: 'Pagamento',
     appointment_upcoming: 'Consulta',
     meal: 'Refeição',
     anthropometry: 'Avaliação',
@@ -92,13 +101,16 @@ const toShortName = (name) => {
     return `${parts[0]} ${parts[parts.length - 1]}`;
 };
 
-/** Título exibido sem duplicar a tag (ex: remove "Pendente" do título quando tag é "Pendente") */
+/** Título exibido sem duplicar a tag */
 const getDisplayTitle = (item) => {
     if (item.type === 'pending') {
         return (item.title || '').replace(/\s*pendente\s*$/i, '').trim() || item.title;
     }
     if (item.type === 'low_adherence') {
         return item.description || 'Sem registros no diário';
+    }
+    if (item.type === 'payment_pending') {
+        return item.description || 'Consulta aguardando pagamento';
     }
     return item.title || 'Atividade';
 };
@@ -116,6 +128,7 @@ const toneByType = {
     pending: { border: 'border-l-amber-500', bg: 'bg-white', tag: 'bg-amber-100 text-amber-800' },
     low_adherence: { border: 'border-l-rose-500', bg: 'bg-white', tag: 'bg-rose-100 text-rose-800' },
     birthday: { border: 'border-l-violet-500', bg: 'bg-white', tag: 'bg-violet-100 text-violet-800' },
+    payment_pending: { border: 'border-l-emerald-600', bg: 'bg-white', tag: 'bg-emerald-100 text-emerald-800' },
     appointment_upcoming: { border: 'border-l-sky-500', bg: 'bg-white', tag: 'bg-sky-100 text-sky-800' },
     meal: { border: 'border-l-orange-500', bg: 'bg-white', tag: 'bg-orange-100 text-orange-800' },
     anthropometry: { border: 'border-l-emerald-500', bg: 'bg-white', tag: 'bg-emerald-100 text-emerald-800' },
@@ -137,6 +150,7 @@ const NutritionistActivityFeed = () => {
     const [feedItems, setFeedItems] = useState([]);
     const [actionLoadingId, setActionLoadingId] = useState(null);
     const [feedFilter, setFeedFilter] = useState('all');
+    const [patientSearch, setPatientSearch] = useState('');
     const [selectMode, setSelectMode] = useState(false);
     const [selectedItemIds, setSelectedItemIds] = useState([]);
     const [bulkActionLoading, setBulkActionLoading] = useState(false);
@@ -181,6 +195,7 @@ const NutritionistActivityFeed = () => {
                 const patientAvatarMap = new Map(patients.map((p) => [p.id, p.avatar_url]).filter(([, v]) => v));
 
                 let labRiskAlerts = [];
+                let pendingPayments = [];
                 if (patientIds.length) {
                     const highRiskRes = await getPatientsHighRiskLabAlerts({
                         nutritionistId: user.id,
@@ -188,6 +203,11 @@ const NutritionistActivityFeed = () => {
                         daysWindow: 120
                     });
                     if (!highRiskRes.error) labRiskAlerts = highRiskRes.data || [];
+                }
+                try {
+                    pendingPayments = await getPendingPayments(user.id);
+                } catch (e) {
+                    console.warn('[Feed] Erro ao carregar pagamentos pendentes:', e);
                 }
 
                 const priorityRules = priorityRulesRes?.data || [];
@@ -264,6 +284,30 @@ const NutritionistActivityFeed = () => {
 
                 const birthdayItems = getBirthdayItems(patientsRes.data || []).map((item) => ({ ...item, sourceType: 'birthday', sourceId: item.id }));
 
+                const paymentItems = (pendingPayments || []).map((tx) => {
+                    const patient = tx.patient || {};
+                    const patientId = tx.patient_id || patient?.id;
+                    const patientName = patient?.name || patientNameMap.get(patientId) || 'Paciente';
+                    const amount = typeof tx.amount === 'number' ? tx.amount : parseFloat(tx.amount) || 0;
+                    const formatted = amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                    return {
+                        id: `payment-${tx.id}`,
+                        type: 'payment_pending',
+                        patientId,
+                        patientName,
+                        patientAvatar: patientAvatarMap.get(patientId) || null,
+                        title: 'Pagamento de consulta pendente',
+                        description: `${tx.custom_description || 'Consulta'} · ${formatted}`,
+                        timestamp: tx.transaction_date || tx.created_at || null,
+                        ctaLabel: 'Ver financeiro',
+                        ctaRoute: '/nutritionist/financial',
+                        priority: 2,
+                        sourceType: 'payment_pending',
+                        sourceId: `payment-${tx.id}`,
+                        transactionId: tx.id
+                    };
+                });
+
                 const labRiskItems = (labRiskAlerts || []).map((alert) => ({
                     id: `lab-risk-${alert.patient_id}-${alert.marker_key}`,
                     type: 'lab_high_risk',
@@ -281,7 +325,7 @@ const NutritionistActivityFeed = () => {
                     riskReason: alert.risk_reason
                 }));
 
-                const allItemsRaw = [...pendingItems, ...appointmentItems, ...birthdayItems, ...lowAdherenceItems, ...labRiskItems, ...activityItems];
+                const allItemsRaw = [...birthdayItems, ...pendingItems, ...paymentItems, ...appointmentItems, ...lowAdherenceItems, ...labRiskItems, ...activityItems];
                 const allItems = attachFeedPriorityMeta(allItemsRaw, priorityRules);
 
                 const syncRes = await syncFeedTasksFromItems(user.id, allItems, feedStateRes?.data || []);
@@ -351,12 +395,19 @@ const NutritionistActivityFeed = () => {
     };
 
     const visibleFeedItems = useMemo(() => {
-        if (feedFilter === 'high') return feedItems.filter((i) => Number(i.priorityScore || 0) >= 4);
-        if (feedFilter === 'pending') return feedItems.filter((i) => i.type === 'pending');
-        if (feedFilter === 'adherence') return feedItems.filter((i) => i.type === 'low_adherence');
-        if (feedFilter === 'lab_risk') return feedItems.filter((i) => i.type === 'lab_high_risk');
-        return feedItems;
-    }, [feedItems, feedFilter]);
+        let items = feedItems;
+        if (feedFilter === 'high') items = items.filter((i) => Number(i.priorityScore || 0) >= 4);
+        else if (feedFilter === 'pending') items = items.filter((i) => i.type === 'pending');
+        else if (feedFilter === 'adherence') items = items.filter((i) => i.type === 'low_adherence');
+        else if (feedFilter === 'lab_risk') items = items.filter((i) => i.type === 'lab_high_risk');
+        else if (feedFilter === 'birthday') items = items.filter((i) => i.type === 'birthday');
+        else if (feedFilter === 'payment') items = items.filter((i) => i.type === 'payment_pending');
+        if (patientSearch.trim()) {
+            const q = patientSearch.trim().toLowerCase();
+            items = items.filter((i) => (i.patientName || '').toLowerCase().includes(q));
+        }
+        return items;
+    }, [feedItems, feedFilter, patientSearch]);
 
     const backlogStats = useMemo(() => {
         const now = Date.now();
@@ -382,10 +433,14 @@ const NutritionistActivityFeed = () => {
         const pending = feedItems.filter((i) => i.type === 'pending').length;
         const adherence = feedItems.filter((i) => i.type === 'low_adherence').length;
         const labRisk = feedItems.filter((i) => i.type === 'lab_high_risk').length;
+        const birthday = feedItems.filter((i) => i.type === 'birthday').length;
+        const payment = feedItems.filter((i) => i.type === 'payment_pending').length;
         return [
             { id: 'all', label: 'Todos', count: total },
             { id: 'high', label: 'Alta prioridade', count: high },
+            { id: 'birthday', label: 'Aniversários', count: birthday },
             { id: 'pending', label: 'Pendências', count: pending },
+            { id: 'payment', label: 'Pagamentos', count: payment },
             { id: 'adherence', label: 'Baixa adesão', count: adherence },
             { id: 'lab_risk', label: 'Risco exame', count: labRisk }
         ];
@@ -520,8 +575,8 @@ const NutritionistActivityFeed = () => {
                         >
                             {selectMode ? 'Cancelar seleção' : 'Selecionar itens'}
                         </Button>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
+                        <Popover>
+                            <PopoverTrigger asChild>
                                 <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
                                     <Filter className="h-3.5 w-3.5" />
                                     Filtro
@@ -530,20 +585,40 @@ const NutritionistActivityFeed = () => {
                                             ({filterChips.find((c) => c.id === feedFilter)?.label})
                                         </span>
                                     )}
+                                    {patientSearch && (
+                                        <span className="ml-0.5 text-muted-foreground">
+                                            · "{patientSearch}"
+                                        </span>
+                                    )}
                                 </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                {filterChips.map((chip) => (
-                                    <DropdownMenuItem
-                                        key={chip.id}
-                                        onClick={() => setFeedFilter(chip.id)}
-                                        className={feedFilter === chip.id ? 'bg-muted' : ''}
-                                    >
-                                        {chip.label} ({chip.count})
-                                    </DropdownMenuItem>
-                                ))}
-                            </DropdownMenuContent>
-                        </DropdownMenu>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-72 p-0" align="end">
+                                <div className="p-2 border-b border-border">
+                                    <div className="relative">
+                                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                                        <Input
+                                            placeholder="Buscar por paciente..."
+                                            value={patientSearch}
+                                            onChange={(e) => setPatientSearch(e.target.value)}
+                                            className="pl-8 h-8 text-xs"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="max-h-[240px] overflow-y-auto py-1">
+                                    {filterChips.map((chip) => (
+                                        <button
+                                            key={chip.id}
+                                            type="button"
+                                            onClick={() => setFeedFilter(chip.id)}
+                                            className={`w-full px-3 py-2 text-left text-sm flex items-center justify-between hover:bg-muted/50 ${feedFilter === chip.id ? 'bg-muted' : ''}`}
+                                        >
+                                            {chip.label}
+                                            <span className="text-xs text-muted-foreground">({chip.count})</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </PopoverContent>
+                        </Popover>
                         <Popover>
                             <PopoverTrigger asChild>
                                 <button
@@ -724,6 +799,12 @@ const NutritionistActivityFeed = () => {
                                                 </Button>
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
+                                                {item.ctaRoute && (
+                                                    <DropdownMenuItem onClick={() => navigate(item.ctaRoute)}>
+                                                        <ExternalLink className="h-3.5 w-3.5 mr-2" />
+                                                        {item.ctaLabel || 'Resolver'}
+                                                    </DropdownMenuItem>
+                                                )}
                                                 <DropdownMenuItem
                                                     onClick={() => handleResolveInline(item)}
                                                     disabled={actionLoadingId === item.id || bulkActionLoading}
@@ -731,29 +812,16 @@ const NutritionistActivityFeed = () => {
                                                     {actionLoadingId === item.id ? (
                                                         <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" />
                                                     ) : (
-                                                        <CheckCircle2 className="h-3.5 w-3.5 mr-2" />
+                                                        <Trash2 className="h-3.5 w-3.5 mr-2" />
                                                     )}
-                                                    Marcar como resolvido
+                                                    Excluir alerta
                                                 </DropdownMenuItem>
                                                 <DropdownMenuItem onClick={() => handleToggleAudit(item)}>
+                                                    <History className="h-3.5 w-3.5 mr-2" />
                                                     Histórico
                                                 </DropdownMenuItem>
                                             </DropdownMenuContent>
                                         </DropdownMenu>
-                                    </div>
-
-                                    {/* Barra de ações (estilo post: Like | Comment | Share) */}
-                                    <div className="flex items-center gap-2 px-4 py-2 border-t border-border/40">
-                                        {item.ctaRoute && (
-                                            <button
-                                                type="button"
-                                                onClick={() => navigate(item.ctaRoute)}
-                                                className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-sm font-medium text-primary hover:bg-primary/10 transition-colors -ml-1"
-                                            >
-                                                {item.ctaLabel || 'Resolver'}
-                                                <ChevronRight className="h-3.5 w-3.5" />
-                                            </button>
-                                        )}
                                     </div>
                                 </article>
                             );
@@ -800,7 +868,8 @@ const getBirthdayItems = (patients) => {
                 timestamp: null,
                 ctaLabel: 'Ver perfil',
                 ctaRoute: `/nutritionist/patients/${patient.id}/hub`,
-                priority: 3
+                priority: diffDays === 0 ? 0 : 2,
+                priorityScore: diffDays === 0 ? 10 : 5
             });
         }
     });
