@@ -641,15 +641,16 @@ const NutritionistActivityFeed = () => {
                                     : null);
 
                             return (
-                                <div
+                                <article
                                     key={item.id}
-                                    className={`relative flex flex-col rounded-xl border border-border/80 ${tone.border} ${tone.bg} shadow-sm hover:shadow-md transition-all min-w-0 overflow-hidden`}
+                                    className={`relative rounded-xl border border-border/70 ${tone.border} ${tone.bg} shadow-sm hover:shadow transition-shadow overflow-hidden`}
                                 >
-                                    <div className="flex items-start gap-3 p-4">
+                                    {/* Header: avatar + conteúdo + menu */}
+                                    <div className="flex items-start gap-3 p-4 pb-0">
                                         {selectMode ? (
                                             <button
                                                 type="button"
-                                                className="mt-0.5 shrink-0 rounded-full p-0.5 hover:bg-muted/50 transition-colors"
+                                                className="mt-1 shrink-0 rounded-full p-0.5 hover:bg-muted/50 transition-colors"
                                                 onClick={() => toggleItemSelection(item.id)}
                                             >
                                                 {selectedItemIds.includes(item.id) ? (
@@ -659,20 +660,21 @@ const NutritionistActivityFeed = () => {
                                                 )}
                                             </button>
                                         ) : (
-                                            <Avatar className="h-10 w-10 shrink-0">
+                                            <Avatar className="h-9 w-9 shrink-0">
                                                 {item.patientAvatar ? (
                                                     <AvatarImage src={item.patientAvatar} alt={shortName} />
                                                 ) : null}
-                                                <AvatarFallback className="bg-muted/60 text-sm font-semibold">
+                                                <AvatarFallback className="bg-muted/60 text-xs font-semibold">
                                                     {shortName ? shortName.substring(0, 2).toUpperCase() : '?'}
                                                 </AvatarFallback>
                                             </Avatar>
                                         )}
 
-                                        <div className="flex-1 min-w-0">
-                                            {/* Linha 1: Nome ícone Título [tag] */}
+                                        <div className="flex-1 min-w-0 pr-8">
+                                            {/* Nome · ícone · título [tag] */}
                                             <div className="flex flex-wrap items-center gap-1.5">
                                                 <span className="font-semibold text-foreground">{shortName}</span>
+                                                <span className="text-muted-foreground">·</span>
                                                 <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                                                 <span className="text-foreground/90">{displayTitle}</span>
                                                 <Badge variant="secondary" className={`text-[10px] px-1.5 py-0 font-medium ${tone.tag}`}>
@@ -684,21 +686,19 @@ const NutritionistActivityFeed = () => {
                                                     </Badge>
                                                 )}
                                             </div>
-                                            {/* Descrição extra */}
                                             {item.type !== 'low_adherence' && item.description && (
-                                                <p className="text-xs text-muted-foreground mt-1.5">{item.description}</p>
+                                                <p className="text-sm text-muted-foreground mt-1">{item.description}</p>
                                             )}
                                             {item.type === 'lab_high_risk' && item.riskReason && (
                                                 <p className="text-xs text-muted-foreground mt-1">{item.riskReason}</p>
                                             )}
-                                            {/* Meta: tempo + prioridade */}
-                                            <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-2 text-[11px] text-muted-foreground">
-                                                {timeAgo && <span>No feed {timeAgo}</span>}
-                                                <span className={priorityMeta.color}>Prioridade {priorityMeta.label}</span>
+                                            <div className="flex items-center gap-2 mt-2 text-[11px] text-muted-foreground">
+                                                {timeAgo && <span>{timeAgo}</span>}
+                                                <span className={priorityMeta.color}>· {priorityMeta.label}</span>
                                             </div>
 
                                             {expandedAuditItemId === item.id && (
-                                                <div className="mt-3 rounded-lg border border-border/70 bg-muted/20 p-2.5 text-xs">
+                                                <div className="mt-3 rounded-lg border border-border/60 bg-muted/30 p-2.5 text-xs">
                                                     {auditLoadingItemId === item.id ? (
                                                         <span className="text-muted-foreground">Carregando...</span>
                                                     ) : (auditTrailByKey[buildAuditKey(item)] || []).length > 0 ? (
@@ -717,46 +717,45 @@ const NutritionistActivityFeed = () => {
                                             )}
                                         </div>
 
-                                        {/* Menu vertical (3 pontos) - canto superior direito */}
-                                        <div className="absolute top-3 right-3">
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
-                                                        <MoreVertical className="h-4 w-4" />
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end">
-                                                    <DropdownMenuItem
-                                                        onClick={() => handleResolveInline(item)}
-                                                        disabled={actionLoadingId === item.id || bulkActionLoading}
-                                                    >
-                                                        {actionLoadingId === item.id ? (
-                                                            <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" />
-                                                        ) : (
-                                                            <CheckCircle2 className="h-3.5 w-3.5 mr-2" />
-                                                        )}
-                                                        Marcar como resolvido
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem onClick={() => handleToggleAudit(item)}>
-                                                        Histórico
-                                                    </DropdownMenuItem>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
-                                        </div>
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button size="sm" variant="ghost" className="absolute top-3 right-3 h-8 w-8 p-0 text-muted-foreground hover:text-foreground">
+                                                    <MoreVertical className="h-4 w-4" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                                <DropdownMenuItem
+                                                    onClick={() => handleResolveInline(item)}
+                                                    disabled={actionLoadingId === item.id || bulkActionLoading}
+                                                >
+                                                    {actionLoadingId === item.id ? (
+                                                        <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" />
+                                                    ) : (
+                                                        <CheckCircle2 className="h-3.5 w-3.5 mr-2" />
+                                                    )}
+                                                    Marcar como resolvido
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem onClick={() => handleToggleAudit(item)}>
+                                                    Histórico
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
                                     </div>
 
-                                    {/* CTA Resolver - rodapé do card */}
-                                    {item.ctaRoute && (
-                                        <button
-                                            type="button"
-                                            onClick={() => navigate(item.ctaRoute)}
-                                            className="flex items-center justify-center gap-1.5 w-full py-2.5 px-4 bg-primary/10 hover:bg-primary/20 text-primary font-medium text-sm transition-colors border-t border-border/60"
-                                        >
-                                            {item.ctaLabel || 'Resolver'}
-                                            <ChevronRight className="h-3.5 w-3.5" />
-                                        </button>
-                                    )}
-                                </div>
+                                    {/* Barra de ações (estilo post: Like | Comment | Share) */}
+                                    <div className="flex items-center gap-2 px-4 py-2 border-t border-border/40">
+                                        {item.ctaRoute && (
+                                            <button
+                                                type="button"
+                                                onClick={() => navigate(item.ctaRoute)}
+                                                className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-sm font-medium text-primary hover:bg-primary/10 transition-colors -ml-1"
+                                            >
+                                                {item.ctaLabel || 'Resolver'}
+                                                <ChevronRight className="h-3.5 w-3.5" />
+                                            </button>
+                                        )}
+                                    </div>
+                                </article>
                             );
                         })}
                     </div>
