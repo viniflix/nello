@@ -96,6 +96,11 @@
   html, body {
     @apply overflow-x-hidden;
   }
+
+  /* Reserva espaço da scrollbar para evitar shift quando dropdowns fecham o scroll */
+  html {
+    scrollbar-gutter: stable;
+  }
 }
 
 /* Utilitários para layout mobile-friendly (apenas onde aplicados) */
