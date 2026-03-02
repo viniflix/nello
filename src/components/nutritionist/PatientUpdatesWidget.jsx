@@ -178,8 +178,8 @@ const PatientUpdatesWidget = () => {
 
     if (loading) {
         return (
-            <Card className="bg-card shadow-card-dark rounded-xl overflow-hidden">
-                <CardHeader>
+            <Card className="bg-card shadow-card-dark rounded-xl overflow-hidden flex flex-col flex-1 min-h-0 h-full">
+                <CardHeader className="shrink-0">
                     <CardTitle className="font-clash text-lg font-semibold text-primary">
                         Registros Recentes
                     </CardTitle>
@@ -187,7 +187,7 @@ const PatientUpdatesWidget = () => {
                         Carregando...
                     </CardDescription>
                 </CardHeader>
-                <CardContent className="flex items-center justify-center py-10">
+                <CardContent className="flex-1 min-h-0 flex items-center justify-center">
                     <Loader2 className="w-6 h-6 animate-spin text-primary" />
                 </CardContent>
             </Card>
@@ -195,8 +195,8 @@ const PatientUpdatesWidget = () => {
     }
 
     return (
-        <Card className="bg-card shadow-card-dark rounded-xl overflow-hidden">
-            <CardHeader className="pb-3">
+        <Card className="bg-card shadow-card-dark rounded-xl overflow-hidden flex flex-col flex-1 min-h-0 h-full">
+            <CardHeader className="pb-3 shrink-0">
                 <CardTitle className="font-clash text-base md:text-lg font-semibold text-primary break-words">
                     Registros Recentes
                 </CardTitle>
@@ -266,9 +266,9 @@ const PatientUpdatesWidget = () => {
                 </div>
             </CardHeader>
 
-            <CardContent>
+            <CardContent className="flex-1 min-h-0 overflow-hidden flex flex-col">
                 {filteredUpdates.length === 0 ? (
-                    <div className="text-center py-8">
+                    <div className="flex-1 flex flex-col items-center justify-center py-8 text-center">
                         <p className="text-sm text-muted-foreground">
                             {searchTerm || activeFilter !== 'all'
                                 ? 'Nenhum registro encontrado com os filtros aplicados'
@@ -281,7 +281,7 @@ const PatientUpdatesWidget = () => {
                         <p className="text-xs text-muted-foreground mb-3">
                             {filteredUpdates.length} {filteredUpdates.length === 1 ? 'registro' : 'registros'}
                         </p>
-                        <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
+                        <div className="flex-1 min-h-0 overflow-y-auto pr-2 space-y-3">
                             {filteredUpdates.map(update => (
                                 <div key={update.id} className="flex items-start gap-3 min-w-0">
                                     <div className="bg-muted p-2 rounded-full flex-shrink-0">

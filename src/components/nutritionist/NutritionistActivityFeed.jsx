@@ -546,12 +546,12 @@ const NutritionistActivityFeed = () => {
 
     if (loading) {
         return (
-            <Card className="bg-card shadow-card-dark rounded-xl overflow-hidden">
-                <CardHeader>
+            <Card className="bg-card shadow-card-dark rounded-xl overflow-hidden flex flex-col flex-1 min-h-0 h-full">
+                <CardHeader className="shrink-0">
                     <CardTitle className="font-clash text-lg font-semibold text-primary">Feed de Atividades</CardTitle>
                     <CardDescription className="text-muted-foreground">Carregando...</CardDescription>
                 </CardHeader>
-                <CardContent className="flex items-center justify-center py-10">
+                <CardContent className="flex-1 min-h-0 flex items-center justify-center">
                     <Loader2 className="w-6 h-6 animate-spin text-primary" />
                 </CardContent>
             </Card>
@@ -559,8 +559,8 @@ const NutritionistActivityFeed = () => {
     }
 
     return (
-        <Card className="bg-card shadow-card-dark rounded-xl overflow-hidden">
-            <CardHeader className="pb-3">
+        <Card className="bg-card shadow-card-dark rounded-xl overflow-hidden flex flex-col flex-1 min-h-0 h-full">
+            <CardHeader className="pb-3 shrink-0">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div>
                         <CardTitle className="font-clash text-base md:text-lg font-semibold text-primary">Feed de Atividades</CardTitle>
@@ -688,15 +688,15 @@ const NutritionistActivityFeed = () => {
                 )}
             </CardHeader>
 
-            <CardContent>
+            <CardContent className="flex-1 min-h-0 overflow-hidden flex flex-col">
                 {visibleFeedItems.length === 0 ? (
-                    <div className="text-center py-12">
-                        <CheckCircle2 className="w-12 h-12 text-emerald-500/60 mx-auto mb-3" />
+                    <div className="flex-1 flex flex-col items-center justify-center py-12 text-center">
+                        <CheckCircle2 className="w-12 h-12 text-emerald-500/60 mb-3" />
                         <p className="text-muted-foreground font-medium mb-1">Tudo em dia!</p>
                         <p className="text-sm text-muted-foreground">Não há alertas ou pendências no momento</p>
                     </div>
                 ) : (
-                    <div className="max-h-[520px] overflow-y-auto pr-1 space-y-3">
+                    <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-3">
                         {visibleFeedItems.map((item) => {
                             const Icon = iconByType[item.type] || iconByType.default;
                             const tone = toneByType[item.type] || toneByType.default;

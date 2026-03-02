@@ -546,45 +546,37 @@ export default function NutritionistDashboard() {
   }, [user?.id, fetchStats, fetchAppointments, fetchNoShowStats]);
 
   return (
-    <div className="flex flex-col min-h-screen bg-background"> 
-      
-      
-      
+    <div className="flex flex-col min-h-screen lg:h-[calc(100vh-4rem)] min-h-0 bg-background lg:overflow-hidden">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="max-w-7xl mx-auto w-full px-4 md:px-8 pt-4 md:pt-8 min-w-0 overflow-x-hidden"
+        className="flex flex-col lg:h-full max-w-7xl mx-auto w-full px-4 md:px-6 pt-3 md:pt-4 pb-4 min-w-0 overflow-x-hidden"
       >
-        {/* Zona de Ação Rápida */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 md:mb-8 text-center sm:text-left">
-          {/* Lado Esquerdo: Título e Descrição */}
+        {/* Header compacto */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4 shrink-0">
           <div className="min-w-0">
-            <h2 className="text-2xl md:text-3xl font-bold font-heading uppercase tracking-wide text-primary break-words">
+            <h2 className="text-xl md:text-2xl font-bold font-heading uppercase tracking-wide text-primary break-words">
               Dashboard
             </h2>
-            <p className="text-neutral-600 text-sm md:text-base mt-0.5">
+            <p className="text-neutral-600 text-xs md:text-sm mt-0.5">
               Gerencie seus pacientes, Planos e Análises.
             </p>
           </div>
-
-          {/* Lado Direito: Ação Rápida */}
           <div className="flex gap-2 flex-wrap justify-center sm:justify-end">
-            <Button variant="secondary" onClick={() => navigate('/nutritionist/patients')}>
-              <Users className="h-4 w-4 mr-2" />
+            <Button variant="secondary" size="sm" onClick={() => navigate('/nutritionist/patients')}>
+              <Users className="h-4 w-4 mr-1.5" />
               Ver todos os pacientes
             </Button>
           </div>
         </div>
 
+        {/* Grid principal: Feed e Registros alinhados no final */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6 flex-1 min-h-0">
 
-        {/* --- Conteúdo da Página --- */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-
-          {/* Coluna Lateral - Desktop à direita, Mobile: apenas Registros Recentes */}
-          <div className="lg:col-span-1 space-y-8 lg:order-last order-3">
-            {/* Agendamentos 2.0 (Próximas + No-show expansível) - Desktop */}
-            <div className="hidden lg:block">
+          {/* Coluna Lateral - Agendamentos + Registros (desktop: direita; mobile: após agendamentos) */}
+          <div className="flex flex-col min-h-0 lg:col-span-1 lg:order-last order-3 gap-4">
+            <div className="hidden lg:block shrink-0">
               <AppointmentsCard2
                 appointments={appointments}
                 totalUpcoming={appointmentsTotalCount}
@@ -596,13 +588,15 @@ export default function NutritionistDashboard() {
                 onNoShowPeriodChange={setNoShowPeriodDays}
               />
             </div>
-            <PatientUpdatesWidget />
+            <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+              <PatientUpdatesWidget />
+            </div>
           </div>
 
-          {/* Coluna Principal - Desktop à esquerda, Mobile no início */}
-          <div className="lg:col-span-2 space-y-8 lg:order-first order-1">
-            {/* Cards de Estatística - Layout 2x1 no mobile, 3 colunas no desktop */}
-            <div className="grid gap-4 grid-cols-2 lg:grid-cols-3 mb-6">
+          {/* Coluna Principal - Stats + Feed */}
+          <div className="flex flex-col min-h-0 lg:col-span-2 order-first gap-4">
+            {/* Cards de Estatística */}
+            <div className="grid gap-3 grid-cols-2 lg:grid-cols-3 shrink-0">
               {/* OTIMIZADO: Mostra skeletons enquanto carrega, depois mostra dados reais */}
               {statsLoading ? (
                 <>
@@ -617,72 +611,66 @@ export default function NutritionistDashboard() {
                   {/* Card 1: Pacientes (Verde) */}
                   <Card className="relative overflow-hidden bg-primary text-white border-0 shadow-card-dark">
                     <Sparkline data={patients90DaysSeries} />
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="font-heading uppercase text-xs lg:text-sm font-medium text-white/80 tracking-wide leading-tight">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 pb-1">
+                      <CardTitle className="font-heading uppercase text-[10px] lg:text-xs font-medium text-white/80 tracking-wide leading-tight">
                         Total Pacientes
                       </CardTitle>
-                      <Users className="h-5 w-5 lg:h-6 lg:w-6 text-white/80 flex-shrink-0" />
+                      <Users className="h-4 w-4 text-white/80 flex-shrink-0" />
                     </CardHeader>
-                    <CardContent className="relative">
-                      <div className="text-3xl lg:text-4xl font-bold text-white">
+                    <CardContent className="relative py-2 px-3">
+                      <div className="text-2xl lg:text-3xl font-bold text-white">
                         {patients.length}
                       </div>
-                      <p className="text-xs text-white/70">
-                        Evolução dos últimos 90 dias
-                      </p>
+                      <p className="text-[10px] text-white/70">Evolução 90 dias</p>
                     </CardContent>
                   </Card>
 
                   {/* Card 2: Pacientes Ativos (Neutro Escuro) - Mobile: posição 2, Desktop: posição 3 */}
                   <Card className="relative overflow-hidden bg-neutral-800 text-white border-0 shadow-card-dark lg:order-3">
                     <Sparkline data={active24hSeries} />
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="font-heading uppercase text-xs lg:text-sm font-medium text-white/80 tracking-wide leading-tight">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 pb-1">
+                      <CardTitle className="font-heading uppercase text-[10px] lg:text-xs font-medium text-white/80 tracking-wide leading-tight">
                         Pacientes Ativos
                       </CardTitle>
-                      <UserCheck className="h-5 w-5 lg:h-6 lg:w-6 text-white/80 flex-shrink-0" />
+                      <UserCheck className="h-4 w-4 text-white/80 flex-shrink-0" />
                     </CardHeader>
-                    <CardContent className="relative">
-                      <div className="text-3xl lg:text-4xl font-bold text-white">
+                    <CardContent className="relative py-2 px-3">
+                      <div className="text-2xl lg:text-3xl font-bold text-white">
                         {activePatients24h}
                       </div>
-                      <p className="text-xs text-white/70 leading-tight">
-                        {newPatients30Days} novos nos últimos 30 dias
-                      </p>
+                      <p className="text-[10px] text-white/70">{newPatients30Days} novos (30d)</p>
                     </CardContent>
                   </Card>
 
-                  {/* Card 3: Adesão (Laranja) - Mobile: ocupa 2 colunas embaixo, Desktop: posição 2 */}
+                  {/* Card 3: Adesão */}
                   <Card className="relative overflow-hidden bg-secondary text-white border-0 shadow-card-dark col-span-2 lg:col-span-1 lg:order-2">
                     <Sparkline data={adherence24hSeries} />
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="font-heading uppercase text-xs lg:text-sm font-medium text-white/80 tracking-wide leading-tight">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 pb-1">
+                      <CardTitle className="font-heading uppercase text-[10px] lg:text-xs font-medium text-white/80 tracking-wide leading-tight">
                         Adesão 24h
                       </CardTitle>
-                      <TrendingUp className="h-5 w-5 lg:h-6 lg:w-6 text-white/80 flex-shrink-0" />
+                      <TrendingUp className="h-4 w-4 text-white/80 flex-shrink-0" />
                     </CardHeader>
-                    <CardContent className="relative">
-                      <div className="text-3xl lg:text-4xl font-bold text-white">
+                    <CardContent className="relative py-2 px-3">
+                      <div className="text-2xl lg:text-3xl font-bold text-white">
                         {adherencePercent24h}
                       </div>
-                      <p className="text-xs text-white/70">
-                        {adherentPatients24h}/{patients.length} com 2+ registros
-                      </p>
+                      <p className="text-[10px] text-white/70">{adherentPatients24h}/{patients.length} ativos</p>
                     </CardContent>
                   </Card>
                 </>
               )}
             </div>
 
-            {/* Feed do Nutricionista (Alertas e Pendências) - Desktop e Mobile no final */}
-            <div id="nutritionist-activity-feed">
+            {/* Feed do Nutricionista - preenche espaço e alinha com Registros */}
+            <div id="nutritionist-activity-feed" className="flex-1 min-h-0 flex flex-col overflow-hidden">
               <NutritionistActivityFeed />
             </div>
 
           </div>
 
-          {/* Mobile: Agendamentos 2.0 entre Cards e Feed */}
-          <div className="lg:hidden order-2">
+          {/* Mobile: Agendamentos entre Stats e Feed */}
+          <div className="lg:hidden order-2 shrink-0">
             <AppointmentsCard2
               appointments={appointments}
               totalUpcoming={appointmentsTotalCount}
