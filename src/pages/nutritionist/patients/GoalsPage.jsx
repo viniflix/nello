@@ -40,6 +40,7 @@ import {
     calculateMinimumDeadline,
     calculateIdealDeadline
 } from '@/lib/supabase/goals-queries';
+import { logClinicalImpact } from '@/lib/supabase/clinical-impact-queries';
 import { cn } from '@/lib/utils';
 import { toPortugueseError } from '@/lib/utils/errorMessages';
 import { formatDateToIsoDate, getTodayIsoDate } from '@/lib/utils/date';
@@ -72,6 +73,7 @@ const GoalsPage = () => {
     const [viabilityPreview, setViabilityPreview] = useState(null);
     const [loadingViability, setLoadingViability] = useState(false);
     const [deadlineRecommendation, setDeadlineRecommendation] = useState(null);
+    const [showImpactConfirm, setShowImpactConfirm] = useState(false);
 
     // Modal de atualização de progresso
     const [showProgressModal, setShowProgressModal] = useState(false);
@@ -240,64 +242,55 @@ const GoalsPage = () => {
         setFormData(prev => ({ ...prev, [field]: value }));
     };
 
-    const handleCreateGoal = async () => {
+    const handleCreateGoal = () => {
         if (!nutritionistId) {
-            toast({
-                title: 'Erro',
-                description: 'Usuário não autenticado.',
-                variant: 'destructive'
-            });
+            toast({ title: 'Erro', description: 'Usuário não autenticado.', variant: 'destructive' });
             return;
         }
-
         if (!formData.title || !formData.initial_weight || !formData.target_weight || !formData.target_date) {
-            toast({
-                title: 'Campos obrigatórios',
-                description: 'Preencha todos os campos obrigatórios.',
-                variant: 'destructive'
-            });
+            toast({ title: 'Campos obrigatórios', description: 'Preencha todos os campos obrigatórios.', variant: 'destructive' });
             return;
         }
+        if (!viabilityPreview) return;
+        setShowImpactConfirm(true);
+    };
+
+    const handleConfirmCreateWithImpact = async () => {
+        if (!nutritionistId) return;
 
         setSubmitting(true);
         try {
-            const { data, error } = await createGoal(
-                {
-                    ...formData,
-                    initial_weight: parseFloat(formData.initial_weight),
-                    target_weight: parseFloat(formData.target_weight)
-                },
-                patientId,
-                nutritionistId
-            );
+            const goalPayload = {
+                ...formData,
+                initial_weight: parseFloat(formData.initial_weight),
+                target_weight: parseFloat(formData.target_weight)
+            };
 
+            await logClinicalImpact({
+                nutritionistId,
+                patientId,
+                module: 'goals',
+                scenario: formData.goal_type === 'weight_loss' ? 'weight_loss' : formData.goal_type === 'weight_gain' ? 'weight_gain' : 'maintenance',
+                initialValue: { initial_weight: goalPayload.initial_weight, target_weight: goalPayload.target_weight, start_date: goalPayload.start_date, target_date: goalPayload.target_date },
+                simulatedValue: { required_daily_deficit: viabilityPreview?.required_daily_deficit, daily_calorie_goal: viabilityPreview?.daily_calorie_goal, viability_score: viabilityPreview?.viability_score },
+                impactNotes: viabilityPreview?.viability_notes?.slice(0, 500) || null,
+                confidenceLow: viabilityPreview?.viability_score ? Math.max(1, viabilityPreview.viability_score - 1) : null,
+                confidenceHigh: viabilityPreview?.viability_score ? Math.min(5, viabilityPreview.viability_score + 1) : null,
+                wasApplied: true
+            });
+
+            const { data, error } = await createGoal(goalPayload, patientId, nutritionistId);
             if (error) throw error;
 
-            toast({
-                title: 'Meta criada!',
-                description: 'Meta criada com sucesso.',
-                variant: 'success'
-            });
-
+            toast({ title: 'Meta criada!', description: 'Meta criada com sucesso.', variant: 'success' });
+            setShowImpactConfirm(false);
             setShowForm(false);
-            setFormData({
-                goal_type: 'weight_loss',
-                title: '',
-                description: '',
-                initial_weight: '',
-                target_weight: '',
-                start_date: getTodayIsoDate(),
-                target_date: ''
-            });
+            setFormData({ goal_type: 'weight_loss', title: '', description: '', initial_weight: '', target_weight: '', start_date: getTodayIsoDate(), target_date: '' });
             setViabilityPreview(null);
             await loadData();
         } catch (error) {
             console.error('Erro ao criar meta:', error);
-            toast({
-                title: 'Erro',
-                description: toPortugueseError(error, 'Não foi possível criar a meta.'),
-                variant: 'destructive'
-            });
+            toast({ title: 'Erro', description: toPortugueseError(error, 'Não foi possível criar a meta.'), variant: 'destructive' });
         } finally {
             setSubmitting(false);
         }
@@ -754,22 +747,67 @@ const GoalsPage = () => {
                                     disabled={submitting || !viabilityPreview}
                                     className="bg-[#5f6f52] hover:bg-[#5f6f52]/90 text-white"
                                 >
-                                    {submitting ? (
-                                        <>
-                                            <Activity className="w-4 h-4 mr-2 animate-spin" />
-                                            Criando...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Target className="w-4 h-4 mr-2" />
-                                            Criar Meta
-                                        </>
-                                    )}
+                                    <>
+                                        <Target className="w-4 h-4 mr-2" />
+                                        Criar Meta
+                                    </>
                                 </Button>
                             </div>
                         </CardContent>
                     </Card>
                 )}
+
+                {/* Modal: Confirmação de impacto antes de criar */}
+                <Dialog open={showImpactConfirm} onOpenChange={setShowImpactConfirm}>
+                    <DialogContent className="max-w-md">
+                        <DialogHeader>
+                            <DialogTitle className="flex items-center gap-2">
+                                <Target className="w-5 h-5 text-[#5f6f52]" />
+                                Simulação de Impacto
+                            </DialogTitle>
+                            <DialogDescription>
+                                Revise o impacto estimado antes de confirmar a criação da meta.
+                            </DialogDescription>
+                        </DialogHeader>
+                        {viabilityPreview && (
+                            <div className="space-y-3 py-2">
+                                <div className="rounded-lg border border-[#a9b388]/40 bg-[#fefae0]/20 p-3">
+                                    <p className="text-xs font-semibold text-[#5f6f52] uppercase tracking-wide mb-2">Impacto estimado</p>
+                                    <ul className="text-sm space-y-1">
+                                        <li>Déficit/superávit necessário: <strong>{viabilityPreview.required_daily_deficit ?? '--'} kcal/dia</strong></li>
+                                        {viabilityPreview.daily_calorie_goal != null && (
+                                            <li>Meta calórica sugerida: <strong>{Math.round(viabilityPreview.daily_calorie_goal)} kcal/dia</strong></li>
+                                        )}
+                                        <li>Viabilidade: <strong>{viabilityPreview.viability_score}/5</strong> — {getViabilityLabel(viabilityPreview.viability_score)}</li>
+                                    </ul>
+                                </div>
+                                <div className="rounded border border-muted bg-muted/30 p-2">
+                                    <p className="text-xs text-muted-foreground">
+                                        Faixa de incerteza: ±{(viabilityPreview.viability_score >= 4 ? '10' : viabilityPreview.viability_score >= 3 ? '20' : '30')}% no déficit diário, dependendo da adesão e metabolismo.
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+                        <DialogFooter>
+                            <Button variant="outline" onClick={() => setShowImpactConfirm(false)} disabled={submitting}>
+                                Cancelar
+                            </Button>
+                            <Button onClick={handleConfirmCreateWithImpact} disabled={submitting} className="bg-[#5f6f52] hover:bg-[#5f6f52]/90">
+                                {submitting ? (
+                                    <>
+                                        <Activity className="w-4 h-4 mr-2 animate-spin" />
+                                        Criando...
+                                    </>
+                                ) : (
+                                    <>
+                                        <CheckCircle2 className="w-4 h-4 mr-2" />
+                                        Confirmar e criar
+                                    </>
+                                )}
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
 
                 {/* Meta Ativa */}
                 {activeGoal && !showForm && (

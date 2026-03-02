@@ -4,6 +4,7 @@ import { saveTransaction } from './financial-queries';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
 import { syncAppointmentNotificationSchedule, transitionAppointmentStatus } from './appointment-notifications-queries';
 import { logOperationalEvent } from './observability-queries';
+import { dispatchMessageTemplate } from './message-templates-queries';
 
 const STATUS_FALLBACK = 'scheduled';
 const STATUS_MAP = {
@@ -252,6 +253,39 @@ export async function updateAppointment(appointmentId, appointmentData) {
         throw refreshedError;
     }
 
+    // Auto-dispatch post_consultation template when appointment is completed
+    const finalStatus = refreshed?.status || requestedStatus;
+    const finalPatientId = refreshed?.patient_id || patientId;
+    if (
+        finalStatus === 'completed' &&
+        requestedStatus === 'completed' &&
+        finalPatientId &&
+        (refreshed?.nutritionist_id || nutritionistId)
+    ) {
+        try {
+            const { data: postTpl } = await supabase
+                .from('message_templates')
+                .select('id')
+                .eq('nutritionist_id', refreshed?.nutritionist_id || nutritionistId)
+                .eq('context', 'post_consultation')
+                .eq('is_active', true)
+                .order('use_count', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+
+            if (postTpl?.id) {
+                await dispatchMessageTemplate({
+                    templateId: postTpl.id,
+                    patientId: finalPatientId,
+                    triggerEvent: 'appointment_completed',
+                    extraVariables: { appointment_id: appointmentId }
+                });
+            }
+        } catch (dispatchErr) {
+            logSupabaseError('Erro ao disparar template pós-consulta', dispatchErr);
+        }
+    }
+
     await logOperationalEvent({
         module: 'agenda',
         operation: 'update_appointment',
@@ -260,7 +294,7 @@ export async function updateAppointment(appointmentId, appointmentData) {
         nutritionistId: refreshed?.nutritionist_id || nutritionistId,
         patientId: refreshed?.patient_id || patientId,
         metadata: {
-            status: refreshed?.status || requestedStatus || null
+            status: finalStatus || null
         }
     });
 

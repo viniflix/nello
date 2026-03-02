@@ -26,6 +26,7 @@ import {
     uploadLabResultPDF,
     calculateStatus
 } from '@/lib/supabase/lab-results-queries';
+import ConductSuggestionsCard from '@/components/lab-results/ConductSuggestionsCard';
 
 const LabResultsPage = () => {
     const { patientId } = useParams();
@@ -572,6 +573,13 @@ const LabResultsPage = () => {
                             )}
                         </CardContent>
                     </Card>
+                )}
+
+                {/* Sugestões de Conduta (exames + meta) */}
+                {labResults.length > 0 && (
+                    <div className="mb-6">
+                        <ConductSuggestionsCard patientId={patientId} />
+                    </div>
                 )}
 
                 {/* Results */}

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { format, differenceInDays, subMonths } from 'date-fns';
@@ -47,6 +47,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { getDashboardStats } from '@/services/adminService';
+import { getOperationalHealthSummary } from '@/lib/supabase/observability-queries';
 
 // Cores para o gráfico de pizza
 const PIE_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
@@ -86,9 +87,39 @@ export default function AdminDashboard() {
   const [liveLogs, setLiveLogs] = useState([]);
   const scrollAreaRef = useRef(null);
   const [activeTab, setActiveTab] = useState('overview');
+  const [observabilityLoading, setObservabilityLoading] = useState(true);
+  const [operationalSummary, setOperationalSummary] = useState({
+    total_events: 0,
+    error_events: 0,
+    error_rate: 0,
+    avg_latency_ms: 0,
+    module_stats: []
+  });
 
   // Security check: Only admins can access
   const isAdmin = user?.profile?.is_admin === true;
+
+  const loadObservability = useCallback(async () => {
+    setObservabilityLoading(true);
+    try {
+      const { data, error } = await getOperationalHealthSummary({
+        nutritionistId: null,
+        windowHours: 24
+      });
+      if (error) throw error;
+      setOperationalSummary({
+        total_events: Number(data?.total_events || 0),
+        error_events: Number(data?.error_events || 0),
+        error_rate: Number(data?.error_rate || 0),
+        avg_latency_ms: Number(data?.avg_latency_ms || 0),
+        module_stats: Array.isArray(data?.module_stats) ? data.module_stats : []
+      });
+    } catch (err) {
+      console.error('[AdminDashboard] Erro ao carregar observabilidade:', err);
+    } finally {
+      setObservabilityLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (user && !isAdmin) {
@@ -103,8 +134,9 @@ export default function AdminDashboard() {
 
     if (isAdmin) {
       loadStats();
+      loadObservability();
     }
-  }, [user, isAdmin, navigate, toast]);
+  }, [user, isAdmin, navigate, toast, loadObservability]);
 
   // Função para verificar se está no final do scroll
   const isAtBottom = (element, margin = 50) => {
@@ -896,6 +928,81 @@ export default function AdminDashboard() {
 
           {/* TAB 3: Sistema & Logs */}
           <TabsContent value="system" className="space-y-6">
+            {/* Observabilidade Técnica - métricas de saúde da plataforma */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.05 }}
+            >
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <Activity className="h-5 w-5 text-primary" />
+                    <CardTitle>Observabilidade Técnica</CardTitle>
+                  </div>
+                  <CardDescription>
+                    Erros e latência dos fluxos da plataforma nas últimas 24h
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {observabilityLoading ? (
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      {[1, 2, 3, 4].map((i) => (
+                        <Skeleton key={i} className="h-20" />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="rounded-lg border border-border bg-muted/20 p-3">
+                          <p className="text-xs text-muted-foreground">Eventos</p>
+                          <p className="text-xl font-semibold">{operationalSummary?.total_events ?? 0}</p>
+                        </div>
+                        <div className="rounded-lg border border-red-200 bg-red-50 p-3">
+                          <p className="text-xs text-red-700">Erros</p>
+                          <p className="text-xl font-semibold text-red-700">{operationalSummary?.error_events ?? 0}</p>
+                        </div>
+                        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+                          <p className="text-xs text-amber-700">Latência média</p>
+                          <p className="text-xl font-semibold text-amber-700">
+                            {Number(operationalSummary?.avg_latency_ms ?? 0).toFixed(0)} ms
+                          </p>
+                        </div>
+                        <div className="rounded-lg border border-border bg-muted/20 p-3">
+                          <p className="text-xs text-muted-foreground">Taxa de erro</p>
+                          <p className="text-xl font-semibold">{Number(operationalSummary?.error_rate ?? 0).toFixed(1)}%</p>
+                        </div>
+                      </div>
+                      {Array.isArray(operationalSummary?.module_stats) && operationalSummary.module_stats.length > 0 && (
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground mb-2">Por módulo</p>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                            {operationalSummary.module_stats
+                              .slice()
+                              .sort((a, b) => Number(b?.error_events || 0) - Number(a?.error_events || 0))
+                              .map((item) => (
+                                <div
+                                  key={item.module}
+                                  className="flex items-center justify-between rounded-lg border bg-muted/10 px-3 py-2 text-sm"
+                                >
+                                  <span className="font-medium">{item.module}</span>
+                                  <span className="text-muted-foreground text-xs">
+                                    {item.error_events}/{item.total_events} erros • {Number(item.avg_latency_ms || 0).toFixed(0)} ms
+                                  </span>
+                                </div>
+                              ))}
+                          </div>
+                        </div>
+                      )}
+                      {(!operationalSummary?.module_stats || operationalSummary.module_stats.length === 0) && !observabilityLoading && (
+                        <p className="text-sm text-muted-foreground">Sem eventos instrumentados no período.</p>
+                      )}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </motion.div>
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Broadcast Widget */}
               <motion.div

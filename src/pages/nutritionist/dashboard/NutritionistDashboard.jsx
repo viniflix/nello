@@ -4,14 +4,13 @@ import {
   Users,
   UserCheck,
   TrendingUp,
-  ClipboardList,
-  AlertTriangle,
-  CalendarX2
+  Calendar,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/customSupabaseClient';
-import { getOperationalHealthSummary } from '@/lib/supabase/observability-queries';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
@@ -21,6 +20,20 @@ import { toPortugueseError } from '@/lib/utils/errorMessages';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { StatCardSkeleton, AlertCardSkeleton } from '@/components/ui/card-skeleton';
+
+/** Indica se o erro é de schema/migração (tabela ou RPC não existe) - não exibir toast nesses casos */
+const isSchemaOrMigrationError = (error) => {
+  if (!error) return false;
+  const code = error?.code;
+  const msg = String(error?.message || '').toLowerCase();
+  return (
+    code === 'PGRST202' || // função não encontrada
+    code === 'PGRST205' || // tabela não encontrada
+    code === '42703' ||    // coluna não existe
+    msg.includes('does not exist') ||
+    msg.includes('no matches were found in the schema cache')
+  );
+};
 
 const buildDailySeries = (days, dateValues = []) => {
   const start = new Date();
@@ -118,67 +131,45 @@ const getUrgencyMeta = (appointmentTime) => {
   };
 };
 
-const BacklogOperationalWidget = ({ stats, onOpenFeed }) => {
-  const { openCount, snoozedCount, criticalCount, attentionCount, highRiskLabCount } = stats;
-  return (
-    <Card className="bg-card shadow-card-dark rounded-xl overflow-hidden">
-      <CardHeader className="pb-2">
-        <CardTitle className="font-clash text-base md:text-lg font-semibold text-primary break-words">
-          Backlog Operacional
-        </CardTitle>
-        <CardDescription className="text-muted-foreground text-xs md:text-sm">
-          Pendências do feed inteligente
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <div className="grid grid-cols-2 gap-2">
-          <div className="rounded-lg border border-border bg-muted/20 p-2">
-            <p className="text-[11px] text-muted-foreground">Abertas</p>
-            <p className="text-lg font-semibold text-foreground">{openCount}</p>
-          </div>
-          <div className="rounded-lg border border-border bg-muted/20 p-2">
-            <p className="text-[11px] text-muted-foreground">Adiadas</p>
-            <p className="text-lg font-semibold text-foreground">{snoozedCount}</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2 text-xs">
-          <span className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-red-700">
-            <AlertTriangle className="h-3 w-3" />
-            Crítico: {criticalCount}
-          </span>
-          <span className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-rose-700">
-            Exames risco alto: {highRiskLabCount || 0}
-          </span>
-          <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-amber-700">
-            Atenção: {attentionCount}
-          </span>
-        </div>
-        <Button variant="outline" size="sm" className="w-full" onClick={onOpenFeed}>
-          <ClipboardList className="h-4 w-4 mr-2" />
-          Abrir feed e priorizar
-        </Button>
-      </CardContent>
-    </Card>
-  );
-};
-
-// --- WIDGET (DIREITA): Próximas Consultas ---
-const UpcomingAppointmentsWidget = ({ appointments, totalUpcoming, todayAppointments }) => {
+// --- MEGA CARD 2.0: Agendamentos (Próximas Consultas + No-show expansível) ---
+const AppointmentsCard2 = ({
+  appointments = [],
+  totalUpcoming = 0,
+  todayAppointments = 0,
+  appointmentsLoading,
+  noShowStats,
+  noShowLoading,
+  noShowPeriodDays,
+  onNoShowPeriodChange
+}) => {
   const navigate = useNavigate();
+  const [noShowExpanded, setNoShowExpanded] = useState(false);
   const hasTodayTag = todayAppointments > 0;
   const hasTotalTag = totalUpcoming > 0;
-  
+  const periodOptions = [{ value: 7, label: '7d' }, { value: 30, label: '30d' }, { value: 90, label: '90d' }];
+
+  const handleGoToAgenda = () => navigate('/nutritionist/agenda');
+
+  if (appointmentsLoading) {
+    return <AlertCardSkeleton />;
+  }
+
   return (
-    <Card className="bg-card shadow-card-dark rounded-xl overflow-hidden">
+    <Card className="bg-card shadow-card-dark rounded-xl overflow-hidden border-primary/10">
       <CardHeader className="pb-2">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 min-w-0">
-          <div className="min-w-0">
-            <CardTitle className="font-clash text-base md:text-lg font-semibold text-primary break-words">
-              Próximas Consultas
-            </CardTitle>
-            <CardDescription className="text-muted-foreground text-xs md:text-sm">
-              Seus próximos agendamentos.
-            </CardDescription>
+          <div className="min-w-0 flex items-start gap-2">
+            <div className="rounded-lg bg-primary/10 p-1.5">
+              <Calendar className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <CardTitle className="font-clash text-base md:text-lg font-semibold text-primary break-words">
+                Agendamentos
+              </CardTitle>
+              <CardDescription className="text-muted-foreground text-xs md:text-sm">
+                Próximas consultas e métricas de presença
+              </CardDescription>
+            </div>
           </div>
           <div className="mt-0.5 flex flex-wrap justify-end gap-1.5">
             {hasTodayTag && (
@@ -194,14 +185,26 @@ const UpcomingAppointmentsWidget = ({ appointments, totalUpcoming, todayAppointm
           </div>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-4">
+        {/* Próximas consultas */}
         {appointments.length > 0 ? (
-          <div className="space-y-4">
-            {appointments.map(appt => {
-              const profile = appt.patient; 
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.25 }}
+            className="space-y-3"
+          >
+            {appointments.map((appt, idx) => {
+              const profile = appt.patient;
               const urgency = getUrgencyMeta(appt.start_time);
               return (
-                <div key={appt.id} className={`rounded-lg border p-2.5 ${urgency.rowClass}`}>
+                <motion.div
+                  key={appt.id}
+                  initial={{ opacity: 0, x: -8 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.2, delay: idx * 0.05 }}
+                  className={`rounded-lg border p-2.5 ${urgency.rowClass}`}
+                >
                   <div className="mb-2 flex justify-end">
                     <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium ${urgency.badgeClass}`}>
                       <span className={`h-1.5 w-1.5 rounded-full ${urgency.dotClass}`} />
@@ -209,164 +212,116 @@ const UpcomingAppointmentsWidget = ({ appointments, totalUpcoming, todayAppointm
                     </span>
                   </div>
                   <div className="flex items-center space-x-3 min-w-0">
-                  <div className="w-10 h-10 rounded-full bg-emerald-100 flex-shrink-0 flex items-center justify-center">
-                    <span className="font-semibold text-emerald-700 text-xs">
-                      {(profile?.name || 'P').substring(0, 2).toUpperCase()}
-                    </span>
+                    <div className="w-10 h-10 rounded-full bg-emerald-100 flex-shrink-0 flex items-center justify-center">
+                      <span className="font-semibold text-emerald-700 text-xs">
+                        {(profile?.name || 'P').substring(0, 2).toUpperCase()}
+                      </span>
+                    </div>
+                    <div className="min-w-0 flex-1 overflow-hidden">
+                      <p className="text-sm font-medium text-foreground truncate">{profile?.name || 'Paciente'}</p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {format(parseISO(appt.start_time), "d 'de' MMMM 'às' HH:mm", { locale: ptBR })}
+                      </p>
+                    </div>
                   </div>
-                  <div className="min-w-0 flex-1 overflow-hidden">
-                    <p className="text-sm font-medium text-foreground truncate">{profile?.name || 'Paciente (Excluído)'}</p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {format(parseISO(appt.start_time), "d 'de' MMMM 'às' HH:mm", { locale: ptBR })}
-                    </p>
-                  </div>
-                </div>
-                </div>
+                </motion.div>
               );
             })}
-            <Button variant="outline" size="sm" className="w-full mt-2" onClick={() => navigate('/nutritionist/agenda')}>
-              Ver agenda completa
-            </Button>
-          </div>
+          </motion.div>
         ) : (
-          <p className="text-sm text-muted-foreground text-center py-4">
-            Nenhuma consulta agendada.
-          </p>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="rounded-lg border border-dashed border-border bg-muted/20 py-6 px-4 text-center"
+          >
+            <Calendar className="h-8 w-8 mx-auto text-muted-foreground/50 mb-2" />
+            <p className="text-sm text-muted-foreground">Nenhuma consulta agendada</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Agende sua primeira consulta na agenda</p>
+          </motion.div>
         )}
-      </CardContent>
-    </Card>
-  );
-};
 
-const NoShowInsightsWidget = ({ loading, periodDays, onPeriodChange, stats }) => {
-  const periodOptions = [
-    { value: 7, label: '7d' },
-    { value: 30, label: '30d' },
-    { value: 90, label: '90d' }
-  ];
+        {/* CTA Agenda - sempre visível */}
+        <Button variant="outline" size="sm" className="w-full" onClick={handleGoToAgenda}>
+          <Calendar className="h-4 w-4 mr-2" />
+          {appointments.length > 0 ? 'Ver agenda completa' : 'Abrir agenda'}
+        </Button>
 
-  if (loading) {
-    return <AlertCardSkeleton />;
-  }
-
-  return (
-    <Card className="bg-card shadow-card-dark rounded-xl overflow-hidden">
-      <CardHeader className="pb-2">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <CardTitle className="font-clash text-base md:text-lg font-semibold text-primary break-words">
-              No-show por Período
-            </CardTitle>
-            <CardDescription className="text-muted-foreground text-xs md:text-sm">
-              Taxa operacional de ausência na agenda
-            </CardDescription>
-          </div>
-          <div className="inline-flex rounded-md border bg-muted/20 p-0.5">
-            {periodOptions.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => onPeriodChange(option.value)}
-                className={`rounded px-2 py-1 text-[11px] font-medium transition ${
-                  periodDays === option.value
-                    ? 'bg-primary text-white'
-                    : 'text-muted-foreground hover:bg-muted'
-                }`}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <div className="grid grid-cols-2 gap-2">
-          <div className="rounded-lg border border-red-200 bg-red-50 p-2">
-            <p className="text-[11px] text-red-700">No-show</p>
-            <p className="text-lg font-semibold text-red-700">{stats.noShowCount}</p>
-          </div>
-          <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-2">
-            <p className="text-[11px] text-emerald-700">Concluídas</p>
-            <p className="text-lg font-semibold text-emerald-700">{stats.completedCount}</p>
-          </div>
-        </div>
-        <div className="rounded-lg border border-border bg-muted/20 p-2">
-          <p className="text-[11px] text-muted-foreground">Taxa de no-show</p>
-          <p className="text-xl font-semibold text-foreground">{stats.noShowRate}%</p>
-          <p className="text-[11px] text-muted-foreground mt-1">
-            Base: {stats.eligibleCount} consultas (concluídas + faltas)
-          </p>
-        </div>
-        <div className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] text-amber-700">
-          <CalendarX2 className="h-3 w-3" />
-          Canceladas no período: {stats.canceledCount}
-        </div>
-      </CardContent>
-    </Card>
-  );
-};
-
-const ObservabilityWidget = ({ loading, summary }) => {
-  if (loading) {
-    return <AlertCardSkeleton />;
-  }
-
-  const moduleStats = Array.isArray(summary?.module_stats) ? summary.module_stats : [];
-  const topModules = moduleStats
-    .slice()
-    .sort((a, b) => Number(b?.error_events || 0) - Number(a?.error_events || 0))
-    .slice(0, 3);
-
-  return (
-    <Card className="bg-card shadow-card-dark rounded-xl overflow-hidden">
-      <CardHeader className="pb-2">
-        <CardTitle className="font-clash text-base md:text-lg font-semibold text-primary break-words">
-          Observabilidade Técnica
-        </CardTitle>
-        <CardDescription className="text-muted-foreground text-xs md:text-sm">
-          Erros e latência dos fluxos nas últimas 24h
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <div className="grid grid-cols-3 gap-2">
-          <div className="rounded-lg border border-border bg-muted/20 p-2">
-            <p className="text-[11px] text-muted-foreground">Eventos</p>
-            <p className="text-lg font-semibold text-foreground">{summary?.total_events || 0}</p>
-          </div>
-          <div className="rounded-lg border border-red-200 bg-red-50 p-2">
-            <p className="text-[11px] text-red-700">Erros</p>
-            <p className="text-lg font-semibold text-red-700">{summary?.error_events || 0}</p>
-          </div>
-          <div className="rounded-lg border border-amber-200 bg-amber-50 p-2">
-            <p className="text-[11px] text-amber-700">Latência</p>
-            <p className="text-lg font-semibold text-amber-700">{Number(summary?.avg_latency_ms || 0).toFixed(0)} ms</p>
-          </div>
-        </div>
-
-        <div className="rounded-lg border border-border bg-muted/20 p-2">
-          <p className="text-[11px] text-muted-foreground">Taxa de erro</p>
-          <p className="text-xl font-semibold text-foreground">{Number(summary?.error_rate || 0).toFixed(1)}%</p>
-        </div>
-
-        <div className="space-y-1">
-          {topModules.length === 0 ? (
-            <p className="text-xs text-muted-foreground">Sem eventos instrumentados no período.</p>
-          ) : (
-            topModules.map((item) => (
-              <div key={item.module} className="flex items-center justify-between rounded border border-border/60 bg-muted/10 px-2 py-1.5 text-xs">
-                <span className="font-medium text-foreground">{item.module}</span>
-                <span className="text-muted-foreground">
-                  {item.error_events}/{item.total_events} erros • {Number(item.avg_latency_ms || 0).toFixed(0)} ms
-                </span>
-              </div>
-            ))
-          )}
+        {/* Seção No-show expansível */}
+        <div className="border-t pt-4">
+          <button
+            type="button"
+            onClick={() => setNoShowExpanded((e) => !e)}
+            className="flex w-full items-center justify-between rounded-lg border border-border/60 bg-muted/10 px-3 py-2 text-left transition hover:bg-muted/20"
+          >
+            <span className="text-sm font-medium text-foreground">Métricas de presença</span>
+            <motion.span animate={{ rotate: noShowExpanded ? 180 : 0 }} transition={{ duration: 0.2 }}>
+              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+            </motion.span>
+          </button>
+          <motion.div
+            initial={false}
+            animate={{
+              height: noShowExpanded ? 'auto' : 0,
+              opacity: noShowExpanded ? 1 : 0
+            }}
+            transition={{ duration: 0.25, ease: 'easeInOut' }}
+            className="overflow-hidden"
+          >
+            <motion.div
+              initial={false}
+              animate={{ y: noShowExpanded ? 0 : -8 }}
+              transition={{ duration: 0.2 }}
+              className="pt-3 space-y-3"
+            >
+                  <div className="flex justify-end">
+                    <div className="inline-flex rounded-md border bg-muted/20 p-0.5">
+                      {periodOptions.map((opt) => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => onNoShowPeriodChange(opt.value)}
+                          className={`rounded px-2 py-1 text-[11px] font-medium transition ${
+                            noShowPeriodDays === opt.value ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-muted'
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  {noShowLoading ? (
+                    <div className="h-24 rounded-lg bg-muted/20 animate-pulse" />
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="rounded-lg border border-red-200 bg-red-50 p-2">
+                          <p className="text-[11px] text-red-700">No-show</p>
+                          <p className="text-lg font-semibold text-red-700">{noShowStats?.noShowCount ?? 0}</p>
+                        </div>
+                        <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-2">
+                          <p className="text-[11px] text-emerald-700">Concluídas</p>
+                          <p className="text-lg font-semibold text-emerald-700">{noShowStats?.completedCount ?? 0}</p>
+                        </div>
+                      </div>
+                      <div className="rounded-lg border border-border bg-muted/20 p-2">
+                        <p className="text-[11px] text-muted-foreground">Taxa de no-show</p>
+                        <p className="text-xl font-semibold text-foreground">{noShowStats?.noShowRate ?? 0}%</p>
+                        <p className="text-[11px] text-muted-foreground mt-1">
+                          Base: {noShowStats?.eligibleCount ?? 0} consultas
+                        </p>
+                      </div>
+                      <div className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] text-amber-700">
+                        Canceladas no período: {noShowStats?.canceledCount ?? 0}
+                      </div>
+                    </>
+                  )}
+            </motion.div>
+          </motion.div>
         </div>
       </CardContent>
     </Card>
   );
 };
-
 
 // --- COMPONENTE PRINCIPAL DO DASHBOARD ---
 export default function NutritionistDashboard() {
@@ -385,13 +340,6 @@ export default function NutritionistDashboard() {
     eligibleCount: 0,
     noShowRate: 0
   });
-  const [operationalSummary, setOperationalSummary] = useState({
-    total_events: 0,
-    error_events: 0,
-    error_rate: 0,
-    avg_latency_ms: 0,
-    module_stats: []
-  });
   const [activePatients24h, setActivePatients24h] = useState(0);
   const [adherencePercent24h, setAdherencePercent24h] = useState('--%');
   const [adherentPatients24h, setAdherentPatients24h] = useState(0);
@@ -399,20 +347,10 @@ export default function NutritionistDashboard() {
   const [patients90DaysSeries, setPatients90DaysSeries] = useState([]);
   const [active24hSeries, setActive24hSeries] = useState([]);
   const [adherence24hSeries, setAdherence24hSeries] = useState([]);
-  const [backlogStats, setBacklogStats] = useState({
-    openCount: 0,
-    snoozedCount: 0,
-    criticalCount: 0,
-    attentionCount: 0,
-    highRiskLabCount: 0
-  });
-
   // OTIMIZADO: Loading states independentes para carregamento progressivo
   const [statsLoading, setStatsLoading] = useState(true);
   const [appointmentsLoading, setAppointmentsLoading] = useState(true);
-  const [backlogLoading, setBacklogLoading] = useState(true);
   const [noShowLoading, setNoShowLoading] = useState(true);
-  const [observabilityLoading, setObservabilityLoading] = useState(true);
   
   // OTIMIZADO: Função separada para carregar estatísticas
   const fetchStats = useCallback(async () => {
@@ -547,7 +485,9 @@ export default function NutritionistDashboard() {
       setAppointmentsTodayCount(todayCount || 0);
     } catch (error) {
       console.error('Erro ao carregar agendamentos:', error);
-      toast({ title: "Erro ao carregar agendamentos", description: toPortugueseError(error, 'Não foi possível carregar os agendamentos.'), variant: "destructive" });
+      if (!isSchemaOrMigrationError(error)) {
+        toast({ title: "Erro ao carregar agendamentos", description: toPortugueseError(error, 'Não foi possível carregar os agendamentos.'), variant: "destructive" });
+      }
     } finally {
       setAppointmentsLoading(false);
     }
@@ -585,100 +525,25 @@ export default function NutritionistDashboard() {
       });
     } catch (error) {
       console.error('Erro ao carregar métricas de no-show:', error);
-      toast({
-        title: 'Erro no no-show',
-        description: toPortugueseError(error, 'Não foi possível carregar as métricas de no-show.'),
-        variant: 'destructive'
-      });
+      if (!isSchemaOrMigrationError(error)) {
+        toast({
+          title: 'Erro no no-show',
+          description: toPortugueseError(error, 'Não foi possível carregar as métricas de no-show.'),
+          variant: 'destructive'
+        });
+      }
     } finally {
       setNoShowLoading(false);
     }
   }, [user?.id, noShowPeriodDays, toast]);
 
-  const fetchOperationalSummary = useCallback(async () => {
-    if (!user?.id) return;
-    setObservabilityLoading(true);
-    try {
-      const { data, error } = await getOperationalHealthSummary({
-        nutritionistId: user.id,
-        windowHours: 24
-      });
-      if (error) throw error;
-
-      setOperationalSummary({
-        total_events: Number(data?.total_events || 0),
-        error_events: Number(data?.error_events || 0),
-        error_rate: Number(data?.error_rate || 0),
-        avg_latency_ms: Number(data?.avg_latency_ms || 0),
-        module_stats: Array.isArray(data?.module_stats) ? data.module_stats : []
-      });
-    } catch (error) {
-      console.error('Erro ao carregar observabilidade técnica:', error);
-      toast({
-        title: 'Erro na observabilidade',
-        description: toPortugueseError(error, 'Não foi possível carregar o painel técnico.'),
-        variant: 'destructive'
-      });
-    } finally {
-      setObservabilityLoading(false);
-    }
-  }, [user?.id, toast]);
-
-  const fetchBacklogStats = useCallback(async () => {
-    if (!user?.id) return;
-    setBacklogLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('feed_tasks')
-        .select('status, source_type, snooze_until, first_seen_at, created_at')
-        .eq('nutritionist_id', user.id);
-
-      if (error) throw error;
-
-      const rows = data || [];
-      const now = Date.now();
-      const openRows = rows.filter((row) => row.status === 'open');
-      const snoozedRows = rows.filter((row) => {
-        if (row.status !== 'snoozed') return false;
-        const until = row.snooze_until ? new Date(row.snooze_until).getTime() : 0;
-        return until > now;
-      });
-
-      const withAge = openRows.map((row) => {
-        const baseDate = row.first_seen_at || row.created_at;
-        const ageHours = baseDate ? (now - new Date(baseDate).getTime()) / (1000 * 60 * 60) : 0;
-        return Number.isFinite(ageHours) ? ageHours : 0;
-      });
-
-      const criticalCount = withAge.filter((age) => age >= 48).length;
-      const attentionCount = withAge.filter((age) => age >= 24 && age < 48).length;
-      const highRiskLabCount = openRows.filter((row) => row.source_type === 'lab_high_risk').length;
-
-      setBacklogStats({
-        openCount: openRows.length,
-        snoozedCount: snoozedRows.length,
-        criticalCount,
-        attentionCount,
-        highRiskLabCount
-      });
-    } catch (error) {
-      console.error('Erro ao carregar backlog operacional:', error);
-      toast({ title: 'Erro no backlog', description: toPortugueseError(error, 'Não foi possível carregar o backlog operacional.'), variant: 'destructive' });
-    } finally {
-      setBacklogLoading(false);
-    }
-  }, [user?.id, toast]);
-
   useEffect(() => {
     if (user?.id) {
-      // OTIMIZADO: Carrega dados em paralelo de forma independente
       fetchStats();
       fetchAppointments();
-      fetchBacklogStats();
       fetchNoShowStats();
-      fetchOperationalSummary();
     }
-  }, [user?.id, fetchStats, fetchAppointments, fetchBacklogStats, fetchNoShowStats, fetchOperationalSummary]);
+  }, [user?.id, fetchStats, fetchAppointments, fetchNoShowStats]);
 
   return (
     <div className="flex flex-col min-h-screen bg-background"> 
@@ -718,41 +583,19 @@ export default function NutritionistDashboard() {
 
           {/* Coluna Lateral - Desktop à direita, Mobile: apenas Registros Recentes */}
           <div className="lg:col-span-1 space-y-8 lg:order-last order-3">
-            {/* Próximas Consultas - Apenas Desktop */}
+            {/* Agendamentos 2.0 (Próximas + No-show expansível) - Desktop */}
             <div className="hidden lg:block">
-              {appointmentsLoading ? (
-                <AlertCardSkeleton />
-              ) : (
-                <UpcomingAppointmentsWidget
-                  appointments={appointments}
-                  totalUpcoming={appointmentsTotalCount}
-                  todayAppointments={appointmentsTodayCount}
-                />
-              )}
-            </div>
-            {backlogLoading ? (
-              <AlertCardSkeleton />
-            ) : (
-              <BacklogOperationalWidget
-                stats={backlogStats}
-                onOpenFeed={() => {
-                  const feedElement = document.getElementById('nutritionist-activity-feed');
-                  if (feedElement) {
-                    feedElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                  }
-                }}
+              <AppointmentsCard2
+                appointments={appointments}
+                totalUpcoming={appointmentsTotalCount}
+                todayAppointments={appointmentsTodayCount}
+                appointmentsLoading={appointmentsLoading}
+                noShowStats={noShowStats}
+                noShowLoading={noShowLoading}
+                noShowPeriodDays={noShowPeriodDays}
+                onNoShowPeriodChange={setNoShowPeriodDays}
               />
-            )}
-            <NoShowInsightsWidget
-              loading={noShowLoading}
-              periodDays={noShowPeriodDays}
-              onPeriodChange={setNoShowPeriodDays}
-              stats={noShowStats}
-            />
-            <ObservabilityWidget
-              loading={observabilityLoading}
-              summary={operationalSummary}
-            />
+            </div>
             <PatientUpdatesWidget />
           </div>
 
@@ -838,17 +681,18 @@ export default function NutritionistDashboard() {
 
           </div>
 
-          {/* Mobile: Próximas Consultas entre Cards e Feed */}
+          {/* Mobile: Agendamentos 2.0 entre Cards e Feed */}
           <div className="lg:hidden order-2">
-            {appointmentsLoading ? (
-              <AlertCardSkeleton />
-            ) : (
-              <UpcomingAppointmentsWidget
-                appointments={appointments}
-                totalUpcoming={appointmentsTotalCount}
-                todayAppointments={appointmentsTodayCount}
-              />
-            )}
+            <AppointmentsCard2
+              appointments={appointments}
+              totalUpcoming={appointmentsTotalCount}
+              todayAppointments={appointmentsTodayCount}
+              appointmentsLoading={appointmentsLoading}
+              noShowStats={noShowStats}
+              noShowLoading={noShowLoading}
+              noShowPeriodDays={noShowPeriodDays}
+              onNoShowPeriodChange={setNoShowPeriodDays}
+            />
           </div>
 
         </div>

@@ -25,6 +25,7 @@ const FoodBankPage = lazy(() => import('@/pages/nutritionist/tools/FoodBankPage.
 const FinancialPage = lazy(() => import('@/pages/nutritionist/tools/FinancialPage.jsx'));
 const AgendaPage = lazy(() => import('@/pages/nutritionist/tools/AgendaPage.jsx'));
 const NutritionistFoodsPage = lazy(() => import('@/pages/nutritionist/tools/NutritionistFoodsPage.jsx'));
+const MessageTemplatesPage = lazy(() => import('@/pages/nutritionist/tools/MessageTemplatesPage.jsx'));
 const ChatPage = lazy(() => import('@/pages/shared/ChatPage.jsx'));
 
 export const nutritionistRoutes = (
@@ -57,6 +58,7 @@ export const nutritionistRoutes = (
         <Route path="/nutritionist/food-bank" element={<FoodBankPage />} />
         <Route path="/nutritionist/financial" element={<FinancialPage />} />
         <Route path="/nutritionist/agenda" element={<AgendaPage />} />
+        <Route path="/nutritionist/message-templates" element={<MessageTemplatesPage />} />
         {/* Admin-only routes (nutritionist layout) */}
         <Route 
             path="/nutritionist/foods" 

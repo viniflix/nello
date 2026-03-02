@@ -204,9 +204,17 @@ begin
   if has_table then
     select exists (
       select 1 from information_schema.columns
-      where table_schema = 'public' and table_name = 'appointments' and column_name = 'appointment_time'
+      where table_schema = 'public' and table_name = 'appointments' and column_name = 'start_time'
     ) into has_col;
-    date_expr := case when has_col then 'a.appointment_time' else 'now()' end;
+    if has_col then
+      date_expr := 'a.start_time';
+    else
+      select exists (
+        select 1 from information_schema.columns
+        where table_schema = 'public' and table_name = 'appointments' and column_name = 'appointment_time'
+      ) into has_col;
+      date_expr := case when has_col then 'a.appointment_time' else 'now()' end;
+    end if;
 
     select exists (
       select 1 from information_schema.columns

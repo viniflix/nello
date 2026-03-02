@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FileText, Droplet, CheckCircle2, AlertCircle, Calendar, ArrowRight, Loader2, Brain, Sparkles, Check, X, FlaskConical } from 'lucide-react';
+import { FileText, Droplet, CheckCircle2, AlertCircle, Calendar, ArrowRight, Loader2, Brain, Sparkles, Check, X, FlaskConical, MessageSquare, Send, ExternalLink } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
@@ -16,6 +17,12 @@ import {
     dismissClinicalRecommendation,
     markClinicalRecommendationApplied
 } from '@/lib/supabase/clinical-recommendations-queries';
+import {
+    getMessageTemplates,
+    dispatchMessageTemplate,
+    previewTemplate,
+    TEMPLATE_CONTEXTS
+} from '@/lib/supabase/message-templates-queries';
 
 const TabContentClinical = ({ patientId, modulesStatus = {} }) => {
     const navigate = useNavigate();
@@ -28,6 +35,13 @@ const TabContentClinical = ({ patientId, modulesStatus = {} }) => {
     const [recommendations, setRecommendations] = useState([]);
     const [recommendationsLoading, setRecommendationsLoading] = useState(true);
     const [recommendationActionLoading, setRecommendationActionLoading] = useState(null);
+
+    // Comunicação contextual
+    const [templates, setTemplates] = useState([]);
+    const [templatesLoading, setTemplatesLoading] = useState(true);
+    const [selectedTemplateId, setSelectedTemplateId] = useState('');
+    const [dispatching, setDispatching] = useState(false);
+    const [previewData, setPreviewData] = useState(null);
 
     useEffect(() => {
         const fetchLatestAnamnesis = async () => {
@@ -62,6 +76,25 @@ const TabContentClinical = ({ patientId, modulesStatus = {} }) => {
         fetchLatestAnamnesis();
         fetchLabResults();
     }, [patientId]);
+
+    // Fetch templates for contextual dispatch
+    useEffect(() => {
+        const fetchTemplates = async () => {
+            if (!user?.id) return;
+            setTemplatesLoading(true);
+            try {
+                const { data } = await getMessageTemplates({
+                    nutritionistId: user.id,
+                    isActive: true,
+                    limit: 50
+                });
+                setTemplates(data || []);
+            } finally {
+                setTemplatesLoading(false);
+            }
+        };
+        fetchTemplates();
+    }, [user?.id]);
 
     useEffect(() => {
         const fetchRecommendations = async () => {
@@ -226,6 +259,41 @@ const TabContentClinical = ({ patientId, modulesStatus = {} }) => {
             });
         } finally {
             setRecommendationActionLoading(null);
+        }
+    };
+
+    const handleTemplateSelect = (id) => {
+        setSelectedTemplateId(id);
+        const tpl = templates.find(t => String(t.id) === id);
+        if (tpl) {
+            setPreviewData(previewTemplate({
+                titleTemplate: tpl.title_template || '',
+                bodyTemplate: tpl.body_template
+            }));
+        } else {
+            setPreviewData(null);
+        }
+    };
+
+    const handleDispatch = async () => {
+        if (!selectedTemplateId || !patientId || !user?.id) return;
+        setDispatching(true);
+        try {
+            const { data, error } = await dispatchMessageTemplate({
+                templateId: Number(selectedTemplateId),
+                patientId,
+                triggerEvent: 'manual_clinical_tab'
+            });
+            if (error) throw error;
+            if (data?.ok === false) throw new Error(data.reason || 'Erro no disparo');
+
+            toast({ title: 'Mensagem enviada ao paciente', variant: 'success' });
+            setSelectedTemplateId('');
+            setPreviewData(null);
+        } catch (err) {
+            toast({ title: 'Erro ao enviar mensagem', description: err.message, variant: 'destructive' });
+        } finally {
+            setDispatching(false);
         }
     };
 
@@ -490,6 +558,103 @@ const TabContentClinical = ({ patientId, modulesStatus = {} }) => {
                 <AnamnesisCard />
                 <LabsCard />
             </div>
+
+            {/* Comunicação Contextual */}
+            <Card className="border-l-4 border-l-blue-500">
+                <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between gap-3">
+                        <div>
+                            <CardTitle className="text-lg flex items-center gap-2">
+                                <MessageSquare className="w-5 h-5 text-blue-500" />
+                                Comunicação Contextual
+                            </CardTitle>
+                            <p className="text-sm text-muted-foreground mt-1">
+                                Envie mensagens personalizadas com templates clínicos.
+                            </p>
+                        </div>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="shrink-0 gap-1 text-xs text-blue-500"
+                            onClick={() => navigate('/nutritionist/message-templates')}
+                        >
+                            <ExternalLink className="w-3 h-3" />
+                            Gerenciar
+                        </Button>
+                    </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                    {templatesLoading ? (
+                        <p className="text-sm text-muted-foreground py-2">Carregando templates...</p>
+                    ) : templates.length === 0 ? (
+                        <div className="text-center py-4">
+                            <p className="text-sm text-muted-foreground mb-2">
+                                Nenhum template ativo encontrado.
+                            </p>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => navigate('/nutritionist/message-templates')}
+                                className="gap-1"
+                            >
+                                <MessageSquare className="w-4 h-4" />
+                                Criar primeiro template
+                            </Button>
+                        </div>
+                    ) : (
+                        <>
+                            <Select value={selectedTemplateId} onValueChange={handleTemplateSelect}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Selecione um template..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {TEMPLATE_CONTEXTS.map(ctx => {
+                                        const group = templates.filter(t => t.context === ctx.value);
+                                        if (group.length === 0) return null;
+                                        return (
+                                            <React.Fragment key={ctx.value}>
+                                                <div className="px-2 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                                                    {ctx.label}
+                                                </div>
+                                                {group.map(tpl => (
+                                                    <SelectItem key={tpl.id} value={String(tpl.id)}>
+                                                        {tpl.name}
+                                                    </SelectItem>
+                                                ))}
+                                            </React.Fragment>
+                                        );
+                                    })}
+                                </SelectContent>
+                            </Select>
+
+                            {previewData && (
+                                <div className="rounded-lg border bg-muted/30 p-3 space-y-1">
+                                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                                        Pré-visualização
+                                    </p>
+                                    {previewData.title && (
+                                        <p className="text-sm font-semibold">{previewData.title}</p>
+                                    )}
+                                    <p className="text-sm text-muted-foreground whitespace-pre-wrap line-clamp-4">
+                                        {previewData.body}
+                                    </p>
+                                </div>
+                            )}
+
+                            <Button
+                                className="w-full gap-2"
+                                disabled={!selectedTemplateId || dispatching}
+                                onClick={handleDispatch}
+                            >
+                                {dispatching
+                                    ? <Loader2 className="w-4 h-4 animate-spin" />
+                                    : <Send className="w-4 h-4" />}
+                                Enviar mensagem ao paciente
+                            </Button>
+                        </>
+                    )}
+                </CardContent>
+            </Card>
 
             <Card className="border-l-4 border-l-[#5f6f52]">
                 <CardHeader className="pb-3">
