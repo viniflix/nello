@@ -268,7 +268,7 @@ const PatientUpdatesWidget = () => {
 
             <CardContent className="flex-1 min-h-0 overflow-hidden flex flex-col">
                 {filteredUpdates.length === 0 ? (
-                    <div className="text-center py-8">
+                    <div className="flex-1 flex flex-col items-center justify-center py-8 text-center">
                         <p className="text-sm text-muted-foreground">
                             {searchTerm || activeFilter !== 'all'
                                 ? 'Nenhum registro encontrado com os filtros aplicados'
