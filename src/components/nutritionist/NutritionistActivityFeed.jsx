@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect, useState } from 'react';
+import React, { useMemo, useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -9,6 +9,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useAuth } from '@/contexts/AuthContext';
 import {
     getPatientsWithLowAdherence,
@@ -34,16 +35,18 @@ import {
     Calendar,
     Clipboard,
     FileText,
+    Filter,
     Gift,
     Loader2,
     MessageSquare,
+    RefreshCw,
     Stethoscope,
     Utensils,
     Weight,
     BookOpen,
     Activity,
     ChevronRight,
-    MoreHorizontal,
+    MoreVertical,
     CheckCircle2,
     Circle
 } from 'lucide-react';
@@ -81,6 +84,34 @@ const labelByType = {
     lab_high_risk: 'Risco lab'
 };
 
+/** Reduz nome completo para "Nome Sobrenome" */
+const toShortName = (name) => {
+    if (!name || typeof name !== 'string') return 'Paciente';
+    const parts = name.trim().split(/\s+/).filter(Boolean);
+    if (parts.length <= 2) return name.trim();
+    return `${parts[0]} ${parts[parts.length - 1]}`;
+};
+
+/** Título exibido sem duplicar a tag (ex: remove "Pendente" do título quando tag é "Pendente") */
+const getDisplayTitle = (item) => {
+    if (item.type === 'pending') {
+        return (item.title || '').replace(/\s*pendente\s*$/i, '').trim() || item.title;
+    }
+    if (item.type === 'low_adherence') {
+        return item.description || 'Sem registros no diário';
+    }
+    return item.title || 'Atividade';
+};
+
+/** Label de prioridade para exibição */
+const getPriorityLabel = (score) => {
+    const n = Number(score || 0);
+    if (n >= 5) return { label: 'Alta', color: 'text-red-600' };
+    if (n >= 4) return { label: 'Alta', color: 'text-amber-600' };
+    if (n >= 2) return { label: 'Média', color: 'text-sky-600' };
+    return { label: 'Normal', color: 'text-muted-foreground' };
+};
+
 const toneByType = {
     pending: { border: 'border-l-amber-500', bg: 'bg-white', tag: 'bg-amber-100 text-amber-800' },
     low_adherence: { border: 'border-l-rose-500', bg: 'bg-white', tag: 'bg-rose-100 text-rose-800' },
@@ -112,9 +143,9 @@ const NutritionistActivityFeed = () => {
     const [expandedAuditItemId, setExpandedAuditItemId] = useState(null);
     const [auditLoadingItemId, setAuditLoadingItemId] = useState(null);
     const [auditTrailByKey, setAuditTrailByKey] = useState({});
+    const [refreshing, setRefreshing] = useState(false);
 
-    useEffect(() => {
-        const fetchFeed = async () => {
+    const fetchFeed = useCallback(async () => {
             if (!user?.id) return;
             setLoading(true);
 
@@ -299,11 +330,18 @@ const NutritionistActivityFeed = () => {
                 setFeedItems([]);
             } finally {
                 setLoading(false);
+                setRefreshing(false);
             }
-        };
-
-        fetchFeed();
     }, [user]);
+
+    useEffect(() => {
+        if (user?.id) fetchFeed();
+    }, [user?.id, fetchFeed]);
+
+    const handleRefresh = () => {
+        setRefreshing(true);
+        fetchFeed();
+    };
 
     const renderTimestamp = (timestamp) => {
         if (!timestamp) return null;
@@ -482,32 +520,87 @@ const NutritionistActivityFeed = () => {
                         >
                             {selectMode ? 'Cancelar seleção' : 'Selecionar itens'}
                         </Button>
-                        <Badge variant="outline" className="text-xs">{visibleFeedItems.length} itens</Badge>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
+                                    <Filter className="h-3.5 w-3.5" />
+                                    Filtro
+                                    {feedFilter !== 'all' && (
+                                        <span className="ml-0.5 text-primary font-medium">
+                                            ({filterChips.find((c) => c.id === feedFilter)?.label})
+                                        </span>
+                                    )}
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                {filterChips.map((chip) => (
+                                    <DropdownMenuItem
+                                        key={chip.id}
+                                        onClick={() => setFeedFilter(chip.id)}
+                                        className={feedFilter === chip.id ? 'bg-muted' : ''}
+                                    >
+                                        {chip.label} ({chip.count})
+                                    </DropdownMenuItem>
+                                ))}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <button
+                                    type="button"
+                                    className="inline-flex items-center gap-1.5 rounded-md border border-input bg-background px-2.5 py-1.5 text-xs font-medium hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer"
+                                >
+                                    {visibleFeedItems.length} itens
+                                </button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-64 p-3" align="end">
+                                <div className="space-y-3">
+                                    <p className="text-sm font-semibold">Backlog</p>
+                                    <div className="space-y-1.5 text-xs">
+                                        <div className="flex justify-between">
+                                            <span className="text-muted-foreground">Abertos</span>
+                                            <span className="font-medium">{backlogStats.openCount}</span>
+                                        </div>
+                                        {backlogStats.criticalCount > 0 && (
+                                            <div className="flex justify-between">
+                                                <span className="text-red-600 flex items-center gap-1">
+                                                    <AlertTriangle className="h-3 w-3" /> Crítico
+                                                </span>
+                                                <span className="font-medium">{backlogStats.criticalCount}</span>
+                                            </div>
+                                        )}
+                                        {backlogStats.attentionCount > 0 && (
+                                            <div className="flex justify-between">
+                                                <span className="text-amber-600">Atenção</span>
+                                                <span className="font-medium">{backlogStats.attentionCount}</span>
+                                            </div>
+                                        )}
+                                        {backlogStats.highRiskLabCount > 0 && (
+                                            <div className="flex justify-between">
+                                                <span className="text-rose-600">Risco exame</span>
+                                                <span className="font-medium">{backlogStats.highRiskLabCount}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="w-full h-7 text-xs"
+                                        onClick={handleRefresh}
+                                        disabled={refreshing}
+                                    >
+                                        {refreshing ? (
+                                            <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
+                                        ) : (
+                                            <RefreshCw className="h-3.5 w-3.5 mr-1" />
+                                        )}
+                                        Atualizar feed
+                                    </Button>
+                                </div>
+                            </PopoverContent>
+                        </Popover>
                     </div>
                 </div>
-
-                {/* Backlog integrado */}
-                {feedItems.length > 0 && (
-                    <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-border/60">
-                        <span className="text-xs text-muted-foreground font-medium">Backlog:</span>
-                        <span className="text-xs text-foreground font-semibold">{backlogStats.openCount} abertos</span>
-                        {backlogStats.criticalCount > 0 && (
-                            <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium bg-red-100 text-red-700 border border-red-200">
-                                <AlertTriangle className="h-3 w-3" /> {backlogStats.criticalCount} crítico
-                            </span>
-                        )}
-                        {backlogStats.attentionCount > 0 && (
-                            <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-700 border border-amber-200">
-                                {backlogStats.attentionCount} atenção
-                            </span>
-                        )}
-                        {backlogStats.highRiskLabCount > 0 && (
-                            <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium bg-rose-100 text-rose-700 border border-rose-200">
-                                {backlogStats.highRiskLabCount} risco exame
-                            </span>
-                        )}
-                    </div>
-                )}
 
                 {selectMode && selectedItems.length > 0 && (
                     <div className="flex flex-wrap items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 p-2 mt-2">
@@ -521,20 +614,6 @@ const NutritionistActivityFeed = () => {
             </CardHeader>
 
             <CardContent>
-                <div className="mb-3 flex flex-wrap gap-1.5">
-                    {filterChips.map((chip) => (
-                        <Button
-                            key={chip.id}
-                            size="sm"
-                            variant={feedFilter === chip.id ? 'default' : 'outline'}
-                            className="h-7 px-2.5 text-xs"
-                            onClick={() => setFeedFilter(chip.id)}
-                        >
-                            {chip.label} ({chip.count})
-                        </Button>
-                    ))}
-                </div>
-
                 {visibleFeedItems.length === 0 ? (
                     <div className="text-center py-12">
                         <CheckCircle2 className="w-12 h-12 text-emerald-500/60 mx-auto mb-3" />
@@ -542,124 +621,141 @@ const NutritionistActivityFeed = () => {
                         <p className="text-sm text-muted-foreground">Não há alertas ou pendências no momento</p>
                     </div>
                 ) : (
-                    <div className="max-h-[520px] overflow-y-auto pr-1 space-y-2">
+                    <div className="max-h-[520px] overflow-y-auto pr-1 space-y-3">
                         {visibleFeedItems.map((item) => {
                             const Icon = iconByType[item.type] || iconByType.default;
                             const tone = toneByType[item.type] || toneByType.default;
                             const slaMeta = getSlaMeta(item);
                             const tagLabel = labelByType[item.type] || 'Atividade';
+                            const displayTitle = getDisplayTitle(item);
+                            const shortName = toShortName(item.patientName);
+                            const priorityMeta = getPriorityLabel(item.priorityScore);
+                            const timeAgo = item.firstSeenAt
+                                ? (() => {
+                                    const d = new Date(item.firstSeenAt);
+                                    if (!isValid(d)) return null;
+                                    return formatDistanceToNow(d, { addSuffix: true, locale: ptBR });
+                                })()
+                                : (item.timestamp && isValid(new Date(item.timestamp))
+                                    ? formatDistanceToNow(new Date(item.timestamp), { addSuffix: true, locale: ptBR })
+                                    : null);
 
                             return (
                                 <div
                                     key={item.id}
-                                    className={`flex items-start gap-3 rounded-xl border border-border/80 ${tone.border} ${tone.bg} p-3 shadow-sm hover:shadow transition-shadow min-w-0`}
+                                    className={`relative flex flex-col rounded-xl border border-border/80 ${tone.border} ${tone.bg} shadow-sm hover:shadow-md transition-all min-w-0 overflow-hidden`}
                                 >
-                                    {/* Dots selecionáveis em modo seleção */}
-                                    {selectMode ? (
-                                        <button
-                                            type="button"
-                                            className="mt-1.5 shrink-0 rounded-full p-0.5 hover:bg-muted/50 transition-colors"
-                                            onClick={() => toggleItemSelection(item.id)}
-                                        >
-                                            {selectedItemIds.includes(item.id) ? (
-                                                <CheckCircle2 className="h-5 w-5 text-primary" />
-                                            ) : (
-                                                <Circle className="h-5 w-5 text-muted-foreground/60" />
-                                            )}
-                                        </button>
-                                    ) : (
-                                        <Avatar className="h-9 w-9 shrink-0">
-                                            {item.patientAvatar ? (
-                                                <AvatarImage src={item.patientAvatar} alt={item.patientName} />
-                                            ) : null}
-                                            <AvatarFallback className="bg-muted/60 text-xs font-semibold">
-                                                {item.patientName ? item.patientName.substring(0, 2).toUpperCase() : '?'}
-                                            </AvatarFallback>
-                                        </Avatar>
-                                    )}
-
-                                    <div className="flex-1 min-w-0 overflow-hidden">
-                                        {/* Título: Nome ícone Título [tag] */}
-                                        <div className="flex flex-wrap items-center gap-1.5 gap-y-0.5">
-                                            <span className="font-semibold text-foreground">{item.patientName || 'Paciente'}</span>
-                                            <Icon className={`h-3.5 w-3.5 shrink-0 text-muted-foreground`} />
-                                            <span className="text-foreground/90">{item.title}</span>
-                                            <Badge variant="secondary" className={`text-[10px] px-1.5 py-0 font-medium ${tone.tag}`}>
-                                                {tagLabel}
-                                            </Badge>
-                                            {slaMeta && (
-                                                <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${slaMeta.tag}`}>
-                                                    {slaMeta.label}
-                                                </Badge>
-                                            )}
-                                        </div>
-                                        {item.description && (
-                                            <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{item.description}</p>
-                                        )}
-                                        {item.type === 'lab_high_risk' && item.riskReason && (
-                                            <p className="text-[11px] text-muted-foreground mt-0.5">{item.riskReason}</p>
-                                        )}
-                                        {renderTimestamp(item.timestamp) && (
-                                            <p className="text-[11px] text-muted-foreground mt-1">{renderTimestamp(item.timestamp)}</p>
-                                        )}
-
-                                        {expandedAuditItemId === item.id && (
-                                            <div className="mt-2 rounded-lg border border-border/70 bg-muted/20 p-2 text-xs">
-                                                {auditLoadingItemId === item.id ? (
-                                                    <span className="text-muted-foreground">Carregando...</span>
-                                                ) : (auditTrailByKey[buildAuditKey(item)] || []).length > 0 ? (
-                                                    <div className="space-y-1">
-                                                        {(auditTrailByKey[buildAuditKey(item)] || []).map((entry, idx) => (
-                                                            <div key={idx} className="text-muted-foreground">
-                                                                <span className="font-medium text-foreground">{translateAuditAction(entry?.action)}</span>
-                                                                {' · '}{entry?.at ? renderTimestamp(entry.at) : 'agora'}
-                                                            </div>
-                                                        ))}
-                                                    </div>
+                                    <div className="flex items-start gap-3 p-4">
+                                        {selectMode ? (
+                                            <button
+                                                type="button"
+                                                className="mt-0.5 shrink-0 rounded-full p-0.5 hover:bg-muted/50 transition-colors"
+                                                onClick={() => toggleItemSelection(item.id)}
+                                            >
+                                                {selectedItemIds.includes(item.id) ? (
+                                                    <CheckCircle2 className="h-5 w-5 text-primary" />
                                                 ) : (
-                                                    <span className="text-muted-foreground">Sem histórico.</span>
+                                                    <Circle className="h-5 w-5 text-muted-foreground/60" />
+                                                )}
+                                            </button>
+                                        ) : (
+                                            <Avatar className="h-10 w-10 shrink-0">
+                                                {item.patientAvatar ? (
+                                                    <AvatarImage src={item.patientAvatar} alt={shortName} />
+                                                ) : null}
+                                                <AvatarFallback className="bg-muted/60 text-sm font-semibold">
+                                                    {shortName ? shortName.substring(0, 2).toUpperCase() : '?'}
+                                                </AvatarFallback>
+                                            </Avatar>
+                                        )}
+
+                                        <div className="flex-1 min-w-0">
+                                            {/* Linha 1: Nome ícone Título [tag] */}
+                                            <div className="flex flex-wrap items-center gap-1.5">
+                                                <span className="font-semibold text-foreground">{shortName}</span>
+                                                <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                                                <span className="text-foreground/90">{displayTitle}</span>
+                                                <Badge variant="secondary" className={`text-[10px] px-1.5 py-0 font-medium ${tone.tag}`}>
+                                                    {tagLabel}
+                                                </Badge>
+                                                {slaMeta && (
+                                                    <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${slaMeta.tag}`}>
+                                                        {slaMeta.label}
+                                                    </Badge>
                                                 )}
                                             </div>
-                                        )}
+                                            {/* Descrição extra */}
+                                            {item.type !== 'low_adherence' && item.description && (
+                                                <p className="text-xs text-muted-foreground mt-1.5">{item.description}</p>
+                                            )}
+                                            {item.type === 'lab_high_risk' && item.riskReason && (
+                                                <p className="text-xs text-muted-foreground mt-1">{item.riskReason}</p>
+                                            )}
+                                            {/* Meta: tempo + prioridade */}
+                                            <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-2 text-[11px] text-muted-foreground">
+                                                {timeAgo && <span>No feed {timeAgo}</span>}
+                                                <span className={priorityMeta.color}>Prioridade {priorityMeta.label}</span>
+                                            </div>
+
+                                            {expandedAuditItemId === item.id && (
+                                                <div className="mt-3 rounded-lg border border-border/70 bg-muted/20 p-2.5 text-xs">
+                                                    {auditLoadingItemId === item.id ? (
+                                                        <span className="text-muted-foreground">Carregando...</span>
+                                                    ) : (auditTrailByKey[buildAuditKey(item)] || []).length > 0 ? (
+                                                        <div className="space-y-1">
+                                                            {(auditTrailByKey[buildAuditKey(item)] || []).map((entry, idx) => (
+                                                                <div key={idx} className="text-muted-foreground">
+                                                                    <span className="font-medium text-foreground">{translateAuditAction(entry?.action)}</span>
+                                                                    {' · '}{entry?.at ? renderTimestamp(entry.at) : 'agora'}
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-muted-foreground">Sem histórico.</span>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Menu vertical (3 pontos) - canto superior direito */}
+                                        <div className="absolute top-3 right-3">
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
+                                                        <MoreVertical className="h-4 w-4" />
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
+                                                    <DropdownMenuItem
+                                                        onClick={() => handleResolveInline(item)}
+                                                        disabled={actionLoadingId === item.id || bulkActionLoading}
+                                                    >
+                                                        {actionLoadingId === item.id ? (
+                                                            <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" />
+                                                        ) : (
+                                                            <CheckCircle2 className="h-3.5 w-3.5 mr-2" />
+                                                        )}
+                                                        Marcar como resolvido
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem onClick={() => handleToggleAudit(item)}>
+                                                        Histórico
+                                                    </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        </div>
                                     </div>
 
-                                    {/* Ações: botão principal + dropdown */}
-                                    <div className="flex items-center gap-1 shrink-0">
-                                        {item.ctaRoute && (
-                                            <Button
-                                                size="sm"
-                                                variant="default"
-                                                className="h-7 px-2 text-xs"
-                                                onClick={() => navigate(item.ctaRoute)}
-                                            >
-                                                {item.ctaLabel || 'Resolver'}
-                                                <ChevronRight className="ml-0.5 h-3 w-3" />
-                                            </Button>
-                                        )}
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button size="sm" variant="ghost" className="h-7 w-7 p-0">
-                                                    <MoreHorizontal className="h-4 w-4" />
-                                                </Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end">
-                                                <DropdownMenuItem
-                                                    onClick={() => handleResolveInline(item)}
-                                                    disabled={actionLoadingId === item.id || bulkActionLoading}
-                                                >
-                                                    {actionLoadingId === item.id ? (
-                                                        <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" />
-                                                    ) : (
-                                                        <CheckCircle2 className="h-3.5 w-3.5 mr-2" />
-                                                    )}
-                                                    Marcar como resolvido
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem onClick={() => handleToggleAudit(item)}>
-                                                    Histórico
-                                                </DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    </div>
+                                    {/* CTA Resolver - rodapé do card */}
+                                    {item.ctaRoute && (
+                                        <button
+                                            type="button"
+                                            onClick={() => navigate(item.ctaRoute)}
+                                            className="flex items-center justify-center gap-1.5 w-full py-2.5 px-4 bg-primary/10 hover:bg-primary/20 text-primary font-medium text-sm transition-colors border-t border-border/60"
+                                        >
+                                            {item.ctaLabel || 'Resolver'}
+                                            <ChevronRight className="h-3.5 w-3.5" />
+                                        </button>
+                                    )}
                                 </div>
                             );
                         })}
