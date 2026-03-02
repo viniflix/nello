@@ -690,7 +690,7 @@ const NutritionistActivityFeed = () => {
 
             <CardContent className="flex-1 min-h-0 overflow-hidden flex flex-col">
                 {visibleFeedItems.length === 0 ? (
-                    <div className="flex-1 flex flex-col items-center justify-center py-12 text-center">
+                    <div className="text-center py-12">
                         <CheckCircle2 className="w-12 h-12 text-emerald-500/60 mb-3" />
                         <p className="text-muted-foreground font-medium mb-1">Tudo em dia!</p>
                         <p className="text-sm text-muted-foreground">Não há alertas ou pendências no momento</p>
