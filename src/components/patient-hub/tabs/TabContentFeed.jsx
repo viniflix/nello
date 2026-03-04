@@ -6,11 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import PatientActivityFeed from '@/components/patient-hub/PatientActivityFeed';
-import ConsultationChecklistCard from '@/components/patient-hub/ConsultationChecklistCard';
 import TemplateDispatchHistoryCard from '@/components/patient-hub/TemplateDispatchHistoryCard';
 import { supabase } from '@/lib/customSupabaseClient';
 
-const TabContentFeed = ({ patientId, activities, loading, onLoadMore, appointmentId = null }) => {
+const TabContentFeed = ({ patientId, activities, loading, onLoadMore }) => {
     const navigate = useNavigate();
     const [recentMeals, setRecentMeals] = useState([]);
     const [mealsLoading, setMealsLoading] = useState(true);
@@ -181,7 +180,6 @@ const TabContentFeed = ({ patientId, activities, loading, onLoadMore, appointmen
             </div>
 
             <div className="lg:col-span-1 space-y-4">
-                <ConsultationChecklistCard patientId={patientId} appointmentId={appointmentId} />
                 <TemplateDispatchHistoryCard patientId={patientId} />
                 <FoodDiaryHistoryCard />
             </div>
