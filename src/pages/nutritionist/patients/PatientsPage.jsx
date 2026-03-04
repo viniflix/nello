@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/customSupabaseClient';
 import { Link, useNavigate } from 'react-router-dom';
+import { patientRoute } from '@/lib/utils/patientRoutes';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Plus, Search, ChevronRight, User as UserIcon, Loader2, ListFilter } from 'lucide-react';
@@ -135,7 +136,7 @@ const PatientsPage = () => {
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                 {filteredPatients.length > 0 ? filteredPatients.map(patient => (
                                     <Link
-                                        to={`/nutritionist/patients/${patient.id}/hub`}
+                                        to={patientRoute(patient, 'hub')}
                                         key={patient.id}
                                         className="block p-4 border bg-background rounded-lg hover:shadow-lg hover:border-primary transition-all"
                                     >

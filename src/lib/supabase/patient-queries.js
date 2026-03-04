@@ -3,6 +3,31 @@ import { translateMealType } from '@/utils/mealTranslations';
 import { buildActivityEventPayload, logSupabaseError } from '@/lib/supabase/query-helpers';
 import { classifyLabResultsRiskBatch, getLabRiskRules } from '@/lib/supabase/lab-results-queries';
 import { logOperationalEvent } from './observability-queries';
+import { isUuid } from '@/lib/utils/patientRoutes';
+
+/**
+ * Resolve slug ou UUID para o ID do paciente
+ * @param {string} slugOrId - Slug (ex: maria-santos) ou UUID
+ * @param {string} nutritionistId - ID do nutricionista
+ * @returns {Promise<{patientId: string|null, error: object|null}>}
+ */
+export const resolvePatientId = async (slugOrId, nutritionistId) => {
+    if (!slugOrId || !nutritionistId) return { patientId: null, error: null };
+    if (isUuid(slugOrId)) return { patientId: slugOrId, error: null };
+    try {
+        const { data, error } = await supabase
+            .from('user_profiles')
+            .select('id')
+            .eq('slug', slugOrId)
+            .eq('nutritionist_id', nutritionistId)
+            .maybeSingle();
+        if (error) throw error;
+        return { patientId: data?.id || null, error: null };
+    } catch (err) {
+        logSupabaseError('Erro ao resolver slug do paciente', err);
+        return { patientId: null, error: err };
+    }
+};
 
 /**
  * Busca o perfil completo do paciente

@@ -7,8 +7,10 @@ import { Badge } from '@/components/ui/badge';
 import { getActiveMealPlan } from '@/lib/supabase/meal-plan-queries';
 import { calculateDiaryAdherence, getNutritionalSummary } from '@/lib/supabase/food-diary-queries';
 import EnergyExpenditureSummaryCard from '@/components/patient-hub/EnergyExpenditureSummaryCard';
+import { patientRoute } from '@/lib/utils/patientRoutes';
 
-const TabContentNutrition = ({ patientId, modulesStatus = {} }) => {
+const TabContentNutrition = ({ patientId, patientData, modulesStatus = {} }) => {
+    const patient = patientData || { id: patientId };
     const navigate = useNavigate();
     const [activePlan, setActivePlan] = useState(null);
     const [planLoading, setPlanLoading] = useState(true);
@@ -82,7 +84,7 @@ const TabContentNutrition = ({ patientId, modulesStatus = {} }) => {
             return (
                 <Card
                     className="border-dashed border-2 border-[#a9b388] bg-[#fefae0]/30 hover:shadow-lg transition-all cursor-pointer h-full"
-                    onClick={() => navigate(`/nutritionist/patients/${patientId}/meal-plan`)}
+                    onClick={() => navigate(patientRoute(patient, 'meal-plan'))}
                 >
                     <CardContent className="flex flex-col items-center justify-center py-12 text-center">
                         <div className="w-16 h-16 rounded-full bg-[#fefae0] flex items-center justify-center mb-4">
@@ -107,7 +109,7 @@ const TabContentNutrition = ({ patientId, modulesStatus = {} }) => {
         return (
             <Card
                 className="border-l-4 border-l-[#5f6f52] hover:shadow-xl transition-all bg-gradient-to-br from-[#fefae0]/20 to-[#fefae0]/30 cursor-pointer h-full"
-                onClick={() => navigate(`/nutritionist/patients/${patientId}/meal-plan`)}
+                onClick={() => navigate(patientRoute(patient, 'meal-plan'))}
             >
                 <CardHeader className="pb-3">
                     <div className="flex items-center gap-2 mb-1">
@@ -178,7 +180,7 @@ const TabContentNutrition = ({ patientId, modulesStatus = {} }) => {
                             variant="ghost"
                             size="sm"
                             className="h-7 text-[#5f6f52] hover:text-[#5f6f52] hover:bg-[#5f6f52]/10"
-                            onClick={() => navigate(`/nutritionist/patients/${patientId}/meal-plan`)}
+                            onClick={() => navigate(patientRoute(patient, 'meal-plan'))}
                         >
                             Abrir <ArrowRight className="w-3 h-3 ml-1" />
                         </Button>
@@ -204,7 +206,7 @@ const TabContentNutrition = ({ patientId, modulesStatus = {} }) => {
         return (
             <Card
                 className="border-l-4 border-l-[#c4661f] hover:shadow-lg transition-all h-full bg-gradient-to-br from-[#fefae0]/20 to-white cursor-pointer"
-                onClick={() => navigate(`/nutritionist/patients/${patientId}/food-diary`)}
+                onClick={() => navigate(patientRoute(patient, 'food-diary'))}
             >
                 <CardHeader className="pb-3">
                     <div className="flex items-center gap-2 mb-1">
@@ -266,7 +268,7 @@ const TabContentNutrition = ({ patientId, modulesStatus = {} }) => {
                                     variant="ghost"
                                     size="sm"
                                     className="text-[#5f6f52] hover:bg-[#5f6f52]/10"
-                                    onClick={() => navigate(`/nutritionist/patients/${patientId}/food-diary`)}
+                                    onClick={() => navigate(patientRoute(patient, 'food-diary'))}
                                 >
                                     Ver Diário Completo
                                     <ArrowRight className="w-3 h-3 ml-1" />
@@ -288,7 +290,7 @@ const TabContentNutrition = ({ patientId, modulesStatus = {} }) => {
                                 variant="outline"
                                 size="sm"
                                 className="border-[#c4661f] text-[#c4661f] hover:bg-[#c4661f]/10"
-                                onClick={() => navigate(`/nutritionist/patients/${patientId}/food-diary`)}
+                                onClick={() => navigate(patientRoute(patient, 'food-diary'))}
                             >
                                 Abrir Diário
                                 <ArrowRight className="w-3 h-3 ml-1" />

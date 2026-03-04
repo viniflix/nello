@@ -5,9 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { patientRoute } from '@/lib/utils/patientRoutes';
 
-const TabContentBody = ({ patientId, modulesStatus = {}, latestMetrics = {} }) => {
+const TabContentBody = ({ patientId, patientData, modulesStatus = {}, latestMetrics = {} }) => {
     const navigate = useNavigate();
+    const patient = patientData || { id: patientId };
 
     const anthropometryData = {
         hasData: modulesStatus.anthropometry === 'completed' || !!latestMetrics?.weight,
@@ -54,7 +56,7 @@ const TabContentBody = ({ patientId, modulesStatus = {}, latestMetrics = {} }) =
             return (
                 <Card
                     className="border-dashed border-2 border-[#a9b388] bg-[#fefae0]/30 hover:shadow-lg transition-all cursor-pointer h-full"
-                    onClick={() => navigate(`/nutritionist/patients/${patientId}/anthropometry`)}
+                    onClick={() => navigate(patientRoute(patient, 'anthropometry'))}
                 >
                     <CardContent className="flex flex-col items-center justify-center py-12 text-center">
                         <div className="w-16 h-16 rounded-full bg-[#fefae0] flex items-center justify-center mb-4">
@@ -79,7 +81,7 @@ const TabContentBody = ({ patientId, modulesStatus = {}, latestMetrics = {} }) =
         return (
             <Card
                 className="border-l-4 border-l-[#5f6f52] hover:shadow-xl transition-all bg-gradient-to-br from-[#fefae0]/20 to-[#fefae0]/30 cursor-pointer h-full"
-                onClick={() => navigate(`/nutritionist/patients/${patientId}/anthropometry`)}
+                onClick={() => navigate(patientRoute(patient, 'anthropometry'))}
             >
                 <CardHeader className="pb-3">
                     <div className="flex items-center gap-2">
@@ -157,7 +159,7 @@ const TabContentBody = ({ patientId, modulesStatus = {}, latestMetrics = {} }) =
                                 variant="ghost"
                                 size="sm"
                                 className="h-7 text-[#5f6f52] hover:bg-[#5f6f52]/10"
-                                onClick={() => navigate(`/nutritionist/patients/${patientId}/anthropometry`)}
+                                onClick={() => navigate(patientRoute(patient, 'anthropometry'))}
                             >
                                 Abrir <ArrowRight className="w-3 h-3 ml-1" />
                             </Button>
@@ -174,7 +176,7 @@ const TabContentBody = ({ patientId, modulesStatus = {}, latestMetrics = {} }) =
         return (
             <Card
                 className="border-dashed border-2 border-[#b99470] bg-[#fefae0]/30 hover:shadow-md transition-all cursor-pointer h-full"
-                onClick={() => navigate(`/nutritionist/patients/${patientId}/photos`)}
+                onClick={() => navigate(patientRoute(patient, 'photos'))}
             >
                 <CardHeader className="pb-3">
                     <div className="flex items-center gap-2">

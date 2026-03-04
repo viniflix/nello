@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useResolvedPatientId } from '@/hooks/useResolvedPatientId';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Save, FileCheck, Loader2, AlertCircle, ChevronLeft, Plus, Trash2 } from 'lucide-react';
@@ -54,7 +55,8 @@ import { useToast } from '@/hooks/use-toast';
  */
 const PatientAnamnesisForm = () => {
     const navigate = useNavigate();
-    const { patientId, anamnesisId } = useParams();
+    const { patientId } = useResolvedPatientId();
+    const { anamnesisId } = useParams();
     const [searchParams] = useSearchParams();
     const { user } = useAuth();
     const { toast } = useToast();

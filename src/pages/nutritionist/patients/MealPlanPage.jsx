@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useResolvedPatientId } from '@/hooks/useResolvedPatientId';
 import { ArrowLeft, Plus, Trash2, Copy, Archive, RefreshCw, Edit, BarChart3, Download, FileText, MoreVertical, Utensils, Save, FolderOpen, ShoppingCart, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -65,7 +66,7 @@ import PlanTargetMonitor from '@/components/meal-plan/PlanTargetMonitor';
 import { getPatientModuleSyncFlags, clearPatientModuleSyncFlags } from '@/lib/supabase/anthropometry-queries';
 
 const MealPlanPage = () => {
-    const { patientId } = useParams();
+    const { patientId } = useResolvedPatientId();
     const navigate = useNavigate();
     const { toast } = useToast();
     const { user } = useAuth();

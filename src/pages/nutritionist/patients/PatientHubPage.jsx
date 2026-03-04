@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Loader2, RefreshCw, AlertCircle, Activity, Stethoscope, User, Utensils, Heart } from 'lucide-react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { ArrowLeft, RefreshCw, AlertCircle, Activity, Stethoscope, User, Utensils, Heart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { usePatientHub } from '@/hooks/usePatientHub';
+import { useResolvedPatientId } from '@/hooks/useResolvedPatientId';
 import PatientProfileSummary from '@/components/patient-hub/PatientProfileSummary';
 import PatientJourneyWidget from '@/components/patient-hub/PatientJourneyWidget';
 import TabContentFeed from '@/components/patient-hub/tabs/TabContentFeed';
@@ -14,9 +15,11 @@ import TabContentAdherence from '@/components/patient-hub/tabs/TabContentAdheren
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { isUuid } from '@/lib/utils/patientRoutes';
 
 const PatientHubPage = () => {
-    const { patientId } = useParams();
+    const { patientId: resolvedId, loading: resolveLoading, error: resolveError, paramValue } = useResolvedPatientId();
+    const patientId = resolvedId;
     const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
     const [activeTab, setActiveTab] = useState(() => {
@@ -29,10 +32,10 @@ const PatientHubPage = () => {
         return 'feed';
     });
 
-    // Hook customizado que gerencia todos os dados do hub
+    // Hook customizado que gerencia todos os dados do hub (só quando patientId resolvido)
     const {
-        loading,
-        error,
+        loading: hubLoading,
+        error: hubError,
         patientData,
         latestMetrics,
         modulesStatus,
@@ -41,6 +44,18 @@ const PatientHubPage = () => {
         refresh,
         loadActivities
     } = usePatientHub(patientId);
+
+    const loading = resolveLoading || (patientId ? hubLoading : false);
+    const error = resolveError || hubError;
+
+    // Substituir URL por slug quando carregado com UUID (para URLs legíveis)
+    useEffect(() => {
+        if (!patientData?.slug || !paramValue || !isUuid(paramValue)) return;
+        const base = `/nutritionist/patients/${patientData.slug}/hub`;
+        if (window.location.pathname !== base) {
+            navigate(base, { replace: true });
+        }
+    }, [patientData?.slug, paramValue, navigate]);
 
     const handleEditProfile = () => {
         // TODO: Implementar edição de perfil (Fase 2)
@@ -145,8 +160,10 @@ const PatientHubPage = () => {
         );
     }
 
-    // Estado de erro
-    if (error || !patientData) {
+    // Estado de erro (inclui slug não encontrado ou paciente sem permissão)
+    const slugNotFound = !resolveLoading && !patientId && paramValue;
+    const hubNotFound = patientId && !hubLoading && !patientData;
+    if (error || slugNotFound || hubNotFound) {
         return (
             <div className="flex flex-col items-center justify-center h-screen bg-background p-4">
                 <Alert variant="destructive" className="max-w-md mb-6">
@@ -214,6 +231,7 @@ const PatientHubPage = () => {
                 <section>
                     <PatientJourneyWidget
                         patientId={patientId}
+                        patientData={patientData}
                         modulesStatus={modulesStatus}
                         latestMetrics={latestMetrics}
                     />
@@ -273,6 +291,7 @@ const PatientHubPage = () => {
                             <TabsContent value="clinical" className="m-0">
                                 <TabContentClinical
                                     patientId={patientId}
+                                    patientData={patientData}
                                     modulesStatus={modulesStatus}
                                 />
                             </TabsContent>
@@ -280,6 +299,7 @@ const PatientHubPage = () => {
                             <TabsContent value="body" className="m-0">
                                 <TabContentBody
                                     patientId={patientId}
+                                    patientData={patientData}
                                     modulesStatus={modulesStatus}
                                     latestMetrics={latestMetrics}
                                 />
@@ -288,6 +308,7 @@ const PatientHubPage = () => {
                             <TabsContent value="nutrition" className="m-0">
                                 <TabContentNutrition
                                     patientId={patientId}
+                                    patientData={patientData}
                                     modulesStatus={modulesStatus}
                                 />
                             </TabsContent>
@@ -295,6 +316,7 @@ const PatientHubPage = () => {
                             <TabsContent value="adherence" className="m-0">
                                 <TabContentAdherence
                                     patientId={patientId}
+                                    patientData={patientData}
                                     modulesStatus={modulesStatus}
                                 />
                             </TabsContent>

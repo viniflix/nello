@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useResolvedPatientId } from '@/hooks/useResolvedPatientId';
 import { ArrowLeft, Droplet, Plus, Edit, Trash2, Calendar, Activity, AlertCircle, Search, Filter, Loader2, Save, X, FileText, Upload, Eye, Download, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -29,7 +30,7 @@ import {
 import ConductSuggestionsCard from '@/components/lab-results/ConductSuggestionsCard';
 
 const LabResultsPage = () => {
-    const { patientId } = useParams();
+    const { patientId } = useResolvedPatientId();
     const navigate = useNavigate();
     const { toast } = useToast();
     const { user } = useAuth();

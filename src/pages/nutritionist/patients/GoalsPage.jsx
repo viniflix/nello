@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useResolvedPatientId } from '@/hooks/useResolvedPatientId';
 import { ArrowLeft, Target, TrendingDown, TrendingUp, Calendar, AlertCircle, CheckCircle2, Pause, Play, X, Flame, Scale, Activity } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -46,7 +47,7 @@ import { toPortugueseError } from '@/lib/utils/errorMessages';
 import { formatDateToIsoDate, getTodayIsoDate } from '@/lib/utils/date';
 
 const GoalsPage = () => {
-    const { patientId } = useParams();
+    const { patientId } = useResolvedPatientId();
     const navigate = useNavigate();
     const { toast } = useToast();
 

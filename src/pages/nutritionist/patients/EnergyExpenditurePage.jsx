@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useResolvedPatientId } from '@/hooks/useResolvedPatientId';
 import { ArrowLeft, Calculator, Save, Loader2, Target, TrendingUp, Database, User, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -25,7 +26,7 @@ import {
 } from '@/lib/utils/energy-calculations';
 
 const EnergyExpenditurePage = () => {
-    const { patientId } = useParams();
+    const { patientId } = useResolvedPatientId();
     const navigate = useNavigate();
     const { toast } = useToast();
 

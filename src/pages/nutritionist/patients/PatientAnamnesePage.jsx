@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useResolvedPatientId } from '@/hooks/useResolvedPatientId';
 import { useAuth } from '@/contexts/AuthContext';
 import {
     ClipboardList, Plus, Calendar, FileText, ChevronRight, Loader2, AlertCircle,
@@ -64,7 +65,7 @@ import { supabase } from '@/lib/customSupabaseClient';
 
 const PatientAnamnesePage = () => {
     const navigate = useNavigate();
-    const { patientId } = useParams();
+    const { patientId } = useResolvedPatientId();
     const { user } = useAuth();
     const { toast } = useToast();
 

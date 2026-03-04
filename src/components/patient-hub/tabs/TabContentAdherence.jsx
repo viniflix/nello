@@ -6,8 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { getActiveGoal, getDaysRemaining, getProgressStatus } from '@/lib/supabase/goals-queries';
+import { patientRoute } from '@/lib/utils/patientRoutes';
 
-const TabContentAdherence = ({ patientId, modulesStatus = {} }) => {
+const TabContentAdherence = ({ patientId, patientData, modulesStatus = {} }) => {
+    const patient = patientData || { id: patientId };
     const navigate = useNavigate();
     const [activeGoal, setActiveGoal] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -54,7 +56,7 @@ const TabContentAdherence = ({ patientId, modulesStatus = {} }) => {
             return (
                 <Card
                     className="border-dashed border-2 border-[#a9b388] bg-[#fefae0]/30 hover:shadow-md transition-all cursor-pointer h-full"
-                    onClick={() => navigate(`/nutritionist/patients/${patientId}/goals`)}
+                    onClick={() => navigate(patientRoute(patient, 'goals'))}
                 >
                     <CardContent className="py-8 text-center">
                         <div className="w-12 h-12 rounded-full bg-[#fefae0] flex items-center justify-center mx-auto mb-3">
@@ -85,7 +87,7 @@ const TabContentAdherence = ({ patientId, modulesStatus = {} }) => {
         return (
             <Card
                 className="border-l-4 border-l-[#5f6f52] hover:shadow-xl transition-all bg-gradient-to-br from-[#fefae0]/20 to-[#fefae0]/30 cursor-pointer h-full"
-                onClick={() => navigate(`/nutritionist/patients/${patientId}/goals`)}
+                onClick={() => navigate(patientRoute(patient, 'goals'))}
             >
                 <CardHeader className="pb-3">
                     <div className="flex items-center gap-2">
@@ -167,7 +169,7 @@ const TabContentAdherence = ({ patientId, modulesStatus = {} }) => {
                             variant="ghost"
                             size="sm"
                             className="h-7 text-[#5f6f52] hover:bg-[#5f6f52]/10"
-                            onClick={() => navigate(`/nutritionist/patients/${patientId}/goals`)}
+                            onClick={() => navigate(patientRoute(patient, 'goals'))}
                         >
                             Abrir <ArrowRight className="w-3 h-3 ml-1" />
                         </Button>
@@ -192,7 +194,7 @@ const TabContentAdherence = ({ patientId, modulesStatus = {} }) => {
                     </p>
                     <Button
                         variant="outline"
-                        onClick={() => navigate(`/nutritionist/patients/${patientId}/achievements`)}
+                        onClick={() => navigate(patientRoute(patient, 'achievements'))}
                         className="gap-2 border-[#5f6f52] text-[#5f6f52] hover:bg-[#5f6f52]/10"
                     >
                         <Trophy className="w-4 h-4" />

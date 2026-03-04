@@ -94,10 +94,14 @@ export const usePatientHub = (patientId) => {
         ]);
     }, [loadPatientSummary, loadActivities]);
 
-    // Carrega os dados iniciais
+    // Carrega os dados iniciais (ou define loading=false quando não há patientId)
     useEffect(() => {
+        if (!patientId || !user?.id) {
+            setLoading(false);
+            return;
+        }
         loadPatientSummary();
-    }, [loadPatientSummary]);
+    }, [loadPatientSummary, patientId, user?.id]);
 
     // Carrega atividades (opcionalmente, pode ser lazy)
     useEffect(() => {

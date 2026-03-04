@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useResolvedPatientId } from '@/hooks/useResolvedPatientId';
 import {
     ArrowLeft, Utensils, Calendar, Clock, TrendingUp, Activity,
     History, ChevronDown, Flame, FileText
@@ -26,7 +27,7 @@ import {
 import { cn } from '@/lib/utils';
 
 const FoodDiaryPage = () => {
-    const { patientId } = useParams();
+    const { patientId } = useResolvedPatientId();
     const navigate = useNavigate();
 
     const [loading, setLoading] = useState(true);

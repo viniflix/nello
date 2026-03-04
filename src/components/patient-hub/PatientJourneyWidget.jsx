@@ -14,6 +14,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
+import { patientRoute } from '@/lib/utils/patientRoutes';
 
 /**
  * PatientJourneyWidget v3.1 - Design Alinhado com Paleta do Projeto
@@ -22,9 +23,11 @@ import { cn } from '@/lib/utils';
  */
 const PatientJourneyWidget = ({
     patientId,
+    patientData,
     modulesStatus = {},
     latestMetrics = {}
 }) => {
+    const patient = patientData || { id: patientId };
     const navigate = useNavigate();
     const [isExpanded, setIsExpanded] = useState(false);
 
@@ -39,7 +42,7 @@ const PatientJourneyWidget = ({
             description: 'Histórico clínico e alergias',
             icon: FileText,
             isComplete: modulesStatus.anamnese === 'completed',
-            route: `/nutritionist/patients/${patientId}/anamnese`
+            route: patientRoute(patient, 'anamnese')
         },
         {
             id: 'anthropometry',
@@ -47,7 +50,7 @@ const PatientJourneyWidget = ({
             description: 'Peso, altura e medidas',
             icon: BarChart3,
             isComplete: modulesStatus.anthropometry === 'completed',
-            route: `/nutritionist/patients/${patientId}/anthropometry`
+            route: patientRoute(patient, 'anthropometry')
         },
         {
             id: 'energy_calculation',
@@ -55,7 +58,7 @@ const PatientJourneyWidget = ({
             description: 'VET e distribuição de macros',
             icon: Calculator,
             isComplete: modulesStatus.energy_expenditure === 'completed',
-            route: `/nutritionist/patients/${patientId}/energy-expenditure`
+            route: patientRoute(patient, 'energy-expenditure')
         },
         {
             id: 'diet_plan',
@@ -63,7 +66,7 @@ const PatientJourneyWidget = ({
             description: 'Prescrição dietética vigente',
             icon: Utensils,
             isComplete: modulesStatus.meal_plan === 'completed',
-            route: `/nutritionist/patients/${patientId}/meal-plan`
+            route: patientRoute(patient, 'meal-plan')
         }
     ];
 

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useResolvedPatientId } from '@/hooks/useResolvedPatientId';
 import { ClipboardList, Plus, Calendar, FileText, ChevronRight, Loader2, AlertCircle, Trash2, MoreVertical } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -42,7 +43,7 @@ import { cn } from '@/lib/utils';
  */
 const PatientAnamnesisList = () => {
     const navigate = useNavigate();
-    const { patientId } = useParams();
+    const { patientId } = useResolvedPatientId();
     const { user } = useAuth();
 
     const [patient, setPatient] = useState(null);

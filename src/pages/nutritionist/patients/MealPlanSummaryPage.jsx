@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useResolvedPatientId } from '@/hooks/useResolvedPatientId';
 import { ArrowLeft, Settings, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -31,7 +32,8 @@ const MEAL_COLORS = [
 ];
 
 const MealPlanSummaryPage = () => {
-    const { patientId, planId } = useParams();
+    const { patientId } = useResolvedPatientId();
+    const { planId } = useParams();
     const navigate = useNavigate();
     const { toast } = useToast();
 

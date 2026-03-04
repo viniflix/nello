@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import { useResolvedPatientId } from '@/hooks/useResolvedPatientId';
 import { ArrowLeft, RefreshCw, AlertCircle, BarChart3, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -28,7 +29,7 @@ import { getLatestAnamnesis } from '@/lib/supabase/anamnesis-queries';
 import jsPDF from 'jspdf';
 
 const AnthropometryPage = () => {
-    const { patientId } = useParams();
+    const { patientId, loading: resolveLoading, error: resolveError } = useResolvedPatientId();
     const navigate = useNavigate();
     const { toast } = useToast();
     const { user } = useAuth();
@@ -547,6 +548,30 @@ const AnthropometryPage = () => {
         }
         return orderedRecords;
     }, [orderedRecords, historyFilter]);
+
+    if (resolveLoading || resolveError || !patientId) {
+        if (resolveLoading) {
+            return (
+                <div className="container mx-auto p-4 max-w-7xl">
+                    <div className="animate-pulse space-y-4">
+                        <div className="h-8 bg-muted rounded w-48" />
+                        <div className="h-64 bg-muted rounded" />
+                    </div>
+                </div>
+            );
+        }
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[50vh] p-4">
+                <Alert variant="destructive" className="max-w-md mb-6">
+                    <AlertDescription>Paciente não encontrado.</AlertDescription>
+                </Alert>
+                <Button variant="outline" onClick={() => navigate('/nutritionist/patients')}>
+                    <ArrowLeft className="w-4 h-4 mr-2" />
+                    Voltar para Pacientes
+                </Button>
+            </div>
+        );
+    }
 
     return (
         <div className="container mx-auto p-4 sm:p-6 max-w-7xl space-y-6">

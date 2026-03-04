@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import { patientRoute } from '@/lib/utils/patientRoutes';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
 import { getLatestAnamnesis } from '@/lib/supabase/anamnesis-queries';
@@ -24,7 +25,8 @@ import {
     TEMPLATE_CONTEXTS
 } from '@/lib/supabase/message-templates-queries';
 
-const TabContentClinical = ({ patientId, modulesStatus = {} }) => {
+const TabContentClinical = ({ patientId, patientData, modulesStatus = {} }) => {
+    const patient = patientData || { id: patientId };
     const navigate = useNavigate();
     const { user } = useAuth();
     const { toast } = useToast();
@@ -350,7 +352,7 @@ const TabContentClinical = ({ patientId, modulesStatus = {} }) => {
             return (
                 <Card
                     className="border-l-4 border-l-[#c4661f] bg-[#fefae0]/30 hover:shadow-md transition-all cursor-pointer h-full"
-                    onClick={() => navigate(`/nutritionist/patients/${patientId}/anamnese`)}
+                    onClick={() => navigate(patientRoute(patient, 'anamnese'))}
                 >
                     <CardContent className="py-8">
                         <div className="flex items-start gap-4">
@@ -389,7 +391,7 @@ const TabContentClinical = ({ patientId, modulesStatus = {} }) => {
         return (
             <Card
                 className="border-l-4 border-l-[#5f6f52] hover:shadow-xl transition-all cursor-pointer h-full"
-                onClick={() => navigate(`/nutritionist/patients/${patientId}/anamnese`)}
+                onClick={() => navigate(patientRoute(patient, 'anamnese'))}
             >
                 <CardHeader className="pb-3">
                     <div className="flex items-center gap-2">
@@ -424,7 +426,7 @@ const TabContentClinical = ({ patientId, modulesStatus = {} }) => {
                             variant="ghost"
                             size="sm"
                             className="h-7 text-[#5f6f52] hover:bg-[#5f6f52]/10"
-                            onClick={() => navigate(`/nutritionist/patients/${patientId}/anamnesis`)}
+                            onClick={() => navigate(patientRoute(patient, 'anamnesis'))}
                         >
                             Abrir <ArrowRight className="w-3 h-3 ml-1" />
                         </Button>
@@ -452,7 +454,7 @@ const TabContentClinical = ({ patientId, modulesStatus = {} }) => {
             return (
                 <Card
                     className="border-dashed border-2 border-[#a9b388] bg-[#fefae0]/30 hover:shadow-md transition-all cursor-pointer h-full"
-                    onClick={() => navigate(`/nutritionist/patients/${patientId}/lab-results`)}
+                    onClick={() => navigate(patientRoute(patient, 'lab-results'))}
                 >
                     <CardContent className="py-8 text-center">
                         <div className="w-12 h-12 rounded-full bg-[#fefae0] flex items-center justify-center mx-auto mb-3">
@@ -482,7 +484,7 @@ const TabContentClinical = ({ patientId, modulesStatus = {} }) => {
         return (
             <Card
                 className="border-l-4 border-l-[#b99470] hover:shadow-xl transition-all cursor-pointer h-full"
-                onClick={() => navigate(`/nutritionist/patients/${patientId}/lab-results`)}
+                onClick={() => navigate(patientRoute(patient, 'lab-results'))}
             >
                 <CardHeader className="pb-3">
                     <div className="flex items-center gap-2">
@@ -535,7 +537,7 @@ const TabContentClinical = ({ patientId, modulesStatus = {} }) => {
                             variant="ghost"
                             size="sm"
                             className="h-7 text-[#b99470] hover:bg-[#b99470]/10"
-                            onClick={() => navigate(`/nutritionist/patients/${patientId}/lab-results`)}
+                            onClick={() => navigate(patientRoute(patient, 'lab-results'))}
                         >
                             Abrir <ArrowRight className="w-3 h-3 ml-1" />
                         </Button>
