@@ -435,12 +435,16 @@ export async function getServices(nutritionistId) {
 
 /**
  * Save a service (create or update)
+ * Tabela services: id, nutritionist_id, name, price, duration_minutes, active, created_at
  * @param {Object} serviceData - Service data object
  * @returns {Promise<Object>}
  */
 export async function saveService(serviceData) {
-    const { id, ...data } = serviceData;
-    data.updated_at = new Date().toISOString();
+    const { id, nutritionist_id, name, price, duration_minutes, description, category, ...rest } = serviceData;
+    // Enviar apenas colunas existentes na tabela services
+    const data = { nutritionist_id, name, price };
+    if (duration_minutes != null) data.duration_minutes = duration_minutes;
+    if (rest.active != null) data.active = rest.active;
 
     let query;
     if (id) {
@@ -474,36 +478,15 @@ export async function saveService(serviceData) {
  * @returns {Promise<void>}
  */
 export async function deleteService(serviceId) {
-    // Try to update is_active, if that fails, try active
-    let updateData = { updated_at: new Date().toISOString() };
-    
-    // Try is_active first
-    updateData.is_active = false;
-    
+    // Tabela services usa coluna "active" (não is_active)
     const { error } = await supabase
         .from('services')
-        .update(updateData)
+        .update({ active: false })
         .eq('id', serviceId);
 
     if (error) {
-        // If is_active doesn't work, try active
-        if (error.message && error.message.includes('is_active')) {
-            delete updateData.is_active;
-            updateData.active = false;
-            
-            const { error: error2 } = await supabase
-                .from('services')
-                .update(updateData)
-                .eq('id', serviceId);
-            
-            if (error2) {
-                logSupabaseError('Error deleting service', error2);
-                throw error2;
-            }
-        } else {
-            logSupabaseError('Error deleting service', error);
-            throw error;
-        }
+        logSupabaseError('Error deleting service', error);
+        throw error;
     }
 }
 

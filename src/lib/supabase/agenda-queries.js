@@ -123,7 +123,7 @@ export async function createAppointmentWithFinance(appointmentData, financialDat
         // Get service details
         const { data: service } = await supabase
             .from('services')
-            .select('name, price, category')
+            .select('name, price')
             .eq('id', service_id)
             .single();
 
