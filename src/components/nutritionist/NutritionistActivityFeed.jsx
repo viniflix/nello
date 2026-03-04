@@ -696,7 +696,7 @@ const NutritionistActivityFeed = () => {
                         <p className="text-sm text-muted-foreground">Não há alertas ou pendências no momento</p>
                     </div>
                 ) : (
-                    <div className="max-h-[520px] overflow-y-auto pr-1 space-y-3">
+                    <div className="max-h-[620px] overflow-y-auto pr-1 space-y-3">
                         {visibleFeedItems.map((item) => {
                             const Icon = iconByType[item.type] || iconByType.default;
                             const tone = toneByType[item.type] || toneByType.default;

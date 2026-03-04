@@ -281,7 +281,7 @@ const PatientUpdatesWidget = () => {
                         <p className="text-xs text-muted-foreground mb-3">
                             {filteredUpdates.length} {filteredUpdates.length === 1 ? 'registro' : 'registros'}
                         </p>
-                        <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
+                        <div className="space-y-3 max-h-[340px] overflow-y-auto pr-2">
                             {filteredUpdates.map(update => (
                                 <div key={update.id} className="flex items-start gap-3 min-w-0">
                                     <div className="bg-muted p-2 rounded-full flex-shrink-0">

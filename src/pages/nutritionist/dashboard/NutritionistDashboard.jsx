@@ -570,7 +570,7 @@ export default function NutritionistDashboard() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="max-w-7xl mx-auto w-full px-4 md:px-8 pt-4 md:pt-8 min-w-0 overflow-x-hidden"
+        className="max-w-7xl mx-auto w-full px-4 md:px-8 pt-4 md:pt-8 pb-5 min-w-0 overflow-x-hidden"
       >
         {/* Zona de Ação Rápida */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 md:mb-8 text-center sm:text-left">
