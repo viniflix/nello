@@ -123,7 +123,7 @@ const DateInputWithCalendar = ({
                 max={max}
                 {...rest}
             />
-            <Popover>
+            <Popover modal={false}>
                 <PopoverTrigger asChild>
                     <Button
                         type="button"
@@ -135,7 +135,7 @@ const DateInputWithCalendar = ({
                         <CalendarDays className="h-4 w-4" />
                     </Button>
                 </PopoverTrigger>
-                <PopoverContent className="p-0" align="end">
+                <PopoverContent className="p-0 z-[100]" align="end">
                     <Calendar
                         mode="single"
                         selected={selectedDate || undefined}
@@ -209,7 +209,7 @@ const MonthInputWithCalendar = ({
                 inputMode="numeric"
                 {...rest}
             />
-            <Popover>
+            <Popover modal={false}>
                 <PopoverTrigger asChild>
                     <Button
                         type="button"
@@ -221,7 +221,7 @@ const MonthInputWithCalendar = ({
                         <CalendarDays className="h-4 w-4" />
                     </Button>
                 </PopoverTrigger>
-                <PopoverContent className="p-0" align="end">
+                <PopoverContent className="p-0 z-[100]" align="end">
                     <Calendar
                         mode="single"
                         selected={selectedDate || undefined}

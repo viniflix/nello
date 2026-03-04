@@ -34,9 +34,18 @@ const buildAppointmentPayload = (appointmentData = {}) => {
         : null;
     const endTimeIso = toIsoDate(appointmentData.end_time) || computedEndTime;
 
+    // patient_id: evita string vazia (causa 400 em coluna uuid)
+    const patientId = appointmentData.patient_id && String(appointmentData.patient_id).trim()
+        ? appointmentData.patient_id
+        : null;
+
+    if (!startTimeIso || !endTimeIso) {
+        throw new Error('Data e horário inválidos. Verifique se preencheu data e hora corretamente.');
+    }
+
     return {
         nutritionist_id: appointmentData.nutritionist_id,
-        patient_id: appointmentData.patient_id || null,
+        patient_id: patientId,
         title: appointmentData.title || appointmentData.appointment_type || 'Consulta',
         start_time: startTimeIso,
         end_time: endTimeIso,

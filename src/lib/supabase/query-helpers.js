@@ -1,5 +1,7 @@
 export const logSupabaseError = (context, error) => {
-  console.error(`[Supabase] ${context}:`, error);
+  const msg = error?.message || String(error);
+  const details = error?.details || error?.hint || error?.code;
+  console.error(`[Supabase] ${context}:`, msg, details ? { details, code: error?.code } : '');
 };
 
 export const normalizeEventName = (eventName, fallback = 'unknown.event') => {

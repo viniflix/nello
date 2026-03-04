@@ -70,14 +70,39 @@ export default function AgendaPage() {
         if (apptsError) toast({ title: "Erro", description: apptsError.message, variant: "destructive" });
         else setAppointments((apptsData || []).map(normalizeAppointment));
 
-        const { data: patientsData, error: patientsError } = await supabase
+        // Pacientes: user_profiles.nutritionist_id OU nutritionist_patients (compatibilidade)
+        let patientsList = [];
+        let loadError = null;
+        const { data: fromProfiles, error: errProfiles } = await supabase
             .from('user_profiles')
-            .select('id, name')
+            .select('id, full_name, name')
             .eq('nutritionist_id', user.id)
             .limit(500);
 
-        if (patientsError) toast({ title: "Erro", description: "Não foi possível carregar os pacientes.", variant: "destructive" });
-        else setPatients(patientsData || []);
+        if (!errProfiles && fromProfiles?.length) {
+            patientsList = fromProfiles.map(p => ({ id: p.id, name: p.full_name || p.name || 'Paciente' }));
+        } else {
+            loadError = errProfiles;
+            const { data: links, error: errLinks } = await supabase
+                .from('nutritionist_patients')
+                .select('patient_id')
+                .eq('nutritionist_id', user.id);
+            if (!errLinks && links?.length) {
+                const ids = links.map(l => l.patient_id).filter(Boolean);
+                const { data: profiles, error: errProf } = await supabase
+                    .from('user_profiles')
+                    .select('id, full_name, name')
+                    .in('id', ids);
+                if (!errProf && profiles?.length) {
+                    patientsList = profiles.map(p => ({ id: p.id, name: p.full_name || p.name || 'Paciente' }));
+                    loadError = null;
+                }
+            }
+        }
+        if (patientsList.length === 0 && loadError) {
+            toast({ title: "Erro", description: "Não foi possível carregar os pacientes.", variant: "destructive" });
+        }
+        setPatients(patientsList);
 
         // Load services
         try {
@@ -166,9 +191,10 @@ export default function AgendaPage() {
             loadData();
         } catch (error) {
             console.error('Error saving appointment:', error);
+            const errMsg = error?.message || error?.details || (typeof error === 'string' ? error : '');
             toast({ 
-                title: "Erro", 
-                description: toPortugueseError(error, 'Não foi possível salvar o agendamento.'), 
+                title: "Erro ao salvar", 
+                description: toPortugueseError(errMsg || error, 'Não foi possível salvar o agendamento. Verifique se o paciente está vinculado a você.'), 
                 variant: "destructive" 
             });
         }

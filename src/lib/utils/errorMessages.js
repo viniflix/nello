@@ -12,6 +12,7 @@ const ERROR_TRANSLATIONS = [
   { test: /violates foreign key constraint/i, message: 'Não foi possível concluir por vínculo com outros dados.' },
   { test: /violates not-null constraint/i, message: 'Existem campos obrigatórios não preenchidos.' },
   { test: /invalid input syntax/i, message: 'Dados inválidos. Revise os campos e tente novamente.' },
+  { test: /violates row-level security|policy.*failed|new row violates/i, message: 'O paciente precisa estar vinculado a você. Adicione-o como paciente primeiro.' },
 ];
 
 export function toPortugueseError(errorOrMessage, fallback = 'Ocorreu um erro. Tente novamente.') {
