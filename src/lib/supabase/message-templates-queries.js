@@ -224,7 +224,7 @@ export const getTemplateDispatchHistory = async ({
                 rendered_title, rendered_body, delivery_status,
                 created_at,
                 message_templates (name, context),
-                patient:patient_id (full_name)
+                patient:patient_id (name)
             `)
             .order('created_at', { ascending: false })
             .limit(limit);
