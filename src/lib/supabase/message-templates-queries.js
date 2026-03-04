@@ -237,6 +237,7 @@ export const getTemplateDispatchHistory = async ({
         if (error) throw error;
         return { data: data || [], error: null };
     } catch (error) {
+        if (error?.code === 'PGRST205') return { data: [], error: null };
         logSupabaseError('Erro ao buscar histórico de disparo de templates', error);
         return { data: [], error };
     }

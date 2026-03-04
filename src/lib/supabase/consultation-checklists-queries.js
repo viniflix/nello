@@ -52,6 +52,7 @@ export const getChecklistById = async (checklistId) => {
         if (error) throw error;
         return { data: data || null, error: null };
     } catch (error) {
+        if (error?.code === 'PGRST205') return { data: null, error: null };
         logSupabaseError('Erro ao buscar checklist', error);
         return { data: null, error };
     }
@@ -79,6 +80,7 @@ export const getPatientChecklists = async ({
         if (error) throw error;
         return { data: data || [], error: null };
     } catch (error) {
+        if (error?.code === 'PGRST205') return { data: [], error: null };
         logSupabaseError('Erro ao buscar checklists do paciente', error);
         return { data: [], error };
     }
@@ -100,6 +102,7 @@ export const getLatestActiveChecklist = async ({ nutritionistId, patientId }) =>
         if (error) throw error;
         return { data: data || null, error: null };
     } catch (error) {
+        if (error?.code === 'PGRST205') return { data: null, error: null };
         logSupabaseError('Erro ao buscar checklist ativo', error);
         return { data: null, error };
     }
@@ -136,6 +139,7 @@ export const cancelChecklist = async ({ checklistId, nutritionistId }) => {
         if (error) throw error;
         return { data, error: null };
     } catch (error) {
+        if (error?.code === 'PGRST205') return { data: null, error: null };
         logSupabaseError('Erro ao cancelar checklist', error);
         return { data: null, error };
     }
