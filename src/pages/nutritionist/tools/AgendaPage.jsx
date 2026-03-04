@@ -70,37 +70,37 @@ export default function AgendaPage() {
         if (apptsError) toast({ title: "Erro", description: apptsError.message, variant: "destructive" });
         else setAppointments((apptsData || []).map(normalizeAppointment));
 
-        // Pacientes: user_profiles.nutritionist_id OU nutritionist_patients (compatibilidade)
+        // Pacientes: nutritionist_patients PRIMEIRO (tabela canônica); fallback user_profiles.nutritionist_id
         let patientsList = [];
         let loadError = null;
-        const { data: fromProfiles, error: errProfiles } = await supabase
-            .from('user_profiles')
-            .select('id, full_name, name')
-            .eq('nutritionist_id', user.id)
-            .limit(500);
+        const { data: links, error: errLinks } = await supabase
+            .from('nutritionist_patients')
+            .select('patient_id')
+            .eq('nutritionist_id', user.id);
 
-        if (!errProfiles && fromProfiles?.length) {
-            patientsList = fromProfiles.map(p => ({ id: p.id, name: p.full_name || p.name || 'Paciente' }));
+        if (!errLinks && links?.length) {
+            const ids = links.map(l => l.patient_id).filter(Boolean);
+            const { data: profiles, error: errProf } = await supabase
+                .from('user_profiles')
+                .select('id, full_name, name')
+                .in('id', ids);
+            if (!errProf && profiles?.length) {
+                patientsList = profiles.map(p => ({ id: p.id, name: p.full_name || p.name || 'Paciente' }));
+            }
         } else {
-            loadError = errProfiles;
-            const { data: links, error: errLinks } = await supabase
-                .from('nutritionist_patients')
-                .select('patient_id')
-                .eq('nutritionist_id', user.id);
-            if (!errLinks && links?.length) {
-                const ids = links.map(l => l.patient_id).filter(Boolean);
-                const { data: profiles, error: errProf } = await supabase
-                    .from('user_profiles')
-                    .select('id, full_name, name')
-                    .in('id', ids);
-                if (!errProf && profiles?.length) {
-                    patientsList = profiles.map(p => ({ id: p.id, name: p.full_name || p.name || 'Paciente' }));
-                    loadError = null;
-                }
+            loadError = errLinks;
+            const { data: fromProfiles, error: errProfiles } = await supabase
+                .from('user_profiles')
+                .select('id, full_name, name')
+                .eq('nutritionist_id', user.id)
+                .limit(500);
+            if (!errProfiles && fromProfiles?.length) {
+                patientsList = fromProfiles.map(p => ({ id: p.id, name: p.full_name || p.name || 'Paciente' }));
+                loadError = null;
             }
         }
         if (patientsList.length === 0 && loadError) {
-            toast({ title: "Erro", description: "Não foi possível carregar os pacientes.", variant: "destructive" });
+            toast({ title: "Erro", description: "Não foi possível carregar os pacientes. Execute o script FIX_agendamento_completo.sql no Supabase.", variant: "destructive" });
         }
         setPatients(patientsList);
 

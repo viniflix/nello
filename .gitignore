@@ -2,5 +2,7 @@ node_modules/
 .env
 /.cursor
 /docs
+/supabase
+/supabase
 /[Dd][Oo][Cc][Ss]/
 /AGENTS.md
