@@ -246,9 +246,23 @@ export async function updateAppointment(appointmentId, appointmentData) {
         });
 
         if (transitionResult.error) {
-            throw transitionResult.error;
-        }
-        if (transitionResult.data && transitionResult.data.ok === false) {
+            const isRpcNotFound = transitionResult.error?.code === 'PGRST202' ||
+                String(transitionResult.error?.message || '').includes('Could not find the function') ||
+                String(transitionResult.error?.message || '').includes('transition_appointment_status');
+            if (isRpcNotFound) {
+                // RPC não existe no banco: fallback para UPDATE direto do status
+                const { error: updateErr } = await supabase
+                    .from('appointments')
+                    .update({ status: rpcStatus })
+                    .eq('id', appointmentId);
+                if (updateErr) {
+                    logSupabaseError('Erro ao atualizar status (fallback)', updateErr);
+                    throw updateErr;
+                }
+            } else {
+                throw transitionResult.error;
+            }
+        } else if (transitionResult.data && transitionResult.data.ok === false) {
             const reason = transitionResult.data.reason || 'transição_inválida';
             const msg = reason === 'invalid_transition'
                 ? 'Transição de status inválida para esta consulta.'
