@@ -20,6 +20,12 @@ const normalizeAppointmentStatus = (status) => {
     return STATUS_MAP[status] || status;
 };
 
+// RPC transition_appointment_status usa enum appointment_status com 'canceled' (não 'cancelled')
+const toRpcStatus = (status) => {
+    const s = normalizeAppointmentStatus(status);
+    return s === 'cancelled' ? 'canceled' : s;
+};
+
 const toIsoDate = (value) => {
     if (!value) return null;
     const parsed = new Date(value);
@@ -60,7 +66,7 @@ const buildAppointmentPayload = (appointmentData = {}) => {
     };
 };
 
-const isTerminalStatus = (status) => ['completed', 'canceled', 'no_show'].includes(status);
+const isTerminalStatus = (status) => ['completed', 'canceled', 'cancelled', 'no_show'].includes(status);
 
 /**
  * Create an appointment and automatically create a financial transaction
@@ -232,14 +238,26 @@ export async function updateAppointment(appointmentId, appointmentData) {
     }
 
     if (requestedStatus && requestedStatus !== current?.status) {
+        const rpcStatus = toRpcStatus(requestedStatus);
         const transitionResult = await transitionAppointmentStatus({
             appointmentId,
-            nextStatus: requestedStatus,
+            nextStatus: rpcStatus,
             reason: appointmentData?.cancellation_reason || null
         });
 
         if (transitionResult.error) {
             throw transitionResult.error;
+        }
+        if (transitionResult.data && transitionResult.data.ok === false) {
+            const reason = transitionResult.data.reason || 'transição_inválida';
+            const msg = reason === 'invalid_transition'
+                ? 'Transição de status inválida para esta consulta.'
+                : reason === 'terminal_status_locked'
+                    ? 'Status final não pode ser alterado.'
+                    : reason === 'not_authorized'
+                        ? 'Você não tem permissão para alterar este agendamento.'
+                        : `Não foi possível alterar o status: ${reason}`;
+            throw new Error(msg);
         }
     } else if (!isTerminalStatus(current?.status)) {
         const syncResult = await syncAppointmentNotificationSchedule(appointmentId, true);

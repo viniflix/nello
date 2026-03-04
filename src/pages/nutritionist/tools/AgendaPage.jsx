@@ -151,6 +151,7 @@ export default function AgendaPage() {
             if (appointmentData.id) {
                 // Update existing appointment (no financial transaction)
                 await updateAppointment(appointmentData.id, {
+                    nutritionist_id: user.id,
                     patient_id,
                     appointment_time,
                     notes,
