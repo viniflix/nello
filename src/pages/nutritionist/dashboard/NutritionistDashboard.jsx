@@ -12,12 +12,13 @@ import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/customSupabaseClient';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import PatientUpdatesWidget from '@/components/nutritionist/PatientUpdatesWidget';
 import NutritionistActivityFeed from '@/components/nutritionist/NutritionistActivityFeed';
 import { toPortugueseError } from '@/lib/utils/errorMessages';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, isToday, isTomorrow, isThisWeek } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { StatCardSkeleton, AlertCardSkeleton } from '@/components/ui/card-skeleton';
 
@@ -93,41 +94,56 @@ const getAgendaCountTagClass = (count) => {
 };
 
 const getUrgencyMeta = (appointmentTime) => {
-  const diffMs = new Date(appointmentTime).getTime() - Date.now();
+  const apptDate = new Date(appointmentTime);
+  const now = new Date();
+  const diffMs = apptDate.getTime() - now.getTime();
   const diffHours = diffMs / (1000 * 60 * 60);
 
-  if (diffHours <= 2) {
+  // "Muito próxima" = nas próximas 2h (independente do dia)
+  if (diffHours > 0 && diffHours <= 2) {
     return {
       label: 'Muito próxima',
-      rowClass: 'border-red-300/80 bg-red-50/70',
-      badgeClass: 'bg-red-100 text-red-700 border-red-200',
-      dotClass: 'bg-red-500'
+      rowClass: 'border-red-300 bg-red-50',
+      badgeClass: 'bg-red-500/15 text-red-700 border-red-300',
+      dotClass: 'bg-red-600'
     };
   }
 
-  if (diffHours <= 24) {
+  // "Hoje" = mesmo dia calendário
+  if (isToday(apptDate)) {
     return {
       label: 'Hoje',
-      rowClass: 'border-orange-300/80 bg-orange-50/70',
-      badgeClass: 'bg-orange-100 text-orange-700 border-orange-200',
-      dotClass: 'bg-orange-500'
+      rowClass: 'border-amber-400 bg-amber-50',
+      badgeClass: 'bg-amber-500/15 text-amber-800 border-amber-400',
+      dotClass: 'bg-amber-600'
     };
   }
 
-  if (diffHours <= 72) {
+  // "Amanhã" = dia seguinte
+  if (isTomorrow(apptDate)) {
+    return {
+      label: 'Amanhã',
+      rowClass: 'border-sky-300 bg-sky-50',
+      badgeClass: 'bg-sky-500/15 text-sky-800 border-sky-400',
+      dotClass: 'bg-sky-600'
+    };
+  }
+
+  // "Em breve" = esta semana
+  if (isThisWeek(apptDate, { weekStartsOn: 0 })) {
     return {
       label: 'Em breve',
-      rowClass: 'border-amber-300/80 bg-amber-50/70',
-      badgeClass: 'bg-amber-100 text-amber-700 border-amber-200',
-      dotClass: 'bg-amber-500'
+      rowClass: 'border-violet-300 bg-violet-50',
+      badgeClass: 'bg-violet-500/15 text-violet-800 border-violet-400',
+      dotClass: 'bg-violet-600'
     };
   }
 
   return {
     label: 'Programada',
-    rowClass: 'border-emerald-300/80 bg-emerald-50/70',
-    badgeClass: 'bg-emerald-100 text-emerald-700 border-emerald-200',
-    dotClass: 'bg-emerald-500'
+    rowClass: 'border-emerald-300 bg-emerald-50',
+    badgeClass: 'bg-emerald-500/15 text-emerald-800 border-emerald-400',
+    dotClass: 'bg-emerald-600'
   };
 };
 
@@ -157,28 +173,28 @@ const AppointmentsCard2 = ({
   return (
     <Card className="bg-card shadow-card-dark rounded-xl overflow-hidden border-primary/10">
       <CardHeader className="pb-2">
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 min-w-0">
-          <div className="min-w-0 flex items-start gap-2">
-            <div className="rounded-lg bg-primary/10 p-1.5">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 min-w-0">
+          <div className="min-w-0 flex items-center gap-2">
+            <div className="rounded-lg bg-primary/10 p-1.5 flex-shrink-0">
               <Calendar className="h-5 w-5 text-primary" />
             </div>
-            <div>
-              <CardTitle className="font-clash text-base md:text-lg font-semibold text-primary break-words">
+            <div className="min-w-0">
+              <CardTitle className="font-clash text-base md:text-lg font-semibold text-primary">
                 Agendamentos
               </CardTitle>
-              <CardDescription className="text-muted-foreground text-xs md:text-sm">
-                Próximas consultas e métricas de presença
+              <CardDescription className="text-muted-foreground text-xs truncate whitespace-nowrap">
+                Próximas consultas e métricas
               </CardDescription>
             </div>
           </div>
-          <div className="mt-0.5 flex flex-wrap justify-end gap-1.5">
+          <div className="flex items-center gap-1.5 flex-shrink-0">
             {hasTodayTag && (
-              <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${getAgendaCountTagClass(todayAppointments)}`}>
+              <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap ${getAgendaCountTagClass(todayAppointments)}`}>
                 Hoje: {todayAppointments}
               </span>
             )}
             {hasTotalTag && (
-              <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${getAgendaCountTagClass(totalUpcoming)}`}>
+              <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap ${getAgendaCountTagClass(totalUpcoming)}`}>
                 Total: {totalUpcoming}
               </span>
             )}
@@ -197,32 +213,32 @@ const AppointmentsCard2 = ({
             {appointments.map((appt, idx) => {
               const profile = appt.patient;
               const urgency = getUrgencyMeta(appt.start_time);
+              const startTime = appt.start_time || appt.appointment_time;
               return (
                 <motion.div
                   key={appt.id}
                   initial={{ opacity: 0, x: -8 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.2, delay: idx * 0.05 }}
-                  className={`rounded-lg border p-2.5 ${urgency.rowClass}`}
+                  className={`rounded-lg border p-2 ${urgency.rowClass}`}
                 >
-                  <div className="mb-2 flex justify-end">
-                    <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium ${urgency.badgeClass}`}>
-                      <span className={`h-1.5 w-1.5 rounded-full ${urgency.dotClass}`} />
-                      {urgency.label}
-                    </span>
-                  </div>
-                  <div className="flex items-center space-x-3 min-w-0">
-                    <div className="w-10 h-10 rounded-full bg-emerald-100 flex-shrink-0 flex items-center justify-center">
-                      <span className="font-semibold text-emerald-700 text-xs">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Avatar className="h-9 w-9 flex-shrink-0">
+                      <AvatarImage src={profile?.avatar_url} alt={profile?.name} />
+                      <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
                         {(profile?.name || 'P').substring(0, 2).toUpperCase()}
-                      </span>
-                    </div>
+                      </AvatarFallback>
+                    </Avatar>
                     <div className="min-w-0 flex-1 overflow-hidden">
                       <p className="text-sm font-medium text-foreground truncate">{profile?.name || 'Paciente'}</p>
                       <p className="text-xs text-muted-foreground truncate">
-                        {format(parseISO(appt.start_time), "d 'de' MMMM 'às' HH:mm", { locale: ptBR })}
+                        {startTime ? format(parseISO(startTime), "d 'de' MMMM 'às' HH:mm", { locale: ptBR }) : '—'}
                       </p>
                     </div>
+                    <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium flex-shrink-0 ${urgency.badgeClass}`}>
+                      <span className={`h-1.5 w-1.5 rounded-full ${urgency.dotClass}`} />
+                      {urgency.label}
+                    </span>
                   </div>
                 </motion.div>
               );
@@ -455,7 +471,7 @@ export default function NutritionistDashboard() {
       const today = new Date().toISOString();
       const { data, error } = await supabase
         .from('appointments')
-        .select('id, start_time, patient:appointments_patient_id_fkey(id, name, avatar_url)')
+        .select('id, start_time, appointment_time, patient:user_profiles!appointments_patient_id_fkey(id, name, avatar_url)')
         .eq('nutritionist_id', user.id)
         .gte('start_time', today)
         .order('start_time', { ascending: true })
