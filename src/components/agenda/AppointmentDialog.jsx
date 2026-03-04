@@ -112,6 +112,14 @@ export default function AppointmentDialog({
         }
     }, [appointment, open, preSelectedDate, patients]);
 
+    // Restaurar pointer-events ao fechar (evita página travada quando Popover modal está dentro de Dialog)
+    useEffect(() => {
+        if (!open) {
+            const t = setTimeout(() => { document.body.style.pointerEvents = ''; }, 100);
+            return () => clearTimeout(t);
+        }
+    }, [open]);
+
     const handleServiceChange = (value) => {
         if (value === SERVICE_OPTION_CUSTOM) {
             setFormData(prev => ({

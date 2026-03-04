@@ -123,7 +123,7 @@ const DateInputWithCalendar = ({
                 max={max}
                 {...rest}
             />
-            <Popover modal={false}>
+            <Popover modal={true}>
                 <PopoverTrigger asChild>
                     <Button
                         type="button"
@@ -135,13 +135,12 @@ const DateInputWithCalendar = ({
                         <CalendarDays className="h-4 w-4" />
                     </Button>
                 </PopoverTrigger>
-                <PopoverContent className="p-0 z-[100]" align="end">
+                <PopoverContent className="p-0 z-[100]" align="end" style={{ pointerEvents: 'auto' }}>
                     <Calendar
                         mode="single"
                         selected={selectedDate || undefined}
                         onSelect={handleSelect}
                         locale={ptBR}
-                        initialFocus
                         fromDate={minDate || undefined}
                         toDate={maxDate || undefined}
                     />
@@ -209,7 +208,7 @@ const MonthInputWithCalendar = ({
                 inputMode="numeric"
                 {...rest}
             />
-            <Popover modal={false}>
+            <Popover modal={true}>
                 <PopoverTrigger asChild>
                     <Button
                         type="button"
@@ -221,13 +220,12 @@ const MonthInputWithCalendar = ({
                         <CalendarDays className="h-4 w-4" />
                     </Button>
                 </PopoverTrigger>
-                <PopoverContent className="p-0 z-[100]" align="end">
+                <PopoverContent className="p-0 z-[100]" align="end" style={{ pointerEvents: 'auto' }}>
                     <Calendar
                         mode="single"
                         selected={selectedDate || undefined}
                         onSelect={handleSelect}
                         locale={ptBR}
-                        initialFocus
                     />
                 </PopoverContent>
             </Popover>
