@@ -82,20 +82,20 @@ export default function AgendaPage() {
             const ids = links.map(l => l.patient_id).filter(Boolean);
             const { data: profiles, error: errProf } = await supabase
                 .from('user_profiles')
-                .select('id, full_name, name')
+                .select('id, name')
                 .in('id', ids);
             if (!errProf && profiles?.length) {
-                patientsList = profiles.map(p => ({ id: p.id, name: p.full_name || p.name || 'Paciente' }));
+                patientsList = profiles.map(p => ({ id: p.id, name: p.name || 'Paciente' }));
             }
         } else {
             loadError = errLinks;
             const { data: fromProfiles, error: errProfiles } = await supabase
                 .from('user_profiles')
-                .select('id, full_name, name')
+                .select('id, name')
                 .eq('nutritionist_id', user.id)
                 .limit(500);
             if (!errProfiles && fromProfiles?.length) {
-                patientsList = fromProfiles.map(p => ({ id: p.id, name: p.full_name || p.name || 'Paciente' }));
+                patientsList = fromProfiles.map(p => ({ id: p.id, name: p.name || 'Paciente' }));
                 loadError = null;
             }
         }

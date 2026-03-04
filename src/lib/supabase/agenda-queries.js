@@ -7,10 +7,12 @@ import { logOperationalEvent } from './observability-queries';
 import { dispatchMessageTemplate } from './message-templates-queries';
 
 const STATUS_FALLBACK = 'scheduled';
+// Mapeia para valores aceitos pelo DB (produção usa 'cancelled' com 2 L)
 const STATUS_MAP = {
     awaiting_confirmation: 'scheduled',
-    cancelled: 'canceled',
-    no_show: 'canceled'
+    cancelled: 'cancelled',
+    canceled: 'cancelled',
+    no_show: 'no_show'
 };
 
 const normalizeAppointmentStatus = (status) => {
@@ -25,30 +27,34 @@ const toIsoDate = (value) => {
     return parsed.toISOString();
 };
 
+// DB aceita apenas: first_appointment, return, online
+const APPT_TYPE_MAP = { evaluation: 'return', in_person: 'return' };
+const toValidAppointmentType = (v) => {
+    if (!v) return 'first_appointment';
+    return APPT_TYPE_MAP[v] || v;
+};
+
+// Schema produção: appointments tem appointment_time, start_time, duration - NÃO tem title, end_time
 const buildAppointmentPayload = (appointmentData = {}) => {
     const rawStartTime = appointmentData.start_time || appointmentData.appointment_time;
     const durationMinutes = Number(appointmentData.duration || 60);
     const startTimeIso = toIsoDate(rawStartTime);
-    const computedEndTime = startTimeIso
-        ? new Date(new Date(startTimeIso).getTime() + durationMinutes * 60000).toISOString()
-        : null;
-    const endTimeIso = toIsoDate(appointmentData.end_time) || computedEndTime;
 
-    // patient_id: evita string vazia (causa 400 em coluna uuid)
     const patientId = appointmentData.patient_id && String(appointmentData.patient_id).trim()
         ? appointmentData.patient_id
         : null;
 
-    if (!startTimeIso || !endTimeIso) {
+    if (!startTimeIso) {
         throw new Error('Data e horário inválidos. Verifique se preencheu data e hora corretamente.');
     }
 
     return {
         nutritionist_id: appointmentData.nutritionist_id,
         patient_id: patientId,
-        title: appointmentData.title || appointmentData.appointment_type || 'Consulta',
+        appointment_time: startTimeIso,
         start_time: startTimeIso,
-        end_time: endTimeIso,
+        duration: durationMinutes,
+        appointment_type: toValidAppointmentType(appointmentData.appointment_type),
         notes: appointmentData.notes || null,
         status: normalizeAppointmentStatus(appointmentData.status)
     };
