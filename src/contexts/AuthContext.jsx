@@ -1,6 +1,16 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { Loader2 } from 'lucide-react';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useNavigate } from 'react-router-dom';
+
+const AuthLoadingFallback = () => (
+  <div className="flex min-h-screen items-center justify-center bg-background">
+    <div className="flex flex-col items-center gap-3">
+      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <p className="text-sm text-muted-foreground">Verificando sessão...</p>
+    </div>
+  </div>
+);
 
 const AuthContext = createContext();
 
@@ -211,50 +221,75 @@ export function AuthProvider({ children }) {
     return null;
   }, [createProfileIfMissing]);
 
+  // Helper: process session and set user state (used by getSession + onAuthStateChange)
+  const processSession = useCallback(async (session, event) => {
+    if (!session?.user) {
+      setUser(null);
+      return;
+    }
+    const profile = await fetchOrCreateProfile(session.user);
+    if (!profile) {
+      console.error('Failed to fetch or create profile, signing out');
+      await signOut();
+      return;
+    }
+    setUser({ ...session.user, profile });
+    // Auto-redirect only on SIGNED_IN (not on INITIAL_SESSION, TOKEN_REFRESHED)
+    if (event === 'SIGNED_IN') {
+      const currentPath = window.location.pathname;
+      if (currentPath === '/login' || currentPath === '/register') {
+        const redirectPath = profile.user_type === 'nutritionist' ? '/nutritionist' : '/patient';
+        setTimeout(() => navigate(redirectPath, { replace: true }), 100);
+      }
+    }
+  }, [fetchOrCreateProfile, signOut, navigate]);
+
   useEffect(() => {
-    setLoading(true);
+    let mounted = true;
+
+    const initAuth = async () => {
+      setLoading(true);
+      try {
+        // CRITICAL: getSession() immediately recovers session from storage (avoids blank page).
+        // onAuthStateChange fires async and can delay - without this, user sees blank screen until INITIAL_SESSION.
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!mounted) return;
+        if (session?.user) {
+          await processSession(session, 'INITIAL_SESSION');
+        } else {
+          setUser(null);
+        }
+      } catch (err) {
+        console.error('[AuthContext] Error recovering session:', err);
+        if (mounted) setUser(null);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+
+    initAuth();
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!mounted) return;
       if (event === 'SIGNED_OUT') {
         setUser(null);
         setLoading(false);
         return;
       }
-      
+      // Do NOT set loading=true here - would cause blank screen flash on TOKEN_REFRESHED/INITIAL_SESSION.
+      // User is already viewing the app; we're just updating state in background.
       if (session?.user) {
-        const profile = await fetchOrCreateProfile(session.user);
-
-        if (!profile) {
-          console.error('Failed to fetch or create profile, signing out');
-          await signOut();
-          return;
-        }
-
-        setUser({ ...session.user, profile });
-        
-        // Auto-redirect ONLY on initial sign in (not on token refresh)
-        // Token refresh should NOT cause redirects - user is already on a valid route
-        if (event === 'SIGNED_IN') {
-          // Only redirect if user is on login page
-          const currentPath = window.location.pathname;
-          if (currentPath === '/login' || currentPath === '/register') {
-            const redirectPath = profile.user_type === 'nutritionist' ? '/nutritionist' : '/patient';
-            // Use setTimeout to ensure navigation happens after state update
-            setTimeout(() => {
-              navigate(redirectPath, { replace: true });
-            }, 100);
-          }
-        }
-        // TOKEN_REFRESHED: Do nothing - user is already authenticated and on a valid route
+        await processSession(session, event);
       } else {
         setUser(null);
       }
-      setLoading(false);
     });
 
     return () => {
+      mounted = false;
       subscription.unsubscribe();
     };
-  }, [signOut, fetchOrCreateProfile, navigate]);
+  }, [processSession]);
 
   const updateUserProfile = (newProfileData) => {
     setUser(currentUser => {
@@ -275,7 +310,7 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children}
+      {loading ? <AuthLoadingFallback /> : children}
     </AuthContext.Provider>
   );
 }
