@@ -20,6 +20,7 @@ const EnergyExpenditurePage = lazy(() => import('@/pages/nutritionist/patients/E
 const LabResultsPage = lazy(() => import('@/pages/nutritionist/patients/LabResultsPage.jsx'));
 const GoalsPage = lazy(() => import('@/pages/nutritionist/patients/GoalsPage.jsx'));
 const FoodDiaryPage = lazy(() => import('@/pages/nutritionist/patients/FoodDiaryPage.jsx'));
+const NutritionistPatientAchievementsPage = lazy(() => import('@/pages/nutritionist/patients/NutritionistPatientAchievementsPage.jsx'));
 const AlertsPage = lazy(() => import('@/pages/nutritionist/alerts/AlertsPage.jsx'));
 const FoodBankPage = lazy(() => import('@/pages/nutritionist/tools/FoodBankPage.jsx'));
 const FinancialPage = lazy(() => import('@/pages/nutritionist/tools/FinancialPage.jsx'));
@@ -53,6 +54,7 @@ export const nutritionistRoutes = (
         <Route path="/nutritionist/patients/:patientId/lab-results" element={<LabResultsPage />} />
         <Route path="/nutritionist/patients/:patientId/goals" element={<GoalsPage />} />
         <Route path="/nutritionist/patients/:patientId/food-diary" element={<FoodDiaryPage />} />
+        <Route path="/nutritionist/patients/:patientId/achievements" element={<NutritionistPatientAchievementsPage />} />
         <Route path="/nutritionist/alerts" element={<AlertsPage />} />
         <Route path="/chat/nutritionist/:patientId" element={<ChatPage />} />
         <Route path="/nutritionist/food-bank" element={<FoodBankPage />} />
