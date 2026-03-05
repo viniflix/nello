@@ -57,10 +57,10 @@ export default function NutritionistPatientAchievementsPage() {
       try {
         const { data: profile } = await supabase
           .from('user_profiles')
-          .select('full_name')
+          .select('name')
           .eq('id', patientId)
           .maybeSingle();
-        setPatientData(profile ? { ...patient, full_name: profile.full_name } : patient);
+        setPatientData(profile ? { ...patient, full_name: profile.name } : patient);
       } catch (e) {
         setPatientData(patient);
       }

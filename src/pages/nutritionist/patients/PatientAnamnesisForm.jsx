@@ -185,6 +185,7 @@ const PatientAnamnesisForm = () => {
     const praticaExercicio = watch('habitos_vida.pratica_exercicio');
     const fuma = watch('habitos_vida.fuma');
     const bebe = watch('habitos_vida.bebe');
+    const dataNascimento = watch('identificacao.data_nascimento');
 
     // ============================================================
     // CARREGAR DADOS INICIAIS
@@ -299,6 +300,37 @@ const PatientAnamnesisForm = () => {
             setValue('habitos_vida.bebida_detalhes', undefined);
         }
     }, [bebe, setValue]);
+
+    // Idade automática a partir da data de nascimento
+    useEffect(() => {
+        if (dataNascimento === undefined || dataNascimento === null) return;
+        if (typeof dataNascimento !== 'string') return;
+        if (dataNascimento.trim() === '') {
+            setValue('identificacao.idade', '');
+            return;
+        }
+        const isoMatch = /^\d{4}-\d{2}-\d{2}$/.test(dataNascimento);
+        const displayMatch = /^\d{2}\/\d{2}\/\d{4}$/.test(dataNascimento);
+        if (!isoMatch && !displayMatch) return;
+
+        let birthDate;
+        try {
+            birthDate = isoMatch
+                ? new Date(dataNascimento + 'T12:00:00')
+                : new Date(dataNascimento.split('/').reverse().join('-') + 'T12:00:00');
+        } catch {
+            return;
+        }
+        if (isNaN(birthDate.getTime())) return;
+
+        const today = new Date();
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const m = today.getMonth() - birthDate.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) age--;
+        if (age >= 0 && age <= 150) {
+            setValue('identificacao.idade', `${age} anos`);
+        }
+    }, [dataNascimento, setValue]);
 
     // ============================================================
     // SCROLL AUTOMÁTICO PARA PRIMEIRO ERRO

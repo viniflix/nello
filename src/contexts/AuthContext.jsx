@@ -197,7 +197,9 @@ export function AuthProvider({ children }) {
         user_type: profile.role ?? profile.user_type,
         is_admin: profile.role === 'super_admin',
       };
-      console.log('[AuthContext] Profile loaded:', { id: normalized.id, email: normalized.email, user_type: normalized.user_type, is_admin: normalized.is_admin });
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[AuthContext] Profile loaded:', { id: normalized.id, email: normalized.email, user_type: normalized.user_type, is_admin: normalized.is_admin });
+      }
       return normalized;
     }
 

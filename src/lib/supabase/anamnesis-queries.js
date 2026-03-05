@@ -150,7 +150,7 @@ export const getAnamnesisById = async (anamnesisId) => {
         if (anamnesisData.patient_id) {
             const { data: patient, error: patientError } = await supabase
                 .from('user_profiles')
-                .select('id, full_name, name')
+                .select('id, name')
                 .eq('id', anamnesisData.patient_id)
                 .single();
 

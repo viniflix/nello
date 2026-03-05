@@ -82,17 +82,30 @@ const DateInputWithCalendar = ({
         setDisplayValue(parsed ? formatDateDisplay(parsed) : value);
     }, [value]);
 
+    const formatDateAsUserTypes = (input) => {
+        const digits = input.replace(/\D/g, '');
+        if (digits.length === 0) return '';
+        const d = digits.slice(0, 2);
+        const m = digits.slice(2, 4);
+        const y = digits.slice(4, 8);
+        let out = d.length >= 2 ? d.padStart(2, '0') : d;
+        if (digits.length > 2) out += '/' + (m.length >= 2 ? m.padStart(2, '0') : m);
+        if (digits.length > 4) out += '/' + y;
+        return out;
+    };
+
     const handleInputChange = (event) => {
-        const nextValue = event.target.value;
-        setDisplayValue(nextValue);
+        const input = event.target.value;
+        const formatted = formatDateAsUserTypes(input);
+        setDisplayValue(formatted);
 
         if (!onChange) return;
-        if (nextValue.trim() === '') {
+        if (formatted.trim() === '') {
             onChange('');
             return;
         }
 
-        const parsed = parseDateValue(nextValue);
+        const parsed = parseDateValue(formatted);
         if (parsed) {
             onChange(formatDateValue(parsed));
         }
@@ -143,6 +156,9 @@ const DateInputWithCalendar = ({
                         locale={ptBR}
                         fromDate={minDate || undefined}
                         toDate={maxDate || undefined}
+                        captionLayout="dropdown"
+                        fromYear={minDate ? minDate.getFullYear() : 1900}
+                        toYear={maxDate ? maxDate.getFullYear() : new Date().getFullYear() + 10}
                     />
                 </PopoverContent>
             </Popover>

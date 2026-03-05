@@ -663,14 +663,14 @@ export const getNutritionistPatientsForFeed = async (nutritionistId) => {
 
         const { data: profiles, error: profileError } = await supabase
             .from('user_profiles')
-            .select('id, full_name, birth_date, avatar_url')
+            .select('id, name, birth_date, avatar_url')
             .in('id', patientIds);
 
         if (profileError) throw profileError;
 
         const normalized = (profiles || []).map((profile) => ({
             id: profile.id,
-            name: profile.full_name || 'Paciente',
+            name: profile.name || 'Paciente',
             birth_date: profile.birth_date,
             avatar_url: profile.avatar_url
         }));
