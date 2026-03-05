@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { format, parse, parseISO, isValid, addMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -75,6 +75,7 @@ const DateInputWithCalendar = ({
     const [calendarOpen, setCalendarOpen] = useState(false);
     const [displayMonth, setDisplayMonth] = useState(() => selectedDate || new Date());
     const [yearInput, setYearInput] = useState(() => String((selectedDate || new Date()).getFullYear()));
+    const yearInputRef = useRef(null);
 
     useEffect(() => {
         if (!value) {
@@ -175,7 +176,7 @@ const DateInputWithCalendar = ({
                 {...rest}
             />
             <Popover
-                modal={true}
+                modal={false}
                 open={calendarOpen}
                 onOpenChange={(open) => {
                     setCalendarOpen(open);
@@ -183,6 +184,10 @@ const DateInputWithCalendar = ({
                         const baseDate = selectedDate || parseDateValue(displayValue) || new Date();
                         setDisplayMonth(baseDate);
                         setYearInput(String(baseDate.getFullYear()));
+                        setTimeout(() => {
+                            yearInputRef.current?.focus();
+                            yearInputRef.current?.select();
+                        }, 0);
                     }
                 }}
             >
@@ -210,13 +215,16 @@ const DateInputWithCalendar = ({
                         </Button>
                         <div className="flex items-center gap-1 text-sm">
                             <span className="capitalize">{format(displayMonth, 'MMMM', { locale: ptBR })}</span>
-                            <Input
+                            <input
+                                ref={yearInputRef}
                                 value={yearInput}
                                 onChange={(e) => applyYearInput(e.target.value)}
-                                className="h-7 w-20 text-center font-medium"
+                                className="h-7 w-20 rounded border border-input bg-background px-2 text-center text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                                 inputMode="numeric"
                                 placeholder="AAAA"
                                 onFocus={(e) => e.target.select()}
+                                onMouseDown={(e) => e.stopPropagation()}
+                                onKeyDown={(e) => e.stopPropagation()}
                             />
                         </div>
                         <Button
