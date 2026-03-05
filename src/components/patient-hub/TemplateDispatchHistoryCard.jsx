@@ -22,6 +22,7 @@ const CONTEXT_LABELS = {
 
 const TRIGGER_LABELS = {
     manual_clinical_tab:   'Disparo manual',
+    manual_adherence_tab:  'Disparo manual (Adesão)',
     appointment_completed: 'Consulta concluída',
     low_adherence_auto:    'Baixa aderência (auto)',
 };

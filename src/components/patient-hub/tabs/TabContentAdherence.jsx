@@ -1,13 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Target, TrendingDown, TrendingUp, Scale, Trophy, ArrowRight, Calendar, Flame, Award, Star } from 'lucide-react';
+import { Target, TrendingDown, TrendingUp, Scale, Trophy, ArrowRight, Calendar, Flame, Award, Star, MessageSquare, Send, ExternalLink, Loader2, HelpCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import {
+    Collapsible,
+    CollapsibleContent,
+    CollapsibleTrigger
+} from '@/components/ui/collapsible';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { getActiveGoal, getDaysRemaining, getProgressStatus } from '@/lib/supabase/goals-queries';
 import { patientRoute } from '@/lib/utils/patientRoutes';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
+import {
+    getMessageTemplates,
+    dispatchMessageTemplate,
+    previewTemplate,
+    TEMPLATE_CONTEXTS
+} from '@/lib/supabase/message-templates-queries';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -23,14 +37,42 @@ const ICON_MAP = {
 const TabContentAdherence = ({ patientId, patientData, modulesStatus = {} }) => {
     const patient = patientData || { id: patientId };
     const navigate = useNavigate();
+    const { user } = useAuth();
+    const { toast } = useToast();
     const [activeGoal, setActiveGoal] = useState(null);
     const [loading, setLoading] = useState(true);
     const [achievements, setAchievements] = useState([]);
     const [achievementsLoading, setAchievementsLoading] = useState(true);
 
+    // Comunicação contextual (mensagens por template)
+    const [templates, setTemplates] = useState([]);
+    const [templatesLoading, setTemplatesLoading] = useState(true);
+    const [selectedTemplateId, setSelectedTemplateId] = useState('');
+    const [dispatching, setDispatching] = useState(false);
+    const [previewData, setPreviewData] = useState(null);
+    const [howItWorksOpen, setHowItWorksOpen] = useState(false);
+
     useEffect(() => {
         loadActiveGoal();
     }, [patientId]);
+
+    useEffect(() => {
+        const fetchTemplates = async () => {
+            if (!user?.id) return;
+            setTemplatesLoading(true);
+            try {
+                const { data } = await getMessageTemplates({
+                    nutritionistId: user.id,
+                    isActive: true,
+                    limit: 50
+                });
+                setTemplates(data || []);
+            } finally {
+                setTemplatesLoading(false);
+            }
+        };
+        fetchTemplates();
+    }, [user?.id]);
 
     useEffect(() => {
         const fetchAchievements = async () => {
@@ -64,6 +106,45 @@ const TabContentAdherence = ({ patientId, patientData, modulesStatus = {} }) => 
             console.error('Erro ao carregar meta ativa:', error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleTemplateSelect = (id) => {
+        setSelectedTemplateId(id);
+        const tpl = templates.find(t => String(t.id) === id);
+        if (tpl) {
+            setPreviewData(previewTemplate({
+                titleTemplate: tpl.title_template || '',
+                bodyTemplate: tpl.body_template
+            }));
+        } else {
+            setPreviewData(null);
+        }
+    };
+
+    const handleDispatchMessage = async () => {
+        if (!selectedTemplateId || !patientId || !user?.id) return;
+        setDispatching(true);
+        try {
+            const { data, error } = await dispatchMessageTemplate({
+                templateId: Number(selectedTemplateId),
+                patientId,
+                triggerEvent: 'manual_adherence_tab'
+            });
+            if (error) throw error;
+            if (data?.ok === false) throw new Error(data.reason || 'Erro ao enviar');
+
+            toast({ title: 'Mensagem enviada!', description: 'O paciente receberá a mensagem no app.', variant: 'default' });
+            setSelectedTemplateId('');
+            setPreviewData(null);
+        } catch (err) {
+            toast({
+                title: 'Erro ao enviar mensagem',
+                description: err?.message || 'Tente novamente. Se o problema continuar, verifique se os modelos de mensagem estão configurados.',
+                variant: 'destructive'
+            });
+        } finally {
+            setDispatching(false);
         }
     };
 
@@ -305,6 +386,134 @@ const TabContentAdherence = ({ patientId, patientData, modulesStatus = {} }) => 
                 <GoalsCard />
                 <AchievementsCard />
             </div>
+
+            {/* Enviar mensagem ao paciente (templates) */}
+            <Card className="border-l-4 border-l-[#5f6f52]">
+                <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between gap-3">
+                        <div>
+                            <CardTitle className="text-lg flex items-center gap-2">
+                                <MessageSquare className="w-5 h-5 text-[#5f6f52]" />
+                                Enviar mensagem ao paciente
+                            </CardTitle>
+                            <p className="text-sm text-muted-foreground mt-1">
+                                Use modelos prontos para lembrete, parabéns por meta, pós-consulta e mais. Ideal para manter o paciente engajado.
+                            </p>
+                        </div>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="shrink-0 gap-1 text-xs text-[#5f6f52] hover:bg-[#5f6f52]/10"
+                            onClick={() => navigate('/nutritionist/message-templates')}
+                        >
+                            <ExternalLink className="w-3 h-3" />
+                            Criar/editar modelos
+                        </Button>
+                    </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <Collapsible open={howItWorksOpen} onOpenChange={setHowItWorksOpen}>
+                        <CollapsibleTrigger asChild>
+                            <Button variant="ghost" size="sm" className="w-full justify-start gap-2 text-muted-foreground hover:text-foreground">
+                                <HelpCircle className="w-4 h-4 shrink-0" />
+                                Como funciona?
+                            </Button>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                            <div className="rounded-lg border bg-muted/30 p-4 space-y-2 text-sm text-muted-foreground">
+                                <p className="font-medium text-foreground">Para que serve</p>
+                                <ul className="list-disc list-inside space-y-1 pl-1">
+                                    <li>Enviar lembretes (ex.: lembrete de consulta, de preencher o diário)</li>
+                                    <li>Parabenizar quando o paciente atinge uma meta</li>
+                                    <li>Enviar um recado após a consulta ou quando o plano alimentar é atualizado</li>
+                                    <li>Alertas (ex.: resultado de exame que precisa de atenção)</li>
+                                </ul>
+                                <p className="font-medium text-foreground pt-2">Como usar</p>
+                                <ul className="list-disc list-inside space-y-1 pl-1">
+                                    <li>Primeiro, crie seus modelos em &quot;Criar/editar modelos&quot; (você pode ter vários para situações diferentes).</li>
+                                    <li>Aqui você escolhe qual modelo enviar para este paciente e clica em enviar.</li>
+                                    <li>Nos modelos você pode usar expressões que são trocadas automaticamente, por exemplo: <strong>nome do paciente</strong>, <strong>data de hoje</strong>, <strong>meta atual</strong> e <strong>progresso</strong>. Na tela de criar modelo essas opções aparecem para você copiar.</li>
+                                </ul>
+                            </div>
+                        </CollapsibleContent>
+                    </Collapsible>
+
+                    {templatesLoading ? (
+                        <p className="text-sm text-muted-foreground py-2">Carregando modelos...</p>
+                    ) : templates.length === 0 ? (
+                        <div className="text-center py-4 rounded-lg border border-dashed bg-muted/20">
+                            <p className="text-sm text-muted-foreground mb-2">
+                                Você ainda não criou nenhum modelo de mensagem.
+                            </p>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => navigate('/nutritionist/message-templates')}
+                                className="gap-1"
+                            >
+                                <MessageSquare className="w-4 h-4" />
+                                Criar meu primeiro modelo
+                            </Button>
+                        </div>
+                    ) : (
+                        <>
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-foreground">Escolha o modelo</label>
+                                <Select value={selectedTemplateId} onValueChange={handleTemplateSelect}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Selecione qual mensagem enviar..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {TEMPLATE_CONTEXTS.map(ctx => {
+                                            const group = templates.filter(t => t.context === ctx.value);
+                                            if (group.length === 0) return null;
+                                            return (
+                                                <React.Fragment key={ctx.value}>
+                                                    <div className="px-2 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                                                        {ctx.label}
+                                                    </div>
+                                                    {group.map(tpl => (
+                                                        <SelectItem key={tpl.id} value={String(tpl.id)}>
+                                                            {tpl.name}
+                                                        </SelectItem>
+                                                    ))}
+                                                </React.Fragment>
+                                            );
+                                        })}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {previewData && (
+                                <div className="rounded-lg border bg-muted/30 p-3 space-y-1">
+                                    <p className="text-xs font-medium text-muted-foreground">
+                                        Pré-visualização (na mensagem real, o nome do paciente e a data serão preenchidos automaticamente)
+                                    </p>
+                                    {previewData.title && (
+                                        <p className="text-sm font-semibold">{previewData.title}</p>
+                                    )}
+                                    <p className="text-sm text-muted-foreground whitespace-pre-wrap line-clamp-4">
+                                        {previewData.body}
+                                    </p>
+                                </div>
+                            )}
+
+                            <Button
+                                className="w-full gap-2 bg-[#5f6f52] hover:bg-[#4a5a3e]"
+                                disabled={!selectedTemplateId || dispatching}
+                                onClick={handleDispatchMessage}
+                            >
+                                {dispatching ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                    <Send className="w-4 h-4" />
+                                )}
+                                Enviar mensagem ao paciente
+                            </Button>
+                        </>
+                    )}
+                </CardContent>
+            </Card>
         </div>
     );
 };
