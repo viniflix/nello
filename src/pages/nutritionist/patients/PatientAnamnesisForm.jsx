@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useResolvedPatientId } from '@/hooks/useResolvedPatientId';
-import { patientHubRoute } from '@/lib/utils/patientRoutes';
+import { useResolvedAnamnesisId } from '@/hooks/useResolvedAnamnesisId';
+import { patientHubRoute, patientAnamnesisListRoute, patientAnamnesisEditRoute, patientRoute } from '@/lib/utils/patientRoutes';
+import { isUuid } from '@/lib/utils/patientRoutes';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Save, FileCheck, Loader2, AlertCircle, ArrowLeft, Plus, Trash2 } from 'lucide-react';
@@ -56,8 +58,9 @@ import { useToast } from '@/hooks/use-toast';
  */
 const PatientAnamnesisForm = () => {
     const navigate = useNavigate();
-    const { patientId } = useResolvedPatientId();
-    const { anamnesisId } = useParams();
+    const { patientId, paramValue } = useResolvedPatientId();
+    const { anamnesisId: anamnesisParam } = useParams();
+    const { anamnesisId, loading: anamnesisResolving } = useResolvedAnamnesisId(patientId);
     const [searchParams] = useSearchParams();
     const { user } = useAuth();
     const { toast } = useToast();
@@ -65,7 +68,7 @@ const PatientAnamnesisForm = () => {
     // Check if this is a custom form
     const customTemplateId = searchParams.get('customTemplateId');
     const isCustomForm = !!customTemplateId;
-    const isEditMode = !!anamnesisId;
+    const isEditMode = !!anamnesisParam;
 
     const [patient, setPatient] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -189,6 +192,19 @@ const PatientAnamnesisForm = () => {
     const bebe = watch('habitos_vida.bebe');
     const dataNascimento = watch('identificacao.data_nascimento');
 
+    // Substituir URL por slug quando carregado com UUID (para URLs legíveis)
+    useEffect(() => {
+        if (!patient?.slug || !paramValue || !isUuid(paramValue)) return;
+        const targetPath = isEditMode && (anamnesisId || anamnesisParam)
+            ? patientAnamnesisEditRoute(patient, anamnesisId || anamnesisParam)
+            : patientRoute(patient, 'anamnesis/new');
+        const search = window.location.search || '';
+        const targetFull = search ? `${targetPath}?${search.replace(/^\?/, '')}` : targetPath;
+        if (window.location.pathname.includes(paramValue)) {
+            navigate(targetFull, { replace: true });
+        }
+    }, [patient?.slug, paramValue, isEditMode, anamnesisId, anamnesisParam, navigate]);
+
     // ============================================================
     // CARREGAR DADOS INICIAIS
     // ============================================================
@@ -241,7 +257,7 @@ const PatientAnamnesisForm = () => {
                     setCustomAnswers(answersMap);
                     lastSavedContentRef.current = JSON.stringify(answersMap);
 
-                } else if (isEditMode) {
+                } else if (isEditMode && anamnesisId) {
                     // MODO EDIÇÃO: Buscar anamnese existente (formulário padrão)
                     const { data: anamnesisData, error: anamnesisError } = await getAnamnesisById(anamnesisId);
                     if (anamnesisError) throw new Error('Erro ao buscar anamnese');
@@ -460,7 +476,7 @@ const PatientAnamnesisForm = () => {
                             ? 'Rascunho salvo com sucesso. Você pode continuar depois.'
                             : 'As respostas do formulário personalizado foram salvas com sucesso.',
                     });
-                    navigate(`/nutritionist/patients/${patientId}/anamnese`);
+                    navigate(isCustomForm ? patientRoute(patient || { id: patientId, slug: paramValue }, 'anamnese') : patientAnamnesisListRoute(patient || { id: patientId, slug: paramValue }));
                 }
                 return { createdAnamnesisId: createdId };
             }
@@ -492,7 +508,7 @@ const PatientAnamnesisForm = () => {
                         title: 'Anamnese atualizada!',
                         description: 'As alterações foram salvas com sucesso.',
                     });
-                    navigate(`/nutritionist/patients/${patientId}/anamnese`);
+                    navigate(isCustomForm ? patientRoute(patient || { id: patientId, slug: paramValue }, 'anamnese') : patientAnamnesisListRoute(patient || { id: patientId, slug: paramValue }));
                 }
                 // Autosave é silencioso - sem toast
             } else {
@@ -508,7 +524,7 @@ const PatientAnamnesisForm = () => {
                         title: 'Anamnese criada!',
                         description: 'A anamnese foi salva com sucesso.',
                     });
-                    navigate(`/nutritionist/patients/${patientId}/anamnese`);
+                    navigate(isCustomForm ? patientRoute(patient || { id: patientId, slug: paramValue }, 'anamnese') : patientAnamnesisListRoute(patient || { id: patientId, slug: paramValue }));
                 }
             }
 
@@ -597,7 +613,7 @@ const PatientAnamnesisForm = () => {
     // ============================================================
     // LOADING STATE
     // ============================================================
-    if (loading) {
+    if (loading || (isEditMode && anamnesisResolving)) {
         return (
             <div className="flex items-center justify-center min-h-screen bg-background-page">
                 <div className="text-center">
@@ -620,7 +636,7 @@ const PatientAnamnesisForm = () => {
                         <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => navigate(isCustomForm ? `/nutritionist/patients/${patientId}/anamnese` : patientHubRoute(patient || { id: patientId }, 'clinical'))}
+                            onClick={() => navigate(isCustomForm ? patientRoute(patient || { id: patientId, slug: paramValue }, 'anamnese') : patientAnamnesisListRoute(patient || { id: patientId, slug: paramValue }))}
                             className="mb-3 gap-2"
                         >
                             <ArrowLeft className="w-4 h-4 shrink-0" />
@@ -1947,7 +1963,7 @@ const PatientAnamnesisForm = () => {
                                 <Button
                                     type="button"
                                     variant="outline"
-                                    onClick={() => navigate(isCustomForm ? `/nutritionist/patients/${patientId}/anamnese` : patientHubRoute(patient || { id: patientId }, 'clinical'))}
+                                    onClick={() => navigate(isCustomForm ? patientRoute(patient || { id: patientId, slug: paramValue }, 'anamnese') : patientAnamnesisListRoute(patient || { id: patientId, slug: paramValue }))}
                                     disabled={saving}
                                 >
                                     Cancelar

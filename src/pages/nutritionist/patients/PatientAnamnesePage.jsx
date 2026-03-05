@@ -64,7 +64,7 @@ import {
 } from '@/lib/supabase/anamnesis-queries';
 import { STANDARD_ANAMNESIS_FIELDS } from '@/lib/constants/standard-anamnesis-fields';
 import { supabase } from '@/lib/customSupabaseClient';
-import { patientHubRoute } from '@/lib/utils/patientRoutes';
+import { patientHubRoute, patientAnamnesisEditRoute, patientAnamnesisNewRoute } from '@/lib/utils/patientRoutes';
 
 const PatientAnamnesePage = () => {
     const navigate = useNavigate();
@@ -205,7 +205,7 @@ const PatientAnamnesePage = () => {
             }
 
             if (standardTemplates.length === 1) {
-                navigate(`/nutritionist/patients/${patientId}/anamnesis/new?templateId=${standardTemplates[0].id}`);
+                navigate(patientAnamnesisNewRoute(patient || { id: patientId, slug: paramValue }, `templateId=${standardTemplates[0].id}`));
                 return;
             }
 
@@ -228,9 +228,9 @@ const PatientAnamnesePage = () => {
         setShowTemplateSelectionModal(false);
 
         if (selectedTemplateType === 'standard') {
-            navigate(`/nutritionist/patients/${patientId}/anamnesis/new?templateId=${selectedTemplate}`);
+            navigate(patientAnamnesisNewRoute(patient || { id: patientId, slug: paramValue }, `templateId=${selectedTemplate}`));
         } else if (selectedTemplateType === 'custom') {
-            navigate(`/nutritionist/patients/${patientId}/anamnesis/new?customTemplateId=${selectedTemplate}`);
+            navigate(patientAnamnesisNewRoute(patient || { id: patientId, slug: paramValue }, `customTemplateId=${selectedTemplate}`));
         }
     };
 
@@ -387,9 +387,9 @@ const PatientAnamnesePage = () => {
         }
     };
 
-    // Handler para editar anamnese existente
+    // Handler para editar anamnese existente (URL com slug do paciente e short code da anamnese)
     const handleEditAnamnesis = (anamnesisId) => {
-        navigate(`/nutritionist/patients/${patientId}/anamnesis/${anamnesisId}/edit`);
+        navigate(patientAnamnesisEditRoute(patient || { id: patientId, slug: paramValue }, anamnesisId));
     };
 
     // Handler para abrir modal de confirmação de exclusão de anamnese

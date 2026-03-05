@@ -34,7 +34,8 @@ import { getPatientAnamnesisList, getAnamnesisTemplates, deleteAnamnesis } from 
 import { getPatientProfile } from '@/lib/supabase/patient-queries';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
-import { patientHubRoute } from '@/lib/utils/patientRoutes';
+import { patientHubRoute, patientAnamnesisEditRoute, patientAnamnesisNewRoute, patientAnamnesisListRoute } from '@/lib/utils/patientRoutes';
+import { isUuid } from '@/lib/utils/patientRoutes';
 
 /**
  * PatientAnamnesisList - Tela de Listagem de Anamneses
@@ -61,6 +62,15 @@ const PatientAnamnesisList = () => {
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [anamnesisToDelete, setAnamnesisToDelete] = useState(null);
     const [deleting, setDeleting] = useState(false);
+
+    // Substituir URL por slug quando carregado com UUID (para URLs legíveis)
+    useEffect(() => {
+        if (!patient?.slug || !paramValue || !isUuid(paramValue)) return;
+        const targetPath = `/nutritionist/patients/${patient.slug}/anamnesis`;
+        if (window.location.pathname !== targetPath) {
+            navigate(targetPath, { replace: true });
+        }
+    }, [patient?.slug, paramValue, navigate]);
 
     // Buscar dados iniciais
     useEffect(() => {
@@ -105,7 +115,7 @@ const PatientAnamnesisList = () => {
 
         // Se houver apenas 1 template (o padrão), ir direto
         if (templates.length === 1) {
-            navigate(`/nutritionist/patients/${patientId}/anamnesis/new?templateId=${templates[0].id}`);
+            navigate(patientAnamnesisNewRoute(patient || { id: patientId, slug: paramValue }, `templateId=${templates[0].id}`));
             return;
         }
 
@@ -117,12 +127,12 @@ const PatientAnamnesisList = () => {
     const handleTemplateSelect = () => {
         if (!selectedTemplate) return;
         setShowTemplateModal(false);
-        navigate(`/nutritionist/patients/${patientId}/anamnesis/new?templateId=${selectedTemplate}`);
+        navigate(patientAnamnesisNewRoute(patient || { id: patientId, slug: paramValue }, `templateId=${selectedTemplate}`));
     };
 
-    // Handler para editar anamnese existente
+    // Handler para editar anamnese existente (URL com slug do paciente e short code da anamnese)
     const handleEditAnamnesis = (anamnesisId) => {
-        navigate(`/nutritionist/patients/${patientId}/anamnesis/${anamnesisId}/edit`);
+        navigate(patientAnamnesisEditRoute(patient || { id: patientId, slug: paramValue }, anamnesisId));
     };
 
     // Handler para abrir modal de confirmação de exclusão

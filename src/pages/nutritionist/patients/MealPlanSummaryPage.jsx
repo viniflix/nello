@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useResolvedPatientId } from '@/hooks/useResolvedPatientId';
+import { patientRoute } from '@/lib/utils/patientRoutes';
 import { ArrowLeft, Settings, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -32,7 +33,7 @@ const MEAL_COLORS = [
 ];
 
 const MealPlanSummaryPage = () => {
-    const { patientId } = useResolvedPatientId();
+    const { patientId, paramValue } = useResolvedPatientId();
     const { planId } = useParams();
     const navigate = useNavigate();
     const { toast } = useToast();
@@ -189,7 +190,7 @@ const MealPlanSummaryPage = () => {
                     <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => navigate(`/nutritionist/patients/${patientId}/meal-plan`)}
+                        onClick={() => navigate(patientRoute({ id: patientId, slug: paramValue }, 'meal-plan'))}
                         className="gap-2 shrink-0"
                     >
                         <ArrowLeft className="w-4 h-4 shrink-0" />

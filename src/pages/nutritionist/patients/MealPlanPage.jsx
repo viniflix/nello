@@ -61,7 +61,7 @@ import { generateShoppingList } from '@/lib/pdf/shoppingListGenerator';
 import { translateMealType } from '@/utils/mealTranslations';
 import { formatQuantityWithUnit } from '@/lib/utils/measureTranslations';
 import { useAuth } from '@/contexts/AuthContext';
-import { patientHubRoute } from '@/lib/utils/patientRoutes';
+import { patientHubRoute, patientRoute } from '@/lib/utils/patientRoutes';
 import { getLatestEnergyCalculation } from '@/lib/supabase/energy-queries';
 import PlanTargetMonitor from '@/components/meal-plan/PlanTargetMonitor';
 import { getPatientModuleSyncFlags, clearPatientModuleSyncFlags } from '@/lib/supabase/anthropometry-queries';
@@ -822,7 +822,7 @@ const MealPlanPage = () => {
                                     </Button>
                                     <Button
                                         size="sm"
-                                        onClick={() => navigate(`/nutritionist/patients/${patientId}/meal-plan/${activePlan.id}/summary`)}
+                                        onClick={() => navigate(patientRoute({ id: patientId, slug: paramValue }, `meal-plan/${activePlan.id}/summary`))}
                                         className="hidden sm:flex"
                                     >
                                         <BarChart3 className="h-4 w-4 mr-2" />
@@ -852,7 +852,7 @@ const MealPlanPage = () => {
                                                     <Edit className="h-4 w-4 mr-2" />
                                                     Editar Plano
                                                 </DropdownMenuItem>
-                                                <DropdownMenuItem onClick={() => navigate(`/nutritionist/patients/${patientId}/meal-plan/${activePlan.id}/summary`)}>
+                                                <DropdownMenuItem onClick={() => navigate(patientRoute({ id: patientId, slug: paramValue }, `meal-plan/${activePlan.id}/summary`))}>
                                                     <BarChart3 className="h-4 w-4 mr-2" />
                                                     Ver Resumo Nutricional
                                                 </DropdownMenuItem>

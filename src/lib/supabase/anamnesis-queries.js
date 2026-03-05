@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/customSupabaseClient';
 import { getTodayIsoDate } from '@/lib/utils/date';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
+import { isUuid } from '@/lib/utils/patientRoutes';
 
 /**
  * ============================================================
@@ -112,6 +113,32 @@ export const getPatientAnamnesisList = async (patientId) => {
         logSupabaseError('Erro ao buscar anamneses do paciente', error);
         return { data: null, error };
     }
+};
+
+/**
+ * Resolve short code (8 chars) ou UUID para o ID real da anamnese
+ * @param {string} patientId - ID do paciente
+ * @param {string} slugOrId - Short code (8 hex chars) ou UUID completo
+ * @returns {Promise<{anamnesisId: string|null, error: object|null}>}
+ */
+export const resolveAnamnesisId = async (patientId, slugOrId) => {
+  if (!patientId || !slugOrId) return { anamnesisId: null, error: null };
+  if (isUuid(slugOrId)) return { anamnesisId: slugOrId, error: null };
+  try {
+    const shortCode = String(slugOrId).replace(/-/g, '').substring(0, 8).toLowerCase();
+    const { data, error } = await supabase
+      .from('anamnesis_records')
+      .select('id')
+      .eq('patient_id', patientId);
+    if (error) throw error;
+    const match = (data || []).find((r) =>
+      String(r.id).replace(/-/g, '').toLowerCase().startsWith(shortCode)
+    );
+    return { anamnesisId: match?.id || null, error: null };
+  } catch (err) {
+    logSupabaseError('Erro ao resolver anamnese por short code', err);
+    return { anamnesisId: null, error: err };
+  }
 };
 
 /**
