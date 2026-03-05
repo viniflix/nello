@@ -51,6 +51,7 @@ import {
     createCustomFormTemplate,
     updateCustomFormTemplate,
     deleteCustomFormTemplate,
+    importStandardFormToTemplate,
     getAnamneseFields,
     createAnamneseField,
     updateAnamneseField,
@@ -61,6 +62,7 @@ import {
     createFieldOptions,
     updateFieldOptions
 } from '@/lib/supabase/anamnesis-queries';
+import { STANDARD_ANAMNESIS_FIELDS } from '@/lib/constants/standard-anamnesis-fields';
 import { supabase } from '@/lib/customSupabaseClient';
 
 const PatientAnamnesePage = () => {
@@ -707,14 +709,18 @@ const PatientAnamnesePage = () => {
     const CreateCustomModal = () => {
         const [localTitle, setLocalTitle] = useState('');
         const [localDescription, setLocalDescription] = useState('');
+        const [importFromStandard, setImportFromStandard] = useState(false);
 
         return (
-            <Dialog open={showCreateCustomModal} onOpenChange={setShowCreateCustomModal}>
+            <Dialog open={showCreateCustomModal} onOpenChange={(open) => {
+                setShowCreateCustomModal(open);
+                if (!open) setImportFromStandard(false);
+            }}>
                 <DialogContent className="max-w-md">
                     <DialogHeader>
                         <DialogTitle>Criar Formulário Personalizado</DialogTitle>
                         <DialogDescription>
-                            Dê um nome ao seu formulário. Você poderá adicionar perguntas na próxima etapa.
+                            Dê um nome ao seu formulário. Você pode começar do zero ou importar o formulário padrão para adicionar suas próprias perguntas.
                         </DialogDescription>
                     </DialogHeader>
 
@@ -737,9 +743,28 @@ const PatientAnamnesePage = () => {
                                 value={localDescription}
                                 onChange={(e) => setLocalDescription(e.target.value)}
                                 placeholder="Descreva o objetivo deste formulário..."
-                                rows={3}
+                                rows={2}
                                 maxLength={500}
                             />
+                        </div>
+
+                        <div className="flex items-start space-x-3 rounded-lg border p-4 bg-muted/30">
+                            <Checkbox
+                                id="import-standard"
+                                checked={importFromStandard}
+                                onCheckedChange={(c) => setImportFromStandard(!!c)}
+                            />
+                            <div className="space-y-1">
+                                <Label
+                                    htmlFor="import-standard"
+                                    className="text-sm font-medium cursor-pointer leading-none"
+                                >
+                                    Importar formulário padrão
+                                </Label>
+                                <p className="text-xs text-muted-foreground">
+                                    Comece com todas as perguntas do formulário padrão e adicione as suas. Ideal para quem quer complementar sem refazer tudo.
+                                </p>
+                            </div>
                         </div>
                     </div>
 
@@ -750,6 +775,7 @@ const PatientAnamnesePage = () => {
                                 setShowCreateCustomModal(false);
                                 setLocalTitle('');
                                 setLocalDescription('');
+                                setImportFromStandard(false);
                             }}
                             disabled={creating}
                         >
@@ -776,14 +802,28 @@ const PatientAnamnesePage = () => {
 
                                     if (error) throw error;
 
-                                    toast({
-                                        title: 'Sucesso!',
-                                        description: 'Formulário personalizado criado. Agora adicione suas perguntas.',
-                                    });
+                                    if (importFromStandard) {
+                                        const { error: importError } = await importStandardFormToTemplate(
+                                            data.id,
+                                            user.id,
+                                            STANDARD_ANAMNESIS_FIELDS
+                                        );
+                                        if (importError) throw importError;
+                                        toast({
+                                            title: 'Sucesso!',
+                                            description: 'Formulário importado! Você pode editar e adicionar novas perguntas.',
+                                        });
+                                    } else {
+                                        toast({
+                                            title: 'Sucesso!',
+                                            description: 'Formulário criado. Agora adicione suas perguntas.',
+                                        });
+                                    }
 
                                     setShowCreateCustomModal(false);
                                     setLocalTitle('');
                                     setLocalDescription('');
+                                    setImportFromStandard(false);
 
                                     await loadCustomTemplates();
                                     handleEditCustomTemplate(data);
@@ -804,8 +844,10 @@ const PatientAnamnesePage = () => {
                             {creating ? (
                                 <>
                                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    Criando...
+                                    {importFromStandard ? 'Importando...' : 'Criando...'}
                                 </>
+                            ) : importFromStandard ? (
+                                'Criar com Formulário Padrão'
                             ) : (
                                 'Criar e Adicionar Perguntas'
                             )}
@@ -920,6 +962,7 @@ const PatientAnamnesePage = () => {
         const [localFieldLabel, setLocalFieldLabel] = useState('');
         const [localFieldType, setLocalFieldType] = useState('texto_curto');
         const [localCategory, setLocalCategory] = useState('geral');
+        const [customCategoryInput, setCustomCategoryInput] = useState('');
         const [localIsRequired, setLocalIsRequired] = useState(false);
         const [localOptions, setLocalOptions] = useState([]);
         const [newOption, setNewOption] = useState('');
@@ -940,12 +983,21 @@ const PatientAnamnesePage = () => {
             }
         }, [editingField?.id]);
 
+        const PREDEFINED_CATEGORIES = ['geral', 'identificacao', 'historico_clinico', 'historico_familiar', 'habitos_vida', 'objetivos', 'habitos_alimentares'];
+
         // Atualizar valores locais apenas quando o modal abrir
         React.useEffect(() => {
             if (showFieldModal) {
                 setLocalFieldLabel(fieldForm.fieldLabel);
                 setLocalFieldType(fieldForm.fieldType);
-                setLocalCategory(fieldForm.category);
+                const cat = fieldForm.category;
+                if (cat && !PREDEFINED_CATEGORIES.includes(cat)) {
+                    setLocalCategory('__nova__');
+                    setCustomCategoryInput(cat.replace(/_/g, ' '));
+                } else {
+                    setLocalCategory(cat || 'geral');
+                    setCustomCategoryInput('');
+                }
                 setLocalIsRequired(fieldForm.isRequired);
 
                 // Carregar opções se estiver editando campo de seleção
@@ -973,6 +1025,19 @@ const PatientAnamnesePage = () => {
                 toast({
                     title: 'Atenção',
                     description: 'Digite o nome da pergunta.',
+                    variant: 'destructive',
+                });
+                return;
+            }
+
+            const effectiveCategory = localCategory === '__nova__'
+                ? customCategoryInput.trim().toLowerCase().replace(/\s+/g, '_') || 'geral'
+                : localCategory;
+
+            if (localCategory === '__nova__' && !customCategoryInput.trim()) {
+                toast({
+                    title: 'Atenção',
+                    description: 'Digite o nome da categoria ou selecione uma existente.',
                     variant: 'destructive',
                 });
                 return;
@@ -1016,7 +1081,7 @@ const PatientAnamnesePage = () => {
                         nutritionistId: user.id,
                         fieldLabel: localFieldLabel,
                         fieldType: localFieldType,
-                        category: localCategory,
+                        category: effectiveCategory,
                         isRequired: localIsRequired
                     });
 
@@ -1108,10 +1173,17 @@ const PatientAnamnesePage = () => {
                                 <Label htmlFor="field-category">Categoria</Label>
                                 <Select
                                     value={localCategory}
-                                    onValueChange={setLocalCategory}
+                                    onValueChange={(v) => {
+                                        setLocalCategory(v);
+                                        if (v !== '__nova__') setCustomCategoryInput('');
+                                    }}
                                 >
                                     <SelectTrigger id="field-category">
-                                        <SelectValue />
+                                        <SelectValue placeholder={
+                                            localCategory === '__nova__' && customCategoryInput
+                                                ? customCategoryInput
+                                                : undefined
+                                        } />
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="geral">Geral</SelectItem>
@@ -1121,8 +1193,26 @@ const PatientAnamnesePage = () => {
                                         <SelectItem value="habitos_vida">Hábitos de Vida</SelectItem>
                                         <SelectItem value="objetivos">Objetivos</SelectItem>
                                         <SelectItem value="habitos_alimentares">Hábitos Alimentares</SelectItem>
+                                        {customTemplateFields
+                                            .map(f => f.category)
+                                            .filter(Boolean)
+                                            .filter((c, i, arr) => !PREDEFINED_CATEGORIES.includes(c) && arr.indexOf(c) === i)
+                                            .map(cat => (
+                                                <SelectItem key={cat} value={cat}>
+                                                    {cat.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                                </SelectItem>
+                                            ))}
+                                        <SelectItem value="__nova__">➕ Nova categoria</SelectItem>
                                     </SelectContent>
                                 </Select>
+                                {localCategory === '__nova__' && (
+                                    <Input
+                                        className="mt-2"
+                                        placeholder="Nome da nova categoria (ex: Avaliação Física)"
+                                        value={customCategoryInput}
+                                        onChange={(e) => setCustomCategoryInput(e.target.value)}
+                                    />
+                                )}
                             </div>
                         </div>
 

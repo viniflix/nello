@@ -212,6 +212,12 @@ const AnthropometryPage = () => {
 
     // Carregar dados
     const loadData = useCallback(async () => {
+        if (!patientId) {
+            setLoading(false);
+            setError(resolveError?.message || 'Paciente não identificado.');
+            return;
+        }
+
         setLoading(true);
         setError(null);
 
@@ -308,11 +314,12 @@ const AnthropometryPage = () => {
         } finally {
             setLoading(false);
         }
-    }, [patientId, toast]);
+    }, [patientId, toast, resolveError]);
 
     useEffect(() => {
+        if (resolveLoading) return;
         loadData();
-    }, [loadData]);
+    }, [loadData, resolveLoading]);
 
     // Criar ou atualizar registro
     const handleSubmit = async (data, recordId = null) => {

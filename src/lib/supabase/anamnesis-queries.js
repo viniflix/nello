@@ -726,6 +726,58 @@ export const updateCustomFormTemplate = async (templateId, templateData) => {
 };
 
 /**
+ * Importar campos do formulário padrão para um template personalizado.
+ * Cria os campos em anamnese_fields e associa ao template.
+ */
+export const importStandardFormToTemplate = async (templateId, nutritionistId, standardFields) => {
+    try {
+        for (let order = 0; order < standardFields.length; order++) {
+            const def = standardFields[order];
+            const { data: field, error: fieldError } = await supabase
+                .from('anamnese_fields')
+                .insert([{
+                    nutritionist_id: nutritionistId,
+                    field_label: def.field_label,
+                    field_type: def.field_type,
+                    category: def.category || 'geral',
+                    is_required: def.is_required || false
+                }])
+                .select()
+                .single();
+
+            if (fieldError) throw fieldError;
+
+            const { error: linkError } = await supabase
+                .from('anamnesis_template_fields')
+                .insert([{
+                    template_id: templateId,
+                    field_id: field.id,
+                    field_order: order
+                }]);
+
+            if (linkError) throw linkError;
+
+            if (def.options && def.options.length > 0) {
+                const optionsToInsert = def.options.map((text, i) => ({
+                    field_id: field.id,
+                    option_text: text,
+                    option_order: i
+                }));
+                const { error: optsError } = await supabase
+                    .from('anamnese_field_options')
+                    .insert(optionsToInsert);
+
+                if (optsError) throw optsError;
+            }
+        }
+        return { error: null };
+    } catch (error) {
+        logSupabaseError('Erro ao importar formulário padrão', error);
+        return { error };
+    }
+};
+
+/**
  * Deletar formulário personalizado
  * Por enquanto apenas deleta o template (campos ficam órfãos até implementarmos a relação)
  */

@@ -88,6 +88,7 @@ const PatientAnamnesisForm = () => {
     }
     const autoSaveTimeoutRef = useRef(null);
     const formReadyRef = useRef(false);
+    const lastSavedContentRef = useRef(null);
 
     // ============================================================
     // REACT HOOK FORM COM ZOD
@@ -237,6 +238,7 @@ const PatientAnamnesisForm = () => {
                         }
                     });
                     setCustomAnswers(answersMap);
+                    lastSavedContentRef.current = JSON.stringify(answersMap);
 
                 } else if (isEditMode) {
                     // MODO EDIÇÃO: Buscar anamnese existente (formulário padrão)
@@ -245,6 +247,11 @@ const PatientAnamnesisForm = () => {
 
                     // Resetar formulário com dados existentes
                     reset({
+                        date: anamnesisData.date,
+                        notes: anamnesisData.notes || '',
+                        ...anamnesisData.content
+                    });
+                    lastSavedContentRef.current = JSON.stringify({
                         date: anamnesisData.date,
                         notes: anamnesisData.notes || '',
                         ...anamnesisData.content
@@ -453,12 +460,6 @@ const PatientAnamnesisForm = () => {
                             : 'As respostas do formulário personalizado foram salvas com sucesso.',
                     });
                     navigate(`/nutritionist/patients/${patientId}/anamnese`);
-                } else {
-                    toast({
-                        title: 'Rascunho salvo automaticamente',
-                        description: 'Suas alterações foram guardadas.',
-                        duration: 2500,
-                    });
                 }
                 return { createdAnamnesisId: createdId };
             }
@@ -491,13 +492,8 @@ const PatientAnamnesisForm = () => {
                         description: 'As alterações foram salvas com sucesso.',
                     });
                     navigate(`/nutritionist/patients/${patientId}/anamnese`);
-                } else {
-                    toast({
-                        title: 'Rascunho salvo automaticamente',
-                        description: 'Suas alterações foram guardadas.',
-                        duration: 2500,
-                    });
                 }
+                // Autosave é silencioso - sem toast
             } else {
                 const { data: created, error: createError } = await createAnamnesis(submitData);
                 if (createError) throw createError;
@@ -512,12 +508,6 @@ const PatientAnamnesisForm = () => {
                         description: 'A anamnese foi salva com sucesso.',
                     });
                     navigate(`/nutritionist/patients/${patientId}/anamnese`);
-                } else {
-                    toast({
-                        title: 'Rascunho salvo automaticamente',
-                        description: 'Suas alterações foram guardadas.',
-                        duration: 2500,
-                    });
                 }
             }
 
@@ -542,7 +532,8 @@ const PatientAnamnesisForm = () => {
     };
 
     // ============================================================
-    // AUTO-SAVE: Salva rascunho automaticamente após 2s sem digitar
+    // AUTO-SAVE: Salva rascunho silenciosamente após 10s sem alterações
+    // Evita requests desnecessários: só salva quando conteúdo mudou
     // ============================================================
     const watchedValues = watch();
     useEffect(() => {
@@ -559,16 +550,21 @@ const PatientAnamnesisForm = () => {
         const effectiveId = currentAnamnesisIdRef.current || anamnesisId;
         if (!hasDataToSave && !effectiveId) return;
 
+        const contentToSave = isCustomForm ? customAnswers : watchedValues;
+        const serialized = JSON.stringify(contentToSave);
+
         if (autoSaveTimeoutRef.current) clearTimeout(autoSaveTimeoutRef.current);
 
         autoSaveTimeoutRef.current = setTimeout(async () => {
             autoSaveTimeoutRef.current = null;
-            if (isCustomForm) {
-                await onSubmit({}, 'draft', { skipNavigate: true });
-            } else {
-                await onSubmit(watchedValues, 'draft', { skipNavigate: true });
+            if (lastSavedContentRef.current === serialized) return;
+            const result = isCustomForm
+                ? await onSubmit({}, 'draft', { skipNavigate: true })
+                : await onSubmit(watchedValues, 'draft', { skipNavigate: true });
+            if (result && Object.keys(result).length > 0) {
+                lastSavedContentRef.current = serialized;
             }
-        }, 2000);
+        }, 10000);
 
         return () => {
             if (autoSaveTimeoutRef.current) clearTimeout(autoSaveTimeoutRef.current);
@@ -697,6 +693,8 @@ const PatientAnamnesisForm = () => {
                                                 objetivos: 'Objetivos',
                                                 habitos_alimentares: 'Hábitos Alimentares'
                                             };
+                                            const categoryDisplayName = categoryNames[category]
+                                                || category.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 
                                             return (
                                                 <AccordionItem key={category} value={category} className="border-b">
@@ -707,7 +705,7 @@ const PatientAnamnesisForm = () => {
                                                             )}>
                                                                 {categoryIndex + 1}
                                                             </div>
-                                                            <span className="font-semibold text-left">{categoryNames[category] || category}</span>
+                                                            <span className="font-semibold text-left">{categoryDisplayName}</span>
                                                         </div>
                                                     </AccordionTrigger>
                                                     <AccordionContent className="pt-4 pb-6">
