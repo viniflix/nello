@@ -1,15 +1,22 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BarChart3, Camera, TrendingDown, TrendingUp, Calendar, ArrowRight, Ruler } from 'lucide-react';
+import { BarChart3, Camera, TrendingDown, TrendingUp, Calendar, ArrowRight, Ruler, Scale } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { patientRoute } from '@/lib/utils/patientRoutes';
+import { getProgressPhotosSummary, getWeightClosestToDate } from '@/lib/supabase/progress-photos-queries';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 const TabContentBody = ({ patientId, patientData, modulesStatus = {}, latestMetrics = {} }) => {
     const navigate = useNavigate();
     const patient = patientData || { id: patientId };
+    const [photosSummary, setPhotosSummary] = useState({ first: null, last: null, all: [] });
+    const [weightBefore, setWeightBefore] = useState(null);
+    const [weightAfter, setWeightAfter] = useState(null);
+    const [photosLoading, setPhotosLoading] = useState(true);
 
     const anthropometryData = {
         hasData: modulesStatus.anthropometry === 'completed' || !!latestMetrics?.weight,
@@ -170,38 +177,153 @@ const TabContentBody = ({ patientId, patientData, modulesStatus = {}, latestMetr
         );
     };
 
+    useEffect(() => {
+        if (!patientId) {
+            setPhotosLoading(false);
+            return;
+        }
+        let cancelled = false;
+        setPhotosLoading(true);
+        (async () => {
+            const full = await getProgressPhotosSummary({ patientId });
+            if (cancelled) return;
+            setPhotosSummary({ first: full.first, last: full.last, all: full.all });
+            if (full.first) {
+                const { data: wBefore } = await getWeightClosestToDate({ patientId, date: full.first.photo_date });
+                if (!cancelled && wBefore) setWeightBefore(wBefore);
+            } else setWeightBefore(null);
+            if (full.last) {
+                const { data: wAfter } = await getWeightClosestToDate({ patientId, date: full.last.photo_date });
+                if (!cancelled && wAfter) setWeightAfter(wAfter);
+            } else setWeightAfter(null);
+            setPhotosLoading(false);
+        })();
+        return () => { cancelled = true; };
+    }, [patientId]);
+
     const PhotosCard = () => {
-        const hasPhotos = false;
+        const { first, last, all } = photosSummary;
+        const hasPhotos = all.length > 0;
+        const weightDiff =
+            weightBefore?.weight != null && weightAfter?.weight != null
+                ? weightAfter.weight - weightBefore.weight
+                : null;
+
+        if (photosLoading) {
+            return (
+                <Card className="border-dashed border-2 border-[#b99470] bg-[#fefae0]/20 h-full">
+                    <CardContent className="py-8 flex items-center justify-center">
+                        <div className="animate-pulse text-muted-foreground text-sm">Carregando fotos...</div>
+                    </CardContent>
+                </Card>
+            );
+        }
+
+        if (!hasPhotos) {
+            return (
+                <Card
+                    className="border-dashed border-2 border-[#b99470] bg-[#fefae0]/30 hover:shadow-md transition-all cursor-pointer h-full"
+                    onClick={() => navigate(patientRoute(patient, 'photos'))}
+                >
+                    <CardHeader className="pb-3">
+                        <div className="flex items-center gap-2">
+                            <Camera className="w-5 h-5 text-[#b99470]" />
+                            <CardTitle className="text-base">Fotos de Progresso</CardTitle>
+                        </div>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-center py-6">
+                            <div className="w-12 h-12 rounded-full bg-[#fefae0] flex items-center justify-center mx-auto mb-3">
+                                <Camera className="w-6 h-6 text-[#b99470]" />
+                            </div>
+                            <p className="text-sm font-medium text-foreground mb-2">
+                                Nenhuma foto registrada
+                            </p>
+                            <p className="text-xs text-muted-foreground mb-4">
+                                Adicione fotos para acompanhar o progresso visual
+                            </p>
+                            <span className="inline-flex items-center gap-2 text-sm font-medium text-[#b99470]">
+                                <Camera className="w-3 h-3" />
+                                Adicionar Fotos
+                                <ArrowRight className="w-3 h-3" />
+                            </span>
+                        </div>
+                    </CardContent>
+                </Card>
+            );
+        }
 
         return (
             <Card
-                className="border-dashed border-2 border-[#b99470] bg-[#fefae0]/30 hover:shadow-md transition-all cursor-pointer h-full"
+                className="border-l-4 border-l-[#b99470] hover:shadow-xl transition-all bg-gradient-to-br from-[#fefae0]/20 to-[#fefae0]/10 cursor-pointer h-full"
                 onClick={() => navigate(patientRoute(patient, 'photos'))}
             >
-                <CardHeader className="pb-3">
-                    <div className="flex items-center gap-2">
-                        <Camera className="w-5 h-5 text-[#b99470]" />
-                        <CardTitle className="text-base">Fotos de Progresso</CardTitle>
-                    </div>
-                </CardHeader>
-
-                <CardContent>
-                    <div className="text-center py-6">
-                        <div className="w-12 h-12 rounded-full bg-[#fefae0] flex items-center justify-center mx-auto mb-3">
-                            <Camera className="w-6 h-6 text-[#b99470]" />
+                <CardHeader className="pb-2">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <Camera className="w-5 h-5 text-[#b99470]" />
+                            <CardTitle className="text-base">Fotos de Progresso</CardTitle>
                         </div>
-                        <p className="text-sm font-medium text-foreground mb-2">
-                            Nenhuma foto registrada
-                        </p>
-                        <p className="text-xs text-muted-foreground mb-4">
-                            Adicione fotos para acompanhar o progresso visual
-                        </p>
-                        <span className="inline-flex items-center gap-2 text-sm font-medium text-[#b99470]">
-                            <Camera className="w-3 h-3" />
-                            Adicionar Fotos
-                            <ArrowRight className="w-3 h-3" />
+                        <span className="text-xs text-muted-foreground">
+                            {all.length} foto{all.length !== 1 ? 's' : ''}
+                            {first && last && first.photo_date !== last.photo_date && (
+                                <span className="ml-1"> · {format(new Date(first.photo_date), 'dd/MM/yy', { locale: ptBR })} a {format(new Date(last.photo_date), 'dd/MM/yy', { locale: ptBR })}</span>
+                            )}
                         </span>
                     </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                    <div className="grid grid-cols-2 gap-2">
+                        <div className="rounded-lg overflow-hidden border border-[#b99470]/40 bg-muted/30 aspect-[3/4] min-h-0">
+                            <img
+                                src={first.photo_url}
+                                alt="Antes"
+                                className="w-full h-full object-cover"
+                            />
+                            <div className="bg-[#b99470]/90 text-white text-center py-1 px-2">
+                                <span className="font-semibold text-xs">Antes</span>
+                                <p className="text-[10px] opacity-90">
+                                    {format(new Date(first.photo_date), 'dd/MM/yyyy', { locale: ptBR })}
+                                </p>
+                            </div>
+                        </div>
+                        <div className="rounded-lg overflow-hidden border border-[#b99470]/40 bg-muted/30 aspect-[3/4] min-h-0">
+                            <img
+                                src={last.photo_url}
+                                alt="Depois"
+                                className="w-full h-full object-cover"
+                            />
+                            <div className="bg-[#b99470]/90 text-white text-center py-1 px-2">
+                                <span className="font-semibold text-xs">Depois</span>
+                                <p className="text-[10px] opacity-90">
+                                    {format(new Date(last.photo_date), 'dd/MM/yyyy', { locale: ptBR })}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    {weightDiff != null && (
+                        <div className="flex items-center justify-center gap-2 text-xs rounded-lg bg-muted/50 p-2 border border-border">
+                            <Scale className="w-3.5 h-3.5 text-muted-foreground" />
+                            <span className="text-muted-foreground">Peso (período):</span>
+                            <span className="font-semibold">
+                                {weightBefore?.weight?.toFixed(1)} kg → {weightAfter?.weight?.toFixed(1)} kg
+                                {weightDiff !== 0 && (
+                                    <span className={cn('ml-1', weightDiff < 0 ? 'text-green-600' : 'text-amber-600')}>
+                                        ({weightDiff > 0 ? '+' : ''}{weightDiff.toFixed(1)} kg)
+                                    </span>
+                                )}
+                            </span>
+                        </div>
+                    )}
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full gap-1 text-[#b99470] hover:bg-[#b99470]/10"
+                        onClick={(e) => { e.stopPropagation(); navigate(patientRoute(patient, 'photos')); }}
+                    >
+                        Ver timeline
+                        <ArrowRight className="w-3 h-3" />
+                    </Button>
                 </CardContent>
             </Card>
         );

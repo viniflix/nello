@@ -1,15 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Target, TrendingDown, TrendingUp, Scale, Trophy, ArrowRight, Calendar, Flame, Award, Star, MessageSquare, Send, ExternalLink, Loader2, HelpCircle } from 'lucide-react';
+import { Target, TrendingDown, TrendingUp, Scale, Trophy, ArrowRight, Calendar, Flame, Award, Star, MessageSquare, Send, ExternalLink, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import {
-    Collapsible,
-    CollapsibleContent,
-    CollapsibleTrigger
-} from '@/components/ui/collapsible';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { getActiveGoal, getDaysRemaining, getProgressStatus } from '@/lib/supabase/goals-queries';
 import { patientRoute } from '@/lib/utils/patientRoutes';
@@ -50,7 +45,6 @@ const TabContentAdherence = ({ patientId, patientData, modulesStatus = {} }) => 
     const [selectedTemplateId, setSelectedTemplateId] = useState('');
     const [dispatching, setDispatching] = useState(false);
     const [previewData, setPreviewData] = useState(null);
-    const [howItWorksOpen, setHowItWorksOpen] = useState(false);
 
     useEffect(() => {
         loadActiveGoal();
@@ -302,7 +296,7 @@ const TabContentAdherence = ({ patientId, patientData, modulesStatus = {} }) => 
 
         if (achievementsLoading) {
             return (
-                <Card className="border-l-4 border-l-amber-500 h-full">
+                <Card className="border-dashed border-2 border-amber-300/50 bg-muted/20 h-full">
                     <CardContent className="py-8 text-center">
                         <p className="text-sm text-muted-foreground">Carregando conquistas...</p>
                     </CardContent>
@@ -310,60 +304,80 @@ const TabContentAdherence = ({ patientId, patientData, modulesStatus = {} }) => 
             );
         }
 
+        // Estado vazio: mesmo padrão do card de Metas (opaco, borda pontilhada, centralizado, CTA)
+        if (achievements.length === 0) {
+            return (
+                <Card
+                    className="border-dashed border-2 border-amber-300/70 bg-amber-50/30 hover:shadow-md transition-all cursor-pointer h-full"
+                    onClick={() => navigate(patientRoute(patient, 'achievements'))}
+                >
+                    <CardContent className="py-8 text-center">
+                        <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-3">
+                            <Trophy className="w-6 h-6 text-amber-600" />
+                        </div>
+                        <h3 className="text-base font-semibold text-foreground mb-2">
+                            Conquistas
+                        </h3>
+                        <p className="text-sm text-muted-foreground mb-4 max-w-sm mx-auto">
+                            O paciente ainda não desbloqueou conquistas. Elas são concedidas ao registrar refeições e atingir metas.
+                        </p>
+                        <span className="inline-flex items-center gap-2 text-sm font-medium text-amber-700">
+                            <Trophy className="w-4 h-4" />
+                            Ver conquistas
+                            <ArrowRight className="w-3 h-3" />
+                        </span>
+                    </CardContent>
+                </Card>
+            );
+        }
+
+        // Estado preenchido: borda lateral, título no topo, 3 últimas conquistas lado a lado (título + data)
+        const latestThree = achievements.slice(0, 3);
+
         return (
             <Card
-                className="border-l-4 border-l-amber-500 hover:shadow-xl transition-all cursor-pointer h-full"
+                className="border-l-4 border-l-amber-500 hover:shadow-xl transition-all cursor-pointer h-full bg-gradient-to-br from-amber-50/30 to-amber-50/10"
                 onClick={() => navigate(patientRoute(patient, 'achievements'))}
             >
-                <CardHeader className="pb-3">
+                <CardHeader className="pb-2">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                             <Trophy className="w-5 h-5 text-amber-600" />
                             <CardTitle className="text-base">Conquistas</CardTitle>
                         </div>
-                        {achievements.length > 0 && (
-                            <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300 text-xs">
-                                {achievements.length} desbloqueada{achievements.length !== 1 ? 's' : ''}
-                            </Badge>
-                        )}
+                        <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300 text-xs">
+                            {achievements.length} desbloqueada{achievements.length !== 1 ? 's' : ''}
+                        </Badge>
                     </div>
                 </CardHeader>
                 <CardContent>
-                    {achievements.length === 0 ? (
-                        <p className="text-sm text-muted-foreground mb-4">
-                            O paciente ainda não desbloqueou conquistas. Conquistas são concedidas automaticamente ao registrar refeições e atingir metas.
-                        </p>
-                    ) : (
-                        <div className="space-y-2 mb-3">
-                            {achievements.map((ua, idx) => {
-                                const ach = ua.achievements;
-                                const Icon = getIcon(ach?.icon_name);
-                                return (
-                                    <div
-                                        key={idx}
-                                        className="flex items-start gap-2 p-2 rounded-lg bg-amber-50/50 border border-amber-200"
-                                    >
-                                        <div className="p-1.5 bg-amber-500 rounded-full flex-shrink-0">
-                                            <Icon className="w-3.5 h-3.5 text-white" />
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-medium text-foreground truncate">
-                                                {ach?.name || 'Conquista'}
-                                            </p>
-                                            <p className="text-xs text-muted-foreground">
-                                                {ua.achieved_at && format(new Date(ua.achieved_at), "dd/MM/yyyy", { locale: ptBR })}
-                                            </p>
-                                        </div>
+                    <div className="grid grid-cols-3 gap-2 mb-3">
+                        {latestThree.map((ua, idx) => {
+                            const ach = ua.achievements;
+                            const Icon = getIcon(ach?.icon_name);
+                            return (
+                                <div
+                                    key={idx}
+                                    className="flex flex-col items-center justify-center p-2 rounded-lg bg-amber-50/70 border border-amber-200/80 text-center min-h-[72px]"
+                                >
+                                    <div className="p-1.5 bg-amber-500 rounded-full flex-shrink-0 mb-1">
+                                        <Icon className="w-3.5 h-3.5 text-white" />
                                     </div>
-                                );
-                            })}
-                        </div>
-                    )}
+                                    <p className="text-xs font-medium text-foreground truncate w-full" title={ach?.name || 'Conquista'}>
+                                        {ach?.name || 'Conquista'}
+                                    </p>
+                                    <p className="text-[10px] text-muted-foreground">
+                                        {ua.achieved_at ? format(new Date(ua.achieved_at), 'dd/MM/yy', { locale: ptBR }) : '—'}
+                                    </p>
+                                </div>
+                            );
+                        })}
+                    </div>
                     <Button
                         variant="ghost"
                         size="sm"
                         className="w-full gap-2 text-amber-700 hover:bg-amber-100"
-                        onClick={() => navigate(patientRoute(patient, 'achievements'))}
+                        onClick={(e) => { e.stopPropagation(); navigate(patientRoute(patient, 'achievements')); }}
                     >
                         Ver todas as conquistas
                         <ArrowRight className="w-3 h-3" />
@@ -412,32 +426,6 @@ const TabContentAdherence = ({ patientId, patientData, modulesStatus = {} }) => 
                     </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    <Collapsible open={howItWorksOpen} onOpenChange={setHowItWorksOpen}>
-                        <CollapsibleTrigger asChild>
-                            <Button variant="ghost" size="sm" className="w-full justify-start gap-2 text-muted-foreground hover:text-foreground">
-                                <HelpCircle className="w-4 h-4 shrink-0" />
-                                Como funciona?
-                            </Button>
-                        </CollapsibleTrigger>
-                        <CollapsibleContent>
-                            <div className="rounded-lg border bg-muted/30 p-4 space-y-2 text-sm text-muted-foreground">
-                                <p className="font-medium text-foreground">Para que serve</p>
-                                <ul className="list-disc list-inside space-y-1 pl-1">
-                                    <li>Enviar lembretes (ex.: lembrete de consulta, de preencher o diário)</li>
-                                    <li>Parabenizar quando o paciente atinge uma meta</li>
-                                    <li>Enviar um recado após a consulta ou quando o plano alimentar é atualizado</li>
-                                    <li>Alertas (ex.: resultado de exame que precisa de atenção)</li>
-                                </ul>
-                                <p className="font-medium text-foreground pt-2">Como usar</p>
-                                <ul className="list-disc list-inside space-y-1 pl-1">
-                                    <li>Primeiro, crie seus modelos em &quot;Criar/editar modelos&quot; (você pode ter vários para situações diferentes).</li>
-                                    <li>Aqui você escolhe qual modelo enviar para este paciente e clica em enviar.</li>
-                                    <li>Nos modelos você pode usar expressões que são trocadas automaticamente, por exemplo: <strong>nome do paciente</strong>, <strong>data de hoje</strong>, <strong>meta atual</strong> e <strong>progresso</strong>. Na tela de criar modelo essas opções aparecem para você copiar.</li>
-                                </ul>
-                            </div>
-                        </CollapsibleContent>
-                    </Collapsible>
-
                     {templatesLoading ? (
                         <p className="text-sm text-muted-foreground py-2">Carregando modelos...</p>
                     ) : templates.length === 0 ? (

@@ -43,17 +43,21 @@ export const validateTemplatePlaceholders = (body = '', title = '') => {
 
 // ─── CRUD ─────────────────────────────────────────────────────────────────────
 
+/**
+ * Busca templates do nutricionista + templates padrão (nutritionist_id null).
+ * Se existir cópia do nutricionista com o mesmo template_key do padrão, só a cópia aparece.
+ */
 export const getMessageTemplates = async ({
     nutritionistId,
     context = null,
     isActive = null,
-    limit = 50
+    limit = 80
 } = {}) => {
     try {
         let query = supabase
             .from('message_templates')
             .select('*')
-            .eq('nutritionist_id', nutritionistId)
+            .or(`nutritionist_id.eq.${nutritionistId},nutritionist_id.is.null`)
             .order('created_at', { ascending: false })
             .limit(limit);
 
@@ -62,10 +66,76 @@ export const getMessageTemplates = async ({
 
         const { data, error } = await query;
         if (error) throw error;
-        return { data: data || [], error: null };
+        const raw = data || [];
+
+        // Por template_key: priorizar template do nutricionista sobre o padrão
+        const byKey = new Map();
+        raw.forEach((row) => {
+            const key = row.template_key;
+            const existing = byKey.get(key);
+            if (!existing || (row.nutritionist_id && !existing.nutritionist_id)) {
+                byKey.set(key, row);
+            }
+        });
+        const merged = Array.from(byKey.values()).sort(
+            (a, b) => new Date(b.created_at) - new Date(a.created_at)
+        );
+
+        return { data: merged, error: null };
     } catch (error) {
         logSupabaseError('Erro ao buscar templates de mensagem', error);
         return { data: [], error };
+    }
+};
+
+/**
+ * Duplica um template padrão (nutritionist_id null) para o nutricionista.
+ * Se já existir cópia com o mesmo template_key, retorna a existente.
+ * Usado em "Duplicar e editar" para que a edição não altere o padrão para outros.
+ */
+export const copyDefaultTemplate = async ({ defaultTemplateId, nutritionistId }) => {
+    try {
+        const { data: defaultTpl, error: fetchErr } = await supabase
+            .from('message_templates')
+            .select('*')
+            .eq('id', defaultTemplateId)
+            .is('nutritionist_id', null)
+            .single();
+
+        if (fetchErr || !defaultTpl) {
+            return { data: null, error: fetchErr || new Error('Template padrão não encontrado') };
+        }
+
+        const { data: existing } = await supabase
+            .from('message_templates')
+            .select('id')
+            .eq('nutritionist_id', nutritionistId)
+            .eq('template_key', defaultTpl.template_key)
+            .maybeSingle();
+
+        if (existing) {
+            const { data: full } = await supabase
+                .from('message_templates')
+                .select('*')
+                .eq('id', existing.id)
+                .single();
+            return { data: full, error: null };
+        }
+
+        return await createMessageTemplate({
+            nutritionistId,
+            templateKey:    defaultTpl.template_key,
+            name:           defaultTpl.name,
+            context:        defaultTpl.context,
+            channel:        defaultTpl.channel,
+            titleTemplate:  defaultTpl.title_template,
+            bodyTemplate:   defaultTpl.body_template,
+            variables:      defaultTpl.variables || [],
+            metadata:       { copied_from_default_id: defaultTpl.id, ...(defaultTpl.metadata || {}) }
+        });
+    } catch (error) {
+        logSupabaseError('Erro ao duplicar template padrão', error);
+        return { data: null, error };
     }
 };
 

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { format } from 'date-fns';
-import { Plus, Camera, Ruler, Droplet, Scale } from 'lucide-react';
+import { Plus, Camera, Ruler, Droplet, Scale, Trash2, X } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -15,10 +15,22 @@ import {
   DialogTrigger
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { DateInputWithCalendar } from '@/components/ui/date-input';
 import { Label } from '@/components/ui/label';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from '@/components/ui/alert-dialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/customSupabaseClient';
+import { deleteProgressPhoto } from '@/lib/supabase/progress-photos-queries';
 import { useToast } from '@/hooks/use-toast';
 import WeightChart from '@/components/anthropometry/WeightChart';
 import {
@@ -58,6 +70,9 @@ export default function PatientProgressPage() {
   const [newHeadCircumference, setNewHeadCircumference] = useState('');
   const [newGlycemia, setNewGlycemia] = useState('');
   const [recordDate, setRecordDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [photoNotes, setPhotoNotes] = useState('');
+  const [deletePhotoTarget, setDeletePhotoTarget] = useState(null);
+  const [lightboxPhoto, setLightboxPhoto] = useState(null);
 
   const loadProgressData = useCallback(async () => {
     if (!user) return;
@@ -88,16 +103,16 @@ export default function PatientProgressPage() {
       setGlycemiaData([]);
     }
 
-    // 4. Fotos de progresso - tentar buscar (tabela pode não existir ainda)
+    // 4. Fotos de progresso (progress_photos)
     try {
       const { data: photoRecords } = await supabase
         .from('progress_photos')
         .select('*')
         .eq('patient_id', user.id)
-        .order('photo_date', { ascending: false });
+        .order('photo_date', { ascending: false })
+        .limit(50);
       setPhotosData(photoRecords || []);
     } catch (error) {
-      // Tabela não existe ainda
       setPhotosData([]);
     }
 
@@ -225,7 +240,7 @@ export default function PatientProgressPage() {
     }
   };
 
-  const handleAddPhotoRecord = async (file) => {
+  const handleAddPhotoRecord = async (file, notes = '') => {
     if (!file || !recordDate) {
       toast({
         title: 'Erro',
@@ -234,26 +249,34 @@ export default function PatientProgressPage() {
       });
       return;
     }
+    if (!file.type.startsWith('image/')) {
+      toast({ title: 'Erro', description: 'Selecione um arquivo de imagem.', variant: 'destructive' });
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: 'Erro', description: 'A imagem deve ter no máximo 5MB.', variant: 'destructive' });
+      return;
+    }
 
     try {
-      // Upload photo to storage
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+      const fileExt = file.name.split('.').pop() || 'jpg';
+      const path = `${user.id}/progress_photos/${crypto.randomUUID()}.${fileExt}`;
       const { error: uploadError } = await supabase.storage
-        .from('progress-photos')
-        .upload(fileName, file);
+        .from('patient-photos')
+        .upload(path, file, { upsert: false });
 
       if (uploadError) throw uploadError;
 
       const { data: { publicUrl } } = supabase.storage
-        .from('progress-photos')
-        .getPublicUrl(fileName);
+        .from('patient-photos')
+        .getPublicUrl(path);
 
-      // Save record to database
       const { error: dbError } = await supabase.from('progress_photos').insert({
         patient_id: user.id,
+        photo_url: publicUrl,
         photo_date: recordDate,
-        photo_url: publicUrl
+        uploaded_by: user.id,
+        notes: notes?.trim() || null
       });
 
       if (dbError) throw dbError;
@@ -264,14 +287,27 @@ export default function PatientProgressPage() {
       });
       setDialogOpen(false);
       setRecordDate(format(new Date(), 'yyyy-MM-dd'));
+      setPhotoNotes('');
       loadProgressData();
     } catch (error) {
       toast({
         title: 'Erro',
-        description: 'Não foi possível adicionar a foto. A funcionalidade pode não estar disponível ainda.',
+        description: error?.message || 'Não foi possível adicionar a foto.',
         variant: 'destructive'
       });
     }
+  };
+
+  const handleDeletePhoto = async () => {
+    if (!deletePhotoTarget?.id) return;
+    const { error } = await deleteProgressPhoto({ photoId: deletePhotoTarget.id });
+    if (error) {
+      toast({ title: 'Erro ao remover', description: error.message, variant: 'destructive' });
+      return;
+    }
+    toast({ title: 'Foto removida' });
+    setDeletePhotoTarget(null);
+    loadProgressData();
   };
 
   // Preparar dados de glicemia para gráfico
@@ -567,32 +603,85 @@ export default function PatientProgressPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
             >
+              {photosData.length >= 2 && (
+                <Card className="shadow-sm mb-4">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base">Antes e Depois</CardTitle>
+                    <CardDescription>Sua primeira e última foto do período</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div
+                        className="rounded-lg overflow-hidden border border-border aspect-[3/4] cursor-pointer hover:opacity-95 transition-opacity"
+                        onClick={() => setLightboxPhoto(photosData[photosData.length - 1])}
+                      >
+                        <img
+                          src={photosData[photosData.length - 1].photo_url}
+                          alt="Antes"
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="bg-muted px-2 py-1.5 text-center">
+                          <span className="text-xs font-semibold">Antes</span>
+                          <p className="text-[10px] text-muted-foreground">
+                            {format(new Date(photosData[photosData.length - 1].photo_date), 'dd/MM/yyyy')}
+                          </p>
+                        </div>
+                      </div>
+                      <div
+                        className="rounded-lg overflow-hidden border border-border aspect-[3/4] cursor-pointer hover:opacity-95 transition-opacity"
+                        onClick={() => setLightboxPhoto(photosData[0])}
+                      >
+                        <img
+                          src={photosData[0].photo_url}
+                          alt="Depois"
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="bg-muted px-2 py-1.5 text-center">
+                          <span className="text-xs font-semibold">Depois</span>
+                          <p className="text-[10px] text-muted-foreground">
+                            {format(new Date(photosData[0].photo_date), 'dd/MM/yyyy')}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
               <Card className="shadow-sm">
                 <CardHeader>
                   <CardTitle>Fotos de Progresso</CardTitle>
-                  <CardDescription>Registros visuais da evolução</CardDescription>
+                  <CardDescription>Registros visuais da evolução. Clique para ampliar.</CardDescription>
                 </CardHeader>
                 <CardContent>
                   {photosData.length > 0 ? (
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                      {photosData.map((photo, idx) => (
+                      {photosData.map((photo) => (
                         <div
-                          key={idx}
+                          key={photo.id}
                           className="relative aspect-square rounded-lg overflow-hidden bg-muted border border-border hover:shadow-md transition-shadow group"
                         >
                           <img
                             src={photo.photo_url}
-                            alt={`Progresso ${format(
-                              new Date(photo.photo_date),
-                              'dd/MM/yyyy'
-                            )}`}
-                            className="w-full h-full object-cover"
+                            alt={format(new Date(photo.photo_date), 'dd/MM/yyyy')}
+                            className="w-full h-full object-cover cursor-pointer"
+                            onClick={() => setLightboxPhoto(photo)}
                           />
                           <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3">
                             <p className="text-xs text-white font-medium">
                               {format(new Date(photo.photo_date), 'dd/MM/yyyy')}
                             </p>
+                            {photo.notes && (
+                              <p className="text-[10px] text-white/90 truncate mt-0.5">{photo.notes}</p>
+                            )}
                           </div>
+                          <Button
+                            variant="destructive"
+                            size="icon"
+                            className="absolute top-2 right-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={(e) => { e.stopPropagation(); setDeletePhotoTarget(photo); }}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
                         </div>
                       ))}
                     </div>
@@ -748,7 +837,7 @@ export default function PatientProgressPage() {
                 e.preventDefault();
                 const fileInput = document.getElementById('photoFile');
                 if (fileInput?.files?.[0]) {
-                  handleAddPhotoRecord(fileInput.files[0]);
+                  handleAddPhotoRecord(fileInput.files[0], photoNotes);
                 }
               }}
               className="space-y-4"
@@ -771,6 +860,17 @@ export default function PatientProgressPage() {
                   required
                 />
               </div>
+              <div>
+                <Label htmlFor="photoNotes">Legenda (opcional)</Label>
+                <Textarea
+                  id="photoNotes"
+                  placeholder="Ex: Peso 78 kg, início da dieta"
+                  value={photoNotes}
+                  onChange={(e) => setPhotoNotes(e.target.value)}
+                  rows={2}
+                  className="resize-none"
+                />
+              </div>
               <DialogFooter>
                 <Button type="submit">Adicionar</Button>
               </DialogFooter>
@@ -778,6 +878,53 @@ export default function PatientProgressPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Lightbox foto */}
+      <Dialog open={!!lightboxPhoto} onOpenChange={(open) => !open && setLightboxPhoto(null)}>
+        <DialogContent className="max-w-4xl w-[95vw] p-2">
+          {lightboxPhoto && (
+            <>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute right-2 top-2 z-10 bg-background/80"
+                onClick={() => setLightboxPhoto(null)}
+              >
+                <X className="w-5 h-5" />
+              </Button>
+              <img
+                src={lightboxPhoto.photo_url}
+                alt={format(new Date(lightboxPhoto.photo_date), 'dd/MM/yyyy')}
+                className="w-full max-h-[85vh] object-contain rounded-lg"
+              />
+              <div className="text-center py-2">
+                <p className="font-medium">{format(new Date(lightboxPhoto.photo_date), "dd/MM/yyyy")}</p>
+                {lightboxPhoto.notes && (
+                  <p className="text-sm text-muted-foreground mt-1">{lightboxPhoto.notes}</p>
+                )}
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirmar remoção de foto */}
+      <AlertDialog open={!!deletePhotoTarget} onOpenChange={(open) => !open && setDeletePhotoTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remover esta foto?</AlertDialogTitle>
+            <AlertDialogDescription>
+              A foto será removida do seu progresso. Essa ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeletePhoto} className="bg-destructive text-destructive-foreground">
+              Remover
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Loading Overlay */}
       {loading && (
