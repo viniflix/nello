@@ -57,6 +57,20 @@ const AnthropometryPage = () => {
 
     const getFilledCount = (obj) => Object.values(obj || {}).filter((v) => v !== null && v !== undefined && v !== '').length;
 
+    const formatLastRecordTime = (record) => {
+        if (!record) return '';
+        const dt = record.created_at ? new Date(record.created_at) : (record.record_date ? new Date(record.record_date + 'T12:00:00') : null);
+        if (!dt || isNaN(dt.getTime())) return '';
+        const now = new Date();
+        const diffMs = now - dt;
+        const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+        if (diffHours < 1) return 'há menos de 1 hora';
+        if (diffHours < 24) return `há ${diffHours} hora${diffHours > 1 ? 's' : ''}`;
+        if (diffDays <= 5) return `há ${diffDays} dia${diffDays > 1 ? 's' : ''}`;
+        return `dia ${dt.toLocaleDateString('pt-BR')} às ${dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+    };
+
     const resolveObjective = (goalType, anamnesisObjective, bmi) => {
         const normalizedGoal = String(goalType || '').toLowerCase();
         if (['weight_loss', 'perda_peso', 'emagrecimento'].includes(normalizedGoal)) return 'weight_loss';
