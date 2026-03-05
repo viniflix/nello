@@ -234,6 +234,7 @@ export const getInitialBiometryForEnergy = async (patientId) => {
  */
 export const saveEnergyCalculation = async (data) => {
   try {
+    // Colunas novas + legadas (protocol, activity_level, tmb, get) para compatibilidade com schema existente
     const row = {
       patient_id: data.patient_id,
       nutritionist_id: data.nutritionist_id || null,
@@ -251,7 +252,12 @@ export const saveEnergyCalculation = async (data) => {
       venta_target_weight: data.venta_target_weight ?? null,
       venta_timeframe_days: data.venta_timeframe_days ?? null,
       venta_adjustment_kcal: data.venta_adjustment_kcal ?? null,
-      final_planned_kcal: data.final_planned_kcal
+      final_planned_kcal: data.final_planned_kcal,
+      // Legado (alguns schemas têm NOT NULL nesses campos)
+      protocol: data.tmb_protocol ?? null,
+      activity_level: data.activity_factor ?? null,
+      tmb: data.tmb_result ?? null,
+      get: data.get_result ?? null
     };
 
     const { data: existing } = await supabase
