@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { getLatestAnthropometryRecord } from '@/lib/supabase/anthropometry-queries';
+import { getLatestAnamnesis } from '@/lib/supabase/anamnesis-queries';
 import PhotoGallery from './PhotoGallery';
 import { differenceInYears } from 'date-fns';
 import {
@@ -94,17 +95,26 @@ const AnthropometryForm = ({
     const [frameSize, setFrameSize] = useState(null);
     const [somatotype, setSomatotype] = useState(null);
 
-    // Buscar último registro para usar como placeholder
+    // Buscar último registro antropométrico e dados da anamnese para preencher formulário
     useEffect(() => {
-        const fetchLastRecord = async () => {
+        const fetchSources = async () => {
             if (!initialData && patientId) {
-                const { data } = await getLatestAnthropometryRecord(patientId);
-                if (data) {
-                    setLastRecord(data);
+                const [anthropometryRes, anamnesisRes] = await Promise.all([
+                    getLatestAnthropometryRecord(patientId),
+                    getLatestAnamnesis(patientId, true)
+                ]);
+                if (anthropometryRes.data) setLastRecord(anthropometryRes.data);
+
+                const content = anamnesisRes.data?.content;
+                if (content?.objetivos?.peso_atual) {
+                    const peso = parseFloat(content.objetivos.peso_atual);
+                    if (peso > 0) {
+                        setFormData(prev => ({ ...prev, weight: String(peso) }));
+                    }
                 }
             }
         };
-        fetchLastRecord();
+        fetchSources();
     }, [patientId, initialData]);
 
     // Preencher formulário se estiver editando

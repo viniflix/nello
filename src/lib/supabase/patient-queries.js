@@ -54,24 +54,28 @@ export const getPatientProfile = async (patientId, nutritionistId) => {
 
 /**
  * Busca as últimas métricas do paciente (peso, altura, etc.)
+ * Integra dados de: growth_records (antropometria) → user_profiles → anamnesis_records
+ * para um prontuário vivo e conectado.
  * @param {string} patientId - ID do paciente
  * @returns {Promise<{data: object, error: object}>}
  */
 export const getLatestMetrics = async (patientId) => {
     try {
-        // Buscar último registro de peso e altura do growth_records
-        const { data: growthData, error: growthError } = await supabase
+        // 1. Buscar registros antropométricos (growth_records) - ordenados por data
+        const { data: growthRows } = await supabase
             .from('growth_records')
-            .select('weight, height, record_date')
+            .select('weight, height, record_date, updated_at, created_at')
             .eq('patient_id', patientId)
             .order('record_date', { ascending: false })
-            .limit(1)
-            .maybeSingle();
+            .limit(2);
 
-        // Se não encontrar em growth_records, buscar em user_profiles como fallback
+        const growthData = growthRows?.[0] || null;
+        const previousGrowthData = growthRows?.[1] || null;
+
         let weight = growthData?.weight;
         let height = growthData?.height;
 
+        // 2. Fallback: user_profiles
         if (!weight || !height) {
             const { data: profileData } = await supabase
                 .from('user_profiles')
@@ -81,6 +85,43 @@ export const getLatestMetrics = async (patientId) => {
 
             weight = weight || profileData?.weight;
             height = height || profileData?.height;
+        }
+
+        // 3. Fallback peso será preenchido no bloco 4 a partir da anamnese
+
+        // 4. Anamnese: peso, objetivo e data_nascimento (ecossistema integrado)
+        let goalFromAnamnesis = null;
+        let birthDateFromAnamnesis = null;
+        const { data: anamnesisDataFull } = await supabase
+            .from('anamnesis_records')
+            .select('content')
+            .eq('patient_id', patientId)
+            .order('date', { ascending: false })
+            .order('version', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+        const content = anamnesisDataFull?.content || {};
+        const objetivoTexto = content?.objetivos?.objetivo_principal;
+        if (objetivoTexto && typeof objetivoTexto === 'string' && objetivoTexto.length > 0) {
+            const txt = objetivoTexto.toLowerCase();
+            if (txt.includes('perder') || txt.includes('emagrec')) goalFromAnamnesis = 'lose';
+            else if (txt.includes('ganhar') || txt.includes('hipertrof')) goalFromAnamnesis = 'gain';
+            else if (txt.includes('manter') || txt.includes('recompos')) goalFromAnamnesis = 'maintain';
+            else goalFromAnamnesis = objetivoTexto.slice(0, 50);
+        }
+        const dtNasc = content?.identificacao?.data_nascimento;
+        if (dtNasc && typeof dtNasc === 'string') {
+            if (/^\d{4}-\d{2}-\d{2}$/.test(dtNasc)) birthDateFromAnamnesis = dtNasc;
+            else if (/^\d{2}\/\d{2}\/\d{4}$/.test(dtNasc)) {
+                const [d, m, y] = dtNasc.split('/');
+                birthDateFromAnamnesis = `${y}-${m}-${d}`;
+            }
+        }
+
+        const pesoAtualAnamnesis = content?.objetivos?.peso_atual;
+        if (!weight && pesoAtualAnamnesis && parseFloat(pesoAtualAnamnesis) > 0) {
+            weight = parseFloat(pesoAtualAnamnesis);
         }
 
         // Buscar última consulta
@@ -106,7 +147,12 @@ export const getLatestMetrics = async (patientId) => {
         const metrics = {
             weight: weight || null,
             height: height || null,
+            previous_weight: previousGrowthData?.weight || null,
             last_measurement: growthData?.record_date || null,
+            updated_at: growthData?.updated_at || growthData?.created_at || null,
+            created_at: growthData?.created_at || null,
+            goal: goalFromAnamnesis,
+            birth_date_from_anamnesis: birthDateFromAnamnesis || null,
             last_appointment: lastAppointment
                 ? new Date(lastAppointment.start_time).toLocaleDateString('pt-BR')
                 : null,
@@ -362,10 +408,17 @@ export const getPatientSummary = async (patientId, nutritionistId) => {
             throw profileResult.error;
         }
 
+        const profile = profileResult.data || {};
+        const metrics = metricsResult.data || {};
+
+        if (!profile.birth_date && metrics.birth_date_from_anamnesis) {
+            profile.birth_date = metrics.birth_date_from_anamnesis;
+        }
+
         return {
             data: {
-                profile: profileResult.data,
-                metrics: metricsResult.data || {},
+                profile,
+                metrics,
                 modulesStatus: statusResult.data || {}
             },
             error: null

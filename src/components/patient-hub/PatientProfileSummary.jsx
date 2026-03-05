@@ -86,8 +86,11 @@ const PatientProfileSummary = ({
             'health': 'Saúde e Bem-estar'
         };
 
-        return goalMap[goal.toLowerCase()] || goal;
+        const key = String(goal).toLowerCase();
+        return goalMap[key] || goal;
     };
+
+    const goal = patientData?.goal || latestMetrics?.goal;
 
     const age = getPatientAge(patientData?.birth_date);
     const imc = calculateIMC(latestMetrics?.weight, latestMetrics?.height);
@@ -225,7 +228,7 @@ const PatientProfileSummary = ({
                             <span className="text-xs font-medium text-muted-foreground">Objetivo</span>
                         </div>
                         <p className="text-sm font-semibold text-foreground truncate">
-                            {translateGoal(patientData?.goal)}
+                            {translateGoal(goal)}
                         </p>
                     </div>
                 </div>
