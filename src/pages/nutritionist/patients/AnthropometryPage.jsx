@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useResolvedPatientId } from '@/hooks/useResolvedPatientId';
 import { ArrowLeft, RefreshCw, AlertCircle, BarChart3, TrendingUp, TrendingDown, Minus } from 'lucide-react';
@@ -52,6 +52,8 @@ const AnthropometryPage = () => {
     const [compareRecordId, setCompareRecordId] = useState('');
     const [historyFilter, setHistoryFilter] = useState('all');
     const [sectionHighlights, setSectionHighlights] = useState([]);
+    const [formExpanded, setFormExpanded] = useState(false);
+    const historySectionRef = useRef(null);
 
     const getFilledCount = (obj) => Object.values(obj || {}).filter((v) => v !== null && v !== undefined && v !== '').length;
 
@@ -361,6 +363,7 @@ const AnthropometryPage = () => {
 
             // Limpar formulário de edição e recarregar dados
             setEditingRecord(null);
+            setFormExpanded(false);
             await loadData();
         } catch (err) {
             console.error('Erro ao salvar registro:', err);
@@ -377,6 +380,7 @@ const AnthropometryPage = () => {
     // Editar registro
     const handleEdit = (record) => {
         setEditingRecord(record);
+        setFormExpanded(true);
         // Scroll suave até o formulário
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
@@ -710,16 +714,40 @@ const AnthropometryPage = () => {
                 </Alert>
             )}
 
-            {/* Formulário */}
-            <AnthropometryForm
-                patientId={patientId}
-                initialData={editingRecord}
-                onSubmit={handleSubmit}
-                onCancel={handleCancelEdit}
-                loading={submitting}
-                patientGender={patientProfile?.gender}
-                patientBirthDate={patientProfile?.birth_date}
-            />
+            {/* Formulário - colapsado quando há registro recente e não está editando */}
+            {(formExpanded || editingRecord || !latestRecord) ? (
+                <AnthropometryForm
+                    patientId={patientId}
+                    initialData={editingRecord}
+                    onSubmit={handleSubmit}
+                    onCancel={() => { handleCancelEdit(); setFormExpanded(false); }}
+                    loading={submitting}
+                    patientGender={patientProfile?.gender}
+                    patientBirthDate={patientProfile?.birth_date}
+                />
+            ) : (
+                <div className="rounded-lg border-2 border-dashed border-[#a9b388] bg-[#fefae0]/30 p-6">
+                    <p className="text-base font-medium text-foreground mb-1">
+                        Último registro {formatLastRecordTime(latestRecord)}
+                    </p>
+                    <p className="text-sm text-muted-foreground mb-4">
+                        {latestRecord?.weight && `${latestRecord.weight} kg`}
+                        {latestRecord?.height && ` • ${latestRecord.height} cm`}
+                        {latestRecord?.weight && latestRecord?.height && (
+                            <span> • IMC {((latestRecord.weight / Math.pow(latestRecord.height / 100, 2))).toFixed(1)}</span>
+                        )}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                        <Button onClick={() => setFormExpanded(true)} className="gap-2">
+                            <BarChart3 className="w-4 h-4" />
+                            Deseja registrar novas medidas?
+                        </Button>
+                        <Button variant="outline" onClick={() => historySectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
+                            Ver histórico
+                        </Button>
+                    </div>
+                </div>
+            )}
 
             {/* Gráficos */}
             <div className="space-y-6">
@@ -741,7 +769,7 @@ const AnthropometryPage = () => {
             </div>
 
             {/* Tabela de Registros */}
-            <div>
+            <div ref={historySectionRef}>
                 <h2 className="text-2xl font-bold">Histórico de Registros</h2>
                 <p className="text-sm text-muted-foreground mt-1 mb-4">
                     Consulte a evolução por data, compare resultados e abra os detalhes completos de cada avaliação.

@@ -172,16 +172,20 @@ export const createAnthropometryRecord = async (recordData) => {
 
         if (error) throw error;
 
-        await logActivityEvent({
-            eventName: 'anthropometry.record.created',
-            sourceModule: 'anthropometry',
-            patientId: data?.patient_id || patient_id,
-            nutritionistId: data?.nutritionist_id || null,
-            payload: {
-                record_id: data?.id || null,
-                record_date: data?.record_date || record_date || null
-            }
-        });
+        try {
+            await logActivityEvent({
+                eventName: 'anthropometry.record.created',
+                sourceModule: 'anthropometry',
+                patientId: data?.patient_id || patient_id,
+                nutritionistId: data?.nutritionist_id || null,
+                payload: {
+                    record_id: data?.id || null,
+                    record_date: data?.record_date || record_date || null
+                }
+            });
+        } catch (_) {
+            /* log_activity_event pode não existir no schema - não falhar o fluxo principal */
+        }
 
         return { data, error: null };
     } catch (error) {

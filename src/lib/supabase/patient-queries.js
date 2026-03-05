@@ -638,7 +638,10 @@ export const logActivityEvent = async (eventInput) => {
             p_payload: normalized.payload
         });
 
-        if (error) throw error;
+        if (error) {
+            logSupabaseError('Erro ao registrar evento de atividade', error);
+            return { data: null, error };
+        }
         return { data: data || null, error: null };
     } catch (error) {
         logSupabaseError('Erro ao registrar evento de atividade', error);
