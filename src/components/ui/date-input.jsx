@@ -147,6 +147,18 @@ const DateInputWithCalendar = ({
         setDisplayMonth(new Date(clampedYear, baseDate.getMonth(), 1));
     };
 
+    const goPrevMonth = () => {
+        const nextMonth = addMonths(displayMonth, -1);
+        setDisplayMonth(nextMonth);
+        setYearInput(String(nextMonth.getFullYear()));
+    };
+
+    const goNextMonth = () => {
+        const nextMonth = addMonths(displayMonth, 1);
+        setDisplayMonth(nextMonth);
+        setYearInput(String(nextMonth.getFullYear()));
+    };
+
     return (
         <div className="relative flex items-center gap-2">
             <Input
@@ -192,7 +204,7 @@ const DateInputWithCalendar = ({
                             variant="ghost"
                             size="icon"
                             className="h-7 w-7"
-                            onClick={() => setDisplayMonth(addMonths(displayMonth, -1))}
+                            onClick={goPrevMonth}
                         >
                             <ChevronLeft className="h-4 w-4" />
                         </Button>
@@ -201,9 +213,10 @@ const DateInputWithCalendar = ({
                             <Input
                                 value={yearInput}
                                 onChange={(e) => applyYearInput(e.target.value)}
-                                className="h-7 w-16 border-0 p-0 text-center font-medium bg-transparent focus-visible:ring-0"
+                                className="h-7 w-20 text-center font-medium"
                                 inputMode="numeric"
                                 placeholder="AAAA"
+                                onFocus={(e) => e.target.select()}
                             />
                         </div>
                         <Button
@@ -211,7 +224,7 @@ const DateInputWithCalendar = ({
                             variant="ghost"
                             size="icon"
                             className="h-7 w-7"
-                            onClick={() => setDisplayMonth(addMonths(displayMonth, 1))}
+                            onClick={goNextMonth}
                         >
                             <ChevronRight className="h-4 w-4" />
                         </Button>
