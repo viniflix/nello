@@ -30,7 +30,7 @@ import {
 import ConductSuggestionsCard from '@/components/lab-results/ConductSuggestionsCard';
 
 const LabResultsPage = () => {
-    const { patientId } = useResolvedPatientId();
+    const { patientId, loading: resolveLoading, error: resolveError } = useResolvedPatientId();
     const navigate = useNavigate();
     const { toast } = useToast();
     const { user } = useAuth();
@@ -71,6 +71,7 @@ const LabResultsPage = () => {
     const [statusFilter, setStatusFilter] = useState('all');
 
     useEffect(() => {
+        if (!patientId) return;
         loadPatientData();
         loadLabResults();
     }, [patientId, user?.id]);
@@ -413,7 +414,30 @@ const LabResultsPage = () => {
         return { icon: Minus, label: 'Estável', className: 'text-muted-foreground' };
     };
 
-    return loading ? null : (
+    if (resolveLoading || !patientId) {
+        return (
+            <div className="flex flex-col min-h-screen bg-background items-center justify-center p-8">
+                <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+                <p className="mt-4 text-sm text-muted-foreground">Carregando...</p>
+            </div>
+        );
+    }
+    if (resolveError) {
+        return (
+            <div className="flex flex-col min-h-screen bg-background items-center justify-center p-8">
+                <AlertCircle className="w-10 h-10 text-destructive" />
+                <p className="mt-4 text-sm text-foreground">Paciente não encontrado.</p>
+                <Button variant="outline" className="mt-4" onClick={() => navigate(-1)}>Voltar</Button>
+            </div>
+        );
+    }
+
+    return loading ? (
+        <div className="flex flex-col min-h-screen bg-background items-center justify-center p-8">
+            <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+            <p className="mt-4 text-sm text-muted-foreground">Carregando exames...</p>
+        </div>
+    ) : (
         <div className="flex flex-col min-h-screen bg-background overflow-x-hidden">
             <div className="max-w-7xl mx-auto w-full px-4 md:px-8 py-4 md:py-8 min-w-0">
                 {/* Header */}
