@@ -129,13 +129,25 @@ export const getLatestMetrics = async (patientId) => {
  */
 export const getModulesStatus = async (patientId) => {
     try {
-        // Verificar se tem anamnese
-        const { data: anamneseData } = await supabase
-            .from('anamnese_answers')
-            .select('id')
-            .eq('patient_id', patientId)
-            .limit(1)
-            .maybeSingle();
+        // Verificar se tem anamnese (padrão em anamnesis_records OU personalizado em anamnese_answers)
+        const [
+            { data: anamnesisRecordsData },
+            { data: anamneseAnswersData }
+        ] = await Promise.all([
+            supabase
+                .from('anamnesis_records')
+                .select('id')
+                .eq('patient_id', patientId)
+                .limit(1)
+                .maybeSingle(),
+            supabase
+                .from('anamnese_answers')
+                .select('id')
+                .eq('patient_id', patientId)
+                .limit(1)
+                .maybeSingle()
+        ]);
+        const anamneseData = anamnesisRecordsData || anamneseAnswersData;
 
         // Verificar se tem avaliação antropométrica
         const { data: anthropometryData } = await supabase

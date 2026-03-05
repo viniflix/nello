@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useResolvedPatientId } from '@/hooks/useResolvedPatientId';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
@@ -80,6 +80,14 @@ const PatientAnamnesisForm = () => {
     // Referências para scroll automático
     const formRef = useRef(null);
     const errorRefs = useRef({});
+
+    // Auto-save: ID da anamnese criada (para saves subsequentes) e controle de prontidão
+    const currentAnamnesisIdRef = useRef(anamnesisId || null);
+    if (anamnesisId && currentAnamnesisIdRef.current !== anamnesisId) {
+        currentAnamnesisIdRef.current = anamnesisId;
+    }
+    const autoSaveTimeoutRef = useRef(null);
+    const formReadyRef = useRef(false);
 
     // ============================================================
     // REACT HOOK FORM COM ZOD
@@ -246,6 +254,7 @@ const PatientAnamnesisForm = () => {
                 setError(err.message);
             } finally {
                 setLoading(false);
+                formReadyRef.current = true;
             }
         };
 
@@ -325,11 +334,19 @@ const PatientAnamnesisForm = () => {
     // ============================================================
     // SUBMIT HANDLERS
     // ============================================================
-    const onSubmit = async (data, status = 'completed') => {
-        if (!patientId || !user?.id) return;
+    /**
+     * @param {object} options - { skipNavigate?: boolean } - quando true, não navega após salvar (auto-save)
+     * @returns {Promise<{ createdAnamnesisId?: string }>}
+     */
+    const onSubmit = useCallback(async (data, status = 'completed', options = {}) => {
+        const { skipNavigate = false } = options;
+        if (!patientId || !user?.id) return {};
 
         setSaving(true);
         setError(null);
+
+        const effectiveId = currentAnamnesisIdRef.current || anamnesisId;
+        let createdId = null;
 
         try {
             // Se for formulário personalizado, salvar respostas na tabela anamnese_answers
@@ -349,44 +366,43 @@ const PatientAnamnesisForm = () => {
                             description: `Preencha todos os campos obrigatórios: ${missingRequired.map(f => f.field_label).join(', ')}`,
                         });
                         setSaving(false);
-                        return;
+                        return {};
                     }
                 }
 
                 // IMPORTANTE: Criar registro na tabela anamnesis_records primeiro
-                // para que o formulário apareça na lista de anamneses
-                if (isEditMode) {
-                    // Se está editando, atualizar o registro existente
+                if (effectiveId) {
                     const updateData = {
+                        content: {},
+                        notes: '',
                         status,
                         updated_at: new Date().toISOString()
                     };
-                    const { error: updateError } = await updateAnamnesis(anamnesisId, updateData);
+                    const { error: updateError } = await updateAnamnesis(effectiveId, updateData);
                     if (updateError) throw updateError;
                 } else {
-                    // Se é novo, criar registro na anamnesis_records
                     const recordData = {
                         patientId,
                         nutritionistId: user.id,
-                        templateId: customTemplateId, // ID do template personalizado
+                        templateId: customTemplateId,
                         date: new Date().toISOString().split('T')[0],
                         notes: '',
-                        content: {}, // Formulário personalizado usa anamnese_answers, não content
+                        content: {},
                         status
                     };
-                    const { error: createError } = await createAnamnesis(recordData);
+                    const { data: created, error: createError } = await createAnamnesis(recordData);
                     if (createError) throw createError;
+                    if (created?.id) {
+                        createdId = created.id;
+                        currentAnamnesisIdRef.current = created.id;
+                    }
                 }
 
-                // Agora salvar as respostas dos campos personalizados
                 const answersToSave = customFields.map(field => {
                     let answerValue = customAnswers[field.id] || '';
-
-                    // Se for seleção múltipla, converter array para JSON
                     if (field.field_type === 'selecao_multipla' && Array.isArray(answerValue)) {
                         answerValue = JSON.stringify(answerValue);
                     }
-
                     return {
                         patient_id: patientId,
                         field_id: field.id,
@@ -397,23 +413,29 @@ const PatientAnamnesisForm = () => {
                 const { error: saveError } = await upsertAnamneseAnswers(answersToSave);
                 if (saveError) throw saveError;
 
-                toast({
-                    title: status === 'draft' ? 'Rascunho salvo!' : 'Anamnese salva!',
-                    description: status === 'draft'
-                        ? 'Rascunho salvo com sucesso. Você pode continuar depois.'
-                        : 'As respostas do formulário personalizado foram salvas com sucesso.',
-                });
-
-                // Voltar para a página de anamnese do paciente
-                navigate(`/nutritionist/patients/${patientId}/anamnese`);
-                return;
+                if (!skipNavigate) {
+                    toast({
+                        title: status === 'draft' ? 'Rascunho salvo!' : 'Anamnese salva!',
+                        description: status === 'draft'
+                            ? 'Rascunho salvo com sucesso. Você pode continuar depois.'
+                            : 'As respostas do formulário personalizado foram salvas com sucesso.',
+                    });
+                    navigate(`/nutritionist/patients/${patientId}/anamnese`);
+                } else {
+                    toast({
+                        title: 'Rascunho salvo automaticamente',
+                        description: 'Suas alterações foram guardadas.',
+                        duration: 2500,
+                    });
+                }
+                return { createdAnamnesisId: createdId };
             }
 
             // Formulário padrão - salvar na tabela anamnesis_records
             const submitData = {
                 patientId,
                 nutritionistId: user.id,
-                templateId: null, // Formulário fixo não usa template
+                templateId: null,
                 date: data.date,
                 notes: data.notes,
                 content: {
@@ -427,28 +449,47 @@ const PatientAnamnesisForm = () => {
                 status
             };
 
-            if (isEditMode) {
-                // Atualizar existente
-                const { error: updateError } = await updateAnamnesis(anamnesisId, submitData);
+            if (effectiveId) {
+                const { error: updateError } = await updateAnamnesis(effectiveId, submitData);
                 if (updateError) throw updateError;
 
-                toast({
-                    title: 'Anamnese atualizada!',
-                    description: 'As alterações foram salvas com sucesso.',
-                });
+                if (!skipNavigate) {
+                    toast({
+                        title: 'Anamnese atualizada!',
+                        description: 'As alterações foram salvas com sucesso.',
+                    });
+                    navigate(`/nutritionist/patients/${patientId}/anamnese`);
+                } else {
+                    toast({
+                        title: 'Rascunho salvo automaticamente',
+                        description: 'Suas alterações foram guardadas.',
+                        duration: 2500,
+                    });
+                }
             } else {
-                // Criar nova
-                const { error: createError } = await createAnamnesis(submitData);
+                const { data: created, error: createError } = await createAnamnesis(submitData);
                 if (createError) throw createError;
+                if (created?.id) {
+                    createdId = created.id;
+                    currentAnamnesisIdRef.current = created.id;
+                }
 
-                toast({
-                    title: 'Anamnese criada!',
-                    description: 'A anamnese foi salva com sucesso.',
-                });
+                if (!skipNavigate) {
+                    toast({
+                        title: 'Anamnese criada!',
+                        description: 'A anamnese foi salva com sucesso.',
+                    });
+                    navigate(`/nutritionist/patients/${patientId}/anamnese`);
+                } else {
+                    toast({
+                        title: 'Rascunho salvo automaticamente',
+                        description: 'Suas alterações foram guardadas.',
+                        duration: 2500,
+                    });
+                }
             }
 
-            // Sucesso - voltar para a página de anamnese do paciente
-            navigate(`/nutritionist/patients/${patientId}/anamnese`);
+            return { createdAnamnesisId: createdId };
         } catch (err) {
             console.error('Erro ao salvar anamnese:', err);
             setError('Erro ao salvar anamnese. Tente novamente.');
@@ -457,16 +498,58 @@ const PatientAnamnesisForm = () => {
                 title: 'Erro ao salvar',
                 description: 'Ocorreu um erro ao salvar a anamnese. Tente novamente.',
             });
+            return {};
         } finally {
             setSaving(false);
         }
-    };
+    }, [patientId, user?.id, anamnesisId, isCustomForm, customTemplateId, customFields, customAnswers, navigate, toast]);
 
     const handleSaveDraft = async () => {
-        // Salvar rascunho sem validação
         const data = watch();
         await onSubmit(data, 'draft');
     };
+
+    // ============================================================
+    // AUTO-SAVE: Salva rascunho automaticamente após 2s sem digitar
+    // ============================================================
+    const watchedValues = watch();
+    useEffect(() => {
+        if (!formReadyRef.current || loading || !patientId || !user?.id) return;
+        if (saving) return;
+
+        const hasDataToSave = isCustomForm
+            ? Object.values(customAnswers).some(v =>
+                (typeof v === 'string' && v.trim() !== '') ||
+                (Array.isArray(v) && v.length > 0)
+            )
+            : true;
+
+        const effectiveId = currentAnamnesisIdRef.current || anamnesisId;
+        if (!hasDataToSave && !effectiveId) return;
+
+        if (autoSaveTimeoutRef.current) clearTimeout(autoSaveTimeoutRef.current);
+
+        autoSaveTimeoutRef.current = setTimeout(async () => {
+            autoSaveTimeoutRef.current = null;
+            if (isCustomForm) {
+                await onSubmit({}, 'draft', { skipNavigate: true });
+            } else {
+                await onSubmit(watchedValues, 'draft', { skipNavigate: true });
+            }
+        }, 2000);
+
+        return () => {
+            if (autoSaveTimeoutRef.current) clearTimeout(autoSaveTimeoutRef.current);
+        };
+    }, [
+        isCustomForm ? JSON.stringify(customAnswers) : JSON.stringify(watchedValues),
+        loading,
+        saving,
+        patientId,
+        user?.id,
+        anamnesisId,
+        onSubmit,
+    ]);
 
     const handleSaveCompleted = handleSubmit((data) => onSubmit(data, 'completed'));
 
