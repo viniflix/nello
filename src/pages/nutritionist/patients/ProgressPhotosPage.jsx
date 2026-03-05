@@ -46,6 +46,14 @@ const BUCKET = 'patient-photos';
 function getStoragePath(patientId) {
     return `${patientId}/progress_photos/${crypto.randomUUID()}`;
 }
+const MIME_BY_EXT = {
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    png: 'image/png',
+    webp: 'image/webp',
+    heic: 'image/heic',
+    heif: 'image/heif'
+};
 
 export default function ProgressPhotosPage() {
     const { patientId, loading: resolveLoading, error: resolveError, paramValue } = useResolvedPatientId();
@@ -137,7 +145,10 @@ export default function ProgressPhotosPage() {
         try {
             const safeExt = allowedExtensions.includes(ext) ? ext : (file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : file.type === 'image/heic' ? 'heic' : file.type === 'image/heif' ? 'heif' : 'jpg');
             const path = `${getStoragePath(patientId)}.${safeExt}`;
-            const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, file, { upsert: false });
+            const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, file, {
+                upsert: false,
+                contentType: MIME_BY_EXT[safeExt] || file.type || 'application/octet-stream'
+            });
             if (upErr) throw upErr;
             const { data: { publicUrl } } = supabase.storage.from(BUCKET).getPublicUrl(path);
             const { data: row, error: insertErr } = await addProgressPhoto({
@@ -163,9 +174,11 @@ export default function ProgressPhotosPage() {
             if (fileInputRef.current) fileInputRef.current.value = '';
             loadData();
         } catch (err) {
+            console.error('[ProgressPhotos][upload] erro detalhado:', err);
+            const fullMsg = err?.message || err?.error_description || err?.details || err?.hint || JSON.stringify(err);
             toast({
                 title: 'Erro ao enviar foto',
-                description: err?.message || err?.error_description || 'Não foi possível enviar a imagem. Tente novamente.',
+                description: fullMsg || 'Não foi possível enviar a imagem. Tente novamente.',
                 variant: 'destructive'
             });
         } finally {
@@ -269,13 +282,6 @@ export default function ProgressPhotosPage() {
                             {patientName} — Antes e depois
                         </p>
                     </div>
-                    <Button
-                        className="shrink-0 bg-[#b99470] hover:bg-[#a08060]"
-                        onClick={() => setModalOpen(true)}
-                    >
-                        <Plus className="w-4 h-4 mr-2" />
-                        Adicionar foto
-                    </Button>
                 </div>
 
                 {loading ? (
@@ -311,18 +317,27 @@ export default function ProgressPhotosPage() {
 
                         <Card>
                             <CardHeader>
-                                <div>
-                                    <CardTitle>Timeline de fotos</CardTitle>
-                                    <CardDescription className="mt-1">
-                                        Ordem cronológica das fotos enviadas pelo paciente ou por você. Clique para ampliar; use o lápis para editar data ou legenda.
-                                    </CardDescription>
-                                    {sortedPhotos.length > 0 && (
-                                        <p className="text-sm text-muted-foreground mt-2">
-                                            <span className="font-medium text-foreground">{sortedPhotos.length}</span> foto{sortedPhotos.length !== 1 ? 's' : ''}
-                                            <span className="mx-1">·</span>
-                                            {format(new Date(sortedPhotos[0].photo_date), 'dd/MM/yy', { locale: ptBR })} → {format(new Date(sortedPhotos[sortedPhotos.length - 1].photo_date), 'dd/MM/yy', { locale: ptBR })}
-                                        </p>
-                                    )}
+                                <div className="flex items-start justify-between gap-3">
+                                    <div>
+                                        <CardTitle>Timeline de fotos</CardTitle>
+                                        <CardDescription className="mt-1">
+                                            Ordem cronológica das fotos enviadas pelo paciente ou por você. Clique para ampliar; use o lápis para editar data ou legenda.
+                                        </CardDescription>
+                                        {sortedPhotos.length > 0 && (
+                                            <p className="text-sm text-muted-foreground mt-2">
+                                                <span className="font-medium text-foreground">{sortedPhotos.length}</span> foto{sortedPhotos.length !== 1 ? 's' : ''}
+                                                <span className="mx-1">·</span>
+                                                {format(new Date(sortedPhotos[0].photo_date), 'dd/MM/yy', { locale: ptBR })} → {format(new Date(sortedPhotos[sortedPhotos.length - 1].photo_date), 'dd/MM/yy', { locale: ptBR })}
+                                            </p>
+                                        )}
+                                    </div>
+                                    <Button
+                                        className="shrink-0 bg-[#b99470] hover:bg-[#a08060]"
+                                        onClick={() => setModalOpen(true)}
+                                    >
+                                        <Plus className="w-4 h-4 mr-2" />
+                                        Adicionar foto
+                                    </Button>
                                 </div>
                             </CardHeader>
                             <CardContent>

@@ -44,6 +44,15 @@ import {
   ResponsiveContainer
 } from 'recharts';
 
+const MIME_BY_EXT = {
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  png: 'image/png',
+  webp: 'image/webp',
+  heic: 'image/heic',
+  heif: 'image/heif'
+};
+
 /**
  * PatientProgressPage - Aba 3: Progresso
  *
@@ -271,7 +280,10 @@ export default function PatientProgressPage() {
       const path = `${user.id}/progress_photos/${crypto.randomUUID()}.${safeExt}`;
       const { error: uploadError } = await supabase.storage
         .from('patient-photos')
-        .upload(path, file, { upsert: false });
+        .upload(path, file, {
+          upsert: false,
+          contentType: MIME_BY_EXT[safeExt] || file.type || 'application/octet-stream'
+        });
 
       if (uploadError) throw uploadError;
 
@@ -311,9 +323,10 @@ export default function PatientProgressPage() {
       setSelectedPhotoFile(null);
       loadProgressData();
     } catch (error) {
+      console.error('[PatientProgress][upload] erro detalhado:', error);
       toast({
         title: 'Erro',
-        description: error?.message || 'Não foi possível adicionar a foto.',
+        description: error?.message || error?.error_description || error?.details || error?.hint || 'Não foi possível adicionar a foto.',
         variant: 'destructive'
       });
     }

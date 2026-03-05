@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { format, parse, parseISO, isValid } from 'date-fns';
+import { format, parse, parseISO, isValid, addMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { CalendarDays } from 'lucide-react';
+import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -186,15 +186,35 @@ const DateInputWithCalendar = ({
                     </Button>
                 </PopoverTrigger>
                 <PopoverContent className="p-0 z-[100]" align="end" style={{ pointerEvents: 'auto' }}>
-                    <div className="flex items-center justify-end gap-2 border-b px-3 py-2 bg-muted/30">
-                        <span className="text-xs text-muted-foreground">Ano</span>
-                        <Input
-                            value={yearInput}
-                            onChange={(e) => applyYearInput(e.target.value)}
-                            className="h-8 w-24 text-sm"
-                            inputMode="numeric"
-                            placeholder="AAAA"
-                        />
+                    <div className="flex items-center justify-between border-b px-3 py-2">
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() => setDisplayMonth(addMonths(displayMonth, -1))}
+                        >
+                            <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <div className="flex items-center gap-1 text-sm">
+                            <span className="capitalize">{format(displayMonth, 'MMMM', { locale: ptBR })}</span>
+                            <Input
+                                value={yearInput}
+                                onChange={(e) => applyYearInput(e.target.value)}
+                                className="h-7 w-16 border-0 p-0 text-center font-medium bg-transparent focus-visible:ring-0"
+                                inputMode="numeric"
+                                placeholder="AAAA"
+                            />
+                        </div>
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() => setDisplayMonth(addMonths(displayMonth, 1))}
+                        >
+                            <ChevronRight className="h-4 w-4" />
+                        </Button>
                     </div>
                     <Calendar
                         mode="single"
@@ -204,6 +224,9 @@ const DateInputWithCalendar = ({
                         onMonthChange={(month) => {
                             setDisplayMonth(month);
                             setYearInput(String(month.getFullYear()));
+                        }}
+                        classNames={{
+                            caption: 'hidden'
                         }}
                         locale={ptBR}
                         fromDate={minDate || undefined}
