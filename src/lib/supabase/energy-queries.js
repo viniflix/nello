@@ -57,8 +57,50 @@ export const getEnergyCalculationWithDetails = async (patientId) => {
  */
 
 /**
+ * Extrai dados biométricos de um objeto content (anamnese) em qualquer nível.
+ * @param {object} obj - Objeto (content ou seção)
+ * @param {object} acc - Acumulador { weight, height, age, gender, body_fat_percentage, lean_mass_kg }
+ */
+function extractBiometryFromContent(obj, acc) {
+  if (!obj || typeof obj !== 'object') return;
+  const keys = ['weight', 'height', 'peso', 'altura', 'data_nascimento', 'birth_date', 'idade', 'age', 'sexo', 'gender', 'body_fat_percentage', 'gordura', 'lean_mass_kg', 'massa_magra'];
+  for (const [k, v] of Object.entries(obj)) {
+    if (v == null) continue;
+    const key = String(k).toLowerCase();
+    if (key === 'weight' || key === 'peso') {
+      const n = Number(v);
+      if (Number.isFinite(n) && acc.weight == null) acc.weight = n;
+    }
+    if (key === 'height' || key === 'altura') {
+      const n = Number(v);
+      if (Number.isFinite(n) && acc.height == null) acc.height = n;
+    }
+    if (key === 'idade' || key === 'age') {
+      const n = typeof v === 'string' ? parseInt(v.replace(/\D/g, ''), 10) : Number(v);
+      if (Number.isFinite(n) && acc.age == null) acc.age = n;
+    }
+    if (key === 'data_nascimento' || key === 'birth_date') {
+      if (acc.birth_date == null) acc.birth_date = v;
+    }
+    if (key === 'sexo' || key === 'gender') {
+      const g = String(v).toLowerCase();
+      if (acc.gender == null) acc.gender = g === 'male' || g === 'masculino' || g === 'm' ? 'M' : g === 'female' || g === 'feminino' || g === 'f' ? 'F' : v;
+    }
+    if (key === 'body_fat_percentage' || key === 'gordura') {
+      const n = Number(v);
+      if (Number.isFinite(n) && acc.body_fat_percentage == null) acc.body_fat_percentage = n;
+    }
+    if (key === 'lean_mass_kg' || key === 'massa_magra') {
+      const n = Number(v);
+      if (Number.isFinite(n) && acc.lean_mass_kg == null) acc.lean_mass_kg = n;
+    }
+    if (typeof v === 'object' && v !== null && !Array.isArray(v)) extractBiometryFromContent(v, acc);
+  }
+}
+
+/**
  * Busca altura, peso, idade, sexo e % gordura para auto-preenchimento do formulário de energia.
- * Prioridade: último registro de antropometria (growth_records) + perfil do paciente (user_profiles).
+ * Prioridade: antropometria (growth_records) > anamnese (content) > perfil (user_profiles).
  *
  * @param {string} patientId - ID do paciente
  * @returns {Promise<{data: InitialBiometryForEnergy, error: object|null}>}
@@ -73,14 +115,17 @@ export const getInitialBiometryForEnergy = async (patientId) => {
       body_fat_percentage: null,
       lean_mass_kg: null
     };
+    const fromAnamnesis = { weight: null, height: null, age: null, birth_date: null, gender: null, body_fat_percentage: null, lean_mass_kg: null };
 
-    const { data: profile, error: profileError } = await supabase
-      .from('user_profiles')
-      .select('birth_date, gender, weight, height')
-      .eq('id', patientId)
-      .single();
+    const [profileRes, grRes, anamnesisRes] = await Promise.all([
+      supabase.from('user_profiles').select('birth_date, gender, weight, height').eq('id', patientId).single(),
+      supabase.from('growth_records').select('weight, height, results, record_date').eq('patient_id', patientId).order('record_date', { ascending: false }).limit(1).maybeSingle(),
+      supabase.from('anamnesis_records').select('content').eq('patient_id', patientId).order('date', { ascending: false }).limit(1).maybeSingle()
+    ]);
 
-    if (profileError) throw profileError;
+    const profile = profileRes.data;
+    if (profileRes.error) throw profileRes.error;
+
     if (profile?.birth_date) {
       const birth = new Date(profile.birth_date);
       const today = new Date();
@@ -96,16 +141,27 @@ export const getInitialBiometryForEnergy = async (patientId) => {
     if (profile?.weight != null) out.weight = Number(profile.weight);
     if (profile?.height != null) out.height = Number(profile.height);
 
-    let latestAnthropometry = null;
-    const { data: grData } = await supabase
-      .from('growth_records')
-      .select('weight, height, results, record_date')
-      .eq('patient_id', patientId)
-      .order('record_date', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    latestAnthropometry = grData;
+    if (anamnesisRes.data?.content && typeof anamnesisRes.data.content === 'object') {
+      extractBiometryFromContent(anamnesisRes.data.content, fromAnamnesis);
+      if (fromAnamnesis.birth_date && out.age == null) {
+        const birth = new Date(fromAnamnesis.birth_date);
+        const today = new Date();
+        if (!Number.isNaN(birth.getTime())) {
+          let age = today.getFullYear() - birth.getFullYear();
+          const monthDiff = today.getMonth() - birth.getMonth();
+          if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) age--;
+          out.age = age;
+        }
+      }
+      if (fromAnamnesis.weight != null && out.weight == null) out.weight = fromAnamnesis.weight;
+      if (fromAnamnesis.height != null && out.height == null) out.height = fromAnamnesis.height;
+      if (fromAnamnesis.age != null && out.age == null) out.age = fromAnamnesis.age;
+      if (fromAnamnesis.gender != null && out.gender == null) out.gender = fromAnamnesis.gender;
+      if (fromAnamnesis.body_fat_percentage != null && out.body_fat_percentage == null) out.body_fat_percentage = fromAnamnesis.body_fat_percentage;
+      if (fromAnamnesis.lean_mass_kg != null && out.lean_mass_kg == null) out.lean_mass_kg = fromAnamnesis.lean_mass_kg;
+    }
 
+    const latestAnthropometry = grRes.data;
     if (latestAnthropometry) {
       if (latestAnthropometry.weight != null) out.weight = Number(latestAnthropometry.weight);
       if (latestAnthropometry.height != null) out.height = Number(latestAnthropometry.height);
@@ -116,11 +172,32 @@ export const getInitialBiometryForEnergy = async (patientId) => {
       }
     }
 
-    return { data: out, error: null };
+    const sources = { weight: null, height: null, age: null, gender: null, body_fat_percentage: null, lean_mass_kg: null };
+    if (latestAnthropometry) {
+      if (latestAnthropometry.weight != null) sources.weight = 'anthropometry';
+      if (latestAnthropometry.height != null) sources.height = 'anthropometry';
+      const res = latestAnthropometry.results;
+      if (res && typeof res === 'object') {
+        if (res.body_fat_percentage != null) sources.body_fat_percentage = 'anthropometry';
+        if (res.lean_mass_kg != null) sources.lean_mass_kg = 'anthropometry';
+      }
+    }
+    if (fromAnamnesis.weight != null && sources.weight == null) sources.weight = 'anamnesis';
+    if (fromAnamnesis.height != null && sources.height == null) sources.height = 'anamnesis';
+    if (fromAnamnesis.age != null || fromAnamnesis.birth_date != null) sources.age = sources.age || 'anamnesis';
+    if (fromAnamnesis.gender != null && sources.gender == null) sources.gender = 'anamnesis';
+    if (fromAnamnesis.body_fat_percentage != null && sources.body_fat_percentage == null) sources.body_fat_percentage = 'anamnesis';
+    if (fromAnamnesis.lean_mass_kg != null && sources.lean_mass_kg == null) sources.lean_mass_kg = 'anamnesis';
+    if (profile?.weight != null && sources.weight == null) sources.weight = 'profile';
+    if (profile?.height != null && sources.height == null) sources.height = 'profile';
+    if (profile?.birth_date != null && sources.age == null) sources.age = 'profile';
+    if (profile?.gender != null && sources.gender == null) sources.gender = 'profile';
+
+    return { data: { ...out, _sources: sources }, error: null };
   } catch (error) {
     logSupabaseError('Erro ao buscar biometria para energia', error);
     return {
-      data: { height: null, weight: null, age: null, gender: null, body_fat_percentage: null, lean_mass_kg: null },
+      data: { height: null, weight: null, age: null, gender: null, body_fat_percentage: null, lean_mass_kg: null, _sources: {} },
       error
     };
   }

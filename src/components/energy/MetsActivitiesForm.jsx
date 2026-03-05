@@ -123,14 +123,22 @@ export default function MetsActivitiesForm({ activities = [], onChange, weightKg
                         className="h-9"
                       />
                     </PopoverTrigger>
-                    <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                    <PopoverContent
+                      className="w-[var(--radix-popover-trigger-width)] p-0 min-w-[220px]"
+                      align="start"
+                      onOpenAutoFocus={(e) => e.preventDefault()}
+                    >
                       <ul className="max-h-48 overflow-auto py-1">
                         {searchResults(i).map((act) => (
                           <li key={act.id}>
                             <button
                               type="button"
-                              className="w-full px-3 py-2 text-left text-sm hover:bg-accent"
-                              onClick={() => selectActivity(i, act)}
+                              className="w-full px-3 py-2 text-left text-sm hover:bg-accent cursor-pointer"
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                selectActivity(i, act);
+                              }}
                             >
                               {act.name} <span className="text-muted-foreground">(MET {act.met})</span>
                             </button>

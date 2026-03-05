@@ -41,6 +41,7 @@ import {
   activityFactorToEerPa,
   calculateETA
 } from '@/lib/utils/energy-calculations';
+import { INJURY_FACTORS, getInjuryFactorValue } from '@/lib/constants/injury-factors';
 
 const TMB_PROTOCOLS = [
   { id: 'mifflin', label: 'Mifflin-St Jeor' },
@@ -70,10 +71,10 @@ export default function EnergyExpenditurePage() {
   const [gender, setGender] = useState('');
   const [bodyFatPct, setBodyFatPct] = useState('');
   const [leanMass, setLeanMass] = useState('');
-  const [dataSource, setDataSource] = useState({ weight: null, height: null, leanMass: null });
+  const [dataSource, setDataSource] = useState({ weight: null, height: null, age: null, gender: null, leanMass: null });
 
   const [activityFactor, setActivityFactor] = useState(1.55);
-  const [injuryFactor, setInjuryFactor] = useState(1.0);
+  const [injuryFactorId, setInjuryFactorId] = useState('none');
   const [metsActivities, setMetsActivities] = useState([]);
   const [selectedProtocol, setSelectedProtocol] = useState('mifflin');
   const [ventaTargetWeight, setVentaTargetWeight] = useState('');
@@ -128,6 +129,7 @@ export default function EnergyExpenditurePage() {
   const tmbResult = selectedProtocolData?.bmr ?? null;
   const isEer = selectedProtocolData?.isEer === true;
 
+  const injuryFactor = getInjuryFactorValue(injuryFactorId);
   const getBase = useMemo(() => {
     if (isEer && selectedProtocolData?.get != null) {
       const pa = activityFactorToEerPa(activityFactor, gender);
@@ -187,10 +189,13 @@ export default function EnergyExpenditurePage() {
         if (biometry.gender) setGender(biometry.gender);
         if (biometry.body_fat_percentage != null) setBodyFatPct(String(biometry.body_fat_percentage));
         if (biometry.lean_mass_kg != null) setLeanMass(String(biometry.lean_mass_kg));
+        const src = biometry._sources || {};
         setDataSource({
-          weight: biometry.weight != null ? 'anthropometry' : null,
-          height: biometry.height != null ? 'anthropometry' : null,
-          leanMass: biometry.lean_mass_kg != null ? 'anthropometry' : null
+          weight: src.weight || null,
+          height: src.height || null,
+          age: src.age || null,
+          gender: src.gender || null,
+          leanMass: src.lean_mass_kg || null
         });
       }
 
@@ -237,7 +242,10 @@ export default function EnergyExpenditurePage() {
       if (saved) {
         if (saved.tmb_protocol) setSelectedProtocol(saved.tmb_protocol);
         if (saved.activity_factor != null) setActivityFactor(Number(saved.activity_factor));
-        if (saved.injury_factor != null) setInjuryFactor(Number(saved.injury_factor));
+        if (saved.injury_factor != null) {
+          const found = INJURY_FACTORS.find((f) => Math.abs(f.value - Number(saved.injury_factor)) < 0.01);
+          setInjuryFactorId(found ? found.id : 'none');
+        }
         if (Array.isArray(saved.mets_activities) && saved.mets_activities.length)
           setMetsActivities(saved.mets_activities);
         if (saved.venta_target_weight != null) setVentaTargetWeight(String(saved.venta_target_weight));
@@ -279,7 +287,7 @@ export default function EnergyExpenditurePage() {
         tmb_protocol: selectedProtocol,
         tmb_result: selectedProtocolData?.bmr ?? null,
         activity_factor: activityFactor,
-        injury_factor: injuryFactor,
+        injury_factor: getInjuryFactorValue(injuryFactorId),
         mets_activities: metsActivities.map((a) => {
           const hasFreq = a.frequency_type != null;
           const { items: [item] = [] } = hasFreq
@@ -336,7 +344,8 @@ export default function EnergyExpenditurePage() {
 
   const getDataSourceBadge = (field) => {
     const src = dataSource[field];
-    if (src === 'anthropometry') return <Badge variant="secondary" className="text-xs ml-2"><Database className="w-3 h-3 mr-1" />Auto</Badge>;
+    if (src === 'anthropometry') return <Badge variant="secondary" className="text-xs ml-2"><Database className="w-3 h-3 mr-1" />Antropometria</Badge>;
+    if (src === 'anamnesis') return <Badge variant="secondary" className="text-xs ml-2">Anamnese</Badge>;
     if (src === 'profile') return <Badge variant="outline" className="text-xs ml-2"><User className="w-3 h-3 mr-1" />Perfil</Badge>;
     return null;
   };
@@ -427,12 +436,12 @@ export default function EnergyExpenditurePage() {
                     <Input id="height" type="number" step="0.1" min={50} value={height} onChange={(e) => { setHeight(e.target.value); setDataSource((p) => ({ ...p, height: 'manual' })); }} placeholder="175" />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="age">Idade (anos) *</Label>
-                    <Input id="age" type="number" min={1} max={120} value={age} onChange={(e) => setAge(e.target.value)} placeholder="30" />
+                    <Label htmlFor="age" className="flex items-center">Idade (anos) * {getDataSourceBadge('age')}</Label>
+                    <Input id="age" type="number" min={1} max={120} value={age} onChange={(e) => { setAge(e.target.value); setDataSource((p) => ({ ...p, age: 'manual' })); }} placeholder="30" />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="gender">Sexo *</Label>
-                    <Select value={gender || ''} onValueChange={setGender}>
+                    <Label htmlFor="gender" className="flex items-center">Sexo * {getDataSourceBadge('gender')}</Label>
+                    <Select value={gender || ''} onValueChange={(v) => { setGender(v); setDataSource((p) => ({ ...p, gender: 'manual' })); }}>
                       <SelectTrigger id="gender"><SelectValue placeholder="Selecione" /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="F">Feminino</SelectItem>
@@ -451,10 +460,10 @@ export default function EnergyExpenditurePage() {
                 </div>
                 <div className="space-y-2">
                   <Label>Protocolo TMB</Label>
-                  <Select value={selectedProtocol} onValueChange={(v) => setSelectedProtocol(v)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                  <Select value={selectedProtocol || 'mifflin'} onValueChange={(v) => setSelectedProtocol(v)}>
+                    <SelectTrigger><SelectValue placeholder="Selecione o protocolo" /></SelectTrigger>
                     <SelectContent>
-                      {TMB_PROTOCOLS.filter((p) => protocols.some((r) => r.id === p.id)).map((p) => (
+                      {TMB_PROTOCOLS.map((p) => (
                         <SelectItem key={p.id} value={p.id}>{p.label}</SelectItem>
                       ))}
                     </SelectContent>
@@ -496,11 +505,22 @@ export default function EnergyExpenditurePage() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Fator clínico / injúria</CardTitle>
-                <CardDescription>Multiplicador 1.0 a 2.0 (opcional)</CardDescription>
+                <CardTitle>Fator de injúria / estresse clínico</CardTitle>
+                <CardDescription>Condições que alteram o gasto energético (como no Dietbox)</CardDescription>
               </CardHeader>
               <CardContent>
-                <Input type="number" min={1} max={2} step={0.1} value={injuryFactor} onChange={(e) => setInjuryFactor(parseFloat(e.target.value) || 1)} className="max-w-[120px]" />
+                <Select value={injuryFactorId} onValueChange={setInjuryFactorId}>
+                  <SelectTrigger className="max-w-sm">
+                    <SelectValue placeholder="Selecione o fator de injúria" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {INJURY_FACTORS.map((f) => (
+                      <SelectItem key={f.id} value={f.id}>
+                        {f.label} {f.value !== 1 ? `(×${f.value})` : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </CardContent>
             </Card>
 
