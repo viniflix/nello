@@ -72,6 +72,7 @@ export default function PatientProgressPage() {
   const [newGlycemia, setNewGlycemia] = useState('');
   const [recordDate, setRecordDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [photoNotes, setPhotoNotes] = useState('');
+  const [selectedPhotoFile, setSelectedPhotoFile] = useState(null);
   const [deletePhotoTarget, setDeletePhotoTarget] = useState(null);
   const [lightboxPhoto, setLightboxPhoto] = useState(null);
 
@@ -253,7 +254,7 @@ export default function PatientProgressPage() {
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/heic', 'image/heif', 'image/webp'];
     const allowedExtensions = ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif'];
     const ext = (file.name.split('.').pop() || '').toLowerCase();
-    const typeOk = file.type && (allowedTypes.includes(file.type) || file.type.startsWith('image/'));
+    const typeOk = !file.type || allowedTypes.includes(file.type) || file.type.startsWith('image/');
     const extOk = allowedExtensions.includes(ext) || !ext;
     if (!typeOk || !extOk) {
       toast({ title: 'Erro', description: 'Use JPEG, PNG, WebP ou HEIC.', variant: 'destructive' });
@@ -307,6 +308,7 @@ export default function PatientProgressPage() {
       setDialogOpen(false);
       setRecordDate(format(new Date(), 'yyyy-MM-dd'));
       setPhotoNotes('');
+      setSelectedPhotoFile(null);
       loadProgressData();
     } catch (error) {
       toast({
@@ -862,9 +864,8 @@ export default function PatientProgressPage() {
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                const fileInput = document.getElementById('photoFile');
-                if (fileInput?.files?.[0]) {
-                  handleAddPhotoRecord(fileInput.files[0], photoNotes);
+                if (selectedPhotoFile) {
+                  handleAddPhotoRecord(selectedPhotoFile, photoNotes);
                 }
               }}
               className="space-y-4"
@@ -884,8 +885,18 @@ export default function PatientProgressPage() {
                   id="photoFile"
                   type="file"
                   accept="image/jpeg,image/jpg,image/png,image/heic,image/heif,image/webp"
-                  required
+                  className="hidden"
+                  onChange={(e) => setSelectedPhotoFile(e.target.files?.[0] || null)}
                 />
+                <div className="mt-2 flex items-center gap-2">
+                  <Button type="button" variant="outline" onClick={() => document.getElementById('photoFile')?.click()}>
+                    Escolher arquivo
+                  </Button>
+                  <span className="text-sm text-muted-foreground truncate">
+                    {selectedPhotoFile?.name || 'Nenhum arquivo selecionado'}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">JPEG, PNG, WebP, HEIC/HEIF (iOS/Android)</p>
               </div>
               <div>
                 <Label htmlFor="photoNotes">Legenda (opcional)</Label>
@@ -899,7 +910,7 @@ export default function PatientProgressPage() {
                 />
               </div>
               <DialogFooter>
-                <Button type="submit">Adicionar</Button>
+                <Button type="submit" disabled={!selectedPhotoFile}>Adicionar</Button>
               </DialogFooter>
             </form>
           )}

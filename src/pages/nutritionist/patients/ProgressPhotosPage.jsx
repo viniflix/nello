@@ -123,7 +123,7 @@ export default function ProgressPhotosPage() {
         const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/heic', 'image/heif', 'image/webp'];
         const allowedExtensions = ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif'];
         const ext = (file.name.split('.').pop() || '').toLowerCase();
-        const typeOk = file.type && (allowedTypes.includes(file.type) || file.type.startsWith('image/'));
+        const typeOk = !file.type || allowedTypes.includes(file.type) || file.type.startsWith('image/');
         const extOk = allowedExtensions.includes(ext) || !ext;
         if (!typeOk || !extOk) {
             toast({ title: 'Formato não suportado. Use JPEG, PNG, WebP ou HEIC.', variant: 'destructive' });
@@ -163,7 +163,11 @@ export default function ProgressPhotosPage() {
             if (fileInputRef.current) fileInputRef.current.value = '';
             loadData();
         } catch (err) {
-            toast({ title: 'Erro ao enviar foto', description: err.message, variant: 'destructive' });
+            toast({
+                title: 'Erro ao enviar foto',
+                description: err?.message || err?.error_description || 'Não foi possível enviar a imagem. Tente novamente.',
+                variant: 'destructive'
+            });
         } finally {
             setUploading(false);
         }
@@ -420,11 +424,22 @@ export default function ProgressPhotosPage() {
                                 accept="image/jpeg,image/jpg,image/png,image/heic,image/heif,image/webp"
                                 onChange={handleFileSelect}
                                 disabled={uploading}
+                                className="hidden"
                             />
+                            <div className="mt-2 flex items-center gap-2">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    disabled={uploading}
+                                    onClick={() => fileInputRef.current?.click()}
+                                >
+                                    Escolher arquivo
+                                </Button>
+                                <span className="text-sm text-muted-foreground truncate">
+                                    {selectedFile?.name || 'Nenhum arquivo selecionado'}
+                                </span>
+                            </div>
                             <p className="text-xs text-muted-foreground mt-1">JPEG, PNG, WebP, HEIC/HEIF (iOS/Android)</p>
-                            {selectedFile && (
-                                <p className="text-xs text-muted-foreground mt-1">{selectedFile.name}</p>
-                            )}
                             {uploading && (
                                 <p className="text-sm text-muted-foreground mt-2 flex items-center gap-2">
                                     <Loader2 className="w-4 h-4 animate-spin" />

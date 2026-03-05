@@ -5,6 +5,37 @@ import { classifyLabResultsRiskBatch, getLabRiskRules } from '@/lib/supabase/lab
 import { logOperationalEvent } from './observability-queries';
 import { isUuid } from '@/lib/utils/patientRoutes';
 
+let hasActivityLogTable = true;
+
+const getProgressPhotoEventsFromAudit = async (patientId) => {
+    if (!hasActivityLogTable) return [];
+
+    const { data, error } = await supabase
+        .from('activity_log')
+        .select('id, event_name, occurred_at, payload')
+        .eq('patient_id', patientId)
+        .in('event_name', ['progress_photo.added', 'progress_photo.edited', 'progress_photo.deleted'])
+        .order('occurred_at', { ascending: false })
+        .limit(20);
+
+    if (error) {
+        const msg = String(error?.message || '').toLowerCase();
+        const code = String(error?.code || '').toUpperCase();
+        const isMissingRelation =
+            code === 'PGRST205' ||
+            code === '42P01' ||
+            (msg.includes('activity_log') && (msg.includes('schema cache') || msg.includes('does not exist')));
+
+        if (isMissingRelation) {
+            hasActivityLogTable = false;
+            return [];
+        }
+        throw error;
+    }
+
+    return data || [];
+};
+
 /**
  * Resolve slug ou UUID para o ID do paciente
  * @param {string} slugOrId - Slug (ex: maria-santos) ou UUID
@@ -384,13 +415,13 @@ export const getPatientActivities = async (patientId, limit = 10) => {
         }
 
         // Eventos de fotos de progresso (activity_log)
-        const { data: photoEvents } = await supabase
-            .from('activity_log')
-            .select('id, event_name, occurred_at, payload')
-            .eq('patient_id', patientId)
-            .in('event_name', ['progress_photo.added', 'progress_photo.edited', 'progress_photo.deleted'])
-            .order('occurred_at', { ascending: false })
-            .limit(20);
+        let photoEvents = [];
+        try {
+            photoEvents = await getProgressPhotoEventsFromAudit(patientId);
+        } catch (error) {
+            logSupabaseError('Erro ao buscar auditoria de fotos no activity_log', error);
+            photoEvents = [];
+        }
 
         if (photoEvents) {
             photoEvents.forEach((ev) => {

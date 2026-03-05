@@ -72,6 +72,9 @@ const DateInputWithCalendar = ({
 }) => {
     const [displayValue, setDisplayValue] = useState('');
     const selectedDate = useMemo(() => parseDateValue(value), [value]);
+    const [calendarOpen, setCalendarOpen] = useState(false);
+    const [displayMonth, setDisplayMonth] = useState(() => selectedDate || new Date());
+    const [yearInput, setYearInput] = useState(() => String((selectedDate || new Date()).getFullYear()));
 
     useEffect(() => {
         if (!value) {
@@ -81,6 +84,12 @@ const DateInputWithCalendar = ({
         const parsed = parseDateValue(value);
         setDisplayValue(parsed ? formatDateDisplay(parsed) : value);
     }, [value]);
+
+    useEffect(() => {
+        if (!selectedDate) return;
+        setDisplayMonth(selectedDate);
+        setYearInput(String(selectedDate.getFullYear()));
+    }, [selectedDate]);
 
     const formatDateAsUserTypes = (input) => {
         const digits = input.replace(/\D/g, '');
@@ -108,6 +117,8 @@ const DateInputWithCalendar = ({
         const parsed = parseDateValue(formatted);
         if (parsed) {
             onChange(formatDateValue(parsed));
+            setDisplayMonth(parsed);
+            setYearInput(String(parsed.getFullYear()));
         }
     };
 
@@ -115,11 +126,26 @@ const DateInputWithCalendar = ({
         if (!date) return;
         const formatted = formatDateValue(date);
         setDisplayValue(formatDateDisplay(date));
+        setDisplayMonth(date);
+        setYearInput(String(date.getFullYear()));
         onChange?.(formatted);
     };
 
     const minDate = useMemo(() => parseDateValue(min), [min]);
     const maxDate = useMemo(() => parseDateValue(max), [max]);
+    const minYear = minDate?.getFullYear() ?? 1900;
+    const maxYear = maxDate?.getFullYear() ?? new Date().getFullYear() + 120;
+
+    const applyYearInput = (raw) => {
+        const digits = String(raw || '').replace(/\D/g, '').slice(0, 4);
+        setYearInput(digits);
+        if (digits.length < 4) return;
+        const parsedYear = Number(digits);
+        if (!Number.isFinite(parsedYear)) return;
+        const clampedYear = Math.min(maxYear, Math.max(minYear, parsedYear));
+        const baseDate = selectedDate || displayMonth || new Date();
+        setDisplayMonth(new Date(clampedYear, baseDate.getMonth(), 1));
+    };
 
     return (
         <div className="relative flex items-center gap-2">
@@ -136,7 +162,18 @@ const DateInputWithCalendar = ({
                 max={max}
                 {...rest}
             />
-            <Popover modal={true}>
+            <Popover
+                modal={true}
+                open={calendarOpen}
+                onOpenChange={(open) => {
+                    setCalendarOpen(open);
+                    if (open) {
+                        const baseDate = selectedDate || parseDateValue(displayValue) || new Date();
+                        setDisplayMonth(baseDate);
+                        setYearInput(String(baseDate.getFullYear()));
+                    }
+                }}
+            >
                 <PopoverTrigger asChild>
                     <Button
                         type="button"
@@ -149,10 +186,25 @@ const DateInputWithCalendar = ({
                     </Button>
                 </PopoverTrigger>
                 <PopoverContent className="p-0 z-[100]" align="end" style={{ pointerEvents: 'auto' }}>
+                    <div className="flex items-center justify-end gap-2 border-b px-3 py-2 bg-muted/30">
+                        <span className="text-xs text-muted-foreground">Ano</span>
+                        <Input
+                            value={yearInput}
+                            onChange={(e) => applyYearInput(e.target.value)}
+                            className="h-8 w-24 text-sm"
+                            inputMode="numeric"
+                            placeholder="AAAA"
+                        />
+                    </div>
                     <Calendar
                         mode="single"
                         selected={selectedDate || undefined}
                         onSelect={handleSelect}
+                        month={displayMonth}
+                        onMonthChange={(month) => {
+                            setDisplayMonth(month);
+                            setYearInput(String(month.getFullYear()));
+                        }}
                         locale={ptBR}
                         fromDate={minDate || undefined}
                         toDate={maxDate || undefined}
