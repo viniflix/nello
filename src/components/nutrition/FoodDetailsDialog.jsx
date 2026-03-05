@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Package, Database, Info } from 'lucide-react';
+import { getFoodMeasures } from '@/lib/supabase/foodService';
 import {
     Dialog,
     DialogContent,
@@ -20,7 +21,22 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
  * @param {Function} onOpenChange - Callback quando o estado muda
  */
 const FoodDetailsDialog = ({ food, open, onOpenChange }) => {
-    if (!food) return null;
+    const [displayFood, setDisplayFood] = useState(food);
+
+    useEffect(() => {
+        setDisplayFood(food);
+    }, [food]);
+
+    useEffect(() => {
+        if (open && food?.id && (!food.food_measures || food.food_measures.length === 0)) {
+            getFoodMeasures(food.id).then((measures) => {
+                setDisplayFood((prev) => (prev && prev.id === food.id ? { ...prev, food_measures: measures } : prev));
+            });
+        }
+    }, [open, food?.id]);
+
+    const f = displayFood || food;
+    if (!f) return null;
 
     const sourceLabels = {
         'TACO': 'TACO - Tabela Brasileira de Composição de Alimentos',
@@ -46,16 +62,16 @@ const FoodDetailsDialog = ({ food, open, onOpenChange }) => {
                 <DialogHeader className="pb-3 sm:pb-4">
                     <DialogTitle className="text-lg sm:text-xl flex items-center gap-2 flex-wrap">
                         <Package className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
-                        <span className="break-words">{food.name}</span>
+                        <span className="break-words">{f.name}</span>
                     </DialogTitle>
                     <DialogDescription className="mt-2">
-                        {food.group && <span className="block text-xs sm:text-sm">{food.group}</span>}
-                        {food.source && (
+                        {f.group && <span className="block text-xs sm:text-sm">{f.group}</span>}
+                        {f.source && (
                             <Badge 
                                 variant="outline" 
-                                className={`${sourceColors[food.source] || ''} mt-2 text-xs`}
+                                className={`${sourceColors[f.source] || ''} mt-2 text-xs`}
                             >
-                                {sourceLabels[food.source] || food.source}
+                                {sourceLabels[f.source] || f.source}
                             </Badge>
                         )}
                     </DialogDescription>
@@ -88,28 +104,28 @@ const FoodDetailsDialog = ({ food, open, onOpenChange }) => {
                                         <div className="text-center p-2 sm:p-4 bg-red-50 dark:bg-red-950/20 rounded-lg">
                                             <p className="text-[10px] sm:text-xs text-muted-foreground mb-1">Calorias</p>
                                             <p className="text-lg sm:text-2xl font-bold text-red-600 dark:text-red-400">
-                                                {food.calories ? Math.round(food.calories) : '—'}
+                                                {f.calories ? Math.round(f.calories) : '—'}
                                             </p>
                                             <p className="text-[10px] sm:text-xs text-muted-foreground">kcal</p>
                                         </div>
                                         <div className="text-center p-2 sm:p-4 bg-purple-50 dark:bg-purple-950/20 rounded-lg">
                                             <p className="text-[10px] sm:text-xs text-muted-foreground mb-1">Proteína</p>
                                             <p className="text-lg sm:text-2xl font-bold text-purple-600 dark:text-purple-400">
-                                                {food.protein ? food.protein.toFixed(1) : '—'}
+                                                {f.protein ? f.protein.toFixed(1) : '—'}
                                             </p>
                                             <p className="text-[10px] sm:text-xs text-muted-foreground">g</p>
                                         </div>
                                         <div className="text-center p-2 sm:p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
                                             <p className="text-[10px] sm:text-xs text-muted-foreground mb-1">Carboidratos</p>
                                             <p className="text-lg sm:text-2xl font-bold text-blue-600 dark:text-blue-400">
-                                                {food.carbs ? food.carbs.toFixed(1) : '—'}
+                                                {f.carbs ? f.carbs.toFixed(1) : '—'}
                                             </p>
                                             <p className="text-[10px] sm:text-xs text-muted-foreground">g</p>
                                         </div>
                                         <div className="text-center p-2 sm:p-4 bg-orange-50 dark:bg-orange-950/20 rounded-lg">
                                             <p className="text-[10px] sm:text-xs text-muted-foreground mb-1">Gorduras</p>
                                             <p className="text-lg sm:text-2xl font-bold text-orange-600 dark:text-orange-400">
-                                                {food.fat ? food.fat.toFixed(1) : '—'}
+                                                {f.fat ? f.fat.toFixed(1) : '—'}
                                             </p>
                                             <p className="text-[10px] sm:text-xs text-muted-foreground">g</p>
                                         </div>
@@ -118,59 +134,59 @@ const FoodDetailsDialog = ({ food, open, onOpenChange }) => {
                             </Card>
 
                             {/* Gorduras Detalhadas */}
-                            {(food.saturated_fat || food.trans_fat || food.monounsaturated_fat || food.polyunsaturated_fat || food.cholesterol || food.fiber || food.sugar || food.sodium) && (
+                            {(f.saturated_fat || f.trans_fat || f.monounsaturated_fat || f.polyunsaturated_fat || f.cholesterol || f.fiber || f.sugar || f.sodium) && (
                                 <Card>
                                     <CardHeader className="pb-3">
                                         <CardTitle className="text-sm sm:text-base">Gorduras Detalhadas e Outros</CardTitle>
                                     </CardHeader>
                                     <CardContent className="pt-0">
                                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-4">
-                                            {food.fiber && (
+                                            {f.fiber && (
                                                 <div className="space-y-1">
                                                     <p className="text-xs text-muted-foreground">Fibra</p>
-                                                    <p className="text-lg font-semibold">{food.fiber.toFixed(1)} g</p>
+                                                    <p className="text-lg font-semibold">{f.fiber.toFixed(1)} g</p>
                                                 </div>
                                             )}
-                                            {food.sugar && (
+                                            {f.sugar && (
                                                 <div className="space-y-1">
                                                     <p className="text-xs text-muted-foreground">Açúcares</p>
-                                                    <p className="text-lg font-semibold">{food.sugar.toFixed(1)} g</p>
+                                                    <p className="text-lg font-semibold">{f.sugar.toFixed(1)} g</p>
                                                 </div>
                                             )}
-                                            {food.saturated_fat && (
+                                            {f.saturated_fat && (
                                                 <div className="space-y-1">
                                                     <p className="text-xs text-muted-foreground">Gordura Saturada</p>
-                                                    <p className="text-lg font-semibold">{food.saturated_fat.toFixed(1)} g</p>
+                                                    <p className="text-lg font-semibold">{f.saturated_fat.toFixed(1)} g</p>
                                                 </div>
                                             )}
-                                            {food.trans_fat && (
+                                            {f.trans_fat && (
                                                 <div className="space-y-1">
                                                     <p className="text-xs text-muted-foreground">Gordura Trans</p>
-                                                    <p className="text-lg font-semibold">{food.trans_fat.toFixed(1)} g</p>
+                                                    <p className="text-lg font-semibold">{f.trans_fat.toFixed(1)} g</p>
                                                 </div>
                                             )}
-                                            {food.monounsaturated_fat && (
+                                            {f.monounsaturated_fat && (
                                                 <div className="space-y-1">
                                                     <p className="text-xs text-muted-foreground">Gordura Monoinsaturada</p>
-                                                    <p className="text-lg font-semibold">{food.monounsaturated_fat.toFixed(1)} g</p>
+                                                    <p className="text-lg font-semibold">{f.monounsaturated_fat.toFixed(1)} g</p>
                                                 </div>
                                             )}
-                                            {food.polyunsaturated_fat && (
+                                            {f.polyunsaturated_fat && (
                                                 <div className="space-y-1">
                                                     <p className="text-xs text-muted-foreground">Gordura Poliinsaturada</p>
-                                                    <p className="text-lg font-semibold">{food.polyunsaturated_fat.toFixed(1)} g</p>
+                                                    <p className="text-lg font-semibold">{f.polyunsaturated_fat.toFixed(1)} g</p>
                                                 </div>
                                             )}
-                                            {food.cholesterol && (
+                                            {f.cholesterol && (
                                                 <div className="space-y-1">
                                                     <p className="text-xs text-muted-foreground">Colesterol</p>
-                                                    <p className="text-lg font-semibold">{food.cholesterol.toFixed(0)} mg</p>
+                                                    <p className="text-lg font-semibold">{f.cholesterol.toFixed(0)} mg</p>
                                                 </div>
                                             )}
-                                            {food.sodium && (
+                                            {f.sodium && (
                                                 <div className="space-y-1">
                                                     <p className="text-xs text-muted-foreground">Sódio</p>
-                                                    <p className="text-lg font-semibold">{food.sodium.toFixed(0)} mg</p>
+                                                    <p className="text-lg font-semibold">{f.sodium.toFixed(0)} mg</p>
                                                 </div>
                                             )}
                                         </div>
@@ -181,51 +197,51 @@ const FoodDetailsDialog = ({ food, open, onOpenChange }) => {
 
                         {/* TAB 2: Micronutrientes */}
                         <TabsContent value="micros" className="space-y-3 sm:space-y-4 mt-3 sm:mt-4">
-                            {(food.calcium || food.iron || food.magnesium || food.phosphorus || food.potassium || food.zinc || 
-                              food.vitamin_a || food.vitamin_c || food.vitamin_d || food.vitamin_e || food.vitamin_b12 || food.folate) ? (
+                            {(f.calcium || f.iron || f.magnesium || f.phosphorus || f.potassium || f.zinc || 
+                              f.vitamin_a || f.vitamin_c || f.vitamin_d || f.vitamin_e || f.vitamin_b12 || f.folate) ? (
                                 <>
                                     {/* Minerais */}
-                                    {(food.calcium || food.iron || food.magnesium || food.phosphorus || food.potassium || food.zinc) && (
+                                    {(f.calcium || f.iron || f.magnesium || f.phosphorus || f.potassium || f.zinc) && (
                                         <Card>
                                             <CardHeader className="pb-3">
                                                 <CardTitle className="text-sm sm:text-base">Minerais (mg por 100g)</CardTitle>
                                             </CardHeader>
                                             <CardContent className="pt-0">
                                                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-4">
-                                                    {food.calcium && (
+                                                    {f.calcium && (
                                                         <div className="space-y-1">
                                                             <p className="text-xs text-muted-foreground">Cálcio</p>
-                                                            <p className="text-lg font-semibold">{food.calcium.toFixed(1)} mg</p>
+                                                            <p className="text-lg font-semibold">{f.calcium.toFixed(1)} mg</p>
                                                         </div>
                                                     )}
-                                                    {food.iron && (
+                                                    {f.iron && (
                                                         <div className="space-y-1">
                                                             <p className="text-xs text-muted-foreground">Ferro</p>
-                                                            <p className="text-lg font-semibold">{food.iron.toFixed(1)} mg</p>
+                                                            <p className="text-lg font-semibold">{f.iron.toFixed(1)} mg</p>
                                                         </div>
                                                     )}
-                                                    {food.magnesium && (
+                                                    {f.magnesium && (
                                                         <div className="space-y-1">
                                                             <p className="text-xs text-muted-foreground">Magnésio</p>
-                                                            <p className="text-lg font-semibold">{food.magnesium.toFixed(1)} mg</p>
+                                                            <p className="text-lg font-semibold">{f.magnesium.toFixed(1)} mg</p>
                                                         </div>
                                                     )}
-                                                    {food.phosphorus && (
+                                                    {f.phosphorus && (
                                                         <div className="space-y-1">
                                                             <p className="text-xs text-muted-foreground">Fósforo</p>
-                                                            <p className="text-lg font-semibold">{food.phosphorus.toFixed(1)} mg</p>
+                                                            <p className="text-lg font-semibold">{f.phosphorus.toFixed(1)} mg</p>
                                                         </div>
                                                     )}
-                                                    {food.potassium && (
+                                                    {f.potassium && (
                                                         <div className="space-y-1">
                                                             <p className="text-xs text-muted-foreground">Potássio</p>
-                                                            <p className="text-lg font-semibold">{food.potassium.toFixed(1)} mg</p>
+                                                            <p className="text-lg font-semibold">{f.potassium.toFixed(1)} mg</p>
                                                         </div>
                                                     )}
-                                                    {food.zinc && (
+                                                    {f.zinc && (
                                                         <div className="space-y-1">
                                                             <p className="text-xs text-muted-foreground">Zinco</p>
-                                                            <p className="text-lg font-semibold">{food.zinc.toFixed(1)} mg</p>
+                                                            <p className="text-lg font-semibold">{f.zinc.toFixed(1)} mg</p>
                                                         </div>
                                                     )}
                                                 </div>
@@ -234,47 +250,47 @@ const FoodDetailsDialog = ({ food, open, onOpenChange }) => {
                                     )}
 
                                     {/* Vitaminas */}
-                                    {(food.vitamin_a || food.vitamin_c || food.vitamin_d || food.vitamin_e || food.vitamin_b12 || food.folate) && (
+                                    {(f.vitamin_a || f.vitamin_c || f.vitamin_d || f.vitamin_e || f.vitamin_b12 || f.folate) && (
                                         <Card>
                                             <CardHeader className="pb-3">
                                                 <CardTitle className="text-sm sm:text-base">Vitaminas (mg por 100g)</CardTitle>
                                             </CardHeader>
                                             <CardContent className="pt-0">
                                                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-4">
-                                                    {food.vitamin_a && (
+                                                    {f.vitamin_a && (
                                                         <div className="space-y-1">
                                                             <p className="text-xs text-muted-foreground">Vitamina A</p>
-                                                            <p className="text-lg font-semibold">{food.vitamin_a.toFixed(1)} mg</p>
+                                                            <p className="text-lg font-semibold">{f.vitamin_a.toFixed(1)} mg</p>
                                                         </div>
                                                     )}
-                                                    {food.vitamin_c && (
+                                                    {f.vitamin_c && (
                                                         <div className="space-y-1">
                                                             <p className="text-xs text-muted-foreground">Vitamina C</p>
-                                                            <p className="text-lg font-semibold">{food.vitamin_c.toFixed(1)} mg</p>
+                                                            <p className="text-lg font-semibold">{f.vitamin_c.toFixed(1)} mg</p>
                                                         </div>
                                                     )}
-                                                    {food.vitamin_d && (
+                                                    {f.vitamin_d && (
                                                         <div className="space-y-1">
                                                             <p className="text-xs text-muted-foreground">Vitamina D</p>
-                                                            <p className="text-lg font-semibold">{food.vitamin_d.toFixed(1)} mg</p>
+                                                            <p className="text-lg font-semibold">{f.vitamin_d.toFixed(1)} mg</p>
                                                         </div>
                                                     )}
-                                                    {food.vitamin_e && (
+                                                    {f.vitamin_e && (
                                                         <div className="space-y-1">
                                                             <p className="text-xs text-muted-foreground">Vitamina E</p>
-                                                            <p className="text-lg font-semibold">{food.vitamin_e.toFixed(1)} mg</p>
+                                                            <p className="text-lg font-semibold">{f.vitamin_e.toFixed(1)} mg</p>
                                                         </div>
                                                     )}
-                                                    {food.vitamin_b12 && (
+                                                    {f.vitamin_b12 && (
                                                         <div className="space-y-1">
                                                             <p className="text-xs text-muted-foreground">Vitamina B12</p>
-                                                            <p className="text-lg font-semibold">{food.vitamin_b12.toFixed(1)} mg</p>
+                                                            <p className="text-lg font-semibold">{f.vitamin_b12.toFixed(1)} mg</p>
                                                         </div>
                                                     )}
-                                                    {food.folate && (
+                                                    {f.folate && (
                                                         <div className="space-y-1">
                                                             <p className="text-xs text-muted-foreground">Folato</p>
-                                                            <p className="text-lg font-semibold">{food.folate.toFixed(1)} mg</p>
+                                                            <p className="text-lg font-semibold">{f.folate.toFixed(1)} mg</p>
                                                         </div>
                                                     )}
                                                 </div>
@@ -301,37 +317,37 @@ const FoodDetailsDialog = ({ food, open, onOpenChange }) => {
                                     <CardTitle className="text-sm sm:text-base">Informações Gerais</CardTitle>
                                 </CardHeader>
                                 <CardContent className="pt-0 space-y-3 sm:space-y-4">
-                                    {food.description && (
+                                    {f.description && (
                                         <div>
                                             <p className="text-xs text-muted-foreground mb-1">Descrição</p>
-                                            <p className="text-sm">{food.description}</p>
+                                            <p className="text-sm">{f.description}</p>
                                         </div>
                                     )}
-                                    {food.preparation && (
+                                    {f.preparation && (
                                         <div>
                                             <p className="text-xs text-muted-foreground mb-1">Modo de Preparo</p>
-                                            <p className="text-sm">{food.preparation}</p>
+                                            <p className="text-sm">{f.preparation}</p>
                                         </div>
                                     )}
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
                                             <p className="text-xs text-muted-foreground mb-1">Porção Padrão</p>
-                                            <p className="text-sm font-semibold">{food.portion_size || 100}g</p>
+                                            <p className="text-sm font-semibold">{f.portion_size || 100}g</p>
                                         </div>
-                                        {food.source && (
+                                        {f.source && (
                                             <div>
                                                 <p className="text-xs text-muted-foreground mb-1">Fonte</p>
-                                                <Badge variant="outline" className={sourceColors[food.source]}>
-                                                    {sourceLabels[food.source] || food.source}
+                                                <Badge variant="outline" className={sourceColors[f.source]}>
+                                                    {sourceLabels[f.source] || f.source}
                                                 </Badge>
                                             </div>
                                         )}
                                     </div>
-                                    {food.food_measures && food.food_measures.length > 0 && (
+                                    {f.food_measures && f.food_measures.length > 0 && (
                                         <div>
                                             <p className="text-xs text-muted-foreground mb-2">Medidas Caseiras Cadastradas</p>
                                             <div className="flex flex-wrap gap-2">
-                                                {food.food_measures.map((measure) => (
+                                                {f.food_measures.map((measure) => (
                                                     <Badge key={measure.id} variant="outline">
                                                         {measure.measure_label} ({measure.quantity_grams}g)
                                                     </Badge>

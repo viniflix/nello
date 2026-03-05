@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/dialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { searchFoodsPaginated } from '@/lib/supabase/foodService';
+import { searchFoodsPaginated, getFoodMeasures } from '@/lib/supabase/foodService';
 import { useDebounce } from '@/hooks/useDebounce';
 import FoodMeasureManager from '@/components/nutritionist/FoodMeasureManager';
 import SmartFoodForm from '@/components/nutrition/SmartFoodForm';
@@ -193,8 +193,17 @@ export default function NutritionistFoodsPage() {
     };
   }, [loadMore]);
 
-  const handleEditFood = (food) => {
-    setSelectedFood(food);
+  const handleEditFood = async (food) => {
+    let foodWithMeasures = food;
+    if (!food.food_measures?.length) {
+      try {
+        const measures = await getFoodMeasures(food.id);
+        foodWithMeasures = { ...food, food_measures: measures };
+      } catch {
+        foodWithMeasures = { ...food, food_measures: [] };
+      }
+    }
+    setSelectedFood(foodWithMeasures);
     setEditDialogOpen(true);
   };
 

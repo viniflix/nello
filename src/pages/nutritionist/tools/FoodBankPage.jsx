@@ -79,7 +79,7 @@ const FoodBankPage = () => {
             const offset = page * ITEMS_PER_PAGE;
             let query = supabase
                 .from('foods')
-                .select('*, food_measures(*)', { count: 'exact' })
+                .select('*', { count: 'exact' })
                 .eq('is_active', true)
                 .or(`source.eq.custom,nutritionist_id.eq.${user.id}`)
                 .order('name', { ascending: true })
@@ -128,7 +128,7 @@ const FoodBankPage = () => {
             const offset = page * ITEMS_PER_PAGE;
             let query = supabase
                 .from('foods')
-                .select('*, food_measures(*)', { count: 'exact' })
+                .select('*', { count: 'exact' })
                 .eq('is_active', true)
                 .neq('source', 'custom')
                 .is('nutritionist_id', null)

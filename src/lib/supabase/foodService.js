@@ -11,27 +11,48 @@ import { logSupabaseError } from '@/lib/supabase/query-helpers';
 const ITEMS_PER_PAGE = 20;
 
 /**
- * Search foods with pagination
+ * Busca medidas caseiras de um alimento (lazy load)
+ * @param {string} foodId - ID do alimento
+ * @returns {Promise<Array>} Lista de medidas
+ */
+export async function getFoodMeasures(foodId) {
+  if (!foodId) return [];
+  try {
+    const { data, error } = await supabase
+      .from('food_measures')
+      .select('*')
+      .eq('food_id', foodId);
+    if (error) throw error;
+    return data || [];
+  } catch (error) {
+    logSupabaseError('Error fetching food measures', error);
+    return [];
+  }
+}
+
+/**
+ * Search foods with pagination (sem food_measures - use getFoodMeasures quando precisar)
  * @param {string} searchTerm - Search query
  * @param {number} page - Page number (0-indexed)
  * @param {string} source - Optional source filter
+ * @param {boolean} includeMeasures - Se true, inclui food_measures (mais lento)
  * @returns {Promise<{data: Array, hasMore: boolean, total: number}>}
  */
-export async function searchFoodsPaginated(searchTerm, page = 0, source = null) {
+export async function searchFoodsPaginated(searchTerm, page = 0, source = null, includeMeasures = false) {
   if (!searchTerm || searchTerm.trim().length < 2) {
     return { data: [], hasMore: false, total: 0 };
   }
 
   const offset = page * ITEMS_PER_PAGE;
   const limit = ITEMS_PER_PAGE;
+  const selectFields = includeMeasures
+    ? 'id, name, group, description, source, calories, protein, carbs, fat, fiber, sodium, food_measures(*)'
+    : 'id, name, group, description, source, calories, protein, carbs, fat, fiber, sodium';
 
   try {
-    // Use direct query with .range() for efficient server-side pagination
-    // The search_foods RPC doesn't support offset, so we use direct query for pagination
-    // Include food_measures relation for household measures
     let query = supabase
       .from('foods')
-      .select('id, name, group, description, source, calories, protein, carbs, fat, fiber, sodium, food_measures(*)', { count: 'exact' })
+      .select(selectFields, { count: 'exact' })
       .eq('is_active', true)
       .ilike('name', `%${searchTerm.trim()}%`)
       .order('name', { ascending: true })

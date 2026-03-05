@@ -21,7 +21,7 @@ import {
 } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/lib/customSupabaseClient';
-import { searchFoodsPaginated } from '@/lib/supabase/foodService';
+import { searchFoodsPaginated, getFoodMeasures } from '@/lib/supabase/foodService';
 import { useDebounce } from '@/hooks/useDebounce';
 
 /**
@@ -165,16 +165,23 @@ const PatientAddFoodDialog = ({
         };
     }, [loadMore]);
 
-    const handleFoodSelect = (food) => {
+    const handleFoodSelect = async (food) => {
         setSelectedFood(food);
         setSearchTerm('');
         setSearchResults([]);
-        // Resetar quantidade e unidade ao trocar alimento
         setQuantity('');
         setSelectedUnit('g');
         setSelectedMeasure(null);
         setCalculatedNutrition(null);
         setRealWeight(null);
+        if (!food.food_measures?.length) {
+            try {
+                const measures = await getFoodMeasures(food.id);
+                setSelectedFood(prev => prev ? { ...prev, food_measures: measures } : null);
+            } catch {
+                setSelectedFood(prev => prev ? { ...prev, food_measures: [] } : null);
+            }
+        }
     };
 
     // Calculate nutrition when quantity or unit changes

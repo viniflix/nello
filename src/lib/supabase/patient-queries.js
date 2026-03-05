@@ -1103,7 +1103,15 @@ export const getActivityCtaRoute = (activity) => {
     }
 };
 
+const ACTIVITY_FEED_CACHE_TTL_MS = 45000;
+let activityFeedCache = { key: null, data: null, ts: 0 };
+
 export const getComprehensiveActivityFeed = async (nutritionistId, limit = 20) => {
+    const cacheKey = `${nutritionistId}:${limit}`;
+    if (activityFeedCache.key === cacheKey && (Date.now() - activityFeedCache.ts) < ACTIVITY_FEED_CACHE_TTL_MS) {
+        return { data: activityFeedCache.data, error: null };
+    }
+
     const startedAt = Date.now();
     try {
         // OTIMIZADO: Usa função SQL que consolida 8 queries em 1
@@ -1224,6 +1232,7 @@ export const getComprehensiveActivityFeed = async (nutritionistId, limit = 20) =
             }
         });
 
+        activityFeedCache = { key: cacheKey, data: activities, ts: Date.now() };
         return { data: activities, error: null };
     } catch (error) {
         logSupabaseError('Erro ao buscar feed de atividades', error);

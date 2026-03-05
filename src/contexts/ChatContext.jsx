@@ -21,24 +21,25 @@ export function ChatProvider({ children }) {
   const [currentRecipientId, setCurrentRecipientId] = useState(null);
   const [unreadSenders, setUnreadSenders] = useState(new Set());
   const channelRef = useRef(null);
+  const unreadSendersCacheRef = useRef({ key: null, data: null, ts: 0 });
 
   const markChatAsRead = useCallback(async (senderId) => {
       if (!user || !senderId) return;
-      
+
       const { error } = await supabase.rpc('mark_chat_notifications_as_read', { p_user_id: user.id, p_sender_id: senderId });
       if (error) {
         console.error("Failed to mark chat as read:", error);
         return;
       }
 
-      // Remove notificações de mensagem já tratadas ao abrir/interagir com a conversa.
       await supabase
         .from('notifications')
         .delete()
         .eq('user_id', user.id)
         .eq('type', 'new_message')
         .filter('content->>from_id', 'eq', String(senderId));
-      
+
+      unreadSendersCacheRef.current = { key: null, data: null, ts: 0 };
       setUnreadSenders(prev => {
           const newSet = new Set(prev);
           newSet.delete(senderId);
@@ -80,6 +81,8 @@ export function ChatProvider({ children }) {
     return true;
   };
 
+  const UNREAD_SENDERS_CACHE_TTL_MS = 30000;
+
   useEffect(() => {
     if (!user) {
         if (channelRef.current) {
@@ -88,11 +91,19 @@ export function ChatProvider({ children }) {
         }
         return;
     }
-    
+
     const fetchUnread = async () => {
+        const cacheKey = user.id;
+        const cache = unreadSendersCacheRef.current;
+        if (cache.key === cacheKey && (Date.now() - cache.ts) < UNREAD_SENDERS_CACHE_TTL_MS) {
+            setUnreadSenders(new Set(cache.data || []));
+            return;
+        }
         const { data } = await supabase.rpc('get_unread_senders', { p_user_id: user.id });
         if (data) {
-            setUnreadSenders(new Set(data.map(item => item.from_id)));
+            const ids = data.map(item => item.from_id);
+            unreadSendersCacheRef.current = { key: cacheKey, data: ids, ts: Date.now() };
+            setUnreadSenders(new Set(ids));
         }
     };
     fetchUnread();
