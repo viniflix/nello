@@ -259,17 +259,17 @@ const TabContentBody = ({ patientId, patientData, modulesStatus = {}, latestMetr
                 onClick={() => navigate(patientRoute(patient, 'photos'))}
             >
                 <CardHeader className="pb-2">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                            <Camera className="w-5 h-5 text-[#b99470]" />
+                    <div className="flex items-center gap-2">
+                        <Camera className="w-5 h-5 text-[#b99470] shrink-0" />
+                        <div className="min-w-0">
                             <CardTitle className="text-base">Fotos de Progresso</CardTitle>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                                {all.length} foto{all.length !== 1 ? 's' : ''}
+                                {first && last && first.photo_date !== last.photo_date && (
+                                    <span className="ml-1"> · {format(new Date(first.photo_date), 'dd/MM/yy', { locale: ptBR })} a {format(new Date(last.photo_date), 'dd/MM/yy', { locale: ptBR })}</span>
+                                )}
+                            </p>
                         </div>
-                        <span className="text-xs text-muted-foreground">
-                            {all.length} foto{all.length !== 1 ? 's' : ''}
-                            {first && last && first.photo_date !== last.photo_date && (
-                                <span className="ml-1"> · {format(new Date(first.photo_date), 'dd/MM/yy', { locale: ptBR })} a {format(new Date(last.photo_date), 'dd/MM/yy', { locale: ptBR })}</span>
-                            )}
-                        </span>
                     </div>
                 </CardHeader>
                 <CardContent className="space-y-3">

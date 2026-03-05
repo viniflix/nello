@@ -120,8 +120,13 @@ export default function ProgressPhotosPage() {
     const handleUpload = async () => {
         const file = selectedFile;
         if (!file || !patientId || !user?.id) return;
-        if (!file.type.startsWith('image/')) {
-            toast({ title: 'Selecione uma imagem', variant: 'destructive' });
+        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/heic', 'image/heif', 'image/webp'];
+        const allowedExtensions = ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif'];
+        const ext = (file.name.split('.').pop() || '').toLowerCase();
+        const typeOk = file.type && (allowedTypes.includes(file.type) || file.type.startsWith('image/'));
+        const extOk = allowedExtensions.includes(ext) || !ext;
+        if (!typeOk || !extOk) {
+            toast({ title: 'Formato não suportado. Use JPEG, PNG, WebP ou HEIC.', variant: 'destructive' });
             return;
         }
         if (file.size > 5 * 1024 * 1024) {
@@ -130,8 +135,8 @@ export default function ProgressPhotosPage() {
         }
         setUploading(true);
         try {
-            const ext = file.name.split('.').pop() || 'jpg';
-            const path = `${getStoragePath(patientId)}.${ext}`;
+            const safeExt = allowedExtensions.includes(ext) ? ext : (file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : file.type === 'image/heic' ? 'heic' : file.type === 'image/heif' ? 'heif' : 'jpg');
+            const path = `${getStoragePath(patientId)}.${safeExt}`;
             const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, file, { upsert: false });
             if (upErr) throw upErr;
             const { data: { publicUrl } } = supabase.storage.from(BUCKET).getPublicUrl(path);
@@ -302,19 +307,17 @@ export default function ProgressPhotosPage() {
 
                         <Card>
                             <CardHeader>
-                                <div className="flex flex-wrap items-center justify-between gap-2">
-                                    <div>
-                                        <CardTitle>Timeline de fotos</CardTitle>
-                                        <CardDescription>Ordem cronológica das fotos enviadas pelo paciente ou por você. Clique para ampliar; use o lápis para editar data ou legenda.</CardDescription>
-                                    </div>
+                                <div>
+                                    <CardTitle>Timeline de fotos</CardTitle>
+                                    <CardDescription className="mt-1">
+                                        Ordem cronológica das fotos enviadas pelo paciente ou por você. Clique para ampliar; use o lápis para editar data ou legenda.
+                                    </CardDescription>
                                     {sortedPhotos.length > 0 && (
-                                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                        <p className="text-sm text-muted-foreground mt-2">
                                             <span className="font-medium text-foreground">{sortedPhotos.length}</span> foto{sortedPhotos.length !== 1 ? 's' : ''}
-                                            <span className="hidden sm:inline">·</span>
-                                            <span className="hidden sm:inline">
-                                                {format(new Date(sortedPhotos[0].photo_date), 'dd/MM/yy', { locale: ptBR })} → {format(new Date(sortedPhotos[sortedPhotos.length - 1].photo_date), 'dd/MM/yy', { locale: ptBR })}
-                                            </span>
-                                        </div>
+                                            <span className="mx-1">·</span>
+                                            {format(new Date(sortedPhotos[0].photo_date), 'dd/MM/yy', { locale: ptBR })} → {format(new Date(sortedPhotos[sortedPhotos.length - 1].photo_date), 'dd/MM/yy', { locale: ptBR })}
+                                        </p>
                                     )}
                                 </div>
                             </CardHeader>
@@ -414,10 +417,11 @@ export default function ProgressPhotosPage() {
                             <Input
                                 ref={fileInputRef}
                                 type="file"
-                                accept="image/*"
+                                accept="image/jpeg,image/jpg,image/png,image/heic,image/heif,image/webp"
                                 onChange={handleFileSelect}
                                 disabled={uploading}
                             />
+                            <p className="text-xs text-muted-foreground mt-1">JPEG, PNG, WebP, HEIC/HEIF (iOS/Android)</p>
                             {selectedFile && (
                                 <p className="text-xs text-muted-foreground mt-1">{selectedFile.name}</p>
                             )}

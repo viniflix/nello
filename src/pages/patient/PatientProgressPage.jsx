@@ -250,8 +250,13 @@ export default function PatientProgressPage() {
       });
       return;
     }
-    if (!file.type.startsWith('image/')) {
-      toast({ title: 'Erro', description: 'Selecione um arquivo de imagem.', variant: 'destructive' });
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/heic', 'image/heif', 'image/webp'];
+    const allowedExtensions = ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif'];
+    const ext = (file.name.split('.').pop() || '').toLowerCase();
+    const typeOk = file.type && (allowedTypes.includes(file.type) || file.type.startsWith('image/'));
+    const extOk = allowedExtensions.includes(ext) || !ext;
+    if (!typeOk || !extOk) {
+      toast({ title: 'Erro', description: 'Use JPEG, PNG, WebP ou HEIC.', variant: 'destructive' });
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
@@ -259,9 +264,10 @@ export default function PatientProgressPage() {
       return;
     }
 
+    const safeExt = allowedExtensions.includes(ext) ? ext : (file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : file.type === 'image/heic' ? 'heic' : file.type === 'image/heif' ? 'heif' : 'jpg');
+
     try {
-      const fileExt = file.name.split('.').pop() || 'jpg';
-      const path = `${user.id}/progress_photos/${crypto.randomUUID()}.${fileExt}`;
+      const path = `${user.id}/progress_photos/${crypto.randomUUID()}.${safeExt}`;
       const { error: uploadError } = await supabase.storage
         .from('patient-photos')
         .upload(path, file, { upsert: false });
@@ -877,7 +883,7 @@ export default function PatientProgressPage() {
                 <Input
                   id="photoFile"
                   type="file"
-                  accept="image/*"
+                  accept="image/jpeg,image/jpg,image/png,image/heic,image/heif,image/webp"
                   required
                 />
               </div>

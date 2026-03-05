@@ -156,9 +156,6 @@ const DateInputWithCalendar = ({
                         locale={ptBR}
                         fromDate={minDate || undefined}
                         toDate={maxDate || undefined}
-                        captionLayout="dropdown"
-                        fromYear={minDate ? minDate.getFullYear() : 1900}
-                        toYear={maxDate ? maxDate.getFullYear() : new Date().getFullYear() + 10}
                     />
                 </PopoverContent>
             </Popover>
