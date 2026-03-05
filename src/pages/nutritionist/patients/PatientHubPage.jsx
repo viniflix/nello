@@ -60,10 +60,12 @@ const PatientHubPage = () => {
     useEffect(() => {
         if (!patientData?.slug || !paramValue || !isUuid(paramValue)) return;
         const base = `/nutritionist/patients/${patientData.slug}/hub`;
-        if (window.location.pathname !== base) {
-            navigate(base, { replace: true });
+        const tabParam = searchParams.get('tab');
+        const targetPath = tabParam ? `${base}?tab=${tabParam}` : base;
+        if (window.location.pathname !== base || (tabParam && window.location.search !== `?tab=${tabParam}`)) {
+            navigate(targetPath, { replace: true });
         }
-    }, [patientData?.slug, paramValue, navigate]);
+    }, [patientData?.slug, paramValue, navigate, searchParams]);
 
     const handleEditProfile = () => {
         // TODO: Implementar edição de perfil (Fase 2)
@@ -82,13 +84,7 @@ const PatientHubPage = () => {
         loadActivities(activities.length + 20);
     };
 
-    // Limpar query param da URL após ler
-    useEffect(() => {
-        if (searchParams.get('tab')) {
-            searchParams.delete('tab');
-            setSearchParams(searchParams, { replace: true });
-        }
-    }, [searchParams, setSearchParams]);
+    // Manter ?tab= na URL para shareability e back/forward - não limpar
 
     // OTIMIZADO: Skeleton loader ao invés de spinner
     if (loading) {

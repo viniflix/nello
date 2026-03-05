@@ -64,6 +64,7 @@ import {
 } from '@/lib/supabase/anamnesis-queries';
 import { STANDARD_ANAMNESIS_FIELDS } from '@/lib/constants/standard-anamnesis-fields';
 import { supabase } from '@/lib/customSupabaseClient';
+import { patientHubRoute } from '@/lib/utils/patientRoutes';
 
 const PatientAnamnesePage = () => {
     const navigate = useNavigate();
