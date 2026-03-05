@@ -27,9 +27,11 @@ export default function PlanTargetMonitor({
     targetCalories, 
     currentCalories = 0, 
     patientId,
+    patientSlugOrId,
     energyCalculation = null 
 }) {
     const navigate = useNavigate();
+    const patientSegment = patientSlugOrId ?? patientId;
 
     // Se não houver meta calculada, mostrar botão para definir
     if (!targetCalories || targetCalories <= 0) {
@@ -51,7 +53,7 @@ export default function PlanTargetMonitor({
                         <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => navigate(`/nutritionist/patients/${patientId}/energy-expenditure`)}
+                            onClick={() => navigate(`/nutritionist/patients/${patientSegment}/energy-expenditure`)}
                             className="gap-2"
                         >
                             <Calculator className="w-4 h-4" />

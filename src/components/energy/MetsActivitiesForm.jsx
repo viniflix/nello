@@ -73,8 +73,14 @@ export default function MetsActivitiesForm({ activities = [], onChange, weightKg
   };
 
   const selectActivity = (index, activity) => {
-    updateActivity(index, 'name', activity.name);
-    updateActivity(index, 'met', activity.met);
+    const next = [...activities];
+    if (!next[index]) return;
+    next[index] = {
+      ...next[index],
+      name: activity.name,
+      met: activity.met
+    };
+    onChange(next);
     setOpenCombo(null);
     setSearch((s) => ({ ...s, [index]: '' }));
   };

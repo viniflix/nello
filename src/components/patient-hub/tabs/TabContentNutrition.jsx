@@ -315,7 +315,7 @@ const TabContentNutrition = ({ patientId, patientData, modulesStatus = {} }) => 
             <div className="space-y-4">
                 <MealPlanCard />
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <EnergyExpenditureSummaryCard patientId={patientId} />
+                    <EnergyExpenditureSummaryCard patientId={patientId} patient={patient} />
                     <FoodDiaryCard />
                 </div>
             </div>

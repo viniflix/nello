@@ -6,13 +6,17 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/lib/customSupabaseClient';
+import { patientRoute } from '@/lib/utils/patientRoutes';
+import { getPatientModuleSyncFlags } from '@/lib/supabase/anthropometry-queries';
 
-const EnergyExpenditureSummaryCard = ({ patientId }) => {
+const EnergyExpenditureSummaryCard = ({ patientId, patient }) => {
     const navigate = useNavigate();
+    const patientForRoute = patient && (patient.id || patientId) ? { id: patient.id || patientId, slug: patient.slug } : null;
     const [loading, setLoading] = useState(true);
     const [hasRequiredData, setHasRequiredData] = useState(false);
     const [calculatedData, setCalculatedData] = useState(null);
     const [patientBasicData, setPatientBasicData] = useState(null);
+    const [syncFlags, setSyncFlags] = useState(null);
 
     useEffect(() => {
         fetchData();
@@ -66,6 +70,10 @@ const EnergyExpenditureSummaryCard = ({ patientId }) => {
 
             if (savedCalc) setCalculatedData(savedCalc);
 
+            // Flags de sincronização (antropometria atualizada → recomendar revisar GET)
+            const { data: flags } = await getPatientModuleSyncFlags(patientId);
+            setSyncFlags(flags || null);
+
         } catch (error) {
             console.error('Erro ao buscar dados:', error);
         } finally {
@@ -86,7 +94,10 @@ const EnergyExpenditureSummaryCard = ({ patientId }) => {
     };
 
     const handleNavigateToFullPage = () => {
-        navigate(`/nutritionist/patients/${patientId}/energy-expenditure`);
+        const url = patientForRoute
+            ? patientRoute(patientForRoute, 'energy-expenditure')
+            : `/nutritionist/patients/${patientId}/energy-expenditure`;
+        navigate(url);
     };
 
     if (loading) {
@@ -114,6 +125,16 @@ const EnergyExpenditureSummaryCard = ({ patientId }) => {
                 </CardHeader>
                 <CardContent>
                     <div className="space-y-4">
+                        {syncFlags?.needs_energy_recalc && (
+                            <Alert className="border-amber-300 bg-amber-50 dark:bg-amber-950/30" onClick={(e) => e.stopPropagation()}>
+                                <AlertCircle className="h-4 w-4 text-amber-700" />
+                                <AlertDescription className="text-amber-800 dark:text-amber-200">
+                                    <p className="font-medium">Antropometria atualizada.</p>
+                                    <p className="text-sm mt-1">Recomendamos revisar o GET e salvar.</p>
+                                    <Button size="sm" variant="outline" className="mt-2 border-amber-400 text-amber-800" onClick={(e) => { e.stopPropagation(); handleNavigateToFullPage(); }}>Atualizar dados</Button>
+                                </AlertDescription>
+                            </Alert>
+                        )}
                         <Alert className="border-amber-300 bg-amber-50/50">
                             <AlertCircle className="h-4 w-4 text-amber-600" />
                             <AlertDescription className="text-sm">
@@ -173,6 +194,24 @@ const EnergyExpenditureSummaryCard = ({ patientId }) => {
                 </CardHeader>
 
                 <CardContent className="space-y-4">
+                    {/* Alerta: antropometria atualizada — revisar GET (some ao salvar o cálculo) */}
+                    {syncFlags?.needs_energy_recalc && (
+                        <Alert className="border-amber-300 bg-amber-50 dark:bg-amber-950/30" onClick={(e) => e.stopPropagation()}>
+                            <AlertCircle className="h-4 w-4 text-amber-700" />
+                            <AlertDescription className="text-amber-800 dark:text-amber-200">
+                                <p className="font-medium">Antropometria atualizada.</p>
+                                <p className="text-sm mt-1">Recomendamos revisar o GET e salvar.</p>
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="mt-2 border-amber-400 text-amber-800 hover:bg-amber-100 dark:text-amber-200 dark:hover:bg-amber-900/50"
+                                    onClick={(e) => { e.stopPropagation(); handleNavigateToFullPage(); }}
+                                >
+                                    Atualizar dados
+                                </Button>
+                            </AlertDescription>
+                        </Alert>
+                    )}
                     {/* Resumo dos Resultados */}
                     <div className="grid grid-cols-2 gap-3">
                         {/* TMB - apenas se não for EER */}

@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useResolvedPatientId } from '@/hooks/useResolvedPatientId';
-import { ArrowLeft, Calculator, Save, Loader2, Target, TrendingUp, Database, User, AlertCircle } from 'lucide-react';
+import { isUuid } from '@/lib/utils/patientRoutes';
+import { ArrowLeft, Calculator, Save, Loader2, Target, TrendingUp, Database, User, AlertCircle, HelpCircle, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -55,7 +56,7 @@ const TMB_PROTOCOLS = [
 ];
 
 export default function EnergyExpenditurePage() {
-  const { patientId, loading: resolveLoading, error: resolveError } = useResolvedPatientId();
+  const { patientId, loading: resolveLoading, error: resolveError, paramValue } = useResolvedPatientId();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
@@ -63,6 +64,7 @@ export default function EnergyExpenditurePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [patientName, setPatientName] = useState('');
+  const [patientSlug, setPatientSlug] = useState(null);
 
   // Biometria (M/F para gender)
   const [weight, setWeight] = useState('');
@@ -88,6 +90,8 @@ export default function EnergyExpenditurePage() {
 
   const [protocols, setProtocols] = useState([]);
   const [selectedProtocolData, setSelectedProtocolData] = useState(null);
+  const [showProtocolComparison, setShowProtocolComparison] = useState(false);
+  const [activeTab, setActiveTab] = useState('biometry');
 
   // Carregar paciente + biometria inicial + último cálculo
   useEffect(() => {
@@ -98,6 +102,15 @@ export default function EnergyExpenditurePage() {
     }
     loadPatientData();
   }, [patientId, resolveLoading]);
+
+  // Substituir URL por slug quando acessada com UUID (igual às outras páginas do hub)
+  useEffect(() => {
+    if (!patientSlug || !paramValue || !isUuid(paramValue)) return;
+    const path = `/nutritionist/patients/${patientSlug}/energy-expenditure`;
+    if (window.location.pathname !== path) {
+      navigate(path, { replace: true });
+    }
+  }, [patientSlug, paramValue, navigate]);
 
   // Recalcular protocolos quando biometria mudar
   useEffect(() => {
@@ -176,10 +189,11 @@ export default function EnergyExpenditurePage() {
     try {
       const { data: profile } = await supabase
         .from('user_profiles')
-        .select('name')
+        .select('name, slug')
         .eq('id', patientId)
         .single();
       setPatientName(profile?.name || 'Paciente');
+      setPatientSlug(profile?.slug || null);
 
       const { data: biometry } = await getInitialBiometryForEnergy(patientId);
       if (biometry) {
@@ -262,70 +276,70 @@ export default function EnergyExpenditurePage() {
     }
   }
 
-  const handleSave = async () => {
+  const saveCurrentState = async () => {
     const w = parseFloat(weight);
     const h = parseFloat(height);
     const a = parseInt(age, 10);
     if (!Number.isFinite(w) || !Number.isFinite(h) || !Number.isFinite(a) || !gender) {
-      toast({ title: 'Dados incompletos', description: 'Preencha peso, altura, idade e sexo.', variant: 'destructive' });
-      return;
+      throw new Error('Preencha peso, altura, idade e sexo.');
     }
     if (!selectedProtocolData) {
-      toast({ title: 'Selecione um protocolo TMB', variant: 'destructive' });
-      return;
+      throw new Error('Selecione um protocolo TMB.');
     }
+    const payload = {
+      patient_id: patientId,
+      nutritionist_id: user?.id || null,
+      height: h,
+      weight: w,
+      age: a,
+      gender: gender,
+      body_fat_percentage: bodyFatPct ? parseFloat(bodyFatPct) : null,
+      tmb_protocol: selectedProtocol,
+      tmb_result: selectedProtocolData?.bmr ?? null,
+      activity_factor: activityFactor,
+      injury_factor: getInjuryFactorValue(injuryFactorId),
+      mets_activities: metsActivities.map((act) => {
+        const hasFreq = act.frequency_type != null;
+        const { items: [item] = [] } = hasFreq
+          ? sumMetsActivitiesAverageDaily([act], w)
+          : sumMetsActivitiesKcal([act], w);
+        return {
+          id: act.id,
+          name: act.name,
+          met: Number(act.met),
+          duration_min: Number(act.duration_min),
+          frequency_value: act.frequency_value != null ? Number(act.frequency_value) : undefined,
+          frequency_type: act.frequency_type,
+          kcal_per_session: item?.kcal_per_session ?? item?.kcal,
+          average_daily_kcal: item?.average_daily_kcal ?? item?.kcal
+        };
+      }),
+      get_result: getResult,
+      venta_target_weight: ventaTargetWeight ? parseFloat(ventaTargetWeight) : null,
+      venta_timeframe_days: ventaTimeframeDays ? parseInt(ventaTimeframeDays, 10) : null,
+      venta_adjustment_kcal: ventaAdjustmentKcal,
+      final_planned_kcal: finalPlannedKcal
+    };
+    const { error } = await saveEnergyCalculation(payload);
+    if (error) throw error;
+    await logActivityEvent({
+      eventName: 'energy.calculation.updated',
+      sourceModule: 'energy',
+      patientId,
+      payload: { tmb_protocol: payload.tmb_protocol, final_planned_kcal: payload.final_planned_kcal }
+    });
+    await clearPatientModuleSyncFlags(patientId, { energy: true });
+    setSyncFlags((prev) => (prev ? { ...prev, needs_energy_recalc: false } : null));
+  };
+
+  const handleSave = async () => {
     setSaving(true);
     try {
-      const payload = {
-        patient_id: patientId,
-        nutritionist_id: user?.id || null,
-        height: h,
-        weight: w,
-        age: a,
-        gender: gender,
-        body_fat_percentage: bodyFatPct ? parseFloat(bodyFatPct) : null,
-        tmb_protocol: selectedProtocol,
-        tmb_result: selectedProtocolData?.bmr ?? null,
-        activity_factor: activityFactor,
-        injury_factor: getInjuryFactorValue(injuryFactorId),
-        mets_activities: metsActivities.map((a) => {
-          const hasFreq = a.frequency_type != null;
-          const { items: [item] = [] } = hasFreq
-            ? sumMetsActivitiesAverageDaily([a], w)
-            : sumMetsActivitiesKcal([a], w);
-          return {
-            id: a.id,
-            name: a.name,
-            met: Number(a.met),
-            duration_min: Number(a.duration_min),
-            frequency_value: a.frequency_value != null ? Number(a.frequency_value) : undefined,
-            frequency_type: a.frequency_type,
-            kcal_per_session: item?.kcal_per_session ?? item?.kcal,
-            average_daily_kcal: item?.average_daily_kcal ?? item?.kcal
-          };
-        }),
-        get_result: getResult,
-        venta_target_weight: ventaTargetWeight ? parseFloat(ventaTargetWeight) : null,
-        venta_timeframe_days: ventaTimeframeDays ? parseInt(ventaTimeframeDays, 10) : null,
-        venta_adjustment_kcal: ventaAdjustmentKcal,
-        final_planned_kcal: finalPlannedKcal
-      };
-      const { data, error } = await saveEnergyCalculation(payload);
-      if (error) throw error;
-
-      await logActivityEvent({
-        eventName: 'energy.calculation.updated',
-        sourceModule: 'energy',
-        patientId,
-        payload: { tmb_protocol: payload.tmb_protocol, final_planned_kcal: payload.final_planned_kcal }
-      });
-      await clearPatientModuleSyncFlags(patientId, { energy: true });
-      setSyncFlags((prev) => (prev ? { ...prev, needs_energy_recalc: false } : null));
-
+      await saveCurrentState();
       toast({ title: 'Salvo!', description: 'Planejamento energético salvo com sucesso.' });
     } catch (err) {
       console.error(err);
-      toast({ title: 'Erro', description: 'Não foi possível salvar o cálculo.', variant: 'destructive' });
+      toast({ title: 'Erro', description: err?.message || 'Não foi possível salvar o cálculo.', variant: 'destructive' });
     } finally {
       setSaving(false);
     }
@@ -394,25 +408,7 @@ export default function EnergyExpenditurePage() {
           </div>
         </div>
 
-        {syncFlags?.needs_energy_recalc && (
-          <Alert className="mb-6 border-amber-200 bg-amber-50">
-            <AlertCircle className="h-4 w-4 text-amber-700" />
-            <AlertDescription className="text-amber-800">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p>Antropometria atualizada. Recomendamos revisar o GET e salvar.</p>
-                  {syncFlags?.anthropometry_updated_at && <p className="mt-1 text-xs text-amber-700/90">{formatSyncTime(syncFlags.anthropometry_updated_at)}</p>}
-                </div>
-                <div className="flex gap-2">
-                  <Button size="sm" variant="outline" className="border-amber-300 bg-white text-amber-800" onClick={loadPatientData}>Atualizar dados</Button>
-                  <Button size="sm" variant="ghost" className="text-amber-900" onClick={async () => { await clearPatientModuleSyncFlags(patientId, { energy: true }); setSyncFlags((p) => (p ? { ...p, needs_energy_recalc: false } : null)); }}>Marcar como revisado</Button>
-                </div>
-              </div>
-            </AlertDescription>
-          </Alert>
-        )}
-
-        <Tabs defaultValue="biometry" className="space-y-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="grid w-full grid-cols-3 max-w-2xl">
             <TabsTrigger value="biometry">Biometria e TMB</TabsTrigger>
             <TabsTrigger value="factors">Fatores e Atividades</TabsTrigger>
@@ -469,26 +465,69 @@ export default function EnergyExpenditurePage() {
                     </SelectContent>
                   </Select>
                 </div>
+                {protocols.length > 0 && (
+                  <div className="pt-2">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="gap-2 text-muted-foreground"
+                      onClick={() => setShowProtocolComparison((v) => !v)}
+                    >
+                      <HelpCircle className="w-4 h-4" />
+                      {showProtocolComparison ? 'Ocultar comparativo' : 'Verificar diferenças entre protocolos'}
+                    </Button>
+                    {showProtocolComparison && (
+                      <Card className="mt-3">
+                        <CardHeader>
+                          <CardTitle>Comparativo de protocolos</CardTitle>
+                          <CardDescription>TMB em tempo real por protocolo</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          <ProtocolComparisonTable
+                            protocols={protocols}
+                            activityFactor={activityFactor}
+                            selectedProtocolId={selectedProtocol}
+                            onSelect={(protocol) => { setSelectedProtocol(protocol.id); setSelectedProtocolData(protocol); }}
+                            patientData={patientData}
+                          />
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
 
-            {protocols.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Comparativo de protocolos</CardTitle>
-                  <CardDescription>TMB em tempo real por protocolo</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ProtocolComparisonTable
-                    protocols={protocols}
-                    activityFactor={activityFactor}
-                    selectedProtocolId={selectedProtocol}
-                    onSelect={(protocol) => { setSelectedProtocol(protocol.id); setSelectedProtocolData(protocol); }}
-                    patientData={patientData}
-                  />
-                </CardContent>
-              </Card>
-            )}
+            <div className="flex justify-end">
+              <Button
+                onClick={async () => {
+                  const w = parseFloat(weight);
+                  const h = parseFloat(height);
+                  const a = parseInt(age, 10);
+                  if (!Number.isFinite(w) || !Number.isFinite(h) || !Number.isFinite(a) || !gender || !selectedProtocolData) {
+                    toast({ title: 'Dados incompletos', description: 'Preencha peso, altura, idade, sexo e protocolo.', variant: 'destructive' });
+                    return;
+                  }
+                  setSaving(true);
+                  try {
+                    await saveCurrentState();
+                    setActiveTab('factors');
+                    toast({ title: 'Salvo', description: 'Biometria e TMB salvos. Preencha fatores e atividades.' });
+                  } catch (err) {
+                    toast({ title: 'Erro', description: 'Não foi possível salvar.', variant: 'destructive' });
+                  } finally {
+                    setSaving(false);
+                  }
+                }}
+                disabled={saving}
+                className="gap-2"
+              >
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                Salvar e prosseguir
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
           </TabsContent>
 
           <TabsContent value="factors" className="space-y-6">
@@ -506,7 +545,7 @@ export default function EnergyExpenditurePage() {
             <Card>
               <CardHeader>
                 <CardTitle>Fator de injúria / estresse clínico</CardTitle>
-                <CardDescription>Condições que alteram o gasto energético (como no Dietbox)</CardDescription>
+                <CardDescription>Condições que alteram o gasto energético</CardDescription>
               </CardHeader>
               <CardContent>
                 <Select value={injuryFactorId} onValueChange={setInjuryFactorId}>
@@ -563,6 +602,29 @@ export default function EnergyExpenditurePage() {
                 </div>
               </CardContent>
             </Card>
+
+            <div className="flex justify-end">
+              <Button
+                onClick={async () => {
+                  setSaving(true);
+                  try {
+                    await saveCurrentState();
+                    setActiveTab('venta');
+                    toast({ title: 'Salvo', description: 'Fatores e atividades salvos. Revise o planejamento (VENTA).' });
+                  } catch (err) {
+                    toast({ title: 'Erro', description: err?.message || 'Não foi possível salvar.', variant: 'destructive' });
+                  } finally {
+                    setSaving(false);
+                  }
+                }}
+                disabled={saving}
+                className="gap-2"
+              >
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                Salvar e prosseguir
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
           </TabsContent>
 
           <TabsContent value="venta" className="space-y-6">
@@ -612,7 +674,7 @@ export default function EnergyExpenditurePage() {
             </Card>
 
             <Button onClick={handleSave} disabled={saving} size="lg" className="w-full gap-2">
-              {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> Salvando...</> : <><Save className="w-4 h-4" /> Salvar planejamento</>}
+              {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> Salvando...</> : <><Save className="w-4 h-4" /> Salvar Gastos Energéticos</>}
             </Button>
           </TabsContent>
         </Tabs>

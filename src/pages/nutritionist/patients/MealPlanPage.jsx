@@ -66,7 +66,7 @@ import PlanTargetMonitor from '@/components/meal-plan/PlanTargetMonitor';
 import { getPatientModuleSyncFlags, clearPatientModuleSyncFlags } from '@/lib/supabase/anthropometry-queries';
 
 const MealPlanPage = () => {
-    const { patientId } = useResolvedPatientId();
+    const { patientId, paramValue } = useResolvedPatientId();
     const navigate = useNavigate();
     const { toast } = useToast();
     const { user } = useAuth();
@@ -790,6 +790,7 @@ const MealPlanPage = () => {
                 targetCalories={energyCalculation?.final_planned_kcal ?? energyCalculation?.get_with_activities ?? energyCalculation?.get ?? energyCalculation?.get_result ?? null}
                 currentCalories={activePlan?.daily_calories || 0}
                 patientId={patientId}
+                patientSlugOrId={paramValue}
                 energyCalculation={energyCalculation}
             />
 
