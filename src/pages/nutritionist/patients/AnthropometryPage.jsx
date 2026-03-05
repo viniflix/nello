@@ -591,9 +591,9 @@ const AnthropometryPage = () => {
                 <Alert variant="destructive" className="max-w-md mb-6">
                     <AlertDescription>Paciente não encontrado.</AlertDescription>
                 </Alert>
-                <Button variant="outline" onClick={() => navigate('/nutritionist/patients')}>
-                    <ArrowLeft className="w-4 h-4 mr-2" />
-                    Voltar para Pacientes
+                <Button variant="outline" onClick={() => navigate('/nutritionist/patients')} className="gap-2">
+                    <ArrowLeft className="w-4 h-4 shrink-0" />
+                    Voltar
                 </Button>
             </div>
         );
@@ -608,9 +608,9 @@ const AnthropometryPage = () => {
                         variant="ghost"
                         size="sm"
                         onClick={() => navigate(patientHubRoute({ id: patientId, slug: paramValue }, 'body'))}
-                        className="-ml-2 text-[#5f6f52] hover:text-[#5f6f52] hover:bg-[#5f6f52]/10"
+                        className="gap-2 -ml-2 shrink-0 text-[#5f6f52] hover:text-[#5f6f52] hover:bg-[#5f6f52]/10"
                     >
-                        <ArrowLeft className="w-4 h-4 mr-1" />
+                        <ArrowLeft className="w-4 h-4 shrink-0" />
                         Voltar
                     </Button>
                     <Button

@@ -428,7 +428,10 @@ const LabResultsPage = () => {
             <div className="flex flex-col min-h-screen bg-background items-center justify-center p-8">
                 <AlertCircle className="w-10 h-10 text-destructive" />
                 <p className="mt-4 text-sm text-foreground">Paciente não encontrado.</p>
-                <Button variant="outline" className="mt-4" onClick={() => navigate(-1)}>Voltar</Button>
+                <Button variant="outline" className="mt-4 gap-2" onClick={() => navigate(-1)}>
+                    <ArrowLeft className="w-4 h-4 shrink-0" />
+                    Voltar
+                </Button>
             </div>
         );
     }
@@ -447,9 +450,9 @@ const LabResultsPage = () => {
                         variant="ghost"
                         size="sm"
                         onClick={() => navigate(patientHubRoute({ id: patientId, slug: paramValue }, 'clinical'))}
-                        className="-ml-2 w-fit text-[#5f6f52] hover:text-[#5f6f52] hover:bg-[#5f6f52]/10"
+                        className="gap-2 -ml-2 w-fit shrink-0 text-[#5f6f52] hover:text-[#5f6f52] hover:bg-[#5f6f52]/10"
                     >
-                        <ArrowLeft className="w-4 h-4 mr-1" />
+                        <ArrowLeft className="w-4 h-4 shrink-0" />
                         Voltar
                     </Button>
                     <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">

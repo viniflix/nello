@@ -1437,9 +1437,9 @@ const PatientAnamnesePage = () => {
                             variant="ghost"
                             size="sm"
                             onClick={() => navigate(patientHubRoute(patient || { id: patientId, slug: paramValue }, 'clinical'))}
-                            className="mb-3 -ml-2 text-[#5f6f52] hover:text-[#5f6f52] hover:bg-[#5f6f52]/10"
+                            className="mb-3 gap-2 -ml-2 shrink-0 text-[#5f6f52] hover:text-[#5f6f52] hover:bg-[#5f6f52]/10"
                         >
-                            <ArrowLeft className="w-4 h-4 mr-1" />
+                            <ArrowLeft className="w-4 h-4 shrink-0" />
                             Voltar
                         </Button>
                         <h1 className="text-2xl sm:text-3xl font-bold text-foreground flex items-center gap-2 sm:gap-3">

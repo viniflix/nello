@@ -683,12 +683,14 @@ const MealPlanPage = () => {
                 <div className="mb-6">
                     <Button
                         variant="ghost"
+                        size="sm"
+                        className="gap-2"
                         onClick={() => {
                             setShowForm(false);
                             setEditingPlan(null);
                         }}
                     >
-                        <ArrowLeft className="mr-2 h-4 w-4" />
+                        <ArrowLeft className="w-4 h-4 shrink-0" />
                         Voltar
                     </Button>
                 </div>
@@ -717,9 +719,9 @@ const MealPlanPage = () => {
                         variant="ghost"
                         size="sm"
                         onClick={() => navigate(patientHubRoute({ id: patientId, slug: paramValue }, 'nutrition'))}
-                        className="-ml-2 text-[#5f6f52] hover:text-[#5f6f52] hover:bg-[#5f6f52]/10"
+                        className="gap-2 -ml-2 shrink-0 text-[#5f6f52] hover:text-[#5f6f52] hover:bg-[#5f6f52]/10"
                     >
-                        <ArrowLeft className="h-4 w-4 mr-1" />
+                        <ArrowLeft className="w-4 h-4 shrink-0" />
                         Voltar
                     </Button>
                     <Button variant="outline" size="sm" onClick={loadPlans} className="flex-shrink-0">

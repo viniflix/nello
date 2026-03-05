@@ -121,11 +121,12 @@ export default function NutritionistPatientAchievementsPage() {
       <div className="max-w-7xl mx-auto w-full px-4 md:px-8 py-6">
         <Button
           variant="ghost"
-          className="mb-4 gap-2 -ml-2"
+          size="sm"
+          className="mb-4 gap-2 -ml-2 shrink-0"
           onClick={() => navigate(patientHubRoute(patient, 'adherence'))}
         >
-          <ArrowLeft className="w-4 h-4" />
-          Voltar ao Hub
+          <ArrowLeft className="w-4 h-4 shrink-0" />
+          Voltar
         </Button>
 
         <motion.div

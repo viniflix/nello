@@ -392,7 +392,10 @@ export default function EnergyExpenditurePage() {
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>{resolveError?.message || 'Paciente não encontrado.'}</AlertDescription>
         </Alert>
-        <Button variant="outline" className="mt-4" onClick={() => navigate(-1)}>Voltar</Button>
+        <Button variant="outline" className="mt-4 gap-2" onClick={() => navigate(-1)}>
+          <ArrowLeft className="w-4 h-4 shrink-0" />
+          Voltar
+        </Button>
       </div>
     );
   }
@@ -401,8 +404,9 @@ export default function EnergyExpenditurePage() {
     <div className="min-h-screen bg-background overflow-x-hidden">
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 md:py-8 min-w-0">
         <div className="flex items-center gap-2 md:gap-4 mb-6 min-w-0">
-          <Button variant="ghost" size="icon" onClick={() => navigate(patientHubRoute({ id: patientId, slug: patientSlug || paramValue }, 'nutrition'))} className="shrink-0">
-            <ArrowLeft className="w-5 h-5" />
+          <Button variant="ghost" size="sm" onClick={() => navigate(patientHubRoute({ id: patientId, slug: patientSlug || paramValue }, 'nutrition'))} className="gap-2 shrink-0">
+            <ArrowLeft className="w-4 h-4 shrink-0" />
+            Voltar
           </Button>
           <div className="min-w-0">
             <h1 className="text-2xl md:text-3xl font-bold break-words">Gastos Energéticos</h1>

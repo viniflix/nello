@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useResolvedPatientId } from '@/hooks/useResolvedPatientId';
-import { ClipboardList, Plus, Calendar, FileText, ChevronRight, Loader2, AlertCircle, Trash2, MoreVertical } from 'lucide-react';
+import { ArrowLeft, ClipboardList, Plus, Calendar, FileText, ChevronRight, Loader2, AlertCircle, Trash2, MoreVertical } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -382,8 +382,10 @@ const PatientAnamnesisList = () => {
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => navigate(patientHubRoute(patient || { id: patientId, slug: paramValue }, 'clinical'))}
+                                className="gap-2"
                             >
-                                ← Voltar ao Prontuário
+                                <ArrowLeft className="w-4 h-4 shrink-0" />
+                                Voltar
                             </Button>
                         </div>
                         <h1 className="text-2xl md:text-3xl font-bold text-foreground flex items-center gap-2 md:gap-3 break-words">

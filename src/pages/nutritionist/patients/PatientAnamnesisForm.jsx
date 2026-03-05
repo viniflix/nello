@@ -4,7 +4,7 @@ import { useResolvedPatientId } from '@/hooks/useResolvedPatientId';
 import { patientHubRoute } from '@/lib/utils/patientRoutes';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Save, FileCheck, Loader2, AlertCircle, ChevronLeft, Plus, Trash2 } from 'lucide-react';
+import { Save, FileCheck, Loader2, AlertCircle, ArrowLeft, Plus, Trash2 } from 'lucide-react';
 import {
     Accordion,
     AccordionContent,
@@ -621,10 +621,10 @@ const PatientAnamnesisForm = () => {
                             variant="ghost"
                             size="sm"
                             onClick={() => navigate(isCustomForm ? `/nutritionist/patients/${patientId}/anamnese` : patientHubRoute(patient || { id: patientId }, 'clinical'))}
-                            className="mb-3"
+                            className="mb-3 gap-2"
                         >
-                            <ChevronLeft className="w-4 h-4 mr-1" />
-                            {isCustomForm ? 'Voltar para Anamneses' : 'Voltar ao Prontuário'}
+                            <ArrowLeft className="w-4 h-4 shrink-0" />
+                            Voltar
                         </Button>
                         <h1 className="text-2xl md:text-3xl font-bold text-foreground break-words">
                             {isCustomForm ? 'Formulário Personalizado' : (isEditMode ? 'Editar Anamnese' : 'Nova Anamnese')}

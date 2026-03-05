@@ -47,6 +47,11 @@ const TabContentAdherence = ({ patientId, patientData, modulesStatus = {} }) => 
     const [previewData, setPreviewData] = useState(null);
 
     useEffect(() => {
+        if (!patientId) {
+            setLoading(false);
+            setActiveGoal(null);
+            return;
+        }
         loadActiveGoal();
     }, [patientId]);
 
@@ -92,6 +97,7 @@ const TabContentAdherence = ({ patientId, patientData, modulesStatus = {} }) => 
     }, [patientId]);
 
     const loadActiveGoal = async () => {
+        if (!patientId) return;
         setLoading(true);
         try {
             const { data } = await getActiveGoal(patientId);

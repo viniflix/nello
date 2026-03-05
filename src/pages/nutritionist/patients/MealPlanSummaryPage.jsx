@@ -190,8 +190,9 @@ const MealPlanSummaryPage = () => {
                         variant="ghost"
                         size="sm"
                         onClick={() => navigate(`/nutritionist/patients/${patientId}/meal-plan`)}
+                        className="gap-2 shrink-0"
                     >
-                        <ArrowLeft className="h-4 w-4 mr-2" />
+                        <ArrowLeft className="w-4 h-4 shrink-0" />
                         Voltar
                     </Button>
                     <div>

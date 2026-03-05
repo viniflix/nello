@@ -252,7 +252,10 @@ export default function ProgressPhotosPage() {
         return (
             <div className="min-h-screen bg-background p-4">
                 <p className="text-destructive">Paciente não encontrado.</p>
-                <Button variant="outline" onClick={() => navigate('/nutritionist/patients')}>Voltar</Button>
+                <Button variant="outline" onClick={() => navigate('/nutritionist/patients')} className="gap-2">
+                  <ArrowLeft className="w-4 h-4 shrink-0" />
+                  Voltar
+                </Button>
             </div>
         );
     }
@@ -267,11 +270,12 @@ export default function ProgressPhotosPage() {
                 <div className="flex items-center gap-2 md:gap-4 mb-6 min-w-0">
                     <Button
                         variant="ghost"
-                        size="icon"
+                        size="sm"
                         onClick={() => navigate(patientHubRoute(patient, 'body'))}
-                        className="shrink-0"
+                        className="gap-2 shrink-0"
                     >
-                        <ArrowLeft className="w-5 h-5" />
+                        <ArrowLeft className="w-4 h-4 shrink-0" />
+                        Voltar
                     </Button>
                     <div className="min-w-0">
                         <h1 className="text-2xl md:text-3xl font-bold break-words flex items-center gap-2">

@@ -55,6 +55,10 @@ const FoodDiaryPage = () => {
     const [showDetailsModal, setShowDetailsModal] = useState(false);
 
     useEffect(() => {
+        if (!patientId) {
+            setLoading(false);
+            return;
+        }
         loadInitialData();
     }, [patientId]);
 
@@ -65,6 +69,7 @@ const FoodDiaryPage = () => {
     }, [filters]);
 
     const loadInitialData = async () => {
+        if (!patientId) return;
         setLoading(true);
         try {
             // Buscar nome do paciente
@@ -133,6 +138,7 @@ const FoodDiaryPage = () => {
     };
 
     const loadMeals = async () => {
+        if (!patientId) return;
         try {
             const { data: mealsData } = await getPatientMeals(patientId, filters);
             setMeals(mealsData || []);
@@ -191,9 +197,9 @@ const FoodDiaryPage = () => {
                         variant="ghost"
                         size="sm"
                         onClick={() => navigate(patientHubRoute({ id: patientId, slug: paramValue }, 'nutrition'))}
-                        className="mb-3 -ml-2 text-[#5f6f52] hover:text-[#5f6f52] hover:bg-[#5f6f52]/10"
+                        className="mb-3 gap-2 -ml-2 shrink-0 text-[#5f6f52] hover:text-[#5f6f52] hover:bg-[#5f6f52]/10"
                     >
-                        <ArrowLeft className="w-4 h-4 mr-1" />
+                        <ArrowLeft className="w-4 h-4 shrink-0" />
                         Voltar
                     </Button>
                     <div className="min-w-0">

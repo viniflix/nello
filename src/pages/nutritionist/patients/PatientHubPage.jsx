@@ -176,10 +176,10 @@ const PatientHubPage = () => {
                         {error?.message || 'Paciente não encontrado ou você não tem permissão para visualizá-lo.'}
                     </AlertDescription>
                 </Alert>
-                <Button asChild variant="outline">
-                    <Link to="/nutritionist/patients">
-                        <ArrowLeft className="w-4 h-4 mr-2" />
-                        Voltar para Pacientes
+                <Button asChild variant="outline" className="gap-2">
+                    <Link to="/nutritionist/patients" className="flex items-center gap-2">
+                        <ArrowLeft className="w-4 h-4 shrink-0" />
+                        Voltar
                     </Link>
                 </Button>
             </div>
@@ -193,8 +193,9 @@ const PatientHubPage = () => {
                 <div className="max-w-7xl mx-auto flex items-center justify-between min-w-0 gap-2">
                     <div className="flex items-center gap-2 md:gap-3 min-w-0 flex-1">
                         <Link to="/nutritionist/patients" className="shrink-0">
-                            <Button variant="ghost" size="icon">
-                                <ArrowLeft className="w-5 h-5" />
+                            <Button variant="ghost" size="sm" className="gap-2">
+                                <ArrowLeft className="w-4 h-4 shrink-0" />
+                                Voltar
                             </Button>
                         </Link>
                         <div className="min-w-0 overflow-hidden">

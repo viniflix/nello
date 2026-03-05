@@ -8,7 +8,7 @@ import { isUuid } from '@/lib/utils/patientRoutes';
 let hasActivityLogTable = true;
 
 const getProgressPhotoEventsFromAudit = async (patientId) => {
-    if (!hasActivityLogTable) return [];
+    if (!hasActivityLogTable || !patientId) return [];
 
     const { data, error } = await supabase
         .from('activity_log')
@@ -23,10 +23,16 @@ const getProgressPhotoEventsFromAudit = async (patientId) => {
         const code = String(error?.code || '').toUpperCase();
         const isMissingRelation =
             code === 'PGRST205' ||
+            code === 'PGRST204' ||
             code === '42P01' ||
             (msg.includes('activity_log') && (msg.includes('schema cache') || msg.includes('does not exist')));
 
         if (isMissingRelation) {
+            hasActivityLogTable = false;
+            return [];
+        }
+        // Supabase/PostgREST 404 = tabela não existe
+        if (error?.status === 404 || error?.statusCode === 404) {
             hasActivityLogTable = false;
             return [];
         }
@@ -300,6 +306,7 @@ export const getModulesStatus = async (patientId) => {
  * @returns {Promise<{data: array, error: object}>}
  */
 export const getPatientActivities = async (patientId, limit = 10) => {
+    if (!patientId) return { data: [], error: null };
     try {
         const activities = [];
 
