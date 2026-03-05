@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useResolvedPatientId } from '@/hooks/useResolvedPatientId';
-import { isUuid } from '@/lib/utils/patientRoutes';
+import { isUuid, patientRoute } from '@/lib/utils/patientRoutes';
 import { ArrowLeft, Calculator, Save, Loader2, Target, TrendingUp, Database, User, AlertCircle, HelpCircle, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -337,6 +337,8 @@ export default function EnergyExpenditurePage() {
     try {
       await saveCurrentState();
       toast({ title: 'Salvo!', description: 'Planejamento energético salvo com sucesso.' });
+      const patient = { id: patientId, slug: patientSlug || paramValue };
+      navigate(patientRoute(patient, 'hub'));
     } catch (err) {
       console.error(err);
       toast({ title: 'Erro', description: err?.message || 'Não foi possível salvar o cálculo.', variant: 'destructive' });
