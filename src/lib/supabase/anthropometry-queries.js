@@ -11,7 +11,9 @@ const isMissingColumnError = (error) => {
         message.includes('is_latest_revision') ||
         message.includes('change_reason') ||
         message.includes('created_by_user_id') ||
-        message.includes('results')
+        message.includes('results') ||
+        message.includes('bone_diameters') ||
+        message.includes('bioimpedance')
     );
 };
 
@@ -145,14 +147,22 @@ export const createAnthropometryRecord = async (recordData) => {
             .single();
 
         if (error && isMissingColumnError(error)) {
-            const {
-                supersedes_record_id: _supersedes,
-                change_reason: _reason,
-                created_by_user_id: _createdBy,
-                results: _results,
-                ...fallbackData
-            } = insertData;
-
+            const fallbackData = {
+                patient_id: insertData.patient_id,
+                weight: insertData.weight,
+                height: insertData.height,
+                record_date: insertData.record_date,
+                notes: insertData.notes || null
+            };
+            if (insertData.supersedes_record_id && !String(error?.message || '').toLowerCase().includes('supersedes_record_id')) {
+                fallbackData.supersedes_record_id = insertData.supersedes_record_id;
+            }
+            if (insertData.change_reason && !String(error?.message || '').toLowerCase().includes('change_reason')) {
+                fallbackData.change_reason = insertData.change_reason;
+            }
+            if (insertData.created_by_user_id && !String(error?.message || '').toLowerCase().includes('created_by_user_id')) {
+                fallbackData.created_by_user_id = insertData.created_by_user_id;
+            }
             ({ data, error } = await supabase
                 .from('growth_records')
                 .insert([fallbackData])

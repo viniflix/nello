@@ -61,7 +61,7 @@ export const getPatientProfile = async (patientId, nutritionistId) => {
  */
 export const getLatestMetrics = async (patientId) => {
     try {
-        // 1. Buscar registros antropométricos (growth_records) - colunas básicas compatíveis
+        // 1. Buscar registros antropométricos (growth_records) - colunas essenciais para compatibilidade
         const { data: growthRows } = await supabase
             .from('growth_records')
             .select('weight, height, record_date')
@@ -149,8 +149,8 @@ export const getLatestMetrics = async (patientId) => {
             height: height || null,
             previous_weight: previousGrowthData?.weight || null,
             last_measurement: growthData?.record_date || null,
-            updated_at: growthData?.record_date || null,
-            created_at: growthData?.record_date || null,
+            updated_at: growthData?.record_date ? new Date(growthData.record_date).toISOString() : null,
+            created_at: growthData?.record_date ? new Date(growthData.record_date).toISOString() : null,
             goal: goalFromAnamnesis,
             birth_date_from_anamnesis: birthDateFromAnamnesis || null,
             last_appointment: lastAppointment
