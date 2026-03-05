@@ -40,10 +40,10 @@ const PatientUpdatesWidget = () => {
             setLoading(true);
 
             try {
-                // Buscar pacientes do nutricionista
+                // Buscar pacientes do nutricionista (com slug para URLs legíveis)
                 const { data: patientsData } = await supabase
                     .from('user_profiles')
-                    .select('id, name')
+                    .select('id, name, slug')
                     .eq('nutritionist_id', user.id)
                     .eq('user_type', 'patient');
 
@@ -103,6 +103,7 @@ const PatientUpdatesWidget = () => {
                                 id: `audit-${audit.id}`,
                                 type: type,
                                 patient_id: audit.patient_id,
+                                patient_slug: patient.slug || null,
                                 patient_name: patient.name,
                                 description: description,
                                 meal_type: translateMealType(audit.meal_type),
@@ -122,6 +123,7 @@ const PatientUpdatesWidget = () => {
                                 id: `weight-${record.id}`,
                                 type: 'weight',
                                 patient_id: record.patient_id,
+                                patient_slug: patient.slug || null,
                                 patient_name: patient.name,
                                 description: 'registrou peso',
                                 detail: `${record.weight} kg`,
@@ -293,7 +295,7 @@ const PatientUpdatesWidget = () => {
                                                 <button
                                                     type="button"
                                                     className="font-semibold text-primary hover:underline"
-                                                    onClick={() => navigate(`/nutritionist/patients/${update.patient_id}/hub`)}
+                                                    onClick={() => navigate(`/nutritionist/patients/${update.patient_slug || update.patient_id}/hub`)}
                                                 >
                                                     {update.patient_name}
                                                 </button>

@@ -70,14 +70,15 @@ const ModuleCard = ({ title, description, icon: Icon, to, status, onClick }) => 
     );
 };
 
-const PatientModulesGrid = ({ patientId, modulesStatus = {} }) => {
+const PatientModulesGrid = ({ patientId, patientSlugOrId, modulesStatus = {} }) => {
+    const patientSegment = patientSlugOrId ?? patientId;
     const modules = [
         {
             id: 'anamnese',
             title: 'Anamnese',
             description: 'Histórico clínico e hábitos de vida do paciente.',
             icon: FileText,
-            to: `/nutritionist/patients/${patientId}/anamnese`,
+            to: `/nutritionist/patients/${patientSegment}/anamnese`,
             status: modulesStatus.anamnese || 'not_started'
         },
         {
@@ -85,7 +86,7 @@ const PatientModulesGrid = ({ patientId, modulesStatus = {} }) => {
             title: 'Avaliação Antropométrica',
             description: 'Medidas de peso, altura, circunferências e dobras cutâneas.',
             icon: BarChart3,
-            to: `/nutritionist/patients/${patientId}/anthropometry`,
+            to: `/nutritionist/patients/${patientSegment}/anthropometry`,
             status: modulesStatus.anthropometry || 'not_started'
         },
         {
@@ -93,7 +94,7 @@ const PatientModulesGrid = ({ patientId, modulesStatus = {} }) => {
             title: 'Plano Alimentar',
             description: 'Prescrição de dieta e orientações nutricionais.',
             icon: Utensils,
-            to: `/nutritionist/patients/${patientId}/meal-plan`,
+            to: `/nutritionist/patients/${patientSegment}/meal-plan`,
             status: modulesStatus.meal_plan || 'not_started'
         },
         {
@@ -101,7 +102,7 @@ const PatientModulesGrid = ({ patientId, modulesStatus = {} }) => {
             title: 'Histórico Alimentar',
             description: 'Registro de refeições e diário alimentar do paciente.',
             icon: BookOpen,
-            to: `/nutritionist/patients/${patientId}/food-diary`,
+            to: `/nutritionist/patients/${patientSegment}/food-diary`,
             status: modulesStatus.food_diary || 'not_started'
         },
         {
@@ -109,7 +110,7 @@ const PatientModulesGrid = ({ patientId, modulesStatus = {} }) => {
             title: 'Exames Laboratoriais',
             description: 'Resultados de exames de sangue e análises clínicas.',
             icon: Droplet,
-            to: `/nutritionist/patients/${patientId}/lab-results`,
+            to: `/nutritionist/patients/${patientSegment}/lab-results`,
             status: modulesStatus.lab_results || 'not_started'
         },
         {
@@ -117,7 +118,7 @@ const PatientModulesGrid = ({ patientId, modulesStatus = {} }) => {
             title: 'Metas e Prescrições',
             description: 'Calorias, macros, suplementos e orientações gerais.',
             icon: Target,
-            to: `/nutritionist/patients/${patientId}/prescriptions`,
+            to: `/nutritionist/patients/${patientSegment}/prescriptions`,
             status: modulesStatus.prescriptions || 'not_started'
         },
         {
@@ -125,7 +126,7 @@ const PatientModulesGrid = ({ patientId, modulesStatus = {} }) => {
             title: 'Conquistas',
             description: 'Gerenciar e visualizar conquistas do paciente.',
             icon: Trophy,
-            to: `/nutritionist/patients/${patientId}/achievements`,
+            to: `/nutritionist/patients/${patientSegment}/achievements`,
             status: modulesStatus.achievements || 'not_started'
         }
     ];

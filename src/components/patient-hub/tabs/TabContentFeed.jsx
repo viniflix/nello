@@ -82,7 +82,7 @@ const TabContentFeed = ({ patientId, patientSlugOrId, activities, loading, onLoa
                         <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => navigate(`/nutritionist/patients/${patientId}/food-diary`)}
+                            onClick={() => navigate(`/nutritionist/patients/${patientSlugOrId ?? patientId}/food-diary`)}
                             className="h-7 text-xs text-[#5f6f52] hover:text-[#5f6f52] hover:bg-[#5f6f52]/10"
                         >
                             Ver tudo
@@ -140,7 +140,7 @@ const TabContentFeed = ({ patientId, patientSlugOrId, activities, loading, onLoa
                             <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => navigate(`/nutritionist/patients/${patientId}/food-diary`)}
+                                onClick={() => navigate(`/nutritionist/patients/${patientSlugOrId ?? patientId}/food-diary`)}
                                 className="w-full mt-2 border-[#5f6f52] text-[#5f6f52] hover:bg-[#5f6f52]/10"
                             >
                                 Ver diário completo
@@ -156,7 +156,7 @@ const TabContentFeed = ({ patientId, patientSlugOrId, activities, loading, onLoa
                             <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => navigate(`/nutritionist/patients/${patientId}/food-diary`)}
+                                onClick={() => navigate(`/nutritionist/patients/${patientSlugOrId ?? patientId}/food-diary`)}
                                 className="text-[#5f6f52] hover:text-[#5f6f52] hover:bg-[#5f6f52]/10 text-xs"
                             >
                                 Abrir Diário Alimentar

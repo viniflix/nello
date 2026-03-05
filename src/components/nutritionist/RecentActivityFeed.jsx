@@ -82,10 +82,11 @@ const RecentActivityFeed = ({ limit = 10, showHeader = true }) => {
 
     const handleActivityClick = (activity) => {
         // Navegar para a página específica do evento (ex.: diário, fotos, gastos) ou hub do paciente
+        const patientSegment = activity.patient_slug || activity.patient_id;
         if (activity.ctaRoute) {
             navigate(activity.ctaRoute);
         } else if (activity.patient_id) {
-            navigate(`/nutritionist/patients/${activity.patient_id}`);
+            navigate(`/nutritionist/patients/${patientSegment}/hub`);
         }
     };
 

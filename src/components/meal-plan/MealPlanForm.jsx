@@ -12,7 +12,7 @@ import MealPlanMealForm from './MealPlanMealForm';
 import MacrosChart from './MacrosChart';
 import { getReferenceValues, simulateMealPlanPortionAdjustment } from '@/lib/supabase/meal-plan-queries';
 
-const MealPlanForm = ({ patientId, nutritionistId, initialData = null, onSubmit, onCancel, loading = false }) => {
+const MealPlanForm = ({ patientId, patientSlugOrId, nutritionistId, initialData = null, onSubmit, onCancel, loading = false }) => {
     const [formData, setFormData] = useState({
         name: '',
         description: '',
@@ -574,6 +574,7 @@ const MealPlanForm = ({ patientId, nutritionistId, initialData = null, onSubmit,
                                 fat={dailyTotals.fat}
                                 calories={dailyTotals.calories}
                                 patientId={patientId}
+                                patientSlugOrId={patientSlugOrId}
                                 planId={initialData?.id}
                                 referenceValues={referenceValues}
                                 onReferenceUpdate={loadReferenceValues}

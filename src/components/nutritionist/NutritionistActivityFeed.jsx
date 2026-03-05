@@ -193,6 +193,7 @@ const NutritionistActivityFeed = () => {
                 const patientIds = patients.map((p) => p.id).filter(Boolean);
                 const patientNameMap = new Map(patients.map((p) => [p.id, p.name || 'Paciente']));
                 const patientAvatarMap = new Map(patients.map((p) => [p.id, p.avatar_url]).filter(([, v]) => v));
+                const patientSlugMap = new Map(patients.map((p) => [p.id, p.slug]).filter(([, s]) => s));
 
                 let labRiskAlerts = [];
                 let pendingPayments = [];
@@ -212,7 +213,7 @@ const NutritionistActivityFeed = () => {
 
                 const priorityRules = priorityRulesRes?.data || [];
                 const activityItems = (activitiesRes.data || []).map((activity) => {
-                    const cta = getCtaForActivity(activity);
+                    const cta = activity.cta || getCtaForActivity(activity);
                     return {
                         id: `activity-${activity.id}`,
                         type: activity.type,
@@ -230,8 +231,10 @@ const NutritionistActivityFeed = () => {
                     };
                 });
 
-                const pendingItems = (pendingRes.data || []).flatMap(patient =>
-                    patient.pending_items.map(item => ({
+                const pendingPathByType = { anamnesis: 'anamnese', anthropometry: 'anthropometry', meal_plan: 'meal-plan', prescription: 'energy-expenditure' };
+                const pendingItems = (pendingRes.data || []).flatMap(patient => {
+                    const patientSegment = patientSlugMap.get(patient.patient_id) || patient.patient_id;
+                    return patient.pending_items.map(item => ({
                         id: `pending-${patient.patient_id}-${item.type}`,
                         type: 'pending',
                         patientId: patient.patient_id,
@@ -241,30 +244,33 @@ const NutritionistActivityFeed = () => {
                         description: 'Cadastro pendente',
                         timestamp: null,
                         ctaLabel: 'Resolver',
-                        ctaRoute: item.route,
+                        ctaRoute: `/nutritionist/patients/${patientSegment}/${pendingPathByType[item.type] || item.type}`,
                         pendingType: item.type,
                         priority: 1,
                         sourceType: 'pending',
                         sourceId: `pending-${patient.patient_id}-${item.type}`
-                    }))
-                );
+                    }));
+                });
 
-                const lowAdherenceItems = (lowAdherenceRes.data || []).map(patient => ({
-                    id: `low-adherence-${patient.id}`,
-                    type: 'low_adherence',
-                    patientId: patient.id,
-                    patientName: patient.name,
-                    patientAvatar: patientAvatarMap.get(patient.id) || null,
-                    title: 'Baixa adesão',
-                    description: patient.days_inactive === null ? 'Sem registros de refeição' : `Sem registros há ${patient.days_inactive} dia${patient.days_inactive !== 1 ? 's' : ''}`,
-                    daysInactive: patient.days_inactive,
-                    timestamp: null,
-                    ctaLabel: 'Ver diário',
-                    ctaRoute: `/nutritionist/patients/${patient.id}/food-diary`,
+                const lowAdherenceItems = (lowAdherenceRes.data || []).map(patient => {
+                    const patientSegment = patientSlugMap.get(patient.id) || patient.id;
+                    return {
+                        id: `low-adherence-${patient.id}`,
+                        type: 'low_adherence',
+                        patientId: patient.id,
+                        patientName: patient.name,
+                        patientAvatar: patientAvatarMap.get(patient.id) || null,
+                        title: 'Baixa adesão',
+                        description: patient.days_inactive === null ? 'Sem registros de refeição' : `Sem registros há ${patient.days_inactive} dia${patient.days_inactive !== 1 ? 's' : ''}`,
+                        daysInactive: patient.days_inactive,
+                        timestamp: null,
+                        ctaLabel: 'Ver diário',
+                        ctaRoute: `/nutritionist/patients/${patientSegment}/food-diary`,
                     priority: 4,
                     sourceType: 'low_adherence',
                     sourceId: `low-adherence-${patient.id}`
-                }));
+                };
+                });
 
                 const appointmentItems = (appointmentsRes.data || []).map(appointment => ({
                     id: `appt-${appointment.id}`,
@@ -308,22 +314,25 @@ const NutritionistActivityFeed = () => {
                     };
                 });
 
-                const labRiskItems = (labRiskAlerts || []).map((alert) => ({
-                    id: `lab-risk-${alert.patient_id}-${alert.marker_key}`,
-                    type: 'lab_high_risk',
-                    patientId: alert.patient_id,
-                    patientName: patientNameMap.get(alert.patient_id) || 'Paciente',
-                    patientAvatar: patientAvatarMap.get(alert.patient_id) || null,
-                    title: 'Exame com risco alto',
-                    description: `${alert.test_name || 'Marcador'}: ${alert.test_value ?? '--'} ${alert.test_unit || ''}`.trim(),
-                    timestamp: alert.test_date || alert.created_at || null,
-                    ctaLabel: 'Ver exames',
-                    ctaRoute: `/nutritionist/patients/${alert.patient_id}/lab-results`,
+                const labRiskItems = (labRiskAlerts || []).map((alert) => {
+                    const patientSegment = patientSlugMap.get(alert.patient_id) || alert.patient_id;
+                    return {
+                        id: `lab-risk-${alert.patient_id}-${alert.marker_key}`,
+                        type: 'lab_high_risk',
+                        patientId: alert.patient_id,
+                        patientName: patientNameMap.get(alert.patient_id) || 'Paciente',
+                        patientAvatar: patientAvatarMap.get(alert.patient_id) || null,
+                        title: 'Exame com risco alto',
+                        description: `${alert.test_name || 'Marcador'}: ${alert.test_value ?? '--'} ${alert.test_unit || ''}`.trim(),
+                        timestamp: alert.test_date || alert.created_at || null,
+                        ctaLabel: 'Ver exames',
+                        ctaRoute: `/nutritionist/patients/${patientSegment}/lab-results`,
                     priority: 1,
                     sourceType: 'lab_high_risk',
                     sourceId: `${alert.patient_id}-${alert.marker_key}`,
                     riskReason: alert.risk_reason
-                }));
+                };
+                });
 
                 const allItemsRaw = [...birthdayItems, ...pendingItems, ...paymentItems, ...appointmentItems, ...lowAdherenceItems, ...labRiskItems, ...activityItems];
                 const allItems = attachFeedPriorityMeta(allItemsRaw, priorityRules);
@@ -859,6 +868,7 @@ const getBirthdayItems = (patients) => {
         birthDate.setFullYear(today.getFullYear());
         const diffDays = Math.ceil((birthDate - today) / (1000 * 60 * 60 * 24));
         if (diffDays === 0 || (diffDays > 0 && diffDays <= 7)) {
+            const patientSegment = patient.slug || patient.id;
             items.push({
                 id: `birthday-${patient.id}`,
                 type: 'birthday',
@@ -869,7 +879,7 @@ const getBirthdayItems = (patients) => {
                 description: `Nascimento: ${format(new Date(patient.birth_date), 'dd/MM')}`,
                 timestamp: null,
                 ctaLabel: 'Ver perfil',
-                ctaRoute: `/nutritionist/patients/${patient.id}/hub`,
+                ctaRoute: `/nutritionist/patients/${patientSegment}/hub`,
                 priority: diffDays === 0 ? 0 : 2,
                 priorityScore: diffDays === 0 ? 10 : 5
             });

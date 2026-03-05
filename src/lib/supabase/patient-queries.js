@@ -808,7 +808,7 @@ export const getNutritionistPatientsForFeed = async (nutritionistId) => {
     try {
         const { data, error } = await supabase
             .from('user_profiles')
-            .select('id, name, birth_date, avatar_url')
+            .select('id, name, birth_date, avatar_url, slug')
             .eq('nutritionist_id', nutritionistId)
             .eq('is_active', true);
 
@@ -830,7 +830,7 @@ export const getNutritionistPatientsForFeed = async (nutritionistId) => {
 
         const { data: profiles, error: profileError } = await supabase
             .from('user_profiles')
-            .select('id, name, birth_date, avatar_url')
+            .select('id, name, birth_date, avatar_url, slug')
             .in('id', patientIds);
 
         if (profileError) throw profileError;
@@ -839,7 +839,8 @@ export const getNutritionistPatientsForFeed = async (nutritionistId) => {
             id: profile.id,
             name: profile.name || 'Paciente',
             birth_date: profile.birth_date,
-            avatar_url: profile.avatar_url
+            avatar_url: profile.avatar_url,
+            slug: profile.slug
         }));
 
         return { data: normalized, error: null };
@@ -1083,23 +1084,25 @@ export const getFeedTaskAuditTrail = async ({
 
 /**
  * Retorna a rota (CTA) para um item do feed de atividades (dashboard).
- * @param {{ type: string, patient_id: string }} activity
+ * Usa patient_slug quando disponível para URLs legíveis.
+ * @param {{ type: string, patient_id: string, patient_slug?: string }} activity
  * @returns {{ label: string, route: string }}
  */
 export const getActivityCtaRoute = (activity) => {
     if (!activity?.patient_id) return { label: 'Ver detalhes', route: '/nutritionist/patients' };
+    const patientSegment = activity.patient_slug || activity.patient_id;
     switch (activity.type) {
-        case 'meal': return { label: 'Ver diário', route: `/nutritionist/patients/${activity.patient_id}/food-diary` };
-        case 'anthropometry': return { label: 'Ver avaliação', route: `/nutritionist/patients/${activity.patient_id}/anthropometry` };
-        case 'anamnesis': return { label: 'Ver anamnese', route: `/nutritionist/patients/${activity.patient_id}/anamnesis` };
-        case 'meal_plan': return { label: 'Ver plano', route: `/nutritionist/patients/${activity.patient_id}/meal-plan` };
-        case 'prescription': return { label: 'Ver cálculo', route: `/nutritionist/patients/${activity.patient_id}/energy-expenditure` };
-        case 'energy_expenditure': return { label: 'Ver gastos energéticos', route: `/nutritionist/patients/${activity.patient_id}/energy-expenditure` };
-        case 'progress_photo': return { label: 'Ver fotos de progresso', route: `/nutritionist/patients/${activity.patient_id}/photos` };
+        case 'meal': return { label: 'Ver diário', route: `/nutritionist/patients/${patientSegment}/food-diary` };
+        case 'anthropometry': return { label: 'Ver avaliação', route: `/nutritionist/patients/${patientSegment}/anthropometry` };
+        case 'anamnesis': return { label: 'Ver anamnese', route: `/nutritionist/patients/${patientSegment}/anamnesis` };
+        case 'meal_plan': return { label: 'Ver plano', route: `/nutritionist/patients/${patientSegment}/meal-plan` };
+        case 'prescription': return { label: 'Ver cálculo', route: `/nutritionist/patients/${patientSegment}/energy-expenditure` };
+        case 'energy_expenditure': return { label: 'Ver gastos energéticos', route: `/nutritionist/patients/${patientSegment}/energy-expenditure` };
+        case 'progress_photo': return { label: 'Ver fotos de progresso', route: `/nutritionist/patients/${patientSegment}/photos` };
         case 'appointment': return { label: 'Ver agenda', route: '/nutritionist/agenda' };
         case 'message': return { label: 'Abrir chat', route: `/chat/nutritionist/${activity.patient_id}` };
-        case 'achievement': return { label: 'Ver metas', route: `/nutritionist/patients/${activity.patient_id}/goals` };
-        default: return { label: 'Ver paciente', route: `/nutritionist/patients/${activity.patient_id}/hub` };
+        case 'achievement': return { label: 'Ver metas', route: `/nutritionist/patients/${patientSegment}/goals` };
+        default: return { label: 'Ver paciente', route: `/nutritionist/patients/${patientSegment}/hub` };
     }
 };
 
@@ -1123,26 +1126,33 @@ export const getComprehensiveActivityFeed = async (nutritionistId, limit = 20) =
 
         if (error) throw error;
 
-        // Buscar avatares dos pacientes (cache-friendly)
+        // Buscar avatares e slugs dos pacientes (cache-friendly)
         const patientIds = [...new Set(data?.map(a => a.patient_id) || [])];
         const { data: patientsData } = await supabase
             .from('user_profiles')
-            .select('id, avatar_url')
+            .select('id, avatar_url, slug')
             .in('id', patientIds);
 
         const avatarMap = Object.fromEntries((patientsData || []).map(p => [p.id, p.avatar_url]));
+        const slugMap = Object.fromEntries((patientsData || []).map(p => [p.id, p.slug]).filter(([, s]) => s));
 
         // Transformar resultado SQL para formato compatível com código existente
         const activities = (data || []).map(activity => {
-            const cta = getActivityCtaRoute({ type: activity.activity_type, patient_id: activity.patient_id });
+            const cta = getActivityCtaRoute({
+                type: activity.activity_type,
+                patient_id: activity.patient_id,
+                patient_slug: slugMap[activity.patient_id]
+            });
             const baseActivity = {
                 id: `${activity.activity_type}-${activity.activity_id}`,
                 type: activity.activity_type,
                 patient_id: activity.patient_id,
+                patient_slug: slugMap[activity.patient_id] || null,
                 patient_name: activity.patient_name,
                 patient_avatar: avatarMap[activity.patient_id] || null,
                 timestamp: activity.activity_date,
                 metadata: activity.activity_data,
+                cta: { label: cta.label, route: cta.route },
                 ctaLabel: cta.label,
                 ctaRoute: cta.route
             };

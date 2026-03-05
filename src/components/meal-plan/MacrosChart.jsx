@@ -10,8 +10,9 @@ import ReferenceValuesModal from './ReferenceValuesModal';
  * MacrosChart - Gráfico de pizza de distribuição de macronutrientes
  * Mostra porcentagens, g/kg e compara com valores de referência
  */
-const MacrosChart = ({ protein, carbs, fat, calories, patientId, planId, referenceValues, onReferenceUpdate, readOnly = false }) => {
+const MacrosChart = ({ protein, carbs, fat, calories, patientId, patientSlugOrId, planId, referenceValues, onReferenceUpdate, readOnly = false }) => {
     const navigate = useNavigate();
+    const patientSegment = patientSlugOrId ?? patientId;
     const [showReferenceModal, setShowReferenceModal] = useState(false);
 
     // Cores dos macronutrientes
@@ -451,7 +452,7 @@ const MacrosChart = ({ protein, carbs, fat, calories, patientId, planId, referen
                                     type="button"
                                     variant="outline"
                                     size="sm"
-                                    onClick={() => navigate(`/nutritionist/patients/${patientId}/meal-plan/${planId}/summary`)}
+                                    onClick={() => navigate(`/nutritionist/patients/${patientSegment}/meal-plan/${planId}/summary`)}
                                     className="w-full gap-2"
                                 >
                                     <BarChart3 className="w-4 h-4" />

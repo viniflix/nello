@@ -697,6 +697,7 @@ const MealPlanPage = () => {
 
                 <MealPlanForm
                     patientId={patientId}
+                    patientSlugOrId={paramValue}
                     nutritionistId={nutritionistId}
                     initialData={editingPlan}
                     onSubmit={handleSubmit}
@@ -957,6 +958,7 @@ const MealPlanPage = () => {
                                     fat={activePlan.daily_fat || 0}
                                     calories={activePlan.daily_calories || 0}
                                     patientId={patientId}
+                                    patientSlugOrId={paramValue}
                                     planId={null}
                                     referenceValues={referenceValues}
                                     onReferenceUpdate={null}
