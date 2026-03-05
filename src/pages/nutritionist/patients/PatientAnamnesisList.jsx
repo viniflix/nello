@@ -34,6 +34,7 @@ import { getPatientAnamnesisList, getAnamnesisTemplates, deleteAnamnesis } from 
 import { getPatientProfile } from '@/lib/supabase/patient-queries';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
+import { patientHubRoute } from '@/lib/utils/patientRoutes';
 
 /**
  * PatientAnamnesisList - Tela de Listagem de Anamneses
@@ -43,7 +44,7 @@ import { cn } from '@/lib/utils';
  */
 const PatientAnamnesisList = () => {
     const navigate = useNavigate();
-    const { patientId } = useResolvedPatientId();
+    const { patientId, paramValue } = useResolvedPatientId();
     const { user } = useAuth();
 
     const [patient, setPatient] = useState(null);
@@ -380,7 +381,7 @@ const PatientAnamnesisList = () => {
                             <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => navigate(`/nutritionist/patients/${patientId}/hub`)}
+                                onClick={() => navigate(patientHubRoute(patient || { id: patientId, slug: paramValue }, 'clinical'))}
                             >
                                 ← Voltar ao Prontuário
                             </Button>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useResolvedPatientId } from '@/hooks/useResolvedPatientId';
-import { isUuid, patientRoute } from '@/lib/utils/patientRoutes';
+import { isUuid, patientHubRoute } from '@/lib/utils/patientRoutes';
 import { ArrowLeft, Calculator, Save, Loader2, Target, TrendingUp, Database, User, AlertCircle, HelpCircle, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -338,7 +338,7 @@ export default function EnergyExpenditurePage() {
       await saveCurrentState();
       toast({ title: 'Salvo!', description: 'Planejamento energético salvo com sucesso.' });
       const patient = { id: patientId, slug: patientSlug || paramValue };
-      navigate(patientRoute(patient, 'hub'));
+      navigate(patientHubRoute(patient, 'nutrition'));
     } catch (err) {
       console.error(err);
       toast({ title: 'Erro', description: err?.message || 'Não foi possível salvar o cálculo.', variant: 'destructive' });
@@ -401,7 +401,7 @@ export default function EnergyExpenditurePage() {
     <div className="min-h-screen bg-background overflow-x-hidden">
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 md:py-8 min-w-0">
         <div className="flex items-center gap-2 md:gap-4 mb-6 min-w-0">
-          <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="shrink-0">
+          <Button variant="ghost" size="icon" onClick={() => navigate(patientHubRoute({ id: patientId, slug: patientSlug || paramValue }, 'nutrition'))} className="shrink-0">
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <div className="min-w-0">

@@ -28,9 +28,10 @@ import {
     calculateStatus
 } from '@/lib/supabase/lab-results-queries';
 import ConductSuggestionsCard from '@/components/lab-results/ConductSuggestionsCard';
+import { patientHubRoute } from '@/lib/utils/patientRoutes';
 
 const LabResultsPage = () => {
-    const { patientId, loading: resolveLoading, error: resolveError } = useResolvedPatientId();
+    const { patientId, paramValue, loading: resolveLoading, error: resolveError } = useResolvedPatientId();
     const navigate = useNavigate();
     const { toast } = useToast();
     const { user } = useAuth();
@@ -445,7 +446,7 @@ const LabResultsPage = () => {
                     <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => navigate(`/nutritionist/patients/${patientId}/hub`)}
+                        onClick={() => navigate(patientHubRoute({ id: patientId, slug: paramValue }, 'clinical'))}
                         className="-ml-2 w-fit text-[#5f6f52] hover:text-[#5f6f52] hover:bg-[#5f6f52]/10"
                     >
                         <ArrowLeft className="w-4 h-4 mr-1" />

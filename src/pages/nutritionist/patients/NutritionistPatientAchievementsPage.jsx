@@ -10,7 +10,7 @@ import { supabase } from '@/lib/customSupabaseClient';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useResolvedPatientId } from '@/hooks/useResolvedPatientId';
-import { patientRoute } from '@/lib/utils/patientRoutes';
+import { patientHubRoute } from '@/lib/utils/patientRoutes';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const ICON_MAP = {
@@ -122,7 +122,7 @@ export default function NutritionistPatientAchievementsPage() {
         <Button
           variant="ghost"
           className="mb-4 gap-2 -ml-2"
-          onClick={() => navigate(patientRoute(patient, 'hub'))}
+          onClick={() => navigate(patientHubRoute(patient, 'adherence'))}
         >
           <ArrowLeft className="w-4 h-4" />
           Voltar ao Hub

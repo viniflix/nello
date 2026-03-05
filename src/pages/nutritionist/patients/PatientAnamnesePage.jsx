@@ -67,7 +67,7 @@ import { supabase } from '@/lib/customSupabaseClient';
 
 const PatientAnamnesePage = () => {
     const navigate = useNavigate();
-    const { patientId } = useResolvedPatientId();
+    const { patientId, paramValue } = useResolvedPatientId();
     const { user } = useAuth();
     const { toast } = useToast();
 
@@ -1435,7 +1435,7 @@ const PatientAnamnesePage = () => {
                         <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => navigate(`/nutritionist/patients/${patientId}/hub`)}
+                            onClick={() => navigate(patientHubRoute(patient || { id: patientId, slug: paramValue }, 'clinical'))}
                             className="mb-3 -ml-2 text-[#5f6f52] hover:text-[#5f6f52] hover:bg-[#5f6f52]/10"
                         >
                             <ArrowLeft className="w-4 h-4 mr-1" />

@@ -61,6 +61,7 @@ import { generateShoppingList } from '@/lib/pdf/shoppingListGenerator';
 import { translateMealType } from '@/utils/mealTranslations';
 import { formatQuantityWithUnit } from '@/lib/utils/measureTranslations';
 import { useAuth } from '@/contexts/AuthContext';
+import { patientHubRoute } from '@/lib/utils/patientRoutes';
 import { getLatestEnergyCalculation } from '@/lib/supabase/energy-queries';
 import PlanTargetMonitor from '@/components/meal-plan/PlanTargetMonitor';
 import { getPatientModuleSyncFlags, clearPatientModuleSyncFlags } from '@/lib/supabase/anthropometry-queries';
@@ -715,7 +716,7 @@ const MealPlanPage = () => {
                     <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => navigate(`/nutritionist/patients/${patientId}/hub`)}
+                        onClick={() => navigate(patientHubRoute({ id: patientId, slug: paramValue }, 'nutrition'))}
                         className="-ml-2 text-[#5f6f52] hover:text-[#5f6f52] hover:bg-[#5f6f52]/10"
                     >
                         <ArrowLeft className="h-4 w-4 mr-1" />

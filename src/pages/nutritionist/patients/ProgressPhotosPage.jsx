@@ -30,7 +30,7 @@ import {
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/customSupabaseClient';
-import { patientRoute } from '@/lib/utils/patientRoutes';
+import { patientHubRoute } from '@/lib/utils/patientRoutes';
 import {
     getProgressPhotos,
     addProgressPhoto,
@@ -268,7 +268,7 @@ export default function ProgressPhotosPage() {
                     <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => navigate(patientRoute(patient, 'hub'))}
+                        onClick={() => navigate(patientHubRoute(patient, 'body'))}
                         className="shrink-0"
                     >
                         <ArrowLeft className="w-5 h-5" />

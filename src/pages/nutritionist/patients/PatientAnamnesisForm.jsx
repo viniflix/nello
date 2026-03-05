@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useResolvedPatientId } from '@/hooks/useResolvedPatientId';
+import { patientHubRoute } from '@/lib/utils/patientRoutes';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Save, FileCheck, Loader2, AlertCircle, ChevronLeft, Plus, Trash2 } from 'lucide-react';
@@ -619,7 +620,7 @@ const PatientAnamnesisForm = () => {
                         <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => navigate(isCustomForm ? `/nutritionist/patients/${patientId}/anamnese` : `/nutritionist/patients/${patientId}/hub`)}
+                            onClick={() => navigate(isCustomForm ? `/nutritionist/patients/${patientId}/anamnese` : patientHubRoute(patient || { id: patientId }, 'clinical'))}
                             className="mb-3"
                         >
                             <ChevronLeft className="w-4 h-4 mr-1" />
@@ -1946,7 +1947,7 @@ const PatientAnamnesisForm = () => {
                                 <Button
                                     type="button"
                                     variant="outline"
-                                    onClick={() => navigate(isCustomForm ? `/nutritionist/patients/${patientId}/anamnese` : `/nutritionist/patients/${patientId}/hub`)}
+                                    onClick={() => navigate(isCustomForm ? `/nutritionist/patients/${patientId}/anamnese` : patientHubRoute(patient || { id: patientId }, 'clinical'))}
                                     disabled={saving}
                                 >
                                     Cancelar

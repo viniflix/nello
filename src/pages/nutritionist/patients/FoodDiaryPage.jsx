@@ -25,9 +25,10 @@ import {
     getPatientAuditHistory
 } from '@/lib/supabase/food-diary-queries';
 import { cn } from '@/lib/utils';
+import { patientHubRoute } from '@/lib/utils/patientRoutes';
 
 const FoodDiaryPage = () => {
-    const { patientId } = useResolvedPatientId();
+    const { patientId, paramValue } = useResolvedPatientId();
     const navigate = useNavigate();
 
     const [loading, setLoading] = useState(true);
@@ -189,7 +190,7 @@ const FoodDiaryPage = () => {
                     <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => navigate(`/nutritionist/patients/${patientId}/hub?tab=nutrition`)}
+                        onClick={() => navigate(patientHubRoute({ id: patientId, slug: paramValue }, 'nutrition'))}
                         className="mb-3 -ml-2 text-[#5f6f52] hover:text-[#5f6f52] hover:bg-[#5f6f52]/10"
                     >
                         <ArrowLeft className="w-4 h-4 mr-1" />

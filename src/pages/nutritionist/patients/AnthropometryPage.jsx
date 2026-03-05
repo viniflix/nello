@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useResolvedPatientId } from '@/hooks/useResolvedPatientId';
+import { patientHubRoute } from '@/lib/utils/patientRoutes';
 import { ArrowLeft, RefreshCw, AlertCircle, BarChart3, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -29,7 +30,7 @@ import { getLatestAnamnesis } from '@/lib/supabase/anamnesis-queries';
 import jsPDF from 'jspdf';
 
 const AnthropometryPage = () => {
-    const { patientId, loading: resolveLoading, error: resolveError } = useResolvedPatientId();
+    const { patientId, paramValue, loading: resolveLoading, error: resolveError } = useResolvedPatientId();
     const navigate = useNavigate();
     const { toast } = useToast();
     const { user } = useAuth();
@@ -606,7 +607,7 @@ const AnthropometryPage = () => {
                     <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => navigate(`/nutritionist/patients/${patientId}/hub`)}
+                        onClick={() => navigate(patientHubRoute({ id: patientId, slug: paramValue }, 'body'))}
                         className="-ml-2 text-[#5f6f52] hover:text-[#5f6f52] hover:bg-[#5f6f52]/10"
                     >
                         <ArrowLeft className="w-4 h-4 mr-1" />

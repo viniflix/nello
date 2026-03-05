@@ -32,6 +32,14 @@ const PatientHubPage = () => {
         return 'feed';
     });
 
+    // Sincronizar tab quando URL mudar (ex: navegação programática com ?tab=)
+    useEffect(() => {
+        const tabFromUrl = searchParams.get('tab');
+        if (tabFromUrl && ['feed', 'clinical', 'body', 'nutrition', 'adherence'].includes(tabFromUrl)) {
+            setActiveTab(tabFromUrl);
+        }
+    }, [searchParams]);
+
     // Hook customizado que gerencia todos os dados do hub (só quando patientId resolvido)
     const {
         loading: hubLoading,

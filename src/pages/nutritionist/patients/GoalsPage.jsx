@@ -45,9 +45,10 @@ import { logClinicalImpact } from '@/lib/supabase/clinical-impact-queries';
 import { cn } from '@/lib/utils';
 import { toPortugueseError } from '@/lib/utils/errorMessages';
 import { formatDateToIsoDate, getTodayIsoDate } from '@/lib/utils/date';
+import { patientHubRoute } from '@/lib/utils/patientRoutes';
 
 const GoalsPage = () => {
-    const { patientId } = useResolvedPatientId();
+    const { patientId, paramValue } = useResolvedPatientId();
     const navigate = useNavigate();
     const { toast } = useToast();
 
@@ -444,7 +445,7 @@ const GoalsPage = () => {
                     <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => navigate(`/nutritionist/patients/${patientId}/hub?tab=adherence`)}
+                        onClick={() => navigate(patientHubRoute({ id: patientId, slug: paramValue }, 'adherence'))}
                         className="-ml-2 w-fit text-[#5f6f52] hover:text-[#5f6f52] hover:bg-[#5f6f52]/10"
                     >
                         <ArrowLeft className="w-4 h-4 mr-1" />
