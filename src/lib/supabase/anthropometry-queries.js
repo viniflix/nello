@@ -10,7 +10,8 @@ const isMissingColumnError = (error) => {
         message.includes('revision_number') ||
         message.includes('is_latest_revision') ||
         message.includes('change_reason') ||
-        message.includes('created_by_user_id')
+        message.includes('created_by_user_id') ||
+        message.includes('results')
     );
 };
 
@@ -148,6 +149,7 @@ export const createAnthropometryRecord = async (recordData) => {
                 supersedes_record_id: _supersedes,
                 change_reason: _reason,
                 created_by_user_id: _createdBy,
+                results: _results,
                 ...fallbackData
             } = insertData;
 
