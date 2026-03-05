@@ -177,7 +177,7 @@ const DateInputWithCalendar = ({
                 {...rest}
             />
             <Popover
-                modal={false}
+                modal={true}
                 open={calendarOpen}
                 onOpenChange={(open) => {
                     setCalendarOpen(open);
@@ -202,7 +202,7 @@ const DateInputWithCalendar = ({
                         <CalendarDays className="h-4 w-4" />
                     </Button>
                 </PopoverTrigger>
-                <PopoverContent className="p-0 z-[100]" align="end" style={{ pointerEvents: 'auto' }}>
+                <PopoverContent usePortal={false} className="p-0 z-[100]" align="end" style={{ pointerEvents: 'auto' }}>
                     <div className="flex items-center justify-between border-b px-3 py-2">
                         <Button
                             type="button"
