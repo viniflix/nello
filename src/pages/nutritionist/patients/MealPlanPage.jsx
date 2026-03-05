@@ -787,7 +787,7 @@ const MealPlanPage = () => {
 
             {/* Target Monitor */}
             <PlanTargetMonitor
-                targetCalories={energyCalculation?.get_with_activities || energyCalculation?.get || null}
+                targetCalories={energyCalculation?.final_planned_kcal ?? energyCalculation?.get_with_activities ?? energyCalculation?.get ?? energyCalculation?.get_result ?? null}
                 currentCalories={activePlan?.daily_calories || 0}
                 patientId={patientId}
                 energyCalculation={energyCalculation}

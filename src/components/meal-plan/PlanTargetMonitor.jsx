@@ -105,19 +105,22 @@ export default function PlanTargetMonitor({
         if (!energyCalculation) return null;
 
         const protocolMap = {
+            'harris': 'Harris-Benedict (1984)',
             'harris-benedict': 'Harris-Benedict (1984)',
+            'mifflin': 'Mifflin-St Jeor',
             'mifflin-st-jeor': 'Mifflin-St Jeor',
+            'fao': 'FAO/WHO',
             'fao-who': 'FAO/WHO',
             'cunningham': 'Cunningham (Atletas)',
             'tinsley': 'Tinsley (Bodybuilding)'
         };
-
+        const protocol = energyCalculation.tmb_protocol || energyCalculation.protocol;
         return {
-            protocol: protocolMap[energyCalculation.protocol] || energyCalculation.protocol,
-            tmb: energyCalculation.tmb,
-            activityLevel: energyCalculation.activity_level,
-            get: energyCalculation.get,
-            goalCalories: energyCalculation.get_with_activities || energyCalculation.get
+            protocol: protocolMap[protocol] || protocol,
+            tmb: energyCalculation.tmb_result ?? energyCalculation.tmb,
+            activityLevel: energyCalculation.activity_factor ?? energyCalculation.activity_level,
+            get: energyCalculation.get_result ?? energyCalculation.get,
+            goalCalories: energyCalculation.final_planned_kcal ?? energyCalculation.get_with_activities ?? energyCalculation.get ?? energyCalculation.get_result
         };
     };
 

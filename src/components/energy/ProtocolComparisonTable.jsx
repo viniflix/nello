@@ -21,8 +21,10 @@ import { getFormulaBreakdown } from '@/lib/utils/energy-calculations';
 export function ProtocolComparisonTable({ protocols, activityFactor, selectedProtocolId, onSelect, patientData }) {
   if (!protocols || protocols.length === 0) return null;
 
-  // Calcula a média para dar contexto
-  const averageBmr = protocols.reduce((acc, p) => acc + (p.bmr || 0), 0) / protocols.length;
+  const protocolsWithBmr = protocols.filter((p) => p.bmr != null && p.bmr > 0);
+  const averageBmr = protocolsWithBmr.length
+    ? protocolsWithBmr.reduce((acc, p) => acc + p.bmr, 0) / protocolsWithBmr.length
+    : 0;
 
   return (
     <div className="border rounded-lg overflow-hidden bg-card shadow-sm">
@@ -48,17 +50,19 @@ export function ProtocolComparisonTable({ protocols, activityFactor, selectedPro
           </TableHeader>
           <TableBody>
             {protocols.map((protocol) => {
-              if (!protocol.bmr || protocol.bmr <= 0) return null;
-              
-              const tdee = Math.round(protocol.bmr * (activityFactor || 1.0));
+              const isEer = protocol.isEer && protocol.get != null && protocol.get > 0;
+              const hasBmr = protocol.bmr != null && protocol.bmr > 0;
+              if (!isEer && !hasBmr) return null;
+
+              const tdee = isEer ? Math.round(protocol.get) : Math.round(protocol.bmr * (activityFactor || 1.0));
               const isSelected = selectedProtocolId === protocol.id;
-              const diffFromAvg = averageBmr > 0 
+              const diffFromAvg = averageBmr > 0 && protocol.bmr
                 ? Math.round(((protocol.bmr - averageBmr) / averageBmr) * 100)
-                : 0;
+                : null;
 
               return (
-                <TableRow 
-                  key={protocol.id} 
+                <TableRow
+                  key={protocol.id}
                   className={isSelected ? "bg-primary/5 border-primary/20" : ""}
                 >
                   <TableCell>
@@ -68,6 +72,11 @@ export function ProtocolComparisonTable({ protocols, activityFactor, selectedPro
                         {protocol.recommended && (
                           <Badge variant="default" className="text-[10px] h-5 px-1.5">
                             Recomendado
+                          </Badge>
+                        )}
+                        {protocol.isEer && (
+                          <Badge variant="outline" className="text-[10px] h-5 px-1.5">
+                            GET direto
                           </Badge>
                         )}
                         {(protocol.category === 'athlete' || protocol.id === 'cunningham' || protocol.id === 'tinsley') && (
@@ -81,21 +90,26 @@ export function ProtocolComparisonTable({ protocols, activityFactor, selectedPro
                       </span>
                     </div>
                   </TableCell>
-                  
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <div>
-                        <div className="font-mono text-base font-semibold">
-                          {Math.round(protocol.bmr)} kcal
-                        </div>
-                        {averageBmr > 0 && (
-                          <span className={`text-[10px] ${
-                            diffFromAvg > 0 ? 'text-green-600 dark:text-green-400' : 
-                            diffFromAvg < 0 ? 'text-red-600 dark:text-red-400' : 
-                            'text-muted-foreground'
-                          }`}>
-                            {diffFromAvg > 0 ? '+' : ''}{diffFromAvg}% da média
-                          </span>
+                        {isEer ? (
+                          <div className="font-mono text-sm text-muted-foreground">—</div>
+                        ) : (
+                          <>
+                            <div className="font-mono text-base font-semibold">
+                              {Math.round(protocol.bmr)} kcal
+                            </div>
+                            {diffFromAvg != null && (
+                              <span className={`text-[10px] ${
+                                diffFromAvg > 0 ? 'text-green-600 dark:text-green-400' :
+                                diffFromAvg < 0 ? 'text-red-600 dark:text-red-400' :
+                                'text-muted-foreground'
+                              }`}>
+                                {diffFromAvg > 0 ? '+' : ''}{diffFromAvg}% da média
+                              </span>
+                            )}
+                          </>
                         )}
                       </div>
                       {patientData && (() => {
@@ -106,13 +120,12 @@ export function ProtocolComparisonTable({ protocols, activityFactor, selectedPro
                       })()}
                     </div>
                   </TableCell>
-                  
                   <TableCell>
                     <div className="font-bold text-primary text-lg">
                       {tdee} kcal
                     </div>
                     <span className="text-xs text-muted-foreground">
-                      Gasto Energético Total
+                      {isEer ? 'GET (EER)' : 'Gasto Energético Total'}
                     </span>
                   </TableCell>
                   

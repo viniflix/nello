@@ -211,16 +211,16 @@ export default function TemplateManagerDialog({
                 return;
             }
 
-            // Fallback: buscar de energy_expenditure_calculations (último cálculo)
+            // Fallback: buscar de energy_expenditure_calculations (schema: final_planned_kcal, get_result)
             const { data: energyCalc } = await supabase
                 .from('energy_expenditure_calculations')
-                .select('get_with_activities, get')
+                .select('final_planned_kcal, get_result, get_with_activities, get')
                 .eq('patient_id', patientId)
                 .order('created_at', { ascending: false })
                 .limit(1)
                 .maybeSingle();
 
-            const energyGoal = energyCalc?.get_with_activities ?? energyCalc?.get ?? null;
+            const energyGoal = energyCalc?.final_planned_kcal ?? energyCalc?.get_with_activities ?? energyCalc?.get_result ?? energyCalc?.get ?? null;
             if (energyGoal) {
                 setPatientCalorieGoal(parseFloat(energyGoal));
                 return;

@@ -55,7 +55,7 @@ const EnergyExpenditureSummaryCard = ({ patientId }) => {
             const hasData = finalData.weight && finalData.height && age && finalData.gender;
             setHasRequiredData(hasData);
 
-            // Buscar cálculo salvo (se existir)
+            // Buscar cálculo salvo (schema novo: tmb_result, get_result, final_planned_kcal, mets_activities, venta_*)
             const { data: savedCalc } = await supabase
                 .from('energy_expenditure_calculations')
                 .select('*')
@@ -64,9 +64,7 @@ const EnergyExpenditureSummaryCard = ({ patientId }) => {
                 .limit(1)
                 .maybeSingle();
 
-            if (savedCalc) {
-                setCalculatedData(savedCalc);
-            }
+            if (savedCalc) setCalculatedData(savedCalc);
 
         } catch (error) {
             console.error('Erro ao buscar dados:', error);
@@ -141,19 +139,13 @@ const EnergyExpenditureSummaryCard = ({ patientId }) => {
         );
     }
 
-    // Estado: Dados calculados existem
+    // Estado: Dados calculados existem (schema novo: final_planned_kcal, get_result, tmb_result, mets_activities, venta_*)
     if (calculatedData) {
-        // Verificar se é protocolo EER (que não tem TMB separado)
-        const isEERProtocol = calculatedData.protocol?.startsWith('eer-iom');
-
-        // Usar GET com atividades se existir, senão GET normal
-        const displayGET = calculatedData.get_with_activities || calculatedData.get || 0;
-
-        // Verificar se tem atividades
-        const hasActivities = calculatedData.activities && Array.isArray(calculatedData.activities) && calculatedData.activities.length > 0;
-
-        // Verificar se tem VENTA
-        const hasVENTA = calculatedData.target_weight && calculatedData.venta_adjusted;
+        const isEERProtocol = (calculatedData.tmb_protocol || calculatedData.protocol || '').toString().startsWith('eer-iom');
+        const displayGET = calculatedData.get_result ?? calculatedData.get_with_activities ?? calculatedData.get ?? 0;
+        const metaCalories = calculatedData.final_planned_kcal ?? calculatedData.target_calories ?? displayGET;
+        const hasActivities = Array.isArray(calculatedData.mets_activities) && calculatedData.mets_activities.length > 0;
+        const hasVENTA = (calculatedData.venta_target_weight != null || calculatedData.target_weight != null) && (calculatedData.venta_adjustment_kcal != null || calculatedData.venta_adjusted != null);
 
         return (
             <Card
@@ -166,17 +158,17 @@ const EnergyExpenditureSummaryCard = ({ patientId }) => {
                         <CardTitle className="text-base">Gasto Energético</CardTitle>
                         {hasActivities && (
                             <Badge variant="outline" className="text-xs border-[#5f6f52] text-[#5f6f52]">
-                                +{calculatedData.activities.length} {calculatedData.activities.length === 1 ? 'atividade' : 'atividades'}
+                                +{(calculatedData.mets_activities || calculatedData.activities || []).length} atividades
                             </Badge>
                         )}
                         {hasVENTA && (
                             <Badge className="text-xs bg-amber-500 hover:bg-amber-600">
-                                Objetivo: {calculatedData.target_weight}kg
+                                Objetivo: {(calculatedData.venta_target_weight ?? calculatedData.target_weight)}kg
                             </Badge>
                         )}
                     </div>
                     <CardDescription className="text-xs">
-                        Protocolo: {calculatedData.protocol || 'Harris-Benedict'}
+                        Protocolo: {calculatedData.tmb_protocol || calculatedData.protocol || 'TMB'}
                     </CardDescription>
                 </CardHeader>
 
@@ -188,43 +180,35 @@ const EnergyExpenditureSummaryCard = ({ patientId }) => {
                             <div className="text-center p-3 bg-orange-50 rounded-lg border border-orange-200">
                                 <Flame className="w-4 h-4 text-orange-600 mx-auto mb-1" />
                                 <div className="text-2xl font-bold text-orange-700">
-                                    {Math.round(calculatedData.tmb || 0)}
+                                    {Math.round(calculatedData.tmb_result ?? calculatedData.tmb ?? 0)}
                                 </div>
                                 <div className="text-xs text-muted-foreground">TMB (kcal)</div>
                             </div>
                         )}
 
-                        {/* GET (ou GET+Atividades se houver) */}
+                        {/* GET */}
                         <div className={`text-center p-3 bg-gradient-to-br from-emerald-600 to-emerald-500 rounded-lg text-white ${isEERProtocol ? 'col-span-2' : ''}`}>
                             <Activity className="w-4 h-4 mx-auto mb-1 opacity-90" />
-                            <div className="text-2xl font-bold">
-                                {Math.round(displayGET)}
-                            </div>
+                            <div className="text-2xl font-bold">{Math.round(displayGET)}</div>
                             <div className="text-xs opacity-90">
-                                {hasActivities ? 'GET + Atividades' : isEERProtocol ? 'EER' : 'GET'} (kcal)
+                                {hasActivities ? 'GET + METs' : isEERProtocol ? 'EER' : 'GET'} (kcal)
                             </div>
                         </div>
                     </div>
 
-                    {/* VENTA - se houver */}
-                    {hasVENTA && (
-                        <div className="text-center p-2.5 bg-gradient-to-br from-amber-500 to-amber-600 rounded-lg text-white shadow-sm">
-                            <div className="text-lg font-bold">
-                                {Math.round(calculatedData.venta_adjusted)} kcal/dia
-                            </div>
-                            <div className="text-xs opacity-90">
-                                Objetivo: {calculatedData.target_weight}kg
-                            </div>
-                        </div>
-                    )}
+                    {/* Meta calórica final (VET) */}
+                    <div className="text-center p-2.5 bg-gradient-to-br from-amber-500 to-amber-600 rounded-lg text-white shadow-sm">
+                        <div className="text-lg font-bold">{Math.round(metaCalories)} kcal/dia</div>
+                        <div className="text-xs opacity-90">{hasVENTA ? 'Meta com VENTA' : 'Meta calórica'}</div>
+                    </div>
 
                     {/* Nível de Atividade */}
                     <div className="text-xs text-center text-muted-foreground">
-                        {calculatedData.activity_level === '1.2' && 'Sedentário'}
-                        {calculatedData.activity_level === '1.375' && 'Levemente Ativo'}
-                        {calculatedData.activity_level === '1.55' && 'Moderadamente Ativo'}
-                        {calculatedData.activity_level === '1.725' && 'Muito Ativo'}
-                        {calculatedData.activity_level === '1.9' && 'Extremamente Ativo'}
+                        {String(calculatedData.activity_factor ?? calculatedData.activity_level ?? '') === '1.2' && 'Sedentário'}
+                        {String(calculatedData.activity_factor ?? calculatedData.activity_level ?? '') === '1.375' && 'Levemente Ativo'}
+                        {String(calculatedData.activity_factor ?? calculatedData.activity_level ?? '') === '1.55' && 'Moderadamente Ativo'}
+                        {String(calculatedData.activity_factor ?? calculatedData.activity_level ?? '') === '1.725' && 'Muito Ativo'}
+                        {String(calculatedData.activity_factor ?? calculatedData.activity_level ?? '') === '1.9' && 'Extremamente Ativo'}
                     </div>
 
                     {/* CTA */}

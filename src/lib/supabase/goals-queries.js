@@ -75,8 +75,8 @@ export const calculateGoalViability = async (goalData, patientId) => {
         .eq('is_active', true)
         .maybeSingle();
 
-    // Extrair valores corretos
-    const totalEnergyExpenditure = energyData?.get || null; // Campo correto é 'get'
+    // Extrair valores (schema novo: get_result, final_planned_kcal)
+    const totalEnergyExpenditure = energyData?.get_result ?? energyData?.get ?? null;
     const planCalories = mealPlanData?.daily_calories || null;
 
     // Inicializar resultado
