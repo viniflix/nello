@@ -305,7 +305,8 @@ export const getPatientActivities = async (patientId, limit = 10) => {
                     title: title,
                     description: description,
                     timestamp: audit.created_at,
-                    metadata: [mealTypeTranslated, `${totalCalories} kcal`, audit.action === 'create' ? 'Registrado' : audit.action === 'update' ? 'Editado' : 'Deletado']
+                    metadata: [mealTypeTranslated, `${totalCalories} kcal`, audit.action === 'create' ? 'Registrado' : audit.action === 'update' ? 'Editado' : 'Deletado'],
+                    linkPath: 'food-diary'
                 });
             });
         }
@@ -332,7 +333,77 @@ export const getPatientActivities = async (patientId, limit = 10) => {
                     timestamp: record.created_at,
                     metadata: imc
                         ? [`${record.weight} kg`, `IMC: ${imc}`]
-                        : [`${record.weight} kg`]
+                        : [`${record.weight} kg`],
+                    linkPath: 'anthropometry'
+                });
+            });
+        }
+
+        // Anamnese respondida
+        const { data: anamnesisData } = await supabase
+            .from('anamnesis_records')
+            .select('id, date, created_at')
+            .eq('patient_id', patientId)
+            .order('date', { ascending: false })
+            .limit(15);
+
+        if (anamnesisData) {
+            anamnesisData.forEach((rec) => {
+                activities.push({
+                    id: `anamnesis-${rec.id}`,
+                    type: 'anamnese',
+                    title: 'Anamnese respondida',
+                    description: 'Formulário de anamnese preenchido',
+                    timestamp: rec.created_at || rec.date,
+                    metadata: ['Anamnese'],
+                    linkPath: 'anamnesis'
+                });
+            });
+        }
+
+        // Cálculo energético (último por paciente)
+        const { data: energyData } = await supabase
+            .from('energy_expenditure_calculations')
+            .select('id, created_at, final_planned_kcal')
+            .eq('patient_id', patientId)
+            .order('created_at', { ascending: false })
+            .limit(5);
+
+        if (energyData) {
+            energyData.forEach((calc) => {
+                activities.push({
+                    id: `energy-${calc.id}`,
+                    type: 'energy',
+                    title: 'Cálculo energético realizado',
+                    description: calc.final_planned_kcal != null ? `${calc.final_planned_kcal} kcal planejadas` : 'Gastos energéticos calculados',
+                    timestamp: calc.created_at,
+                    metadata: ['Gastos energéticos'],
+                    linkPath: 'energy-expenditure'
+                });
+            });
+        }
+
+        // Eventos de fotos de progresso (activity_log)
+        const { data: photoEvents } = await supabase
+            .from('activity_log')
+            .select('id, event_name, occurred_at, payload')
+            .eq('patient_id', patientId)
+            .in('event_name', ['progress_photo.added', 'progress_photo.edited', 'progress_photo.deleted'])
+            .order('occurred_at', { ascending: false })
+            .limit(20);
+
+        if (photoEvents) {
+            photoEvents.forEach((ev) => {
+                const action = ev.event_name === 'progress_photo.added' ? 'adicionou' : ev.event_name === 'progress_photo.edited' ? 'editou' : 'removeu';
+                const title = ev.event_name === 'progress_photo.added' ? 'Foto de progresso adicionada' : ev.event_name === 'progress_photo.edited' ? 'Foto de progresso editada' : 'Foto de progresso removida';
+                activities.push({
+                    id: `photo-event-${ev.id}`,
+                    type: 'progress_photo',
+                    title,
+                    description: `Foto ${action}`,
+                    timestamp: ev.occurred_at,
+                    metadata: [ev.event_name === 'progress_photo.added' ? 'Nova foto' : ev.event_name === 'progress_photo.edited' ? 'Edição' : 'Remoção'],
+                    linkPath: 'photos'
                 });
             });
         }
@@ -353,7 +424,8 @@ export const getPatientActivities = async (patientId, limit = 10) => {
                     title: 'Conquista Desbloqueada',
                     description: achievement.achievements?.name || 'Nova conquista',
                     timestamp: achievement.achieved_at,
-                    metadata: ['🏆 Conquista']
+                    metadata: ['🏆 Conquista'],
+                    linkPath: 'achievements'
                 });
             });
         }
@@ -374,7 +446,8 @@ export const getPatientActivities = async (patientId, limit = 10) => {
                     title: 'Consulta Realizada',
                     description: appointment.notes || 'Consulta de acompanhamento',
                     timestamp: appointment.start_time,
-                    metadata: [appointment.status || 'Concluída']
+                    metadata: [appointment.status || 'Concluída'],
+                    linkPath: 'hub'
                 });
             });
         }
@@ -970,6 +1043,28 @@ export const getFeedTaskAuditTrail = async ({
     }
 };
 
+/**
+ * Retorna a rota (CTA) para um item do feed de atividades (dashboard).
+ * @param {{ type: string, patient_id: string }} activity
+ * @returns {{ label: string, route: string }}
+ */
+export const getActivityCtaRoute = (activity) => {
+    if (!activity?.patient_id) return { label: 'Ver detalhes', route: '/nutritionist/patients' };
+    switch (activity.type) {
+        case 'meal': return { label: 'Ver diário', route: `/nutritionist/patients/${activity.patient_id}/food-diary` };
+        case 'anthropometry': return { label: 'Ver avaliação', route: `/nutritionist/patients/${activity.patient_id}/anthropometry` };
+        case 'anamnesis': return { label: 'Ver anamnese', route: `/nutritionist/patients/${activity.patient_id}/anamnesis` };
+        case 'meal_plan': return { label: 'Ver plano', route: `/nutritionist/patients/${activity.patient_id}/meal-plan` };
+        case 'prescription': return { label: 'Ver cálculo', route: `/nutritionist/patients/${activity.patient_id}/energy-expenditure` };
+        case 'energy_expenditure': return { label: 'Ver gastos energéticos', route: `/nutritionist/patients/${activity.patient_id}/energy-expenditure` };
+        case 'progress_photo': return { label: 'Ver fotos de progresso', route: `/nutritionist/patients/${activity.patient_id}/photos` };
+        case 'appointment': return { label: 'Ver agenda', route: '/nutritionist/agenda' };
+        case 'message': return { label: 'Abrir chat', route: `/chat/nutritionist/${activity.patient_id}` };
+        case 'achievement': return { label: 'Ver metas', route: `/nutritionist/patients/${activity.patient_id}/goals` };
+        default: return { label: 'Ver paciente', route: `/nutritionist/patients/${activity.patient_id}/hub` };
+    }
+};
+
 export const getComprehensiveActivityFeed = async (nutritionistId, limit = 20) => {
     const startedAt = Date.now();
     try {
@@ -993,6 +1088,7 @@ export const getComprehensiveActivityFeed = async (nutritionistId, limit = 20) =
 
         // Transformar resultado SQL para formato compatível com código existente
         const activities = (data || []).map(activity => {
+            const cta = getActivityCtaRoute({ type: activity.activity_type, patient_id: activity.patient_id });
             const baseActivity = {
                 id: `${activity.activity_type}-${activity.activity_id}`,
                 type: activity.activity_type,
@@ -1000,7 +1096,9 @@ export const getComprehensiveActivityFeed = async (nutritionistId, limit = 20) =
                 patient_name: activity.patient_name,
                 patient_avatar: avatarMap[activity.patient_id] || null,
                 timestamp: activity.activity_date,
-                metadata: activity.activity_data
+                metadata: activity.activity_data,
+                ctaLabel: cta.label,
+                ctaRoute: cta.route
             };
 
             // Adicionar título e descrição específicos por tipo
@@ -1056,6 +1154,21 @@ export const getComprehensiveActivityFeed = async (nutritionistId, limit = 20) =
                         ...baseActivity,
                         title: 'Conquista Desbloqueada',
                         description: activity.activity_data.achievement_name || 'Nova conquista'
+                    };
+                case 'progress_photo': {
+                    const action = activity.activity_data?.action || '';
+                    const label = action === 'progress_photo.added' ? 'Foto adicionada' : action === 'progress_photo.edited' ? 'Foto editada' : 'Foto removida';
+                    return {
+                        ...baseActivity,
+                        title: label,
+                        description: 'Foto de progresso'
+                    };
+                }
+                case 'energy_expenditure':
+                    return {
+                        ...baseActivity,
+                        title: 'Cálculo energético realizado',
+                        description: activity.activity_data?.final_kcal != null ? `${activity.activity_data.final_kcal} kcal planejadas` : 'Gastos energéticos calculados'
                     };
                 default:
                     return baseActivity;

@@ -31,6 +31,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/customSupabaseClient';
 import { deleteProgressPhoto } from '@/lib/supabase/progress-photos-queries';
+import { logActivityEvent } from '@/lib/supabase/patient-queries';
 import { useToast } from '@/hooks/use-toast';
 import WeightChart from '@/components/anthropometry/WeightChart';
 import {
@@ -271,15 +272,27 @@ export default function PatientProgressPage() {
         .from('patient-photos')
         .getPublicUrl(path);
 
-      const { error: dbError } = await supabase.from('progress_photos').insert({
-        patient_id: user.id,
-        photo_url: publicUrl,
-        photo_date: recordDate,
-        uploaded_by: user.id,
-        notes: notes?.trim() || null
-      });
+      const { data: inserted, error: dbError } = await supabase
+        .from('progress_photos')
+        .insert({
+          patient_id: user.id,
+          photo_url: publicUrl,
+          photo_date: recordDate,
+          uploaded_by: user.id,
+          notes: notes?.trim() || null
+        })
+        .select('id')
+        .single();
 
       if (dbError) throw dbError;
+
+      await logActivityEvent({
+        eventName: 'progress_photo.added',
+        sourceModule: 'progress_photos',
+        patientId: user.id,
+        nutritionistId: null,
+        payload: { photo_id: inserted?.id, photo_date: recordDate, uploaded_by: user.id }
+      });
 
       toast({
         title: 'Sucesso',
@@ -300,11 +313,19 @@ export default function PatientProgressPage() {
 
   const handleDeletePhoto = async () => {
     if (!deletePhotoTarget?.id) return;
-    const { error } = await deleteProgressPhoto({ photoId: deletePhotoTarget.id });
+    const photoId = deletePhotoTarget.id;
+    const { error } = await deleteProgressPhoto({ photoId });
     if (error) {
       toast({ title: 'Erro ao remover', description: error.message, variant: 'destructive' });
       return;
     }
+    await logActivityEvent({
+      eventName: 'progress_photo.deleted',
+      sourceModule: 'progress_photos',
+      patientId: user.id,
+      nutritionistId: null,
+      payload: { photo_id: photoId }
+    });
     toast({ title: 'Foto removida' });
     setDeletePhotoTarget(null);
     loadProgressData();

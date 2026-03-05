@@ -282,6 +282,7 @@ const PatientHubPage = () => {
                             <TabsContent value="feed" className="m-0">
                                 <TabContentFeed
                                     patientId={patientId}
+                                    patientSlugOrId={patientData?.slug}
                                     activities={activities}
                                     loading={activitiesLoading}
                                     onLoadMore={handleLoadMoreActivities}

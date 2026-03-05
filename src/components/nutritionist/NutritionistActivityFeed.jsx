@@ -841,6 +841,8 @@ const getCtaForActivity = (activity) => {
         case 'anamnesis': return { label: 'Ver anamnese', route: `/nutritionist/patients/${activity.patient_id}/anamnesis` };
         case 'meal_plan': return { label: 'Ver plano', route: `/nutritionist/patients/${activity.patient_id}/meal-plan` };
         case 'prescription': return { label: 'Ver cálculo', route: `/nutritionist/patients/${activity.patient_id}/energy-expenditure` };
+        case 'energy_expenditure': return { label: 'Ver gastos energéticos', route: `/nutritionist/patients/${activity.patient_id}/energy-expenditure` };
+        case 'progress_photo': return { label: 'Ver fotos de progresso', route: `/nutritionist/patients/${activity.patient_id}/photos` };
         case 'appointment': return { label: 'Ver agenda', route: '/nutritionist/agenda' };
         case 'message': return { label: 'Abrir chat', route: `/chat/nutritionist/${activity.patient_id}` };
         case 'achievement': return { label: 'Ver metas', route: `/nutritionist/patients/${activity.patient_id}/goals` };

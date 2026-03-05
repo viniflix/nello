@@ -17,7 +17,8 @@ import {
     Trophy,
     Loader2,
     ChevronDown,
-    User
+    User,
+    Camera
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -34,7 +35,10 @@ const ActivityIcon = ({ type }) => {
         case 'meal_plan':
             return <BookOpen className={`${iconClass} text-primary`} />;
         case 'prescription':
+        case 'energy_expenditure':
             return <Clipboard className={`${iconClass} text-primary`} />;
+        case 'progress_photo':
+            return <Camera className={`${iconClass} text-secondary`} />;
         case 'appointment':
             return <Calendar className={`${iconClass} text-secondary`} />;
         case 'message':
@@ -77,8 +81,10 @@ const RecentActivityFeed = ({ limit = 10, showHeader = true }) => {
     };
 
     const handleActivityClick = (activity) => {
-        // Navegar para a página do paciente
-        if (activity.patient_id) {
+        // Navegar para a página específica do evento (ex.: diário, fotos, gastos) ou hub do paciente
+        if (activity.ctaRoute) {
+            navigate(activity.ctaRoute);
+        } else if (activity.patient_id) {
             navigate(`/nutritionist/patients/${activity.patient_id}`);
         }
     };
@@ -204,6 +210,8 @@ const getActivityTypeName = (type) => {
         anamnesis: 'Anamnese',
         meal_plan: 'Plano Alimentar',
         prescription: 'Prescrição',
+        energy_expenditure: 'Gastos energéticos',
+        progress_photo: 'Foto de progresso',
         appointment: 'Consulta',
         message: 'Mensagem',
         achievement: 'Conquista'

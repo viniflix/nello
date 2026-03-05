@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow, subDays, subMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
@@ -10,7 +11,9 @@ import {
     FileText,
     ChevronDown,
     Filter,
-    Loader2
+    Loader2,
+    Flame,
+    Camera
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -23,7 +26,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 
-const ActivityItem = ({ activity }) => {
+const ActivityItem = ({ activity, onClick }) => {
     const getActivityIcon = (type) => {
         switch (type) {
             case 'meal':
@@ -38,6 +41,10 @@ const ActivityItem = ({ activity }) => {
                 return <MessageSquare className="w-4 h-4 text-[#a9b388]" />;
             case 'anamnese':
                 return <FileText className="w-4 h-4 text-[#5f6f52]" />;
+            case 'energy':
+                return <Flame className="w-4 h-4 text-[#c4661f]" />;
+            case 'progress_photo':
+                return <Camera className="w-4 h-4 text-[#b99470]" />;
             default:
                 return <FileText className="w-4 h-4 text-muted-foreground" />;
         }
@@ -55,7 +62,13 @@ const ActivityItem = ({ activity }) => {
     };
 
     return (
-        <div className="flex gap-3 p-3 hover:bg-muted/50 rounded-lg transition-colors cursor-pointer group">
+        <div
+            role={onClick ? 'button' : undefined}
+            tabIndex={onClick ? 0 : undefined}
+            onClick={onClick}
+            onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') e.preventDefault() || onClick(); } : undefined}
+            className="flex gap-3 p-3 hover:bg-muted/50 rounded-lg transition-colors cursor-pointer group"
+        >
             <div className="flex-shrink-0 mt-1">
                 <div className="p-2 rounded-full bg-background border border-border group-hover:border-primary/50 transition-colors">
                     {getActivityIcon(activity.type)}
@@ -91,11 +104,14 @@ const ActivityItem = ({ activity }) => {
 
 const PatientActivityFeed = ({
     patientId,
+    patientSlugOrId,
     activities = [],
     loading = false,
     onLoadMore,
     onFilterChange
 }) => {
+    const navigate = useNavigate();
+    const basePath = `/nutritionist/patients/${patientSlugOrId ?? patientId}`;
     const [filterType, setFilterType] = useState('all');
     const [filterPeriod, setFilterPeriod] = useState('all');
     const [displayedCount, setDisplayedCount] = useState(10); // Paginação client-side
@@ -191,14 +207,16 @@ const PatientActivityFeed = ({
                                 <Filter className="w-4 h-4 mr-2" />
                                 <SelectValue placeholder="Tipo" />
                             </SelectTrigger>
-                            <SelectContent>
+                                <SelectContent>
                                 <SelectItem value="all">Todos</SelectItem>
                                 <SelectItem value="meal">Refeições</SelectItem>
                                 <SelectItem value="weight">Peso</SelectItem>
+                                <SelectItem value="anamnese">Anamnese</SelectItem>
+                                <SelectItem value="energy">Gastos energéticos</SelectItem>
+                                <SelectItem value="progress_photo">Fotos de progresso</SelectItem>
                                 <SelectItem value="achievement">Conquistas</SelectItem>
                                 <SelectItem value="appointment">Consultas</SelectItem>
                                 <SelectItem value="message">Mensagens</SelectItem>
-                                <SelectItem value="anamnese">Anamnese</SelectItem>
                             </SelectContent>
                         </Select>
 
@@ -227,7 +245,11 @@ const PatientActivityFeed = ({
                     <>
                         <div className="space-y-1 divide-y divide-border">
                             {displayedActivities.map((activity) => (
-                                <ActivityItem key={activity.id} activity={activity} />
+                                <ActivityItem
+                                    key={activity.id}
+                                    activity={activity}
+                                    onClick={activity.linkPath ? () => navigate(`${basePath}/${activity.linkPath}`) : undefined}
+                                />
                             ))}
                         </div>
 

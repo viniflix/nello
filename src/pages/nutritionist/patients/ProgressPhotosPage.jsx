@@ -37,6 +37,7 @@ import {
     updateProgressPhoto,
     deleteProgressPhoto
 } from '@/lib/supabase/progress-photos-queries';
+import { logActivityEvent } from '@/lib/supabase/patient-queries';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -142,6 +143,13 @@ export default function ProgressPhotosPage() {
                 notes: photoNotes?.trim() || null
             });
             if (insertErr) throw insertErr;
+            await logActivityEvent({
+                eventName: 'progress_photo.added',
+                sourceModule: 'progress_photos',
+                patientId,
+                nutritionistId: user.id,
+                payload: { photo_id: row?.id, photo_date: photoDate, uploaded_by: user.id }
+            });
             toast({ title: 'Foto adicionada' });
             setModalOpen(false);
             setPhotoDate(format(new Date(), 'yyyy-MM-dd'));
@@ -158,11 +166,19 @@ export default function ProgressPhotosPage() {
 
     const handleDelete = async () => {
         if (!deleteTarget) return;
-        const { error } = await deleteProgressPhoto({ photoId: deleteTarget.id });
+        const photoId = deleteTarget.id;
+        const { error } = await deleteProgressPhoto({ photoId });
         if (error) {
             toast({ title: 'Erro ao remover', description: error.message, variant: 'destructive' });
             return;
         }
+        await logActivityEvent({
+            eventName: 'progress_photo.deleted',
+            sourceModule: 'progress_photos',
+            patientId,
+            nutritionistId: user.id,
+            payload: { photo_id: photoId }
+        });
         toast({ title: 'Foto removida' });
         setDeleteTarget(null);
         loadData();
@@ -184,6 +200,13 @@ export default function ProgressPhotosPage() {
                 notes: editNotes?.trim() || null
             });
             if (error) throw error;
+            await logActivityEvent({
+                eventName: 'progress_photo.edited',
+                sourceModule: 'progress_photos',
+                patientId,
+                nutritionistId: user.id,
+                payload: { photo_id: editTarget.id, photo_date: editDate }
+            });
             toast({ title: 'Foto atualizada' });
             setEditTarget(null);
             loadData();

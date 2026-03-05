@@ -9,7 +9,7 @@ import PatientActivityFeed from '@/components/patient-hub/PatientActivityFeed';
 import TemplateDispatchHistoryCard from '@/components/patient-hub/TemplateDispatchHistoryCard';
 import { supabase } from '@/lib/customSupabaseClient';
 
-const TabContentFeed = ({ patientId, activities, loading, onLoadMore }) => {
+const TabContentFeed = ({ patientId, patientSlugOrId, activities, loading, onLoadMore }) => {
     const navigate = useNavigate();
     const [recentMeals, setRecentMeals] = useState([]);
     const [mealsLoading, setMealsLoading] = useState(true);
@@ -173,6 +173,7 @@ const TabContentFeed = ({ patientId, activities, loading, onLoadMore }) => {
             <div className="lg:col-span-2">
                 <PatientActivityFeed
                     patientId={patientId}
+                    patientSlugOrId={patientSlugOrId}
                     activities={activities}
                     loading={loading}
                     onLoadMore={onLoadMore}
