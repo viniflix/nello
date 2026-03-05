@@ -26,7 +26,7 @@ import {
 } from '@/lib/utils/energy-calculations';
 
 const EnergyExpenditurePage = () => {
-    const { patientId } = useResolvedPatientId();
+    const { patientId, loading: resolveLoading, error: resolveError, paramValue } = useResolvedPatientId();
     const navigate = useNavigate();
     const { toast } = useToast();
 
@@ -71,8 +71,13 @@ const EnergyExpenditurePage = () => {
 
     // Carregar dados do paciente (SMART FETCHING)
     useEffect(() => {
+        if (resolveLoading) return;
+        if (!patientId) {
+            setLoading(false);
+            return;
+        }
         loadPatientData();
-    }, [patientId]);
+    }, [patientId, resolveLoading]);
 
     // Calcular protocolos quando dados mudarem
     useEffect(() => {
@@ -91,6 +96,7 @@ const EnergyExpenditurePage = () => {
     }, [selectedProtocolData, activityFactor, goalAdjustment]);
 
     const loadPatientData = async () => {
+        if (!patientId) return;
         setLoading(true);
         try {
             let hasActivitySuggestion = false;
@@ -451,10 +457,26 @@ const EnergyExpenditurePage = () => {
         return null;
     };
 
-    if (loading) {
+    if (resolveLoading || loading) {
         return (
             <div className="flex items-center justify-center h-screen">
                 <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+            </div>
+        );
+    }
+
+    if ((!patientId && paramValue) || resolveError) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[50vh] p-4">
+                <Alert variant="destructive" className="max-w-md">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                        {resolveError?.message || 'Paciente não encontrado ou você não tem permissão para visualizá-lo.'}
+                    </AlertDescription>
+                </Alert>
+                <Button variant="outline" className="mt-4" onClick={() => navigate(-1)}>
+                    Voltar
+                </Button>
             </div>
         );
     }
