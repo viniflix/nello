@@ -760,15 +760,34 @@ const SmartFoodForm = forwardRef(function SmartFoodForm({
             let createdFood;
 
             if (initialData) {
-                const { data, error } = await supabase
-                    .from('foods')
-                    .update(foodData)
-                    .eq('id', initialData.id)
-                    .select('id, name, group, description, source, calories, protein, carbs, fat, fiber, sodium, portion_size')
-                    .single();
-
-                if (error) throw error;
-                createdFood = data;
+                // Alimentos custom: atualizar nutritionist_foods (view foods é read-only)
+                if (initialData.source === 'custom' || initialData.source === 'CUSTOM') {
+                    const updatePayload = {
+                        name: foodData.name,
+                        brand: foodData.description || null,
+                        base_qty: foodData.portion_size ?? 100,
+                        energy_kcal: foodData.calories ?? 0,
+                        protein_g: foodData.protein ?? 0,
+                        carbohydrate_g: foodData.carbs ?? 0,
+                        lipid_g: foodData.fat ?? 0,
+                        fiber_g: foodData.fiber ?? 0,
+                        sodium_mg: foodData.sodium ?? null
+                    };
+                    const { data, error } = await supabase
+                        .from('nutritionist_foods')
+                        .update(updatePayload)
+                        .eq('id', initialData.id)
+                        .select('id, name, brand, base_qty, energy_kcal, protein_g, carbohydrate_g, lipid_g, fiber_g, sodium_mg')
+                        .single();
+                    if (error) throw error;
+                    createdFood = {
+                        id: data.id, name: data.name, description: data.brand, source: 'custom',
+                        portion_size: data.base_qty, calories: data.energy_kcal, protein: data.protein_g,
+                        carbs: data.carbohydrate_g, fat: data.lipid_g, fiber: data.fiber_g, sodium: data.sodium_mg
+                    };
+                } else {
+                    throw new Error('Apenas alimentos custom podem ser editados');
+                }
             } else {
                 const { data, error } = await createFood(foodData);
                 if (error) throw error;
@@ -777,17 +796,19 @@ const SmartFoodForm = forwardRef(function SmartFoodForm({
             }
 
             if (householdMeasures.length > 0) {
+                const isCustom = createdFood.source === 'custom' || createdFood.source === 'CUSTOM';
                 if (initialData) {
                     await supabase
                         .from('food_measures')
                         .delete()
-                        .eq('food_id', createdFood.id);
+                        .or(`reference_food_id.eq.${createdFood.id},nutritionist_food_id.eq.${createdFood.id}`);
                 }
 
                 const measuresToInsert = householdMeasures.map(measure => ({
-                    food_id: createdFood.id,
-                    measure_label: measure.label,
-                    quantity_grams: measure.grams
+                    reference_food_id: isCustom ? null : createdFood.id,
+                    nutritionist_food_id: isCustom ? createdFood.id : null,
+                    label: measure.label,
+                    weight_in_grams: measure.grams
                 }));
 
                 const { error: measuresError } = await supabase

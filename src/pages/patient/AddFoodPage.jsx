@@ -14,6 +14,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { calculateNutrition } from '@/lib/utils/nutrition-calculations';
+import { mealItemFoodIds } from '@/lib/supabase/food-diary-queries';
+import { getFoodMeasures } from '@/lib/supabase/foodService';
 
 const getMealType = (time) => {
     if (!time) return '';
@@ -77,7 +79,12 @@ const AddFoodPage = () => {
                 } else {
                     setOriginalMeal(JSON.parse(JSON.stringify(data))); // Deep copy for history
                     setMealDetails({ time: data.meal_time, type: data.meal_type, notes: data.notes || '' });
-                    const items = data.meal_items.map(item => ({...item, food_name: item.name}));
+                    const items = data.meal_items.map(item => ({
+                        ...item,
+                        food_id: item.reference_food_id || item.nutritionist_food_id,
+                        food_source: item.nutritionist_food_id ? 'custom' : (item.reference_food_id ? 'reference' : null),
+                        food_name: item.name
+                    }));
                     setMealItems(items);
                 }
             };
@@ -107,14 +114,8 @@ const AddFoodPage = () => {
         setMeasureType('direct');
         setQuantity('');
         
-        const { data, error } = await supabase
-            .from('measure_conversions')
-            .select('*')
-            .eq('food_id', food.id)
-            .limit(50); // OTIMIZADO: Limita a 50 conversões por alimento
-        
-        if(error) console.error(error);
-        else setConversions(data || []);
+        const measures = await getFoodMeasures(food.id);
+        setConversions(measures.map(m => ({ measure_name: m.label, grams_equivalent: m.weight_in_grams ?? m.grams })));
     };
 
     const getGrams = () => {
@@ -151,7 +152,7 @@ const AddFoodPage = () => {
         
         const nutrients = calculateNutrients(selectedFood, grams);
         const newItem = {
-            id: Date.now(), food_id: selectedFood.id, name: selectedFood.name, food_name: selectedFood.name,
+            id: Date.now(), food_id: selectedFood.id, food_source: selectedFood.source, name: selectedFood.name, food_name: selectedFood.name,
             quantity: grams, calories: nutrients.calories, protein: nutrients.protein, fat: nutrients.fat, carbs: nutrients.carbs,
         };
         setMealItems(prev => [...prev, newItem]);
@@ -179,7 +180,10 @@ const AddFoodPage = () => {
         };
 
         const saveAndCheckAchievements = async (meal_id) => {
-            const itemsPayload = mealItems.map(item => ({ meal_id, food_id: item.food_id, name: item.name, quantity: item.quantity, calories: item.calories, protein: item.protein, fat: item.fat, carbs: item.carbs }));
+            const itemsPayload = mealItems.map(item => {
+                const ids = mealItemFoodIds(item.food_id, item.food_source || 'reference');
+                return { meal_id, ...ids, name: item.name, quantity: item.quantity, calories: item.calories, protein: item.protein, fat: item.fat, carbs: item.carbs };
+            });
             const { error: itemsError } = await supabase.from('meal_items').insert(itemsPayload);
             
             if (itemsError) {

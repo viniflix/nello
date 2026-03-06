@@ -3,6 +3,19 @@ import { formatDateToIsoDate, getTodayIsoDate } from '@/lib/utils/date';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
 import { logOperationalEvent } from './observability-queries';
 
+/**
+ * Mapeia food_id (da view foods) para reference_food_id ou nutritionist_food_id
+ * @param {string} foodId - ID do alimento
+ * @param {string} source - source do alimento ('custom' = nutritionist_foods)
+ */
+export const mealItemFoodIds = (foodId, source) => {
+    const isCustom = source === 'custom' || source === 'CUSTOM';
+    return {
+        reference_food_id: isCustom ? null : foodId,
+        nutritionist_food_id: isCustom ? foodId : null
+    };
+};
+
 const DEFAULT_REMINDER_PREFERENCES = {
     daily_log_enabled: true,
     measurement_enabled: true,
@@ -52,6 +65,15 @@ export const getPatientMeals = async (patientId, filters = {}, limit = 50, offse
 
         if (error) throw error;
 
+        // Compatibilidade: meal_items usa reference_food_id/nutritionist_food_id
+        const dataWithFoodId = (data || []).map((meal) => ({
+            ...meal,
+            meal_items: (meal.meal_items || []).map((item) => ({
+                ...item,
+                food_id: item.reference_food_id || item.nutritionist_food_id
+            }))
+        }));
+
         await logOperationalEvent({
             module: 'food_diary',
             operation: 'get_patient_meals',
@@ -63,7 +85,7 @@ export const getPatientMeals = async (patientId, filters = {}, limit = 50, offse
             }
         });
 
-        return { data, error: null, count };
+        return { data: dataWithFoodId, error: null, count };
     } catch (error) {
         logSupabaseError('Erro ao buscar refeições', error);
         await logOperationalEvent({

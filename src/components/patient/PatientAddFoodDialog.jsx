@@ -264,6 +264,7 @@ const PatientAddFoodDialog = ({
         const foodData = {
             id: Date.now(), // ID único para novo alimento
             food_id: selectedFood.id,
+            food_source: selectedFood.source,
             food_name: selectedFood.name,
             quantity: parseFloat(quantity),
             unit: selectedUnit === 'g' ? 'g' : (selectedMeasure?.measure_label || 'g'),

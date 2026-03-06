@@ -15,6 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { translateMealType } from '@/utils/mealTranslations';
 import { formatQuantityWithUnit } from '@/lib/utils/measureTranslations';
 import PatientAddFoodDialog from '@/components/patient/PatientAddFoodDialog';
+import { mealItemFoodIds } from '@/lib/supabase/food-diary-queries';
 
 /**
  * AddMealPage - Nova página reformulada de registro de refeição
@@ -87,19 +88,21 @@ export default function AddMealPage() {
       setMealDateTime(mealData.meal_time || format(new Date(), 'HH:mm'));
       setNotes(mealData.notes || '');
 
-      // Buscar dados completos de cada alimento
+      // Buscar dados completos de cada alimento (meal_items usa reference_food_id/nutritionist_food_id)
       const foodsWithData = await Promise.all(
         itemsData.map(async (item, index) => {
-          // Buscar dados originais do alimento
+          const foodId = item.reference_food_id || item.nutritionist_food_id;
+          const foodSource = item.nutritionist_food_id ? 'custom' : 'reference';
           const { data: foodData } = await supabase
             .from('foods')
             .select('*')
-            .eq('id', item.food_id)
+            .eq('id', foodId)
             .single();
 
           return {
             id: item.id || Date.now() + index,
-            food_id: item.food_id,
+            food_id: foodId,
+            food_source: foodSource,
             food_name: item.name,
             quantity: item.quantity,
             unit: item.unit || 'gram', // Carregar unidade salva
@@ -267,18 +270,21 @@ export default function AddMealPage() {
 
         if (deleteError) throw deleteError;
 
-        // Inserir novos itens
-        const mealItems = addedFoods.map(food => ({
-          meal_id: mealId,
-          food_id: food.food_id,
-          name: food.food_name,
-          quantity: parseFloat(food.quantity) || 0,
-          unit: food.unit || 'gram',
-          calories: parseFloat(food.calories) || 0,
-          protein: parseFloat(food.protein) || 0,
-          carbs: parseFloat(food.carbs) || 0,
-          fat: parseFloat(food.fat) || 0
-        }));
+        // Inserir novos itens (meal_items usa reference_food_id/nutritionist_food_id)
+        const mealItems = addedFoods.map(food => {
+          const ids = mealItemFoodIds(food.food_id, food.food_source || 'reference');
+          return {
+            meal_id: mealId,
+            ...ids,
+            name: food.food_name,
+            quantity: parseFloat(food.quantity) || 0,
+            unit: food.unit || 'gram',
+            calories: parseFloat(food.calories) || 0,
+            protein: parseFloat(food.protein) || 0,
+            carbs: parseFloat(food.carbs) || 0,
+            fat: parseFloat(food.fat) || 0
+          };
+        });
 
         const { error: itemsError } = await supabase
           .from('meal_items')
@@ -339,18 +345,21 @@ export default function AddMealPage() {
 
         if (mealError) throw mealError;
 
-        // Adicionar itens da refeição
-        const mealItems = addedFoods.map(food => ({
-          meal_id: meal.id,
-          food_id: food.food_id,
-          name: food.food_name,
-          quantity: parseFloat(food.quantity) || 0,
-          unit: food.unit || 'gram',
-          calories: parseFloat(food.calories) || 0,
-          protein: parseFloat(food.protein) || 0,
-          carbs: parseFloat(food.carbs) || 0,
-          fat: parseFloat(food.fat) || 0
-        }));
+        // Adicionar itens da refeição (meal_items usa reference_food_id/nutritionist_food_id)
+        const mealItems = addedFoods.map(food => {
+          const ids = mealItemFoodIds(food.food_id, food.food_source || 'reference');
+          return {
+            meal_id: meal.id,
+            ...ids,
+            name: food.food_name,
+            quantity: parseFloat(food.quantity) || 0,
+            unit: food.unit || 'gram',
+            calories: parseFloat(food.calories) || 0,
+            protein: parseFloat(food.protein) || 0,
+            carbs: parseFloat(food.carbs) || 0,
+            fat: parseFloat(food.fat) || 0
+          };
+        });
 
         const { error: itemsError } = await supabase
           .from('meal_items')

@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/customSupabaseClient';
+import { mealItemFoodIds } from '@/lib/supabase/food-diary-queries';
 import { subDays, format } from 'date-fns';
 
 /**
@@ -43,7 +44,7 @@ async function searchFood(term) {
   try {
     const { data, error } = await supabase
       .from('foods')
-      .select('id, name, calories, protein, carbs, fat, portion_size')
+      .select('id, name, calories, protein, carbs, fat, portion_size, source')
       .ilike('name', `%${term}%`)
       .limit(1)
       .single();
@@ -220,6 +221,7 @@ export async function fillDailyDiary(patientId) {
 
         itemsForMeal.push({
           food_id: food.id,
+          food_source: food.source || 'reference',
           name: food.name,
           quantity: quantity,
           unit: 'gram',
@@ -254,18 +256,21 @@ export async function fillDailyDiary(patientId) {
 
       mealsCreated.push(meal);
 
-      // Adicionar itens da refeição
-      const itemsToInsert = itemsForMeal.map(item => ({
-        meal_id: meal.id,
-        food_id: item.food_id,
-        name: item.name,
-        quantity: item.quantity,
-        unit: item.unit,
-        calories: item.calories,
-        protein: item.protein,
-        carbs: item.carbs,
-        fat: item.fat,
-      }));
+      // Adicionar itens da refeição (meal_items usa reference_food_id/nutritionist_food_id)
+      const itemsToInsert = itemsForMeal.map(item => {
+        const ids = mealItemFoodIds(item.food_id, item.food_source);
+        return {
+          meal_id: meal.id,
+          ...ids,
+          name: item.name,
+          quantity: item.quantity,
+          unit: item.unit,
+          calories: item.calories,
+          protein: item.protein,
+          carbs: item.carbs,
+          fat: item.fat,
+        };
+      });
 
       const { error: itemsError } = await supabase
         .from('meal_items')
@@ -416,6 +421,7 @@ export async function fillMealHistory(userId, daysBack = 7) {
 
           itemsForMeal.push({
             food_id: food.id,
+            food_source: food.source || 'reference',
             name: food.name,
             quantity: Math.round(quantity),
             unit: 'gram',
@@ -452,18 +458,21 @@ export async function fillMealHistory(userId, daysBack = 7) {
 
         mealsCreated.push(meal);
 
-        // Inserir itens
-        const itemsToInsert = itemsForMeal.map(item => ({
-          meal_id: meal.id,
-          food_id: item.food_id,
-          name: item.name,
-          quantity: item.quantity,
-          unit: item.unit,
-          calories: item.calories,
-          protein: item.protein,
-          carbs: item.carbs,
-          fat: item.fat,
-        }));
+        // Inserir itens (meal_items usa reference_food_id/nutritionist_food_id)
+        const itemsToInsert = itemsForMeal.map(item => {
+          const ids = mealItemFoodIds(item.food_id, item.food_source);
+          return {
+            meal_id: meal.id,
+            ...ids,
+            name: item.name,
+            quantity: item.quantity,
+            unit: item.unit,
+            calories: item.calories,
+            protein: item.protein,
+            carbs: item.carbs,
+            fat: item.fat,
+          };
+        });
 
         const { error: itemsError } = await supabase
           .from('meal_items')

@@ -14,6 +14,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/lib/customSupabaseClient';
+import { getFoodMeasures } from '@/lib/supabase/foodService';
+import { mealItemFoodIds } from '@/lib/supabase/food-diary-queries';
 import { useToast } from '@/hooks/use-toast';
 import { toPortugueseError } from '@/lib/utils/errorMessages';
 
@@ -46,14 +48,7 @@ export default function FoodMeasureManager({ food, isOpen, onClose }) {
 
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('food_measures')
-        .select('*')
-        .eq('food_id', food.id)
-        .order('created_at', { ascending: true });
-
-      if (error) throw error;
-
+      const data = await getFoodMeasures(food.id);
       setMeasures(data || []);
     } catch (error) {
       console.error('Erro ao carregar medidas:', error);
@@ -80,12 +75,13 @@ export default function FoodMeasureManager({ food, isOpen, onClose }) {
 
     setSaving(true);
     try {
+      const ids = mealItemFoodIds(food.id, food.source || 'reference');
       const { data, error } = await supabase
         .from('food_measures')
         .insert({
-          food_id: food.id,
-          measure_label: newMeasureLabel.trim(),
-          quantity_grams: parseFloat(newMeasureGrams)
+          ...ids,
+          label: newMeasureLabel.trim(),
+          weight_in_grams: parseFloat(newMeasureGrams)
         })
         .select()
         .single();
@@ -290,9 +286,9 @@ export default function FoodMeasureManager({ food, isOpen, onClose }) {
                         className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
                       >
                         <div className="flex-1">
-                          <p className="font-medium">{measure.measure_label}</p>
+                          <p className="font-medium">{measure.label || measure.measure_label}</p>
                           <p className="text-xs text-muted-foreground">
-                            {measure.quantity_grams}g por unidade
+                            {(measure.weight_in_grams ?? measure.quantity_grams ?? measure.grams)}g por unidade
                           </p>
                         </div>
                         <Button

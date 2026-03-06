@@ -12,18 +12,25 @@ const ITEMS_PER_PAGE = 20;
 
 /**
  * Busca medidas caseiras de um alimento (lazy load)
- * @param {string} foodId - ID do alimento
- * @returns {Promise<Array>} Lista de medidas
+ * food_measures: reference_food_id ou nutritionist_food_id (label, weight_in_grams)
+ * @param {string} foodId - ID do alimento (uuid, da view foods)
+ * @returns {Promise<Array>} Lista de medidas {label, weight_in_grams, id}
  */
 export async function getFoodMeasures(foodId) {
   if (!foodId) return [];
   try {
     const { data, error } = await supabase
       .from('food_measures')
-      .select('*')
-      .eq('food_id', foodId);
+      .select('id, label, weight_in_grams, reference_food_id, nutritionist_food_id')
+      .or(`reference_food_id.eq.${foodId},nutritionist_food_id.eq.${foodId}`);
     if (error) throw error;
-    return data || [];
+    return (data || []).map((m) => ({
+      id: m.id,
+      label: m.label,
+      weight_in_grams: m.weight_in_grams,
+      grams: m.weight_in_grams,
+      quantity: 1
+    }));
   } catch (error) {
     logSupabaseError('Error fetching food measures', error);
     return [];
@@ -45,9 +52,8 @@ export async function searchFoodsPaginated(searchTerm, page = 0, source = null, 
 
   const offset = page * ITEMS_PER_PAGE;
   const limit = ITEMS_PER_PAGE;
-  const selectFields = includeMeasures
-    ? 'id, name, group, description, source, calories, protein, carbs, fat, fiber, sodium, food_measures(*)'
-    : 'id, name, group, description, source, calories, protein, carbs, fat, fiber, sodium';
+  // view foods não tem relação direta com food_measures; use getFoodMeasures(id) quando precisar
+  const selectFields = 'id, name, group, description, source, calories, protein, carbs, fat, fiber, sodium, portion_size';
 
   try {
     let query = supabase
@@ -91,22 +97,67 @@ export async function searchFoods(searchTerm, limit = 20) {
 }
 
 /**
- * Create a new custom food
- * @param {Object} foodData - Food data (name, calories, protein, carbs, fat, etc.)
+ * Create a new custom food (insert em nutritionist_foods)
+ * @param {Object} foodData - { name, calories, protein, carbs, fat, nutritionist_id, ... }
  * @returns {Promise<{data: Object, error: Object}>}
  */
 export async function createFood(foodData) {
   try {
-    // Select all fields that FoodSelector expects
+    const { data: { user } } = await supabase.auth.getUser();
+    const nutritionistId = foodData.nutritionist_id || user?.id;
+    if (!nutritionistId) {
+      throw new Error('nutritionist_id é obrigatório para criar alimento custom');
+    }
+
+    const insertPayload = {
+      nutritionist_id: nutritionistId,
+      name: foodData.name,
+      brand: foodData.description || foodData.brand || null,
+      barcode: foodData.barcode || null,
+      base_qty: foodData.portion_size ?? 100,
+      base_unit: foodData.base_unit || 'g',
+      energy_kcal: foodData.calories ?? 0,
+      protein_g: foodData.protein ?? 0,
+      carbohydrate_g: foodData.carbs ?? 0,
+      lipid_g: foodData.fat ?? 0,
+      fiber_g: foodData.fiber ?? 0,
+      sodium_mg: foodData.sodium ?? null,
+      saturated_fat_g: foodData.saturated_fat ?? 0,
+      monounsaturated_fat_g: foodData.monounsaturated_fat ?? 0,
+      polyunsaturated_fat_g: foodData.polyunsaturated_fat ?? 0,
+      trans_fat_g: foodData.trans_fat ?? 0,
+      cholesterol_mg: foodData.cholesterol ?? 0,
+      sugar_g: foodData.sugar ?? 0,
+      calcium_mg: foodData.calcium ?? null,
+      iron_mg: foodData.iron ?? null,
+      is_active: foodData.is_active ?? true
+    };
+
     const { data, error } = await supabase
-      .from('foods')
-      .insert([foodData])
-      .select('id, name, group, description, source, calories, protein, carbs, fat, fiber, sodium, portion_size')
+      .from('nutritionist_foods')
+      .insert([insertPayload])
+      .select('id, name, brand, barcode, base_qty, base_unit, energy_kcal, protein_g, carbohydrate_g, lipid_g, fiber_g, sodium_mg')
       .single();
 
     if (error) throw error;
 
-    return { data, error: null };
+    // Retornar no formato da view foods para compatibilidade
+    const mapped = {
+      id: data.id,
+      name: data.name,
+      group: null,
+      description: data.brand,
+      source: 'custom',
+      calories: data.energy_kcal,
+      protein: data.protein_g,
+      carbs: data.carbohydrate_g,
+      fat: data.lipid_g,
+      fiber: data.fiber_g,
+      sodium: data.sodium_mg,
+      portion_size: data.base_qty
+    };
+
+    return { data: mapped, error: null };
   } catch (error) {
     logSupabaseError('Error creating food', error);
     return { data: null, error };
