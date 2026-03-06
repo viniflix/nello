@@ -541,7 +541,7 @@ const PatientAnamnesisForm = () => {
         } finally {
             setSaving(false);
         }
-    }, [patientId, user?.id, anamnesisId, isCustomForm, customTemplateId, customFields, customAnswers, navigate, toast]);
+    }, [patientId, user?.id, anamnesisId, isCustomForm, customTemplateId, customFields, customAnswers, navigate, toast, patient, paramValue]);
 
     const handleSaveDraft = async () => {
         const data = watch();
@@ -549,10 +549,12 @@ const PatientAnamnesisForm = () => {
     };
 
     // ============================================================
-    // AUTO-SAVE: Salva rascunho silenciosamente após 10s sem alterações
-    // Evita requests desnecessários: só salva quando conteúdo mudou
+    // AUTO-SAVE: Salva rascunho silenciosamente com debounce de 2s
+    // Protege contra saída acidental, refresh ou fechamento da aba
     // ============================================================
     const watchedValues = watch();
+    const DEBOUNCE_MS = 2000;
+
     useEffect(() => {
         if (!formReadyRef.current || loading || !patientId || !user?.id) return;
         if (saving) return;
@@ -578,10 +580,13 @@ const PatientAnamnesisForm = () => {
             const result = isCustomForm
                 ? await onSubmit({}, 'draft', { skipNavigate: true })
                 : await onSubmit(watchedValues, 'draft', { skipNavigate: true });
-            if (result && Object.keys(result).length > 0) {
+            if (result?.createdAnamnesisId) {
+                lastSavedContentRef.current = serialized;
+                navigate(patientAnamnesisEditRoute(patient || { id: patientId, slug: paramValue }, result.createdAnamnesisId), { replace: true });
+            } else if (result && Object.keys(result).length >= 0) {
                 lastSavedContentRef.current = serialized;
             }
-        }, 10000);
+        }, DEBOUNCE_MS);
 
         return () => {
             if (autoSaveTimeoutRef.current) clearTimeout(autoSaveTimeoutRef.current);
@@ -594,7 +599,32 @@ const PatientAnamnesisForm = () => {
         user?.id,
         anamnesisId,
         onSubmit,
+        patient,
+        paramValue,
+        navigate,
     ]);
+
+    // Aviso ao sair da página se houver alterações não salvas
+    useEffect(() => {
+        const contentToSave = isCustomForm ? customAnswers : watchedValues;
+        const serialized = JSON.stringify(contentToSave);
+        const hasData = isCustomForm
+            ? Object.values(customAnswers).some(v =>
+                (typeof v === 'string' && v.trim() !== '') ||
+                (Array.isArray(v) && v.length > 0)
+            )
+            : true;
+        const hasUnsaved = hasData && lastSavedContentRef.current !== serialized;
+
+        const handleBeforeUnload = (e) => {
+            e.preventDefault();
+        };
+
+        if (hasUnsaved) {
+            window.addEventListener('beforeunload', handleBeforeUnload);
+            return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+        }
+    }, [isCustomForm ? JSON.stringify(customAnswers) : JSON.stringify(watchedValues), isCustomForm, customAnswers]);
 
     const handleSaveCompleted = handleSubmit((data) => onSubmit(data, 'completed'));
 

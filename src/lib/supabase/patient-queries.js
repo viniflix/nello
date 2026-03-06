@@ -736,6 +736,14 @@ export const getFeedPriorityRules = async (nutritionistId) => {
  * @param {object} eventInput - dados do evento
  * @returns {Promise<{data: string|null, error: object|null}>}
  */
+/** Código 404 = função RPC não existe no schema (migration não aplicada) */
+const isLogActivityEventMissing = (err) => {
+    if (!err) return false;
+    const msg = String(err?.message || '').toLowerCase();
+    const code = String(err?.code || err?.statusCode || '').toString();
+    return code === '404' || code === '42883' || msg.includes('could not find the function') || msg.includes('schema cache');
+};
+
 export const logActivityEvent = async (eventInput) => {
     try {
         const normalized = buildActivityEventPayload(eventInput || {});
@@ -750,11 +758,17 @@ export const logActivityEvent = async (eventInput) => {
         });
 
         if (error) {
+            if (isLogActivityEventMissing(error)) {
+                return { data: null, error: null };
+            }
             logSupabaseError('Erro ao registrar evento de atividade', error);
             return { data: null, error };
         }
         return { data: data || null, error: null };
     } catch (error) {
+        if (isLogActivityEventMissing(error)) {
+            return { data: null, error: null };
+        }
         logSupabaseError('Erro ao registrar evento de atividade', error);
         return { data: null, error };
     }
