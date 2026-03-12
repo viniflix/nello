@@ -16,6 +16,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { isUuid } from '@/lib/utils/patientRoutes';
+import PatientEditProfileModal from '@/components/patient-hub/PatientEditProfileModal';
 
 const PatientHubPage = () => {
     const { patientId: resolvedId, loading: resolveLoading, error: resolveError, paramValue } = useResolvedPatientId();
@@ -31,6 +32,7 @@ const PatientHubPage = () => {
         // Sempre iniciar no feed se não vier de um módulo
         return 'feed';
     });
+    const [isEditProfileModalOpen, setIsEditProfileModalOpen] = useState(false);
 
     // Sincronizar tab quando URL mudar (ex: navegação programática com ?tab=)
     useEffect(() => {
@@ -68,7 +70,7 @@ const PatientHubPage = () => {
     }, [patientData?.slug, paramValue, navigate, searchParams]);
 
     const handleEditProfile = () => {
-        // TODO: Implementar edição de perfil (Fase 2)
+        setIsEditProfileModalOpen(true);
     };
 
     const handleOpenChat = () => {
@@ -330,6 +332,15 @@ const PatientHubPage = () => {
                     </Tabs>
                 </section>
             </main>
+
+            {patientData && (
+                <PatientEditProfileModal 
+                    isOpen={isEditProfileModalOpen} 
+                    onClose={() => setIsEditProfileModalOpen(false)} 
+                    patientData={patientData}
+                    onSaveSuccess={refresh}
+                />
+            )}
         </div>
     );
 };

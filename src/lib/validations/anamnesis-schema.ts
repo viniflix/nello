@@ -36,11 +36,11 @@ const medicationSchema = z.object({
  */
 const allergySchema = z.object({
   tipo: z.enum(['Alergia', 'Intolerância'], {
-    required_error: 'Selecione o tipo'
+    message: 'Selecione o tipo'
   }),
   alimento: z.string().min(1, 'Informe o alimento'),
   severidade: z.enum(['leve', 'moderada', 'grave'], {
-    required_error: 'Selecione a severidade'
+    message: 'Selecione a severidade'
   }),
   sintomas: z.string().min(1, 'Descreva os sintomas')
 });
@@ -56,7 +56,7 @@ const smokingDetailsSchema = z.object({
   ha_quanto_tempo: z.string().min(1, 'Informe há quanto tempo fuma'),
   quantidade_dia: z.string().min(1, 'Informe a quantidade por dia'),
   tentou_parar: z.enum(['sim', 'nao'], {
-    required_error: 'Informe se já tentou parar'
+    message: 'Informe se já tentou parar'
   })
 });
 
@@ -65,7 +65,7 @@ const smokingDetailsSchema = z.object({
  */
 const drinkingDetailsSchema = z.object({
   frequencia: z.enum(['diaria', 'semanal', 'fins_semana', 'ocasional'], {
-    required_error: 'Selecione a frequência'
+    message: 'Selecione a frequência'
   }),
   tipo_bebida: z.array(z.string()).min(1, 'Selecione pelo menos um tipo de bebida'),
   quantidade_dose: z.string().min(1, 'Informe a quantidade por dose')
@@ -98,20 +98,21 @@ const identificationSchema = z.object({
  * Seção: Histórico Clínico
  */
 const clinicalHistorySchema = z.object({
+  paciente_diabetico: z.enum(['sim', 'nao', '']).optional(),
   tem_doenca: z.enum(['sim', 'nao', ''], {
-    required_error: 'Selecione se tem alguma doença'
+    message: 'Selecione se tem alguma doença'
   }).refine(val => val !== '', {
     message: 'Este campo é obrigatório'
   }),
   doencas: z.array(diseaseSchema),
   toma_medicamento: z.enum(['sim', 'nao', ''], {
-    required_error: 'Selecione se toma medicamento'
+    message: 'Selecione se toma medicamento'
   }).refine(val => val !== '', {
     message: 'Este campo é obrigatório'
   }),
   medicamentos: z.array(medicationSchema),
   tem_alergia: z.enum(['sim', 'nao', ''], {
-    required_error: 'Selecione se tem alergia/intolerância'
+    message: 'Selecione se tem alergia/intolerância'
   }).refine(val => val !== '', {
     message: 'Este campo é obrigatório'
   }),
@@ -175,19 +176,19 @@ const familyHistorySchema = z.object({
  */
 const lifestyleSchema = z.object({
   pratica_exercicio: z.enum(['sim', 'nao', ''], {
-    required_error: 'Selecione se pratica exercício físico'
+    message: 'Selecione se pratica exercício físico'
   }).refine(val => val !== '', {
     message: 'Este campo é obrigatório'
   }),
   exercicio_detalhes: exerciseDetailsSchema.optional(),
   fuma: z.enum(['sim', 'nao', ''], {
-    required_error: 'Selecione se fuma'
+    message: 'Selecione se fuma'
   }).refine(val => val !== '', {
     message: 'Este campo é obrigatório'
   }),
   fuma_detalhes: smokingDetailsSchema.optional(),
   bebe: z.enum(['sim', 'nao', ''], {
-    required_error: 'Selecione se consome bebida alcoólica'
+    message: 'Selecione se consome bebida alcoólica'
   }).refine(val => val !== '', {
     message: 'Este campo é obrigatório'
   }),

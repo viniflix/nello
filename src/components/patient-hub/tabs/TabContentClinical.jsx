@@ -10,6 +10,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
 import { getLatestAnamnesis } from '@/lib/supabase/anamnesis-queries';
 import { getRecentLabResults } from '@/lib/supabase/lab-results-queries';
+import GlycemiaSummaryCard from '@/components/patient-hub/GlycemiaSummaryCard';
 
 const TabContentClinical = ({ patientId, patientData, modulesStatus = {} }) => {
     const patient = patientData || { id: patientId };
@@ -276,9 +277,10 @@ const TabContentClinical = ({ patientId, patientData, modulesStatus = {} }) => {
                 </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <AnamnesisCard />
                 <LabsCard />
+                <GlycemiaSummaryCard patientId={patientId} patient={patient} />
             </div>
         </div>
     );

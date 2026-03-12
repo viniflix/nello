@@ -37,7 +37,7 @@ import {
     upsertAnamneseAnswers,
     getFieldOptions
 } from '@/lib/supabase/anamnesis-queries';
-import { getPatientProfile } from '@/lib/supabase/patient-queries';
+import { getPatientProfile, updatePatientProfile } from '@/lib/supabase/patient-queries';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { anamnesisFormSchema } from '@/lib/validations/anamnesis-schema';
@@ -118,6 +118,7 @@ const PatientAnamnesisForm = () => {
                 estado_civil: ''
             },
             historico_clinico: {
+                paciente_diabetico: '',
                 tem_doenca: '',
                 doencas: [],
                 toma_medicamento: '',
@@ -502,6 +503,21 @@ const PatientAnamnesisForm = () => {
             if (effectiveId) {
                 const { error: updateError } = await updateAnamnesis(effectiveId, submitData);
                 if (updateError) throw updateError;
+                
+                // Sync Diabetics flag to patient profile
+                try {
+                    const isDiabetic = data.historico_clinico?.paciente_diabetico;
+                    if (isDiabetic === 'sim' || isDiabetic === 'nao') {
+                        const currentPrefs = patient?.preferences || {};
+                        const boolDiabetic = isDiabetic === 'sim';
+                        if (currentPrefs.is_diabetic !== boolDiabetic) {
+                            currentPrefs.is_diabetic = boolDiabetic;
+                            await updatePatientProfile(patientId, { preferences: currentPrefs });
+                        }
+                    }
+                } catch (prefError) {
+                    console.error("Erro ao sincronizar tag de diabetes", prefError);
+                }
 
                 if (!skipNavigate) {
                     toast({
@@ -517,6 +533,21 @@ const PatientAnamnesisForm = () => {
                 if (created?.id) {
                     createdId = created.id;
                     currentAnamnesisIdRef.current = created.id;
+                }
+
+                // Sync Diabetics flag to patient profile
+                try {
+                    const isDiabetic = data.historico_clinico?.paciente_diabetico;
+                    if (isDiabetic === 'sim' || isDiabetic === 'nao') {
+                        const currentPrefs = patient?.preferences || {};
+                        const boolDiabetic = isDiabetic === 'sim';
+                        if (currentPrefs.is_diabetic !== boolDiabetic) {
+                            currentPrefs.is_diabetic = boolDiabetic;
+                            await updatePatientProfile(patientId, { preferences: currentPrefs });
+                        }
+                    }
+                } catch (prefError) {
+                    console.error("Erro ao sincronizar tag de diabetes", prefError);
                 }
 
                 if (!skipNavigate) {
@@ -1024,6 +1055,28 @@ const PatientAnamnesisForm = () => {
                                     </AccordionTrigger>
                                     <AccordionContent className="pt-4 pb-6">
                                         <div className="space-y-6 pl-11">
+                                            {/* Paciente possui Diabetes? */}
+                                            <div className="space-y-2" ref={el => errorRefs.current['historico_clinico.paciente_diabetico'] = el}>
+                                                <Label>
+                                                    Paciente possui Diabetes? (Será usado no módulo de Glicemia)
+                                                </Label>
+                                                <Controller
+                                                    name="historico_clinico.paciente_diabetico"
+                                                    control={control}
+                                                    render={({ field }) => (
+                                                        <Select onValueChange={field.onChange} value={field.value}>
+                                                            <SelectTrigger>
+                                                                <SelectValue placeholder="Selecione..." />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                <SelectItem value="sim">Sim, o paciente é diabético</SelectItem>
+                                                                <SelectItem value="nao">Não possui diabetes</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                    )}
+                                                />
+                                            </div>
+
                                             {/* Tem doença? */}
                                             <div className="space-y-2" ref={el => errorRefs.current['historico_clinico.tem_doenca'] = el}>
                                                 <Label>

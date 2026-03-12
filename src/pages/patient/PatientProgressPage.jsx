@@ -65,6 +65,7 @@ const MIME_BY_EXT = {
 export default function PatientProgressPage() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const isDiabetic = user?.profile?.preferences?.is_diabetic === true;
   const [activeTab, setActiveTab] = useState('peso');
   const [weightData, setWeightData] = useState([]);
   const [glycemiaData, setGlycemiaData] = useState([]);
@@ -101,16 +102,20 @@ export default function PatientProgressPage() {
     // 2. Meta de peso - por enquanto null (precisa ser adicionada ao growth_records ou meal_plans)
     setGoalWeight(null);
 
-    // 3. Glicemia - tentar buscar (tabela pode não existir ainda)
-    try {
-      const { data: glycemiaRecords } = await supabase
-        .from('glycemia_records')
-        .select('*')
-        .eq('patient_id', user.id)
-        .order('record_date', { ascending: true });
-      setGlycemiaData(glycemiaRecords || []);
-    } catch (error) {
-      // Tabela não existe ainda
+    // 3. Glicemia - tentar buscar apenas se for diabético
+    if (user?.profile?.preferences?.is_diabetic) {
+      try {
+        const { data: glycemiaRecords } = await supabase
+          .from('glycemia_records')
+          .select('*')
+          .eq('patient_id', user.id)
+          .order('record_date', { ascending: true });
+        setGlycemiaData(glycemiaRecords || []);
+      } catch (error) {
+        // Tabela não existe ainda
+        setGlycemiaData([]);
+      }
+    } else {
       setGlycemiaData([]);
     }
 
@@ -369,15 +374,17 @@ export default function PatientProgressPage() {
           </p>
         </div>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4 mb-4">
+          <TabsList className={`grid w-full ${isDiabetic ? 'grid-cols-4' : 'grid-cols-3'} mb-4`}>
             <TabsTrigger value="peso" className="text-xs">
               <Scale className="w-4 h-4 mr-1" />
               Peso
             </TabsTrigger>
-            <TabsTrigger value="glicemia" className="text-xs">
-              <Droplet className="w-4 h-4 mr-1" />
-              Glicemia
-            </TabsTrigger>
+            {isDiabetic && (
+              <TabsTrigger value="glicemia" className="text-xs">
+                <Droplet className="w-4 h-4 mr-1" />
+                Glicemia
+              </TabsTrigger>
+            )}
             <TabsTrigger value="medidas" className="text-xs">
               <Ruler className="w-4 h-4 mr-1" />
               Medidas
@@ -460,7 +467,8 @@ export default function PatientProgressPage() {
           </TabsContent>
 
           {/* Aba: Glicemia */}
-          <TabsContent value="glicemia" className="space-y-4">
+          {isDiabetic && (
+            <TabsContent value="glicemia" className="space-y-4">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -532,6 +540,7 @@ export default function PatientProgressPage() {
               </Card>
             </motion.div>
           </TabsContent>
+          )}
 
           {/* Aba: Medidas */}
           <TabsContent value="medidas" className="space-y-4">

@@ -90,6 +90,29 @@ export const getPatientProfile = async (patientId, nutritionistId) => {
 };
 
 /**
+ * Atualiza os dados básicos do perfil do paciente
+ * @param {string} patientId - ID do paciente
+ * @param {object} updateData - Dados a serem atualizados
+ * @returns {Promise<{data: object, error: object}>}
+ */
+export const updatePatientProfile = async (patientId, updateData) => {
+    try {
+        const { data, error } = await supabase
+            .from('user_profiles')
+            .update(updateData)
+            .eq('id', patientId)
+            .select()
+            .single();
+
+        if (error) throw error;
+        return { data, error: null };
+    } catch (error) {
+        logSupabaseError('Erro ao atualizar perfil do paciente', error);
+        return { data: null, error };
+    }
+};
+
+/**
  * Busca as últimas métricas do paciente (peso, altura, etc.)
  * Integra dados de: growth_records (antropometria) → user_profiles → anamnesis_records
  * para um prontuário vivo e conectado.
