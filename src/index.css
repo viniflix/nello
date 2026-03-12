@@ -73,9 +73,33 @@
   }
 
   .dark {
-    /* TODO: Definir variáveis do Dark Mode baseadas em 'stone' */
-    /* Ex: --background: 24 9.8% 10%; (stone-900) */
-    /* Ex: --foreground: 0 0% 98%; (stone-50) */
+    /* Mapeamento baseado no fundo Stone 900 */
+    --background: 24 9.8% 10%; /* stone-900 */
+    --foreground: 0 0% 98%; /* stone-50 */
+
+    --card: 24 9.8% 10%; /* stone-900 */
+    --card-foreground: 0 0% 98%; /* stone-50 */
+
+    --popover: 24 9.8% 10%;
+    --popover-foreground: 0 0% 98%;
+
+    --primary: 100 31% 38%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 26 95% 48%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 24 5.9% 10%; 
+    --muted-foreground: 24 5.4% 63.9%; /* stone-400 */
+
+    --accent: 24 5.9% 15%; /* stone-800 */
+    --accent-foreground: 0 0% 98%; /* stone-50 */
+
+    --destructive: 0 72.2% 50.6%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 24 5.9% 15%; /* stone-800 */
+    --input: 24 5.9% 15%; /* stone-800 */
+    --ring: 100 31% 38%;
   }
 }
 
@@ -84,7 +108,7 @@
     @apply border-border;
   }
   body {
-    @apply bg-slate-50 text-foreground;
+    @apply bg-background text-foreground;
   }
 
   /* Estilo base para os Títulos (ClashDisplay) */

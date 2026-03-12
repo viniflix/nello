@@ -40,8 +40,6 @@ dist-ssr/
 .copilot
 
 # Internal App Folders
-/docs
-
-# (Note: /docs is willingly NOT ignored to be backed up to github)
+/supabase
 /[Dd][Oo][Cc][Ss]/
 /AGENTS.md

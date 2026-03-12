@@ -8,6 +8,7 @@ import { useToast } from '@/components/ui/use-toast';
 import ProfilePersonalTab from '@/components/profile/ProfilePersonalTab';
 import ProfileAgendaTab from '@/components/profile/ProfileAgendaTab';
 import ProfileFinancialTab from '@/components/profile/ProfileFinancialTab';
+import { ThemeToggle } from '@/components/shared/ThemeToggle';
 
 const NutritionistProfilePage = () => {
     const { user, updateUserProfile } = useAuth();
@@ -57,15 +58,20 @@ const NutritionistProfilePage = () => {
                     {/* Header */}
                     <Card className="overflow-hidden">
                         <CardHeader>
-                            <div className="flex flex-col sm:flex-row sm:items-center gap-4 min-w-0">
-                                <div className="p-3 rounded-lg bg-primary/10 shrink-0">
-                                    <Settings className="w-7 h-7 md:w-8 md:h-8 text-primary" />
+                            <div className="flex flex-col sm:flex-row sm:items-center min-w-0 justify-between">
+                                <div className="flex items-center gap-4">
+                                    <div className="p-3 rounded-lg bg-primary/10 shrink-0">
+                                        <Settings className="w-7 h-7 md:w-8 md:h-8 text-primary" />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <CardTitle className="text-2xl md:text-3xl break-words">Ajustes do Consultório</CardTitle>
+                                        <CardDescription className="text-sm md:text-base mt-1">
+                                            Configure todas as informações e preferências do seu consultório em um só lugar
+                                        </CardDescription>
+                                    </div>
                                 </div>
-                                <div className="min-w-0">
-                                    <CardTitle className="text-2xl md:text-3xl break-words">Ajustes do Consultório</CardTitle>
-                                    <CardDescription className="text-sm md:text-base mt-1">
-                                        Configure todas as informações e preferências do seu consultório em um só lugar
-                                    </CardDescription>
+                                <div className="mt-4 sm:mt-0 flex shrink-0">
+                                    <ThemeToggle />
                                 </div>
                             </div>
                         </CardHeader>

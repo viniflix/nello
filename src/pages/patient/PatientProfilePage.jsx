@@ -41,6 +41,7 @@ import { useToast } from '@/hooks/use-toast';
 import AvatarUpload from '@/components/patient/AvatarUpload';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { ThemeToggle } from '@/components/shared/ThemeToggle';
 
 /**
  * PatientProfilePage - Aba 5: Perfil
@@ -196,11 +197,14 @@ export default function PatientProfilePage() {
     <div className="flex flex-col min-h-screen bg-background">
       <div className="max-w-7xl mx-auto w-full px-4 md:px-8 py-8 space-y-6">
         {/* Header */}
-        <div className="mb-2">
-          <h1 className="text-3xl font-bold text-foreground">Perfil</h1>
-          <p className="text-muted-foreground mt-1">
-            Gerencie sua conta e preferências
-          </p>
+        <div className="mb-2 flex justify-between items-start">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Perfil</h1>
+            <p className="text-muted-foreground mt-1">
+              Gerencie sua conta e preferências
+            </p>
+          </div>
+          <ThemeToggle />
         </div>
         {/* Seção: Meus Dados */}
         <motion.div
