@@ -5,6 +5,7 @@ import AdminLayout from '@/components/admin/AdminLayout.jsx';
 
 // Lazy load das páginas admin
 const AdminDashboard = lazy(() => import('@/pages/admin/AdminDashboard.jsx'));
+const AdminUsersPage = lazy(() => import('@/pages/admin/AdminUsersPage.jsx'));
 
 export const adminRoutes = (
     <>
@@ -22,6 +23,10 @@ export const adminRoutes = (
             <Route 
                 path="/admin/dashboard" 
                 element={<AdminDashboard />} 
+            />
+            <Route 
+                path="/admin/users" 
+                element={<AdminUsersPage />} 
             />
         </Route>
     </>

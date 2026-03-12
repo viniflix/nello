@@ -10,11 +10,6 @@ const initialState = {
     occupation: '',
     civil_status: '',
     observations: '',
-    phone: '',
-    cpf: '',
-    occupation: '',
-    civil_status: '',
-    observations: '',
 
     cep: '',
     street: '',

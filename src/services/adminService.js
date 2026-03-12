@@ -8,24 +8,41 @@ import { supabase } from '@/lib/customSupabaseClient';
 export async function getDashboardStats() {
   try {
     const { data, error } = await supabase.rpc('get_admin_dashboard_stats');
-
-    // CRITICAL: Debug log to inspect RPC response structure
-    console.log('[adminService] RPC Response:', { data, error });
-
-    if (error) {
-      console.error('[adminService] Erro ao buscar estatísticas:', error);
-      return { data: null, error };
-    }
-
-    // Log the structure to help debug
-    if (data) {
-      console.log('[adminService] Data structure:', JSON.stringify(data, null, 2));
-    }
-
+    if (error) throw error;
     return { data, error: null };
   } catch (error) {
-    console.error('[adminService] Erro inesperado:', error);
+    console.error('[adminService] Erro inesperado ao buscar estatísticas:', error);
     return { data: null, error };
   }
 }
 
+/**
+ * Busca a lista de nutricionistas ativos no sistema
+ * @returns {Promise<{data: Array|null, error: object|null}>}
+ */
+export async function getNutritionistsList() {
+  try {
+    const { data, error } = await supabase.rpc('get_nutritionists_list');
+    if (error) throw error;
+    return { data, error: null };
+  } catch (error) {
+    console.error('[adminService] Erro inesperado ao buscar nutricionistas:', error);
+    return { data: null, error };
+  }
+}
+
+/**
+ * Busca os logs em tempo real do sistema (Activity + Observability)
+ * @param {number} limit - Limite de registros a retornar (default: 50)
+ * @returns {Promise<{data: Array|null, error: object|null}>}
+ */
+export async function getSystemLiveLogs(limit = 50) {
+  try {
+    const { data, error } = await supabase.rpc('get_system_live_logs', { limit_count: limit });
+    if (error) throw error;
+    return { data, error: null };
+  } catch (error) {
+    console.error('[adminService] Erro inesperado ao buscar live logs:', error);
+    return { data: null, error };
+  }
+}

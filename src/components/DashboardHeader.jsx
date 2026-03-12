@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
-import { LogOut, User, Menu, Bell, Check, Trash2 } from 'lucide-react';
+import { LogOut, User, Menu, Bell, Check, Trash2, Shield } from 'lucide-react';
 import { useAdminMode } from '@/contexts/AdminModeContext';
 import { Button } from '@/components/ui/button';
 import {
@@ -624,6 +624,16 @@ const DashboardHeader = ({ user, logout }) => {
                 </DropdownMenuLabel>
 
                 <DropdownMenuSeparator />
+
+                {user?.profile?.is_admin === true && (
+                  <>
+                    <DropdownMenuItem onClick={() => navigate('/admin/dashboard')} className="text-indigo-600 focus:text-indigo-700 focus:bg-indigo-50">
+                      <Shield className="mr-2 h-4 w-4" />
+                      <span className="font-medium">Painel do Administrador</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                  </>
+                )}
 
                 <DropdownMenuItem onClick={() => navigate('/nutritionist/profile')}>
                   <User className="mr-2 h-4 w-4" />

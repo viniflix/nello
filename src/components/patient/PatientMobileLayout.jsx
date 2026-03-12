@@ -1,4 +1,4 @@
-import { Outlet, NavLink, useLocation } from 'react-router-dom';
+import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { Home, BookMarked, LineChart, MessagesSquare, User, Bell, LogOut, Shield } from 'lucide-react';
 import { useChat } from '@/contexts/ChatContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -16,6 +16,7 @@ import { useState, useEffect } from 'react';
  */
 export default function PatientMobileLayout() {
   const { user, signOut } = useAuth();
+  const navigate = useNavigate();
   const { unreadSenders } = useChat();
   const location = useLocation();
   const unreadCount = unreadSenders?.size || 0;
@@ -149,6 +150,20 @@ export default function PatientMobileLayout() {
             );
           })}
         </nav>
+
+        {/* Botão de Painel Admin (Apenas se for Admin) */}
+        {user?.profile?.is_admin === true && (
+          <div className="p-4 border-t border-gray-200">
+            <Button
+              variant="default"
+              className="w-full justify-start bg-indigo-600 hover:bg-indigo-700 text-white"
+              onClick={() => navigate('/admin/dashboard')}
+            >
+              <Shield className="w-5 h-5 mr-3" />
+              <span className="font-medium">Painel Admin</span>
+            </Button>
+          </div>
+        )}
 
         {/* Botão de Sair */}
         <div className="p-4 border-t border-gray-200">

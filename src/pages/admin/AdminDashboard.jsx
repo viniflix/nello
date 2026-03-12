@@ -46,30 +46,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { getDashboardStats } from '@/services/adminService';
+import { getDashboardStats, getSystemLiveLogs } from '@/services/adminService';
 import { getOperationalHealthSummary } from '@/lib/supabase/observability-queries';
 
 // Cores para o gráfico de pizza
 const PIE_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
-// Eventos simulados para o Live Log (mais profissionais e diversos)
-const FAKE_EVENTS = [
-  { type: 'info', message: 'Registro de refeição: Café da manhã completo', user: 'Maria Silva' },
-  { type: 'info', message: 'Sessão iniciada: Nutricionista autenticado', user: 'Dr. João Santos' },
-  { type: 'info', message: 'Hidratação registrada: 500ml de água', user: 'Ana Costa' },
-  { type: 'info', message: 'Acesso ao painel: Dashboard de pacientes', user: 'Dr. Pedro Lima' },
-  { type: 'info', message: 'Atualização antropométrica: Peso registrado', user: 'Carlos Souza' },
-  { type: 'warning', message: 'Tentativa de autenticação falhou: Credenciais inválidas', user: 'Sistema' },
-  { type: 'info', message: 'Nova mensagem: Chat entre paciente e nutricionista', user: 'Julia Ferreira' },
-  { type: 'error', message: 'Erro de servidor: Timeout na requisição /api/meals', user: 'Sistema' },
-  { type: 'info', message: 'Questionário completado: Anamnese nutricional', user: 'Roberto Alves' },
-  { type: 'info', message: 'Agendamento criado: Consulta para próxima semana', user: 'Dr. Fernanda Rocha' },
-  { type: 'info', message: 'Plano alimentar atualizado: Nova prescrição', user: 'Dr. Lucas Mendes' },
-  { type: 'info', message: 'Progresso registrado: Meta de proteínas atingida', user: 'Patricia Oliveira' },
-  { type: 'info', message: 'Upload realizado: Foto de progresso adicionada', user: 'Ricardo Almeida' },
-  { type: 'warning', message: 'Alerta: Paciente sem registro há 7 dias', user: 'Sistema' },
-  { type: 'info', message: 'Exportação de dados: Relatório gerado', user: 'Dr. Camila Rodrigues' },
-];
 
 /**
  * AdminDashboard - CEO Mission Control Dashboard
@@ -155,48 +137,30 @@ export default function AdminDashboard() {
     }
   };
 
-  // Live Log Simulation (only when on System tab)
+  // Real-time Logs Polling
   useEffect(() => {
     if (activeTab !== 'system' || !isAdmin) return;
 
-    // Adicionar alguns logs iniciais
-    const initialLogs = FAKE_EVENTS.slice(0, 5).map((event, index) => ({
-      id: `log-${Date.now()}-${index}`,
-      type: event.type,
-      message: event.message,
-      user: event.user,
-      timestamp: new Date(Date.now() - (5 - index) * 10000).toISOString()
-    }));
-    setLiveLogs(initialLogs);
-
-    // Scroll inicial para o final
-    setTimeout(() => scrollToBottom(), 100);
-
-    // Adicionar novos logs aleatórios a cada 8-12 segundos (mais lento)
-    const interval = setInterval(() => {
-      // Verificar se o usuário está no final ANTES de adicionar o log
+    const fetchLogs = async () => {
       const wasAtBottom = isAtBottom(scrollAreaRef.current, 50);
-
-      const randomEvent = FAKE_EVENTS[Math.floor(Math.random() * FAKE_EVENTS.length)];
-      const newLog = {
-        id: `log-${Date.now()}`,
-        type: randomEvent.type,
-        message: randomEvent.message,
-        user: randomEvent.user,
-        timestamp: new Date().toISOString()
-      };
+      const { data } = await getSystemLiveLogs(50);
       
-      setLiveLogs(prev => {
-        const updated = [newLog, ...prev].slice(0, 50); // Manter apenas os últimos 50
-        
-        // Só fazer scroll se o usuário estava no final
+      if (data) {
+        setLiveLogs(data);
         if (wasAtBottom) {
           setTimeout(() => scrollToBottom(), 50);
         }
-        
-        return updated;
-      });
-    }, Math.random() * 4000 + 8000); // Entre 8-12 segundos (mais lento)
+      }
+    };
+
+    // Initial fetch
+    fetchLogs();
+    setTimeout(() => scrollToBottom(), 100);
+
+    // Poll every 15 seconds
+    const interval = setInterval(() => {
+      fetchLogs();
+    }, 15000);
 
     return () => clearInterval(interval);
   }, [activeTab, isAdmin]);
@@ -238,11 +202,13 @@ export default function AdminDashboard() {
               totalNutritionists: data.kpis?.totalNutritionists || data.counts?.nutritionists || data.totalNutritionists || 0,
               totalPatients: data.kpis?.totalPatients || data.counts?.patients || data.totalPatients || 0,
               totalMeals: data.kpis?.totalMeals || data.counts?.meals || data.totalMeals || 0,
-              activePatients: data.kpis?.activePatients || data.counts?.activePatients || data.activePatients || 0
+              activePatients: data.kpis?.activePatients || data.counts?.active_rate || data.activePatients || 0,
+              estimated_mrr: data.kpis?.estimated_mrr || data.counts?.estimated_mrr || 0
             },
-            growthData: data.growthData || data.growth || data.userGrowth || [],
-            goalsDistribution: data.goalsDistribution || data.goals || data.patientGoals || [],
-            recentUsers: data.recentUsers || data.users || data.newUsers || []
+            growthData: data.growthData || data.growth_chart || data.growth || [],
+            goalsDistribution: data.goalsDistribution || data.goals_chart || data.goals || [],
+            recentUsers: data.recentUsers || data.users || [],
+            featureAdoption: data.feature_adoption || []
           };
         } else {
           // If data is the object itself (flat structure)
@@ -251,21 +217,24 @@ export default function AdminDashboard() {
               totalNutritionists: data.totalNutritionists || data.nutritionists || 0,
               totalPatients: data.totalPatients || data.patients || 0,
               totalMeals: data.totalMeals || data.meals || 0,
-              activePatients: data.activePatients || 0
+              activePatients: data.activePatients || 0,
+              estimated_mrr: data.estimated_mrr || 0
             },
             growthData: data.growthData || [],
             goalsDistribution: data.goalsDistribution || [],
-            recentUsers: data.recentUsers || []
+            recentUsers: data.recentUsers || [],
+            featureAdoption: data.feature_adoption || []
           };
         }
       }
 
       console.log('[AdminDashboard] Processed stats:', processedData);
       setStats(processedData || {
-        kpis: { totalNutritionists: 0, totalPatients: 0, totalMeals: 0, activePatients: 0 },
+        kpis: { totalNutritionists: 0, totalPatients: 0, totalMeals: 0, activePatients: 0, estimated_mrr: 0 },
         growthData: [],
         goalsDistribution: [],
-        recentUsers: []
+        recentUsers: [],
+        featureAdoption: []
       });
     } catch (error) {
       console.error('[AdminDashboard] Erro inesperado:', error);
@@ -276,10 +245,11 @@ export default function AdminDashboard() {
       });
       // Set default stats to avoid crashes
       setStats({
-        kpis: { totalNutritionists: 0, totalPatients: 0, totalMeals: 0, activePatients: 0 },
+        kpis: { totalNutritionists: 0, totalPatients: 0, totalMeals: 0, activePatients: 0, estimated_mrr: 0 },
         growthData: [],
         goalsDistribution: [],
-        recentUsers: []
+        recentUsers: [],
+        featureAdoption: []
       });
     } finally {
       setIsLoading(false);
@@ -346,17 +316,19 @@ export default function AdminDashboard() {
     totalNutritionists: 0,
     totalPatients: 0,
     totalMeals: 0,
-    activePatients: 0
+    activePatients: 0,
+    estimated_mrr: 0
   };
 
   const growthData = stats?.growthData || [];
   const goalsDistribution = stats?.goalsDistribution || [];
   const recentUsers = stats?.recentUsers || [];
+  const featureAdoption = stats?.featureAdoption || [];
 
-  // Calcular métricas financeiras (simuladas)
-  const estimatedMRR = kpis.totalNutritionists * 97; // R$97/mês por nutricionista
+  // Calcular métricas financeiras baseado nos dados do banco
+  const estimatedMRR = kpis.estimated_mrr || 0;
   const averageTicket = kpis.totalNutritionists > 0 ? estimatedMRR / kpis.totalNutritionists : 0;
-  const churnRate = 2.5; // Simulado: 2.5%
+  const churnRate = 2.5; // Todo: Mapear churnRate ativo se disponível no futuro
 
   // Gerar dados de receita dos últimos 6 meses
   const revenueData = Array.from({ length: 6 }, (_, i) => {
@@ -373,7 +345,7 @@ export default function AdminDashboard() {
 
   // Formatar dados de crescimento para o gráfico
   const chartData = growthData.map(item => ({
-    month: item.month || item.period || 'N/A',
+    month: item.name || item.month || 'N/A',
     users: item.users || item.count || 0
   }));
 
@@ -382,6 +354,12 @@ export default function AdminDashboard() {
     name: item.name || item.goal || 'Outros',
     value: item.value || item.count || 0
   }));
+
+  // Formatar dados de adoção para gráfico de barras
+  const adoptionData = featureAdoption.map(item => ({
+    name: item.name || 'Outro',
+    value: item.value || 0
+  })).sort((a,b) => b.value - a.value);
 
   // Função para formatar "há X dias"
   const formatDaysAgo = (dateString) => {
@@ -1077,13 +1055,13 @@ export default function AdminDashboard() {
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-1">
-                                  <span className="text-slate-400">{formatLogTime(log.timestamp)}</span>
+                                  <span className="text-slate-400">{formatLogTime(log.timestamp || log.event_timestamp)}</span>
                                   <Badge variant={getLogBadgeVariant(log.type)} className="text-xs">
                                     {log.type.toUpperCase()}
                                   </Badge>
                                 </div>
                                 <p className="text-slate-300">{log.message}</p>
-                                <p className="text-slate-500 text-[10px] mt-1">Usuário: {log.user}</p>
+                                <p className="text-slate-500 text-[10px] mt-1">Usuário: {log.user_name || log.user || 'Sistema'}</p>
                               </div>
                             </div>
                           ))}
@@ -1131,19 +1109,14 @@ export default function AdminDashboard() {
                   variant="outline"
                   size="lg"
                   className="h-auto p-6 flex flex-col items-start justify-start hover:bg-primary/5 hover:border-primary transition-colors"
-                  onClick={() => {
-                    toast({
-                      title: 'Em breve',
-                      description: 'A funcionalidade de gerenciamento de usuários estará disponível em breve.',
-                    });
-                  }}
+                  onClick={() => navigate('/admin/users')}
                 >
                   <div className="flex items-center gap-3 mb-2">
                     <Users className="w-6 h-6 text-primary" />
                     <span className="text-lg font-semibold">Gerenciar Usuários</span>
                   </div>
                   <p className="text-sm text-muted-foreground text-left">
-                    Visualizar e gerenciar contas de usuários
+                    Visualizar estatísticas e acesso de Nutricionistas
                   </p>
                 </Button>
               </div>
