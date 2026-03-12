@@ -268,6 +268,8 @@ const TabContentClinical = ({ patientId, patientData, modulesStatus = {} }) => {
         );
     };
 
+    const isDiabetic = patient?.preferences?.is_diabetic === true;
+
     return (
         <div className="space-y-6">
             <div>
@@ -277,7 +279,10 @@ const TabContentClinical = ({ patientId, patientData, modulesStatus = {} }) => {
                 </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className={cn(
+                "grid grid-cols-1 gap-4",
+                isDiabetic ? "md:grid-cols-2 lg:grid-cols-3" : "md:grid-cols-2 lg:grid-cols-2"
+            )}>
                 <AnamnesisCard />
                 <LabsCard />
                 <GlycemiaSummaryCard patientId={patientId} patient={patient} />
