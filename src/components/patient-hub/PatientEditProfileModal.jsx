@@ -209,16 +209,21 @@ const PatientEditProfileModal = ({ isOpen, onClose, patientData, onSaveSuccess }
                 preferences: updatedPreferences
             };
 
-            await updatePatientProfile(patientData.id, updatePayload);
+            const { error: updateError } = await updatePatientProfile(patientData.id, updatePayload);
+            
+            if (updateError) {
+                throw updateError;
+            }
 
             if (createEvolution) {
-                await createAnthropometryRecord({
+                const { error: evolutionError } = await createAnthropometryRecord({
                     patient_id: patientData.id,
                     height: updatePayload.height,
                     weight: updatePayload.weight,
                     record_date: new Date().toISOString(),
                     notes: "Registro automático via Edição de Perfil Rápida"
                 });
+                if (evolutionError) throw evolutionError;
             }
 
             toast({ title: 'Sucesso', description: 'Perfil atualizado.' });
@@ -226,7 +231,7 @@ const PatientEditProfileModal = ({ isOpen, onClose, patientData, onSaveSuccess }
             onClose();
         } catch (error) {
             console.error("Erro ao salvar perfil:", error);
-            toast({ title: 'Erro', description: 'Erro ao salvar os dados.', variant: 'destructive' });
+            toast({ title: 'Erro', description: 'Erro ao salvar os dados. Verifique sua conexão ou tente novamente.', variant: 'destructive' });
         } finally {
             setIsSaving(false);
         }
