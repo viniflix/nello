@@ -173,7 +173,7 @@ const TabContentAdherence = ({ patientId, patientData, modulesStatus = {} }) => 
         if (!activeGoal) {
             return (
                 <Card
-                    className="border-dashed border-2 border-[#a9b388] bg-[#fefae0]/30 hover:shadow-md transition-all cursor-pointer h-full"
+                    className="border-dashed border-2 border-[#a9b388] bg-[#fefae0]/30 dark:bg-muted/10 hover:shadow-md transition-all cursor-pointer h-full"
                     onClick={() => navigate(patientRoute(patient, 'goals'))}
                 >
                     <CardContent className="py-8 text-center">
@@ -204,7 +204,7 @@ const TabContentAdherence = ({ patientId, patientData, modulesStatus = {} }) => 
 
         return (
             <Card
-                className="border-l-4 border-l-[#5f6f52] hover:shadow-xl transition-all bg-gradient-to-br from-[#fefae0]/20 to-[#fefae0]/30 cursor-pointer h-full"
+                className="border-l-4 border-l-[#5f6f52] dark:border-l-[#a9b388] hover:shadow-xl transition-all bg-gradient-to-br from-[#fefae0]/20 to-[#fefae0]/30 dark:from-muted/20 dark:to-muted/30 cursor-pointer h-full"
                 onClick={() => navigate(patientRoute(patient, 'goals'))}
             >
                 <CardHeader className="pb-3">
@@ -239,13 +239,13 @@ const TabContentAdherence = ({ patientId, patientData, modulesStatus = {} }) => 
 
                     {/* Estatísticas */}
                     <div className="grid grid-cols-2 gap-2 mb-3">
-                        <div className="bg-[#fefae0] border border-[#a9b388] rounded p-2 text-center">
+                        <div className="bg-[#fefae0] dark:bg-muted/30 border border-[#a9b388] dark:border-[#a9b388]/50 rounded p-2 text-center">
                             <div className="text-lg font-bold text-foreground">
                                 {activeGoal.current_weight?.toFixed(1)}
                             </div>
                             <div className="text-xs text-muted-foreground">Peso Atual</div>
                         </div>
-                        <div className="bg-[#fefae0] border border-[#5f6f52] rounded p-2 text-center">
+                        <div className="bg-[#fefae0] dark:bg-muted/30 border border-[#5f6f52] dark:border-[#a9b388]/50 rounded p-2 text-center">
                             <div className="text-lg font-bold text-[#5f6f52]">
                                 {activeGoal.target_weight?.toFixed(1)}
                             </div>
@@ -364,7 +364,7 @@ const TabContentAdherence = ({ patientId, patientData, modulesStatus = {} }) => 
                             return (
                                 <div
                                     key={idx}
-                                    className="flex flex-col items-center justify-center p-2 rounded-lg bg-amber-50/70 border border-amber-200/80 text-center min-h-[72px]"
+                                    className="flex flex-col items-center justify-center p-2 rounded-lg bg-amber-50/70 dark:bg-muted/30 border border-amber-200/80 dark:border-amber-500/20 text-center min-h-[72px]"
                                 >
                                     <div className="p-1.5 bg-amber-500 rounded-full flex-shrink-0 mb-1">
                                         <Icon className="w-3.5 h-3.5 text-white" />

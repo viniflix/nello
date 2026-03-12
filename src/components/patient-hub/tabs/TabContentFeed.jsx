@@ -72,7 +72,7 @@ const TabContentFeed = ({ patientId, patientSlugOrId, activities, loading, onLoa
 
     const FoodDiaryHistoryCard = () => {
         return (
-            <Card className="border-l-4 border-l-[#b99470] bg-gradient-to-br from-[#fefae0]/30 to-[#f9ebc7]/20">
+            <Card className="border-l-4 border-l-[#b99470] dark:border-l-[#d5b08c] bg-gradient-to-br from-[#fefae0]/30 to-[#f9ebc7]/20 dark:from-muted/20 dark:to-muted/10">
                 <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
                         <CardTitle className="text-base flex items-center gap-2">
@@ -106,7 +106,7 @@ const TabContentFeed = ({ patientId, patientSlugOrId, activities, loading, onLoa
                                 return (
                                     <div
                                         key={meal.id}
-                                        className="flex items-center justify-between p-2 rounded-lg bg-[#fefae0]/50 hover:bg-[#fefae0] transition-colors border border-[#a9b388]/20"
+                                        className="flex items-center justify-between p-2 rounded-lg bg-[#fefae0]/50 dark:bg-muted/30 hover:bg-[#fefae0] dark:hover:bg-muted/50 transition-colors border border-[#a9b388]/20 dark:border-[#a9b388]/10"
                                     >
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center gap-2 mb-1">

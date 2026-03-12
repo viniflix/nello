@@ -125,21 +125,21 @@ const getPriorityLabel = (score) => {
 };
 
 const toneByType = {
-    pending: { border: 'border-l-amber-500', bg: 'bg-white', tag: 'bg-amber-100 text-amber-800' },
-    low_adherence: { border: 'border-l-rose-500', bg: 'bg-white', tag: 'bg-rose-100 text-rose-800' },
-    birthday: { border: 'border-l-violet-500', bg: 'bg-white', tag: 'bg-violet-100 text-violet-800' },
-    payment_pending: { border: 'border-l-emerald-600', bg: 'bg-white', tag: 'bg-emerald-100 text-emerald-800' },
-    appointment_upcoming: { border: 'border-l-sky-500', bg: 'bg-white', tag: 'bg-sky-100 text-sky-800' },
-    meal: { border: 'border-l-orange-500', bg: 'bg-white', tag: 'bg-orange-100 text-orange-800' },
-    anthropometry: { border: 'border-l-emerald-500', bg: 'bg-white', tag: 'bg-emerald-100 text-emerald-800' },
-    anamnesis: { border: 'border-l-indigo-500', bg: 'bg-white', tag: 'bg-indigo-100 text-indigo-800' },
-    meal_plan: { border: 'border-l-cyan-500', bg: 'bg-white', tag: 'bg-cyan-100 text-cyan-800' },
-    prescription: { border: 'border-l-yellow-500', bg: 'bg-white', tag: 'bg-yellow-100 text-yellow-800' },
-    appointment: { border: 'border-l-blue-500', bg: 'bg-white', tag: 'bg-blue-100 text-blue-800' },
-    message: { border: 'border-l-slate-500', bg: 'bg-white', tag: 'bg-slate-100 text-slate-800' },
-    achievement: { border: 'border-l-amber-500', bg: 'bg-white', tag: 'bg-amber-100 text-amber-800' },
-    lab_high_risk: { border: 'border-l-red-500', bg: 'bg-white', tag: 'bg-red-100 text-red-800' },
-    default: { border: 'border-l-muted-foreground/40', bg: 'bg-white', tag: 'bg-muted/60 text-muted-foreground' }
+    pending: { border: 'border-l-amber-500', bg: 'bg-white dark:bg-card', tag: 'bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300' },
+    low_adherence: { border: 'border-l-rose-500', bg: 'bg-white dark:bg-card', tag: 'bg-rose-100 text-rose-800 dark:bg-rose-500/20 dark:text-rose-300' },
+    birthday: { border: 'border-l-violet-500', bg: 'bg-white dark:bg-card', tag: 'bg-violet-100 text-violet-800 dark:bg-violet-500/20 dark:text-violet-300' },
+    payment_pending: { border: 'border-l-emerald-600', bg: 'bg-white dark:bg-card', tag: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300' },
+    appointment_upcoming: { border: 'border-l-sky-500', bg: 'bg-white dark:bg-card', tag: 'bg-sky-100 text-sky-800 dark:bg-sky-500/20 dark:text-sky-300' },
+    meal: { border: 'border-l-orange-500', bg: 'bg-white dark:bg-card', tag: 'bg-orange-100 text-orange-800 dark:bg-orange-500/20 dark:text-orange-300' },
+    anthropometry: { border: 'border-l-emerald-500', bg: 'bg-white dark:bg-card', tag: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300' },
+    anamnesis: { border: 'border-l-indigo-500', bg: 'bg-white dark:bg-card', tag: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-500/20 dark:text-indigo-300' },
+    meal_plan: { border: 'border-l-cyan-500', bg: 'bg-white dark:bg-card', tag: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-500/20 dark:text-cyan-300' },
+    prescription: { border: 'border-l-yellow-500', bg: 'bg-white dark:bg-card', tag: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-500/20 dark:text-yellow-300' },
+    appointment: { border: 'border-l-blue-500', bg: 'bg-white dark:bg-card', tag: 'bg-blue-100 text-blue-800 dark:bg-blue-500/20 dark:text-blue-300' },
+    message: { border: 'border-l-slate-500', bg: 'bg-white dark:bg-card', tag: 'bg-slate-100 text-slate-800 dark:bg-slate-500/20 dark:text-slate-300' },
+    achievement: { border: 'border-l-amber-500', bg: 'bg-white dark:bg-card', tag: 'bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300' },
+    lab_high_risk: { border: 'border-l-red-500', bg: 'bg-white dark:bg-card', tag: 'bg-red-100 text-red-800 dark:bg-red-500/20 dark:text-red-300' },
+    default: { border: 'border-l-muted-foreground/40', bg: 'bg-white dark:bg-card', tag: 'bg-muted/60 text-muted-foreground dark:bg-muted/20 dark:text-muted-foreground' }
 };
 
 const NutritionistActivityFeed = () => {

@@ -83,7 +83,7 @@ const TabContentNutrition = ({ patientId, patientData, modulesStatus = {} }) => 
         if (!activePlan) {
             return (
                 <Card
-                    className="border-dashed border-2 border-[#a9b388] bg-[#fefae0]/30 hover:shadow-lg transition-all cursor-pointer h-full"
+                className="border-dashed border-2 border-[#a9b388] bg-[#fefae0]/30 dark:bg-muted/10 hover:shadow-lg transition-all cursor-pointer h-full"
                     onClick={() => navigate(patientRoute(patient, 'meal-plan'))}
                 >
                     <CardContent className="flex flex-col items-center justify-center py-12 text-center">
@@ -108,7 +108,7 @@ const TabContentNutrition = ({ patientId, patientData, modulesStatus = {} }) => 
 
         return (
             <Card
-                className="border-l-4 border-l-[#5f6f52] hover:shadow-xl transition-all bg-gradient-to-br from-[#fefae0]/20 to-[#fefae0]/30 cursor-pointer h-full"
+                className="border-l-4 border-l-[#5f6f52] dark:border-l-[#a9b388] hover:shadow-xl transition-all bg-gradient-to-br from-[#fefae0]/20 to-[#fefae0]/30 dark:from-muted/20 dark:to-muted/30 cursor-pointer h-full"
                 onClick={() => navigate(patientRoute(patient, 'meal-plan'))}
             >
                 <CardHeader className="pb-3">
@@ -126,7 +126,7 @@ const TabContentNutrition = ({ patientId, patientData, modulesStatus = {} }) => 
 
                 <CardContent>
                     <div className="grid grid-cols-2 gap-2 mb-3">
-                        <div className="text-center p-2 bg-[#fefae0] rounded-lg border border-[#c4661f]">
+                        <div className="text-center p-2 bg-[#fefae0] dark:bg-muted/30 rounded-lg border border-[#c4661f] dark:border-[#c4661f]/50">
                             <Flame className="w-4 h-4 text-[#c4661f] mx-auto mb-0.5" />
                             <div className="text-xl font-bold text-foreground">
                                 {activePlan.daily_calories ? Math.round(activePlan.daily_calories) : 0}
@@ -134,7 +134,7 @@ const TabContentNutrition = ({ patientId, patientData, modulesStatus = {} }) => 
                             <div className="text-xs text-muted-foreground">kcal/dia</div>
                         </div>
 
-                        <div className="text-center p-2 bg-[#fefae0] rounded-lg border border-[#8B3BF2]">
+                        <div className="text-center p-2 bg-[#fefae0] dark:bg-muted/30 rounded-lg border border-[#8B3BF2] dark:border-[#8B3BF2]/50">
                             <div className="text-xs text-[#8B3BF2] font-medium mb-0.5">Proteínas</div>
                             <div className="text-lg font-bold text-[#8B3BF2]">
                                 {activePlan.daily_protein ? Math.round(activePlan.daily_protein) : 0}g
@@ -205,7 +205,7 @@ const TabContentNutrition = ({ patientId, patientData, modulesStatus = {} }) => 
 
         return (
             <Card
-                className="border-l-4 border-l-[#c4661f] hover:shadow-lg transition-all h-full bg-gradient-to-br from-[#fefae0]/20 to-white cursor-pointer"
+                className="border-l-4 border-l-[#c4661f] hover:shadow-lg transition-all h-full bg-gradient-to-br from-[#fefae0]/20 to-white dark:from-muted/20 dark:to-muted/10 cursor-pointer"
                 onClick={() => navigate(patientRoute(patient, 'food-diary'))}
             >
                 <CardHeader className="pb-3">
@@ -222,7 +222,7 @@ const TabContentNutrition = ({ patientId, patientData, modulesStatus = {} }) => 
                     {hasData ? (
                         <>
                             <div className="grid grid-cols-2 gap-3 mb-4">
-                                <div className="text-center p-3 bg-[#fefae0]/50 rounded-lg border border-[#a9b388]/30">
+                                <div className="text-center p-3 bg-[#fefae0]/50 dark:bg-muted/20 rounded-lg border border-[#a9b388]/30 dark:border-[#a9b388]/20">
                                     <div className="flex items-center justify-center gap-1 mb-1">
                                         <TrendingUp className="w-3 h-3 text-[#5f6f52]" />
                                         <span className="text-xs text-muted-foreground">Adesão</span>
@@ -232,7 +232,7 @@ const TabContentNutrition = ({ patientId, patientData, modulesStatus = {} }) => 
                                     </div>
                                 </div>
 
-                                <div className="text-center p-3 bg-[#fefae0]/50 rounded-lg border border-[#a9b388]/30">
+                                <div className="text-center p-3 bg-[#fefae0]/50 dark:bg-muted/20 rounded-lg border border-[#a9b388]/30 dark:border-[#a9b388]/20">
                                     <div className="flex items-center justify-center gap-1 mb-1">
                                         <Activity className="w-3 h-3 text-[#c4661f]" />
                                         <span className="text-xs text-muted-foreground">Sequência</span>
@@ -244,7 +244,7 @@ const TabContentNutrition = ({ patientId, patientData, modulesStatus = {} }) => 
                                 </div>
                             </div>
 
-                            <div className="bg-[#fefae0]/40 rounded-lg p-3 mb-3">
+                            <div className="bg-[#fefae0]/40 dark:bg-muted/20 rounded-lg p-3 mb-3">
                                 <div className="flex items-center justify-between mb-2">
                                     <span className="text-xs text-muted-foreground">Média Calórica</span>
                                     <div className="flex items-center gap-1">

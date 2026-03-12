@@ -103,8 +103,8 @@ const getUrgencyMeta = (appointmentTime) => {
   if (diffHours > 0 && diffHours <= 2) {
     return {
       label: 'Muito próxima',
-      rowClass: 'border-red-300 bg-red-50',
-      badgeClass: 'bg-red-500/15 text-red-700 border-red-300',
+      rowClass: 'border-red-300 bg-red-50 dark:border-red-500/30 dark:bg-red-500/10',
+      badgeClass: 'bg-red-500/15 text-red-700 border-red-300 dark:text-red-400 dark:border-red-500/30',
       dotClass: 'bg-red-600'
     };
   }
@@ -113,8 +113,8 @@ const getUrgencyMeta = (appointmentTime) => {
   if (isToday(apptDate)) {
     return {
       label: 'Hoje',
-      rowClass: 'border-amber-400 bg-amber-50',
-      badgeClass: 'bg-amber-500/15 text-amber-800 border-amber-400',
+      rowClass: 'border-amber-400 bg-amber-50 dark:border-amber-500/30 dark:bg-amber-500/10',
+      badgeClass: 'bg-amber-500/15 text-amber-800 border-amber-400 dark:text-amber-400 dark:border-amber-500/30',
       dotClass: 'bg-amber-600'
     };
   }
@@ -123,8 +123,8 @@ const getUrgencyMeta = (appointmentTime) => {
   if (isTomorrow(apptDate)) {
     return {
       label: 'Amanhã',
-      rowClass: 'border-sky-300 bg-sky-50',
-      badgeClass: 'bg-sky-500/15 text-sky-800 border-sky-400',
+      rowClass: 'border-sky-300 bg-sky-50 dark:border-sky-500/30 dark:bg-sky-500/10',
+      badgeClass: 'bg-sky-500/15 text-sky-800 border-sky-400 dark:text-sky-400 dark:border-sky-500/30',
       dotClass: 'bg-sky-600'
     };
   }
@@ -133,16 +133,16 @@ const getUrgencyMeta = (appointmentTime) => {
   if (isThisWeek(apptDate, { weekStartsOn: 0 })) {
     return {
       label: 'Em breve',
-      rowClass: 'border-violet-300 bg-violet-50',
-      badgeClass: 'bg-violet-500/15 text-violet-800 border-violet-400',
+      rowClass: 'border-violet-300 bg-violet-50 dark:border-violet-500/30 dark:bg-violet-500/10',
+      badgeClass: 'bg-violet-500/15 text-violet-800 border-violet-400 dark:text-violet-400 dark:border-violet-500/30',
       dotClass: 'bg-violet-600'
     };
   }
 
   return {
     label: 'Programada',
-    rowClass: 'border-emerald-300 bg-emerald-50',
-    badgeClass: 'bg-emerald-500/15 text-emerald-800 border-emerald-400',
+    rowClass: 'border-emerald-300 bg-emerald-50 dark:border-emerald-500/30 dark:bg-emerald-500/10',
+    badgeClass: 'bg-emerald-500/15 text-emerald-800 border-emerald-400 dark:text-emerald-400 dark:border-emerald-500/30',
     dotClass: 'bg-emerald-600'
   };
 };

@@ -1,5 +1,5 @@
-import { supabase } from './client';
-import { logSupabaseError } from '../utils/logger';
+import { supabase } from '@/lib/customSupabaseClient';
+import { logSupabaseError } from '@/lib/supabase/query-helpers';
 
 /**
  * Busca o histórico de glicemia do paciente

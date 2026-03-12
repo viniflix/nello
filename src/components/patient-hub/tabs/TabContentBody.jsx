@@ -40,21 +40,21 @@ const TabContentBody = ({ patientId, patientData, modulesStatus = {}, latestMetr
     const getIMCClassification = (bmi) => {
         const bmiValue = parseFloat(bmi);
         if (bmiValue < 16) {
-            return { label: 'Magreza Grave', color: 'bg-red-700/10 text-red-800 border-red-700', severity: 'critical' };
+            return { label: 'Magreza Grave', color: 'bg-red-700/10 text-red-800 border-red-700 dark:bg-red-500/20 dark:text-red-400 dark:border-red-500/30', severity: 'critical' };
         } else if (bmiValue >= 16 && bmiValue < 17) {
-            return { label: 'Magreza Moderada', color: 'bg-orange-600/10 text-orange-800 border-orange-600', severity: 'high' };
+            return { label: 'Magreza Moderada', color: 'bg-orange-600/10 text-orange-800 border-orange-600 dark:bg-orange-500/20 dark:text-orange-400 dark:border-orange-500/30', severity: 'high' };
         } else if (bmiValue >= 17 && bmiValue < 18.5) {
-            return { label: 'Magreza Leve', color: 'bg-yellow-500/10 text-yellow-800 border-yellow-500', severity: 'moderate' };
+            return { label: 'Magreza Leve', color: 'bg-yellow-500/10 text-yellow-800 border-yellow-500 dark:bg-yellow-500/20 dark:text-yellow-400 dark:border-yellow-500/30', severity: 'moderate' };
         } else if (bmiValue >= 18.5 && bmiValue < 25) {
-            return { label: 'Peso Normal', color: 'bg-[#5f6f52]/10 text-[#5f6f52] border-[#5f6f52]', severity: 'normal' };
+            return { label: 'Peso Normal', color: 'bg-[#5f6f52]/10 text-[#5f6f52] border-[#5f6f52] dark:text-[#a9b388]', severity: 'normal' };
         } else if (bmiValue >= 25 && bmiValue < 30) {
-            return { label: 'Sobrepeso', color: 'bg-yellow-500/10 text-yellow-800 border-yellow-500', severity: 'moderate' };
+            return { label: 'Sobrepeso', color: 'bg-yellow-500/10 text-yellow-800 border-yellow-500 dark:bg-yellow-500/20 dark:text-yellow-400 dark:border-yellow-500/30', severity: 'moderate' };
         } else if (bmiValue >= 30 && bmiValue < 35) {
-            return { label: 'Obesidade Grau I', color: 'bg-orange-600/10 text-orange-800 border-orange-600', severity: 'high' };
+            return { label: 'Obesidade Grau I', color: 'bg-orange-600/10 text-orange-800 border-orange-600 dark:bg-orange-500/20 dark:text-orange-400 dark:border-orange-500/30', severity: 'high' };
         } else if (bmiValue >= 35 && bmiValue < 40) {
-            return { label: 'Obesidade Grau II', color: 'bg-red-600/10 text-red-800 border-red-600', severity: 'critical' };
+            return { label: 'Obesidade Grau II', color: 'bg-red-600/10 text-red-800 border-red-600 dark:bg-red-500/20 dark:text-red-400 dark:border-red-500/30', severity: 'critical' };
         } else {
-            return { label: 'Obesidade Grau III', color: 'bg-red-700/10 text-red-900 border-red-700', severity: 'critical' };
+            return { label: 'Obesidade Grau III', color: 'bg-red-700/10 text-red-900 border-red-700 dark:bg-red-500/20 dark:text-red-400 dark:border-red-500/30', severity: 'critical' };
         }
     };
 
@@ -87,7 +87,7 @@ const TabContentBody = ({ patientId, patientData, modulesStatus = {}, latestMetr
 
         return (
             <Card
-                className="border-l-4 border-l-[#5f6f52] hover:shadow-xl transition-all bg-gradient-to-br from-[#fefae0]/20 to-[#fefae0]/30 cursor-pointer h-full"
+                className="border-l-4 border-l-[#5f6f52] dark:border-l-[#a9b388] hover:shadow-xl transition-all bg-gradient-to-br from-[#fefae0]/20 to-[#fefae0]/30 dark:from-muted/20 dark:to-muted/30 cursor-pointer h-full"
                 onClick={() => navigate(patientRoute(patient, 'anthropometry'))}
             >
                 <CardHeader className="pb-3">
@@ -131,7 +131,7 @@ const TabContentBody = ({ patientId, patientData, modulesStatus = {}, latestMetr
                         {anthropometryData.bmi && (() => {
                             const bmiClass = getIMCClassification(anthropometryData.bmi);
                             return (
-                                <div className="bg-[#fefae0] border border-[#a9b388] rounded-lg p-4 text-center flex flex-col justify-center">
+                                <div className="bg-[#fefae0] dark:bg-muted/30 border border-[#a9b388] dark:border-[#a9b388]/50 rounded-lg p-4 text-center flex flex-col justify-center">
                                     <div className="text-xs text-muted-foreground mb-1">IMC</div>
                                     <div className="text-3xl font-bold text-foreground mb-2">
                                         {anthropometryData.bmi}
@@ -146,7 +146,7 @@ const TabContentBody = ({ patientId, patientData, modulesStatus = {}, latestMetr
 
                     {/* Altura */}
                     {anthropometryData.height && (
-                        <div className="bg-[#f9ebc7] border border-[#a9b388] rounded-lg p-3 text-center mb-3">
+                        <div className="bg-[#f9ebc7] dark:bg-muted/30 border border-[#a9b388] dark:border-[#a9b388]/50 rounded-lg p-3 text-center mb-3">
                             <div className="flex items-center justify-center gap-2">
                                 <Ruler className="w-4 h-4 text-muted-foreground" />
                                 <div className="text-xl font-bold text-foreground">
@@ -165,7 +165,7 @@ const TabContentBody = ({ patientId, patientData, modulesStatus = {}, latestMetr
                             <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-7 text-[#5f6f52] hover:bg-[#5f6f52]/10"
+                                className="h-7 text-[#5f6f52] dark:text-[#a9b388] hover:bg-[#5f6f52]/10 dark:hover:bg-[#a9b388]/10"
                                 onClick={() => navigate(patientRoute(patient, 'anthropometry'))}
                             >
                                 Abrir <ArrowRight className="w-3 h-3 ml-1" />
@@ -255,7 +255,7 @@ const TabContentBody = ({ patientId, patientData, modulesStatus = {}, latestMetr
 
         return (
             <Card
-                className="border-l-4 border-l-[#b99470] hover:shadow-xl transition-all bg-gradient-to-br from-[#fefae0]/20 to-[#fefae0]/10 cursor-pointer h-full"
+                className="border-l-4 border-l-[#b99470] dark:border-l-[#d5b08c] hover:shadow-xl transition-all bg-gradient-to-br from-[#fefae0]/20 to-[#fefae0]/10 dark:from-muted/20 dark:to-muted/10 cursor-pointer h-full"
                 onClick={() => navigate(patientRoute(patient, 'photos'))}
             >
                 <CardHeader className="pb-2">
@@ -318,7 +318,7 @@ const TabContentBody = ({ patientId, patientData, modulesStatus = {}, latestMetr
                     <Button
                         variant="ghost"
                         size="sm"
-                        className="w-full gap-1 text-[#b99470] hover:bg-[#b99470]/10"
+                        className="w-full gap-1 text-[#b99470] dark:text-[#d5b08c] hover:bg-[#b99470]/10 dark:hover:bg-[#d5b08c]/10"
                         onClick={(e) => { e.stopPropagation(); navigate(patientRoute(patient, 'photos')); }}
                     >
                         Ver timeline

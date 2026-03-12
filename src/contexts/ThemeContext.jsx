@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 
 const ThemeContext = createContext();
 
-export const ThemeProvider = ({ children, defaultTheme = 'system', storageKey = 'hipozero-ui-theme' }) => {
+export const ThemeProvider = ({ children, defaultTheme = 'light', storageKey = 'hipozero-ui-theme' }) => {
   const [theme, setTheme] = useState(() => {
     try {
       return localStorage.getItem(storageKey) || defaultTheme;

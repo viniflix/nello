@@ -104,14 +104,14 @@ const TabContentClinical = ({ patientId, patientData, modulesStatus = {} }) => {
         }
 
         const statusConfig = {
-            draft: { label: 'Rascunho', color: 'bg-yellow-100 text-yellow-800 border-yellow-300' },
-            completed: { label: 'Completa', color: 'bg-[#a9b388]/20 text-[#5f6f52] border-[#5f6f52]' }
+            draft: { label: 'Rascunho', color: 'bg-yellow-100 text-yellow-800 border-yellow-300 dark:bg-yellow-500/20 dark:text-yellow-300 dark:border-yellow-500/30' },
+            completed: { label: 'Completa', color: 'bg-[#a9b388]/20 text-[#5f6f52] border-[#5f6f52] dark:text-[#a9b388]' }
         };
         const config = statusConfig[latestAnamnesis.status] || statusConfig.draft;
 
         return (
             <Card
-                className="border-l-4 border-l-[#5f6f52] hover:shadow-xl transition-all cursor-pointer h-full"
+                className="border-l-4 border-l-[#5f6f52] dark:border-l-[#a9b388] hover:shadow-xl transition-all cursor-pointer h-full"
                 onClick={() => navigate(patientRoute(patient, 'anamnese'))}
             >
                 <CardHeader className="pb-3">
@@ -125,8 +125,8 @@ const TabContentClinical = ({ patientId, patientData, modulesStatus = {} }) => {
                 </CardHeader>
 
                 <CardContent>
-                    <div className="bg-[#fefae0] border border-[#a9b388] rounded-lg p-3 mb-3">
-                        <div className="text-xs font-semibold text-[#5f6f52] mb-1 uppercase tracking-wide">
+                    <div className="bg-[#fefae0] dark:bg-muted/30 border border-[#a9b388] dark:border-[#a9b388]/50 rounded-lg p-3 mb-3">
+                        <div className="text-xs font-semibold text-[#5f6f52] dark:text-[#a9b388] mb-1 uppercase tracking-wide">
                             📋 Documento
                         </div>
                         <p className="text-sm text-foreground">
@@ -146,7 +146,7 @@ const TabContentClinical = ({ patientId, patientData, modulesStatus = {} }) => {
                         <Button
                             variant="ghost"
                             size="sm"
-                            className="h-7 text-[#5f6f52] hover:bg-[#5f6f52]/10"
+                            className="h-7 text-[#5f6f52] dark:text-[#a9b388] hover:bg-[#5f6f52]/10 dark:hover:bg-[#a9b388]/10"
                             onClick={() => navigate(patientRoute(patient, 'anamnesis'))}
                         >
                             Abrir <ArrowRight className="w-3 h-3 ml-1" />
