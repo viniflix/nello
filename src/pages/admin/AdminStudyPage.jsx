@@ -242,7 +242,7 @@ function ModuleUsageBlock({ usage, errors, loading }) {
 
 // ── PostHog panel ──────────────────────────────────────────────────────────
 function PostHogPanel() {
-  const hasKey = !!import.meta.env.VITE_POSTHOG_KEY;
+  const hasKey = !!import.meta.env.VITE_PUBLIC_POSTHOG_KEY;
 
   return (
     <div className="space-y-6">
@@ -258,7 +258,7 @@ function PostHogPanel() {
             <p className="text-xs text-muted-foreground mt-1">
               {hasKey
                 ? 'Eventos de comportamento estão sendo capturados. Acesse o dashboard para análises detalhadas.'
-                : 'Adicione VITE_POSTHOG_KEY ao arquivo .env para ativar o tracking comportamental (gratuito até 1M eventos/mês).'}
+                : 'Adicione VITE_PUBLIC_POSTHOG_KEY ao arquivo .env para ativar o tracking comportamental (gratuito até 1M eventos/mês).'}
             </p>
           </div>
         </div>
@@ -293,8 +293,8 @@ function PostHogPanel() {
             </ol>
             <div className="bg-muted rounded-md p-3 font-mono text-xs border border-border">
               <span className="text-muted-foreground"># .env</span><br />
-              <span className="text-green-600">VITE_POSTHOG_KEY</span>=phc_sua_chave_aqui<br />
-              <span className="text-green-600">VITE_POSTHOG_HOST</span>=https://us.i.posthog.com
+              <span className="text-green-600">VITE_PUBLIC_POSTHOG_KEY</span>=phc_sua_chave_aqui<br />
+              <span className="text-green-600">VITE_PUBLIC_POSTHOG_HOST</span>=https://us.i.posthog.com
             </div>
           </CardContent>
         </Card>
