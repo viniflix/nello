@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { Loader2 } from 'lucide-react';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useNavigate } from 'react-router-dom';
+import { identifyUser, resetUser } from '@/analytics/posthog';
 
 const AuthLoadingFallback = () => (
   <div className="flex min-h-screen items-center justify-center bg-background">
@@ -28,17 +29,13 @@ export function AuthProvider({ children }) {
   const navigate = useNavigate();
 
   const signOut = useCallback(async () => {
-    // Limpar estado local
     setUser(null);
-
-    // Fazer logout com Supabase (limpa automaticamente o storage)
+    resetUser(); // PostHog: limpa identidade ao sair
     try {
       await supabase.auth.signOut();
     } catch (error) {
       console.error('Erro ao fazer logout:', error);
     }
-
-    // Redirecionar para login
     navigate('/login', { replace: true });
   }, [navigate]);
 
@@ -236,6 +233,7 @@ export function AuthProvider({ children }) {
       return;
     }
     setUser({ ...session.user, profile });
+    identifyUser({ ...session.user, profile }); // PostHog: identifica usuário
     // Auto-redirect only on SIGNED_IN (not on INITIAL_SESSION, TOKEN_REFRESHED)
     if (event === 'SIGNED_IN') {
       const currentPath = window.location.pathname;

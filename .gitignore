@@ -41,5 +41,6 @@ dist-ssr/
 
 # Internal App Folders
 /supabase
+.env.example
 /[Dd][Oo][Cc][Ss]/
 /AGENTS.md

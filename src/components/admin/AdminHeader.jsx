@@ -17,6 +17,7 @@ const ADMIN_NAV_LINKS = [
   { name: 'Dashboard', path: '/admin/dashboard' },
   { name: 'Usuários', path: '/admin/users' },
   { name: 'Financeiro', path: '/admin/financial' },
+  { name: 'Estudo', path: '/admin/study' },
 ];
 
 export default function AdminHeader() {

@@ -8,6 +8,7 @@ const AdminDashboard = lazy(() => import('@/pages/admin/AdminDashboard.jsx'));
 const AdminUsersPage = lazy(() => import('@/pages/admin/AdminUsersPage.jsx'));
 const AdminFinancialPage = lazy(() => import('@/pages/admin/AdminFinancialPage.jsx'));
 const AdminNutritionistDetailPage = lazy(() => import('@/pages/admin/AdminNutritionistDetailPage.jsx'));
+const AdminStudyPage = lazy(() => import('@/pages/admin/AdminStudyPage.jsx'));
 
 export const adminRoutes = (
     <>
@@ -26,6 +27,7 @@ export const adminRoutes = (
             <Route path="/admin/users" element={<AdminUsersPage />} />
             <Route path="/admin/users/:id" element={<AdminNutritionistDetailPage />} />
             <Route path="/admin/financial" element={<AdminFinancialPage />} />
+            <Route path="/admin/study" element={<AdminStudyPage />} />
         </Route>
     </>
 );
