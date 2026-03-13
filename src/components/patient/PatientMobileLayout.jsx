@@ -220,6 +220,18 @@ export default function PatientMobileLayout() {
         </div>
       </nav>
 
+      {/* BOTÃO FLUTUANTE ADMIN (Mobile apenas, apenas para admins pacientes) */}
+      {user?.profile?.is_admin === true && (
+        <button
+          onClick={() => navigate('/admin/dashboard')}
+          className="md:hidden fixed bottom-20 right-4 z-50 flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white rounded-full px-4 py-2.5 shadow-lg shadow-indigo-500/40 transition-all duration-200"
+          aria-label="Acessar Painel Admin"
+        >
+          <Shield className="w-4 h-4" />
+          <span className="text-xs font-semibold">Admin</span>
+        </button>
+      )}
+
       {/* PAINEL DE NOTIFICAÇÕES */}
       <NotificationsPanel isOpen={showNotifications} setIsOpen={setShowNotifications} />
 

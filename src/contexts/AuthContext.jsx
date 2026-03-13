@@ -110,7 +110,7 @@ export function AuthProvider({ children }) {
           }
 
           if (existingProfile) {
-            const normalized = { ...existingProfile, name: existingProfile.full_name ?? existingProfile.name, user_type: existingProfile.role ?? existingProfile.user_type, is_admin: existingProfile.role === 'super_admin' };
+            const normalized = { ...existingProfile, name: existingProfile.full_name ?? existingProfile.name, user_type: existingProfile.user_type ?? existingProfile.role, is_admin: existingProfile.is_admin === true };
             return normalized;
           }
 
@@ -128,7 +128,7 @@ export function AuthProvider({ children }) {
         return null;
       }
 
-      const normalizedNew = { ...newProfile, name: newProfile.full_name ?? newProfile.name, user_type: newProfile.role ?? newProfile.user_type, is_admin: newProfile.role === 'super_admin' };
+      const normalizedNew = { ...newProfile, name: newProfile.full_name ?? newProfile.name, user_type: newProfile.user_type ?? newProfile.role, is_admin: newProfile.is_admin === true };
       return normalizedNew;
     } catch (error) {
       // Check if it's a conflict error in the catch block too
@@ -162,7 +162,7 @@ export function AuthProvider({ children }) {
         }
 
         if (existingProfile) {
-          const normalized = { ...existingProfile, name: existingProfile.full_name ?? existingProfile.name, user_type: existingProfile.role ?? existingProfile.user_type, is_admin: existingProfile.role === 'super_admin' };
+          const normalized = { ...existingProfile, name: existingProfile.full_name ?? existingProfile.name, user_type: existingProfile.user_type ?? existingProfile.role, is_admin: existingProfile.is_admin === true };
           return normalized;
         }
 
@@ -194,8 +194,8 @@ export function AuthProvider({ children }) {
       const normalized = {
         ...profile,
         name: profile.full_name ?? profile.name,
-        user_type: profile.role ?? profile.user_type,
-        is_admin: profile.role === 'super_admin',
+        user_type: profile.user_type ?? profile.role,
+        is_admin: profile.is_admin === true,
       };
       if (process.env.NODE_ENV === 'development') {
         console.log('[AuthContext] Profile loaded:', { id: normalized.id, email: normalized.email, user_type: normalized.user_type, is_admin: normalized.is_admin });
