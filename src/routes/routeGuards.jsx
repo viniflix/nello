@@ -43,10 +43,8 @@ export const ProtectedRoute = ({ children, userType, requireAdmin = false, allow
 
   const isAdmin = user.profile.is_admin === true;
 
-  // CRITICAL: If user is admin, allow access to ANY route (God Mode)
-  // The AdminModeContext will handle the visual masking
+  // Admin tem acesso a qualquer rota
   if (isAdmin) {
-    console.log('[ProtectedRoute] Admin access granted, bypassing user_type check');
     return children;
   }
 

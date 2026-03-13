@@ -6,6 +6,8 @@ import AdminLayout from '@/components/admin/AdminLayout.jsx';
 // Lazy load das páginas admin
 const AdminDashboard = lazy(() => import('@/pages/admin/AdminDashboard.jsx'));
 const AdminUsersPage = lazy(() => import('@/pages/admin/AdminUsersPage.jsx'));
+const AdminFinancialPage = lazy(() => import('@/pages/admin/AdminFinancialPage.jsx'));
+const AdminNutritionistDetailPage = lazy(() => import('@/pages/admin/AdminNutritionistDetailPage.jsx'));
 
 export const adminRoutes = (
     <>
@@ -20,15 +22,10 @@ export const adminRoutes = (
                 </ProtectedRoute>
             }
         >
-            <Route 
-                path="/admin/dashboard" 
-                element={<AdminDashboard />} 
-            />
-            <Route 
-                path="/admin/users" 
-                element={<AdminUsersPage />} 
-            />
+            <Route path="/admin/dashboard" element={<AdminDashboard />} />
+            <Route path="/admin/users" element={<AdminUsersPage />} />
+            <Route path="/admin/users/:id" element={<AdminNutritionistDetailPage />} />
+            <Route path="/admin/financial" element={<AdminFinancialPage />} />
         </Route>
     </>
 );
-

@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { LogOut, User, Menu, Bell, Check, Trash2, Shield } from 'lucide-react';
-import { useAdminMode } from '@/contexts/AdminModeContext';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -32,10 +31,6 @@ const getNutritionistLinks = () => {
   ];
 };
 
-// Admin navigation links (removed - access only via Control Bar)
-const getAdminLinks = () => {
-  return [];
-};
 
 const getMessageSenderId = (notification) => {
   const fromId = notification?.content?.from_id;
@@ -207,36 +202,14 @@ const DashboardHeader = ({ user, logout }) => {
   const [notifications, setNotifications] = useState([]);
   const [senderProfiles, setSenderProfiles] = useState({});
   const [loadingNotifications, setLoadingNotifications] = useState(false);
-  const { viewMode, isAdmin } = useAdminMode();
 
   if (!user) return null;
 
   const initials = (user.profile?.name || 'U').substring(0, 2).toUpperCase();
-  
-  // Determine which links to show based on viewMode (for admins) or user_type (for regular users)
-  let navigationLinks = [];
-  let adminLinks = [];
-  
-  if (isAdmin && viewMode) {
-    // Admin in God Mode: show links based on viewMode
-    if (viewMode === 'admin') {
-      adminLinks = getAdminLinks();
-    } else if (viewMode === 'nutritionist') {
-      navigationLinks = getNutritionistLinks();
-      // Also show admin links if admin wants to access admin features
-      adminLinks = getAdminLinks();
-    }
-    // If viewMode === 'patient', don't show nutritionist links (patient uses different layout)
-  } else {
-    // Regular user: show links based on user_type
-    if (user.profile?.user_type === 'nutritionist') {
-      navigationLinks = getNutritionistLinks();
-      if (isAdmin) {
-        adminLinks = getAdminLinks();
-      }
-    }
-  }
-  const shouldShowNotifications = user.profile?.user_type === 'nutritionist' || viewMode === 'nutritionist';
+
+  const navigationLinks = user.profile?.user_type === 'nutritionist' ? getNutritionistLinks() : [];
+  const isAdmin = user.profile?.is_admin === true;
+  const shouldShowNotifications = user.profile?.user_type === 'nutritionist';
   const unreadCount = notifications.filter((item) => !item.is_read).length;
 
   const fetchNotifications = useCallback(async () => {
