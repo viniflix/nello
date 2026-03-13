@@ -1,36 +1,17 @@
 /**
  * PostHog Analytics — HipoZero
- * Tracking de comportamento de uso para pesquisa acadêmica (TCC Nutrição)
+ * Tracking de comportamento para TCC em Nutrição
+ * Usa posthog-js direto para funções utilitárias (identify, reset, capture)
  */
 import posthog from 'posthog-js';
 
-const POSTHOG_KEY = import.meta.env.VITE_POSTHOG_KEY;
-const POSTHOG_HOST = import.meta.env.VITE_POSTHOG_HOST || 'https://us.i.posthog.com';
-
-export function initPostHog() {
-  if (!POSTHOG_KEY) {
-    console.warn('[PostHog] VITE_POSTHOG_KEY não configurado — analytics desativado.');
-    return;
-  }
-
-  posthog.init(POSTHOG_KEY, {
-    api_host: POSTHOG_HOST,
-    person_profiles: 'identified_only', // privacy-first
-    capture_pageview: true, // auto-track page views
-    capture_pageleave: true,
-    autocapture: false, // manual tracking for precision
-    disable_session_recording: false,
-    loaded: (ph) => {
-      if (import.meta.env.DEV) {
-        console.info('[PostHog] Inicializado em modo DEV');
-      }
-    },
-  });
-}
+// Nomes corretos para Vite + PostHog docs oficiais
+export const POSTHOG_KEY = import.meta.env.VITE_PUBLIC_POSTHOG_KEY;
+export const POSTHOG_HOST = import.meta.env.VITE_PUBLIC_POSTHOG_HOST || 'https://us.i.posthog.com';
 
 /**
- * Identifica o usuário no PostHog com propriedades seguras (sem PII sensível)
- * @param {object} user - Objeto do usuário autenticado
+ * Identifica o usuário no PostHog (chamado após login)
+ * Usa apenas propriedades não-sensíveis (sem nome, email, CPF)
  */
 export function identifyUser(user) {
   if (!POSTHOG_KEY || !user?.id) return;
@@ -38,14 +19,14 @@ export function identifyUser(user) {
   posthog.identify(user.id, {
     user_type: user.profile?.user_type,
     is_admin: user.profile?.is_admin ?? false,
-    has_crn: !!user.profile?.crn,          // nutricionista ou não (sem dado real)
+    has_crn: !!user.profile?.crn,
     patient_category: user.profile?.patient_category,
     signup_date: user.profile?.created_at,
   });
 }
 
 /**
- * Reseta a identidade (logout)
+ * Reseta identidade no logout
  */
 export function resetUser() {
   if (!POSTHOG_KEY) return;
@@ -53,53 +34,33 @@ export function resetUser() {
 }
 
 /**
- * Captura um evento customizado com propriedades opcionais
+ * Captura evento customizado
  */
 export function track(event, properties = {}) {
   if (!POSTHOG_KEY) return;
   posthog.capture(event, { ...properties, platform: 'hipozero' });
 }
 
-// ── Eventos de alto valor para o TCC ────────────────────────────────────────
-
+// ── Catálogo de eventos para o TCC ─────────────────────────────────────────
 export const Events = {
-  // Diário alimentar
   MEAL_LOGGED:                'meal_logged',
   MEAL_EDITED:                'meal_edited',
   MEAL_DELETED:               'meal_deleted',
-
-  // Anamnese
   ANAMNESIS_STARTED:          'anamnesis_started',
   ANAMNESIS_COMPLETED:        'anamnesis_completed',
-
-  // Metas
   GOAL_CREATED:               'goal_created',
   GOAL_UPDATED:               'goal_updated',
   GOAL_COMPLETED:             'goal_completed',
-
-  // Consultas
   APPOINTMENT_SCHEDULED:      'appointment_scheduled',
   APPOINTMENT_COMPLETED:      'appointment_completed',
   APPOINTMENT_CANCELLED:      'appointment_cancelled',
-
-  // Plano alimentar
   MEAL_PLAN_CREATED:          'meal_plan_created',
   MEAL_PLAN_VIEWED:           'meal_plan_viewed',
-
-  // Antropometria
   GROWTH_RECORD_ADDED:        'growth_record_added',
   GROWTH_RECORD_VIEWED:       'growth_record_viewed',
-
-  // Chat
   CHAT_MESSAGE_SENT:          'chat_message_sent',
-
-  // Gamificação
   ACHIEVEMENT_EARNED:         'achievement_earned',
-
-  // Cálculo energético
   ENERGY_CALC_PERFORMED:      'energy_calc_performed',
-
-  // Admin / TCC
   STUDY_AREA_VIEWED:          'study_area_viewed',
 };
 
