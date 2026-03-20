@@ -49,12 +49,12 @@ export function AuthProvider({ children }) {
       console.error('Invalid user_type in metadata:', userType, 'Defaulting to "patient"');
     }
     
-    // Extract required fields from metadata (DB usa full_name e role)
+    // Extract required fields from metadata (DB usa name e user_type)
     const profileData = {
       id: sessionUser.id,
       email: sessionUser.email,
-      full_name: metadata.full_name || metadata.name || metadata.display_name || 'Usuário',
-      role: ['patient', 'nutritionist'].includes(userType) ? userType : 'patient',
+      name: metadata.full_name || metadata.name || metadata.display_name || 'Usuário',
+      user_type: ['patient', 'nutritionist'].includes(userType) ? userType : 'patient',
       avatar_url: metadata.avatar_url || null,
     };
 
@@ -120,7 +120,7 @@ export function AuthProvider({ children }) {
           message: insertError.message,
           details: insertError.details,
           status: insertError.status,
-          profileData: { id: profileData.id, full_name: profileData.full_name, role: profileData.role, email: profileData.email },
+          profileData: { id: profileData.id, name: profileData.name, user_type: profileData.user_type, email: profileData.email },
         });
         return null;
       }
@@ -171,7 +171,7 @@ export function AuthProvider({ children }) {
         message: error.message,
         code: error.code,
         status: error.status,
-        profileData: { id: profileData.id, full_name: profileData.full_name, role: profileData.role },
+        profileData: { id: profileData.id, name: profileData.name, user_type: profileData.user_type },
       });
       return null;
     }
