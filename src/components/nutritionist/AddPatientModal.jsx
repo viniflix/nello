@@ -116,12 +116,12 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded }) => {
             toast({ title: "Erro", description: "Você não está logado.", variant: "destructive" });
             return;
         }
-        if (!formData.name || !formData.email) {
-            toast({ title: "Campos obrigatórios", description: "Nome e Email são obrigatórios.", variant: "destructive" });
-            setStep("1"); 
+        if (!formData.birth_date) {
+            toast({ title: "Campo obrigatório", description: "Data de Nascimento é obrigatória.", variant: "destructive" });
+            setStep("1");
             return;
         }
-        
+
         setLoading(true);
 
         const addressData = formData.cep ? {
@@ -132,22 +132,25 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded }) => {
 
         const metadata = {
             name: formData.name, user_type: 'patient', nutritionist_id: user.id, 
-            birth_date: formData.birth_date ? format(formData.birth_date, 'yyyy-MM-dd') : null,
+            birth_date: format(formData.birth_date, 'yyyy-MM-dd'),
             gender: formData.gender, phone: formData.phone, cpf: formData.cpf,
             occupation: formData.occupation, civil_status: formData.civil_status,
-            observations: formData.observations 
+            observations: formData.observations,
+            needs_password_reset: true
         };
 
         if (addressData) {
             metadata.address = addressData;
         }
         
-        const redirectTo = `${window.location.origin}/update-password`;
+        const redirectTo = `${window.location.origin}/patient`;
+        const defaultPassword = format(formData.birth_date, 'ddMMyy');
 
         const body = {
             email: formData.email,
             metadata: metadata,
-            redirectTo: redirectTo
+            redirectTo: redirectTo,
+            defaultPassword: defaultPassword
         };
 
         try {
@@ -225,7 +228,9 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded }) => {
                             
                             {/* --- INÍCIO DO BLOCO JSX DA DATA (ALTERADO) --- */}
                             <div className="space-y-2">
-                                <Label htmlFor="birth_date" className="font-semibold">Data de Nascimento</Label>
+                                <Label htmlFor="birth_date" className="font-semibold">
+                                     Data de Nascimento <span className="text-destructive font-normal">(Obrigatório)</span>
+                                </Label>
                                 <div className="flex w-full space-x-2">
                                     {/* 1. O Input para digitar */}
                                     <div className="flex-grow">
@@ -241,6 +246,9 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded }) => {
                                         </IconInputWrapper>
                                     </div>
                                 </div>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  A senha inicial do paciente será a data de nascimento no formato DDMMAA (Ex: 07/08/2001 &rarr; 070801).
+                                </p>
                             </div>
                             {/* --- FIM DO BLOCO JSX DA DATA --- */}
 

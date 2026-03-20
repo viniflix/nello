@@ -2,6 +2,7 @@ import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import ForcePasswordUpdate from '@/components/patient/ForcePasswordUpdate';
 
 // Fallback de carregamento para Suspense
 export const PageLoadingFallback = () => (
@@ -58,6 +59,11 @@ export const ProtectedRoute = ({ children, userType, requireAdmin = false, allow
   if (userType && user.profile.user_type !== userType) {
     const correctDashboard = user.profile.user_type === 'nutritionist' ? '/nutritionist' : '/patient';
     return <Navigate to={correctDashboard} replace />;
+  }
+
+  // Interceptador para paciente que não atualizou a senha ainda
+  if (user.profile.user_type === 'patient' && user.profile.needs_password_reset === true) {
+    return <ForcePasswordUpdate />;
   }
 
   return children;

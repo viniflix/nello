@@ -1,7 +1,6 @@
 import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { Home, BookMarked, LineChart, MessagesSquare, User, Bell, LogOut, Shield } from 'lucide-react';
 import { useChat } from '@/contexts/ChatContext';
-import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import NotificationsPanel from '@/components/NotificationsPanel';
 import { supabase } from '@/lib/customSupabaseClient';

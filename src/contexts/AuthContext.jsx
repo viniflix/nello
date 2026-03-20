@@ -56,6 +56,7 @@ export function AuthProvider({ children }) {
       name: metadata.full_name || metadata.name || metadata.display_name || 'Usuário',
       user_type: ['patient', 'nutritionist'].includes(userType) ? userType : 'patient',
       avatar_url: metadata.avatar_url || null,
+      needs_password_reset: metadata.needs_password_reset === true,
     };
 
     console.log('Attempting self-healing profile creation with data:', {
