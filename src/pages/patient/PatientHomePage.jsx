@@ -13,6 +13,7 @@ import PatientMetricsWidget from '@/components/patient/PatientMetricsWidget';
 import DailyAdherenceCard from '@/components/patient/DailyAdherenceCard';
 import RecentAchievementsWidget from '@/components/patient/RecentAchievementsWidget';
 import NotificationsPanel from '@/components/NotificationsPanel';
+import PatientPendingCheckinsWidget from '@/components/patient/PatientPendingCheckinsWidget';
 import { useNotifications } from '@/hooks/useNotifications';
 
 /**
@@ -193,6 +194,9 @@ export default function PatientHomePage() {
             </Card>
           </motion.div>
         )}
+
+        {/* 0. Widget de Check-ins Pendentes (TOP PRIORITY ABOVE MEALS) */}
+        <PatientPendingCheckinsWidget />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Coluna Principal */}

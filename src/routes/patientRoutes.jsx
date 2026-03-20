@@ -14,6 +14,7 @@ const AddMealPage = lazy(() => import('@/pages/patient/AddMealPage.jsx'));
 const AddFoodPage = lazy(() => import('@/pages/patient/AddFoodPage.jsx'));
 const ChatPage = lazy(() => import('@/pages/shared/ChatPage.jsx'));
 const PatientInvitesPage = lazy(() => import('@/pages/patient/PatientInvitesPage.jsx'));
+const CheckinResponsePage = lazy(() => import('@/pages/patient/CheckinResponsePage.jsx'));
 
 export const patientRoutes = (
     <>
@@ -32,6 +33,7 @@ export const patientRoutes = (
         {/* Rotas do Paciente (Fora do layout - páginas completas) */}
         <Route path="/patient/add-food/:mealId?" element={<ProtectedRoute userType="patient"><AddFoodPage /></ProtectedRoute>} />
         <Route path="/patient/add-meal" element={<ProtectedRoute userType="patient"><AddMealPage /></ProtectedRoute>} />
+        <Route path="/patient/checkin/:sessionId" element={<ProtectedRoute userType="patient"><CheckinResponsePage /></ProtectedRoute>} />
     </>
 );
 

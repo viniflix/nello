@@ -192,7 +192,7 @@ logger.error = (msg, options) => {
 export default defineConfig({
 	customLogger: logger,
 	plugins: [
-		...(isDev ? [inlineEditPlugin(), editModeDevPlugin()] : []),
+		// ...(isDev ? [inlineEditPlugin(), editModeDevPlugin()] : []), // Removed to fix visual-editor 404s and SES warnings in console
 		react(),
 		addTransformIndexHtml
 	],

@@ -1,7 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
-import { LogOut, Bell, Check, Trash2, Shield, ArrowLeft } from 'lucide-react';
+import { LogOut, Bell, Check, Trash2, Shield, ArrowLeft, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,6 +32,7 @@ export default function AdminHeader() {
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState([]);
   const [loadingNotifications, setLoadingNotifications] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   if (!user) return null;
 
@@ -76,8 +84,62 @@ export default function AdminHeader() {
     <header className="sticky top-0 z-40 flex h-16 items-center justify-between gap-2 border-b bg-card px-3 md:px-6 min-w-0 overflow-hidden shadow-sm">
       <div className="max-w-7xl mx-auto w-full flex items-center justify-between min-w-0 gap-2">
 
-        {/* Left: Logo + Nav */}
-        <div className="flex items-center space-x-4 min-w-0 flex-1">
+        {/* Left: Mobile Menu + Logo + Nav */}
+        <div className="flex items-center space-x-2 md:space-x-4 min-w-0 flex-1">
+          {/* Mobile Menu Trigger */}
+          <div className="md:hidden">
+            <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-9 w-9">
+                  <Menu className="h-5 w-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-72 p-0">
+                <SheetHeader className="p-6 border-b text-left">
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-100 border border-indigo-200">
+                      <Shield className="w-4 h-4 text-indigo-600" />
+                    </div>
+                    <SheetTitle className="text-lg font-bold">Menu Admin</SheetTitle>
+                  </div>
+                </SheetHeader>
+                <nav className="flex flex-col p-2 pt-4">
+                  {ADMIN_NAV_LINKS.map((link) => (
+                    <NavLink
+                      key={link.path}
+                      to={link.path}
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className={({ isActive }) =>
+                        `flex items-center px-4 py-3 rounded-md text-sm font-medium transition-colors ${
+                          isActive
+                            ? 'text-indigo-600 bg-indigo-50'
+                            : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+                        }`
+                      }
+                    >
+                      {link.name}
+                    </NavLink>
+                  ))}
+                  
+                  <div className="mt-4 pt-4 border-t px-4">
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2">Acesso Rápido</p>
+                    <Button 
+                      variant="ghost" 
+                      className="w-full justify-start px-0 h-auto py-2 text-sm text-foreground hover:bg-transparent"
+                      onClick={() => {
+                        setIsMobileMenuOpen(false);
+                        navigate(backPath);
+                      }}
+                    >
+                      <ArrowLeft className="mr-2 h-4 w-4" />
+                      {backLabel}
+                    </Button>
+                  </div>
+                </nav>
+              </SheetContent>
+            </Sheet>
+          </div>
+
           {/* Logo / Brand */}
           <Link to="/admin/dashboard" className="flex items-center gap-2 shrink-0">
             <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-100 border border-indigo-200">
@@ -86,8 +148,8 @@ export default function AdminHeader() {
             <span className="font-bold text-sm text-foreground hidden sm:inline">Admin</span>
           </Link>
 
-          {/* Nav Links */}
-          <nav className="flex items-center space-x-1">
+          {/* Nav Links (Desktop) */}
+          <nav className="hidden md:flex items-center space-x-1">
             {ADMIN_NAV_LINKS.map((link) => (
               <NavLink
                 key={link.path}

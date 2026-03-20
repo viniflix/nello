@@ -33,6 +33,7 @@ import { supabase } from '@/lib/customSupabaseClient';
 import { deleteProgressPhoto } from '@/lib/supabase/progress-photos-queries';
 import { logActivityEvent } from '@/lib/supabase/patient-queries';
 import { useToast } from '@/hooks/use-toast';
+import PatientCheckinHistoryWidget from '@/components/patient/PatientCheckinHistoryWidget';
 import WeightChart from '@/components/anthropometry/WeightChart';
 import {
   LineChart,
@@ -65,7 +66,7 @@ const MIME_BY_EXT = {
 export default function PatientProgressPage() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const isDiabetic = user?.profile?.preferences?.is_diabetic === true;
+  const isDiabetic = true; // Glicemia disponível para todos — nutri decide se ativa
   const [activeTab, setActiveTab] = useState('peso');
   const [weightData, setWeightData] = useState([]);
   const [glycemiaData, setGlycemiaData] = useState([]);
@@ -102,20 +103,15 @@ export default function PatientProgressPage() {
     // 2. Meta de peso - por enquanto null (precisa ser adicionada ao growth_records ou meal_plans)
     setGoalWeight(null);
 
-    // 3. Glicemia - tentar buscar apenas se for diabético
-    if (user?.profile?.preferences?.is_diabetic) {
-      try {
-        const { data: glycemiaRecords } = await supabase
-          .from('glycemia_records')
-          .select('*')
-          .eq('patient_id', user.id)
-          .order('record_date', { ascending: true });
-        setGlycemiaData(glycemiaRecords || []);
-      } catch (error) {
-        // Tabela não existe ainda
-        setGlycemiaData([]);
-      }
-    } else {
+    // 3. Glicemia - disponível para todos os pacientes
+    try {
+      const { data: glycemiaRecords } = await supabase
+        .from('glycemia_records')
+        .select('*')
+        .eq('patient_id', user.id)
+        .order('date', { ascending: true });
+      setGlycemiaData(glycemiaRecords || []);
+    } catch (error) {
       setGlycemiaData([]);
     }
 
@@ -216,6 +212,8 @@ export default function PatientProgressPage() {
     }
   };
 
+  const [newGlycemiaCondition, setNewGlycemiaCondition] = useState('fasting');
+
   const handleAddGlycemiaRecord = async (e) => {
     e.preventDefault();
 
@@ -228,31 +226,29 @@ export default function PatientProgressPage() {
       return;
     }
 
-    try {
-      const { error } = await supabase.from('glycemia_records').insert({
-        patient_id: user.id,
-        record_date: recordDate,
-        glycemia_value: parseFloat(newGlycemia)
+    const { error } = await supabase.from('glycemia_records').insert({
+      patient_id: user.id,
+      date: new Date(recordDate + 'T12:00:00').toISOString(),
+      value: parseFloat(newGlycemia),
+      condition: newGlycemiaCondition
+    });
+
+    if (error) {
+      toast({
+        title: 'Erro',
+        description: error.message || 'Não foi possível adicionar o registro.',
+        variant: 'destructive'
       });
-
-      if (error) {
-        throw error;
-      }
-
+    } else {
       toast({
         title: 'Sucesso',
         description: 'Registro de glicemia adicionado com sucesso!'
       });
       setDialogOpen(false);
       setNewGlycemia('');
+      setNewGlycemiaCondition('fasting');
       setRecordDate(format(new Date(), 'yyyy-MM-dd'));
       loadProgressData();
-    } catch (error) {
-      toast({
-        title: 'Erro',
-        description: 'Não foi possível adicionar o registro. A tabela pode não estar disponível ainda.',
-        variant: 'destructive'
-      });
     }
   };
 
@@ -357,10 +353,10 @@ export default function PatientProgressPage() {
     loadProgressData();
   };
 
-  // Preparar dados de glicemia para gráfico
+  // Preparar dados de glicemia para gráfico (colunas reais: date, value, condition)
   const glycemiaChartData = glycemiaData.map((record) => ({
-    date: format(new Date(record.record_date), 'dd/MM/yy'),
-    value: parseFloat(record.glycemia_value)
+    date: record.date ? format(new Date(record.date), 'dd/MM/yy') : '?',
+    value: parseFloat(record.value || 0)
   }));
 
   return (
@@ -507,21 +503,37 @@ export default function PatientProgressPage() {
                         </h3>
                         <div className="space-y-2">
                           {glycemiaData
-                            .sort((a, b) => new Date(b.record_date) - new Date(a.record_date))
+                            .sort((a, b) => new Date(b.date) - new Date(a.date))
                             .slice(0, 10)
-                            .map((record, idx) => (
+                            .map((record, idx) => {
+                              const conditionLabels = {
+                                fasting: 'Jejum',
+                                pre_prandial: 'Pré-refeição',
+                                post_prandial: 'Pós-refeição',
+                                random: 'Aleatório'
+                              };
+                              const glycVal = parseFloat(record.value || 0);
+                              const isAlert = glycVal > 180 || glycVal < 70;
+                              return (
                               <div
                                 key={idx}
                                 className="flex justify-between items-center p-3 bg-muted/50 rounded-lg border border-border hover:bg-muted transition-colors"
                               >
-                                <p className="text-sm font-semibold text-foreground">
-                                  {format(new Date(record.record_date), 'dd/MM/yyyy')}
-                                </p>
-                                <p className="text-lg font-bold text-red-600">
-                                  {parseFloat(record.glycemia_value).toFixed(0)} mg/dL
+                                <div>
+                                  <p className="text-sm font-semibold text-foreground">
+                                    {record.date ? format(new Date(record.date), 'dd/MM/yyyy HH:mm') : '—'}
+                                  </p>
+                                  {record.condition && (
+                                    <p className="text-xs text-muted-foreground">{conditionLabels[record.condition] || record.condition}</p>
+                                  )}
+                                </div>
+                                <p className={`text-lg font-bold ${isAlert ? 'text-red-600' : 'text-foreground'}`}>
+                                  {glycVal.toFixed(0)} mg/dL
+                                  {isAlert && ' ⚠️'}
                                 </p>
                               </div>
-                            ))}
+                              );
+                            })}
                         </div>
                       </div>
                     </div>
@@ -752,6 +764,9 @@ export default function PatientProgressPage() {
             </motion.div>
           </TabsContent>
         </Tabs>
+
+        {/* Histórico de Check-ins (Secundário, fora das tabs) */}
+        <PatientCheckinHistoryWidget patientId={user?.id} />
       </div>
 
       {/* FAB - Floating Action Button - Dynamic based on activeTab */}
@@ -823,6 +838,20 @@ export default function PatientProgressPage() {
                 />
               </div>
               <div>
+                <Label htmlFor="glycemia-condition">Momento da medição</Label>
+                <select
+                  id="glycemia-condition"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  value={newGlycemiaCondition}
+                  onChange={(e) => setNewGlycemiaCondition(e.target.value)}
+                >
+                  <option value="fasting">Em jejum</option>
+                  <option value="pre_prandial">Antes da refeição</option>
+                  <option value="post_prandial">Após a refeição</option>
+                  <option value="random">Aleatório</option>
+                </select>
+              </div>
+              <div>
                 <Label htmlFor="glycemia">Glicemia (mg/dL)</Label>
                 <Input
                   id="glycemia"
@@ -834,6 +863,7 @@ export default function PatientProgressPage() {
                   required
                 />
               </div>
+              <p className="text-xs text-muted-foreground">⚠️ Valores fora de 70–180 mg/dL serão marcados como alerta</p>
               <DialogFooter>
                 <Button type="submit">Adicionar</Button>
               </DialogFooter>

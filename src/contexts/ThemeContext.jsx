@@ -3,26 +3,14 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 const ThemeContext = createContext();
 
 export const ThemeProvider = ({ children, defaultTheme = 'light', storageKey = 'hipozero-ui-theme' }) => {
-  const [theme, setTheme] = useState(() => {
-    try {
-      return localStorage.getItem(storageKey) || defaultTheme;
-    } catch {
-      return defaultTheme;
-    }
-  });
+  	const [theme, setTheme] = useState('light');
 
-  useEffect(() => {
-    const root = window.document.documentElement;
-    root.classList.remove('light', 'dark');
-
-    if (theme === 'system') {
-      const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-      root.classList.add(systemTheme);
-      return;
-    }
-
-    root.classList.add(theme);
-  }, [theme]);
+	useEffect(() => {
+		const root = window.document.documentElement;
+		root.classList.remove('dark', 'system');
+		root.classList.add('light');
+        try { localStorage.setItem(storageKey, 'light'); } catch (e) {}
+    }, []);
 
   const value = {
     theme,

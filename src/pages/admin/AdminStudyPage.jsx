@@ -448,12 +448,26 @@ export default function AdminStudyPage() {
 
       {/* Tabs */}
       <Tabs defaultValue="overview">
-        <TabsList className="grid grid-cols-4 w-full sm:w-auto">
-          <TabsTrigger value="overview" className="gap-1.5"><BarChart2 className="w-3.5 h-3.5" /><span className="hidden sm:inline">Visão Geral</span></TabsTrigger>
-          <TabsTrigger value="clinical" className="gap-1.5"><Target className="w-3.5 h-3.5" /><span className="hidden sm:inline">Clínico</span></TabsTrigger>
-          <TabsTrigger value="platform" className="gap-1.5"><Activity className="w-3.5 h-3.5" /><span className="hidden sm:inline">Plataforma</span></TabsTrigger>
-          <TabsTrigger value="posthog" className="gap-1.5"><Zap className="w-3.5 h-3.5" /><span className="hidden sm:inline">PostHog</span></TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto pb-1 scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0">
+          <TabsList className="inline-flex w-auto min-w-full sm:w-auto h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground">
+            <TabsTrigger value="overview" className="flex items-center gap-2 whitespace-nowrap">
+              <TrendingUp className="w-4 h-4" />
+              Visão Geral
+            </TabsTrigger>
+            <TabsTrigger value="clinical" className="flex items-center gap-2 whitespace-nowrap">
+              <Activity className="w-4 h-4" />
+              Clínico
+            </TabsTrigger>
+            <TabsTrigger value="platform" className="flex items-center gap-2 whitespace-nowrap">
+              <ShieldAlert className="w-4 h-4" />
+              Plataforma
+            </TabsTrigger>
+            <TabsTrigger value="posthog" className="flex items-center gap-2 whitespace-nowrap">
+              <Activity className="w-4 h-4" />
+              PostHog
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         {/* ── TAB: VISÃO GERAL ─────────────────────────────────────────── */}
         <TabsContent value="overview" className="mt-6 space-y-6">
@@ -538,7 +552,7 @@ export default function AdminStudyPage() {
             <CardHeader>
               <SectionTitle icon={Target} title="Metas Nutricionais" description="Distribuição de objetivos e taxa de progresso dos pacientes" />
             </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <CardContent className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div>
                 <div className="grid grid-cols-3 gap-3 mb-4">
                   {[
@@ -712,7 +726,7 @@ export default function AdminStudyPage() {
             </CardHeader>
             <CardContent>
               {isLoading ? <Skeleton className="h-32 w-full" /> : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-5 gap-4">
                   <div>
                     <p className="text-3xl font-bold mb-1">{num(m.energy_calcs?.total)}</p>
                     <p className="text-sm text-muted-foreground mb-4">cálculos realizados na plataforma</p>

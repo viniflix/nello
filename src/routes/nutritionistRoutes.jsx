@@ -29,6 +29,7 @@ const AgendaPage = lazy(() => import('@/pages/nutritionist/tools/AgendaPage.jsx'
 const NutritionistFoodsPage = lazy(() => import('@/pages/nutritionist/tools/NutritionistFoodsPage.jsx'));
 const MessageTemplatesPage = lazy(() => import('@/pages/nutritionist/tools/MessageTemplatesPage.jsx'));
 const ChatPage = lazy(() => import('@/pages/shared/ChatPage.jsx'));
+const CheckinManagerPage = lazy(() => import('@/pages/nutritionist/tools/CheckinManagerPage.jsx'));
 
 export const nutritionistRoutes = (
     <Route 
@@ -63,6 +64,7 @@ export const nutritionistRoutes = (
         <Route path="/nutritionist/financial" element={<FinancialPage />} />
         <Route path="/nutritionist/agenda" element={<AgendaPage />} />
         <Route path="/nutritionist/message-templates" element={<MessageTemplatesPage />} />
+        <Route path="/nutritionist/checkins" element={<CheckinManagerPage />} />
         {/* Admin-only routes (nutritionist layout) */}
         <Route 
             path="/nutritionist/foods" 

@@ -139,22 +139,22 @@ export default function AdminFinancialPage() {
     <div className="space-y-8">
       {/* Header */}
       <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }}>
-        <div className="flex items-center justify-between">
-          <div>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="text-center sm:text-left">
             <h1 className="text-3xl font-bold text-foreground">Financeiro SaaS</h1>
-            <p className="text-muted-foreground mt-1 flex items-center gap-1.5">
+            <p className="text-muted-foreground mt-1 flex items-center justify-center sm:justify-start gap-1.5 text-sm">
               <Calendar className="w-4 h-4" />
               {format(new Date(), "EEEE, d 'de' MMMM 'de' yyyy", { locale: ptBR })}
             </p>
           </div>
-          <Badge variant="outline" className="text-xs bg-amber-50 border-amber-200 text-amber-700">
+          <Badge variant="outline" className="text-xs bg-amber-50 border-amber-200 text-amber-700 w-fit mx-auto sm:mx-0">
             Dados Simulados — Configuração Pendente
           </Badge>
         </div>
       </motion.div>
 
       {/* KPI Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-3 gap-4">
         {KPI_CARD_DATA.map((kpi, i) => {
           const c = colorClassMap[kpi.color];
           const Icon = kpi.icon;
@@ -192,11 +192,13 @@ export default function AdminFinancialPage() {
 
       {/* Tabs: Receita / Planos / Transações */}
       <Tabs defaultValue="revenue">
-        <TabsList className="grid w-full grid-cols-3 max-w-md">
-          <TabsTrigger value="revenue">Receita</TabsTrigger>
-          <TabsTrigger value="plans">Planos</TabsTrigger>
-          <TabsTrigger value="transactions">Transações</TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto pb-1 -mx-4 px-4 sm:mx-0 sm:px-0">
+          <TabsList className="inline-flex w-auto min-w-full sm:w-full grid-cols-3 max-w-md">
+            <TabsTrigger value="revenue" className="whitespace-nowrap">Receita</TabsTrigger>
+            <TabsTrigger value="plans" className="whitespace-nowrap">Planos</TabsTrigger>
+            <TabsTrigger value="transactions" className="whitespace-nowrap">Transações</TabsTrigger>
+          </TabsList>
+        </div>
 
         {/* Revenue Chart */}
         <TabsContent value="revenue" className="space-y-4 mt-4">

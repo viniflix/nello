@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, RefreshCw, AlertCircle, Activity, Stethoscope, User, Utensils, Heart } from 'lucide-react';
+import { ArrowLeft, RefreshCw, AlertCircle, Activity, Stethoscope, User, Utensils, Heart, CheckSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { usePatientHub } from '@/hooks/usePatientHub';
@@ -12,6 +12,7 @@ import TabContentClinical from '@/components/patient-hub/tabs/TabContentClinical
 import TabContentBody from '@/components/patient-hub/tabs/TabContentBody';
 import TabContentNutrition from '@/components/patient-hub/tabs/TabContentNutrition';
 import TabContentAdherence from '@/components/patient-hub/tabs/TabContentAdherence';
+import TabContentCheckins from '@/components/patient-hub/tabs/TabContentCheckins';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -37,7 +38,7 @@ const PatientHubPage = () => {
     // Sincronizar tab quando URL mudar (ex: navegação programática com ?tab=)
     useEffect(() => {
         const tabFromUrl = searchParams.get('tab');
-        if (tabFromUrl && ['feed', 'clinical', 'body', 'nutrition', 'adherence'].includes(tabFromUrl)) {
+        if (tabFromUrl && ['feed', 'clinical', 'body', 'nutrition', 'adherence', 'checkins'].includes(tabFromUrl)) {
             setActiveTab(tabFromUrl);
         }
     }, [searchParams]);
@@ -247,7 +248,7 @@ const PatientHubPage = () => {
                 {/* BLOCO 3 - Tabs de Navegação */}
                 <section>
                     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                        <TabsList className="grid w-full grid-cols-3 lg:grid-cols-5 gap-1 h-auto p-1 bg-muted/30 rounded-lg">
+                        <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6 gap-1 h-auto p-1 bg-muted/30 rounded-lg">
                             <TabsTrigger
                                 value="feed"
                                 className="flex flex-col items-center justify-center gap-1.5 py-3 px-2 rounded-md transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-[#5f6f52] data-[state=inactive]:text-muted-foreground hover:text-foreground"
@@ -282,6 +283,13 @@ const PatientHubPage = () => {
                             >
                                 <Heart className="h-5 w-5" />
                                 <span className="text-xs font-medium">Adesão</span>
+                            </TabsTrigger>
+                            <TabsTrigger
+                                value="checkins"
+                                className="flex flex-col items-center justify-center gap-1.5 py-3 px-2 rounded-md transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-[#5f6f52] data-[state=inactive]:text-muted-foreground hover:text-foreground"
+                            >
+                                <CheckSquare className="h-5 w-5" />
+                                <span className="text-xs font-medium">Check-ins</span>
                             </TabsTrigger>
                         </TabsList>
 
@@ -326,6 +334,12 @@ const PatientHubPage = () => {
                                     patientId={patientId}
                                     patientData={patientData}
                                     modulesStatus={modulesStatus}
+                                />
+                            </TabsContent>
+
+                            <TabsContent value="checkins" className="m-0">
+                                <TabContentCheckins
+                                    patientId={patientId}
                                 />
                             </TabsContent>
                         </div>

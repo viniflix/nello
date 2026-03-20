@@ -83,21 +83,21 @@ export default function AdminUsersPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
+      <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+        <div className="text-center lg:text-left">
           <h1 className="text-3xl font-bold text-foreground">Gestão de Usuários</h1>
-          <p className="text-muted-foreground mt-1">Nutricionistas cadastrados e seus pacientes vinculados.</p>
+          <p className="text-muted-foreground mt-1 text-sm">Nutricionistas cadastrados e seus pacientes vinculados.</p>
         </div>
 
-        <div className="flex items-center gap-4 bg-muted/30 p-2 rounded-lg border border-border">
+        <div className="flex items-center justify-center gap-4 bg-muted/30 p-3 rounded-lg border border-border w-full lg:w-auto">
           <div className="flex flex-col items-center px-4">
             <span className="text-2xl font-bold text-primary">{isLoading ? '—' : usersList.length}</span>
-            <span className="text-xs text-muted-foreground">Nutricionistas</span>
+            <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Nutricionistas</span>
           </div>
-          <div className="w-px h-10 bg-border" />
+          <div className="w-px h-10 bg-border opacity-50" />
           <div className="flex flex-col items-center px-4">
             <span className="text-2xl font-bold text-emerald-500">{isLoading ? '—' : totalPatients}</span>
-            <span className="text-xs text-muted-foreground">Total Pacientes</span>
+            <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Pacientes</span>
           </div>
         </div>
       </motion.div>
@@ -127,11 +127,11 @@ export default function AdminUsersPage() {
               <Table>
                 <TableHeader className="bg-muted/50">
                   <TableRow>
-                    <TableHead className="w-[280px]">Profissional</TableHead>
-                    <TableHead>Situação</TableHead>
-                    <TableHead className="text-center">Pacientes</TableHead>
-                    <TableHead>Cadastro / Último acesso</TableHead>
-                    <TableHead className="text-right">Detalhes</TableHead>
+                    <TableHead className="min-w-[280px]">Profissional</TableHead>
+                    <TableHead className="min-w-[100px]">Situação</TableHead>
+                    <TableHead className="text-center min-w-[100px]">Pacientes</TableHead>
+                    <TableHead className="min-w-[180px]">Cadastro / Último acesso</TableHead>
+                    <TableHead className="text-right min-w-[100px]">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>

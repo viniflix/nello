@@ -420,14 +420,14 @@ export default function AdminDashboard() {
           animate={{ opacity: 1, y: 0 }}
           className="mb-6"
         >
-          <div className="flex items-center justify-between">
-            <div>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="text-center sm:text-left">
               <h1 className="text-3xl font-bold text-foreground">Painel de Controle Executivo</h1>
-              <p className="text-muted-foreground mt-1">
+              <p className="text-muted-foreground mt-1 text-sm">
                 {format(new Date(), "EEEE, d 'de' MMMM 'de' yyyy", { locale: ptBR })}
               </p>
             </div>
-            <Badge variant="outline" className="text-sm">
+            <Badge variant="outline" className="text-sm w-fit mx-auto sm:mx-0">
               <ShieldAlert className="w-3.5 h-3.5 mr-1.5" />
               Administrador
             </Badge>
@@ -436,25 +436,27 @@ export default function AdminDashboard() {
 
         {/* Tabs Structure */}
         <Tabs defaultValue="overview" value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="overview" className="flex items-center gap-2">
-              <TrendingUp className="w-4 h-4" />
-              Visão Geral
-            </TabsTrigger>
-            <TabsTrigger value="finance" className="flex items-center gap-2">
-              <DollarSign className="w-4 h-4" />
-              Financeiro
-            </TabsTrigger>
-            <TabsTrigger value="system" className="flex items-center gap-2">
-              <Terminal className="w-4 h-4" />
-              Sistema & Logs
-            </TabsTrigger>
-          </TabsList>
+          <div className="overflow-x-auto pb-1 -mx-4 px-4 sm:mx-0 sm:px-0">
+            <TabsList className="inline-flex w-auto min-w-full sm:w-full grid grid-cols-3">
+              <TabsTrigger value="overview" className="flex items-center gap-2 whitespace-nowrap">
+                <TrendingUp className="w-4 h-4" />
+                Visão Geral
+              </TabsTrigger>
+              <TabsTrigger value="finance" className="flex items-center gap-2 whitespace-nowrap">
+                <DollarSign className="w-4 h-4" />
+                Financeiro
+              </TabsTrigger>
+              <TabsTrigger value="system" className="flex items-center gap-2 whitespace-nowrap">
+                <Terminal className="w-4 h-4" />
+                Sistema & Logs
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           {/* TAB 1: Visão Geral */}
           <TabsContent value="overview" className="space-y-6">
             {/* Row 1: KPI Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-6">
               {/* Total Nutricionistas */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}

@@ -88,8 +88,8 @@ export default function AdminNutritionistDetailPage() {
           <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }}>
             <Card>
               <CardContent className="pt-6">
-                <div className="flex flex-col md:flex-row gap-6 items-start">
-                  <Avatar className="w-20 h-20 border-4 border-indigo-100 shrink-0">
+                <div className="flex flex-col md:flex-row gap-6 items-center md:items-start text-center md:text-left">
+                  <Avatar className="w-24 h-24 md:w-20 md:h-20 border-4 border-indigo-100 shrink-0">
                     <AvatarImage src={data.avatar_url} alt={data.name} />
                     <AvatarFallback className="text-2xl bg-indigo-100 text-indigo-700">
                       {data.name?.charAt(0) || 'N'}
@@ -97,14 +97,16 @@ export default function AdminNutritionistDetailPage() {
                   </Avatar>
 
                   <div className="flex-1 min-w-0 space-y-3">
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex flex-wrap items-center justify-center md:justify-start gap-2">
                       <h1 className="text-2xl font-bold text-foreground">{data.name}</h1>
-                      {data.is_admin && (
-                        <Badge className="bg-indigo-100 text-indigo-700 border-0">Admin</Badge>
-                      )}
-                      <Badge variant={data.is_active ? 'default' : 'secondary'} className="text-xs">
-                        {data.is_active ? 'Ativo' : 'Inativo'}
-                      </Badge>
+                      <div className="flex gap-2">
+                        {data.is_admin && (
+                          <Badge className="bg-indigo-100 text-indigo-700 border-0">Admin</Badge>
+                        )}
+                        <Badge variant={data.is_active ? 'default' : 'secondary'} className="text-xs">
+                          {data.is_active ? 'Ativo' : 'Inativo'}
+                        </Badge>
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-muted-foreground">
@@ -135,7 +137,7 @@ export default function AdminNutritionistDetailPage() {
                     )}
 
                     {Array.isArray(data.specialties) && data.specialties.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5">
+                      <div className="flex flex-wrap justify-center md:justify-start gap-1.5">
                         {data.specialties.map((s) => (
                           <Badge key={s} variant="outline" className="text-xs font-normal">{s}</Badge>
                         ))}
@@ -144,12 +146,12 @@ export default function AdminNutritionistDetailPage() {
                   </div>
 
                   {/* Stats */}
-                  <div className="flex gap-4 shrink-0">
-                    <div className="flex flex-col items-center text-center bg-muted/40 rounded-lg px-5 py-3 min-w-[80px]">
+                  <div className="flex gap-4 shrink-0 w-full md:w-auto justify-center md:justify-start">
+                    <div className="flex-1 md:flex-none flex flex-col items-center text-center bg-muted/40 rounded-lg px-5 py-3 min-w-[100px] md:min-w-[80px]">
                       <span className="text-2xl font-bold text-indigo-600">{data.patients_count ?? 0}</span>
                       <span className="text-xs text-muted-foreground mt-0.5">Pacientes</span>
                     </div>
-                    <div className="flex flex-col items-center text-center bg-muted/40 rounded-lg px-5 py-3 min-w-[80px]">
+                    <div className="flex-1 md:flex-none flex flex-col items-center text-center bg-muted/40 rounded-lg px-5 py-3 min-w-[100px] md:min-w-[80px]">
                       <span className="text-2xl font-bold text-emerald-600">{data.new_patients_30d ?? 0}</span>
                       <span className="text-xs text-muted-foreground mt-0.5">Novos (30d)</span>
                     </div>
