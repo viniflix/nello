@@ -5,13 +5,17 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { patientRoute } from '@/lib/utils/patientRoutes';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Plus, Search, ChevronRight, User as UserIcon, Loader2, ListFilter } from 'lucide-react';
+import { Plus, Search, ChevronRight, User as UserIcon, Loader2, ListFilter, Users } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import DashboardHeader from '@/components/DashboardHeader';
 import { motion } from 'framer-motion';
 import AddPatientModal from '@/components/nutritionist/AddPatientModal';
 import { usePatientFormStore } from '@/stores/usePatientFormStore'; 
+import { fetchAllNutritionistPatients, archivePatient, hardDeletePatient, unarchivePatient } from '@/lib/supabase/patient-queries';
+import PatientCard from '@/components/nutritionist/PatientCard';
+import { useOnlinePresence } from '@/hooks/useOnlinePresence';
+import { useToast } from '@/components/ui/use-toast';
 
 // Objeto de ordenação
 const sortOptions = {
@@ -21,15 +25,18 @@ const sortOptions = {
 };
 
 const PatientsPage = () => {
-    const { user, signOut } = useAuth();
-    const navigate = useNavigate();
+    const { user } = useAuth();
     const [patients, setPatients] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [loading, setLoading] = useState(true);
     const [sortOrder, setSortOrder] = useState('name_asc');
+    const [filterStatus, setFilterStatus] = useState('active'); // 'all', 'active', 'archived', 'pending'
+    const [filterOnline, setFilterOnline] = useState('all'); // 'all', 'online'
     const [showAddPatientModal, setShowAddPatientModal] = useState(false);
     const [searchParams, setSearchParams] = useSearchParams();
     const { updateField } = usePatientFormStore();
+    const { toast } = useToast();
+    const { isUserOnline } = useOnlinePresence();
 
     // Handle auto-open and auto-fill from URL params
     useEffect(() => {
@@ -46,39 +53,96 @@ const PatientsPage = () => {
         if (!user?.id) return;
         setLoading(true);
         
-        const { column, ascending } = sortOptions[sortOrder];
-
-        const { data, error } = await supabase
-            .from('user_profiles')
-            .select('*')
-            .eq('nutritionist_id', user.id)
-            .order(column, { ascending: ascending })
-            .limit(500); // OTIMIZADO: Máximo 500 pacientes
+        const { active, archived, error } = await fetchAllNutritionistPatients(user.id);
 
         if (error) {
             console.error("Erro ao buscar pacientes:", error);
+            toast({ title: "Erro de Conexão", description: "Não foi possível carregar os pacientes.", variant: "destructive" });
         } else {
-            setPatients(data || []);
+            setPatients([...active, ...archived]);
         }
         setLoading(false);
-    }, [user?.id, sortOrder]); 
+    }, [user?.id, toast]); 
 
     useEffect(() => {
         fetchPatients();
     }, [fetchPatients]);
 
+    const handleArchive = async (patient) => {
+        toast({ title: "Aguarde", description: "Arquivando paciente..." });
+        const { success, error } = await archivePatient(patient.id, user.id);
+        if (success) {
+            toast({ title: "Paciente Arquivado", description: "O chat e modo de edição foram bloqueados.", variant: "success" });
+            fetchPatients();
+        } else {
+            toast({ title: "Erro", description: "Não foi possível arquivar o paciente.", variant: "destructive" });
+        }
+    };
+
+    const handleUnarchive = async (patient) => {
+        toast({ title: "Aguarde", description: "Reativando paciente..." });
+        const { success, error } = await unarchivePatient(patient.id, user.id);
+        if (success) {
+            toast({ title: "Paciente Reativado", description: "A comunicação e os dados do paciente foram reestabelecidos.", variant: "success" });
+            fetchPatients();
+        } else {
+            toast({ title: "Aviso", description: "Pode ser que o paciente já tenha sido vinculado a outro nutricionista.", variant: "destructive" });
+        }
+    };
+
+    const handleDelete = async (patient) => {
+        toast({ title: "Aguarde", description: "Excluindo paciente..." });
+        const { success, error } = await hardDeletePatient(patient.id);
+        if (success) {
+            toast({ title: "Conta Excluída", description: "Paciente e e-mail liberados permanentemente.", variant: "success" });
+            fetchPatients();
+        } else {
+            toast({ title: "Erro", description: "Não foi possível excluir. Talvez existam dados remanescentes.", variant: "destructive" });
+        }
+    };
+
     const filteredPatients = useMemo(() => {
-        if (!searchTerm.trim()) return patients;
-        
-        const lowerSearchTerm = searchTerm.toLowerCase();
-        
-        return patients.filter(p => 
-            (p.name && p.name.toLowerCase().includes(lowerSearchTerm)) ||
-            (p.email && p.email.toLowerCase().includes(lowerSearchTerm)) ||
-            (p.phone && p.phone.includes(lowerSearchTerm)) ||
-            (p.cpf && p.cpf.includes(lowerSearchTerm))
-        );
-    }, [patients, searchTerm]);
+        let result = patients;
+
+        // Filtro de Vínculo
+        if (filterStatus === 'active') {
+            result = result.filter(p => p.is_active !== false && !p.arquivadoHistorico);
+        } else if (filterStatus === 'archived') {
+            result = result.filter(p => p.is_active === false || p.arquivadoHistorico);
+        } else if (filterStatus === 'pending') {
+            result = result.filter(p => p.needs_password_reset === true && p.is_active !== false && !p.arquivadoHistorico);
+        }
+
+        // Filtro Online
+        if (filterOnline === 'online') {
+            result = result.filter(p => isUserOnline(p.id));
+        }
+
+        // Busca
+        if (searchTerm.trim()) {
+            const lowerSearchTerm = searchTerm.toLowerCase();
+            result = result.filter(p => 
+                (p.name && p.name.toLowerCase().includes(lowerSearchTerm)) ||
+                (p.email && p.email.toLowerCase().includes(lowerSearchTerm)) ||
+                (p.phone && p.phone.includes(lowerSearchTerm)) ||
+                (p.cpf && p.cpf.includes(lowerSearchTerm))
+            );
+        }
+
+        // Ordenação
+        const { column, ascending } = sortOptions[sortOrder];
+        result.sort((a, b) => {
+            const valA = a[column];
+            const valB = b[column];
+            if (!valA) return ascending ? 1 : -1;
+            if (!valB) return ascending ? -1 : 1;
+            if (valA < valB) return ascending ? -1 : 1;
+            if (valA > valB) return ascending ? 1 : -1;
+            return 0;
+        });
+
+        return result;
+    }, [patients, searchTerm, filterStatus, filterOnline, sortOrder, isUserOnline]);
 
 
     return (
@@ -125,10 +189,32 @@ const PatientsPage = () => {
                                     className="pl-10 bg-muted min-w-0"
                                 />
                             </div>
-                            <div className="flex items-center gap-2">
-                                <ListFilter className="w-4 h-4 text-muted-foreground" />
+                            <div className="flex flex-col md:flex-row items-center gap-2">
+                                <ListFilter className="w-4 h-4 text-muted-foreground hidden md:block" />
+                                <Select value={filterStatus} onValueChange={setFilterStatus}>
+                                    <SelectTrigger className="w-full md:w-[150px] bg-muted">
+                                        <SelectValue placeholder="Vínculo" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="active">Em Tratamento</SelectItem>
+                                        <SelectItem value="archived">Arquivados</SelectItem>
+                                        <SelectItem value="pending">Convite Pendente</SelectItem>
+                                        <SelectItem value="all">Todos os Vínculos</SelectItem>
+                                    </SelectContent>
+                                </Select>
+
+                                <Select value={filterOnline} onValueChange={setFilterOnline}>
+                                    <SelectTrigger className="w-full md:w-[130px] bg-muted">
+                                        <SelectValue placeholder="Status" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">Todos</SelectItem>
+                                        <SelectItem value="online">Apenas Online</SelectItem>
+                                    </SelectContent>
+                                </Select>
+
                                 <Select value={sortOrder} onValueChange={setSortOrder}>
-                                    <SelectTrigger className="w-full md:w-[200px] bg-muted">
+                                    <SelectTrigger className="w-full md:w-[180px] bg-muted">
                                         <SelectValue placeholder="Ordenar por..." />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -149,34 +235,24 @@ const PatientsPage = () => {
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                 {filteredPatients.length > 0 ? filteredPatients.map(patient => (
-                                    <Link
-                                        to={patientRoute(patient, 'hub')}
-                                        key={patient.id}
-                                        className="block p-4 border bg-background rounded-lg hover:shadow-lg hover:border-primary transition-all"
-                                    >
-                                        <div className="flex justify-between items-center gap-3">
-                                            <div className="flex items-center gap-3 flex-1 min-w-0">
-                                                <div className="w-10 h-10 bg-secondary rounded-full flex items-center justify-center font-bold text-primary overflow-hidden flex-shrink-0">
-                                                    {patient.avatar_url ? (
-                                                        <img src={patient.avatar_url} alt={patient.name} className="w-full h-full object-cover"/>
-                                                    ) : (
-                                                        <UserIcon className="w-6 h-6 text-primary/70" />
-                                                    )}
-                                                </div>
-                                                <div className="flex-1 min-w-0 overflow-hidden">
-                                                    <h3 className="font-semibold text-base text-foreground truncate">{patient.name}</h3>
-                                                    <p className="text-sm text-muted-foreground truncate">
-                                                        {patient.email}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            <ChevronRight className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-                                        </div>
-                                    </Link>
+                                    <PatientCard 
+                                        key={patient.id} 
+                                        patient={patient} 
+                                        isOnline={isUserOnline(patient.id)}
+                                        onArchive={handleArchive}
+                                        onUnarchive={handleUnarchive}
+                                        onDelete={handleDelete}
+                                    />
                                 )) : (
-                                    <p className="text-muted-foreground text-center py-8 md:col-span-2 lg:col-span-3">
-                                        {searchTerm ? "Nenhum paciente encontrado." : "Você ainda não cadastrou nenhum paciente."}
-                                    </p>
+                                    <div className="text-center py-12 md:col-span-2 lg:col-span-3">
+                                        <Users className="mx-auto h-12 w-12 text-muted-foreground/30 mb-3" />
+                                        <h3 className="text-lg font-medium text-foreground">
+                                            {searchTerm || filterStatus !== 'all' ? "Nenhum paciente encontrado com estes filtros." : "Você ainda não cadastrou nenhum paciente."}
+                                        </h3>
+                                        <p className="text-muted-foreground mt-1 max-w-sm mx-auto">
+                                            Tente alterar os termos de busca, limpar os filtros ou criar um novo paciente.
+                                        </p>
+                                    </div>
                                 )}
                             </div>
                         )}

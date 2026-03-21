@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { BookMarked, UtensilsCrossed, CalendarClock, Bell } from 'lucide-react';
+import { BookMarked, UtensilsCrossed, CalendarClock, Bell, Info } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
@@ -164,6 +164,30 @@ export default function PatientHomePage() {
             )}
           </Button>
         </div>
+
+        {/* Banner Arquivado */}
+        {user?.profile?.is_active === false && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-6"
+          >
+            <div className="bg-destructive/10 border border-destructive/20 rounded-xl p-4 flex items-start gap-4 shadow-sm">
+                <div className="bg-destructive/20 p-2 rounded-full mt-0.5 shrink-0">
+                    <Info className="w-5 h-5 text-destructive" />
+                </div>
+                <div>
+                    <h3 className="font-semibold text-destructive text-base">Acompanhamento Encerrado</h3>
+                    <p className="text-sm text-destructive/90 mt-1">
+                        Seu vínculo com este nutricionista foi arquivado. Você ainda pode visualizar seu diário, planos antigos e evolução, mas novas interações (como mensagens) estão bloqueadas.
+                    </p>
+                    <p className="text-sm text-destructive mt-2 font-medium">
+                        Seu perfil está livre para aceitar um novo convite.
+                    </p>
+                </div>
+            </div>
+          </motion.div>
+        )}
 
         {/* Lembrete de Consulta - SEMPRE PRIMEIRO (TOPO) */}
         {nextAppointment && (

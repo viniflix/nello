@@ -202,6 +202,17 @@ const ChatPage = () => {
 
   const recipientId = user.profile.user_type === 'nutritionist' ? patientId : user.profile.nutritionist_id;
 
+  const isArchived = React.useMemo(() => {
+    if (!user || (!recipient && user.profile.user_type === 'nutritionist')) return false;
+    
+    if (user.profile.user_type === 'patient') {
+        return user.profile.is_active === false;
+    } else {
+        // user is nutritionist
+        return recipient.nutritionist_id !== user.id || recipient.is_active === false;
+    }
+  }, [user, recipient]);
+
   const fetchRecipient = useCallback(async (id) => {
     if (!id) {
       setRecipientLoading(false); 
@@ -428,86 +439,95 @@ const ChatPage = () => {
 
       {/* Input Area - Fixed at bottom of container */}
       <footer className="shrink-0 bg-white p-4 border-t shadow-lg z-20">
-        {mediaPreview && (
-          <div className="relative p-2 mb-2 border rounded-lg max-w-sm flex items-center gap-2 bg-slate-50">
-            {mediaType === 'image' && <img src={mediaPreview} alt="Preview" className="max-h-24 rounded" />}
-            {mediaType === 'video' && <video src={mediaPreview} className="max-h-24 rounded" muted loop autoPlay />}
-            {mediaType === 'audio' && <AudioPlayer src={mediaPreview} />}
-            {mediaType === 'pdf' && (
-              <div className="flex items-center gap-2">
-                <FileText className="w-8 h-8 text-destructive" />
-                <span className="text-sm text-muted-foreground truncate">{mediaFile?.name}</span>
+        {isArchived ? (
+            <div className="flex items-center justify-center p-3 sm:p-4 bg-muted/50 rounded-xl border border-dashed border-border flex-col text-center">
+                <p className="text-secondary-foreground font-medium text-sm sm:text-base">Módulo Arquivado</p>
+                <p className="text-muted-foreground text-xs sm:text-sm mt-1 max-w-sm">Você não pode enviar novas mensagens para este chat, pois o vínculo foi arquivado.</p>
+            </div>
+        ) : (
+          <>
+            {mediaPreview && (
+              <div className="relative p-2 mb-2 border rounded-lg max-w-sm flex items-center gap-2 bg-slate-50">
+                {mediaType === 'image' && <img src={mediaPreview} alt="Preview" className="max-h-24 rounded" />}
+                {mediaType === 'video' && <video src={mediaPreview} className="max-h-24 rounded" muted loop autoPlay />}
+                {mediaType === 'audio' && <AudioPlayer src={mediaPreview} />}
+                {mediaType === 'pdf' && (
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-8 h-8 text-destructive" />
+                    <span className="text-sm text-muted-foreground truncate">{mediaFile?.name}</span>
+                  </div>
+                )}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute -top-3 -right-3 bg-white rounded-full h-6 w-6 shadow-md"
+                  onClick={() => {
+                    setMediaFile(null);
+                    setMediaPreview(null);
+                    setMediaType(null);
+                    if(fileInputRef.current) fileInputRef.current.value = "";
+                  }}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
               </div>
             )}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="absolute -top-3 -right-3 bg-white rounded-full h-6 w-6 shadow-md"
-              onClick={() => {
-                setMediaFile(null);
-                setMediaPreview(null);
-                setMediaType(null);
-                if(fileInputRef.current) fileInputRef.current.value = "";
-              }}
-            >
-              <X className="w-4 h-4" />
-            </Button>
-          </div>
+            <form onSubmit={handleSendMessage} className="flex items-center space-x-3">
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                className="hidden"
+                accept="image/*,video/*,audio/*,application/pdf"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => fileInputRef.current.click()}
+                disabled={isSending}
+              >
+                <Paperclip className="w-5 h-5" />
+              </Button>
+              {isRecording ? (
+                <div className="flex items-center gap-2 flex-1">
+                  <div className="w-2 h-2 bg-destructive rounded-full animate-pulse"></div>
+                  <p className="text-sm text-destructive">Gravando...</p>
+                </div>
+              ) : (
+                <Input
+                  type="text"
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  placeholder="Digite sua mensagem..."
+                  className="flex-1 bg-slate-50 border-gray-200 focus:border-primary focus:ring-primary"
+                  autoComplete="off"
+                  disabled={isSending}
+                />
+              )}
+              {newMessage.trim() === '' && !mediaFile ?
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={isRecording ? stopRecording : startRecording}
+                  disabled={isSending}
+                >
+                  {isRecording ? <Square className="w-5 h-5 text-destructive" /> : <Mic className="w-5 h-5" />}
+                </Button>
+                :
+                <Button
+                  type="submit"
+                  size="icon"
+                  disabled={isSending || (newMessage.trim() === '' && !mediaFile)}
+                  className=""
+                >
+                  {isSending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+                </Button>
+              }
+            </form>
+          </>
         )}
-        <form onSubmit={handleSendMessage} className="flex items-center space-x-3">
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleFileChange}
-            className="hidden"
-            accept="image/*,video/*,audio/*,application/pdf"
-          />
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={() => fileInputRef.current.click()}
-            disabled={isSending}
-          >
-            <Paperclip className="w-5 h-5" />
-          </Button>
-          {isRecording ? (
-            <div className="flex items-center gap-2 flex-1">
-              <div className="w-2 h-2 bg-destructive rounded-full animate-pulse"></div>
-              <p className="text-sm text-destructive">Gravando...</p>
-            </div>
-          ) : (
-            <Input
-              type="text"
-              value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              placeholder="Digite sua mensagem..."
-              className="flex-1 bg-slate-50 border-gray-200 focus:border-primary focus:ring-primary"
-              autoComplete="off"
-              disabled={isSending}
-            />
-          )}
-          {newMessage.trim() === '' && !mediaFile ?
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={isRecording ? stopRecording : startRecording}
-              disabled={isSending}
-            >
-              {isRecording ? <Square className="w-5 h-5 text-destructive" /> : <Mic className="w-5 h-5" />}
-            </Button>
-            :
-            <Button
-              type="submit"
-              size="icon"
-              disabled={isSending || (newMessage.trim() === '' && !mediaFile)}
-              className=""
-            >
-              {isSending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
-            </Button>
-          }
-        </form>
       </footer>
     </div>
   );

@@ -1482,3 +1482,147 @@ export const getActiveGoalForEnergy = async (patientId) => {
         return { data: null, error };
     }
 };
+
+/**
+ * Busca a lista unificada de pacientes (ativos e arquivados)
+ * @param {string} nutritionistId - ID do nutricionista
+ * @returns {Promise<{active: array, archived: array, error: object}>}
+ */
+export const fetchAllNutritionistPatients = async (nutritionistId) => {
+    try {
+        // Busca pacientes que ainda possuem vínculo direto na tabela user_profiles (is_active pode ser true ou false)
+        const { data: profiles, error: profileError } = await supabase
+            .from('user_profiles')
+            .select('*')
+            .eq('nutritionist_id', nutritionistId);
+
+        if (profileError) throw profileError;
+
+        // Busca registros da tabela de arquivados (onde o paciente pode ou não estar vinculado atualmente)
+        const { data: archivedLinks, error: linkError } = await supabase
+            .from('archived_patient_links')
+            .select('*')
+            .eq('nutritionist_id', nutritionistId);
+
+        if (linkError) throw linkError;
+
+        const active = [];
+        const archived = [];
+        const seenArchivedIds = new Set();
+
+        // Processa os links de arquivados (se o usuário já estiver aqui, é arquivado independente de user_profiles)
+        (archivedLinks || []).forEach(link => {
+            seenArchivedIds.add(link.patient_id);
+            archived.push({
+                ...link.patient_snapshot,
+                id: link.patient_id,
+                arquivadoHistorico: true,
+                is_active: false,
+                archived_at: link.archived_at
+            });
+        });
+
+        // Processa os perfis atuais
+        (profiles || []).forEach(p => {
+            if (p.is_active === false || seenArchivedIds.has(p.id)) {
+                // Se está inativo mas não foi pego no loop acima (arquivado apenas na flag)
+                if (!seenArchivedIds.has(p.id)) {
+                    archived.push(p);
+                    seenArchivedIds.add(p.id);
+                }
+            } else {
+                active.push(p);
+            }
+        });
+
+        return { active, archived, error: null };
+    } catch (error) {
+        logSupabaseError('Erro ao buscar pacientes unificados', error);
+        return { active: [], archived: [], error };
+    }
+};
+
+/**
+ * Realiza o Soft Delete de um paciente, inserindo no histórico de arquivados e invalidando a flag is_active
+ */
+export const archivePatient = async (patientId, nutritionistId) => {
+    try {
+        // 1. Pega os dados atuais para o snapshot
+        const { data: profile } = await supabase
+            .from('user_profiles')
+            .select('name, email, cpf, avatar_url, phone')
+            .eq('id', patientId)
+            .single();
+
+        if (!profile) throw new Error("Perfil do paciente não encontrado.");
+
+        // 2. Insere na tabela archived_patient_links
+        const { error: insertError } = await supabase
+            .from('archived_patient_links')
+            .upsert({
+                nutritionist_id: nutritionistId,
+                patient_id: patientId,
+                patient_snapshot: profile,
+                archived_at: new Date().toISOString()
+            }, { onConflict: 'nutritionist_id,patient_id' });
+
+        if (insertError) throw insertError;
+
+        // 3. Atualiza is_active para false
+        const { error: updateError } = await supabase
+            .from('user_profiles')
+            .update({ is_active: false })
+            .eq('id', patientId)
+            .eq('nutritionist_id', nutritionistId);
+
+        if (updateError) throw updateError;
+
+        return { success: true, error: null };
+    } catch (error) {
+        logSupabaseError('Erro ao arquivar paciente', error);
+        return { success: false, error };
+    }
+};
+
+/**
+ * Reativa um paciente que foi arquivado (se ele ainda estiver vinculado no user_profiles)
+ */
+export const unarchivePatient = async (patientId, nutritionistId) => {
+    try {
+        // Remove do histórico de arquivados
+        await supabase
+            .from('archived_patient_links')
+            .delete()
+            .eq('patient_id', patientId)
+            .eq('nutritionist_id', nutritionistId);
+
+        // Volta a flag is_active para true (se ainda estiver vinculado)
+        const { data, error } = await supabase
+            .from('user_profiles')
+            .update({ is_active: true })
+            .eq('id', patientId)
+            .eq('nutritionist_id', nutritionistId)
+            .select()
+            .single();
+            
+        return { success: !error, error, data };
+    } catch (error) {
+        logSupabaseError('Erro ao reativar paciente', error);
+        return { success: false, error };
+    }
+};
+
+/**
+ * Realiza o Hard Delete verificando ausência de dados clínicos
+ */
+export const hardDeletePatient = async (patientId) => {
+    try {
+        // Chama a RPC criada/existente do supabase que apaga da auth.users
+        const { error } = await supabase.rpc('delete_patient', { patient_id: patientId });
+        if (error) throw error;
+        return { success: true, error: null };
+    } catch (error) {
+        logSupabaseError('Erro ao excluir conta do paciente permanentemente', error);
+        return { success: false, error };
+    }
+};
