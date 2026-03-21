@@ -1633,7 +1633,16 @@ export const hardDeletePatient = async (patientId) => {
         });
 
         const body = await res.json();
-        if (!res.ok) throw new Error(body?.error || 'Erro ao excluir usuário');
+        // Accept 400 with "User not found" as already-deleted (idempotent)
+        const alreadyDeleted = !res.ok && body?.error === 'User not found';
+
+        if (!res.ok && !alreadyDeleted) {
+            throw new Error(body?.error || 'Erro ao excluir usuário');
+        }
+
+        // Always clean up local DB tables regardless
+        await supabase.from('archived_patient_links').delete().eq('patient_id', patientId);
+        await supabase.from('user_profiles').delete().eq('id', patientId);
 
         return { success: true, error: null };
     } catch (error) {
