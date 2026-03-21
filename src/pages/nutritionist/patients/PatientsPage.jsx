@@ -5,12 +5,13 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { patientRoute } from '@/lib/utils/patientRoutes';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Plus, Search, ChevronRight, User as UserIcon, Loader2, ListFilter, Users } from 'lucide-react';
+import { Plus, Search, ChevronRight, User as UserIcon, Loader2, ListFilter, Users, ArchiveRestore } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import DashboardHeader from '@/components/DashboardHeader';
 import { motion } from 'framer-motion';
 import AddPatientModal from '@/components/nutritionist/AddPatientModal';
+import ArchivedPatientsModal from '@/components/nutritionist/ArchivedPatientsModal';
 import { usePatientFormStore } from '@/stores/usePatientFormStore'; 
 import { fetchAllNutritionistPatients, archivePatient, hardDeletePatient, unarchivePatient } from '@/lib/supabase/patient-queries';
 import PatientCard from '@/components/nutritionist/PatientCard';
@@ -19,7 +20,7 @@ import { useToast } from '@/components/ui/use-toast';
 
 // Objeto de ordenação
 const sortOptions = {
-    name_asc: { column: 'name', ascending: true, label: 'Ordem Alfabética (A-Z)' },
+    name_asc: { column: 'name', ascending: true, label: 'Ordem Alfabética' },
     created_at_desc: { column: 'created_at', ascending: false, label: 'Mais Recentes' },
     created_at_asc: { column: 'created_at', ascending: true, label: 'Mais Antigos' },
 };
@@ -30,8 +31,9 @@ const PatientsPage = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [loading, setLoading] = useState(true);
     const [sortOrder, setSortOrder] = useState('name_asc');
-    const [filterStatus, setFilterStatus] = useState('active'); // 'all', 'active', 'archived', 'pending', 'online'
+    const [filterStatus, setFilterStatus] = useState('all'); // 'all', 'active', 'pending', 'online'
     const [showAddPatientModal, setShowAddPatientModal] = useState(false);
+    const [showArchivedModal, setShowArchivedModal] = useState(false);
     const [searchParams, setSearchParams] = useSearchParams();
     const { updateField } = usePatientFormStore();
     const { toast } = useToast();
@@ -84,6 +86,7 @@ const PatientsPage = () => {
         if (success) {
             toast({ title: "Paciente Reativado", description: "A comunicação e os dados do paciente foram reestabelecidos.", variant: "success" });
             fetchPatients();
+            setShowArchivedModal(false);
         } else {
             toast({ title: "Aviso", description: "Pode ser que o paciente já tenha sido vinculado a outro nutricionista.", variant: "destructive" });
         }
@@ -99,6 +102,10 @@ const PatientsPage = () => {
             toast({ title: "Erro", description: "Não foi possível excluir. Talvez existam dados remanescentes.", variant: "destructive" });
         }
     };
+
+    const archivedPatientsList = useMemo(() => {
+        return patients.filter(p => p.is_active === false || p.arquivadoHistorico);
+    }, [patients]);
 
     const filteredPatients = useMemo(() => {
         let result = patients;
@@ -128,15 +135,17 @@ const PatientsPage = () => {
             return result;
         }
 
-        // Sem busca de texto, aplica Filtro Normal
+        // --- Sem busca de texto, aplica Filtro Normal ---
+        // Na listagem principal, NUNCA mosrtramos arquivados (eles ficam na Central de Arquivados)
+        result = result.filter(p => p.is_active !== false && !p.arquivadoHistorico);
+
         if (filterStatus === 'active') {
-            result = result.filter(p => p.is_active !== false && !p.arquivadoHistorico);
-        } else if (filterStatus === 'archived') {
-            result = result.filter(p => p.is_active === false || p.arquivadoHistorico);
+            // Em tratamento e aceitou convite
+            result = result.filter(p => p.needs_password_reset !== true);
         } else if (filterStatus === 'pending') {
-            result = result.filter(p => p.needs_password_reset === true && p.is_active !== false && !p.arquivadoHistorico);
+            result = result.filter(p => p.needs_password_reset === true);
         } else if (filterStatus === 'online') {
-            result = result.filter(p => isUserOnline(p.id) && p.is_active !== false && !p.arquivadoHistorico);
+            result = result.filter(p => isUserOnline(p.id));
         }
 
         // Ordenação normal quando não há busca por texto
@@ -169,17 +178,27 @@ const PatientsPage = () => {
                     <div className="flex flex-col justify-center flex-1 min-w-0 text-center sm:text-left">
                         <h1 className="text-2xl md:text-3xl font-bold font-heading uppercase tracking-wide text-primary break-words">
                             Meus Pacientes
-                            <span className="text-2xl md:text-3xl font-medium text-destructive ml-1 md:ml-2">• {patients.length}</span>
+                            <span className="text-xl md:text-2xl font-medium text-muted-foreground ml-2">• {patients.filter(p => p.is_active !== false && !p.arquivadoHistorico).length} ativos</span>
                         </h1>
                         <p className="text-neutral-600 mt-1 text-sm md:text-base">
                             Gerencie, adicione ou visualize seus pacientes.
                         </p>
                     </div>
 
-                    <div className="flex-shrink-0 flex justify-center sm:justify-end">
+                    <div className="flex-shrink-0 flex flex-col sm:flex-row justify-center sm:justify-end gap-3 w-full sm:w-auto">
+                        {archivedPatientsList.length > 0 && (
+                            <Button
+                                variant="outline"
+                                onClick={() => setShowArchivedModal(true)}
+                                className="w-full sm:w-auto font-medium text-muted-foreground hover:text-foreground"
+                            >
+                                <ArchiveRestore className="w-4 h-4 mr-2" />
+                                Ver Arquivados ({archivedPatientsList.length})
+                            </Button>
+                        )}
                         <Button
                             onClick={() => setShowAddPatientModal(true)}
-                            className="bg-primary text-primary-foreground rounded-5px shadow-card font-semibold hover:bg-primary/90"
+                            className="w-full sm:w-auto bg-primary text-primary-foreground rounded-5px shadow-card font-semibold hover:bg-primary/90"
                         >
                             <Plus className="w-4 h-4 mr-2" />
                             Adicionar Paciente
@@ -189,42 +208,43 @@ const PatientsPage = () => {
 
                 <Card className="bg-card shadow-card-dark rounded-xl overflow-hidden">
                     <CardHeader className="pb-2">
-                        <div className="flex flex-col md:flex-row gap-4">
+                        <div className="flex flex-col sm:flex-row gap-3">
                             <div className="relative flex-1 min-w-0">
                                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 shrink-0" />
                                 <Input
-                                    placeholder="Buscar por nome, email, CPF ou telefone..."
+                                    placeholder="Procurar paciente (Nome, Email, CPF...)"
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="pl-10 bg-muted min-w-0"
+                                    className="pl-10 bg-muted/50 border-transparent focus-visible:ring-1 focus-visible:ring-primary min-w-0 h-10 transition-all focus:bg-background"
                                 />
                             </div>
-                            <div className="flex flex-col md:flex-row items-center gap-2">
-                                <ListFilter className="w-4 h-4 text-muted-foreground hidden md:block" />
-                                <Select value={filterStatus} onValueChange={setFilterStatus}>
-                                    <SelectTrigger className="w-full md:w-[160px] bg-muted">
-                                        <SelectValue placeholder="Filtrar por..." />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="all">Todos os Pacientes</SelectItem>
-                                        <SelectItem value="active">Em Tratamento</SelectItem>
-                                        <SelectItem value="online">Apenas Online</SelectItem>
-                                        <SelectItem value="pending">Convite Pendente</SelectItem>
-                                        <SelectItem value="archived">Arquivados</SelectItem>
-                                    </SelectContent>
-                                </Select>
+                            
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="outline" className="h-10 border-input shrink-0 font-medium">
+                                        <ListFilter className="w-4 h-4 mr-2" />
+                                        Filtros e Organização
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-[220px]">
+                                    <DropdownMenuLabel>Exibir Pacientes</DropdownMenuLabel>
+                                    <DropdownMenuRadioGroup value={filterStatus} onValueChange={setFilterStatus}>
+                                        <DropdownMenuRadioItem value="all">Todos os Ativos</DropdownMenuRadioItem>
+                                        <DropdownMenuRadioItem value="active">Em Tratamento</DropdownMenuRadioItem>
+                                        <DropdownMenuRadioItem value="pending">Convites Pendentes</DropdownMenuRadioItem>
+                                        <DropdownMenuRadioItem value="online">Apenas Online</DropdownMenuRadioItem>
+                                    </DropdownMenuRadioGroup>
 
-                                <Select value={sortOrder} onValueChange={setSortOrder}>
-                                    <SelectTrigger className="w-full md:w-[190px] bg-muted">
-                                        <SelectValue placeholder="Ordenar por..." />
-                                    </SelectTrigger>
-                                    <SelectContent>
+                                    <DropdownMenuSeparator />
+                                    
+                                    <DropdownMenuLabel>Ordenar por</DropdownMenuLabel>
+                                    <DropdownMenuRadioGroup value={sortOrder} onValueChange={setSortOrder}>
                                         {Object.entries(sortOptions).map(([key, { label }]) => (
-                                            <SelectItem key={key} value={key}>{label}</SelectItem>
+                                            <DropdownMenuRadioItem key={key} value={key}>{label}</DropdownMenuRadioItem>
                                         ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
+                                    </DropdownMenuRadioGroup>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
                         </div>
                     </CardHeader>
 
@@ -265,6 +285,15 @@ const PatientsPage = () => {
                 isOpen={showAddPatientModal}
                 setIsOpen={setShowAddPatientModal}
                 onPatientAdded={fetchPatients} // Para recarregar a lista
+            />
+
+            <ArchivedPatientsModal
+                isOpen={showArchivedModal}
+                onClose={setShowArchivedModal}
+                archivedPatients={archivedPatientsList}
+                isUserOnline={isUserOnline}
+                handleUnarchive={handleUnarchive}
+                handleDelete={handleDelete}
             />
         </div>
     );
