@@ -6,6 +6,7 @@ import NotificationsPanel from '@/components/NotificationsPanel';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useOnlinePresence } from '@/hooks/useOnlinePresence';
 
 /**
  * PatientMobileLayout - Layout responsivo para Área do Paciente
@@ -21,6 +22,10 @@ export default function PatientMobileLayout() {
   const unreadCount = unreadSenders?.size || 0;
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [showNotifications, setShowNotifications] = useState(false);
+
+  // Register patient presence on Supabase Realtime so the nutritionist
+  // can see this patient as "Online" in the patients list.
+  useOnlinePresence();
 
   // Debug: Log admin status
   useEffect(() => {

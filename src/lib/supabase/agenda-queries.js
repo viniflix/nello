@@ -433,3 +433,53 @@ export async function getAppointments(nutritionistId, filters = {}) {
     return data || [];
 }
 
+/**
+ * Busca um resumo leve de consultas (last + next) para todos os pacientes de um nutricionista.
+ * Retorna um Map<patient_id, { last: Date | null, next: Date | null }> para uso nos cards.
+ * Usa apenas 2 queries no banco (uma para passadas, uma para futuras) ao invés de N por paciente.
+ * @param {string} nutritionistId
+ * @returns {Promise<Map<string, {last: string|null, next: string|null}>>}
+ */
+export async function getPatientAppointmentsSummary(nutritionistId) {
+    if (!nutritionistId) return new Map();
+
+    const now = new Date().toISOString();
+
+    const [pastResult, futureResult] = await Promise.all([
+        supabase
+            .from('appointments')
+            .select('patient_id, start_time')
+            .eq('nutritionist_id', nutritionistId)
+            .lt('start_time', now)
+            .not('patient_id', 'is', null)
+            .not('status', 'in', '("cancelled","canceled","no_show")')
+            .order('start_time', { ascending: false }),
+        supabase
+            .from('appointments')
+            .select('patient_id, start_time')
+            .eq('nutritionist_id', nutritionistId)
+            .gte('start_time', now)
+            .not('patient_id', 'is', null)
+            .not('status', 'in', '("cancelled","canceled","no_show")')
+            .order('start_time', { ascending: true }),
+    ]);
+
+    const summary = new Map();
+
+    const addTo = (rows, field) => {
+        (rows || []).forEach(row => {
+            if (!row.patient_id) return;
+            const existing = summary.get(row.patient_id) || { last: null, next: null };
+            // Only set if not yet set (rows are ordered so first match is most relevant)
+            if (!existing[field]) {
+                existing[field] = row.start_time;
+                summary.set(row.patient_id, existing);
+            }
+        });
+    };
+
+    addTo(pastResult.data, 'last');
+    addTo(futureResult.data, 'next');
+
+    return summary;
+}

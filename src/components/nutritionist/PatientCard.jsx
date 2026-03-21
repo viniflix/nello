@@ -1,125 +1,202 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { patientRoute } from '@/lib/utils/patientRoutes';
-import { ChevronRight, User as UserIcon, MoreVertical, Archive, Trash2, Loader2, AlertCircle } from 'lucide-react';
+import {
+    MoreVertical, Archive, Trash2, Loader2, AlertCircle,
+    MessageCircle, FileText, CalendarPlus, ArchiveRestore
+} from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { motion } from 'framer-motion';
 import { getModulesStatus } from '@/lib/supabase/patient-queries';
 
-const PatientCard = ({ patient, isOnline, onArchive, onDelete, onUnarchive }) => {
+// ── Gradient Avatar: gera cor determinística a partir do nome ───────────────
+const stringToHue = (str = '') => {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    return Math.abs(hash) % 360;
+};
+
+const GradientAvatar = ({ name = '', avatarUrl, size = 44 }) => {
+    const initials = name
+        .split(' ')
+        .filter(Boolean)
+        .slice(0, 2)
+        .map(w => w[0].toUpperCase())
+        .join('');
+    const hue = stringToHue(name);
+    const gradient = `linear-gradient(135deg, hsl(${hue},65%,52%), hsl(${(hue + 40) % 360},70%,45%))`;
+
+    if (avatarUrl) {
+        return (
+            <img
+                src={avatarUrl}
+                alt={name}
+                style={{ width: size, height: size }}
+                className="rounded-full object-cover"
+            />
+        );
+    }
+
+    return (
+        <div
+            style={{ width: size, height: size, background: gradient }}
+            className="rounded-full flex items-center justify-center font-bold text-white text-sm select-none"
+        >
+            {initials || '?'}
+        </div>
+    );
+};
+
+// ── PatientCard ──────────────────────────────────────────────────────────────
+const PatientCard = ({ patient, isOnline, onArchive, onDelete, onUnarchive, appointmentSummary }) => {
+    const navigate = useNavigate();
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [isCheckingData, setIsCheckingData] = useState(false);
-    const [canDelete, setCanDelete] = useState(false);
-    
-    // Modal state for Delete confirmation
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [showArchiveModal, setShowArchiveModal] = useState(false);
     const [showUnarchiveModal, setShowUnarchiveModal] = useState(false);
 
-    const isArchived = patient.is_active === false || patient.arquivadoHistorico;
-    const isPending = patient.needs_password_reset === true;
+    // B1: cache do resultado via ref para não repetir a query
+    const deleteCheckRef = useRef(null); // null = not checked, true/false = result
 
-    const handleDropdownOpen = async (open) => {
+    const isArchived = patient.is_active === false || patient.arquivadoHistorico;
+    const isPending = !isArchived && patient.needs_password_reset === true;
+
+    const handleDropdownOpen = useCallback(async (open) => {
         setIsDropdownOpen(open);
-        if (open && !isArchived) {
-            // Check if patient has clinical data to allow Hard Delete
+        if (open && !isArchived && deleteCheckRef.current === null) {
             setIsCheckingData(true);
             try {
                 const { data: statusObj } = await getModulesStatus(patient.id);
-                // If everything is 'not_started', we can safely delete
-                const hasData = statusObj ? Object.values(statusObj).some(val => val !== 'not_started') : false;
-                setCanDelete(!hasData);
-            } catch (err) {
-                console.error("Erro ao verificar status dos módulos", err);
-                setCanDelete(false);
+                const hasData = statusObj
+                    ? Object.values(statusObj).some(val => val !== 'not_started')
+                    : false;
+                deleteCheckRef.current = !hasData; // true = can delete
+            } catch {
+                deleteCheckRef.current = false;
             } finally {
                 setIsCheckingData(false);
             }
         }
+    }, [isArchived, patient.id]);
+
+    const canDelete = deleteCheckRef.current === true;
+
+    // Appointment summary
+    const apptInfo = appointmentSummary?.get(patient.id);
+    const formatDate = (iso) => {
+        if (!iso) return null;
+        return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
     };
+    const lastAppt = formatDate(apptInfo?.last);
+    const nextAppt = formatDate(apptInfo?.next);
+
+    const goTo = (view) => navigate(patientRoute(patient, view));
 
     return (
         <>
-            <div className={`relative block p-4 border bg-background rounded-lg transition-all ${isArchived ? 'opacity-60 border-dashed hover:opacity-80' : 'hover:shadow-md hover:border-primary'}`}>
-                
-                {/* Status Badges */}
-                <div className="absolute top-2 right-10 flex gap-2 z-10">
-                    {isArchived && (
-                        <Badge variant="destructive" className="h-5 text-[10px] px-1.5 uppercase font-bold tracking-wider">
-                            Arquivado
-                        </Badge>
-                    )}
-                    {!isArchived && isPending && (
-                        <Badge variant="secondary" className="h-5 text-[10px] px-1.5 bg-amber-100 text-amber-800 hover:bg-amber-200 uppercase tracking-wider">
-                            Pendente
-                        </Badge>
-                    )}
-                </div>
+            <motion.div
+                layout
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.96 }}
+                transition={{ duration: 0.2 }}
+                className={`group relative flex flex-col border bg-background rounded-xl overflow-hidden transition-all duration-200
+                    ${isArchived
+                        ? 'opacity-60 border-dashed hover:opacity-80'
+                        : 'hover:shadow-md hover:border-primary/60 cursor-pointer'
+                    }`}
+            >
+                {/* ── Main clickable area ── */}
+                <div
+                    className="flex items-start gap-3 p-4 flex-1"
+                    onClick={() => !isArchived && goTo('hub')}
+                >
+                    {/* Avatar */}
+                    <div className="relative flex-shrink-0">
+                        <GradientAvatar name={patient.name} avatarUrl={patient.avatar_url} />
+                        {!isArchived && (
+                            <div
+                                className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-background ${isOnline ? 'bg-green-500' : 'bg-neutral-300'}`}
+                                title={isOnline ? 'Online' : 'Offline'}
+                            />
+                        )}
+                    </div>
 
-                <div className="flex justify-between items-center gap-3">
-                    <Link to={patientRoute(patient, 'hub')} className="flex items-center gap-3 flex-1 min-w-0">
-                        <div className="relative w-11 h-11 flex-shrink-0">
-                            <div className="w-full h-full bg-secondary rounded-full flex items-center justify-center font-bold text-primary overflow-hidden">
-                                {patient.avatar_url ? (
-                                    <img src={patient.avatar_url} alt={patient.name} className="w-full h-full object-cover"/>
-                                ) : (
-                                    <UserIcon className="w-6 h-6 text-primary/70" />
-                                )}
-                            </div>
-                            
-                            {!isArchived && (
-                                <div className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-background ${isOnline ? 'bg-green-500' : 'bg-neutral-300'}`} 
-                                     title={isOnline ? "Online" : "Offline"}
-                                />
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <h3 className="font-semibold text-sm text-foreground truncate">{patient.name}</h3>
+                            {isArchived && (
+                                <Badge variant="outline" className="h-4 text-[9px] px-1 uppercase font-bold tracking-wider text-muted-foreground border-dashed">
+                                    Arquivado
+                                </Badge>
+                            )}
+                            {isPending && (
+                                <Badge className="h-4 text-[9px] px-1 bg-amber-100 text-amber-800 border-amber-200 uppercase tracking-wider" variant="outline">
+                                    Pendente
+                                </Badge>
                             )}
                         </div>
-                        
-                        <div className="flex-1 min-w-0 overflow-hidden">
-                            <h3 className="font-semibold text-base text-foreground truncate pl-1">{patient.name}</h3>
-                            <p className="text-sm text-muted-foreground truncate pl-1">
-                                {patient.email}
-                            </p>
-                        </div>
-                    </Link>
+                        <p className="text-xs text-muted-foreground truncate mt-0.5">{patient.email}</p>
 
-                    <div className="flex items-center gap-1 flex-shrink-0">
-                        <Link to={patientRoute(patient, 'hub')} className="p-2 text-muted-foreground hover:text-primary transition-colors">
-                            <ChevronRight className="h-5 w-5" />
-                        </Link>
-                        
+                        {/* Appointment indicators */}
+                        {!isArchived && (lastAppt || nextAppt) && (
+                            <div className="flex gap-3 mt-2">
+                                {lastAppt && (
+                                    <span className="text-[10px] text-muted-foreground">
+                                        Últ: <span className="font-medium text-foreground">{lastAppt}</span>
+                                    </span>
+                                )}
+                                {nextAppt ? (
+                                    <span className="text-[10px] text-emerald-600">
+                                        Próx: <span className="font-semibold">{nextAppt}</span>
+                                    </span>
+                                ) : (
+                                    <span className="text-[10px] text-amber-500/80">Sem Agendamento</span>
+                                )}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Dropdown — separate from the click zone */}
+                    <div onClick={e => e.stopPropagation()} className="flex-shrink-0 -mt-1 -mr-1">
                         <DropdownMenu open={isDropdownOpen} onOpenChange={handleDropdownOpen}>
                             <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground z-20 relative">
-                                    <MoreVertical className="h-4 w-4" />
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground">
+                                    {isCheckingData
+                                        ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                        : <MoreVertical className="h-4 w-4" />
+                                    }
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-48">
                                 {isArchived ? (
                                     <DropdownMenuItem onClick={() => setShowUnarchiveModal(true)} className="cursor-pointer">
-                                        <Archive className="mr-2 h-4 w-4" />
+                                        <ArchiveRestore className="mr-2 h-4 w-4" />
                                         <span>Reativar Paciente</span>
                                     </DropdownMenuItem>
                                 ) : (
                                     <>
+                                        <DropdownMenuItem onClick={() => goTo('hub')} className="cursor-pointer">
+                                            <FileText className="mr-2 h-4 w-4" />
+                                            <span>Abrir Prontuário</span>
+                                        </DropdownMenuItem>
+                                        <DropdownMenuSeparator />
                                         <DropdownMenuItem onClick={() => setShowArchiveModal(true)} className="cursor-pointer">
                                             <Archive className="mr-2 h-4 w-4" />
                                             <span>Arquivar Paciente</span>
                                         </DropdownMenuItem>
-                                        
                                         <DropdownMenuSeparator />
-                                        
-                                        <DropdownMenuItem 
+                                        <DropdownMenuItem
                                             onClick={() => setShowDeleteModal(true)}
                                             disabled={isCheckingData || !canDelete}
                                             className={`cursor-pointer ${canDelete ? 'text-destructive focus:text-destructive' : 'text-muted-foreground'}`}
                                         >
-                                            {isCheckingData ? (
-                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                            ) : (
-                                                <Trash2 className="mr-2 h-4 w-4" />
-                                            )}
+                                            <Trash2 className="mr-2 h-4 w-4" />
                                             <span>Excluir Permanentemente</span>
                                         </DropdownMenuItem>
                                     </>
@@ -128,17 +205,52 @@ const PatientCard = ({ patient, isOnline, onArchive, onDelete, onUnarchive }) =>
                         </DropdownMenu>
                     </div>
                 </div>
-            </div>
 
-            {/* Archive Confirmation Modal */}
+                {/* ── Hover Quick Actions (desktop only, active patients) ── */}
+                {!isArchived && (
+                    <div className="hidden group-hover:flex items-center gap-1 px-3 pb-3 pt-0 border-t border-border/30 mt-auto"
+                         onClick={e => e.stopPropagation()}
+                    >
+                        <Button
+                            size="sm"
+                            variant="ghost"
+                            className="flex-1 h-7 text-xs gap-1.5 text-muted-foreground hover:text-primary"
+                            onClick={() => navigate(`/nutritionist/chat?patient=${patient.id}`)}
+                        >
+                            <MessageCircle className="h-3 w-3" />
+                            Chat
+                        </Button>
+                        <Button
+                            size="sm"
+                            variant="ghost"
+                            className="flex-1 h-7 text-xs gap-1.5 text-muted-foreground hover:text-primary"
+                            onClick={() => goTo('hub')}
+                        >
+                            <FileText className="h-3 w-3" />
+                            Prontuário
+                        </Button>
+                        <Button
+                            size="sm"
+                            variant="ghost"
+                            className="flex-1 h-7 text-xs gap-1.5 text-muted-foreground hover:text-primary"
+                            onClick={() => navigate(`/nutritionist/agenda?patient=${patient.id}`)}
+                        >
+                            <CalendarPlus className="h-3 w-3" />
+                            Agendar
+                        </Button>
+                    </div>
+                )}
+            </motion.div>
+
+            {/* Archive Confirmation */}
             <Dialog open={showArchiveModal} onOpenChange={setShowArchiveModal}>
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>Arquivar Paciente</DialogTitle>
                         <DialogDescription>
-                            Tem certeza que deseja arquivar <strong>{patient.name}</strong>? 
-                            <br/><br/>
-                            O paciente perderá acesso ao chat e a interface passará para modo somente leitura. O histórico clínico permanecerá salvo para lhe respaldar legalmente e você poderá consultar os dados passados a qualquer momento.
+                            Tem certeza que deseja arquivar <strong>{patient.name}</strong>?
+                            <br /><br />
+                            O paciente perderá acesso ao chat e a interface passará para modo somente leitura. O histórico clínico permanecerá salvo para lhe respaldar legalmente.
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
@@ -148,7 +260,7 @@ const PatientCard = ({ patient, isOnline, onArchive, onDelete, onUnarchive }) =>
                 </DialogContent>
             </Dialog>
 
-            {/* Unarchive Confirmation Modal */}
+            {/* Unarchive Confirmation */}
             <Dialog open={showUnarchiveModal} onOpenChange={setShowUnarchiveModal}>
                 <DialogContent>
                     <DialogHeader>
@@ -165,7 +277,7 @@ const PatientCard = ({ patient, isOnline, onArchive, onDelete, onUnarchive }) =>
                 </DialogContent>
             </Dialog>
 
-            {/* Delete Confirmation Modal */}
+            {/* Delete Confirmation */}
             <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
                 <DialogContent>
                     <DialogHeader>
