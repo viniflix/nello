@@ -72,7 +72,7 @@ const PatientCard = ({ patient, isOnline, onArchive, onDelete }) => {
     return (
         <>
             <div
-                className={`flex items-start gap-3 p-4 border bg-background rounded-xl transition-all duration-150
+                className={`flex items-start gap-3 p-4 border bg-background rounded-xl transition-all duration-150 h-full
                     ${isArchived
                         ? 'opacity-60 border-dashed'
                         : 'hover:shadow-md hover:border-primary/40 cursor-pointer'
@@ -90,7 +90,7 @@ const PatientCard = ({ patient, isOnline, onArchive, onDelete }) => {
                 </div>
 
                 {/* Info */}
-                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0 flex flex-col h-full">
                     <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="font-semibold text-sm text-foreground truncate">{patient.name}</h3>
                         {isArchived && (
@@ -106,27 +106,29 @@ const PatientCard = ({ patient, isOnline, onArchive, onDelete }) => {
                     </div>
                     <p className="text-xs text-muted-foreground truncate mt-0.5">{patient.email}</p>
 
-                    {/* Quick info pills */}
-                    {!isArchived && (
-                        <div className="flex flex-wrap gap-1.5 mt-2">
-                            {isOnline && (
-                                <span className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-700 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded-full dark:text-emerald-400">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse inline-block" />
-                                    Online
-                                </span>
-                            )}
-                            {memberSince !== null && memberSince <= 30 && (
-                                <span className="inline-flex items-center text-[10px] font-medium text-violet-700 bg-violet-500/10 border border-violet-500/20 px-1.5 py-0.5 rounded-full dark:text-violet-400">
-                                    Novo paciente
-                                </span>
-                            )}
-                            {patient.phone && (
-                                <span className="inline-flex items-center text-[10px] text-muted-foreground bg-muted/60 border border-border/40 px-1.5 py-0.5 rounded-full truncate max-w-[120px]">
-                                    {patient.phone}
-                                </span>
-                            )}
-                        </div>
-                    )}
+                    {/* Quick info pills (anchored to bottom) */}
+                    <div className="mt-auto pt-3">
+                        {!isArchived && (
+                            <div className="flex flex-wrap gap-1.5">
+                                {isOnline && (
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-700 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded-full dark:text-emerald-400">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse inline-block" />
+                                        Online
+                                    </span>
+                                )}
+                                {memberSince !== null && memberSince <= 30 && (
+                                    <span className="inline-flex items-center text-[10px] font-medium text-violet-700 bg-violet-500/10 border border-violet-500/20 px-1.5 py-0.5 rounded-full dark:text-violet-400">
+                                        Novo paciente
+                                    </span>
+                                )}
+                                {patient.phone && (
+                                    <span className="inline-flex items-center text-[10px] text-muted-foreground bg-muted/60 border border-border/40 px-1.5 py-0.5 rounded-full truncate max-w-[120px]">
+                                        {patient.phone}
+                                    </span>
+                                )}
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 {/* Dropdown — isolated from card click zone (B2) */}

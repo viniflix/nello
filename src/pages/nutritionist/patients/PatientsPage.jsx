@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
     Plus, Search, Loader2, ListFilter, Users, ArchiveRestore, Clock,
-    LayoutGrid, List, Flame, MoreVertical, Archive, FileText, MessageCircle, AlertCircle, Trash2, PhoneOff
+    LayoutGrid, List, Flame, MoreVertical, Archive, FileText, MessageCircle, AlertCircle, Trash2
 } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import {
@@ -138,7 +138,7 @@ const PatientsPage = () => {
     const [sortOrder,           setSortOrder]           = useState(persisted.sortOrder     || 'name_asc');
     const [filterStatus,        setFilterStatus]        = useState(persisted.filterStatus  || 'all');
     const [viewMode,            setViewMode]            = useState(persisted.viewMode      || 'grid');
-    const [activeChip,          setActiveChip]          = useState(null); // 'new30' | 'pending' | 'incomplete'
+    const [activeChip,          setActiveChip]          = useState(null); // 'new30' | 'pending'
     const [showAddPatientModal, setShowAddPatientModal] = useState(false);
     const [showArchivedModal,   setShowArchivedModal]   = useState(false);
 
@@ -195,9 +195,8 @@ const PatientsPage = () => {
         });
         const thirtyDaysAgo = new Date(new Date() - 30 * 24 * 60 * 60 * 1000);
         const new30 = activeList.filter(p => new Date(p.created_at) >= thirtyDaysAgo).length;
-        const incomplete = activeList.filter(p => !p.phone).length; // Cadastro incompleto (sem fone)
 
-        return { activePatients: activeList, archivedPatients: archivedList, stats: { active: activeList.length, online, pending, new30, incomplete } };
+        return { activePatients: activeList, archivedPatients: archivedList, stats: { active: activeList.length, online, pending, new30 } };
     }, [patients, isUserOnline]);
 
     // ── Filtered & sorted list ───────────────────────────────────────────────
@@ -210,7 +209,6 @@ const PatientsPage = () => {
         let base = [...activePatients];
         if (activeChip === 'new30') base = base.filter(p => new Date(p.created_at) >= new Date(THIRTY_DAYS_AGO));
         else if (activeChip === 'pending') base = base.filter(p => p.needs_password_reset === true);
-        else if (activeChip === 'incomplete') base = base.filter(p => !p.phone);
         else {
             if (filterStatus === 'active') base = base.filter(p => p.needs_password_reset !== true);
             else if (filterStatus === 'pending') base = base.filter(p => p.needs_password_reset === true);
@@ -230,7 +228,6 @@ const PatientsPage = () => {
         if (searchTerm) return { title: `Nenhum resultado para "${searchTerm}"`, sub: "Verifique a ortografia do nome ou e-mail." };
         if (activeChip === 'new30') return { title: "Nenhum paciente adicionado recentemente.", sub: "" };
         if (activeChip === 'pending') return { title: "Nenhum convite pendente.", sub: "Todos já acessaram a plataforma cruzando o primeiro acesso." };
-        if (activeChip === 'incomplete') return { title: "Ótimo! Cadastros completos.", sub: "Todos os seus pacientes têm telefone cadastrado." };
         if (filterStatus === 'online') return { title: "Nenhum paciente online.", sub: "" };
         return { title: "Nenhum paciente encontrado.", sub: "" };
     }, [searchTerm, filterStatus, activeChip]);
@@ -284,15 +281,16 @@ const PatientsPage = () => {
                                 {/* Smart Chips */}
                                 {!loading && activePatients.length > 0 && (
                                     <div className="flex flex-wrap items-center justify-center sm:justify-end gap-2">
-                                        <Badge variant={activeChip === 'new30' ? 'default' : 'secondary'} className={`cursor-pointer text-[11px] gap-1 transition-colors px-2.5 py-1 ${activeChip !== 'new30' && 'bg-muted hover:bg-muted/80'}`} onClick={() => handleChipClick('new30')}>
-                                            <Flame className="w-3 h-3 text-orange-500" /> Adicionados Recentes ({stats.new30})
-                                        </Badge>
-                                        <Badge variant={activeChip === 'pending' ? 'default' : 'secondary'} className={`cursor-pointer text-[11px] gap-1 transition-colors px-2.5 py-1 ${activeChip !== 'pending' && 'bg-muted hover:bg-muted/80'}`} onClick={() => handleChipClick('pending')}>
-                                            <Clock className="w-3 h-3 text-amber-500" /> Convites Pendentes ({stats.pending})
-                                        </Badge>
-                                        <Badge variant={activeChip === 'incomplete' ? 'default' : 'secondary'} className={`cursor-pointer text-[11px] gap-1 transition-colors px-2.5 py-1 ${activeChip !== 'incomplete' && 'bg-muted hover:bg-muted/80'}`} onClick={() => handleChipClick('incomplete')}>
-                                            <PhoneOff className="w-3 h-3 text-rose-500" /> S/ Telefone ({stats.incomplete})
-                                        </Badge>
+                                        {stats.new30 > 0 && (
+                                            <Badge variant="outline" className={`cursor-pointer text-[11px] gap-1 transition-colors px-2.5 py-1 ${activeChip === 'new30' ? 'bg-orange-500 text-white hover:bg-orange-600 border-transparent shadow-sm' : 'bg-orange-50 text-orange-700 hover:bg-orange-100 border-orange-200/60'}`} onClick={() => handleChipClick('new30')}>
+                                                <Flame className={`w-3 h-3 ${activeChip === 'new30' ? 'text-white' : 'text-orange-500'}`} /> Adicionados Recentes ({stats.new30})
+                                            </Badge>
+                                        )}
+                                        {stats.pending > 0 && (
+                                            <Badge variant="outline" className={`cursor-pointer text-[11px] gap-1 transition-colors px-2.5 py-1 ${activeChip === 'pending' ? 'bg-amber-500 text-white hover:bg-amber-600 border-transparent shadow-sm' : 'bg-amber-50 text-amber-700 hover:bg-amber-100 border-amber-200/60'}`} onClick={() => handleChipClick('pending')}>
+                                                <Clock className={`w-3 h-3 ${activeChip === 'pending' ? 'text-white' : 'text-amber-500'}`} /> Convites Pendentes ({stats.pending})
+                                            </Badge>
+                                        )}
                                     </div>
                                 )}
                             </div>
