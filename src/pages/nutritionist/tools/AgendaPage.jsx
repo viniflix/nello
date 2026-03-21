@@ -42,6 +42,7 @@ export default function AgendaPage() {
     const [exportPeriodType, setExportPeriodType] = useState('week'); // 'week' ou 'month'
     const [exportWeekStart, setExportWeekStart] = useState(startOfWeek(new Date(), { locale: ptBR }));
     const [exportMonth, setExportMonth] = useState(new Date());
+    const [askToRegisterPatient, setAskToRegisterPatient] = useState({ isOpen: false, name: '' });
 
     const normalizeAppointment = useCallback((appointment) => {
         const startValue = appointment?.start_time || appointment?.appointment_time || null;
@@ -70,38 +71,54 @@ export default function AgendaPage() {
         if (apptsError) toast({ title: "Erro", description: apptsError.message, variant: "destructive" });
         else setAppointments((apptsData || []).map(normalizeAppointment));
 
-        // Pacientes: nutritionist_patients PRIMEIRO (tabela canônica); fallback user_profiles.nutritionist_id
+        // Pacientes: nutritionist_patients PRIMEIRO E user_profiles direto (para ninguem sumir)
         let patientsList = [];
         let loadError = null;
-        const { data: links, error: errLinks } = await supabase
-            .from('nutritionist_patients')
-            .select('patient_id')
-            .eq('nutritionist_id', user.id);
+        const patientMap = new Map();
 
-        if (!errLinks && links?.length) {
-            const ids = links.map(l => l.patient_id).filter(Boolean);
-            const { data: profiles, error: errProf } = await supabase
-                .from('user_profiles')
-                .select('id, name')
-                .in('id', ids);
-            if (!errProf && profiles?.length) {
-                patientsList = profiles.map(p => ({ id: p.id, name: p.name || 'Paciente' }));
+        try {
+            // 1. Tentar pegar da tabela de vínculos
+            const { data: links, error: errLinks } = await supabase
+                .from('nutritionist_patients')
+                .select('patient_id')
+                .eq('nutritionist_id', user.id);
+
+            if (!errLinks && links?.length) {
+                const ids = links.map(l => l.patient_id).filter(Boolean);
+                const { data: profiles } = await supabase
+                    .from('user_profiles')
+                    .select('id, name')
+                    .in('id', ids);
+                if (profiles) profiles.forEach(p => patientMap.set(p.id, p));
+            } else if (errLinks) {
+                loadError = errLinks;
             }
-        } else {
-            loadError = errLinks;
+
+            // 2. Pegar da tabela de perfis diretamente (fallback para novas adições)
             const { data: fromProfiles, error: errProfiles } = await supabase
                 .from('user_profiles')
                 .select('id, name')
                 .eq('nutritionist_id', user.id)
                 .limit(500);
+
             if (!errProfiles && fromProfiles?.length) {
-                patientsList = fromProfiles.map(p => ({ id: p.id, name: p.name || 'Paciente' }));
-                loadError = null;
+                fromProfiles.forEach(p => patientMap.set(p.id, p));
+            } else if (errProfiles && !loadError) {
+                loadError = errProfiles;
             }
+
+            patientsList = Array.from(patientMap.values()).map(p => ({
+                id: p.id,
+                name: p.name || 'Paciente'
+            }));
+            
+            if (patientsList.length === 0 && loadError) {
+                toast({ title: "Erro", description: "Não foi possível carregar os pacientes. Verifique sua conexão.", variant: "destructive" });
+            }
+        } catch (e) {
+            console.error('Error fetching patients:', e);
         }
-        if (patientsList.length === 0 && loadError) {
-            toast({ title: "Erro", description: "Não foi possível carregar os pacientes. Execute o script FIX_agendamento_completo.sql no Supabase.", variant: "destructive" });
-        }
+
         setPatients(patientsList);
 
         // Load services
@@ -121,7 +138,7 @@ export default function AgendaPage() {
     }, [loadData]);
 
     const handleSaveAppointment = async (appointmentData, financialData) => {
-        const { patient_id, appointment_time, notes, duration, appointment_type, status } = appointmentData;
+        const { patient_id, unregistered_patient_name, appointment_time, notes, duration, appointment_type, status } = appointmentData;
 
         // Validação de conflitos de horário
         const startTime = new Date(appointment_time);
@@ -152,7 +169,8 @@ export default function AgendaPage() {
                 // Update existing appointment (no financial transaction)
                 await updateAppointment(appointmentData.id, {
                     nutritionist_id: user.id,
-                    patient_id,
+                    patient_id: patient_id || null,
+                    unregistered_patient_name: unregistered_patient_name || null,
                     appointment_time,
                     notes,
                     duration: duration || 60,
@@ -164,7 +182,8 @@ export default function AgendaPage() {
                 // Create new appointment with financial transaction
                 const payload = {
                     nutritionist_id: user.id,
-                    patient_id,
+                    patient_id: patient_id || null,
+                    unregistered_patient_name: unregistered_patient_name || null,
                     appointment_time,
                     notes,
                     duration: duration || 60,
@@ -183,6 +202,14 @@ export default function AgendaPage() {
                     toast({ 
                         title: "Sucesso!", 
                         description: "Agendamento criado com sucesso." 
+                    });
+                }
+
+                // Se o paciente não estiver cadastrado, pergunta se deseja cadastrar!
+                if (!patient_id && unregistered_patient_name) {
+                    setAskToRegisterPatient({
+                        name: unregistered_patient_name,
+                        isOpen: true
                     });
                 }
             }
@@ -248,9 +275,10 @@ export default function AgendaPage() {
         // Filtrar por busca de paciente
         if (patientSearch.trim()) {
             const searchLower = patientSearch.toLowerCase();
-            filtered = filtered.filter(a =>
-                a.patient?.name?.toLowerCase().includes(searchLower)
-            );
+            filtered = filtered.filter(a => {
+                const name = a.patient?.name || a.unregistered_patient_name || '';
+                return name.toLowerCase().includes(searchLower);
+            });
         }
 
         return filtered;
@@ -754,8 +782,13 @@ export default function AgendaPage() {
                                                                     <div className="flex items-center gap-1.5 lg:gap-2 mb-0.5">
                                                                         <User className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-muted-foreground flex-shrink-0" />
                                                                         <p className="font-semibold text-sm lg:text-base text-foreground truncate">
-                                                                            {appt.patient?.name || 'Paciente não identificado'}
+                                                                            {appt.patient?.name || appt.unregistered_patient_name || 'Paciente não identificado'}
                                                                         </p>
+                                                                        {!appt.patient_id && appt.unregistered_patient_name && (
+                                                                            <Badge variant="outline" className="text-[10px] bg-amber-50 text-amber-600 border-amber-200">
+                                                                                Não Cadastrado
+                                                                            </Badge>
+                                                                        )}
                                                                     </div>
                                                                     <div className="flex items-center gap-1.5 flex-wrap">
                                                                         <Badge className={`text-xs ${statusInfo.color} border-0`}>
@@ -774,15 +807,27 @@ export default function AgendaPage() {
 
                                                                 {/* Ações - Compactas */}
                                                                 <div className="flex gap-1 lg:gap-2 flex-shrink-0">
-                                                                    <Button
-                                                                        variant="ghost"
-                                                                        size="icon"
-                                                                        onClick={() => navigate(`/nutritionist/patients/${appt.patient_id}/hub`)}
-                                                                        className="h-8 w-8 lg:h-9 lg:w-9 hover:bg-blue-50 hover:text-blue-600"
-                                                                        title="Ver detalhes do paciente"
-                                                                    >
-                                                                        <Eye className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
-                                                                    </Button>
+                                                                    {appt.patient_id ? (
+                                                                        <Button
+                                                                            variant="ghost"
+                                                                            size="icon"
+                                                                            onClick={() => navigate(`/nutritionist/patients/${appt.patient_id}/hub`)}
+                                                                            className="h-8 w-8 lg:h-9 lg:w-9 hover:bg-blue-50 hover:text-blue-600"
+                                                                            title="Ver detalhes do paciente"
+                                                                        >
+                                                                            <Eye className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+                                                                        </Button>
+                                                                    ) : (
+                                                                        <Button
+                                                                            variant="ghost"
+                                                                            size="icon"
+                                                                            onClick={() => setAskToRegisterPatient({ isOpen: true, name: appt.unregistered_patient_name })}
+                                                                            className="h-8 w-8 lg:h-9 lg:w-9 hover:bg-amber-50 hover:text-amber-600"
+                                                                            title="Cadastrar Paciente"
+                                                                        >
+                                                                            <User className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+                                                                        </Button>
+                                                                    )}
                                                                     <Button
                                                                         variant="ghost"
                                                                         size="icon"
@@ -1068,7 +1113,7 @@ export default function AgendaPage() {
                             <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
                             <AlertDialogDescription>
                                 Tem certeza que deseja excluir o agendamento de{' '}
-                                <strong>{appointmentToDelete?.patient?.name}</strong> para{' '}
+                                <strong>{appointmentToDelete?.patient?.name || appointmentToDelete?.unregistered_patient_name}</strong> para{' '}
                                 <strong>
                                     {appointmentToDelete && format(new Date(appointmentToDelete.appointment_time), "dd/MM/yyyy 'às' HH:mm")}
                                 </strong>?
@@ -1080,6 +1125,28 @@ export default function AgendaPage() {
                             <AlertDialogCancel>Cancelar</AlertDialogCancel>
                             <AlertDialogAction onClick={handleDeleteAppointment} className="bg-destructive hover:bg-destructive/90">
                                 Excluir
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+
+                {/* Dialog para Cadastrar Paciente Não Registrado */}
+                <AlertDialog open={askToRegisterPatient.isOpen} onOpenChange={(val) => setAskToRegisterPatient(prev => ({ ...prev, isOpen: val }))}>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Paciente Não Cadastrado</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                O agendamento para <strong>{askToRegisterPatient.name}</strong> foi criado com sucesso. <br /><br />
+                                No entanto, este paciente ainda não possui cadastro no sistema. Deseja cadastrá-lo e enviá-lo um convite agora?
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Agora não</AlertDialogCancel>
+                            <AlertDialogAction 
+                                onClick={() => navigate(`/nutritionist/patients?addPatientName=${encodeURIComponent(askToRegisterPatient.name)}`)} 
+                                className="bg-primary hover:bg-primary/90"
+                            >
+                                Cadastrar Paciente
                             </AlertDialogAction>
                         </AlertDialogFooter>
                     </AlertDialogContent>

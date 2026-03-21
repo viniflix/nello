@@ -373,18 +373,65 @@ const MonthInputWithCalendar = ({
     );
 };
 
-const TimeInput = ({ value, onChange, placeholder = 'hh:mm', disabled, id, name, className, ...rest }) => (
-    <Input
-        id={id}
-        name={name}
-        value={value || ''}
-        onChange={(event) => onChange?.(event.target.value)}
-        placeholder={placeholder}
-        disabled={disabled}
-        className={className}
-        inputMode="numeric"
-        {...rest}
-    />
-);
+const TimeInput = ({ value, onChange, placeholder = 'hh:mm', disabled, id, name, className, ...rest }) => {
+    const handleInputChange = (event) => {
+        let val = event.target.value;
+        const isBackspace = event.nativeEvent?.inputType === 'deleteContentBackward';
+        
+        let digits = val.replace(/\D/g, '');
+        if (digits.length === 0) {
+            onChange?.('');
+            return;
+        }
+        
+        if (digits.length > 4) {
+            digits = digits.slice(0, 4);
+        }
+        
+        let hours = digits.slice(0, 2);
+        let minutes = digits.slice(2, 4);
+        
+        if (hours.length === 2) {
+            let h = parseInt(hours, 10);
+            if (h > 23) hours = '23';
+        } else if (hours.length === 1 && parseInt(hours, 10) >= 3) {
+            // Se digitar 3 a 9 no primeiro dígito, já assume 03 a 09
+            hours = '0' + hours;
+        }
+        
+        if (minutes.length === 2) {
+            let m = parseInt(minutes, 10);
+            if (m > 59) minutes = '59';
+        } else if (minutes.length === 1 && parseInt(minutes, 10) >= 6) {
+            minutes = '0' + minutes;
+        }
+        
+        let formatted = hours;
+        if (digits.length >= 3) {
+            formatted = `${hours}:${minutes}`;
+        } else if (digits.length === 2 && !isBackspace) {
+            formatted = `${hours}:`;
+        } else if (digits.length === 2 && val.endsWith(':')) {
+            formatted = `${hours}:`;
+        }
+        
+        onChange?.(formatted);
+    };
+
+    return (
+        <Input
+            id={id}
+            name={name}
+            value={value || ''}
+            onChange={handleInputChange}
+            placeholder={placeholder}
+            disabled={disabled}
+            className={className}
+            inputMode="numeric"
+            maxLength={5}
+            {...rest}
+        />
+    );
+};
 
 export { DateInputWithCalendar, MonthInputWithCalendar, TimeInput };

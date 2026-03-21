@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/customSupabaseClient';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { patientRoute } from '@/lib/utils/patientRoutes';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import DashboardHeader from '@/components/DashboardHeader';
 import { motion } from 'framer-motion';
 import AddPatientModal from '@/components/nutritionist/AddPatientModal';
+import { usePatientFormStore } from '@/stores/usePatientFormStore'; 
 
 // Objeto de ordenação
 const sortOptions = {
@@ -27,6 +28,19 @@ const PatientsPage = () => {
     const [loading, setLoading] = useState(true);
     const [sortOrder, setSortOrder] = useState('name_asc');
     const [showAddPatientModal, setShowAddPatientModal] = useState(false);
+    const [searchParams, setSearchParams] = useSearchParams();
+    const { updateField } = usePatientFormStore();
+
+    // Handle auto-open and auto-fill from URL params
+    useEffect(() => {
+        const addPatientName = searchParams.get('addPatientName');
+        if (addPatientName) {
+            setShowAddPatientModal(true);
+            updateField('name', addPatientName);
+            // Remove o param da URL para não reabrir em recarregamentos
+            setSearchParams({}, { replace: true });
+        }
+    }, [searchParams, setSearchParams, updateField]);
 
     const fetchPatients = useCallback(async () => {
         if (!user?.id) return;

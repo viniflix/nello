@@ -50,6 +50,14 @@ const buildAppointmentPayload = (appointmentData = {}) => {
         ? appointmentData.patient_id
         : null;
 
+    const unregisteredPatientName = appointmentData.unregistered_patient_name && String(appointmentData.unregistered_patient_name).trim()
+        ? appointmentData.unregistered_patient_name
+        : null;
+
+    if (!patientId && !unregisteredPatientName) {
+        throw new Error('É necessário informar um paciente cadastrado ou o nome de um paciente não cadastrado.');
+    }
+
     if (!startTimeIso) {
         throw new Error('Data e horário inválidos. Verifique se preencheu data e hora corretamente.');
     }
@@ -57,6 +65,7 @@ const buildAppointmentPayload = (appointmentData = {}) => {
     return {
         nutritionist_id: appointmentData.nutritionist_id,
         patient_id: patientId,
+        unregistered_patient_name: unregisteredPatientName,
         appointment_time: startTimeIso,
         start_time: startTimeIso,
         duration: durationMinutes,
@@ -107,13 +116,17 @@ export async function createAppointmentWithFinance(appointmentData, financialDat
     }
 
     // Get patient name for description
-    const { data: patient } = await supabase
-        .from('user_profiles')
-        .select('name')
-        .eq('id', patient_id)
-        .single();
+    let fetchedPatientName = null;
+    if (patient_id) {
+        const { data: patient } = await supabase
+            .from('user_profiles')
+            .select('name')
+            .eq('id', patient_id)
+            .single();
+        fetchedPatientName = patient?.name;
+    }
 
-    const patientName = patient?.name || 'Paciente';
+    const patientName = fetchedPatientName || appointmentData.unregistered_patient_name || 'Paciente';
 
     // Determine amount and description
     let amount = 0;

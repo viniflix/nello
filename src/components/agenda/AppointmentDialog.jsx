@@ -23,6 +23,7 @@ export default function AppointmentDialog({
 }) {
     const [formData, setFormData] = useState({
         patient_id: '',
+        unregistered_patient_name: '',
         appointment_time_date: preSelectedDate ? format(preSelectedDate, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
         appointment_time_hour: '',
         duration: 60,
@@ -72,6 +73,7 @@ export default function AppointmentDialog({
             const appointmentStart = appointment.start_time || appointment.appointment_time;
             setFormData({
                 patient_id: appointment.patient_id || '',
+                unregistered_patient_name: appointment.unregistered_patient_name || '',
                 appointment_time_date: appointmentStart
                     ? format(new Date(appointmentStart), 'yyyy-MM-dd')
                     : format(new Date(), 'yyyy-MM-dd'),
@@ -92,11 +94,14 @@ export default function AppointmentDialog({
                 if (patient) {
                     setPatientSearchTerm(patient.name);
                 }
+            } else if (appointment.unregistered_patient_name) {
+                setPatientSearchTerm(appointment.unregistered_patient_name);
             }
         } else {
             // Reset form
             setFormData({
                 patient_id: '',
+                unregistered_patient_name: '',
                 appointment_time_date: preSelectedDate ? format(preSelectedDate, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
                 appointment_time_hour: '',
                 duration: 60,
@@ -142,7 +147,12 @@ export default function AppointmentDialog({
     const handleSubmit = (e) => {
         e.preventDefault();
 
-        if (!formData.patient_id || !formData.appointment_time_date || !formData.appointment_time_hour) {
+        // Must have EITHER a patient_id OR a typed registered name
+        if (!formData.patient_id && !patientSearchTerm.trim()) {
+            return;
+        }
+
+        if (!formData.appointment_time_date || !formData.appointment_time_hour) {
             return;
         }
 
@@ -153,6 +163,7 @@ export default function AppointmentDialog({
         const appointmentData = {
             ...appointment,
             patient_id: formData.patient_id,
+            unregistered_patient_name: formData.patient_id ? null : patientSearchTerm.trim(),
             appointment_time: appointment_time.toISOString(),
             notes: formData.notes,
             duration: formData.duration,
@@ -197,12 +208,15 @@ export default function AppointmentDialog({
                                     setPatientSearchTerm(e.target.value);
                                     setShowPatientSuggestions(true);
                                     if (!e.target.value) {
+                                        setFormData(prev => ({ ...prev, patient_id: '', unregistered_patient_name: '' }));
+                                    } else {
+                                        // Auto-desvincula patient_id se o nome digitado não bater com nada ainda
                                         setFormData(prev => ({ ...prev, patient_id: '' }));
                                     }
                                 }}
                                 onFocus={() => setShowPatientSuggestions(true)}
                                 className="pl-9"
-                                required={!formData.patient_id}
+                                required={!formData.patient_id && !patientSearchTerm.trim()}
                             />
                         </div>
 
@@ -222,6 +236,23 @@ export default function AppointmentDialog({
                                         {patient.name}
                                     </button>
                                 ))}
+                                
+                                {/* Opção Adicionar Novo */}
+                                {!filteredPatients.some(p => p.name.toLowerCase() === patientSearchTerm.toLowerCase()) && (
+                                    <button
+                                        type="button"
+                                        className="w-full text-left px-3 py-2 hover:bg-amber-50 hover:text-amber-700 text-sm font-medium border-t flex items-center gap-2"
+                                        onClick={() => {
+                                            setFormData(prev => ({ ...prev, patient_id: '', unregistered_patient_name: patientSearchTerm }));
+                                            setShowPatientSuggestions(false);
+                                        }}
+                                    >
+                                        <div className="w-5 h-5 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+                                            <span className="text-amber-600 text-xs">+</span>
+                                        </div>
+                                        Agendar para "{patientSearchTerm}" (Sem cadastro)
+                                    </button>
+                                )}
                             </div>
                         )}
                     </div>

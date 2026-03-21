@@ -105,17 +105,17 @@ const FoodSelector = ({ isOpen, onClose, onSelect }) => {
 
     return (
         <Dialog open={isOpen} onOpenChange={handleClose}>
-            <DialogContent className="max-w-3xl max-h-[80vh]">
-                <DialogHeader>
+            <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
+                <DialogHeader className="shrink-0">
                     <DialogTitle>Buscar Alimento</DialogTitle>
                     <DialogDescription>
                         Procure alimentos por nome nas bases de dados nutricionais
                     </DialogDescription>
                 </DialogHeader>
 
-                <div className="space-y-4">
+                <div className="flex-1 min-h-0 flex flex-col space-y-4 overflow-hidden">
                     {/* Barra de busca */}
-                    <div className="space-y-2">
+                    <div className="shrink-0 space-y-2">
                         <Label htmlFor="search">Nome do Alimento</Label>
                         <div className="relative">
                             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -131,7 +131,7 @@ const FoodSelector = ({ isOpen, onClose, onSelect }) => {
                     </div>
 
                     {/* Filtro de fonte */}
-                    <div className="flex gap-2 flex-wrap">
+                    <div className="shrink-0 flex gap-2 flex-wrap">
                         {sources.map((source) => (
                             <Badge
                                 key={source.value || 'all'}
@@ -145,7 +145,7 @@ const FoodSelector = ({ isOpen, onClose, onSelect }) => {
                     </div>
 
                     {/* Lista de resultados */}
-                    <ScrollArea className="h-[400px] border rounded-md p-4">
+                    <div className="flex-1 min-h-0 border rounded-md p-4 overflow-y-auto">
                         {loading && (
                             <div className="text-center py-8 text-muted-foreground">
                                 Buscando...
@@ -223,10 +223,10 @@ const FoodSelector = ({ isOpen, onClose, onSelect }) => {
                                 ))}
                             </div>
                         )}
-                    </ScrollArea>
+                    </div>
                 </div>
 
-                <DialogFooter>
+                <DialogFooter className="shrink-0 mt-4">
                     <Button variant="outline" onClick={handleClose}>
                         <X className="h-4 w-4 mr-2" />
                         Cancelar
