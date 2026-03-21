@@ -27,9 +27,9 @@ const PatientCard = ({ patient, isOnline, onArchive, onDelete, onUnarchive }) =>
             // Check if patient has clinical data to allow Hard Delete
             setIsCheckingData(true);
             try {
-                const status = await getModulesStatus(patient.id);
+                const { data: statusObj } = await getModulesStatus(patient.id);
                 // If everything is 'not_started', we can safely delete
-                const hasData = Object.values(status).some(val => val !== 'not_started');
+                const hasData = statusObj ? Object.values(statusObj).some(val => val !== 'not_started') : false;
                 setCanDelete(!hasData);
             } catch (err) {
                 console.error("Erro ao verificar status dos módulos", err);

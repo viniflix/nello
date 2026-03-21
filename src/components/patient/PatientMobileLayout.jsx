@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import NotificationsPanel from '@/components/NotificationsPanel';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useState, useEffect } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 
 /**
  * PatientMobileLayout - Layout responsivo para Área do Paciente

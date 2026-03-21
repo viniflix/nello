@@ -30,8 +30,7 @@ const PatientsPage = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [loading, setLoading] = useState(true);
     const [sortOrder, setSortOrder] = useState('name_asc');
-    const [filterStatus, setFilterStatus] = useState('active'); // 'all', 'active', 'archived', 'pending'
-    const [filterOnline, setFilterOnline] = useState('all'); // 'all', 'online'
+    const [filterStatus, setFilterStatus] = useState('active'); // 'all', 'active', 'archived', 'pending', 'online'
     const [showAddPatientModal, setShowAddPatientModal] = useState(false);
     const [searchParams, setSearchParams] = useSearchParams();
     const { updateField } = usePatientFormStore();
@@ -104,21 +103,17 @@ const PatientsPage = () => {
     const filteredPatients = useMemo(() => {
         let result = patients;
 
-        // Filtro de Vínculo
-        if (filterStatus === 'active') {
-            result = result.filter(p => p.is_active !== false && !p.arquivadoHistorico);
-        } else if (filterStatus === 'archived') {
-            result = result.filter(p => p.is_active === false || p.arquivadoHistorico);
-        } else if (filterStatus === 'pending') {
-            result = result.filter(p => p.needs_password_reset === true && p.is_active !== false && !p.arquivadoHistorico);
-        }
+        const getPriority = (p) => {
+            const isArchived = p.is_active === false || p.arquivadoHistorico;
+            const isPending = p.needs_password_reset === true && !isArchived;
+            if (isArchived) return 4;
+            if (isPending) return 3;
+            if (isUserOnline(p.id)) return 1;
+            return 2; // Active Offline
+        };
 
-        // Filtro Online
-        if (filterOnline === 'online') {
-            result = result.filter(p => isUserOnline(p.id));
-        }
-
-        // Busca
+        // Se houver busca de texto, ignora o filtro visual selecionado,
+        // retorna TODOS os pacientes que deram match e ordena pela prioridade.
         if (searchTerm.trim()) {
             const lowerSearchTerm = searchTerm.toLowerCase();
             result = result.filter(p => 
@@ -127,9 +122,24 @@ const PatientsPage = () => {
                 (p.phone && p.phone.includes(lowerSearchTerm)) ||
                 (p.cpf && p.cpf.includes(lowerSearchTerm))
             );
+
+            // Ordena pela prioridade exigida na busca
+            result.sort((a, b) => getPriority(a) - getPriority(b));
+            return result;
         }
 
-        // Ordenação
+        // Sem busca de texto, aplica Filtro Normal
+        if (filterStatus === 'active') {
+            result = result.filter(p => p.is_active !== false && !p.arquivadoHistorico);
+        } else if (filterStatus === 'archived') {
+            result = result.filter(p => p.is_active === false || p.arquivadoHistorico);
+        } else if (filterStatus === 'pending') {
+            result = result.filter(p => p.needs_password_reset === true && p.is_active !== false && !p.arquivadoHistorico);
+        } else if (filterStatus === 'online') {
+            result = result.filter(p => isUserOnline(p.id) && p.is_active !== false && !p.arquivadoHistorico);
+        }
+
+        // Ordenação normal quando não há busca por texto
         const { column, ascending } = sortOptions[sortOrder];
         result.sort((a, b) => {
             const valA = a[column];
@@ -142,7 +152,7 @@ const PatientsPage = () => {
         });
 
         return result;
-    }, [patients, searchTerm, filterStatus, filterOnline, sortOrder, isUserOnline]);
+    }, [patients, searchTerm, filterStatus, sortOrder, isUserOnline]);
 
 
     return (
@@ -192,29 +202,20 @@ const PatientsPage = () => {
                             <div className="flex flex-col md:flex-row items-center gap-2">
                                 <ListFilter className="w-4 h-4 text-muted-foreground hidden md:block" />
                                 <Select value={filterStatus} onValueChange={setFilterStatus}>
-                                    <SelectTrigger className="w-full md:w-[150px] bg-muted">
-                                        <SelectValue placeholder="Vínculo" />
+                                    <SelectTrigger className="w-full md:w-[160px] bg-muted">
+                                        <SelectValue placeholder="Filtrar por..." />
                                     </SelectTrigger>
                                     <SelectContent>
+                                        <SelectItem value="all">Todos os Pacientes</SelectItem>
                                         <SelectItem value="active">Em Tratamento</SelectItem>
-                                        <SelectItem value="archived">Arquivados</SelectItem>
-                                        <SelectItem value="pending">Convite Pendente</SelectItem>
-                                        <SelectItem value="all">Todos os Vínculos</SelectItem>
-                                    </SelectContent>
-                                </Select>
-
-                                <Select value={filterOnline} onValueChange={setFilterOnline}>
-                                    <SelectTrigger className="w-full md:w-[130px] bg-muted">
-                                        <SelectValue placeholder="Status" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="all">Todos</SelectItem>
                                         <SelectItem value="online">Apenas Online</SelectItem>
+                                        <SelectItem value="pending">Convite Pendente</SelectItem>
+                                        <SelectItem value="archived">Arquivados</SelectItem>
                                     </SelectContent>
                                 </Select>
 
                                 <Select value={sortOrder} onValueChange={setSortOrder}>
-                                    <SelectTrigger className="w-full md:w-[180px] bg-muted">
+                                    <SelectTrigger className="w-full md:w-[190px] bg-muted">
                                         <SelectValue placeholder="Ordenar por..." />
                                     </SelectTrigger>
                                     <SelectContent>
