@@ -906,11 +906,13 @@ export const upsertFeedTask = async ({
 }) => {
     try {
         const identity = buildFeedTaskIdentity({ nutritionistId, sourceType, sourceId });
-        const { data: existing, error: existingError } = await supabase
+        const { data: existingRows, error: existingError } = await supabase
             .from('feed_tasks')
             .select('id, metadata')
             .match(identity)
-            .maybeSingle();
+            .limit(1);
+
+        const existing = existingRows?.[0];
 
         if (existingError) throw existingError;
 
@@ -1102,11 +1104,13 @@ export const getFeedTaskAuditTrail = async ({
 }) => {
     try {
         const identity = buildFeedTaskIdentity({ nutritionistId, sourceType, sourceId });
-        const { data, error } = await supabase
+        const { data: existingRows, error } = await supabase
             .from('feed_tasks')
             .select('id, status, snooze_until, updated_at, metadata')
             .match(identity)
-            .maybeSingle();
+            .limit(1);
+            
+        const data = existingRows?.[0];
 
         if (error) throw error;
         if (!data) return { data: [], error: null };

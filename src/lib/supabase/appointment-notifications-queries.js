@@ -1,6 +1,13 @@
 import { supabase } from '@/lib/customSupabaseClient';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
 
+const isFunctionMissing = (err) => {
+    if (!err) return false;
+    const msg = String(err?.message || '').toLowerCase();
+    const code = String(err?.code || err?.statusCode || '').toString();
+    return code === '404' || code === '42883' || msg.includes('could not find the function') || msg.includes('schema cache');
+};
+
 export const syncAppointmentNotificationSchedule = async (appointmentId, forceReschedule = false) => {
     try {
         const { data, error } = await supabase.rpc('sync_appointment_notification_schedule', {
@@ -8,9 +15,17 @@ export const syncAppointmentNotificationSchedule = async (appointmentId, forceRe
             p_force_reschedule: forceReschedule
         });
 
-        if (error) throw error;
+        if (error) {
+            if (isFunctionMissing(error)) {
+                return { data: null, error: null }; // Ignore gracefully
+            }
+            throw error;
+        }
         return { data, error: null };
     } catch (error) {
+        if (isFunctionMissing(error)) {
+            return { data: null, error: null };
+        }
         logSupabaseError('Erro ao sincronizar notificações da consulta', error);
         return { data: null, error };
     }
