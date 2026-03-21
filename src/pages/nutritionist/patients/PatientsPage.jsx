@@ -167,6 +167,13 @@ const PatientsPage = () => {
 
     useEffect(() => { fetchPatients(); }, [fetchPatients]);
 
+    // Auto-close archived modal when list empties (e.g. after last archived patient is deleted)
+    useEffect(() => {
+        if (showArchivedModal && archivedPatients.length === 0 && !loading) {
+            setShowArchivedModal(false);
+        }
+    }, [archivedPatients.length, showArchivedModal, loading]);
+
     // ── Actions ──────────────────────────────────────────────────────────────
     const handleArchive = async (patient) => {
         const { success } = await archivePatient(patient.id, user.id);
@@ -434,7 +441,7 @@ const PatientsPage = () => {
             </motion.div>
 
             {/* Modals Globais */}
-            {showAddPatientModal && <AddPatientModal isOpen={showAddPatientModal} onNavigateBack={() => setShowAddPatientModal(false)} />}
+            {showAddPatientModal && <AddPatientModal isOpen={showAddPatientModal} setIsOpen={setShowAddPatientModal} onPatientAdded={fetchPatients} />}
             {showArchivedModal && <ArchivedPatientsModal isOpen={showArchivedModal} onClose={() => setShowArchivedModal(false)} archivedPatients={archivedPatients} handleDelete={handleDelete} />}
         </div>
     );

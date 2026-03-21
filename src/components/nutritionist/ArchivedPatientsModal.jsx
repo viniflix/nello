@@ -14,8 +14,10 @@ export default function ArchivedPatientsModal({
     const [searchTerm, setSearchTerm] = useState('');
 
     const handleClose = (open) => {
-        if (!open) setSearchTerm('');
-        onClose(open);
+        if (!open) {
+            setSearchTerm('');
+            onClose();
+        }
     };
 
     const filtered = useMemo(() => {
