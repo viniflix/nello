@@ -1613,13 +1613,28 @@ export const unarchivePatient = async (patientId, nutritionistId) => {
 };
 
 /**
- * Realiza o Hard Delete verificando ausência de dados clínicos
+ * Realiza o Hard Delete via Edge Function (requer service_role no backend)
+ * O RPC 'delete_patient' foi substituído pela Edge Function 'delete-user-securely'
+ * pois auth.admin_delete_user() não existe como função SQL no Supabase.
  */
 export const hardDeletePatient = async (patientId) => {
     try {
-        // Chama a RPC criada/existente do supabase que apaga da auth.users
-        const { error } = await supabase.rpc('delete_patient', { patient_id: patientId });
-        if (error) throw error;
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) throw new Error('Usuário não autenticado');
+
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        const res = await fetch(`${supabaseUrl}/functions/v1/delete-user-securely`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({ userIdToDelete: patientId }),
+        });
+
+        const body = await res.json();
+        if (!res.ok) throw new Error(body?.error || 'Erro ao excluir usuário');
+
         return { success: true, error: null };
     } catch (error) {
         logSupabaseError('Erro ao excluir conta do paciente permanentemente', error);
