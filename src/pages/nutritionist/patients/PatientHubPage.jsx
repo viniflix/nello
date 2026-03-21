@@ -268,7 +268,7 @@ const PatientHubPage = () => {
                                 className="flex flex-col items-center justify-center gap-1.5 py-3 px-2 rounded-md transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-[#5f6f52] data-[state=inactive]:text-muted-foreground hover:text-foreground"
                             >
                                 <User className="h-5 w-5" />
-                                <span className="text-xs font-medium">Corporal</span>
+                                <span className="text-xs font-medium">Antropometria</span>
                             </TabsTrigger>
                             <TabsTrigger
                                 value="nutrition"

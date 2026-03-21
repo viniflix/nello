@@ -19,6 +19,7 @@ import {
   calculateSomatotype,
   getSomatotypeDescription
 } from '@/lib/utils/anthropometry-calculations';
+import { classifyBMI, getBMICuts, calculateBMI } from '@/lib/utils/bmi-classification';
 
 const AnthropometryForm = ({
     patientId,
@@ -27,12 +28,14 @@ const AnthropometryForm = ({
     onCancel,
     loading = false,
     patientGender = null,
-    patientBirthDate = null
+    patientBirthDate = null,
+    patientEthnicity = null
 }) => {
     const [activeTab, setActiveTab] = useState('basico');
     const [formData, setFormData] = useState({
         weight: '',
         height: '',
+        peso_usual: '',
         record_date: new Date().toISOString().split('T')[0],
         notes: '',
         // Circunferências
@@ -146,19 +149,42 @@ const AnthropometryForm = ({
             const bmi = parseFloat(weight) / Math.pow(heightM, 2);
             setCalculatedBMI(bmi);
 
-            // Calcular faixa de peso ideal (BMI 18.5-24.9)
-            const minIdealWeight = 18.5 * Math.pow(heightM, 2);
-            const maxIdealWeight = 24.9 * Math.pow(heightM, 2);
+            const age = patientBirthDate ? differenceInYears(new Date(), new Date(patientBirthDate)) : null;
+            const cuts = getBMICuts({ age, ethnicity: patientEthnicity });
+            const minIdealWeight = cuts.underweight * Math.pow(heightM, 2);
+            const maxIdealWeight = cuts.normal_high * Math.pow(heightM, 2);
+
+            // Fórmula de Broca Modificada por sexo
+            const gender = patientGender?.toLowerCase() || '';
+            const isMale = gender.includes('m') || gender === 'masculino' || gender === 'male';
+            const heightCm = parseFloat(height);
+            const broca = isMale
+                ? 52 + (0.75 * (heightCm - 152.4))
+                : 52 + (0.67 * (heightCm - 152.4));
+            const brocaFormula = isMale
+                ? `52 + (0.75 × (${heightCm} − 152.4))`
+                : `52 + (0.67 × (${heightCm} − 152.4))`;
+            const weightNow = parseFloat(weight);
+            const adjusted = ((weightNow - broca) * 0.25) + broca;
+
             setIdealWeightRange({
                 min: minIdealWeight,
                 max: maxIdealWeight,
-                current: parseFloat(weight)
+                current: weightNow,
+                low: cuts.underweight,
+                high: cuts.normal_high,
+                // Broca
+                broca: broca,
+                brocaFormula,
+                brocaAdjusted: adjusted,
+                brocaAdjustedFormula: `((${weightNow.toFixed(1)} − ${broca.toFixed(1)}) × 0.25) + ${broca.toFixed(1)}`,
+                isMale
             });
         } else {
             setCalculatedBMI(null);
             setIdealWeightRange(null);
         }
-    }, [formData.weight, formData.height]);
+    }, [formData.weight, formData.height, patientBirthDate, patientEthnicity, patientGender]);
 
     // Calcular RCQ (Relação Cintura-Quadril)
     useEffect(() => {
@@ -478,24 +504,21 @@ const AnthropometryForm = ({
         if (onCancel) onCancel();
     };
 
-    const getIMCCategory = (bmi) => {
-        if (!bmi) return null;
-        if (bmi < 18.5) return { label: 'Abaixo do peso', color: 'text-blue-600' };
-        if (bmi < 25) return { label: 'Peso normal', color: 'text-green-600' };
-        if (bmi < 30) return { label: 'Sobrepeso', color: 'text-yellow-600' };
-        return { label: 'Obesidade', color: 'text-red-600' };
-    };
-
+    // RCQ com diferenciação por sexo (OMS: H<0.90, M<0.85 = baixo risco)
     const getRCQCategory = (rcq) => {
         if (!rcq) return null;
-        // Valores de referência: Homens < 0.90, Mulheres < 0.85 (saudável)
-        // Como não temos gênero aqui, usamos valores médios
-        if (rcq < 0.85) return { label: 'Baixo risco', color: 'text-green-600' };
-        if (rcq < 0.95) return { label: 'Risco moderado', color: 'text-yellow-600' };
+        const gender = patientGender?.toLowerCase() || '';
+        const isMale = gender.includes('m') || gender === 'masculino' || gender === 'male';
+        const threshold = isMale ? 0.90 : 0.85;
+        if (rcq < threshold) return { label: 'Baixo risco', color: 'text-green-600' };
+        if (rcq < threshold + 0.10) return { label: 'Risco moderado', color: 'text-yellow-600' };
         return { label: 'Alto risco', color: 'text-red-600' };
     };
 
-    const imcCategory = getIMCCategory(calculatedBMI);
+    const age = patientBirthDate ? differenceInYears(new Date(), new Date(patientBirthDate)) : null;
+    const imcCategory = calculatedBMI
+        ? classifyBMI({ bmi: calculatedBMI, age, sex: patientGender, ethnicity: patientEthnicity })
+        : null;
     const rcqCategory = getRCQCategory(calculatedRCQ);
 
     return (
@@ -624,53 +647,135 @@ const AnthropometryForm = ({
                                 </div>
                             </div>
 
-                            {/* IMC Calculado */}
-                            {calculatedBMI && (
-                                <Alert className="bg-muted/50">
-                                    <Calculator className="h-4 w-4" />
-                                    <AlertDescription>
-                                        <div className="flex items-center gap-2 flex-wrap">
-                                            <span className="font-semibold">IMC Calculado:</span>
-                                            <span className="text-lg font-bold">{calculatedBMI.toFixed(1)}</span>
-                                            {imcCategory && (
-                                                <Badge variant="outline" className={imcCategory.color}>
-                                                    {imcCategory.label}
-                                                </Badge>
-                                            )}
-                                        </div>
-                                    </AlertDescription>
-                                </Alert>
-                            )}
+                            {/* Peso Usual (opcional) */}
+                            <div className="space-y-1">
+                                <div className="flex items-center gap-1.5">
+                                    <Label htmlFor="peso_usual" className="text-sm">Peso Usual (kg)</Label>
+                                    <span className="text-xs text-muted-foreground px-2 py-0.5 rounded bg-muted">Opcional</span>
+                                </div>
+                                <Input
+                                    id="peso_usual"
+                                    name="peso_usual"
+                                    type="number"
+                                    step="0.1"
+                                    min="0"
+                                    placeholder="Ex: 68.0"
+                                    value={formData.peso_usual}
+                                    onChange={handleChange}
+                                    disabled={loading}
+                                    className="max-w-[180px]"
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                    Peso habitual do paciente antes de qualquer processo intencional de perda ou ganho de peso. Usado para comparação clínica e avaliação de perda não intencional.
+                                </p>
+                            </div>
 
-                            {/* Peso Ideal */}
-                            {idealWeightRange && (
-                                <Alert className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
-                                    <Calculator className="h-4 w-4 text-blue-600" />
-                                    <AlertDescription>
-                                        <div className="space-y-1">
-                                            <div className="font-semibold text-blue-900 dark:text-blue-100">
-                                                Faixa de Peso Ideal (IMC 18.5-24.9):
-                                            </div>
-                                            <div className="text-sm text-blue-800 dark:text-blue-200">
-                                                {idealWeightRange.min.toFixed(1)} kg - {idealWeightRange.max.toFixed(1)} kg
-                                            </div>
-                                            {idealWeightRange.current && (
-                                                <div className="text-xs text-blue-700 dark:text-blue-300">
-                                                    Peso atual: {idealWeightRange.current.toFixed(1)} kg
-                                                    {idealWeightRange.current < idealWeightRange.min && (
-                                                        <span className="ml-2">(Abaixo do ideal)</span>
-                                                    )}
-                                                    {idealWeightRange.current > idealWeightRange.max && (
-                                                        <span className="ml-2">(Acima do ideal)</span>
-                                                    )}
-                                                    {idealWeightRange.current >= idealWeightRange.min && idealWeightRange.current <= idealWeightRange.max && (
-                                                        <span className="ml-2">(Dentro do ideal)</span>
+                            {/* ── Cards de Resultados ── */}
+                            {calculatedBMI && (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+
+                                    {/* IMC */}
+                                    <Alert className="bg-muted/50">
+                                        <Calculator className="h-4 w-4" />
+                                        <AlertDescription>
+                                            <div className="space-y-1">
+                                                <div className="flex items-center gap-2 flex-wrap">
+                                                    <span className="font-semibold">IMC:</span>
+                                                    <span
+                                                        className="text-lg font-bold cursor-help underline decoration-dotted"
+                                                        title={`Fórmula: ${formData.weight} ÷ (${formData.height} ÷ 100)² = ${calculatedBMI.toFixed(2)}`}
+                                                    >
+                                                        {calculatedBMI.toFixed(1)}
+                                                    </span>
+                                                    {imcCategory && (
+                                                        <Badge variant="outline" className={imcCategory.color}>
+                                                            {imcCategory.label}
+                                                        </Badge>
                                                     )}
                                                 </div>
-                                            )}
-                                        </div>
-                                    </AlertDescription>
-                                </Alert>
+                                                {imcCategory?.detail && (
+                                                    <p className="text-xs text-muted-foreground">{imcCategory.detail}</p>
+                                                )}
+                                                <p className="text-xs text-muted-foreground italic">Passe o mouse no valor para ver a fórmula</p>
+                                            </div>
+                                        </AlertDescription>
+                                    </Alert>
+
+                                    {/* Peso Ideal Broca */}
+                                    {idealWeightRange?.broca != null && (
+                                        <Alert className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
+                                            <Calculator className="h-4 w-4 text-blue-600" />
+                                            <AlertDescription>
+                                                <div className="space-y-1">
+                                                    <div className="font-semibold text-blue-900 dark:text-blue-100 text-sm">
+                                                        Peso Ideal — Broca Modificado
+                                                    </div>
+                                                    <div
+                                                        className="text-base font-bold text-blue-800 dark:text-blue-200 cursor-help underline decoration-dotted"
+                                                        title={`Fórmula (${idealWeightRange.isMale ? 'Masc' : 'Fem'}): ${idealWeightRange.brocaFormula} = ${idealWeightRange.broca.toFixed(1)} kg`}
+                                                    >
+                                                        {idealWeightRange.broca.toFixed(1)} kg
+                                                    </div>
+                                                    <p className="text-xs text-blue-700 dark:text-blue-300">
+                                                        {idealWeightRange.isMale
+                                                            ? 'Masc: 52 + (0,75 × (altura − 152,4))'
+                                                            : 'Fem: 52 + (0,67 × (altura − 152,4))'}
+                                                    </p>
+                                                    <p className="text-xs text-muted-foreground italic">Passe o mouse no valor para ver o cálculo</p>
+                                                </div>
+                                            </AlertDescription>
+                                        </Alert>
+                                    )}
+
+                                    {/* Peso Ideal Ajustado */}
+                                    {idealWeightRange?.brocaAdjusted != null && (
+                                        <Alert className="bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800">
+                                            <Calculator className="h-4 w-4 text-emerald-600" />
+                                            <AlertDescription>
+                                                <div className="space-y-1">
+                                                    <div className="font-semibold text-emerald-900 dark:text-emerald-100 text-sm">
+                                                        Peso Ideal Ajustado
+                                                    </div>
+                                                    <div
+                                                        className="text-base font-bold text-emerald-800 dark:text-emerald-200 cursor-help underline decoration-dotted"
+                                                        title={`Fórmula: ((PesoAtual − PesoIdeal) × 0.25) + PesoIdeal = ${idealWeightRange.brocaAdjustedFormula} = ${idealWeightRange.brocaAdjusted.toFixed(1)} kg`}
+                                                    >
+                                                        {idealWeightRange.brocaAdjusted.toFixed(1)} kg
+                                                    </div>
+                                                    <p className="text-xs text-emerald-700 dark:text-emerald-300">
+                                                        ((PesoAtual − PesoIdeal) × 0,25) + PesoIdeal
+                                                    </p>
+                                                    <p className="text-xs text-muted-foreground italic">Passe o mouse no valor para ver o cálculo</p>
+                                                </div>
+                                            </AlertDescription>
+                                        </Alert>
+                                    )}
+
+                                    {/* Faixa OMS */}
+                                    {idealWeightRange && (
+                                        <Alert className="bg-muted/30 border-muted">
+                                            <Calculator className="h-4 w-4 text-muted-foreground" />
+                                            <AlertDescription>
+                                                <div className="space-y-1">
+                                                    <div className="font-semibold text-sm">
+                                                        Faixa OMS (IMC {idealWeightRange.low}–{idealWeightRange.high})
+                                                    </div>
+                                                    <div className="text-sm">
+                                                        {idealWeightRange.min.toFixed(1)} – {idealWeightRange.max.toFixed(1)} kg
+                                                    </div>
+                                                    {idealWeightRange.current && (
+                                                        <div className="text-xs text-muted-foreground">
+                                                            Peso atual: {idealWeightRange.current.toFixed(1)} kg
+                                                            {idealWeightRange.current < idealWeightRange.min && <span className="ml-1 text-blue-600">(Abaixo da faixa)</span>}
+                                                            {idealWeightRange.current > idealWeightRange.max && <span className="ml-1 text-yellow-600">(Acima da faixa)</span>}
+                                                            {idealWeightRange.current >= idealWeightRange.min && idealWeightRange.current <= idealWeightRange.max && <span className="ml-1 text-green-600">(Na faixa)</span>}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </AlertDescription>
+                                        </Alert>
+                                    )}
+                                </div>
                             )}
 
                             {/* Observações */}

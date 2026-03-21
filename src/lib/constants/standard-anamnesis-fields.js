@@ -8,6 +8,13 @@
 export const STANDARD_ANAMNESIS_FIELDS = [
     // Identificação
     { field_label: 'Data de Nascimento', field_type: 'texto_curto', category: 'identificacao', is_required: false },
+    {
+        field_label: 'Etnia / Raça',
+        field_type: 'selecao_unica',
+        category: 'identificacao',
+        is_required: false,
+        options: ['Branca', 'Preta', 'Parda', 'Amarela (Asiática)', 'Indígena', 'Prefiro não informar']
+    },
     { field_label: 'Idade', field_type: 'texto_curto', category: 'identificacao', is_required: false },
     { field_label: 'Profissão', field_type: 'texto_curto', category: 'identificacao', is_required: false },
     {
@@ -161,8 +168,6 @@ export const STANDARD_ANAMNESIS_FIELDS = [
         category: 'objetivos',
         is_required: true
     },
-    { field_label: 'Peso atual (kg)', field_type: 'texto_curto', category: 'objetivos', is_required: false },
-    { field_label: 'Peso desejado (kg)', field_type: 'texto_curto', category: 'objetivos', is_required: false },
     { field_label: 'Prazo para atingir o objetivo', field_type: 'texto_curto', category: 'objetivos', is_required: false },
     {
         field_label: 'Tentativas anteriores de mudança',
@@ -206,5 +211,206 @@ export const STANDARD_ANAMNESIS_FIELDS = [
         field_type: 'texto_longo',
         category: 'habitos_alimentares',
         is_required: false
+    },
+
+    // ─── Recordatório Alimentar 24h ───────────────────────────────────────────
+    {
+        field_label: 'Café da manhã (horário, alimentos e quantidades)',
+        field_type: 'texto_longo',
+        category: 'recordatorio_alimentar',
+        is_required: false
+    },
+    {
+        field_label: 'Lanche da manhã (horário, alimentos e quantidades)',
+        field_type: 'texto_longo',
+        category: 'recordatorio_alimentar',
+        is_required: false
+    },
+    {
+        field_label: 'Almoço (horário, alimentos e quantidades)',
+        field_type: 'texto_longo',
+        category: 'recordatorio_alimentar',
+        is_required: false
+    },
+    {
+        field_label: 'Lanche da tarde (horário, alimentos e quantidades)',
+        field_type: 'texto_longo',
+        category: 'recordatorio_alimentar',
+        is_required: false
+    },
+    {
+        field_label: 'Jantar (horário, alimentos e quantidades)',
+        field_type: 'texto_longo',
+        category: 'recordatorio_alimentar',
+        is_required: false
+    },
+    {
+        field_label: 'Ceia (horário, alimentos e quantidades)',
+        field_type: 'texto_longo',
+        category: 'recordatorio_alimentar',
+        is_required: false
+    },
+    {
+        field_label: 'O dia descrito é típico? Se não, o que foi diferente?',
+        field_type: 'texto_longo',
+        category: 'recordatorio_alimentar',
+        is_required: false
+    },
+
+    // ─── Alimentação Usual ────────────────────────────────────────────────────
+    {
+        field_label: 'Como é a alimentação habitual no café da manhã?',
+        field_type: 'texto_longo',
+        category: 'alimentacao_usual',
+        is_required: false
+    },
+    {
+        field_label: 'Como é a alimentação habitual no almoço?',
+        field_type: 'texto_longo',
+        category: 'alimentacao_usual',
+        is_required: false
+    },
+    {
+        field_label: 'Como é a alimentação habitual no jantar?',
+        field_type: 'texto_longo',
+        category: 'alimentacao_usual',
+        is_required: false
+    },
+    {
+        field_label: 'Consome frutas? Com qual frequência?',
+        field_type: 'texto_curto',
+        category: 'alimentacao_usual',
+        is_required: false
+    },
+    {
+        field_label: 'Consome verduras e legumes? Com qual frequência?',
+        field_type: 'texto_curto',
+        category: 'alimentacao_usual',
+        is_required: false
+    },
+    {
+        field_label: 'Frequência de consumo de alimentos ultraprocessados',
+        field_type: 'selecao_unica',
+        category: 'alimentacao_usual',
+        is_required: false,
+        options: ['Nunca', 'Raramente', '1–2x/semana', '3–4x/semana', 'Diariamente']
+    },
+    {
+        field_label: 'Frequência de consumo de fast food / delivery',
+        field_type: 'selecao_unica',
+        category: 'alimentacao_usual',
+        is_required: false,
+        options: ['Nunca', 'Raramente', '1–2x/semana', '3–4x/semana', 'Diariamente']
+    },
+    {
+        field_label: 'Observações sobre padrão alimentar usual',
+        field_type: 'texto_longo',
+        category: 'alimentacao_usual',
+        is_required: false
+    },
+
+    // ─── Curvas para Gestação (condicional: sexo feminino, confirmada gravidez) ─
+    {
+        field_label: 'Está grávida atualmente?',
+        field_type: 'selecao_unica',
+        category: 'curvas_gestacao',
+        is_required: false,
+        options: ['Sim', 'Não', 'Suspeita'],
+        condition: { field: 'sexo', value: 'feminino' }
+    },
+    {
+        field_label: 'Semanas de gestação',
+        field_type: 'texto_curto',
+        category: 'curvas_gestacao',
+        is_required: false,
+        condition: { field: 'gravidez', value: 'sim' }
+    },
+    {
+        field_label: 'Número de gestações anteriores',
+        field_type: 'texto_curto',
+        category: 'curvas_gestacao',
+        is_required: false,
+        condition: { field: 'sexo', value: 'feminino' }
+    },
+    {
+        field_label: 'Ganho de peso na gestação atual (kg)',
+        field_type: 'texto_curto',
+        category: 'curvas_gestacao',
+        is_required: false,
+        condition: { field: 'gravidez', value: 'sim' }
+    },
+    {
+        field_label: 'Pré-natal sendo realizado? Onde?',
+        field_type: 'texto_curto',
+        category: 'curvas_gestacao',
+        is_required: false,
+        condition: { field: 'gravidez', value: 'sim' }
+    },
+    {
+        field_label: 'Náuseas, vômitos ou aversões alimentares durante a gestação?',
+        field_type: 'texto_longo',
+        category: 'curvas_gestacao',
+        is_required: false,
+        condition: { field: 'gravidez', value: 'sim' }
+    },
+
+    // ─── Curvas para Crianças (condicional: idade ≤ 10 anos) ─────────────────
+    {
+        field_label: 'Nome do responsável',
+        field_type: 'texto_curto',
+        category: 'curvas_crianca',
+        is_required: false,
+        condition: { field: 'faixa_etaria', value: 'crianca' }
+    },
+    {
+        field_label: 'Peso ao nascer (kg)',
+        field_type: 'texto_curto',
+        category: 'curvas_crianca',
+        is_required: false,
+        condition: { field: 'faixa_etaria', value: 'crianca' }
+    },
+    {
+        field_label: 'Aleitamento materno? Por quanto tempo?',
+        field_type: 'texto_curto',
+        category: 'curvas_crianca',
+        is_required: false,
+        condition: { field: 'faixa_etaria', value: 'crianca' }
+    },
+    {
+        field_label: 'Quando iniciou alimentação complementar?',
+        field_type: 'texto_curto',
+        category: 'curvas_crianca',
+        is_required: false,
+        condition: { field: 'faixa_etaria', value: 'crianca' }
+    },
+    {
+        field_label: 'A criança tem dificuldade para aceitar novos alimentos?',
+        field_type: 'selecao_unica',
+        category: 'curvas_crianca',
+        is_required: false,
+        options: ['Sim', 'Não', 'Às vezes'],
+        condition: { field: 'faixa_etaria', value: 'crianca' }
+    },
+    {
+        field_label: 'Alimentos recusados pela criança',
+        field_type: 'texto_longo',
+        category: 'curvas_crianca',
+        is_required: false,
+        condition: { field: 'faixa_etaria', value: 'crianca' }
+    },
+    {
+        field_label: 'Frequência de refeições da criança por dia',
+        field_type: 'texto_curto',
+        category: 'curvas_crianca',
+        is_required: false,
+        condition: { field: 'faixa_etaria', value: 'crianca' }
+    },
+    {
+        field_label: 'Observações clínicas pediátricas relevantes',
+        field_type: 'texto_longo',
+        category: 'curvas_crianca',
+        is_required: false,
+        condition: { field: 'faixa_etaria', value: 'crianca' }
     }
 ];
+

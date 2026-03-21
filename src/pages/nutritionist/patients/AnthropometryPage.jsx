@@ -239,10 +239,10 @@ const AnthropometryPage = () => {
         setError(null);
 
         try {
-            // Buscar perfil do paciente para gender e age
+            // Buscar perfil do paciente para gender, age e etnia
             const { data: profile } = await supabase
                 .from('user_profiles')
-                .select('name, gender, birth_date')
+                .select('name, gender, birth_date, ethnicity')
                 .eq('id', patientId)
                 .single();
             
@@ -739,6 +739,7 @@ const AnthropometryPage = () => {
                     loading={submitting}
                     patientGender={patientProfile?.gender}
                     patientBirthDate={patientProfile?.birth_date}
+                    patientEthnicity={patientProfile?.ethnicity}
                 />
             ) : (
                 <div className="rounded-lg border-2 border-dashed border-[#a9b388] bg-[#fefae0]/30 p-6">
@@ -779,7 +780,12 @@ const AnthropometryPage = () => {
                 {/* Gráficos tradicionais */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <WeightChart data={chartData} />
-                    <IMCChart data={chartData} />
+                    <IMCChart
+                        data={chartData}
+                        patientAge={patientProfile?.birth_date ? Math.floor((Date.now() - new Date(patientProfile.birth_date).getTime()) / (1000 * 60 * 60 * 24 * 365.25)) : null}
+                        patientSex={patientProfile?.gender}
+                        patientEthnicity={patientProfile?.ethnicity}
+                    />
                 </div>
             </div>
 

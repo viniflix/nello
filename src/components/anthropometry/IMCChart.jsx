@@ -16,8 +16,9 @@ import {
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { classifyBMI, getBMICuts } from '@/lib/utils/bmi-classification';
 
-const IMCChart = ({ data = [] }) => {
+const IMCChart = ({ data = [], patientAge = null, patientSex = null, patientEthnicity = null }) => {
     if (data.length === 0) {
         return (
             <Card>
@@ -65,13 +66,12 @@ const IMCChart = ({ data = [] }) => {
     const lastBMI = chartData[chartData.length - 1]?.bmi;
     const bmiChange = lastBMI - firstBMI;
 
-    // Função para obter categoria do IMC
-    const getIMCCategory = (bmi) => {
-        if (bmi < 18.5) return { label: 'Abaixo do peso', variant: 'secondary', color: '#3b82f6' };
-        if (bmi < 25) return { label: 'Peso normal', variant: 'success', color: '#10b981' };
-        if (bmi < 30) return { label: 'Sobrepeso', variant: 'warning', color: '#f59e0b' };
-        return { label: 'Obesidade', variant: 'destructive', color: '#ef4444' };
-    };
+    // Cortes dinâmicos baseados no perfil do paciente
+    const cuts = getBMICuts({ age: patientAge, ethnicity: patientEthnicity });
+
+    // Função para obter categoria do IMC usando motor OMS completo
+    const getIMCCategory = (bmi) =>
+        classifyBMI({ bmi, age: patientAge, sex: patientSex, ethnicity: patientEthnicity });
 
     const currentCategory = getIMCCategory(lastBMI);
 
@@ -131,24 +131,24 @@ const IMCChart = ({ data = [] }) => {
                         <Tooltip content={<CustomTooltip />} />
                         <Legend />
 
-                        {/* Faixas de IMC como referência */}
+                        {/* Faixas de IMC como referência — dinâmicas por perfil */}
                         <ReferenceLine
-                            y={18.5}
+                            y={cuts.underweight}
                             stroke="#3b82f6"
                             strokeDasharray="3 3"
-                            label={{ value: 'Abaixo', position: 'insideTopLeft', fontSize: 10 }}
+                            label={{ value: `Abaixo (${cuts.underweight})`, position: 'insideTopLeft', fontSize: 10 }}
                         />
                         <ReferenceLine
-                            y={25}
+                            y={cuts.normal_high}
                             stroke="#10b981"
                             strokeDasharray="3 3"
-                            label={{ value: 'Normal', position: 'insideTopLeft', fontSize: 10 }}
+                            label={{ value: `Normal (${cuts.normal_high})`, position: 'insideTopLeft', fontSize: 10 }}
                         />
                         <ReferenceLine
-                            y={30}
+                            y={cuts.overweight_high}
                             stroke="#f59e0b"
                             strokeDasharray="3 3"
-                            label={{ value: 'Sobrepeso', position: 'insideTopLeft', fontSize: 10 }}
+                            label={{ value: `Sobrepeso (${cuts.overweight_high})`, position: 'insideTopLeft', fontSize: 10 }}
                         />
 
                         {/* Área colorida baseada no IMC */}
@@ -191,25 +191,25 @@ const IMCChart = ({ data = [] }) => {
                     </div>
                 </div>
 
-                {/* Legenda de faixas */}
+                {/* Legenda de faixas — dinâmica */}
                 <div className="mt-4 pt-4 border-t">
                     <p className="text-xs text-muted-foreground mb-2 font-semibold">Classificação IMC:</p>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
                         <div className="flex items-center gap-2">
                             <div className="w-3 h-3 rounded bg-blue-500"></div>
-                            <span>{'< 18.5'} Abaixo</span>
+                            <span>{'< '}{cuts.underweight} Abaixo</span>
                         </div>
                         <div className="flex items-center gap-2">
                             <div className="w-3 h-3 rounded bg-green-500"></div>
-                            <span>18.5-25 Normal</span>
+                            <span>{cuts.underweight}–{cuts.normal_high} Normal</span>
                         </div>
                         <div className="flex items-center gap-2">
                             <div className="w-3 h-3 rounded bg-yellow-500"></div>
-                            <span>25-30 Sobrepeso</span>
+                            <span>{cuts.normal_high}–{cuts.overweight_high} Sobrepeso</span>
                         </div>
                         <div className="flex items-center gap-2">
                             <div className="w-3 h-3 rounded bg-red-500"></div>
-                            <span>{'> 30'} Obesidade</span>
+                            <span>{'> '}{cuts.overweight_high} Obesidade</span>
                         </div>
                     </div>
                 </div>
