@@ -437,7 +437,7 @@ const PatientsPage = () => {
 
             {/* Modals Globais */}
             {showAddPatientModal && <AddPatientModal isOpen={showAddPatientModal} onNavigateBack={() => setShowAddPatientModal(false)} />}
-            {showArchivedModal && <ArchivedPatientsModal isOpen={showArchivedModal} onClose={() => setShowArchivedModal(false)} />}
+            {showArchivedModal && <ArchivedPatientsModal isOpen={showArchivedModal} onClose={() => setShowArchivedModal(false)} archivedPatients={archivedPatients} handleDelete={handleDelete} />}
         </div>
     );
 };
