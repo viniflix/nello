@@ -167,12 +167,7 @@ const PatientsPage = () => {
 
     useEffect(() => { fetchPatients(); }, [fetchPatients]);
 
-    // Auto-close archived modal when list empties (e.g. after last archived patient is deleted)
-    useEffect(() => {
-        if (showArchivedModal && archivedPatients.length === 0 && !loading) {
-            setShowArchivedModal(false);
-        }
-    }, [archivedPatients.length, showArchivedModal, loading]);
+
 
     // ── Actions ──────────────────────────────────────────────────────────────
     const handleArchive = async (patient) => {
@@ -205,6 +200,13 @@ const PatientsPage = () => {
 
         return { activePatients: activeList, archivedPatients: archivedList, stats: { active: activeList.length, online, pending, new30 } };
     }, [patients, isUserOnline]);
+
+    // Auto-close archived modal when list empties (e.g. after last archived patient is deleted)
+    useEffect(() => {
+        if (showArchivedModal && archivedPatients.length === 0 && !loading) {
+            setShowArchivedModal(false);
+        }
+    }, [archivedPatients.length, showArchivedModal, loading]);
 
     // ── Filtered & sorted list ───────────────────────────────────────────────
     const filteredPatients = useMemo(() => {
