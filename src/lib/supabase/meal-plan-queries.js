@@ -1189,23 +1189,28 @@ export const updateFullMealPlan = async (planId, planData) => {
             supabase.auth.getUser()
         ]);
         if (currentPlanError) throw currentPlanError;
-        if (!currentPlan) throw new Error('Plano não encontrado para versionamento');
+        if (!currentPlan) throw new Error('Plano não encontrado');
 
-        const latestVersion = await getLatestMealPlanVersion(planId);
         const actorId = authData?.user?.id || null;
-        let nextVersion = (latestVersion?.version_number || 0) + 1;
 
-        // Se ainda não existe histórico, salva baseline antes da primeira alteração.
-        if (!latestVersion) {
-            const baselineRes = await createMealPlanVersionSnapshot({
-                mealPlan: currentPlan,
-                versionNumber: 1,
-                changeReason: 'baseline_inicial',
-                createdBy: actorId,
-                metadata: { origin: 'updateFullMealPlan' }
-            });
-            if (baselineRes.error) throw baselineRes.error;
-            nextVersion = 2;
+        // Versioning is best-effort — never blocks the actual save
+        let nextVersion = 1;
+        try {
+            const latestVersion = await getLatestMealPlanVersion(planId);
+            nextVersion = (latestVersion?.version_number || 0) + 1;
+
+            if (!latestVersion) {
+                await createMealPlanVersionSnapshot({
+                    mealPlan: currentPlan,
+                    versionNumber: 1,
+                    changeReason: 'baseline_inicial',
+                    createdBy: actorId,
+                    metadata: { origin: 'updateFullMealPlan' }
+                });
+                nextVersion = 2;
+            }
+        } catch (versioningError) {
+            console.warn('[updateFullMealPlan] Falha no versionamento (não-bloqueante):', versioningError);
         }
 
         // 1. Atualizar informações básicas do plano
@@ -1243,7 +1248,6 @@ export const updateFullMealPlan = async (planId, planData) => {
 
             if (mealError) throw mealError;
 
-            // Adicionar alimentos à refeição
             for (const food of meal.foods || []) {
                 await addFoodToMeal({
                     meal_plan_meal_id: newMeal.id,
@@ -1264,16 +1268,19 @@ export const updateFullMealPlan = async (planId, planData) => {
         const updatedResult = await getMealPlanById(planId);
         if (updatedResult.error) throw updatedResult.error;
 
-        // 5. Gravar nova versão após atualização
-        const versionRes = await createMealPlanVersionSnapshot({
-            mealPlan: updatedResult.data,
-            versionNumber: nextVersion,
-            changeReason: planData?.change_reason || 'edicao_manual_plano',
-            createdBy: actorId,
-            isRollback: Boolean(planData?.is_rollback),
-            metadata: { origin: 'updateFullMealPlan' }
-        });
-        if (versionRes.error) throw versionRes.error;
+        // 5. Gravar nova versão após atualização (best-effort)
+        try {
+            await createMealPlanVersionSnapshot({
+                mealPlan: updatedResult.data,
+                versionNumber: nextVersion,
+                changeReason: planData?.change_reason || 'edicao_manual_plano',
+                createdBy: actorId,
+                isRollback: Boolean(planData?.is_rollback),
+                metadata: { origin: 'updateFullMealPlan' }
+            });
+        } catch (versioningError) {
+            console.warn('[updateFullMealPlan] Falha ao gravar versão pós-atualização (não-bloqueante):', versioningError);
+        }
 
         await logOperationalEvent({
             module: 'meal_plan',
@@ -1300,13 +1307,12 @@ export const updateFullMealPlan = async (planId, planData) => {
             nutritionistId: null,
             patientId: null,
             errorMessage: error?.message || String(error),
-            metadata: {
-                plan_id: planId
-            }
+            metadata: { plan_id: planId }
         });
         return { data: null, error };
     }
 };
+
 
 // =====================================================
 // REFERENCE VALUES - Valores de Referência
