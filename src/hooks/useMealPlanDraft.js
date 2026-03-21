@@ -169,6 +169,60 @@ export function useMealPlanDraft({ patientId, nutritionistId, enabled = false })
     }, []);
 
     /**
+     * Atualiza uma refeição existente no rascunho.
+     * Como não há API de update de meal+foods atomicamente,
+     * deleta a antiga e cria uma nova com os dados atualizados.
+     * @param {number} oldDbId - ID da refeição antiga no banco
+     * @param {object} mealData - dados atualizados (incluindo foods)
+     * @param {number} orderIndex - posição da refeição no plano
+     * @returns {Promise<number|null>} novo ID da refeição no banco
+     */
+    const updateMeal = useCallback(async (oldDbId, mealData, orderIndex) => {
+        const currentDraftId = latestDraftIdRef.current;
+        if (!currentDraftId) return null;
+
+        setSaveStatus('saving');
+
+        // Delete old meal (cascade removes its foods too)
+        if (oldDbId) {
+            await deleteMealFromPlan(oldDbId);
+        }
+
+        // Re-create with updated data
+        const { data: newMeal, error: mealError } = await addMealToPlan({
+            meal_plan_id: currentDraftId,
+            name: mealData.name,
+            meal_type: mealData.meal_type,
+            meal_time: mealData.meal_time || null,
+            notes: mealData.notes || null,
+            order_index: orderIndex ?? 0
+        });
+
+        if (mealError || !newMeal) {
+            setSaveStatus('error');
+            return null;
+        }
+
+        for (const food of mealData.foods || []) {
+            await addFoodToMeal({
+                meal_plan_meal_id: newMeal.id,
+                food_id: food.food_id,
+                quantity: food.quantity,
+                unit: food.unit,
+                calories: food.calories,
+                protein: food.protein,
+                carbs: food.carbs,
+                fat: food.fat,
+                notes: food.notes || null,
+                order_index: food.order_index ?? 0
+            });
+        }
+
+        setSaveStatus('saved');
+        return newMeal.id;
+    }, []);
+
+    /**
      * Deleta o rascunho atual do banco (ao apertar "Cancelar").
      */
     const discardDraft = useCallback(async () => {
@@ -198,6 +252,7 @@ export function useMealPlanDraft({ patientId, nutritionistId, enabled = false })
         discardExistingAndStartNew,
         savePlanInfo,
         saveMeal,
+        updateMeal,
         removeMeal,
         discardDraft
     };

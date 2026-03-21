@@ -204,9 +204,19 @@ const MealPlanForm = ({
         setShowMealForm(true);
     };
 
-    const handleUpdateMeal = (updatedMeal) => {
+    const handleUpdateMeal = async (updatedMeal) => {
+        const mealIndex = meals.findIndex(m => m.tempId === editingMeal.tempId);
+        let newDbId = editingMeal.dbId;
+
+        // Persist to DB when building a draft (not editing an existing saved plan)
+        if (!isEditing && draft.draftId && draft.updateMeal) {
+            newDbId = await draft.updateMeal(editingMeal.dbId, updatedMeal, mealIndex >= 0 ? mealIndex : 0);
+        }
+
         setMeals(prev => prev.map(m =>
-            m.tempId === editingMeal.tempId ? { ...updatedMeal, tempId: m.tempId, dbId: m.dbId } : m
+            m.tempId === editingMeal.tempId
+                ? { ...updatedMeal, tempId: m.tempId, dbId: newDbId ?? m.dbId }
+                : m
         ));
         setEditingMeal(null);
     };

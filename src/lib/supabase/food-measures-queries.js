@@ -46,8 +46,6 @@ export const getFoodMeasures = async (foodId) => {
         measure_id,
         quantity,
         grams,
-        created_at,
-        updated_at,
         measure:household_measures(
           id,
           name,
@@ -119,8 +117,7 @@ export const createFoodMeasure = async (payload) => {
       food_id: payload.food_id,
       measure_id: payload.measure_id,
       quantity: payload.quantity || 1,
-      grams: payload.grams,
-      updated_at: new Date().toISOString()
+      grams: payload.grams
     };
 
     const { data, error } = await supabase
@@ -157,10 +154,7 @@ export const updateFoodMeasure = async (id, payload) => {
       throw new Error('quantity deve ser maior que 0');
     }
 
-    const updateData = {
-      ...payload,
-      updated_at: new Date().toISOString()
-    };
+    const updateData = { ...payload };
 
     const { data, error } = await supabase
       .from('food_household_measures')
