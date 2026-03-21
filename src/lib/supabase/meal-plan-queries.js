@@ -220,6 +220,8 @@ export const getMealPlans = async (patientId, onlyActive = false) => {
             .from('meal_plans')
             .select('*')
             .eq('patient_id', patientId)
+            .eq('is_draft', false)    // Never show draft plans in the list
+            .eq('is_template', false) // Never show templates in the plan list
             .order('created_at', { ascending: false });
 
         if (onlyActive) {
@@ -1713,3 +1715,188 @@ export const restoreMealPlanVersion = async (versionId) => {
     }
 };
 
+// =====================================================
+// DRAFT MEAL PLANS - Rascunhos de Planos Alimentares
+// =====================================================
+
+/**
+ * Cria um novo plano rascunho para o nutricionista trabalhar.
+ * Não desativa outros planos ativos. Não é visível ao paciente.
+ * @param {string} patientId
+ * @param {string} nutritionistId
+ * @returns {Promise<{data: object, error: object}>}
+ */
+export const createDraftMealPlan = async (patientId, nutritionistId) => {
+    try {
+        const { data, error } = await supabase
+            .from('meal_plans')
+            .insert([{
+                patient_id: patientId,
+                nutritionist_id: nutritionistId,
+                name: 'Rascunho',
+                start_date: getTodayIsoDate(),
+                is_active: false,
+                is_draft: true,
+                is_template: false,
+                active_days: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+            }])
+            .select()
+            .single();
+
+        if (error) throw error;
+        return { data, error: null };
+    } catch (error) {
+        logSupabaseError('Erro ao criar rascunho do plano alimentar', error);
+        return { data: null, error };
+    }
+};
+
+/**
+ * Busca o rascunho pendente de um nutricionista para um paciente.
+ * Retorna apenas um rascunho (o mais recente), ou null se não houver.
+ * @param {string} patientId
+ * @param {string} nutritionistId
+ * @returns {Promise<{data: object|null, error: object}>}
+ */
+export const getDraftMealPlan = async (patientId, nutritionistId) => {
+    try {
+        const { data, error } = await supabase
+            .from('meal_plans')
+            .select('id, name, description, start_date, end_date, active_days, created_at, updated_at')
+            .eq('patient_id', patientId)
+            .eq('nutritionist_id', nutritionistId)
+            .eq('is_draft', true)
+            .order('updated_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+        if (error) throw error;
+        return { data: data || null, error: null };
+    } catch (error) {
+        logSupabaseError('Erro ao buscar rascunho do plano alimentar', error);
+        return { data: null, error };
+    }
+};
+
+/**
+ * Atualiza os dados básicos de um plano rascunho (nome, datas, dias).
+ * @param {number} draftId
+ * @param {object} planData
+ * @returns {Promise<{data: object, error: object}>}
+ */
+export const updateDraftMealPlan = async (draftId, planData) => {
+    try {
+        const { data, error } = await supabase
+            .from('meal_plans')
+            .update({
+                name: planData.name || 'Rascunho',
+                description: planData.description || null,
+                start_date: planData.start_date || getTodayIsoDate(),
+                end_date: planData.end_date || null,
+                active_days: planData.active_days || ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', draftId)
+            .eq('is_draft', true)
+            .select()
+            .single();
+
+        if (error) throw error;
+        return { data, error: null };
+    } catch (error) {
+        logSupabaseError('Erro ao atualizar rascunho do plano alimentar', error);
+        return { data: null, error };
+    }
+};
+
+/**
+ * Deleta um plano rascunho (e suas refeições/alimentos por CASCADE).
+ * Chamado ao apertar "Cancelar" no formulário.
+ * @param {number} draftId
+ * @returns {Promise<{data: object, error: object}>}
+ */
+export const deleteDraftMealPlan = async (draftId) => {
+    try {
+        const { data, error } = await supabase
+            .from('meal_plans')
+            .delete()
+            .eq('id', draftId)
+            .eq('is_draft', true)
+            .select()
+            .maybeSingle();
+
+        if (error) throw error;
+        return { data, error: null };
+    } catch (error) {
+        logSupabaseError('Erro ao deletar rascunho do plano alimentar', error);
+        return { data: null, error };
+    }
+};
+
+/**
+ * Promove um rascunho para plano ativo, desativando os outros planos ativos do paciente.
+ * Chamado ao apertar "Aplicar Plano Alimentar" no formulário.
+ * @param {number} draftId
+ * @param {string} patientId - Necessário para desativar outros planos ativos
+ * @returns {Promise<{data: object, error: object}>}
+ */
+export const promoteDraftToActive = async (draftId, patientId) => {
+    try {
+        // Desativar outros planos ativos do paciente
+        const { error: deactivateError } = await supabase
+            .from('meal_plans')
+            .update({ is_active: false })
+            .eq('patient_id', patientId)
+            .eq('is_active', true)
+            .eq('is_draft', false);
+
+        if (deactivateError) {
+            console.warn('Erro ao desativar planos anteriores:', deactivateError);
+        }
+
+        // Promover rascunho para ativo
+        const { data, error } = await supabase
+            .from('meal_plans')
+            .update({
+                is_draft: false,
+                is_active: true,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', draftId)
+            .select()
+            .single();
+
+        if (error) throw error;
+        return { data, error: null };
+    } catch (error) {
+        logSupabaseError('Erro ao promover rascunho para plano ativo', error);
+        return { data: null, error };
+    }
+};
+
+/**
+ * Promove um rascunho para plano salvo (sem ativar).
+ * Chamado ao apertar "Salvar como Rascunho" no formulário.
+ * @param {number} draftId
+ * @returns {Promise<{data: object, error: object}>}
+ */
+export const saveDraftAsPlan = async (draftId) => {
+    try {
+        const { data, error } = await supabase
+            .from('meal_plans')
+            .update({
+                is_draft: false,
+                is_active: false,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', draftId)
+            .select()
+            .single();
+
+        if (error) throw error;
+        return { data, error: null };
+    } catch (error) {
+        logSupabaseError('Erro ao salvar rascunho como plano', error);
+        return { data: null, error };
+    }
+};

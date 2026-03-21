@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Save, X, Plus, Trash2, Edit, Calendar } from 'lucide-react';
+import { Save, X, Plus, Trash2, Edit, Calendar, CloudOff, Cloud, Loader2, AlertTriangle, CheckCircle2, History } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,11 +8,46 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import MealPlanMealForm from './MealPlanMealForm';
 import MacrosChart from './MacrosChart';
-import { getReferenceValues, simulateMealPlanPortionAdjustment } from '@/lib/supabase/meal-plan-queries';
+import { getReferenceValues, simulateMealPlanPortionAdjustment, getMealPlanById } from '@/lib/supabase/meal-plan-queries';
+import { useMealPlanDraft } from '@/hooks/useMealPlanDraft';
 
-const MealPlanForm = ({ patientId, patientSlugOrId, nutritionistId, initialData = null, onSubmit, onCancel, loading = false }) => {
+const SaveStatusIndicator = ({ status }) => {
+    if (status === 'saving') return (
+        <span className="flex items-center gap-1.5 text-xs text-muted-foreground animate-pulse">
+            <Loader2 className="h-3 w-3 animate-spin" />
+            Salvando rascunho...
+        </span>
+    );
+    if (status === 'saved') return (
+        <span className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400">
+            <Cloud className="h-3 w-3" />
+            Rascunho salvo
+        </span>
+    );
+    if (status === 'error') return (
+        <span className="flex items-center gap-1.5 text-xs text-destructive">
+            <CloudOff className="h-3 w-3" />
+            Erro ao salvar
+        </span>
+    );
+    return null;
+};
+
+const MealPlanForm = ({
+    patientId,
+    patientSlugOrId,
+    nutritionistId,
+    initialData = null,
+    onSubmit,
+    onSaveDraft,
+    onCancel,
+    loading = false
+}) => {
+    const isEditing = Boolean(initialData?.id);
+
     const [formData, setFormData] = useState({
         name: '',
         description: '',
@@ -31,6 +66,13 @@ const MealPlanForm = ({ patientId, patientSlugOrId, nutritionistId, initialData 
     const [portionMealId, setPortionMealId] = useState('');
     const [portionFoodId, setPortionFoodId] = useState('');
 
+    // Draft auto-save — only active when creating a new plan (not editing)
+    const draft = useMealPlanDraft({
+        patientId,
+        nutritionistId,
+        enabled: !isEditing
+    });
+
     const daysOfWeek = [
         { value: 'monday', label: 'Segunda' },
         { value: 'tuesday', label: 'Terça' },
@@ -41,7 +83,7 @@ const MealPlanForm = ({ patientId, patientSlugOrId, nutritionistId, initialData 
         { value: 'sunday', label: 'Domingo' }
     ];
 
-    // Carregar valores de referência
+    // Load reference values when editing
     const loadReferenceValues = useCallback(async () => {
         if (initialData?.id) {
             const { data } = await getReferenceValues(initialData.id);
@@ -49,6 +91,7 @@ const MealPlanForm = ({ patientId, patientSlugOrId, nutritionistId, initialData 
         }
     }, [initialData?.id]);
 
+    // Populate form when editing existing plan
     useEffect(() => {
         if (initialData) {
             setFormData({
@@ -59,7 +102,6 @@ const MealPlanForm = ({ patientId, patientSlugOrId, nutritionistId, initialData 
                 active_days: initialData.active_days || []
             });
 
-            // Adicionar tempId nas refeições e foods para edição
             const mealsWithTempId = (initialData.meals || []).map((meal, idx) => ({
                 ...meal,
                 tempId: meal.tempId || Date.now() + idx,
@@ -74,41 +116,87 @@ const MealPlanForm = ({ patientId, patientSlugOrId, nutritionistId, initialData 
         }
     }, [initialData, loadReferenceValues]);
 
+    // When creating: start a new draft on mount (or after discarding existing one)
+    useEffect(() => {
+        if (isEditing || draft.existingDraft !== null || draft.isInitializing) return;
+        if (!draft.draftId) {
+            draft.startNewDraft();
+        }
+    }, [isEditing, draft.existingDraft, draft.isInitializing, draft.draftId]);
+
+    // Recover meals when resuming an existing draft
+    const handleResumeDraft = async () => {
+        const fullPlan = await draft.resumeExistingDraft();
+        if (fullPlan) {
+            setFormData({
+                name: fullPlan.name || '',
+                description: fullPlan.description || '',
+                start_date: fullPlan.start_date || new Date().toISOString().split('T')[0],
+                end_date: fullPlan.end_date || '',
+                active_days: fullPlan.active_days || []
+            });
+
+            const mealsWithTempId = (fullPlan.meals || []).map((meal, idx) => ({
+                ...meal,
+                tempId: meal.id || Date.now() + idx,
+                dbId: meal.id,
+                foods: (meal.foods || []).map((food, foodIdx) => ({
+                    ...food,
+                    tempId: food.id || Date.now() + idx + foodIdx + 1000
+                }))
+            }));
+            setMeals(mealsWithTempId);
+        }
+    };
+
+    const handleDiscardDraftAndStartFresh = async () => {
+        await draft.discardExistingAndStartNew();
+        setFormData({
+            name: '',
+            description: '',
+            start_date: new Date().toISOString().split('T')[0],
+            end_date: '',
+            active_days: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+        });
+        setMeals([]);
+    };
+
     const handleChange = (field, value) => {
-        setFormData(prev => ({ ...prev, [field]: value }));
-        if (errors[field]) {
-            setErrors(prev => ({ ...prev, [field]: null }));
+        const newData = { ...formData, [field]: value };
+        setFormData(newData);
+        if (errors[field]) setErrors(prev => ({ ...prev, [field]: null }));
+
+        // Auto-save basic info when creating (debounced in hook)
+        if (!isEditing && draft.draftId) {
+            draft.savePlanInfo(newData);
         }
     };
 
     const handleDayToggle = (day) => {
-        setFormData(prev => ({
-            ...prev,
-            active_days: prev.active_days.includes(day)
-                ? prev.active_days.filter(d => d !== day)
-                : [...prev.active_days, day]
-        }));
+        const newDays = formData.active_days.includes(day)
+            ? formData.active_days.filter(d => d !== day)
+            : [...formData.active_days, day];
+        handleChange('active_days', newDays);
     };
 
     const handleSelectAllDays = () => {
-        setFormData(prev => ({
-            ...prev,
-            active_days: prev.active_days.length === 7 ? [] : daysOfWeek.map(d => d.value)
-        }));
+        const newDays = formData.active_days.length === 7 ? [] : daysOfWeek.map(d => d.value);
+        handleChange('active_days', newDays);
     };
 
-    const handleSelectWeekdays = () => {
-        const weekdays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
-        setFormData(prev => ({ ...prev, active_days: weekdays }));
-    };
+    const handleSelectWeekdays = () => handleChange('active_days', ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']);
+    const handleSelectWeekends = () => handleChange('active_days', ['saturday', 'sunday']);
 
-    const handleSelectWeekends = () => {
-        const weekends = ['saturday', 'sunday'];
-        setFormData(prev => ({ ...prev, active_days: weekends }));
-    };
+    const handleAddMeal = async (mealData) => {
+        const newMealData = { ...mealData, tempId: Date.now(), order_index: meals.length };
 
-    const handleAddMeal = (mealData) => {
-        setMeals(prev => [...prev, { ...mealData, tempId: Date.now(), order_index: prev.length }]);
+        if (!isEditing && draft.draftId) {
+            // Persist meal + foods to draft immediately
+            const dbMealId = await draft.saveMeal({ ...mealData, order_index: meals.length });
+            newMealData.dbId = dbMealId;
+        }
+
+        setMeals(prev => [...prev, newMealData]);
     };
 
     const handleEditMeal = (meal) => {
@@ -117,56 +205,43 @@ const MealPlanForm = ({ patientId, patientSlugOrId, nutritionistId, initialData 
     };
 
     const handleUpdateMeal = (updatedMeal) => {
-        setMeals(prev => prev.map(m => m.tempId === editingMeal.tempId ? { ...updatedMeal, tempId: m.tempId } : m));
+        setMeals(prev => prev.map(m =>
+            m.tempId === editingMeal.tempId ? { ...updatedMeal, tempId: m.tempId, dbId: m.dbId } : m
+        ));
         setEditingMeal(null);
     };
 
-    const handleDeleteMeal = (tempId) => {
-        setMeals(prev => prev.filter(m => m.tempId !== tempId));
+    const handleDeleteMeal = async (meal) => {
+        if (!isEditing && draft.draftId && meal.dbId) {
+            await draft.removeMeal(meal.dbId);
+        }
+        setMeals(prev => prev.filter(m => m.tempId !== meal.tempId));
     };
 
-    const calculateDailyTotals = () => {
-        return meals.reduce(
-            (acc, meal) => ({
-                calories: acc.calories + (meal.calories || 0),
-                protein: acc.protein + (meal.protein || 0),
-                carbs: acc.carbs + (meal.carbs || 0),
-                fat: acc.fat + (meal.fat || 0)
-            }),
-            { calories: 0, protein: 0, carbs: 0, fat: 0 }
-        );
-    };
+    const calculateDailyTotals = () => meals.reduce(
+        (acc, meal) => ({
+            calories: acc.calories + (meal.calories || 0),
+            protein: acc.protein + (meal.protein || 0),
+            carbs: acc.carbs + (meal.carbs || 0),
+            fat: acc.fat + (meal.fat || 0)
+        }),
+        { calories: 0, protein: 0, carbs: 0, fat: 0 }
+    );
 
     const validate = () => {
         const newErrors = {};
-
-        if (!formData.name.trim()) {
-            newErrors.name = 'Nome do plano é obrigatório';
-        }
-
-        if (formData.active_days.length === 0) {
-            newErrors.active_days = 'Selecione pelo menos um dia da semana';
-        }
-
-        if (!formData.start_date) {
-            newErrors.start_date = 'Data de início é obrigatória';
-        }
-
-        if (formData.end_date && formData.end_date < formData.start_date) {
-            newErrors.end_date = 'Data final deve ser posterior à data inicial';
-        }
-
-        if (meals.length === 0) {
-            newErrors.meals = 'Adicione pelo menos uma refeição';
-        }
-
+        if (!formData.name.trim()) newErrors.name = 'Nome do plano é obrigatório';
+        if (formData.active_days.length === 0) newErrors.active_days = 'Selecione pelo menos um dia da semana';
+        if (!formData.start_date) newErrors.start_date = 'Data de início é obrigatória';
+        if (formData.end_date && formData.end_date < formData.start_date) newErrors.end_date = 'Data final deve ser posterior à data inicial';
+        if (meals.length === 0) newErrors.meals = 'Adicione pelo menos uma refeição';
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
 
-    const handleSubmit = (e) => {
+    // Button: "Aplicar Plano Alimentar" — promotes draft to active, or updates existing
+    const handleApplyPlan = (e) => {
         e.preventDefault();
-
         if (!validate()) return;
 
         const totals = calculateDailyTotals();
@@ -175,10 +250,41 @@ const MealPlanForm = ({ patientId, patientSlugOrId, nutritionistId, initialData 
             nutritionist_id: nutritionistId,
             ...formData,
             ...totals,
-            meals
+            meals,
+            draftId: draft.draftId || null
         };
 
         onSubmit(planData, initialData?.id);
+    };
+
+    // Button: "Salvar como Rascunho" — saves plan without activating
+    const handleSaveAsInactivePlan = (e) => {
+        e.preventDefault();
+        if (!formData.name.trim()) {
+            setErrors({ name: 'Dê um nome ao plano antes de salvar' });
+            return;
+        }
+
+        const totals = calculateDailyTotals();
+        const planData = {
+            patient_id: patientId,
+            nutritionist_id: nutritionistId,
+            ...formData,
+            ...totals,
+            meals,
+            draftId: draft.draftId || null,
+            saveAsInactive: true
+        };
+
+        onSaveDraft?.(planData);
+    };
+
+    // Button: "Cancelar" — discards draft and closes form
+    const handleCancel = async () => {
+        if (!isEditing && draft.draftId) {
+            await draft.discardDraft();
+        }
+        onCancel();
     };
 
     const dailyTotals = calculateDailyTotals();
@@ -196,10 +302,7 @@ const MealPlanForm = ({ patientId, patientSlugOrId, nutritionistId, initialData 
     );
 
     useEffect(() => {
-        if (!mealOptions.length) {
-            setPortionMealId('');
-            return;
-        }
+        if (!mealOptions.length) { setPortionMealId(''); return; }
         if (!portionMealId || !mealOptions.some((item) => item.id === String(portionMealId))) {
             setPortionMealId(mealOptions[0].id);
         }
@@ -207,10 +310,7 @@ const MealPlanForm = ({ patientId, patientSlugOrId, nutritionistId, initialData 
 
     useEffect(() => {
         if (portionScope !== 'food') return;
-        if (!foodOptions.length) {
-            setPortionFoodId('');
-            return;
-        }
+        if (!foodOptions.length) { setPortionFoodId(''); return; }
         if (!portionFoodId || !foodOptions.some((item) => item.id === String(portionFoodId))) {
             setPortionFoodId(foodOptions[0].id);
         }
@@ -243,13 +343,58 @@ const MealPlanForm = ({ patientId, patientSlugOrId, nutritionistId, initialData 
         return `${signal}${numeric.toFixed(unit === 'kcal' ? 0 : 1)}${unit ? ` ${unit}` : ''}`;
     };
 
+    // Existing draft recovery banner
+    const showDraftBanner = !isEditing && draft.existingDraft && !draft.draftId;
+
     return (
         <>
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleApplyPlan} className="space-y-6">
+
+                {/* Draft Recovery Banner */}
+                {showDraftBanner && (
+                    <Alert className="border-amber-500/50 bg-amber-50 dark:bg-amber-950/30">
+                        <History className="h-4 w-4 text-amber-600" />
+                        <AlertDescription className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div>
+                                <p className="font-semibold text-amber-800 dark:text-amber-200">Rascunho encontrado</p>
+                                <p className="text-sm text-amber-700 dark:text-amber-300">
+                                    Você tem um plano em criação salvo em{' '}
+                                    <strong>"{draft.existingDraft.name}"</strong>.
+                                    Deseja continuar de onde parou?
+                                </p>
+                            </div>
+                            <div className="flex gap-2 flex-shrink-0">
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={handleDiscardDraftAndStartFresh}
+                                    className="border-amber-500 text-amber-700 hover:bg-amber-100"
+                                >
+                                    <X className="h-3.5 w-3.5 mr-1.5" />
+                                    Descartar
+                                </Button>
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    onClick={handleResumeDraft}
+                                    className="bg-amber-600 hover:bg-amber-700 text-white"
+                                >
+                                    <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
+                                    Retomar rascunho
+                                </Button>
+                            </div>
+                        </AlertDescription>
+                    </Alert>
+                )}
+
                 {/* Informações Básicas */}
                 <Card>
                     <CardHeader>
-                        <CardTitle className="text-lg">Informações do Plano</CardTitle>
+                        <div className="flex items-center justify-between">
+                            <CardTitle className="text-lg">Informações do Plano</CardTitle>
+                            {!isEditing && <SaveStatusIndicator status={draft.saveStatus} />}
+                        </div>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         {/* Nome */}
@@ -323,31 +468,13 @@ const MealPlanForm = ({ patientId, patientSlugOrId, nutritionistId, initialData 
                                     Dias Ativos <span className="text-destructive">*</span>
                                 </Label>
                                 <div className="flex gap-2 flex-shrink-0">
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={handleSelectWeekdays}
-                                        className="flex-1 sm:flex-none text-xs sm:text-sm"
-                                    >
+                                    <Button type="button" variant="outline" size="sm" onClick={handleSelectWeekdays} className="flex-1 sm:flex-none text-xs sm:text-sm">
                                         Dias úteis
                                     </Button>
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={handleSelectWeekends}
-                                        className="flex-1 sm:flex-none text-xs sm:text-sm"
-                                    >
+                                    <Button type="button" variant="outline" size="sm" onClick={handleSelectWeekends} className="flex-1 sm:flex-none text-xs sm:text-sm">
                                         Fins de semana
                                     </Button>
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={handleSelectAllDays}
-                                        className="flex-1 sm:flex-none text-xs sm:text-sm"
-                                    >
+                                    <Button type="button" variant="outline" size="sm" onClick={handleSelectAllDays} className="flex-1 sm:flex-none text-xs sm:text-sm">
                                         {formData.active_days.length === 7 ? 'Limpar' : 'Todos'}
                                     </Button>
                                 </div>
@@ -375,14 +502,12 @@ const MealPlanForm = ({ patientId, patientSlugOrId, nutritionistId, initialData 
                                     </label>
                                 ))}
                             </div>
-                            {errors.active_days && (
-                                <p className="text-xs text-destructive">{errors.active_days}</p>
-                            )}
+                            {errors.active_days && <p className="text-xs text-destructive">{errors.active_days}</p>}
                         </div>
                     </CardContent>
                 </Card>
 
-                {/* Grid: Refeições (60%) + Gráfico de Macros (40%) */}
+                {/* Simulador de Ajuste de Porções */}
                 {meals.length > 0 && portionSimulation ? (
                     <Card>
                         <CardHeader>
@@ -402,9 +527,7 @@ const MealPlanForm = ({ patientId, patientSlugOrId, nutritionistId, initialData 
                                         onChange={(e) => setPortionScaleFactor(parseScaleInput(e.target.value))}
                                         disabled={loading}
                                     />
-                                    <p className="text-xs text-muted-foreground">
-                                        Ex.: 1.10 aumenta 10%, 0.90 reduz 10%
-                                    </p>
+                                    <p className="text-xs text-muted-foreground">Ex.: 1.10 aumenta 10%, 0.90 reduz 10%</p>
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="portion-scope">Aplicar em</Label>
@@ -489,9 +612,9 @@ const MealPlanForm = ({ patientId, patientSlugOrId, nutritionistId, initialData 
                     </Card>
                 ) : null}
 
+                {/* Refeições + Gráfico */}
                 {meals.length > 0 && (
                     <div className="grid grid-cols-1 lg:grid-cols-10 gap-6">
-                        {/* Card de Refeições - 60% */}
                         <div className="lg:col-span-6">
                             <Card>
                                 <CardHeader>
@@ -500,10 +623,7 @@ const MealPlanForm = ({ patientId, patientSlugOrId, nutritionistId, initialData 
                                         <Button
                                             type="button"
                                             size="sm"
-                                            onClick={() => {
-                                                setEditingMeal(null);
-                                                setShowMealForm(true);
-                                            }}
+                                            onClick={() => { setEditingMeal(null); setShowMealForm(true); }}
                                             disabled={loading}
                                         >
                                             <Plus className="h-4 w-4 mr-2" />
@@ -514,16 +634,11 @@ const MealPlanForm = ({ patientId, patientSlugOrId, nutritionistId, initialData 
                                 <CardContent>
                                     <div className="space-y-3">
                                         {meals.map((meal, index) => (
-                                            <div
-                                                key={meal.tempId}
-                                                className="p-4 border rounded-lg hover:bg-muted/50 transition-colors"
-                                            >
+                                            <div key={meal.tempId} className="p-4 border rounded-lg hover:bg-muted/50 transition-colors">
                                                 <div className="flex items-start justify-between">
                                                     <div className="flex-1">
                                                         <div className="flex items-center gap-2">
-                                                            <span className="text-sm text-muted-foreground">
-                                                                #{index + 1}
-                                                            </span>
+                                                            <span className="text-sm text-muted-foreground">#{index + 1}</span>
                                                             <h4 className="font-semibold">{meal.name}</h4>
                                                             {meal.meal_time && (
                                                                 <Badge variant="outline">
@@ -533,28 +648,18 @@ const MealPlanForm = ({ patientId, patientSlugOrId, nutritionistId, initialData 
                                                             )}
                                                         </div>
                                                         <div className="text-sm text-muted-foreground mt-1">
-                                                            {meal.foods?.length || 0} alimento(s) •
-                                                            {' '}{meal.calories?.toFixed(0) || 0} kcal •
+                                                            {meal.foods?.length || 0} alimento(s) •{' '}
+                                                            {meal.calories?.toFixed(0) || 0} kcal •
                                                             P: {meal.protein?.toFixed(1) || 0}g •
                                                             C: {meal.carbs?.toFixed(1) || 0}g •
                                                             G: {meal.fat?.toFixed(1) || 0}g
                                                         </div>
                                                     </div>
                                                     <div className="flex gap-2">
-                                                        <Button
-                                                            type="button"
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            onClick={() => handleEditMeal(meal)}
-                                                        >
+                                                        <Button type="button" variant="ghost" size="sm" onClick={() => handleEditMeal(meal)}>
                                                             <Edit className="h-4 w-4" />
                                                         </Button>
-                                                        <Button
-                                                            type="button"
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            onClick={() => handleDeleteMeal(meal.tempId)}
-                                                        >
+                                                        <Button type="button" variant="ghost" size="sm" onClick={() => handleDeleteMeal(meal)}>
                                                             <Trash2 className="h-4 w-4 text-destructive" />
                                                         </Button>
                                                     </div>
@@ -566,7 +671,6 @@ const MealPlanForm = ({ patientId, patientSlugOrId, nutritionistId, initialData 
                             </Card>
                         </div>
 
-                        {/* Gráfico de Macronutrientes - 40% */}
                         <div className="lg:col-span-4">
                             <MacrosChart
                                 protein={dailyTotals.protein}
@@ -583,7 +687,7 @@ const MealPlanForm = ({ patientId, patientSlugOrId, nutritionistId, initialData 
                     </div>
                 )}
 
-                {/* Card de Refeições - Quando vazio */}
+                {/* Refeições — Estado vazio */}
                 {meals.length === 0 && (
                     <Card>
                         <CardHeader>
@@ -592,11 +696,8 @@ const MealPlanForm = ({ patientId, patientSlugOrId, nutritionistId, initialData 
                                 <Button
                                     type="button"
                                     size="sm"
-                                    onClick={() => {
-                                        setEditingMeal(null);
-                                        setShowMealForm(true);
-                                    }}
-                                    disabled={loading}
+                                    onClick={() => { setEditingMeal(null); setShowMealForm(true); }}
+                                    disabled={loading || showDraftBanner}
                                 >
                                     <Plus className="h-4 w-4 mr-2" />
                                     Adicionar Refeição
@@ -606,28 +707,53 @@ const MealPlanForm = ({ patientId, patientSlugOrId, nutritionistId, initialData 
                         <CardContent>
                             <div className="text-center py-8 text-muted-foreground">
                                 Nenhuma refeição adicionada ainda
-                                {errors.meals && (
-                                    <p className="text-destructive mt-2">{errors.meals}</p>
-                                )}
+                                {errors.meals && <p className="text-destructive mt-2">{errors.meals}</p>}
                             </div>
                         </CardContent>
                     </Card>
                 )}
 
-                {/* Botões */}
-                <div className="flex gap-2 justify-end">
+                {/* Botões de ação — 3 opções */}
+                <div className="flex flex-col sm:flex-row gap-3 justify-end pt-2">
+                    {/* Cancelar */}
                     <Button
                         type="button"
                         variant="outline"
-                        onClick={onCancel}
+                        onClick={handleCancel}
                         disabled={loading}
+                        className="sm:order-1"
                     >
                         <X className="w-4 h-4 mr-2" />
                         Cancelar
                     </Button>
-                    <Button type="submit" disabled={loading}>
-                        <Save className="w-4 h-4 mr-2" />
-                        {loading ? 'Salvando...' : initialData ? 'Atualizar Plano' : 'Criar Plano'}
+
+                    {/* Salvar como Rascunho — only for new plans, or show "Salvar sem Ativar" for editing */}
+                    {!isEditing && (
+                        <Button
+                            type="button"
+                            variant="secondary"
+                            onClick={handleSaveAsInactivePlan}
+                            disabled={loading}
+                            className="sm:order-2"
+                        >
+                            <Save className="w-4 h-4 mr-2" />
+                            {loading ? 'Salvando...' : 'Salvar sem ativar'}
+                        </Button>
+                    )}
+
+                    {/* Aplicar Plano Alimentar — primary action */}
+                    <Button
+                        type="submit"
+                        disabled={loading}
+                        className="sm:order-3 font-semibold"
+                    >
+                        <CheckCircle2 className="w-4 h-4 mr-2" />
+                        {loading
+                            ? 'Salvando...'
+                            : isEditing
+                                ? 'Salvar alterações'
+                                : 'Aplicar Plano Alimentar'
+                        }
                     </Button>
                 </div>
             </form>
@@ -635,10 +761,7 @@ const MealPlanForm = ({ patientId, patientSlugOrId, nutritionistId, initialData 
             {/* Dialog de Refeição */}
             <MealPlanMealForm
                 isOpen={showMealForm}
-                onClose={() => {
-                    setShowMealForm(false);
-                    setEditingMeal(null);
-                }}
+                onClose={() => { setShowMealForm(false); setEditingMeal(null); }}
                 onSave={editingMeal ? handleUpdateMeal : handleAddMeal}
                 initialData={editingMeal}
             />

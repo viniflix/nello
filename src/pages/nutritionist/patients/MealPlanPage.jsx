@@ -53,7 +53,9 @@ import {
     copyMealPlanToPatient,
     addMealToPlan,
     addFoodToMeal,
-    savePlanAsTemplate
+    savePlanAsTemplate,
+    promoteDraftToActive,
+    saveDraftAsPlan
 } from '@/lib/supabase/meal-plan-queries';
 import { supabase } from '@/lib/customSupabaseClient';
 import { exportMealPlanToPdf } from '@/lib/pdfUtils';
@@ -267,7 +269,7 @@ const MealPlanPage = () => {
         });
     };
 
-    // Criar ou atualizar plano
+    // Criar ou atualizar plano — botão "Aplicar Plano Alimentar"
     const handleSubmit = async (planData, planId = null) => {
         setSubmitting(true);
 
@@ -276,8 +278,17 @@ const MealPlanPage = () => {
                 // Atualizar plano existente
                 const result = await updateFullMealPlan(planId, planData);
                 if (result.error) throw result.error;
+            } else if (planData.draftId) {
+                // Novo plano via rascunho: atualiza dados básicos e promove para ativo
+                const result = await promoteDraftToActive(planData.draftId, patientId);
+                if (result.error) throw result.error;
+
+                // Atualiza os dados básicos do plano agora promovido
+                const { updateFullMealPlan: updateFn } = await import('@/lib/supabase/meal-plan-queries');
+                const updateResult = await updateFn(planData.draftId, planData);
+                if (updateResult.error) console.warn('Erro ao atualizar metadados do plano promovido:', updateResult.error);
             } else {
-                // Criar novo plano
+                // Fallback: criação tradicional (sem rascunho prévio)
                 const result = await createMealPlan({
                     patient_id: planData.patient_id,
                     nutritionist_id: planData.nutritionist_id,
@@ -290,7 +301,6 @@ const MealPlanPage = () => {
 
                 if (result.error) throw result.error;
 
-                // Adicionar refeições e alimentos
                 for (const meal of planData.meals) {
                     const mealResult = await addMealToPlan({
                         meal_plan_id: result.data.id,
@@ -303,7 +313,6 @@ const MealPlanPage = () => {
 
                     if (mealResult.error) throw mealResult.error;
 
-                    // Adicionar alimentos à refeição
                     for (const food of meal.foods || []) {
                         const foodResult = await addFoodToMeal({
                             meal_plan_meal_id: mealResult.data.id,
@@ -327,7 +336,7 @@ const MealPlanPage = () => {
                 title: 'Sucesso',
                 description: planId
                     ? 'Plano atualizado com sucesso'
-                    : 'Plano criado com sucesso',
+                    : 'Plano aplicado com sucesso',
                 variant: 'success'
             });
 
@@ -344,8 +353,52 @@ const MealPlanPage = () => {
         } catch (error) {
             console.error('Erro ao salvar plano:', error);
             toast({
+                title: 'Erro ao salvar plano',
+                description: error?.message || 'Não foi possível salvar o plano alimentar. Seus dados estão preservados no rascunho.',
+                variant: 'destructive'
+            });
+            // Form stays open — data is safe in the draft
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    // Salvar plano sem ativar — botão "Salvar sem ativar"
+    const handleSaveDraft = async (planData) => {
+        setSubmitting(true);
+        try {
+            let result;
+            if (planData.draftId) {
+                result = await saveDraftAsPlan(planData.draftId);
+            } else {
+                result = await createMealPlan({
+                    patient_id: planData.patient_id,
+                    nutritionist_id: planData.nutritionist_id,
+                    name: planData.name,
+                    description: planData.description,
+                    active_days: planData.active_days,
+                    start_date: planData.start_date,
+                    end_date: planData.end_date || null,
+                    is_active: false
+                });
+            }
+
+            if (result.error) throw result.error;
+
+            toast({
+                title: 'Plano salvo',
+                description: 'Plano salvo sem ser ativado. Você pode ativá-lo a qualquer momento.',
+                variant: 'success'
+            });
+
+            setShowForm(false);
+            setEditingPlan(null);
+            await loadPlans();
+        } catch (error) {
+            console.error('Erro ao salvar plano:', error);
+            toast({
                 title: 'Erro',
-                description: 'Não foi possível salvar o plano alimentar',
+                description: error?.message || 'Não foi possível salvar o plano.',
                 variant: 'destructive'
             });
         } finally {
@@ -701,6 +754,7 @@ const MealPlanPage = () => {
                     nutritionistId={nutritionistId}
                     initialData={editingPlan}
                     onSubmit={handleSubmit}
+                    onSaveDraft={handleSaveDraft}
                     onCancel={() => {
                         setShowForm(false);
                         setEditingPlan(null);
