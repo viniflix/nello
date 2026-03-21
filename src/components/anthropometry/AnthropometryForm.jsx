@@ -449,6 +449,7 @@ const AnthropometryForm = ({
             patient_id: patientId,
             weight: parsedWeight,
             height: parsedHeight,
+            peso_usual: formData.peso_usual && parseFloat(formData.peso_usual) > 0 ? parseFloat(formData.peso_usual) : null,
             record_date: formData.record_date,
             notes: formData.notes.trim() || null,
             circumferences: Object.keys(cleanCircumferences).length > 0 ? cleanCircumferences : null,
@@ -472,6 +473,7 @@ const AnthropometryForm = ({
         setFormData({
             weight: '',
             height: '',
+            peso_usual: '',
             record_date: new Date().toISOString().split('T')[0],
             notes: '',
             circumferences: {
@@ -601,6 +603,27 @@ const AnthropometryForm = ({
                                     {errors.weight && (
                                         <p className="text-xs text-destructive">{errors.weight}</p>
                                     )}
+                                </div>
+                                {/* Peso Usual */}
+                                <div className="space-y-2">
+                                    <Label htmlFor="peso_usual">
+                                        Peso Usual (kg)
+                                        <span className="text-muted-foreground ml-2 text-xs font-normal">
+                                            (Opcional)
+                                        </span>
+                                    </Label>
+                                    <Input
+                                        id="peso_usual"
+                                        name="peso_usual"
+                                        type="number"
+                                        step="0.1"
+                                        min="0"
+                                        placeholder="Ex: 72"
+                                        value={formData.peso_usual}
+                                        onChange={handleChange}
+                                        className={errors.peso_usual ? 'border-destructive' : ''}
+                                        disabled={loading}
+                                    />
                                 </div>
 
                                 {/* Altura */}

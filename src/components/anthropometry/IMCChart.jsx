@@ -42,7 +42,9 @@ const IMCChart = ({ data = [], patientAge = null, patientSex = null, patientEthn
             date: format(new Date(record.record_date), 'dd/MM/yy'),
             fullDate: format(new Date(record.record_date), "dd 'de' MMM", { locale: ptBR }),
             bmi: parseFloat((record.bmi || record.calculatedBmi).toFixed(1)),
-            originalDate: record.record_date
+            originalDate: record.record_date,
+            weight: record.weight,
+            height: record.height
         }));
 
     if (chartData.length === 0) {
@@ -74,6 +76,23 @@ const IMCChart = ({ data = [], patientAge = null, patientSex = null, patientEthn
         classifyBMI({ bmi, age: patientAge, sex: patientSex, ethnicity: patientEthnicity });
 
     const currentCategory = getIMCCategory(lastBMI);
+
+    // Calcular Peso Ideal (Broca Modificado) e Ajustado
+    const lastRecordWithHeight = chartData.slice().reverse().find(r => r.height && r.weight);
+    let brocaIdeal = null;
+    let adjustedIdeal = null;
+    if (lastRecordWithHeight) {
+        const hCm = parseFloat(lastRecordWithHeight.height);
+        const wNow = parseFloat(lastRecordWithHeight.weight);
+        const gender = patientSex?.toLowerCase() || '';
+        const isMale = gender.includes('m') || gender === 'masculino' || gender === 'male';
+        
+        brocaIdeal = isMale 
+            ? 52 + (0.75 * (hCm - 152.4))
+            : 52 + (0.67 * (hCm - 152.4));
+        
+        adjustedIdeal = ((wNow - brocaIdeal) * 0.25) + brocaIdeal;
+    }
 
     // Custom tooltip
     const CustomTooltip = ({ active, payload }) => {
@@ -190,6 +209,23 @@ const IMCChart = ({ data = [], patientAge = null, patientSex = null, patientEthn
                         </p>
                     </div>
                 </div>
+
+                {/* Pesos Ideais */}
+                {brocaIdeal !== null && (
+                    <div className="mt-4 pt-4 border-t">
+                        <p className="text-xs font-semibold text-muted-foreground mb-2">Estimativas de Peso (Fórmula de Broca)</p>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="bg-muted/50 p-2 rounded-md">
+                                <p className="text-[11px] text-muted-foreground uppercase tracking-wider">Peso Ideal</p>
+                                <p className="text-sm font-semibold text-foreground">{brocaIdeal.toFixed(1)} kg</p>
+                            </div>
+                            <div className="bg-muted/50 p-2 rounded-md">
+                                <p className="text-[11px] text-muted-foreground uppercase tracking-wider">Peso Ideal Ajustado</p>
+                                <p className="text-sm font-semibold text-foreground">{adjustedIdeal.toFixed(1)} kg</p>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {/* Legenda de faixas — dinâmica */}
                 <div className="mt-4 pt-4 border-t">

@@ -67,6 +67,7 @@ const PatientAnamnesisForm = () => {
 
     // Check if this is a custom form
     const customTemplateId = searchParams.get('customTemplateId');
+    const standardTemplateId = searchParams.get('templateId');
     const isCustomForm = !!customTemplateId;
     const isEditMode = !!anamnesisParam;
 
@@ -113,6 +114,8 @@ const PatientAnamnesisForm = () => {
             notes: '',
             identificacao: {
                 data_nascimento: '',
+                genero: '',
+                etnia_raca: '',
                 idade: '',
                 profissao: '',
                 estado_civil: ''
@@ -147,9 +150,6 @@ const PatientAnamnesisForm = () => {
             },
             objetivos: {
                 objetivo_principal: '',
-                peso_atual: '',
-                peso_desejado: '',
-                prazo_objetivo: '',
                 tentativas_anteriores: ''
             },
             habitos_alimentares: {
@@ -159,6 +159,43 @@ const PatientAnamnesisForm = () => {
                 preferencias_alimentares: [],
                 alimentos_nao_gosta: '',
                 suplementos: ''
+            },
+            recordatorio_alimentar: {
+                cafe_da_manha: '',
+                lanche_manha: '',
+                almoco: '',
+                lanche_tarde: '',
+                jantar: '',
+                ceia: '',
+                dia_tipico: ''
+            },
+            alimentacao_usual: {
+                cafe_da_manha: '',
+                almoco: '',
+                jantar: '',
+                frutas: '',
+                verduras: '',
+                ultraprocessados: '',
+                fast_food: '',
+                observacoes: ''
+            },
+            curvas_gestacao: {
+                esta_gravida: '',
+                semanas: '',
+                gestacoes_anteriores: '',
+                ganho_peso: '',
+                pre_natal: '',
+                nauseas: ''
+            },
+            curvas_crianca: {
+                responsavel: '',
+                peso_nascer: '',
+                aleitamento: '',
+                alimentacao_complementar: '',
+                dificuldade_aceitar: '',
+                recusados: '',
+                frequencia: '',
+                observacoes: ''
             }
         },
         mode: 'onBlur' // Validação ao sair do campo
@@ -192,6 +229,15 @@ const PatientAnamnesisForm = () => {
     const fuma = watch('habitos_vida.fuma');
     const bebe = watch('habitos_vida.bebe');
     const dataNascimento = watch('identificacao.data_nascimento');
+    const generoWatch = watch('identificacao.genero');
+    const idadeStr = watch('identificacao.idade');
+    const estaGravida = watch('curvas_gestacao.esta_gravida');
+
+    // Derived properties for conditional rendering
+    const isFemale = generoWatch === 'Feminino' || patient?.gender === 'feminino' || patient?.gender === 'female';
+    const isChild = idadeStr ? parseInt(idadeStr) <= 12 : false;
+    const isElderly = idadeStr ? parseInt(idadeStr) >= 65 : false;
+    const isAdult = !isChild;
 
     // Substituir URL por slug quando carregado com UUID (para URLs legíveis)
     useEffect(() => {
@@ -486,7 +532,7 @@ const PatientAnamnesisForm = () => {
             const submitData = {
                 patientId,
                 nutritionistId: user.id,
-                templateId: null,
+                templateId: standardTemplateId || null,
                 date: data.date,
                 notes: data.notes,
                 content: {
@@ -495,7 +541,12 @@ const PatientAnamnesisForm = () => {
                     historico_familiar: data.historico_familiar,
                     habitos_vida: data.habitos_vida,
                     objetivos: data.objetivos,
-                    habitos_alimentares: data.habitos_alimentares
+                    habitos_alimentares: data.habitos_alimentares,
+                    recordatorio_alimentar: data.recordatorio_alimentar,
+                    alimentacao_usual: data.alimentacao_usual,
+                    ...(isFemale ? { curvas_gestacao: data.curvas_gestacao } : {}),
+                    ...(isChild ? { curvas_crianca: data.curvas_crianca } : {}),
+                    ...(isElderly ? { curvas_idoso: data.curvas_idoso } : {})
                 },
                 status
             };
@@ -769,7 +820,12 @@ const PatientAnamnesisForm = () => {
                                                 historico_familiar: 'Histórico Familiar',
                                                 habitos_vida: 'Hábitos de Vida',
                                                 objetivos: 'Objetivos',
-                                                habitos_alimentares: 'Hábitos Alimentares'
+                                                habitos_alimentares: 'Hábitos Alimentares',
+                                                recordatorio_alimentar: 'Recordatório Alimentar 24h',
+                                                alimentacao_usual: 'Alimentação Usual',
+                                                curvas_gestacao: 'Gestação',
+                                                curvas_crianca: 'Pediátrico',
+                                                curvas_idoso: 'Avaliação Geriátrica'
                                             };
                                             const categoryDisplayName = categoryNames[category]
                                                 || category.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
@@ -1002,6 +1058,51 @@ const PatientAnamnesisForm = () => {
                                             </div>
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                 <div className="space-y-2">
+                                                    <Label htmlFor="genero">Gênero</Label>
+                                                    <Controller
+                                                        name="identificacao.genero"
+                                                        control={control}
+                                                        render={({ field }) => (
+                                                            <Select onValueChange={field.onChange} value={field.value}>
+                                                                <SelectTrigger>
+                                                                    <SelectValue placeholder="Selecione..." />
+                                                                </SelectTrigger>
+                                                                <SelectContent>
+                                                                    <SelectItem value="Feminino">Feminino</SelectItem>
+                                                                    <SelectItem value="Masculino">Masculino</SelectItem>
+                                                                    <SelectItem value="Outro">Outro</SelectItem>
+                                                                    <SelectItem value="Prefiro não informar">Prefiro não informar</SelectItem>
+                                                                </SelectContent>
+                                                            </Select>
+                                                        )}
+                                                    />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="etnia_raca">Etnia / Raça</Label>
+                                                    <Controller
+                                                        name="identificacao.etnia_raca"
+                                                        control={control}
+                                                        render={({ field }) => (
+                                                            <Select onValueChange={field.onChange} value={field.value}>
+                                                                <SelectTrigger>
+                                                                    <SelectValue placeholder="Selecione..." />
+                                                                </SelectTrigger>
+                                                                <SelectContent>
+                                                                    <SelectItem value="Branco">Branco</SelectItem>
+                                                                    <SelectItem value="Pardo">Pardo</SelectItem>
+                                                                    <SelectItem value="Negro">Negro</SelectItem>
+                                                                    <SelectItem value="Amarelo">Amarelo</SelectItem>
+                                                                    <SelectItem value="Indígena">Indígena</SelectItem>
+                                                                    <SelectItem value="Outro">Outro</SelectItem>
+                                                                </SelectContent>
+                                                            </Select>
+                                                        )}
+                                                    />
+                                                </div>
+                                            </div>
+                                            {!isChild && (
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div className="space-y-2">
                                                     <Label htmlFor="profissao">Profissão</Label>
                                                     <Input
                                                         id="profissao"
@@ -1030,7 +1131,8 @@ const PatientAnamnesisForm = () => {
                                                         )}
                                                     />
                                                 </div>
-                                            </div>
+                                                </div>
+                                            )}
                                         </div>
                                     </AccordionContent>
                                 </AccordionItem>
@@ -1675,7 +1777,9 @@ const PatientAnamnesisForm = () => {
                                             )}
 
                                             {/* Fuma? */}
-                                            <div className="space-y-2" ref={el => errorRefs.current['habitos_vida.fuma'] = el}>
+                                            {!isChild && (
+                                                <>
+                                                    <div className="space-y-2" ref={el => errorRefs.current['habitos_vida.fuma'] = el}>
                                                 <Label>
                                                     Fuma?<RequiredAsterisk />
                                                 </Label>
@@ -1838,6 +1942,8 @@ const PatientAnamnesisForm = () => {
                                                     </div>
                                                 </div>
                                             )}
+                                                </>
+                                            )}
 
                                             {/* Outros hábitos de vida */}
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1935,32 +2041,6 @@ const PatientAnamnesisForm = () => {
                                                 />
                                                 <FieldError error={errors.objetivos?.objetivo_principal} />
                                             </div>
-                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="peso_atual">Peso Atual (kg)</Label>
-                                                    <Input
-                                                        id="peso_atual"
-                                                        {...register('objetivos.peso_atual')}
-                                                        placeholder="Ex: 75"
-                                                    />
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="peso_desejado">Peso Desejado (kg)</Label>
-                                                    <Input
-                                                        id="peso_desejado"
-                                                        {...register('objetivos.peso_desejado')}
-                                                        placeholder="Ex: 70"
-                                                    />
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="prazo_objetivo">Prazo</Label>
-                                                    <Input
-                                                        id="prazo_objetivo"
-                                                        {...register('objetivos.prazo_objetivo')}
-                                                        placeholder="Ex: 3 meses"
-                                                    />
-                                                </div>
-                                            </div>
                                             <div className="space-y-2">
                                                 <Label htmlFor="tentativas_anteriores">Tentativas Anteriores de Emagrecimento/Dieta</Label>
                                                 <Textarea
@@ -2033,7 +2113,412 @@ const PatientAnamnesisForm = () => {
                                         </div>
                                     </AccordionContent>
                                 </AccordionItem>
+                                {/* SEÇÃO 7: RECORDATÓRIO ALIMENTAR */}
+                                <AccordionItem value="section-6" className="border-b">
+                                    <AccordionTrigger className="hover:no-underline">
+                                        <div className="flex items-center gap-3">
+                                            <div className={cn(
+                                                "w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold",
+                                                openSections.includes('section-6')
+                                                    ? "bg-[#5f6f52] text-white"
+                                                    : "bg-[#5f6f52]/10 text-[#5f6f52]"
+                                            )}>
+                                                7
+                                            </div>
+                                            <span className="font-semibold text-left">Recordatório Alimentar 24h</span>
+                                        </div>
+                                    </AccordionTrigger>
+                                    <AccordionContent className="pt-4 pb-6">
+                                        <div className="space-y-4 pl-11">
+                                            <div className="space-y-2">
+                                                <Label>Café da Manhã</Label>
+                                                <Textarea {...register('recordatorio_alimentar.cafe_da_manha')} placeholder="O que comeu/bebeu..." rows={2}/>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label>Lanche da Manhã</Label>
+                                                <Textarea {...register('recordatorio_alimentar.lanche_manha')} placeholder="O que comeu/bebeu..." rows={2}/>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label>Almoço</Label>
+                                                <Textarea {...register('recordatorio_alimentar.almoco')} placeholder="O que comeu/bebeu..." rows={2}/>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label>Lanche da Tarde</Label>
+                                                <Textarea {...register('recordatorio_alimentar.lanche_tarde')} placeholder="O que comeu/bebeu..." rows={2}/>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label>Jantar</Label>
+                                                <Textarea {...register('recordatorio_alimentar.jantar')} placeholder="O que comeu/bebeu..." rows={2}/>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label>Ceia</Label>
+                                                <Textarea {...register('recordatorio_alimentar.ceia')} placeholder="O que comeu/bebeu..." rows={2}/>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label>Foi um dia típico?</Label>
+                                                <Controller
+                                                    name="recordatorio_alimentar.dia_tipico"
+                                                    control={control}
+                                                    render={({ field }) => (
+                                                        <Select onValueChange={field.onChange} value={field.value}>
+                                                            <SelectTrigger>
+                                                                <SelectValue placeholder="Selecione..." />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                <SelectItem value="Sim">Sim</SelectItem>
+                                                                <SelectItem value="Não, comi menos">Não, comi menos</SelectItem>
+                                                                <SelectItem value="Não, comi mais">Não, comi mais</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                    )}
+                                                />
+                                            </div>
+                                        </div>
+                                    </AccordionContent>
+                                </AccordionItem>
+
+                                {/* SEÇÃO 8: ALIMENTAÇÃO USUAL */}
+                                <AccordionItem value="section-7" className="border-b">
+                                    <AccordionTrigger className="hover:no-underline">
+                                        <div className="flex items-center gap-3">
+                                            <div className={cn(
+                                                "w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold",
+                                                openSections.includes('section-7')
+                                                    ? "bg-[#5f6f52] text-white"
+                                                    : "bg-[#5f6f52]/10 text-[#5f6f52]"
+                                            )}>
+                                                8
+                                            </div>
+                                            <span className="font-semibold text-left">Alimentação Usual</span>
+                                        </div>
+                                    </AccordionTrigger>
+                                    <AccordionContent className="pt-4 pb-6">
+                                        <div className="space-y-4 pl-11">
+                                            <div className="space-y-2">
+                                                <Label>Café da Manhã Usual</Label>
+                                                <Textarea {...register('alimentacao_usual.cafe_da_manha')} placeholder="Descreva os alimentos típicos..." rows={2}/>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label>Almoço Usual</Label>
+                                                <Textarea {...register('alimentacao_usual.almoco')} placeholder="Descreva os alimentos típicos..." rows={2}/>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label>Jantar Usual</Label>
+                                                <Textarea {...register('alimentacao_usual.jantar')} placeholder="Descreva os alimentos típicos..." rows={2}/>
+                                            </div>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div className="space-y-2">
+                                                    <Label>Consumo de Frutas</Label>
+                                                    <Input {...register('alimentacao_usual.frutas')} placeholder="Ex: 2 porções/dia" />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label>Consumo de Verduras/Legumes</Label>
+                                                    <Input {...register('alimentacao_usual.verduras')} placeholder="Ex: no almoço e jantar" />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label>Alimentos Ultraprocessados</Label>
+                                                    <Input {...register('alimentacao_usual.ultraprocessados')} placeholder="Ex: bolachas, refrigerante" />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label>Frequência de Fast Food / Ifood</Label>
+                                                    <Input {...register('alimentacao_usual.fast_food')} placeholder="Ex: 2x na semana" />
+                                                </div>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label>Observações Adicionais</Label>
+                                                <Textarea {...register('alimentacao_usual.observacoes')} placeholder="Detalhes sobre a alimentação usual..." rows={2}/>
+                                            </div>
+                                        </div>
+                                    </AccordionContent>
+                                </AccordionItem>
+
+                                {/* SEÇÃO 9: CURVAS PARA GESTAÇÃO (CONDICIONAL) */}
+                                {isFemale && (
+                                    <AccordionItem value="section-8" className="border-b">
+                                        <AccordionTrigger className="hover:no-underline">
+                                            <div className="flex items-center gap-3">
+                                                <div className={cn(
+                                                    "w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold",
+                                                    openSections.includes('section-8')
+                                                        ? "bg-[#5f6f52] text-white"
+                                                        : "bg-[#5f6f52]/10 text-[#5f6f52]"
+                                                )}>
+                                                    9
+                                                </div>
+                                                <span className="font-semibold text-left">Gestação</span>
+                                            </div>
+                                        </AccordionTrigger>
+                                        <AccordionContent className="pt-4 pb-6">
+                                            <div className="space-y-4 pl-11">
+                                                <div className="space-y-2">
+                                                    <Label>A paciente está grávida?</Label>
+                                                    <Controller
+                                                        name="curvas_gestacao.esta_gravida"
+                                                        control={control}
+                                                        render={({ field }) => (
+                                                            <Select onValueChange={field.onChange} value={field.value}>
+                                                                <SelectTrigger>
+                                                                    <SelectValue placeholder="Selecione..." />
+                                                                </SelectTrigger>
+                                                                <SelectContent>
+                                                                    <SelectItem value="Sim">Sim</SelectItem>
+                                                                    <SelectItem value="Não">Não</SelectItem>
+                                                                </SelectContent>
+                                                            </Select>
+                                                        )}
+                                                    />
+                                                </div>
+                                                {estaGravida === 'Sim' && (
+                                                    <>
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                            <div className="space-y-2">
+                                                                <Label>Semanas de Gestação</Label>
+                                                                <Input type="number" {...register('curvas_gestacao.semanas')} placeholder="Ex: 15" />
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <Label>Tem gestações anteriores?</Label>
+                                                                <Controller
+                                                                    name="curvas_gestacao.gestacoes_anteriores"
+                                                                    control={control}
+                                                                    render={({ field }) => (
+                                                                        <Select onValueChange={field.onChange} value={field.value}>
+                                                                            <SelectTrigger>
+                                                                                <SelectValue placeholder="Selecione..." />
+                                                                            </SelectTrigger>
+                                                                            <SelectContent>
+                                                                                <SelectItem value="Sim">Sim</SelectItem>
+                                                                                <SelectItem value="Não">Não</SelectItem>
+                                                                            </SelectContent>
+                                                                        </Select>
+                                                                    )}
+                                                                />
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <Label>Ganho de peso até agora (kg)</Label>
+                                                                <Input type="number" step="0.1" {...register('curvas_gestacao.ganho_peso')} placeholder="Ex: 5.5" />
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <Label>Acompanhamento pré-natal?</Label>
+                                                                <Controller
+                                                                    name="curvas_gestacao.pre_natal"
+                                                                    control={control}
+                                                                    render={({ field }) => (
+                                                                        <Select onValueChange={field.onChange} value={field.value}>
+                                                                            <SelectTrigger>
+                                                                                <SelectValue placeholder="Selecione..." />
+                                                                            </SelectTrigger>
+                                                                            <SelectContent>
+                                                                                <SelectItem value="Sim">Sim</SelectItem>
+                                                                                <SelectItem value="Não">Não</SelectItem>
+                                                                            </SelectContent>
+                                                                        </Select>
+                                                                    )}
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            <Label>Náuseas ou aversões alimentares atuais?</Label>
+                                                            <Textarea {...register('curvas_gestacao.nauseas')} placeholder="Descreva intolerâncias ou aversões..." rows={2}/>
+                                                        </div>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </AccordionContent>
+                                    </AccordionItem>
+                                )}
+
+                                {/* SEÇÃO 10: CRIANÇAS E BEBÊS (CONDICIONAL) */}
+                                {isChild && (
+                                    <AccordionItem value="section-9" className="border-b">
+                                        <AccordionTrigger className="hover:no-underline">
+                                            <div className="flex items-center gap-3">
+                                                <div className={cn(
+                                                    "w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold",
+                                                    openSections.includes('section-9')
+                                                        ? "bg-[#5f6f52] text-white"
+                                                        : "bg-[#5f6f52]/10 text-[#5f6f52]"
+                                                )}>
+                                                    {isFemale ? '10' : '9'}
+                                                </div>
+                                                <span className="font-semibold text-left">Pediátrico (Até 10 anos)</span>
+                                            </div>
+                                        </AccordionTrigger>
+                                        <AccordionContent className="pt-4 pb-6">
+                                            <div className="space-y-4 pl-11">
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    <div className="space-y-2">
+                                                        <Label>Nome do Responsável</Label>
+                                                        <Input {...register('curvas_crianca.responsavel')} placeholder="Ex: Mãe / Pai" />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Label>Peso ao nascer (kg)</Label>
+                                                        <Input type="number" step="0.01" {...register('curvas_crianca.peso_nascer')} placeholder="Ex: 3.2" />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Label>Como foi o aleitamento?</Label>
+                                                        <Input {...register('curvas_crianca.aleitamento')} placeholder="Ex: Exclusivo até 6 meses" />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Label>Introdução Alimentar</Label>
+                                                        <Input {...register('curvas_crianca.alimentacao_complementar')} placeholder="Como e quando iniciou?" />
+                                                    </div>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label>Tem dificuldade em aceitar novos alimentos?</Label>
+                                                    <Controller
+                                                        name="curvas_crianca.dificuldade_aceitar"
+                                                        control={control}
+                                                        render={({ field }) => (
+                                                            <Select onValueChange={field.onChange} value={field.value}>
+                                                                <SelectTrigger>
+                                                                    <SelectValue placeholder="Selecione..." />
+                                                                </SelectTrigger>
+                                                                <SelectContent>
+                                                                    <SelectItem value="Sim">Sim</SelectItem>
+                                                                    <SelectItem value="Não">Não</SelectItem>
+                                                                    <SelectItem value="Às vezes">Às vezes</SelectItem>
+                                                                </SelectContent>
+                                                            </Select>
+                                                        )}
+                                                    />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label>Alimentos mais recusados</Label>
+                                                    <Textarea {...register('curvas_crianca.recusados')} placeholder="Ex: Vegetais verdes, carnes..." rows={2}/>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label>Frequência de doces e industrializados</Label>
+                                                    <Input {...register('curvas_crianca.frequencia')} placeholder="Ex: Apenas finais de semana" />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label>Observações sobre desenvolvimento escolar/infantil</Label>
+                                                    <Textarea {...register('curvas_crianca.observacoes')} placeholder="Comportamento, desenvolvimento..." rows={2}/>
+                                                </div>
+                                            </div>
+                                        </AccordionContent>
+                                    </AccordionItem>
+                                )}
                             </Accordion>
+
+                            {/* Avaliação Geriátrica (Condicional) */}
+                            {isElderly && (
+                                <Accordion type="single" collapsible className="w-full mt-4">
+                                    <AccordionItem value="section-idoso" className="border-b">
+                                        <AccordionTrigger className="hover:no-underline">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold bg-[#5f6f52]/10 text-[#5f6f52]">
+                                                    +
+                                                </div>
+                                                <span className="font-semibold text-left">Avaliação Geriátrica (A partir de 65 anos)</span>
+                                            </div>
+                                        </AccordionTrigger>
+                                        <AccordionContent className="pt-4 pb-6">
+                                            <div className="space-y-6 pl-11">
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                    <div className="space-y-2">
+                                                        <Label>Dificuldade de mastigação/deglutição?</Label>
+                                                        <Controller
+                                                            name="curvas_idoso.mastigacao_degluticao"
+                                                            control={control}
+                                                            render={({ field }) => (
+                                                                <Select onValueChange={field.onChange} value={field.value}>
+                                                                    <SelectTrigger>
+                                                                        <SelectValue placeholder="Selecione..." />
+                                                                    </SelectTrigger>
+                                                                    <SelectContent>
+                                                                        <SelectItem value="nao">Não</SelectItem>
+                                                                        <SelectItem value="sim">Sim, total</SelectItem>
+                                                                        <SelectItem value="parcial">Sim, parcial</SelectItem>
+                                                                    </SelectContent>
+                                                                </Select>
+                                                            )}
+                                                        />
+                                                    </div>
+
+                                                    <div className="space-y-2">
+                                                        <Label>Alterações no paladar ou olfato?</Label>
+                                                        <Controller
+                                                            name="curvas_idoso.paladar_olfato"
+                                                            control={control}
+                                                            render={({ field }) => (
+                                                                <Select onValueChange={field.onChange} value={field.value}>
+                                                                    <SelectTrigger>
+                                                                        <SelectValue placeholder="Selecione..." />
+                                                                    </SelectTrigger>
+                                                                    <SelectContent>
+                                                                        <SelectItem value="nao">Não</SelectItem>
+                                                                        <SelectItem value="sim">Sim</SelectItem>
+                                                                    </SelectContent>
+                                                                </Select>
+                                                            )}
+                                                        />
+                                                    </div>
+
+                                                    <div className="space-y-2">
+                                                        <Label>Uso de prótese dentária?</Label>
+                                                        <Controller
+                                                            name="curvas_idoso.protese_dentaria"
+                                                            control={control}
+                                                            render={({ field }) => (
+                                                                <Select onValueChange={field.onChange} value={field.value}>
+                                                                    <SelectTrigger>
+                                                                        <SelectValue placeholder="Selecione..." />
+                                                                    </SelectTrigger>
+                                                                    <SelectContent>
+                                                                        <SelectItem value="nao">Não usa</SelectItem>
+                                                                        <SelectItem value="superior">Superior apenas</SelectItem>
+                                                                        <SelectItem value="inferior">Inferior apenas</SelectItem>
+                                                                        <SelectItem value="ambas">Ambas</SelectItem>
+                                                                    </SelectContent>
+                                                                </Select>
+                                                            )}
+                                                        />
+                                                    </div>
+
+                                                    <div className="space-y-2">
+                                                        <Label>Mobilidade / Independência</Label>
+                                                        <Controller
+                                                            name="curvas_idoso.mobilidade"
+                                                            control={control}
+                                                            render={({ field }) => (
+                                                                <Select onValueChange={field.onChange} value={field.value}>
+                                                                    <SelectTrigger>
+                                                                        <SelectValue placeholder="Selecione..." />
+                                                                    </SelectTrigger>
+                                                                    <SelectContent>
+                                                                        <SelectItem value="independente">Independente</SelectItem>
+                                                                        <SelectItem value="auxilio_parcial">Requer auxílio parcial (bengala, andador)</SelectItem>
+                                                                        <SelectItem value="acamado_cadeirante">Acamado ou cadeirante</SelectItem>
+                                                                    </SelectContent>
+                                                                </Select>
+                                                            )}
+                                                        />
+                                                    </div>
+
+                                                    <div className="space-y-2">
+                                                        <Label>Histórico de quedas recentes?</Label>
+                                                        <Controller
+                                                            name="curvas_idoso.quedas_recentes"
+                                                            control={control}
+                                                            render={({ field }) => (
+                                                                <Select onValueChange={field.onChange} value={field.value}>
+                                                                    <SelectTrigger>
+                                                                        <SelectValue placeholder="Selecione..." />
+                                                                    </SelectTrigger>
+                                                                    <SelectContent>
+                                                                        <SelectItem value="sim">Sim</SelectItem>
+                                                                        <SelectItem value="nao">Não</SelectItem>
+                                                                    </SelectContent>
+                                                                </Select>
+                                                            )}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </AccordionContent>
+                                    </AccordionItem>
+                                </Accordion>
+                            )}
                         </CardContent>
                     </Card>
                         </>

@@ -9,6 +9,13 @@ export const STANDARD_ANAMNESIS_FIELDS = [
     // Identificação
     { field_label: 'Data de Nascimento', field_type: 'texto_curto', category: 'identificacao', is_required: false },
     {
+        field_label: 'Gênero',
+        field_type: 'selecao_unica',
+        category: 'identificacao',
+        is_required: false,
+        options: ['Feminino', 'Masculino', 'Outro', 'Prefiro não informar']
+    },
+    {
         field_label: 'Etnia / Raça',
         field_type: 'selecao_unica',
         category: 'identificacao',
@@ -16,13 +23,14 @@ export const STANDARD_ANAMNESIS_FIELDS = [
         options: ['Branca', 'Preta', 'Parda', 'Amarela (Asiática)', 'Indígena', 'Prefiro não informar']
     },
     { field_label: 'Idade', field_type: 'texto_curto', category: 'identificacao', is_required: false },
-    { field_label: 'Profissão', field_type: 'texto_curto', category: 'identificacao', is_required: false },
+    { field_label: 'Profissão', field_type: 'texto_curto', category: 'identificacao', is_required: false, condition: { field: 'isAdult', value: true } },
     {
         field_label: 'Estado Civil',
         field_type: 'selecao_unica',
         category: 'identificacao',
         is_required: false,
-        options: ['Solteiro(a)', 'Casado(a)', 'Divorciado(a)', 'Viúvo(a)']
+        options: ['Solteiro(a)', 'Casado(a)', 'Divorciado(a)', 'Viúvo(a)'],
+        condition: { field: 'isAdult', value: true }
     },
     // Histórico Clínico
     {
@@ -124,21 +132,24 @@ export const STANDARD_ANAMNESIS_FIELDS = [
         field_type: 'selecao_unica',
         category: 'habitos_vida',
         is_required: false,
-        options: ['Sim', 'Não']
+        options: ['Sim', 'Não'],
+        condition: { field: 'isAdult', value: true }
     },
     {
         field_label: 'Fuma?',
         field_type: 'selecao_unica',
         category: 'habitos_vida',
         is_required: false,
-        options: ['Sim', 'Não']
+        options: ['Sim', 'Não'],
+        condition: { field: 'isAdult', value: true }
     },
     {
         field_label: 'Consome bebidas alcoólicas?',
         field_type: 'selecao_unica',
         category: 'habitos_vida',
         is_required: false,
-        options: ['Sim', 'Não']
+        options: ['Sim', 'Não'],
+        condition: { field: 'isAdult', value: true }
     },
     { field_label: 'Horas de sono por noite', field_type: 'texto_curto', category: 'habitos_vida', is_required: false },
     {
@@ -168,7 +179,6 @@ export const STANDARD_ANAMNESIS_FIELDS = [
         category: 'objetivos',
         is_required: true
     },
-    { field_label: 'Prazo para atingir o objetivo', field_type: 'texto_curto', category: 'objetivos', is_required: false },
     {
         field_label: 'Tentativas anteriores de mudança',
         field_type: 'texto_longo',
