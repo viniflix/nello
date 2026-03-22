@@ -55,7 +55,9 @@ import {
     addFoodToMeal,
     savePlanAsTemplate,
     promoteDraftToActive,
-    saveDraftAsPlan
+    saveDraftAsPlan,
+    getDraftMealPlan,
+    deleteDraftMealPlan
 } from '@/lib/supabase/meal-plan-queries';
 import { supabase } from '@/lib/customSupabaseClient';
 import { exportMealPlanToPdf } from '@/lib/pdfUtils';
@@ -98,6 +100,8 @@ const MealPlanPage = () => {
     const [restoringVersion, setRestoringVersion] = useState(false);
     const [energyCalculation, setEnergyCalculation] = useState(null);
     const [syncFlags, setSyncFlags] = useState(null);
+    const [pendingDraft, setPendingDraft] = useState(null); // rascunho detectado na lista
+    const [discardingDraft, setDiscardingDraft] = useState(false);
 
     // Obter ID do nutricionista
     useEffect(() => {
@@ -229,6 +233,30 @@ const MealPlanPage = () => {
         loadSyncFlags();
     }, [patientId]);
 
+    // Detectar rascunho pendente na listagem
+    useEffect(() => {
+        const checkPendingDraft = async () => {
+            if (!patientId || !nutritionistId) return;
+            const { data } = await getDraftMealPlan(patientId, nutritionistId);
+            setPendingDraft(data || null);
+        };
+        checkPendingDraft();
+    }, [patientId, nutritionistId]);
+
+    const handleDiscardPendingDraft = async () => {
+        if (!pendingDraft) return;
+        setDiscardingDraft(true);
+        await deleteDraftMealPlan(pendingDraft.id);
+        setPendingDraft(null);
+        setDiscardingDraft(false);
+        toast({ title: 'Rascunho descartado', variant: 'default' });
+    };
+
+    const handleResumePendingDraft = () => {
+        // Open the form — MealPlanForm will detect and offer to resume the draft
+        setShowForm(true);
+    };
+
     const formatSyncUpdateTime = (isoDate) => {
         if (!isoDate) return null;
         const date = new Date(isoDate);
@@ -269,34 +297,57 @@ const MealPlanPage = () => {
         });
     };
 
+    // Returns a unique plan name, deduplicating against all existing plan names
+    const resolveUniquePlanName = (rawName, existingPlans, excludePlanId = null) => {
+        const base = rawName?.trim() || 'Plano Alimentar sem Nome';
+
+        // Collect names of all existing plans (excluding self when editing)
+        const usedNames = (existingPlans || [])
+            .filter(p => p.id !== excludePlanId)
+            .map(p => (p.name || '').trim().toLowerCase());
+
+        if (!usedNames.includes(base.toLowerCase())) return base;
+
+        let counter = 1;
+        while (usedNames.includes(`${base} (${counter})`.toLowerCase())) {
+            counter++;
+        }
+        return `${base} (${counter})`;
+    };
+
     // Criar ou atualizar plano — botão "Aplicar Plano Alimentar"
     const handleSubmit = async (planData, planId = null) => {
         setSubmitting(true);
 
+
         try {
+            // Resolve a unique, non-empty plan name before saving
+            const resolvedName = resolveUniquePlanName(planData.name, plans, planId);
+            const finalPlanData = { ...planData, name: resolvedName };
+
             if (planId) {
                 // Atualizar plano existente
-                const result = await updateFullMealPlan(planId, planData);
+                const result = await updateFullMealPlan(planId, finalPlanData);
                 if (result.error) throw result.error;
-            } else if (planData.draftId) {
-                // Novo plano via rascunho: atualiza dados básicos e promove para ativo
-                const result = await promoteDraftToActive(planData.draftId, patientId);
+            } else if (finalPlanData.draftId) {
+                // Novo plano via rascunho: promove para ativo e atualiza metadados
+                const result = await promoteDraftToActive(finalPlanData.draftId, patientId);
                 if (result.error) throw result.error;
 
                 // Atualiza os dados básicos do plano agora promovido
-                const { updateFullMealPlan: updateFn } = await import('@/lib/supabase/meal-plan-queries');
-                const updateResult = await updateFn(planData.draftId, planData);
+                const updateResult = await updateFullMealPlan(finalPlanData.draftId, finalPlanData);
                 if (updateResult.error) console.warn('Erro ao atualizar metadados do plano promovido:', updateResult.error);
             } else {
+
                 // Fallback: criação tradicional (sem rascunho prévio)
                 const result = await createMealPlan({
-                    patient_id: planData.patient_id,
-                    nutritionist_id: planData.nutritionist_id,
-                    name: planData.name,
-                    description: planData.description,
-                    active_days: planData.active_days,
-                    start_date: planData.start_date,
-                    end_date: planData.end_date || null
+                    patient_id: finalPlanData.patient_id,
+                    nutritionist_id: finalPlanData.nutritionist_id,
+                    name: finalPlanData.name,
+                    description: finalPlanData.description,
+                    active_days: finalPlanData.active_days,
+                    start_date: finalPlanData.start_date,
+                    end_date: finalPlanData.end_date || null
                 });
 
                 if (result.error) throw result.error;
@@ -367,18 +418,23 @@ const MealPlanPage = () => {
     const handleSaveDraft = async (planData) => {
         setSubmitting(true);
         try {
+            const resolvedName = resolveUniquePlanName(planData.name, plans);
+            const finalPlanData = { ...planData, name: resolvedName };
+
             let result;
-            if (planData.draftId) {
-                result = await saveDraftAsPlan(planData.draftId);
+            if (finalPlanData.draftId) {
+                // Rename the draft first, then promote as inactive
+                await updateFullMealPlan(finalPlanData.draftId, finalPlanData);
+                result = await saveDraftAsPlan(finalPlanData.draftId);
             } else {
                 result = await createMealPlan({
-                    patient_id: planData.patient_id,
-                    nutritionist_id: planData.nutritionist_id,
-                    name: planData.name,
-                    description: planData.description,
-                    active_days: planData.active_days,
-                    start_date: planData.start_date,
-                    end_date: planData.end_date || null,
+                    patient_id: finalPlanData.patient_id,
+                    nutritionist_id: finalPlanData.nutritionist_id,
+                    name: finalPlanData.name,
+                    description: finalPlanData.description,
+                    active_days: finalPlanData.active_days,
+                    start_date: finalPlanData.start_date,
+                    end_date: finalPlanData.end_date || null,
                     is_active: false
                 });
             }
@@ -801,9 +857,46 @@ const MealPlanPage = () => {
                 </div>
             </div>
 
+            {/* Rascunho pendente detectado */}
+            {pendingDraft && !showForm && (
+                <Alert className="mb-4 border-blue-300 bg-blue-50 dark:bg-blue-950/30">
+                    <AlertCircle className="h-4 w-4 text-blue-600" />
+                    <AlertDescription className="text-blue-800 dark:text-blue-200">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                                <p className="font-semibold">Rascunho em andamento</p>
+                                <p className="text-sm">
+                                    Você tem um plano em criação salvo: <strong>"{pendingDraft.name}"</strong>.
+                                    Deseja continuar de onde parou?
+                                </p>
+                            </div>
+                            <div className="flex gap-2 flex-shrink-0">
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="border-blue-300 text-blue-700 hover:bg-blue-100"
+                                    onClick={handleDiscardPendingDraft}
+                                    disabled={discardingDraft}
+                                >
+                                    {discardingDraft ? 'Descartando...' : 'Descartar'}
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                                    onClick={handleResumePendingDraft}
+                                >
+                                    Retomar rascunho
+                                </Button>
+                            </div>
+                        </div>
+                    </AlertDescription>
+                </Alert>
+            )}
+
             {syncFlags?.needs_meal_plan_review && (
                 <Alert className="mb-6 border-amber-200 bg-amber-50">
                     <AlertCircle className="h-4 w-4 text-amber-700" />
+
                     <AlertDescription className="text-amber-800">
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             <div>

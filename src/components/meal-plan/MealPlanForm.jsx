@@ -240,7 +240,6 @@ const MealPlanForm = ({
 
     const validate = () => {
         const newErrors = {};
-        if (!formData.name.trim()) newErrors.name = 'Nome do plano é obrigatório';
         if (formData.active_days.length === 0) newErrors.active_days = 'Selecione pelo menos um dia da semana';
         if (!formData.start_date) newErrors.start_date = 'Data de início é obrigatória';
         if (formData.end_date && formData.end_date < formData.start_date) newErrors.end_date = 'Data final deve ser posterior à data inicial';
