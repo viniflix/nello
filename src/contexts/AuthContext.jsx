@@ -306,16 +306,22 @@ export function AuthProvider({ children }) {
       try {
         if (session?.user) {
           await processSession(session, event);
-          // Crucial: ensure loading is cleared after session processed via listener
+          // Only set loading false here if we are sure we have the user
           setLoading(false);
-        } else if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
-          // If event expects a user but session is null, clear state
+        } else if (event === 'SIGNED_OUT') {
+          // SIGNED_OUT already handled above, but just in case
           setUser(null);
           setLoading(false);
+        } else if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
+           // We let initAuth handle the initial loading state for these events
+           // to avoid race conditions where this fires with null before getSession completes
+           if (!session) {
+             setUser(null);
+           }
         }
       } catch (err) {
-        console.error('[AuthContext] Error in onAuthStateChange handler:', err);
-        setLoading(false);
+        if (import.meta.env.DEV) console.error('[AuthContext] Error in onAuthStateChange handler:', err);
+        // Don't set loading false here, let the failsafe or initAuth handle it
       }
     });
 
