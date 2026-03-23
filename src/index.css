@@ -121,12 +121,13 @@
     @apply overflow-x-hidden;
   }
 
-  /* Reserva espaço da scrollbar para evitar shift quando dropdowns/modais fecham o scroll */
-  html, body {
-    scrollbar-gutter: stable !important;
+  /* Fix para Layout Shift: Mantém a área da scrollbar sempre reservada no HTML */
+  html {
+    overflow-y: scroll;
+    scrollbar-gutter: stable;
   }
 
-  /* Prevent Radix UI / Shadcn from adding padding-right to body when opening DropdownMenus/Selects/Dialogs */
+  /* Impede que o Radix UI adicione padding ao body (causador do "pulo") */
   body[data-radix-scroll-locker] {
     padding-right: 0 !important;
   }
