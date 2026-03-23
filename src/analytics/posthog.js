@@ -14,31 +14,54 @@ export const POSTHOG_HOST = import.meta.env.VITE_PUBLIC_POSTHOG_HOST || 'https:/
  * Usa apenas propriedades não-sensíveis (sem nome, email, CPF)
  */
 export function identifyUser(user) {
-  if (!POSTHOG_KEY || !user?.id) return;
+  try {
+    if (!POSTHOG_KEY || !user?.id) return;
+    if (!posthog?.__loaded && !posthog?.initialized) {
+      // PostHog not ready or blocked
+      return;
+    }
 
-  posthog.identify(user.id, {
-    user_type: user.profile?.user_type,
-    is_admin: user.profile?.is_admin ?? false,
-    has_crn: !!user.profile?.crn,
-    patient_category: user.profile?.patient_category,
-    signup_date: user.profile?.created_at,
-  });
+    posthog.identify(user.id, {
+      user_type: user.profile?.user_type,
+      is_admin: user.profile?.is_admin ?? false,
+      has_crn: !!user.profile?.crn,
+      patient_category: user.profile?.patient_category,
+      signup_date: user.profile?.created_at,
+    });
+  } catch (err) {
+    // Silent catch - we don't want analytics to break the app
+    if (import.meta.env.DEV) {
+      console.warn('[PostHog] identifyUser failed:', err.message);
+    }
+  }
 }
 
 /**
  * Reseta identidade no logout
  */
 export function resetUser() {
-  if (!POSTHOG_KEY) return;
-  posthog.reset();
+  try {
+    if (!POSTHOG_KEY) return;
+    posthog.reset();
+  } catch (err) {
+    if (import.meta.env.DEV) {
+      console.warn('[PostHog] resetUser failed:', err.message);
+    }
+  }
 }
 
 /**
  * Captura evento customizado
  */
 export function track(event, properties = {}) {
-  if (!POSTHOG_KEY) return;
-  posthog.capture(event, { ...properties, platform: 'hipozero' });
+  try {
+    if (!POSTHOG_KEY) return;
+    posthog.capture(event, { ...properties, platform: 'hipozero' });
+  } catch (err) {
+    if (import.meta.env.DEV) {
+      console.warn('[PostHog] track failed:', err.message);
+    }
+  }
 }
 
 // ── Catálogo de eventos para o TCC ─────────────────────────────────────────

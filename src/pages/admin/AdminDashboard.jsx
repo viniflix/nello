@@ -188,7 +188,6 @@ export default function AdminDashboard() {
       }
 
       // Debug: Log the received data structure
-      console.log('[AdminDashboard] Received stats data:', data);
 
       // Handle different possible response structures
       let processedData = null;
@@ -228,7 +227,6 @@ export default function AdminDashboard() {
         }
       }
 
-      console.log('[AdminDashboard] Processed stats:', processedData);
       setStats(processedData || {
         kpis: { totalNutritionists: 0, totalPatients: 0, totalMeals: 0, activePatients: 0, estimated_mrr: 0 },
         growthData: [],
@@ -266,7 +264,6 @@ export default function AdminDashboard() {
       return;
     }
 
-    console.log(`[BROADCAST SENT]: ${broadcastMessage}`);
     
     toast({
       title: 'Broadcast Enviado',

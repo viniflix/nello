@@ -129,7 +129,6 @@ export async function createGhostPatient(nutritionistId) {
       return { data: null, error };
     }
 
-    console.log('[demoDataService] Paciente fantasma criado:', data);
     return { data, error: null };
   } catch (error) {
     console.error('[demoDataService] Erro inesperado ao criar paciente fantasma:', error);
@@ -290,10 +289,6 @@ export async function fillDailyDiary(patientId) {
       };
     }
 
-    console.log('[demoDataService] Diário preenchido:', {
-      meals: mealsCreated.length,
-      items: mealItemsCreated.length
-    });
 
     return {
       data: {
@@ -486,11 +481,6 @@ export async function fillMealHistory(userId, daysBack = 7) {
       }
     }
 
-    console.log('[demoDataService] Histórico preenchido:', {
-      days: daysBack,
-      meals: mealsCreated.length,
-      items: mealItemsCreated.length
-    });
 
     return {
       data: {
@@ -641,7 +631,6 @@ export async function createGhostSquad(nutritionistId) {
           }
         }
 
-        console.log(`[demoDataService] ✅ ${config.name} criado com sucesso`);
       } catch (error) {
         console.error(`[demoDataService] ❌ Erro inesperado ao criar ${config.name}:`, error);
         patientsFailed.push({ name: config.name, error: error.message || 'Erro desconhecido' });
@@ -667,12 +656,6 @@ export async function createGhostSquad(nutritionistId) {
       };
     }
 
-    console.log('[demoDataService] Squad processado:', {
-      created: result.created,
-      failed: result.failed,
-      names: patientsCreated.map(p => p.name),
-      failures: patientsFailed.map(f => f.name)
-    });
 
     return {
       data: result,
@@ -711,14 +694,12 @@ export async function cleanupDemoData(nutritionistId) {
     }
 
     if (!ghostPatients || ghostPatients.length === 0) {
-      console.log('[demoDataService] Nenhum paciente fantasma encontrado para limpeza (email pattern: @demo.hipozero)');
       return {
         data: { deletedPatients: 0, deletedMeals: 0, deletedRecords: 0 },
         error: null
       };
     }
 
-    console.log('[demoDataService] Pacientes de demo encontrados para limpeza:', ghostPatients.map(p => ({ name: p.name, email: p.email })));
 
     const ghostPatientIds = ghostPatients.map(p => p.id);
 
@@ -821,10 +802,6 @@ export async function cleanupDemoData(nutritionistId) {
       };
     }
 
-    console.log('[demoDataService] Limpeza concluída:', {
-      deletedPatients: deletedCount,
-      deletedMeals: mealsData?.length || 0
-    });
 
     return {
       data: {
@@ -921,7 +898,6 @@ export async function unlockRandomAchievement(userId) {
       };
     }
 
-    console.log('[demoDataService] Conquista desbloqueada:', selectedAchievement.name);
 
     return {
       success: true,

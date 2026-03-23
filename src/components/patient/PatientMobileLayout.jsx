@@ -27,17 +27,6 @@ export default function PatientMobileLayout() {
   // can see this patient as "Online" in the patients list.
   useOnlinePresence();
 
-  // Debug: Log admin status
-  useEffect(() => {
-    if (user?.profile) {
-      console.log('[PatientMobileLayout] User profile:', {
-        id: user.profile.id,
-        user_type: user.profile.user_type,
-        is_admin: user.profile.is_admin,
-        hasIsAdmin: 'is_admin' in (user.profile || {})
-      });
-    }
-  }, [user]);
 
   // Check if current route is chat page (chat handles its own internal scroll)
   const isChatPage = location.pathname.includes('/chat');

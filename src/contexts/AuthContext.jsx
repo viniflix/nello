@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { Loader2 } from 'lucide-react';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useNavigate } from 'react-router-dom';
@@ -27,6 +27,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const processingSession = useRef(false);
 
   const signOut = useCallback(async () => {
     setUser(null);
@@ -59,14 +60,6 @@ export function AuthProvider({ children }) {
       needs_password_reset: metadata.needs_password_reset === true,
     };
 
-    console.log('Attempting self-healing profile creation with data:', {
-      id: profileData.id,
-      email: profileData.email,
-      name: profileData.name,
-      user_type: profileData.user_type,
-      hasMetadata: !!metadata,
-      metadataKeys: Object.keys(metadata),
-    });
 
     try {
       const { data: newProfile, error: insertError } = await supabase
@@ -85,11 +78,6 @@ export function AuthProvider({ children }) {
           insertError.message?.includes('already exists');
 
         if (isConflictError) {
-          console.log('Profile already exists (Race condition won by DB), fetching profile again...', {
-            userId: sessionUser.id,
-            errorCode: insertError.code,
-            errorStatus: insertError.status,
-          });
 
           // Retry fetching the profile - it should exist now
           const { data: existingProfile, error: fetchError } = await supabase
@@ -138,11 +126,6 @@ export function AuthProvider({ children }) {
         error.message?.includes('already exists');
 
       if (isConflictError) {
-        console.log('Profile already exists (Race condition won by DB - caught in exception), fetching profile again...', {
-          userId: sessionUser.id,
-          errorCode: error.code,
-          errorStatus: error.status,
-        });
 
         // Retry fetching the profile
         const { data: existingProfile, error: fetchError } = await supabase
@@ -195,9 +178,6 @@ export function AuthProvider({ children }) {
         user_type: profile.user_type ?? profile.role,
         is_admin: profile.is_admin === true,
       };
-      if (process.env.NODE_ENV === 'development') {
-        console.log('[AuthContext] Profile loaded:', { id: normalized.id, email: normalized.email, user_type: normalized.user_type, is_admin: normalized.is_admin });
-      }
       return normalized;
     }
 
@@ -223,19 +203,30 @@ export function AuthProvider({ children }) {
 
   // Helper: process session and set user state (used by getSession + onAuthStateChange)
   const processSession = useCallback(async (session, event) => {
+    // Prevent multiple concurrent session processing
+    if (processingSession.current) return;
+    processingSession.current = true;
+
     try {
       if (!session?.user) {
         setUser(null);
         return;
       }
+
       const profile = await fetchOrCreateProfile(session.user);
       if (!profile) {
         console.error('Failed to fetch or create profile, signing out');
         await signOut();
         return;
       }
+
       setUser({ ...session.user, profile });
-      identifyUser({ ...session.user, profile }); // PostHog: identifica usuário
+      
+      try {
+        identifyUser({ ...session.user, profile }); // PostHog: identifica usuário
+      } catch (err) {
+        if (import.meta.env.DEV) console.error('[AuthContext] Analytics error:', err);
+      }
       
       // Auto-redirect only on SIGNED_IN (not on INITIAL_SESSION, TOKEN_REFRESHED)
       if (event === 'SIGNED_IN') {
@@ -251,6 +242,8 @@ export function AuthProvider({ children }) {
       if (event === 'INITIAL_SESSION') {
         setUser(null);
       }
+    } finally {
+      processingSession.current = false;
     }
   }, [fetchOrCreateProfile, signOut, navigate]);
 
@@ -261,13 +254,25 @@ export function AuthProvider({ children }) {
       // Ensure we start in loading state
       setLoading(true);
       
+      // Safety failsafe: don't let the app hang on "Verificando sessão..." forever
+      // This is critical if PostHog or Supabase calls hang due to ad-blockers or network
+      const failsafe = setTimeout(() => {
+        if (mounted) {
+          console.warn('[AuthContext] Initial session check timed out, forcing loading=false');
+          setLoading(false);
+        }
+      }, 10000); // 10 seconds timeout
+
       try {
         // Recovery of session from memory/storage
         const { data, error } = await supabase.auth.getSession();
         
         if (error) throw error;
         
-        if (!mounted) return;
+        if (!mounted) {
+          clearTimeout(failsafe);
+          return;
+        }
 
         if (data?.session?.user) {
           // Await the profile matching to ensure we have full user data before stopping loader
@@ -281,8 +286,8 @@ export function AuthProvider({ children }) {
       } finally {
         // GUARANTEED: app always leaves loading state if mounted
         if (mounted) {
+          clearTimeout(failsafe);
           setLoading(false);
-          console.log('[AuthContext] Auth initialization complete.');
         }
       }
     };
@@ -291,8 +296,6 @@ export function AuthProvider({ children }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
-
-      console.log('[AuthContext] AuthStateChange Event:', event);
 
       if (event === 'SIGNED_OUT') {
         setUser(null);
@@ -303,6 +306,8 @@ export function AuthProvider({ children }) {
       try {
         if (session?.user) {
           await processSession(session, event);
+          // Crucial: ensure loading is cleared after session processed via listener
+          setLoading(false);
         } else if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
           // If event expects a user but session is null, clear state
           setUser(null);

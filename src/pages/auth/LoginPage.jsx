@@ -44,7 +44,6 @@ export default function LoginPage() {
     // If user exists and profile is loaded, redirect based on user_type
     if (user?.profile) {
       const dashboard = user.profile.user_type === 'nutritionist' ? '/nutritionist' : '/patient';
-      console.log('Redirecting authenticated user to dashboard:', dashboard);
       navigate(dashboard, { replace: true });
       return;
     }
@@ -52,7 +51,6 @@ export default function LoginPage() {
     // If user exists but profile is not loaded yet (self-healing in progress), wait
     // The AuthContext will update user when profile is ready, triggering this effect again
     if (user && !user.profile) {
-      console.log('User authenticated but profile not loaded yet, waiting...');
       return;
     }
   }, [user, authLoading, navigate]);

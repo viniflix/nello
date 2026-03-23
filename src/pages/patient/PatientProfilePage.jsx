@@ -86,7 +86,6 @@ export default function PatientProfilePage() {
 
   const handleExportData = async () => {
     try {
-      console.log('Exporting user data...', { userId: user?.id });
       
       toast({
         title: 'Exportando dados...',
