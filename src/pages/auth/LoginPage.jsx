@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Eye, EyeOff, ArrowRight, Mail, Lock, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -33,6 +33,9 @@ export default function LoginPage() {
   const { signIn, user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const from = location.state?.from?.pathname || (user?.profile?.user_type === 'nutritionist' ? '/nutritionist' : '/patient');
 
   // Smart redirect logic: wait for auth to finish loading, then redirect if user has profile
   useEffect(() => {
@@ -41,10 +44,9 @@ export default function LoginPage() {
       return;
     }
 
-    // If user exists and profile is loaded, redirect based on user_type
+    // If user exists and profile is loaded, redirect based on user_type or saved location
     if (user?.profile) {
-      const dashboard = user.profile.user_type === 'nutritionist' ? '/nutritionist' : '/patient';
-      navigate(dashboard, { replace: true });
+      navigate(from, { replace: true });
       return;
     }
 

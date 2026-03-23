@@ -1,5 +1,4 @@
-import React from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import ForcePasswordUpdate from '@/components/patient/ForcePasswordUpdate';
@@ -22,9 +21,11 @@ export const AuthWrapper = ({ children }) => {
         return <PageLoadingFallback />;
     }
 
+    const location = useLocation();
+    const from = location.state?.from?.pathname || (user.profile.user_type === 'nutritionist' ? '/nutritionist' : '/patient');
+
     if (user) {
-        const redirectPath = user.profile.user_type === 'nutritionist' ? '/nutritionist' : '/patient';
-        return <Navigate to={redirectPath} replace />;
+        return <Navigate to={from} replace />;
     }
 
     return children;
@@ -33,13 +34,15 @@ export const AuthWrapper = ({ children }) => {
 // Componente de rota protegida
 export const ProtectedRoute = ({ children, userType, requireAdmin = false, allowAnyUserType = false }) => {
   const { user, loading } = useAuth();
+  const location = useLocation();
 
   if (loading) {
     return <PageLoadingFallback />;
   }
 
   if (!user || !user.profile) {
-    return <Navigate to="/login" replace />;
+    // Save current location to redirect back after login
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
   const isAdmin = user.profile.is_admin === true;

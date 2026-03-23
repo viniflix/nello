@@ -228,14 +228,8 @@ export function AuthProvider({ children }) {
         if (import.meta.env.DEV) console.error('[AuthContext] Analytics error:', err);
       }
       
-      // Auto-redirect only on SIGNED_IN (not on INITIAL_SESSION, TOKEN_REFRESHED)
-      if (event === 'SIGNED_IN') {
-        const currentPath = window.location.pathname;
-        if (currentPath === '/login' || currentPath === '/register') {
-          const redirectPath = profile.user_type === 'nutritionist' ? '/nutritionist' : '/patient';
-          setTimeout(() => navigate(redirectPath, { replace: true }), 100);
-        }
-      }
+      // Auto-redirect logic removed from here as it's now handled by ProtectedRoute/LoginPage
+      // and was causing issues with page refreshes on subroutes.
     } catch (error) {
       console.error('[AuthContext] Error in processSession:', error);
       // Fallback: ensure app doesn't hang if an unexpected error occurs
