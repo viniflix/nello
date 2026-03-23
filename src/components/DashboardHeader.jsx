@@ -118,7 +118,7 @@ const getNotificationMeta = (notification) => {
       title: 'Nova orientação',
       description: fallbackMessage,
       ctaLabel: 'Abrir Chat',
-      ctaPath: '/chat/nutritionist'
+      ctaPath: '/nutritionist/chat'
     },
     goal_achieved: {
       title: 'Meta alcançada',

@@ -50,13 +50,28 @@ const formatLastSeen = (lastSeenAt) => {
 
 const getBucketPath = (url) => {
     if (!url) return null;
+    
+    // Se não for uma URL completa, já é o caminho relativo
     if (!url.startsWith('http')) return url;
+    
     try {
+        // Formatos comuns do Supabase Storage:
+        // 1. /storage/v1/object/public/bucket_name/path/to/file
+        // 2. /storage/v1/object/sign/bucket_name/path/to/file?token=...
+        const storagePattern = /\/storage\/v1\/object\/(?:public|sign)\/[^/]+\/(.+)$/;
+        const match = url.split('?')[0].match(storagePattern);
+        
+        if (match && match[1]) {
+            return decodeURIComponent(match[1]);
+        }
+
+        // Fallback para o método antigo de split se o regex falhar
         const parts = url.split('/storage/v1/object/');
         if (parts.length > 1) {
             const pathSegments = parts[1].split('/');
-            // Supabase URL format: [public|sign]/[bucket_name]/[path/to/file]
-            // We want everything after the bucket name
+            // pathSegments[0] é 'public' ou 'sign'
+            // pathSegments[1] é o nome do bucket
+            // O resto é o caminho
             return pathSegments.slice(2).join('/').split('?')[0];
         }
     } catch (e) {
@@ -137,16 +152,21 @@ const MediaViewer = ({ mediaPath, messageText, onImageClick }) => {
                 return;
             }
             
-            // GARANTE QUE TEMOS APENAS O CAMINHO RELATIVO (sem o nome do bucket)
+            // NORMALIZAÇÃO DO NOME DO BUCKET
+            // Garantimos que usamos 'chat_media' (com underscore)
+            // Mesmo que a URL original use 'chat-media' (com hífen)
+            const BUCKET_NAME = 'chat_media';
+            
+            // GARANTE QUE TEMOS APENAS O CAMINHO RELATIVO
             const cleanPath = getBucketPath(mediaPath);
             
             setLoading(true);
             const { data, error } = await supabase.storage
-                .from('chat_media')
+                .from(BUCKET_NAME)
                 .createSignedUrl(cleanPath, 3600); // 1 hour validity for better UX
 
             if (error) {
-                console.error('Error creating signed URL for path:', cleanPath, error);
+                console.error(`Error creating signed URL for bucket ${BUCKET_NAME} and path ${cleanPath}:`, error);
                 setSignedUrl('');
             } else {
                 setSignedUrl(data.signedUrl);
@@ -229,6 +249,8 @@ const ChatPage = ({ propRecipientId, isEmbedded = false }) => {
   const messagesContainerRef = useRef(null);
   const fileInputRef = useRef(null);
   const [isSending, setIsSending] = useState(false);
+  const { setTyping, isUserTyping } = useOnlinePresence();
+  const typingTimeoutRef = useRef(null);
   // --- MUDANÇA NO ESTADO DO MODAL ---
   const [modalMedia, setModalMedia] = useState({ path: null, type: null });
   const [isRecording, setIsRecording] = useState(false);
@@ -254,8 +276,8 @@ const ChatPage = ({ propRecipientId, isEmbedded = false }) => {
         return recipient.is_active === false;
     } else {
         // Para o nutricionista, o chat é com um paciente específico (recipient).
-        // Se o paciente está inativo OU não pertence a este nutricionista, está arquivado.
-        return recipient.nutritionist_id !== user.id || recipient.is_active === false;
+        // Um chat é considerado "arquivado" apenas se o paciente estiver explicitamente inativo.
+        return recipient.is_active === false;
     }
   }, [user, recipient]);
 
@@ -312,6 +334,14 @@ const ChatPage = ({ propRecipientId, isEmbedded = false }) => {
   }, [messagesLoading, messages.length]);
 
   useEffect(() => { if(recipientId) markChatAsRead(recipientId); }, [recipientId, markChatAsRead, messages]);
+
+  const handleTyping = () => {
+    setTyping(true);
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    typingTimeoutRef.current = setTimeout(() => {
+      setTyping(false);
+    }, 2000);
+  };
 
 
   const handleFileChange = (event) => {
@@ -448,14 +478,19 @@ const ChatPage = ({ propRecipientId, isEmbedded = false }) => {
         </div>
         <div>
           <h2 className="font-semibold text-foreground leading-tight">{recipient.name}</h2>
-          <div className="flex items-center gap-1.5 min-h-[1.25rem]">
+          <div className="flex flex-col min-h-[1.5rem] justify-center">
             {isUserOnline(recipientId) ? (
-              <>
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+              <div className="flex items-center gap-1.5 leading-none">
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse shrink-0" />
                 <p className="text-xs font-medium text-green-600">Online</p>
-              </>
+                {isUserTyping(recipientId) && (
+                  <span className="text-[10px] text-primary animate-pulse font-medium ml-1.5">
+                    digitando...
+                  </span>
+                )}
+              </div>
             ) : (
-              <p className="text-[10px] sm:text-xs text-muted-foreground">
+              <p className="text-[10px] sm:text-xs text-muted-foreground leading-none">
                 {formatLastSeen(recipient.last_seen_at) || (recipient.user_type === 'nutritionist' ? 'Nutricionista' : 'Paciente')}
               </p>
             )}
@@ -563,7 +598,10 @@ const ChatPage = ({ propRecipientId, isEmbedded = false }) => {
                 <Input
                   type="text"
                   value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
+                  onChange={(e) => {
+                  setNewMessage(e.target.value);
+                  handleTyping();
+                }}
                   placeholder="Digite sua mensagem..."
                   className="flex-1 bg-slate-50 border-gray-200 focus:border-primary focus:ring-primary"
                   autoComplete="off"

@@ -20,6 +20,7 @@ import { useToast } from '@/hooks/use-toast';
 import { translateMealType } from '@/utils/mealTranslations';
 import MealPlanViewDialog from '@/components/patient/MealPlanViewDialog';
 import NotificationsPanel from '@/components/NotificationsPanel';
+import { getActiveMealPlan } from '@/lib/supabase/meal-plan-queries';
 import { useNotifications } from '@/hooks/useNotifications';
 import { getPatientReminderPreferences, upsertPatientReminderPreferences } from '@/lib/supabase/food-diary-queries';
 
@@ -76,26 +77,13 @@ export default function PatientDiaryPage() {
   const loadMealPlan = useCallback(async () => {
     if (!user) return;
 
-    const todayStr = format(new Date(), 'yyyy-MM-dd');
+    // Usar o helper padrão para evitar erro 400 de join com a view 'foods'
+    const { data: mealPlanData, error: mealPlanError } = await getActiveMealPlan(user.id);
 
-    const { data: mealPlanData } = await supabase
-      .from('meal_plans')
-      .select(`
-        *,
-        meal_plan_meals (
-          *,
-          meal_plan_foods (
-            *,
-            foods (id, name)
-          )
-        )
-      `)
-      .eq('patient_id', user.id)
-      .eq('is_active', true)
-      .lte('start_date', todayStr)
-      .or(`end_date.is.null,end_date.gte.${todayStr}`)
-      .maybeSingle();
-
+    if (mealPlanError) {
+      console.error('Erro ao carregar plano alimentar:', mealPlanError);
+    }
+    
     setMealPlan(mealPlanData);
 
     // Definir metas nutricionais (prioridade: plano alimentar ativo > padrão)

@@ -19,8 +19,9 @@ const formatMessageTime = (dateStr) => {
 };
 
 const ConversationItem = ({ conversation, isActive, onClick }) => {
-  const { isUserOnline } = useOnlinePresence();
+  const { isUserOnline, isUserTyping } = useOnlinePresence();
   const isOnline = isUserOnline(conversation.recipient_id);
+  const isTyping = isUserTyping(conversation.recipient_id);
 
   return (
     <div
@@ -55,9 +56,15 @@ const ConversationItem = ({ conversation, isActive, onClick }) => {
           </span>
         </div>
         <div className="flex items-center justify-between gap-2">
-          <p className={`text-xs truncate flex-1 ${conversation.unread_count > 0 ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
-            {conversation.last_message_content || 'Sem mensagens'}
-          </p>
+          {isTyping ? (
+            <p className="text-xs text-primary animate-pulse font-medium flex-1">
+              digitando...
+            </p>
+          ) : (
+            <p className={`text-xs truncate flex-1 ${conversation.unread_count > 0 ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
+              {conversation.last_message_content || 'Sem mensagens'}
+            </p>
+          )}
           {conversation.unread_count > 0 && (
             <span className="bg-primary text-primary-foreground text-[10px] font-bold h-5 min-w-5 px-1 rounded-full flex items-center justify-center shrink-0">
               {conversation.unread_count}

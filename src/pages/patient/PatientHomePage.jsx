@@ -14,6 +14,7 @@ import DailyAdherenceCard from '@/components/patient/DailyAdherenceCard';
 import RecentAchievementsWidget from '@/components/patient/RecentAchievementsWidget';
 import NotificationsPanel from '@/components/NotificationsPanel';
 import PatientPendingCheckinsWidget from '@/components/patient/PatientPendingCheckinsWidget';
+import { getActiveMealPlan } from '@/lib/supabase/meal-plan-queries';
 import { useNotifications } from '@/hooks/useNotifications';
 
 /**
@@ -39,25 +40,14 @@ export default function PatientHomePage() {
     const today = new Date();
     const todayStr = format(today, 'yyyy-MM-dd');
 
-    // 1. Buscar plano alimentar ativo do paciente
-    const { data: mealPlanData, error: mealPlanError } = await supabase
-      .from('meal_plans')
-      .select(`
-        *,
-        meal_plan_meals (
-          *,
-          meal_plan_foods (
-            *,
-            foods (id, name)
-          )
-        )
-      `)
-      .eq('patient_id', user.id)
-      .eq('is_active', true)
-      .lte('start_date', todayStr)
-      .or(`end_date.is.null,end_date.gte.${todayStr}`)
-      .maybeSingle();
+    // 1. Buscar plano alimentar ativo do paciente usando o helper padrão
+    // Isso resolve o erro 400 de join inválido com a view 'foods'
+    const { data: mealPlanData, error: mealPlanError } = await getActiveMealPlan(user.id);
 
+    if (mealPlanError) {
+      console.error('Erro ao carregar plano alimentar:', mealPlanError);
+    }
+    
     setPrescription(mealPlanData);
 
     // 2. Buscar próxima consulta

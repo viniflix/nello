@@ -7,6 +7,7 @@ import { authRoutes } from './authRoutes';
 import { nutritionistRoutes } from './nutritionistRoutes';
 import { patientRoutes } from './patientRoutes';
 import { adminRoutes } from './adminRoutes';
+import PresenceGlobal from '@/components/PresenceGlobal';
 
 const AppLayout = () => {
   const { user, loading } = useAuth();
@@ -22,6 +23,7 @@ const AppLayout = () => {
 
   return (
     <ChatProvider>
+        <PresenceGlobal />
         <div className="min-h-screen bg-background">
           <Suspense fallback={<PageLoadingFallback />}>
             <Routes>
@@ -32,7 +34,7 @@ const AppLayout = () => {
               
               {/* Rotas de redirecionamento */}
               <Route path="/" element={<Navigate to={getHomePath()} replace />} />
-              <Route path="*" element={<Navigate to={getHomePath()} replace />} />
+              {/* Removido o catch-all Navigate para evitar redirecionamento indevido no F5 */}
             </Routes>
           </Suspense>
         </div>

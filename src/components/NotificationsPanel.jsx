@@ -70,7 +70,7 @@ const getNotificationMeta = (notification, userType) => {
     nutritionist_note: {
       title: userType === 'nutritionist' ? 'Nova orientação' : 'Orientação do Nutricionista',
       ctaLabel: 'Abrir chat',
-      ctaPath: userType === 'nutritionist' ? '/chat/nutritionist' : '/chat/patient'
+      ctaPath: userType === 'nutritionist' ? '/nutritionist/chat' : '/patient/chat'
     },
     daily_log_reminder: { title: 'Lembrete Diário', ctaLabel: 'Registrar refeição', ctaPath: '/patient/add-food' },
     measurement_reminder: { title: 'Atualizar Medidas', ctaLabel: 'Abrir perfil', ctaPath: '/patient/profile' },
@@ -87,8 +87,8 @@ const getNotificationMeta = (notification, userType) => {
       description: genericMessage,
       ctaLabel: 'Abrir conversa',
       ctaPath: userType === 'nutritionist'
-        ? (senderId ? `/chat/nutritionist/${senderId}` : '/chat/nutritionist')
-        : '/chat/patient',
+        ? (senderId ? `/nutritionist/chat/${senderId}` : '/nutritionist/chat')
+        : '/patient/chat',
       senderId,
       isMessage: true
     };

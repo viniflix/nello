@@ -75,7 +75,7 @@ const PatientHubPage = () => {
     };
 
     const handleOpenChat = () => {
-        navigate(`/chat/nutritionist/${patientId}`);
+        navigate(`/nutritionist/chat/${patientId}`);
     };
 
     const handleScheduleAppointment = () => {
