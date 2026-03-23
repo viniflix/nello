@@ -125,6 +125,11 @@
   html {
     scrollbar-gutter: stable;
   }
+
+  /* Prevent Radix UI / Shadcn from adding padding-right to body when opening DropdownMenus/Selects */
+  body[data-radix-scroll-locker] {
+    padding-right: 0 !important;
+  }
 }
 
 /* Utilitários para layout mobile-friendly (apenas onde aplicados) */

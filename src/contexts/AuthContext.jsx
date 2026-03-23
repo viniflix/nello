@@ -223,24 +223,33 @@ export function AuthProvider({ children }) {
 
   // Helper: process session and set user state (used by getSession + onAuthStateChange)
   const processSession = useCallback(async (session, event) => {
-    if (!session?.user) {
-      setUser(null);
-      return;
-    }
-    const profile = await fetchOrCreateProfile(session.user);
-    if (!profile) {
-      console.error('Failed to fetch or create profile, signing out');
-      await signOut();
-      return;
-    }
-    setUser({ ...session.user, profile });
-    identifyUser({ ...session.user, profile }); // PostHog: identifica usuário
-    // Auto-redirect only on SIGNED_IN (not on INITIAL_SESSION, TOKEN_REFRESHED)
-    if (event === 'SIGNED_IN') {
-      const currentPath = window.location.pathname;
-      if (currentPath === '/login' || currentPath === '/register') {
-        const redirectPath = profile.user_type === 'nutritionist' ? '/nutritionist' : '/patient';
-        setTimeout(() => navigate(redirectPath, { replace: true }), 100);
+    try {
+      if (!session?.user) {
+        setUser(null);
+        return;
+      }
+      const profile = await fetchOrCreateProfile(session.user);
+      if (!profile) {
+        console.error('Failed to fetch or create profile, signing out');
+        await signOut();
+        return;
+      }
+      setUser({ ...session.user, profile });
+      identifyUser({ ...session.user, profile }); // PostHog: identifica usuário
+      
+      // Auto-redirect only on SIGNED_IN (not on INITIAL_SESSION, TOKEN_REFRESHED)
+      if (event === 'SIGNED_IN') {
+        const currentPath = window.location.pathname;
+        if (currentPath === '/login' || currentPath === '/register') {
+          const redirectPath = profile.user_type === 'nutritionist' ? '/nutritionist' : '/patient';
+          setTimeout(() => navigate(redirectPath, { replace: true }), 100);
+        }
+      }
+    } catch (error) {
+      console.error('[AuthContext] Error in processSession:', error);
+      // Fallback: ensure app doesn't hang if an unexpected error occurs
+      if (event === 'INITIAL_SESSION') {
+        setUser(null);
       }
     }
   }, [fetchOrCreateProfile, signOut, navigate]);
@@ -249,22 +258,32 @@ export function AuthProvider({ children }) {
     let mounted = true;
 
     const initAuth = async () => {
+      // Ensure we start in loading state
       setLoading(true);
+      
       try {
-        // CRITICAL: getSession() immediately recovers session from storage (avoids blank page).
-        // onAuthStateChange fires async and can delay - without this, user sees blank screen until INITIAL_SESSION.
-        const { data: { session } } = await supabase.auth.getSession();
+        // Recovery of session from memory/storage
+        const { data, error } = await supabase.auth.getSession();
+        
+        if (error) throw error;
+        
         if (!mounted) return;
-        if (session?.user) {
-          await processSession(session, 'INITIAL_SESSION');
+
+        if (data?.session?.user) {
+          // Await the profile matching to ensure we have full user data before stopping loader
+          await processSession(data.session, 'INITIAL_SESSION');
         } else {
           setUser(null);
         }
       } catch (err) {
-        console.error('[AuthContext] Error recovering session:', err);
+        console.error('[AuthContext] Fatal error during initAuth:', err);
         if (mounted) setUser(null);
       } finally {
-        if (mounted) setLoading(false);
+        // GUARANTEED: app always leaves loading state if mounted
+        if (mounted) {
+          setLoading(false);
+          console.log('[AuthContext] Auth initialization complete.');
+        }
       }
     };
 
@@ -272,17 +291,26 @@ export function AuthProvider({ children }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
+
+      console.log('[AuthContext] AuthStateChange Event:', event);
+
       if (event === 'SIGNED_OUT') {
         setUser(null);
         setLoading(false);
         return;
       }
-      // Do NOT set loading=true here - would cause blank screen flash on TOKEN_REFRESHED/INITIAL_SESSION.
-      // User is already viewing the app; we're just updating state in background.
-      if (session?.user) {
-        await processSession(session, event);
-      } else {
-        setUser(null);
+
+      try {
+        if (session?.user) {
+          await processSession(session, event);
+        } else if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
+          // If event expects a user but session is null, clear state
+          setUser(null);
+          setLoading(false);
+        }
+      } catch (err) {
+        console.error('[AuthContext] Error in onAuthStateChange handler:', err);
+        setLoading(false);
       }
     });
 
