@@ -121,12 +121,12 @@
     @apply overflow-x-hidden;
   }
 
-  /* Reserva espaço da scrollbar para evitar shift quando dropdowns fecham o scroll */
-  html {
-    scrollbar-gutter: stable;
+  /* Reserva espaço da scrollbar para evitar shift quando dropdowns/modais fecham o scroll */
+  html, body {
+    scrollbar-gutter: stable !important;
   }
 
-  /* Prevent Radix UI / Shadcn from adding padding-right to body when opening DropdownMenus/Selects */
+  /* Prevent Radix UI / Shadcn from adding padding-right to body when opening DropdownMenus/Selects/Dialogs */
   body[data-radix-scroll-locker] {
     padding-right: 0 !important;
   }
