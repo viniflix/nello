@@ -202,7 +202,7 @@ const PatientActivityFeed = ({
 
                     {/* Filtros */}
                     <div className="flex gap-2 w-full md:w-auto">
-                        <Select value={filterType} onValueChange={handleTypeChange}>
+                        <Select name="filter-type" value={filterType} onValueChange={handleTypeChange}>
                             <SelectTrigger className="flex-1 md:w-[140px] h-9">
                                 <Filter className="w-4 h-4 mr-2" />
                                 <SelectValue placeholder="Tipo" />
@@ -220,7 +220,7 @@ const PatientActivityFeed = ({
                             </SelectContent>
                         </Select>
 
-                        <Select value={filterPeriod} onValueChange={handlePeriodChange}>
+                        <Select name="filter-period" value={filterPeriod} onValueChange={handlePeriodChange}>
                             <SelectTrigger className="flex-1 md:w-[120px] h-9">
                                 <SelectValue placeholder="Período" />
                             </SelectTrigger>

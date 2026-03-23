@@ -549,7 +549,7 @@ const AnthropometryForm = ({
                             <Label className="text-xs text-muted-foreground mb-1.5 block">
                                 Seção do registro
                             </Label>
-                            <Select value={activeTab} onValueChange={setActiveTab}>
+                            <Select name="active-tab" value={activeTab} onValueChange={setActiveTab}>
                                 <SelectTrigger className="h-10">
                                     <SelectValue placeholder="Selecione uma seção" />
                                 </SelectTrigger>
@@ -931,7 +931,7 @@ const AnthropometryForm = ({
                             {/* Seletor de Protocolo */}
                             <div className="space-y-2">
                                 <Label htmlFor="protocol">Protocolo de Cálculo</Label>
-                                <Select value={protocol} onValueChange={setProtocol}>
+                                <Select name="protocol" value={protocol} onValueChange={setProtocol}>
                                     <SelectTrigger id="protocol">
                                         <SelectValue placeholder="Selecione o protocolo" />
                                     </SelectTrigger>

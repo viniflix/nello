@@ -258,7 +258,7 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded }) => {
                             <div className="space-y-2">
                                 <Label htmlFor="gender" className="font-semibold">Gênero</Label>
                                 <IconInputWrapper icon={Users}>
-                                    <Select value={formData.gender} onValueChange={(value) => updateField('gender', value)}>
+                                    <Select name="gender" value={formData.gender} onValueChange={(value) => updateField('gender', value)}>
                                         <SelectTrigger className="bg-muted shadow-inner pl-10"><SelectValue placeholder="Selecione..." /></SelectTrigger>
                                         <SelectContent>
                                             <SelectItem value="Masculino">Masculino</SelectItem>
@@ -289,7 +289,7 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded }) => {
                             <div className="md:col-span-2 space-y-2">
                                 <Label htmlFor="civil_status" className="font-semibold">Estado Civil</Label>
                                 <IconInputWrapper icon={Heart}>
-                                    <Select value={formData.civil_status} onValueChange={(value) => updateField('civil_status', value)}>
+                                    <Select name="civil_status" value={formData.civil_status} onValueChange={(value) => updateField('civil_status', value)}>
                                         <SelectTrigger className="bg-muted shadow-inner pl-10"><SelectValue placeholder="Selecione..." /></SelectTrigger>
                                         <SelectContent>
                                             <SelectItem value="Solteiro(a)">Solteiro(a)</SelectItem>

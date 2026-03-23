@@ -453,7 +453,7 @@ const TabContentAdherence = ({ patientId, patientData, modulesStatus = {} }) => 
                         <>
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-foreground">Escolha o modelo</label>
-                                <Select value={selectedTemplateId} onValueChange={handleTemplateSelect}>
+                                <Select name="adherence-template" value={selectedTemplateId} onValueChange={handleTemplateSelect}>
                                     <SelectTrigger>
                                         <SelectValue placeholder="Selecione qual mensagem enviar..." />
                                     </SelectTrigger>

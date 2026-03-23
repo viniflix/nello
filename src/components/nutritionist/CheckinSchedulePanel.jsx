@@ -93,7 +93,7 @@ const CheckinSchedulePanel = ({ patientId }) => {
             <form onSubmit={handleLink} className="space-y-5 py-4">
               <div className="space-y-2">
                 <label className="text-sm font-semibold">Template Disponível</label>
-                <Select value={selectedTemplate} onValueChange={setSelectedTemplate} required>
+                <Select name="checkin-template" value={selectedTemplate} onValueChange={setSelectedTemplate} required>
                   <SelectTrigger className="h-10"><SelectValue placeholder="Selecione um template..." /></SelectTrigger>
                   <SelectContent>
                     {isLoadingTemplates && <SelectItem value="" disabled>Carregando...</SelectItem>}
@@ -107,7 +107,7 @@ const CheckinSchedulePanel = ({ patientId }) => {
               
               <div className="space-y-2">
                 <label className="text-sm font-semibold">Canal de Disparo</label>
-                <Select value={channel} onValueChange={setChannel}>
+                <Select name="checkin-channel" value={channel} onValueChange={setChannel}>
                   <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="in_app">App Hipozero (Notificação Push)</SelectItem>

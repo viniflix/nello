@@ -189,7 +189,7 @@ const GlycemiaSummaryCard = ({ patientId, patient }) => {
                             </div>
                             <div className="grid gap-2">
                                 <Label htmlFor="condition">Condição da Medição</Label>
-                                <Select value={condition} onValueChange={setCondition} required>
+                                <Select name="glycemia-condition" value={condition} onValueChange={setCondition} required>
                                     <SelectTrigger id="condition">
                                         <SelectValue placeholder="Selecione..." />
                                     </SelectTrigger>

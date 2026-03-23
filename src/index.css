@@ -128,24 +128,21 @@
 /* 
    Fix FINAL e ROBUSTO para Layout Shift: 
    1. Força a barra de rolagem a sempre existir, evitando mudança na largura da viewport.
-   2. Impede que o Radix UI adicione padding ao body OU elementos fixos/sticky.
+   2. Neutraliza o padding-right que o Radix UI adiciona ao body.
 */
 html {
   overflow-y: scroll !important;
   scrollbar-gutter: stable !important;
 }
 
+/* 
+   Apenas o body e elementos que o Radix marca explicitamente como locker
+   devem ter o padding neutralizado, e NUNCA o margin-right, 
+   pois o margin-right: auto é o que centraliza o layout.
+*/
 body, 
-[data-radix-scroll-locker], 
-header, 
-nav, 
-main,
-section,
-.fixed, 
-.sticky,
-[style*="padding-right"] {
+[data-radix-scroll-locker] {
   padding-right: 0px !important;
-  margin-right: 0px !important;
 }
 
 /* Utilitários para layout mobile-friendly (apenas onde aplicados) */
