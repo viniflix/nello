@@ -20,8 +20,19 @@ export function ChatProvider({ children }) {
   const [loading, setLoading] = useState(false);
   const [currentRecipientId, setCurrentRecipientId] = useState(null);
   const [unreadSenders, setUnreadSenders] = useState(new Set());
+  const [conversations, setConversations] = useState([]);
   const channelRef = useRef(null);
   const unreadSendersCacheRef = useRef({ key: null, data: null, ts: 0 });
+
+  const fetchConversations = useCallback(async () => {
+    if (!user) return;
+    const { data, error } = await supabase.rpc('get_nutritionist_conversations', { p_nutritionist_id: user.id });
+    if (!error && data) {
+      setConversations(data);
+    } else if (error) {
+      console.error('Error fetching conversations:', error);
+    }
+  }, [user]);
 
   const markChatAsRead = useCallback(async (senderId) => {
       if (!user || !senderId) return;
@@ -45,7 +56,9 @@ export function ChatProvider({ children }) {
           newSet.delete(senderId);
           return newSet;
       });
-  }, [user]);
+      // Refresh conversations list to update unread counts
+      fetchConversations();
+  }, [user, fetchConversations]);
 
   const fetchMessages = useCallback(async (fromId, toId) => {
     if (!fromId || !toId) return;
@@ -78,6 +91,8 @@ export function ChatProvider({ children }) {
       toast({ title: "Erro", description: "Não foi possível enviar a mensagem.", variant: "destructive" });
       return null;
     }
+    // Refresh conversations so the recipient moves to top
+    fetchConversations();
     return true;
   };
 
@@ -85,12 +100,15 @@ export function ChatProvider({ children }) {
 
   useEffect(() => {
     if (!user) {
+        setConversations([]);
         if (channelRef.current) {
             supabase.removeChannel(channelRef.current);
             channelRef.current = null;
         }
         return;
     }
+
+    fetchConversations();
 
     const fetchUnread = async () => {
         const cacheKey = user.id;
@@ -124,6 +142,10 @@ export function ChatProvider({ children }) {
         const isForMe = newMessage.to_id === user.id;
         const isFromMe = newMessage.from_id === user.id;
         
+        if (isForMe || isFromMe) {
+            fetchConversations(); // Re-order list and update snippets
+        }
+
         if (isForMe) {
             if (newMessage.from_id === currentRecipientId) {
                 setMessages(currentMessages => [...currentMessages, newMessage]);
@@ -154,7 +176,7 @@ export function ChatProvider({ children }) {
         channelRef.current = null;
       }
     };
-  }, [user, currentRecipientId, toast, markChatAsRead]);
+  }, [user, currentRecipientId, toast, markChatAsRead, fetchConversations]);
 
   const value = {
     messages,
@@ -162,7 +184,10 @@ export function ChatProvider({ children }) {
     fetchMessages,
     loading,
     unreadSenders,
-    markChatAsRead
+    markChatAsRead,
+    conversations,
+    fetchConversations,
+    totalUnreadMessages: conversations.reduce((acc, c) => acc + Number(c.unread_count || 0), 0)
   };
 
   return (

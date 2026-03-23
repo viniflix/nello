@@ -29,6 +29,7 @@ const AgendaPage = lazy(() => import('@/pages/nutritionist/tools/AgendaPage.jsx'
 const NutritionistFoodsPage = lazy(() => import('@/pages/nutritionist/tools/NutritionistFoodsPage.jsx'));
 const MessageTemplatesPage = lazy(() => import('@/pages/nutritionist/tools/MessageTemplatesPage.jsx'));
 const ChatPage = lazy(() => import('@/pages/shared/ChatPage.jsx'));
+const ChatDashboardPage = lazy(() => import('@/pages/shared/ChatDashboardPage.jsx'));
 const CheckinManagerPage = lazy(() => import('@/pages/nutritionist/tools/CheckinManagerPage.jsx'));
 
 export const nutritionistRoutes = (
@@ -59,7 +60,8 @@ export const nutritionistRoutes = (
         <Route path="/nutritionist/patients/:patientId/achievements" element={<NutritionistPatientAchievementsPage />} />
         <Route path="/nutritionist/patients/:patientId/photos" element={<ProgressPhotosPage />} />
         <Route path="/nutritionist/alerts" element={<AlertsPage />} />
-        <Route path="/chat/nutritionist/:patientId" element={<ChatPage />} />
+        <Route path="/nutritionist/chat" element={<ChatDashboardPage />} />
+        <Route path="/nutritionist/chat/:patientId" element={<ChatDashboardPage />} />
         <Route path="/nutritionist/food-bank" element={<FoodBankPage />} />
         <Route path="/nutritionist/financial" element={<FinancialPage />} />
         <Route path="/nutritionist/agenda" element={<AgendaPage />} />

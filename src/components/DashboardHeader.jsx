@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
-import { LogOut, User, Menu, Bell, Check, Trash2, Shield } from 'lucide-react';
+import { LogOut, User, Menu, Bell, Check, Trash2, Shield, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/sheet';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useToast } from '@/components/ui/use-toast';
+import { useChat } from '@/contexts/ChatContext';
 
 const getNutritionistLinks = () => {
   return [
@@ -181,7 +182,7 @@ const getNotificationMeta = (notification) => {
       title: 'Nova mensagem',
       description: fallbackMessage,
       ctaLabel: 'Abrir conversa',
-      ctaPath: senderId ? `/chat/nutritionist/${senderId}` : '/chat/nutritionist',
+      ctaPath: senderId ? `/nutritionist/chat/${senderId}` : '/nutritionist/chat',
       isMessage: true,
       senderId
     };
@@ -207,6 +208,7 @@ const DashboardHeader = ({ user, logout }) => {
   if (!user) return null;
 
   const initials = (user.profile?.name || 'U').substring(0, 2).toUpperCase();
+  const { totalUnreadMessages } = useChat();
 
   const navigationLinks = user.profile?.user_type === 'nutritionist' ? getNutritionistLinks() : [];
   const isAdmin = user.profile?.is_admin === true;
@@ -453,7 +455,23 @@ const DashboardHeader = ({ user, logout }) => {
           {/* Lado Direito: Dropdown de Perfil */}
           <div className="flex items-center space-x-1 md:space-x-4 shrink-0">
             {shouldShowNotifications && (
-              <DropdownMenu>
+              <>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="relative" 
+                  onClick={() => navigate('/nutritionist/chat')}
+                  title="Chat"
+                >
+                  <MessageSquare className="h-5 w-5" />
+                  {totalUnreadMessages > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 rounded-full bg-destructive px-1 text-[10px] font-bold text-white leading-4 text-center">
+                      {totalUnreadMessages > 9 ? '9+' : totalUnreadMessages}
+                    </span>
+                  )}
+                </Button>
+                
+                <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="relative">
                     <Bell className="h-5 w-5" />
@@ -555,6 +573,7 @@ const DashboardHeader = ({ user, logout }) => {
                   </div>
                 </DropdownMenuContent>
               </DropdownMenu>
+              </>
             )}
 
             {/* Nome (oculto em telas pequenas) */}

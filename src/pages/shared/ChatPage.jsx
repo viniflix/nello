@@ -193,11 +193,11 @@ const ChatMessage = ({ msg, isSender, onImageClick }) => {
   );
 };
 
-const ChatPage = () => {
+const ChatPage = ({ propRecipientId, isEmbedded = false }) => {
   const { user } = useAuth();
   const { messages, sendMessage, fetchMessages, loading: messagesLoading, markChatAsRead } = useChat();
   const { isUserOnline } = useOnlinePresence();
-  const { patientId } = useParams();
+  const { patientId: urlPatientId } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [newMessage, setNewMessage] = useState('');
@@ -216,7 +216,11 @@ const ChatPage = () => {
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
 
-  const recipientId = user.profile.user_type === 'nutritionist' ? patientId : user.profile.nutritionist_id;
+  const recipientId = React.useMemo(() => {
+    if (propRecipientId) return propRecipientId;
+    if (user?.profile?.user_type === 'nutritionist') return urlPatientId;
+    return user?.profile?.nutritionist_id;
+  }, [propRecipientId, urlPatientId, user]);
 
   const isArchived = React.useMemo(() => {
     if (!user || !recipient) return false;
@@ -388,9 +392,17 @@ const ChatPage = () => {
     acc[date].push(msg); return acc;
   }, {});
 
-  if (messagesLoading || recipientLoading) return <div className="flex items-center justify-center h-screen"><Loader2 className="animate-spin w-8 h-8 text-primary" /></div>;
+  if (messagesLoading || recipientLoading) return (
+    <div className={`flex items-center justify-center ${isEmbedded ? 'h-full' : 'h-screen'}`}>
+      <Loader2 className="animate-spin w-8 h-8 text-primary" />
+    </div>
+  );
 
-  if (!recipient) return <div className="flex items-center justify-center h-screen p-4 text-center text-muted-foreground">Você não tem um {user.profile.user_type === 'patient' ? 'nutricionista' : 'paciente'} associado.</div>;
+  if (!recipient) return (
+    <div className={`flex items-center justify-center p-4 text-center text-muted-foreground ${isEmbedded ? 'h-full' : 'h-screen'}`}>
+      Você não tem um {user.profile.user_type === 'patient' ? 'nutricionista' : 'paciente'} associado.
+    </div>
+  );
 
   return (
     <div className="flex flex-col h-full bg-slate-50">
@@ -403,9 +415,11 @@ const ChatPage = () => {
 
       {/* Header - Fixed at top of container */}
       <header className="shrink-0 bg-white border-b p-4 flex items-center shadow-md z-30">
-        <Button variant="ghost" size="icon" onClick={handleBack} className="mr-2 ">
-          <ArrowLeft className="w-5 h-5" />
-        </Button>
+        {!isEmbedded && (
+          <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="mr-2">
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+        )}
         <div className="w-10 h-10 bg-primary/10 rounded-full mr-3 flex items-center justify-center font-bold overflow-hidden">
           {recipient.avatar_url ? (
             <img src={recipient.avatar_url} alt={recipient.name} className="w-full h-full object-cover" />
