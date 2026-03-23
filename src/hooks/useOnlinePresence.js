@@ -28,6 +28,20 @@ export const useOnlinePresence = () => {
     useEffect(() => {
         if (!user?.id) return;
 
+        let lastUpdate = 0;
+        const THROTTLE_MS = 60000; // Update DB at most once per minute
+
+        const updateLastSeen = async () => {
+            const now = Date.now();
+            if (now - lastUpdate < THROTTLE_MS) return;
+            
+            lastUpdate = now;
+            await supabase
+                .from('user_profiles')
+                .update({ last_seen_at: new Date().toISOString() })
+                .eq('id', user.id);
+        };
+
         const channel = supabase.channel('platform:presence', {
             config: {
                 presence: {
@@ -41,7 +55,7 @@ export const useOnlinePresence = () => {
             syncState(channel);
         });
 
-        // Join: a user came online — sync full state (safer than manually patching)
+        // Join: a user came online — sync full state
         channel.on('presence', { event: 'join' }, () => {
             syncState(channel);
         });
@@ -58,10 +72,16 @@ export const useOnlinePresence = () => {
                     user_id: user.id,
                     online_at: new Date().toISOString(),
                 });
+                // Update persistent last_seen on connect
+                await updateLastSeen();
             }
         });
 
+        // Periodic update while online to keep last_seen fresh
+        const interval = setInterval(updateLastSeen, THROTTLE_MS);
+
         return () => {
+            clearInterval(interval);
             channel.untrack();
             supabase.removeChannel(channel);
         };

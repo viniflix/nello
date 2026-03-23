@@ -12,6 +12,7 @@ import { isToday, isYesterday, format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import ImageModal from '@/components/ImageModal';
 import { toPortugueseError } from '@/lib/utils/errorMessages';
+import { useOnlinePresence } from '@/hooks/useOnlinePresence';
 
 const DateSeparator = ({ date }) => {
   const parsedDate = parseISO(date);
@@ -31,6 +32,20 @@ const DateSeparator = ({ date }) => {
       </span>
     </div>
   );
+};
+
+const formatLastSeen = (lastSeenAt) => {
+  if (!lastSeenAt) return null;
+  const date = parseISO(lastSeenAt);
+  const time = format(date, 'HH:mm');
+  
+  if (isToday(date)) {
+      return `visto hoje às ${time}`;
+  } else if (isYesterday(date)) {
+      return `visto ontem às ${time}`;
+  } else {
+      return `visto em ${format(date, 'dd/MM/yyyy')} às ${time}`;
+  }
 };
 
 const AudioPlayer = ({ src }) => {
@@ -181,6 +196,7 @@ const ChatMessage = ({ msg, isSender, onImageClick }) => {
 const ChatPage = () => {
   const { user } = useAuth();
   const { messages, sendMessage, fetchMessages, loading: messagesLoading, markChatAsRead } = useChat();
+  const { isUserOnline } = useOnlinePresence();
   const { patientId } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -203,12 +219,19 @@ const ChatPage = () => {
   const recipientId = user.profile.user_type === 'nutritionist' ? patientId : user.profile.nutritionist_id;
 
   const isArchived = React.useMemo(() => {
-    if (!user || (!recipient && user.profile.user_type === 'nutritionist')) return false;
+    if (!user || !recipient) return false;
     
+    // Se o usuário logado está inativo, tudo está "arquivado" para ele
+    if (user.profile.is_active === false) return true;
+
     if (user.profile.user_type === 'patient') {
-        return user.profile.is_active === false;
+        // Para o paciente, o chat é com o seu nutricionista fixo.
+        // Se o nutricionista do paciente está inativo, o chat está arquivado.
+        // Nota: recipient aqui é o nutricionista.
+        return recipient.is_active === false;
     } else {
-        // user is nutritionist
+        // Para o nutricionista, o chat é com um paciente específico (recipient).
+        // Se o paciente está inativo OU não pertence a este nutricionista, está arquivado.
         return recipient.nutritionist_id !== user.id || recipient.is_active === false;
     }
   }, [user, recipient]);
@@ -391,10 +414,19 @@ const ChatPage = () => {
           )}
         </div>
         <div>
-          <h2 className="font-semibold text-foreground">{recipient.name}</h2>
-          <p className="text-xs text-muted-foreground">
-            {recipient.user_type === 'nutritionist' ? 'Nutricionista' : 'Paciente'}
-          </p>
+          <h2 className="font-semibold text-foreground leading-tight">{recipient.name}</h2>
+          <div className="flex items-center gap-1.5 min-h-[1.25rem]">
+            {isUserOnline(recipientId) ? (
+              <>
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                <p className="text-xs font-medium text-green-600">Online</p>
+              </>
+            ) : (
+              <p className="text-[10px] sm:text-xs text-muted-foreground">
+                {formatLastSeen(recipient.last_seen_at) || (recipient.user_type === 'nutritionist' ? 'Nutricionista' : 'Paciente')}
+              </p>
+            )}
+          </div>
         </div>
       </header>
 
