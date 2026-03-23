@@ -267,9 +267,9 @@ const ChatPage = ({ propRecipientId, isEmbedded = false }) => {
     if (!user || !recipient) return false;
     
     // Se o usuário logado está inativo, tudo está "arquivado" para ele
-    if (user.profile.is_active === false) return true;
+    if (user?.profile?.is_active === false) return true;
 
-    if (user.profile.user_type === 'patient') {
+    if (user?.profile?.user_type === 'patient') {
         // Para o paciente, o chat é com o seu nutricionista fixo.
         // Se o nutricionista do paciente está inativo, o chat está arquivado.
         // Nota: recipient aqui é o nutricionista.
@@ -434,7 +434,7 @@ const ChatPage = ({ propRecipientId, isEmbedded = false }) => {
     }
   };
   
-  const handleBack = () => { user.profile.user_type === 'nutritionist' ? navigate('/nutritionist') : navigate('/patient'); };
+  const handleBack = () => { (user?.profile?.user_type === 'nutritionist' ? navigate('/nutritionist') : navigate('/patient')); };
   const groupedMessages = messages.reduce((acc, msg) => {
     const date = format(parseISO(msg.created_at), 'yyyy-MM-dd');
     if (!acc[date]) acc[date] = [];
@@ -449,7 +449,7 @@ const ChatPage = ({ propRecipientId, isEmbedded = false }) => {
 
   if (!recipient) return (
     <div className={`flex items-center justify-center p-4 text-center text-muted-foreground ${isEmbedded ? 'h-full' : 'h-screen'}`}>
-      Você não tem um {user.profile.user_type === 'patient' ? 'nutricionista' : 'paciente'} associado.
+      Você não tem um {user?.profile?.user_type === 'patient' ? 'nutricionista' : 'paciente'} associado.
     </div>
   );
 

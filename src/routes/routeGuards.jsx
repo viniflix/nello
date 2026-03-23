@@ -16,13 +16,13 @@ export const PageLoadingFallback = () => (
 // Wrapper para rotas de autenticação (login, register)
 export const AuthWrapper = ({ children }) => {
     const { user, loading } = useAuth();
+    const location = useLocation();
 
     if (loading) {
         return <PageLoadingFallback />;
     }
 
-    const location = useLocation();
-    const from = location.state?.from?.pathname || (user.profile.user_type === 'nutritionist' ? '/nutritionist' : '/patient');
+    const from = location.state?.from?.pathname || (user?.profile?.user_type === 'nutritionist' ? '/nutritionist' : '/patient');
 
     if (user) {
         return <Navigate to={from} replace />;
