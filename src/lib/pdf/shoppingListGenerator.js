@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { loadLogo } from './pdfAssets';
 
 /**
  * Gera uma lista de compras em PDF a partir de um plano alimentar
@@ -35,29 +36,27 @@ export const generateShoppingList = async (planData, patientName = 'Paciente') =
     doc.setFont('helvetica');
 
     // Logo do HipoZero (opcional)
-    try {
-        const logoUrl = 'https://afyoidxrshkmplxhcyeh.supabase.co/storage/v1/object/public/IDV/HIPOZERO%20(2).png';
-        const response = await fetch(logoUrl);
-        const blob = await response.blob();
-
+    const logoData = await loadLogo();
+    if (logoData) {
         await new Promise((resolve) => {
             const img = new Image();
             img.onload = () => {
                 const logoWidth = pageWidth * 0.15;
                 const logoHeight = (img.height / img.width) * logoWidth;
-
-                const reader = new FileReader();
-                reader.onloadend = () => {
-                    const base64data = reader.result;
-                    doc.addImage(base64data, 'PNG', 14, 10, logoWidth, logoHeight);
-                    resolve();
-                };
-                reader.readAsDataURL(blob);
+                
+                try {
+                    doc.addImage(logoData, 'PNG', 14, 10, logoWidth, logoHeight);
+                } catch (err) {
+                    console.warn('Falha ao adicionar logo ao PDF:', err);
+                }
+                resolve();
             };
-            img.src = URL.createObjectURL(blob);
+            img.onerror = () => {
+                console.warn('Falha ao carregar dimensões da logo');
+                resolve();
+            };
+            img.src = logoData;
         });
-    } catch (error) {
-        console.error('Erro ao carregar logo:', error);
     }
 
     // Título

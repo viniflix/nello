@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import html2canvas from 'html2canvas';
+import { loadLogo } from './pdf/pdfAssets';
 
 export const exportToPdf = async (elementId, fileName, title) => {
   const input = document.getElementById(elementId);
@@ -187,23 +188,14 @@ export const exportAgendaToPdf = async (appointments, periodType, periodLabel, n
     const MUTED_COLOR = [120, 113, 108];      // Stone-500: hsl(24, 3.8%, 46.1%)
 
     // Carregar logo
-    const logoUrl = 'https://afyoidxrshkmplxhcyeh.supabase.co/storage/v1/object/public/IDV/HIPOZERO%20(2).png';
-    let logoData = null;
-
-    try {
-        // Converter imagem para base64
-        const response = await fetch(logoUrl);
-        const blob = await response.blob();
-        logoData = await new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result);
-            reader.readAsDataURL(blob);
-        });
-
+    const logoData = await loadLogo();
+    if (logoData) {
         // Adicionar logo (40x10mm)
-        doc.addImage(logoData, 'PNG', 14, 10, 40, 10);
-    } catch (error) {
-        console.error('Erro ao carregar logo:', error);
+        try {
+            doc.addImage(logoData, 'PNG', 14, 10, 40, 10);
+        } catch (err) {
+            console.warn('Falha ao adicionar logo ao PDF:', err);
+        }
     }
 
     // Título
@@ -362,11 +354,8 @@ export const exportMealPlanToPdf = async (mealPlan, patientName, nutritionistNam
     doc.setFont('helvetica');
 
     // Logo do HipoZero
-    try {
-        const logoUrl = 'https://afyoidxrshkmplxhcyeh.supabase.co/storage/v1/object/public/IDV/HIPOZERO%20(2).png';
-        const response = await fetch(logoUrl);
-        const blob = await response.blob();
-
+    const logoData = await loadLogo();
+    if (logoData) {
         // Carregar a imagem para obter dimensões reais
         await new Promise((resolve) => {
             const img = new Image();
@@ -375,19 +364,20 @@ export const exportMealPlanToPdf = async (mealPlan, patientName, nutritionistNam
                 const logoWidth = pageWidth * 0.20;
                 // Calcular altura proporcionalmente baseado na proporção da imagem
                 const logoHeight = (img.height / img.width) * logoWidth;
-
-                const reader = new FileReader();
-                reader.onloadend = () => {
-                    const base64data = reader.result;
-                    doc.addImage(base64data, 'PNG', 14, 10, logoWidth, logoHeight);
-                    resolve();
-                };
-                reader.readAsDataURL(blob);
+                
+                try {
+                    doc.addImage(logoData, 'PNG', 14, 10, logoWidth, logoHeight);
+                } catch (err) {
+                    console.warn('Falha ao adicionar logo ao PDF:', err);
+                }
+                resolve();
             };
-            img.src = URL.createObjectURL(blob);
+            img.onerror = () => {
+                console.warn('Falha ao carregar dimensões da logo');
+                resolve();
+            };
+            img.src = logoData;
         });
-    } catch (error) {
-        console.error('Erro ao carregar logo:', error);
     }
 
     // Título
