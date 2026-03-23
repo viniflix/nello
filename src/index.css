@@ -125,19 +125,20 @@
   }
 
   /* Fix DEFINITIVO para Layout Shift: 
-     1. Reserva o espaço da scrollbar no HTML para que o conteúdo não mude de largura.
-     2. Impede que o Radix UI adicione padding ao body ou elementos fixos.
+     1. Reserva o espaço da scrollbar no HTML.
+     2. Impende que o Radix UI adicione padding ao body OU elementos fixos/sticky.
   */
   html {
     scrollbar-gutter: stable !important;
   }
 
-  body {
-    padding-right: 0px !important;
-  }
-
-  /* Aplica também em elementos que o Radix costuma tentar "corrigir" */
-  [data-radix-scroll-locker] {
+  /* Remove padding-right de TUDO que o Radix tenta compensar */
+  body, 
+  [data-radix-scroll-locker], 
+  header, 
+  nav, 
+  .fixed, 
+  .sticky {
     padding-right: 0px !important;
     margin-right: 0px !important;
   }
