@@ -118,6 +118,8 @@ export default function MetsActivitiesForm({ activities = [], onChange, weightKg
                   >
                     <PopoverTrigger asChild>
                       <Input
+                        id={`activity-search-${i}`}
+                        name={`activity-search-${i}`}
                         placeholder="Buscar atividade..."
                         value={openCombo === i ? (search[i] ?? a.name ?? '') : (a.name || '')}
                         onChange={(e) => {
@@ -157,6 +159,8 @@ export default function MetsActivitiesForm({ activities = [], onChange, weightKg
                 <div className="w-20 space-y-1">
                   <Label className="text-xs">MET</Label>
                   <Input
+                    id={`activity-met-${i}`}
+                    name={`activity-met-${i}`}
                     type="number"
                     min={0}
                     step={0.5}
@@ -168,6 +172,8 @@ export default function MetsActivitiesForm({ activities = [], onChange, weightKg
                 <div className="w-24 space-y-1">
                   <Label className="text-xs">Duração (min)</Label>
                   <Input
+                    id={`activity-duration-${i}`}
+                    name={`activity-duration-${i}`}
                     type="number"
                     min={0}
                     value={a.duration_min ?? ''}
@@ -178,6 +184,8 @@ export default function MetsActivitiesForm({ activities = [], onChange, weightKg
                 <div className="w-20 space-y-1">
                   <Label className="text-xs">Frequência</Label>
                   <Input
+                    id={`activity-frequency-${i}`}
+                    name={`activity-frequency-${i}`}
                     type="number"
                     min={0}
                     value={a.frequency_value ?? ''}

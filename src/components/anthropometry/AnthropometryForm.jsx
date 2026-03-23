@@ -833,6 +833,7 @@ const AnthropometryForm = ({
                                                 </Label>
                                                 <Input
                                                     id={`circ_${field}`}
+                                                    name={`circ_${field}`}
                                                     type="number"
                                                     step="0.1"
                                                     min="0"
@@ -863,6 +864,7 @@ const AnthropometryForm = ({
                                                     <Label htmlFor={`circ_${key}_e`}>Esquerdo (cm)</Label>
                                                     <Input
                                                         id={`circ_${key}_e`}
+                                                        name={`circ_${key}_e`}
                                                         type="number"
                                                         step="0.1"
                                                         min="0"
@@ -876,6 +878,7 @@ const AnthropometryForm = ({
                                                     <Label htmlFor={`circ_${key}_d`}>Direito (cm)</Label>
                                                     <Input
                                                         id={`circ_${key}_d`}
+                                                        name={`circ_${key}_d`}
                                                         type="number"
                                                         step="0.1"
                                                         min="0"
@@ -889,6 +892,7 @@ const AnthropometryForm = ({
                                                     <Label htmlFor={`circ_${key}_media`}>Média (cm)</Label>
                                                     <Input
                                                         id={`circ_${key}_media`}
+                                                        name={`circ_${key}_media`}
                                                         type="number"
                                                         step="0.1"
                                                         disabled
@@ -902,6 +906,58 @@ const AnthropometryForm = ({
                                                 </div>
                                             </div>
                                         ))}
+                                    </div>
+                                </div>
+
+                                {/* Diâmetros Ósseos */}
+                                <div>
+                                    <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                                        <Bone className="w-4 h-4" />
+                                        Diâmetros Ósseos (cm)
+                                    </h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="bone_punho">Punho (cm)</Label>
+                                            <Input
+                                                id="bone_punho"
+                                                name="bone_punho"
+                                                type="number"
+                                                step="0.1"
+                                                min="0"
+                                                placeholder="0.0"
+                                                value={formData.bone_diameters?.punho || ''}
+                                                onChange={(e) => handleNestedChange('bone_diameters', 'punho', e.target.value)}
+                                                disabled={loading}
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="bone_femur">Fêmur (cm)</Label>
+                                            <Input
+                                                id="bone_femur"
+                                                name="bone_femur"
+                                                type="number"
+                                                step="0.1"
+                                                min="0"
+                                                placeholder="0.0"
+                                                value={formData.bone_diameters?.femur || ''}
+                                                onChange={(e) => handleNestedChange('bone_diameters', 'femur', e.target.value)}
+                                                disabled={loading}
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="bone_umero">Úmero (cm)</Label>
+                                            <Input
+                                                id="bone_umero"
+                                                name="bone_umero"
+                                                type="number"
+                                                step="0.1"
+                                                min="0"
+                                                placeholder="0.0"
+                                                value={formData.bone_diameters?.umero || ''}
+                                                onChange={(e) => handleNestedChange('bone_diameters', 'umero', e.target.value)}
+                                                disabled={loading}
+                                            />
+                                        </div>
                                     </div>
                                 </div>
 
@@ -970,6 +1026,7 @@ const AnthropometryForm = ({
                                                 </Label>
                                                 <Input
                                                     id={`fold_${key}`}
+                                                    name={`fold_${key}`}
                                                     type="number"
                                                     step="0.1"
                                                     min="0"
@@ -997,6 +1054,7 @@ const AnthropometryForm = ({
                                                 </Label>
                                                 <Input
                                                     id={`fold_${key}`}
+                                                    name={`fold_${key}`}
                                                     type="number"
                                                     step="0.1"
                                                     min="0"
@@ -1021,6 +1079,7 @@ const AnthropometryForm = ({
                                                 </Label>
                                                 <Input
                                                     id={`fold_${key}`}
+                                                    name={`fold_${key}`}
                                                     type="number"
                                                     step="0.1"
                                                     min="0"

@@ -329,6 +329,8 @@ export default function TransactionDialog({
                         <div>
                             <Label htmlFor="service_id">Serviço (opcional)</Label>
                             <Select
+                                id="service_id"
+                                name="service_id"
                                 value={formData.service_id || 'none'}
                                 onValueChange={handleServiceChange}
                             >
@@ -353,6 +355,8 @@ export default function TransactionDialog({
                             Categoria {formData.type === 'income' ? 'da Receita' : 'da Despesa'} *
                         </Label>
                         <Select
+                            id="category"
+                            name="category"
                             required
                             value={formData.category}
                             onValueChange={(value) => setFormData(prev => ({ ...prev, category: value }))}
@@ -375,6 +379,8 @@ export default function TransactionDialog({
                         <div>
                             <Label htmlFor="patient_id">Paciente (opcional)</Label>
                             <Select
+                                id="patient_id"
+                                name="patient_id"
                                 value={formData.patient_id || 'none'}
                                 onValueChange={(value) => setFormData(prev => ({ ...prev, patient_id: value === 'none' ? '' : value }))}
                             >
@@ -398,6 +404,7 @@ export default function TransactionDialog({
                         <Label htmlFor="description">Descrição *</Label>
                         <Input
                             id="description"
+                            name="description"
                             required
                             value={formData.description}
                             onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
@@ -411,6 +418,7 @@ export default function TransactionDialog({
                             <Label htmlFor="amount">Valor Total (R$) *</Label>
                             <Input
                                 id="amount"
+                                name="amount"
                                 type="number"
                                 step="0.01"
                                 min="0"
@@ -424,6 +432,7 @@ export default function TransactionDialog({
                             <Label htmlFor="transaction_date">Data *</Label>
                             <DateInputWithCalendar
                                 id="transaction_date"
+                                name="transaction_date"
                                 required
                                 value={formData.transaction_date}
                                 onChange={(value) => setFormData(prev => ({ ...prev, transaction_date: value }))}
@@ -454,6 +463,8 @@ export default function TransactionDialog({
                             <div>
                                 <Label htmlFor="installments">Número de Parcelas *</Label>
                                 <Select
+                                    id="installments"
+                                    name="installments"
                                     value={formData.installments.toString()}
                                     onValueChange={(value) => setFormData(prev => ({ ...prev, installments: parseInt(value) }))}
                                 >
@@ -501,6 +512,7 @@ export default function TransactionDialog({
                             <Label htmlFor="due_date">Data de Vencimento *</Label>
                             <DateInputWithCalendar
                                 id="due_date"
+                                name="due_date"
                                 required={!formData.isPaid}
                                 value={formData.due_date}
                                 onChange={(value) => setFormData(prev => ({ ...prev, due_date: value }))}
@@ -513,6 +525,8 @@ export default function TransactionDialog({
                     <div>
                         <Label htmlFor="payment_method">Método de Pagamento</Label>
                         <Select
+                            id="payment_method"
+                            name="payment_method"
                             value={formData.payment_method}
                             onValueChange={(value) => setFormData(prev => ({ ...prev, payment_method: value, fee_percentage: (value === 'credit' || value === 'debit') ? prev.fee_percentage : '' }))}
                         >
@@ -535,6 +549,7 @@ export default function TransactionDialog({
                             <Label htmlFor="fee_percentage">Taxa (%)</Label>
                             <Input
                                 id="fee_percentage"
+                                name="fee_percentage"
                                 type="number"
                                 step="0.01"
                                 min="0"
@@ -594,6 +609,7 @@ export default function TransactionDialog({
                                 <div className="flex items-center gap-2">
                                     <Input
                                         id="attachment"
+                                        name="attachment"
                                         type="file"
                                         accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
                                         onChange={handleFileChange}

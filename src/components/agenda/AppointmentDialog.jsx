@@ -201,6 +201,7 @@ export default function AppointmentDialog({
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                             <Input
                                 id="patient_search"
+                                name="patient_search"
                                 type="text"
                                 placeholder="Buscar paciente pelo nome..."
                                 value={patientSearchTerm}
@@ -284,6 +285,8 @@ export default function AppointmentDialog({
                         <div>
                             <Label htmlFor="duration">Duração *</Label>
                             <Select
+                                id="duration"
+                                name="duration"
                                 required
                                 value={String(formData.duration)}
                                 onValueChange={(value) => setFormData(prev => ({ ...prev, duration: Number(value) }))}
@@ -303,6 +306,8 @@ export default function AppointmentDialog({
                         <div>
                             <Label htmlFor="appointment_type">Tipo *</Label>
                             <Select
+                                id="appointment_type"
+                                name="appointment_type"
                                 required
                                 value={formData.appointment_type}
                                 onValueChange={(value) => setFormData(prev => ({ ...prev, appointment_type: value }))}
@@ -325,6 +330,8 @@ export default function AppointmentDialog({
                     <div>
                         <Label htmlFor="status">Status *</Label>
                         <Select
+                            id="status"
+                            name="status"
                             required
                             value={formData.status}
                             onValueChange={(value) => setFormData(prev => ({ ...prev, status: value }))}
@@ -356,6 +363,8 @@ export default function AppointmentDialog({
                             <div>
                                 <Label htmlFor="service">Serviço</Label>
                                 <Select
+                                    id="service"
+                                    name="service"
                                     value={formData.use_custom_price ? SERVICE_OPTION_CUSTOM : (formData.service_id || '')}
                                     onValueChange={handleServiceChange}
                                 >
@@ -382,6 +391,7 @@ export default function AppointmentDialog({
                                         <Label htmlFor="custom_price">Valor Personalizado (R$) *</Label>
                                         <Input
                                             id="custom_price"
+                                            name="custom_price"
                                             type="number"
                                             step="0.01"
                                             min="0"
@@ -395,6 +405,7 @@ export default function AppointmentDialog({
                                         <Label htmlFor="custom_description">Descrição do Serviço</Label>
                                         <Input
                                             id="custom_description"
+                                            name="custom_description"
                                             value={formData.custom_description}
                                             onChange={(e) => setFormData(prev => ({ ...prev, custom_description: e.target.value }))}
                                             placeholder="Ex: Consulta especializada"
@@ -417,6 +428,7 @@ export default function AppointmentDialog({
                         <Label htmlFor="notes">Observações</Label>
                         <Input
                             id="notes"
+                            name="notes"
                             value={formData.notes}
                             onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
                             placeholder="Informações adicionais (opcional)"

@@ -596,6 +596,8 @@ const ChatPage = ({ propRecipientId, isEmbedded = false }) => {
                 </div>
               ) : (
                 <Input
+                  id="new-message"
+                  name="new-message"
                   type="text"
                   value={newMessage}
                   onChange={(e) => {

@@ -413,6 +413,7 @@ const MealPlanForm = ({
                             </Label>
                             <Input
                                 id="name"
+                                name="name"
                                 placeholder="Ex: Dieta Hipertrofia"
                                 value={formData.name}
                                 onChange={(e) => handleChange('name', e.target.value)}
@@ -429,6 +430,7 @@ const MealPlanForm = ({
                             <Label htmlFor="description">Descrição (opcional)</Label>
                             <Textarea
                                 id="description"
+                                name="description"
                                 rows={3}
                                 placeholder="Descreva os objetivos e características do plano alimentar..."
                                 value={formData.description}
@@ -445,6 +447,7 @@ const MealPlanForm = ({
                                 </Label>
                                 <DateInputWithCalendar
                                     id="start_date"
+                                    name="start_date"
                                     value={formData.start_date}
                                     onChange={(value) => handleChange('start_date', value)}
                                     className={errors.start_date ? 'border-destructive' : ''}
@@ -459,6 +462,7 @@ const MealPlanForm = ({
                                 <Label htmlFor="end_date">Data de Término (opcional)</Label>
                                 <DateInputWithCalendar
                                     id="end_date"
+                                    name="end_date"
                                     value={formData.end_date}
                                     onChange={(value) => handleChange('end_date', value)}
                                     className={errors.end_date ? 'border-destructive' : ''}
@@ -528,6 +532,7 @@ const MealPlanForm = ({
                                     <Label htmlFor="portion-factor">Fator de ajuste</Label>
                                     <Input
                                         id="portion-factor"
+                                        name="portion-factor"
                                         type="number"
                                         min={0.3}
                                         max={3}
@@ -542,6 +547,7 @@ const MealPlanForm = ({
                                     <Label htmlFor="portion-scope">Aplicar em</Label>
                                     <select
                                         id="portion-scope"
+                                        name="portion-scope"
                                         className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                                         value={portionScope}
                                         onChange={(e) => setPortionScope(e.target.value)}
@@ -557,6 +563,7 @@ const MealPlanForm = ({
                                         <Label htmlFor="portion-meal">Refeição alvo</Label>
                                         <select
                                             id="portion-meal"
+                                            name="portion-meal"
                                             className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                                             value={portionMealId}
                                             onChange={(e) => setPortionMealId(e.target.value)}
@@ -573,6 +580,7 @@ const MealPlanForm = ({
                                         <Label htmlFor="portion-food">Alimento alvo</Label>
                                         <select
                                             id="portion-food"
+                                            name="portion-food"
                                             className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                                             value={portionFoodId}
                                             onChange={(e) => setPortionFoodId(e.target.value)}
