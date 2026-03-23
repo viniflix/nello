@@ -124,15 +124,17 @@
     @apply overflow-x-hidden;
   }
 
-  /* Fix DEFINITIVO para Layout Shift: 
-     1. Reserva o espaço da scrollbar no HTML.
+  /* 
+     Fix FINAL e ROBUSTO para Layout Shift: 
+     1. Força a barra de rolagem (ou seu trilho) a sempre existir, evitando mudança na largura da viewport.
      2. Impende que o Radix UI adicione padding ao body OU elementos fixos/sticky.
   */
   html {
-    scrollbar-gutter: stable !important;
+    overflow-y: scroll !important;
+    scrollbar-gutter: stable; /* Backup para navegadores modernos */
   }
 
-  /* Remove padding-right de TUDO que o Radix tenta compensar */
+  /* Remove TUDO que o Radix tenta compensar com padding/margin */
   body, 
   [data-radix-scroll-locker], 
   header, 
