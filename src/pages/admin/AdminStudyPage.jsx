@@ -6,7 +6,7 @@ import {
   BarChart2, Users, Activity, Target, BookOpen, FileText,
   Calendar, MessageSquare, Award, TrendingUp, TrendingDown,
   Zap, ExternalLink, RefreshCw, Info, Utensils, Scale,
-  ChevronRight, AlertCircle, CheckCircle2, Clock, PieChart
+  ChevronRight, AlertCircle, CheckCircle2, Clock, PieChart, ShieldAlert
 } from 'lucide-react';
 import {
   AreaChart, Area, BarChart, Bar, PieChart as RechartsPie, Pie, Cell,

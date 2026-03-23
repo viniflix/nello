@@ -220,6 +220,12 @@ const NotificationsPanel = ({ isOpen, setIsOpen }) => {
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="max-w-lg">
+        <DialogHeader className="sr-only">
+          <DialogTitle>Notificações</DialogTitle>
+          <DialogDescription>
+            Lista de atualizações e mensagens recebidas na plataforma.
+          </DialogDescription>
+        </DialogHeader>
         <CardHeader>
           <CardTitle>Notificações</CardTitle>
           {(hasUnread || hasRead) && (

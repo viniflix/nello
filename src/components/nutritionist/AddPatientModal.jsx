@@ -187,6 +187,9 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded }) => {
             <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle className="font-clash text-2xl text-primary">Adicionar Novo Paciente</DialogTitle>
+                    <DialogDescription>
+                        Preencha os campos abaixo para enviar um convite de acesso ao paciente.
+                    </DialogDescription>
                 </DialogHeader>
 
                 <Tabs value={step} onValueChange={setStep} className="w-full">

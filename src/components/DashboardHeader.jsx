@@ -354,6 +354,9 @@ const DashboardHeader = ({ user, logout }) => {
               <SheetContent side="left" className="w-64">
                 <SheetHeader>
                   <SheetTitle>Menu</SheetTitle>
+                  <SheetDescription className="sr-only">
+                    Navegação principal da plataforma
+                  </SheetDescription>
                 </SheetHeader>
                 <nav className="flex flex-col space-y-1 mt-4">
                   {navigationLinks.map((link) => (
