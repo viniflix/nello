@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Search, MessageSquare, Loader2, User as UserIcon } from 'lucide-react';
+import { Search, MessageSquare, Loader2, User as UserIcon, Plus, Filter } from 'lucide-react';
 import { useChat } from '@/contexts/ChatContext';
 import { useOnlinePresence } from '@/hooks/useOnlinePresence';
 import { Input } from '@/components/ui/input';
@@ -9,6 +9,9 @@ import { format, parseISO, isToday, isYesterday } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import ChatPage from './ChatPage';
 import { motion, AnimatePresence } from 'framer-motion';
+import NewChatModal from '@/components/nutritionist/NewChatModal';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 const formatMessageTime = (dateStr) => {
   if (!dateStr) return '';
@@ -22,6 +25,14 @@ const ConversationItem = ({ conversation, isActive, onClick }) => {
   const { isUserOnline, isUserTyping } = useOnlinePresence();
   const isOnline = isUserOnline(conversation.recipient_id);
   const isTyping = isUserTyping(conversation.recipient_id);
+
+  const formatLastSeenCompact = (lastSeenAt) => {
+    if (!lastSeenAt) return null;
+    const date = parseISO(lastSeenAt);
+    if (isToday(date)) return `visto hoje às ${format(date, 'HH:mm')}`;
+    if (isYesterday(date)) return 'visto ontem';
+    return `visto em ${format(date, 'dd/MM')}`;
+  };
 
   return (
     <div
@@ -61,9 +72,16 @@ const ConversationItem = ({ conversation, isActive, onClick }) => {
               digitando...
             </p>
           ) : (
-            <p className={`text-xs truncate flex-1 ${conversation.unread_count > 0 ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
-              {conversation.last_message_content || 'Sem mensagens'}
-            </p>
+            <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+              <p className={`text-xs truncate ${conversation.unread_count > 0 ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
+                {conversation.last_message_content || 'Sem mensagens'}
+              </p>
+              {!isOnline && conversation.last_seen_at && (
+                <p className="text-[9px] text-muted-foreground/60 leading-none">
+                  {formatLastSeenCompact(conversation.last_seen_at)}
+                </p>
+              )}
+            </div>
           )}
           {conversation.unread_count > 0 && (
             <span className="bg-primary text-primary-foreground text-[10px] font-bold h-5 min-w-5 px-1 rounded-full flex items-center justify-center shrink-0">
@@ -81,12 +99,16 @@ const ChatDashboardPage = () => {
   const navigate = useNavigate();
   const { conversations, loading } = useChat();
   const [search, setSearch] = useState('');
+  const [showArchived, setShowArchived] = useState(false);
+  const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
 
   const filteredConversations = useMemo(() => {
-    return conversations.filter(c => 
-      c.recipient_name.toLowerCase().includes(search.toLowerCase())
-    );
-  }, [conversations, search]);
+    return conversations.filter(c => {
+      const matchesSearch = c.recipient_name.toLowerCase().includes(search.toLowerCase());
+      const matchesArchive = showArchived ? true : c.is_active !== false;
+      return matchesSearch && matchesArchive;
+    });
+  }, [conversations, search, showArchived]);
 
   const handleSelectConversation = (id) => {
     navigate(`/nutritionist/chat/${id}`);
@@ -104,17 +126,54 @@ const ChatDashboardPage = () => {
               <MessageSquare className="w-5 h-5 text-primary" />
               Conversas
             </h1>
+            <Button 
+                size="icon" 
+                className="rounded-full w-9 h-9 shadow-md bg-primary hover:bg-primary/90 transition-transform hover:scale-105" 
+                onClick={() => setIsNewChatModalOpen(true)}
+                title="Nova Conversa"
+            >
+                <Plus className="w-5 h-5 text-white" />
+            </Button>
           </div>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar paciente..."
-              className="pl-9 bg-muted/50 border-none focus-visible:ring-primary"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+          
+          <div className="space-y-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar paciente..."
+                className="pl-9 bg-muted/50 border-none focus-visible:ring-primary h-9 text-sm"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+            
+            <div className="flex items-center justify-between px-1">
+                <div className="flex items-center space-x-2">
+                    <Switch 
+                        id="show-archived" 
+                        checked={showArchived} 
+                        onCheckedChange={setShowArchived}
+                        className="scale-75 origin-left"
+                    />
+                    <Label htmlFor="show-archived" className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground cursor-pointer">
+                        Ver Arquivados
+                    </Label>
+                </div>
+                <Badge variant="secondary" className="text-[9px] font-bold px-1.5 py-0 h-4 uppercase tracking-tighter opacity-70">
+                    {filteredConversations.length} {filteredConversations.length === 1 ? 'conversa' : 'conversas'}
+                </Badge>
+            </div>
           </div>
         </div>
+
+        <NewChatModal 
+            open={isNewChatModalOpen} 
+            onOpenChange={setIsNewChatModalOpen}
+            onSelectPatient={(patient) => {
+                setIsNewChatModalOpen(false);
+                handleSelectConversation(patient.id);
+            }}
+        />
 
         <div className="flex-1 overflow-y-auto">
           {loading && conversations.length === 0 ? (
