@@ -57,7 +57,8 @@ import {
     promoteDraftToActive,
     saveDraftAsPlan,
     getDraftMealPlan,
-    deleteDraftMealPlan
+    deleteDraftMealPlan,
+    createDraftMealPlan
 } from '@/lib/supabase/meal-plan-queries';
 import { supabase } from '@/lib/customSupabaseClient';
 import { exportMealPlanToPdf } from '@/lib/pdfUtils';
@@ -423,20 +424,19 @@ const MealPlanPage = () => {
 
             let result;
             if (finalPlanData.draftId) {
-                // Rename the draft first, then promote as inactive
+                // Rename/Update the draft first to ensure meals are persisted
                 await updateFullMealPlan(finalPlanData.draftId, finalPlanData);
                 result = await saveDraftAsPlan(finalPlanData.draftId);
             } else {
-                result = await createMealPlan({
-                    patient_id: finalPlanData.patient_id,
-                    nutritionist_id: finalPlanData.nutritionist_id,
-                    name: finalPlanData.name,
-                    description: finalPlanData.description,
-                    active_days: finalPlanData.active_days,
-                    start_date: finalPlanData.start_date,
-                    end_date: finalPlanData.end_date || null,
-                    is_active: false
-                });
+                // No draft exists yet: Create one, populate it, then save it as a plan
+                const draftResult = await createDraftMealPlan(patientId, nutritionistId);
+                if (draftResult.error) throw draftResult.error;
+                
+                const draftId = draftResult.data.id;
+                // Save the full structure to this new draft
+                await updateFullMealPlan(draftId, finalPlanData);
+                // Promote it to a saved plan (inactive)
+                result = await saveDraftAsPlan(draftId);
             }
 
             if (result.error) throw result.error;
