@@ -12,6 +12,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import NewChatModal from '@/components/nutritionist/NewChatModal';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 
 const formatMessageTime = (dateStr) => {
   if (!dateStr) return '';
