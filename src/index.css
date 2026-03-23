@@ -70,6 +70,9 @@
 
     /* Raio (OK) */
     --radius: 0.75rem; /* 12px */
+
+    /* Fix para Layout Shift do Radix UI (Shadcn) */
+    --removed-body-scroll-bar-size: 0px !important;
   }
 
   .dark {
@@ -121,15 +124,22 @@
     @apply overflow-x-hidden;
   }
 
-  /* Fix para Layout Shift: Mantém a área da scrollbar sempre reservada no HTML */
+  /* Fix DEFINITIVO para Layout Shift: 
+     1. Reserva o espaço da scrollbar no HTML para que o conteúdo não mude de largura.
+     2. Impede que o Radix UI adicione padding ao body ou elementos fixos.
+  */
   html {
-    overflow-y: scroll;
-    scrollbar-gutter: stable;
+    scrollbar-gutter: stable !important;
   }
 
-  /* Impede que o Radix UI adicione padding ao body (causador do "pulo") */
-  body[data-radix-scroll-locker] {
-    padding-right: 0 !important;
+  body {
+    padding-right: 0px !important;
+  }
+
+  /* Aplica também em elementos que o Radix costuma tentar "corrigir" */
+  [data-radix-scroll-locker] {
+    padding-right: 0px !important;
+    margin-right: 0px !important;
   }
 }
 
