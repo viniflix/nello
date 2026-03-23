@@ -47,7 +47,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { getDashboardStats, getSystemLiveLogs } from '@/services/adminService';
-import { getOperationalHealthSummary } from '@/lib/supabase/observability-queries';
+import { getOperationalErrorEvents, getOperationalHealthSummary } from '@/lib/supabase/observability-queries';
 
 // Cores para o gráfico de pizza
 const PIE_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
@@ -67,6 +67,8 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState(null);
   const [broadcastMessage, setBroadcastMessage] = useState('');
   const [liveLogs, setLiveLogs] = useState([]);
+  const [clientErrorEvents, setClientErrorEvents] = useState([]);
+  const [clientErrorEventsLoading, setClientErrorEventsLoading] = useState(false);
   const scrollAreaRef = useRef(null);
   const [activeTab, setActiveTab] = useState('overview');
   const [observabilityLoading, setObservabilityLoading] = useState(true);
@@ -163,6 +165,30 @@ export default function AdminDashboard() {
     }, 15000);
 
     return () => clearInterval(interval);
+  }, [activeTab, isAdmin]);
+
+  // Recent frontend errors (from operational_observability_log)
+  useEffect(() => {
+    if (activeTab !== 'system' || !isAdmin) return;
+
+    const loadErrors = async () => {
+      setClientErrorEventsLoading(true);
+      try {
+        const { data, error } = await getOperationalErrorEvents({
+          module: 'client',
+          windowHours: 24,
+          limit: 25,
+        });
+        if (error) throw error;
+        setClientErrorEvents(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error('[AdminDashboard] Erros ao carregar client errors:', err);
+      } finally {
+        setClientErrorEventsLoading(false);
+      }
+    };
+
+    loadErrors();
   }, [activeTab, isAdmin]);
 
   const loadStats = async () => {
@@ -979,6 +1005,74 @@ export default function AdminDashboard() {
                 </CardContent>
               </Card>
             </motion.div>
+
+            {/* Client Errors */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="h-5 w-5 text-red-500" />
+                  <CardTitle>Erros do Frontend</CardTitle>
+                </div>
+                <CardDescription>
+                  Local, tipo, stack e últimas mensagens do console (últimas 24h)
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {clientErrorEventsLoading ? (
+                  <div className="space-y-3">
+                    {[1, 2, 3].map((i) => (
+                      <Skeleton key={i} className="h-16" />
+                    ))}
+                  </div>
+                ) : clientErrorEvents.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Sem erros do frontend no período.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {clientErrorEvents.map((evt) => (
+                      <div key={evt.id} className="rounded-lg border bg-muted/10 p-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-xs text-muted-foreground">
+                              {formatLogTime(evt.created_at)} • {evt.operation || 'client_error'}
+                            </p>
+                            <p className="text-sm font-medium text-foreground truncate">
+                              {evt.error_message || 'Erro registrado'}
+                            </p>
+                            <p className="text-xs text-muted-foreground break-words mt-1">
+                              Rota: {evt.metadata?.route || '--'}
+                            </p>
+                            <p className="text-xs text-muted-foreground break-words mt-1">
+                              Tipo: {evt.metadata?.error_type || '--'}
+                            </p>
+                          </div>
+                        </div>
+
+                        <details className="mt-2">
+                          <summary className="cursor-pointer text-xs text-primary">Ver stack e console</summary>
+                          <div className="mt-2">
+                            {evt.metadata?.stack ? (
+                              <pre className="whitespace-pre-wrap break-words text-[11px] bg-slate-950 text-slate-200 p-2 rounded-lg overflow-auto">
+                                {evt.metadata.stack}
+                              </pre>
+                            ) : (
+                              <p className="text-xs text-muted-foreground">Stack não disponível</p>
+                            )}
+                            {Array.isArray(evt.metadata?.console) && evt.metadata.console.length > 0 && (
+                              <div className="mt-2">
+                                <p className="text-xs font-medium text-muted-foreground mb-1">Console (amostra)</p>
+                                <pre className="whitespace-pre-wrap break-words text-[11px] bg-slate-950 text-slate-200 p-2 rounded-lg overflow-auto">
+                                  {JSON.stringify(evt.metadata.console, null, 2)}
+                                </pre>
+                              </div>
+                            )}
+                          </div>
+                        </details>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Broadcast Widget */}

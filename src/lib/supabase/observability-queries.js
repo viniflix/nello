@@ -48,3 +48,28 @@ export const getOperationalHealthSummary = async ({
         return { data: null, error };
     }
 };
+
+export const getOperationalErrorEvents = async ({
+    module = 'client',
+    windowHours = 24,
+    limit = 30
+} = {}) => {
+    try {
+        const since = new Date(Date.now() - Math.max(1, Number(windowHours || 24)) * 60 * 60 * 1000).toISOString();
+
+        const { data, error } = await supabase
+            .from('operational_observability_log')
+            .select('id, module, operation, event_type, error_message, metadata, created_at, nutritionist_id, patient_id')
+            .eq('event_type', 'error')
+            .eq('module', module)
+            .gte('created_at', since)
+            .order('created_at', { ascending: false })
+            .limit(Math.max(1, Number(limit || 30)));
+
+        if (error) throw error;
+        return { data: data || [], error: null };
+    } catch (error) {
+        logSupabaseError('Erro ao buscar eventos de erro', error);
+        return { data: null, error };
+    }
+};
