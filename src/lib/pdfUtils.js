@@ -2,6 +2,15 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import html2canvas from 'html2canvas';
 import { loadLogo } from './pdf/pdfAssets';
+import { generatePdfViaEdge } from './pdf/edgePdfFallback';
+
+const withEdgePdfFallback = async (options, generateClientPdf) => {
+  try {
+    await generateClientPdf();
+  } catch (error) {
+    await generatePdfViaEdge(options);
+  }
+};
 
 export const exportToPdf = async (elementId, fileName, title) => {
   const input = document.getElementById(elementId);
@@ -42,7 +51,18 @@ export const exportToPdf = async (elementId, fileName, title) => {
   pdf.save(`${fileName}.pdf`);
 };
 
-export const exportFinancialsToPdf = (transactions, summary, period) => {
+export const exportFinancialsToPdf = async (transactions, summary, period) => {
+    await withEdgePdfFallback({
+        title: `Relatório Financeiro - ${period}`,
+        fileName: `relatorio_financeiro_${period}.pdf`,
+        lines: [
+            `Período: ${period}`,
+            `Receitas: R$ ${(summary?.income || 0).toFixed(2)}`,
+            `Despesas: R$ ${(summary?.expenses || 0).toFixed(2)}`,
+            `Saldo: R$ ${(summary?.netResult || ((summary?.income || 0) - (summary?.expenses || 0))).toFixed(2)}`,
+            ...transactions.map((t) => `${t.transaction_date || ''} | ${t.type || ''} | ${t.description || ''} | R$ ${(t.amount || 0).toFixed(2)}`),
+        ],
+    }, async () => {
     const doc = new jsPDF();
     const user = "Nutricionista"; // Placeholder
     
@@ -89,6 +109,7 @@ export const exportFinancialsToPdf = (transactions, summary, period) => {
         startY: doc.lastAutoTable.finalY + 10
     });
     doc.save(`relatorio_financeiro_${period}.pdf`);
+    });
 };
 
 /**
@@ -179,6 +200,21 @@ export const exportAnamneseToPdf = (anamneseData, patientName, nutritionistName)
  * @param {string} nutritionistName - Nome do nutricionista
  */
 export const exportAgendaToPdf = async (appointments, periodType, periodLabel, nutritionistName) => {
+    await withEdgePdfFallback({
+        title: 'Agenda de Consultas',
+        fileName: `agenda_${periodType}_${new Date().toISOString().split('T')[0]}.pdf`,
+        lines: [
+            `Período: ${periodLabel}`,
+            `Nutricionista: ${nutritionistName || 'Não informado'}`,
+            `Total de consultas: ${appointments.length}`,
+            ...appointments.map((appt) => {
+                const date = new Date(appt.appointment_time);
+                const dateStr = date.toLocaleDateString('pt-BR');
+                const timeStr = date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                return `${dateStr} ${timeStr} | ${appt.patient?.name || 'Não identificado'} | ${appt.status || 'scheduled'}`;
+            }),
+        ],
+    }, async () => {
     const doc = new jsPDF();
 
     // Cores do projeto HipoZero (convertidas de HSL para RGB)
@@ -325,6 +361,7 @@ export const exportAgendaToPdf = async (appointments, periodType, periodLabel, n
     // Salvar o arquivo
     const fileName = `agenda_${periodType}_${new Date().toISOString().split('T')[0]}.pdf`;
     doc.save(fileName);
+    });
 };
 
 /**
@@ -337,6 +374,24 @@ export const exportAgendaToPdf = async (appointments, periodType, periodLabel, n
  * @param {Function} formatQuantityWithUnit - Função para formatar quantidade
  */
 export const exportMealPlanToPdf = async (mealPlan, patientName, nutritionistName, includeNutrients, translateMealType, formatQuantityWithUnit) => {
+    await withEdgePdfFallback({
+        title: 'Plano Alimentar',
+        fileName: `plano-alimentar-${includeNutrients ? 'completo' : 'simples'}-${patientName?.replace(/\s+/g, '-').toLowerCase() || 'paciente'}-${new Date().toISOString().split('T')[0]}.pdf`,
+        lines: [
+            `Paciente: ${patientName || 'Não informado'}`,
+            `Nutricionista: ${nutritionistName || 'Não informado'}`,
+            ...(mealPlan?.meals || []).flatMap((meal) => {
+                const mealName = translateMealType ? translateMealType(meal.meal_type) : (meal.name || meal.meal_type || 'Refeição');
+                const rows = (meal.foods || []).map((food) => {
+                    const qty = formatQuantityWithUnit
+                        ? formatQuantityWithUnit(food.quantity || 0, food.unit || '', food.measure)
+                        : `${food.quantity || 0} ${food.unit || ''}`;
+                    return `  - ${food.food?.name || 'Alimento'} | ${qty}`;
+                });
+                return [`${mealName}${meal.meal_time ? ` (${meal.meal_time})` : ''}`, ...rows];
+            }),
+        ],
+    }, async () => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.width;
     const pageHeight = doc.internal.pageSize.height;
@@ -668,4 +723,5 @@ export const exportMealPlanToPdf = async (mealPlan, patientName, nutritionistNam
     const nutrientsLabel = includeNutrients ? 'completo' : 'simples';
     const fileName = `plano-alimentar-${nutrientsLabel}-${patientName?.replace(/\s+/g, '-').toLowerCase() || 'paciente'}-${new Date().toISOString().split('T')[0]}.pdf`;
     doc.save(fileName);
+    });
 };

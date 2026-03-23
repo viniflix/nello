@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { loadLogo } from './pdfAssets';
+import { generatePdfViaEdge } from './edgePdfFallback';
 
 /**
  * Gera uma lista de compras em PDF a partir de um plano alimentar
@@ -19,6 +20,7 @@ export const generateShoppingList = async (planData, patientName = 'Paciente') =
     // Categorizar alimentos
     const categorizedItems = categorizeFoods(aggregatedItems);
 
+    try {
     // Criar PDF
     const doc = new jsPDF('p', 'mm', 'a4');
     const pageWidth = doc.internal.pageSize.width;
@@ -176,6 +178,18 @@ export const generateShoppingList = async (planData, patientName = 'Paciente') =
     // Salvar PDF
     const fileName = `lista_compras_${patientName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
     doc.save(fileName);
+    } catch (error) {
+    const fileName = `lista_compras_${patientName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+    const lines = Object.entries(categorizedItems).flatMap(([category, items]) => [
+      category,
+      ...items.map((item) => `  - ${item.name}: ${item.totalQuantity}`),
+    ]);
+    await generatePdfViaEdge({
+      title: `Lista de Compras - ${patientName}`,
+      fileName,
+      lines,
+    });
+    }
 };
 
 /**

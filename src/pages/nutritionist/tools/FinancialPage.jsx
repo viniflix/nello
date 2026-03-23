@@ -304,9 +304,9 @@ export default function FinancialPage() {
         }
     };
 
-    const handleExportPDF = () => {
+    const handleExportPDF = async () => {
         try {
-            exportFinancialsToPdf(transactions, summary, format(selectedMonth, 'MMMM yyyy'));
+            await exportFinancialsToPdf(transactions, summary, format(selectedMonth, 'MMMM yyyy'));
             toast({
                 title: "Exportado!",
                 description: "Arquivo PDF gerado com sucesso."

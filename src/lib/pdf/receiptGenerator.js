@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { generatePdfViaEdge } from './edgePdfFallback';
 
 /**
  * Format currency value for receipt
@@ -20,6 +21,7 @@ function formatCurrencyForReceipt(value) {
  * @returns {Promise<void>}
  */
 export async function generateReceipt(transaction, nutritionistProfile, patientProfile) {
+    try {
     const doc = new jsPDF('p', 'mm', 'a4');
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
@@ -153,6 +155,27 @@ export async function generateReceipt(transaction, nutritionistProfile, patientP
     
     // Save PDF
     doc.save(fileName);
+    } catch (error) {
+    const patientName = patientProfile?.name || 'Paciente';
+    const amount = parseFloat(transaction?.amount || 0);
+    const description = transaction?.description || 'Serviço de nutrição';
+    const transactionDate = transaction?.transaction_date
+        ? format(new Date(transaction.transaction_date + 'T00:00:00'), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
+        : format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
+    const fileName = `recibo_${patientName.replace(/\s+/g, '_')}_${format(new Date(), 'yyyy-MM-dd')}.pdf`;
+
+    await generatePdfViaEdge({
+        title: 'Recibo',
+        fileName,
+        lines: [
+            `Prestador: ${nutritionistProfile?.name || 'Nutricionista'}`,
+            `Paciente: ${patientName}`,
+            `Descrição: ${description}`,
+            `Valor: ${formatCurrencyForReceipt(amount)}`,
+            `Data: ${transactionDate}`,
+        ],
+    });
+    }
 }
 
 /**
