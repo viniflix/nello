@@ -48,6 +48,23 @@ const formatLastSeen = (lastSeenAt) => {
   }
 };
 
+const getBucketPath = (url) => {
+    if (!url) return null;
+    if (!url.startsWith('http')) return url;
+    try {
+        const parts = url.split('/storage/v1/object/');
+        if (parts.length > 1) {
+            const pathSegments = parts[1].split('/');
+            // Supabase URL format: [public|sign]/[bucket_name]/[path/to/file]
+            // We want everything after the bucket name
+            return pathSegments.slice(2).join('/').split('?')[0];
+        }
+    } catch (e) {
+        console.error('Error parsing storage URL:', e);
+    }
+    return url;
+};
+
 const AudioPlayer = ({ src }) => {
     const audioRef = useRef(null);
     const [isPlaying, setIsPlaying] = useState(false);
@@ -120,14 +137,16 @@ const MediaViewer = ({ mediaPath, messageText, onImageClick }) => {
                 return;
             }
             
-            const path = mediaPath;
+            // GARANTE QUE TEMOS APENAS O CAMINHO RELATIVO (sem o nome do bucket)
+            const cleanPath = getBucketPath(mediaPath);
+            
             setLoading(true);
             const { data, error } = await supabase.storage
                 .from('chat_media')
-                .createSignedUrl(path, 300); // 5 minutes validity
+                .createSignedUrl(cleanPath, 3600); // 1 hour validity for better UX
 
             if (error) {
-                console.error('Error creating signed URL:', error);
+                console.error('Error creating signed URL for path:', cleanPath, error);
                 setSignedUrl('');
             } else {
                 setSignedUrl(data.signedUrl);
