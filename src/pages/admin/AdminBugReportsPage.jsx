@@ -27,8 +27,17 @@ import {
   Activity,
   ShieldAlert,
   Copy,
-  Clipboard,
-  Check
+  Check,
+  TrendingUp,
+  TrendingDown,
+  Database,
+  Wifi,
+  Cpu,
+  HardDrive,
+  Clock3,
+  AlertOctagon,
+  CheckCheck,
+  X
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -44,7 +53,6 @@ import { getOperationalHealthSummary } from '@/lib/supabase/observability-querie
 
 /**
  * AdminBugReportsPage - Sistema completo de relatório de bugs e audit log
- * Otimizado para análise por IAs
  */
 export default function AdminBugReportsPage() {
   const { toast } = useToast();
@@ -218,7 +226,7 @@ export default function AdminBugReportsPage() {
 
     if (statusFilter === 'resolved') {
       filtered = filtered.filter(bug => bug.is_resolved === true);
-    } else if (statusFilter === 'unresolved') {
+    } else if (statusFilter === 'unresolved' || statusFilter === 'hide-resolved') {
       filtered = filtered.filter(bug => bug.is_resolved !== true);
     }
 
@@ -243,16 +251,15 @@ export default function AdminBugReportsPage() {
     });
   };
 
-  // Copy log for AI - FORMATADO PARA IAs ENTENDEREM
-  const copyLogForAI = (log) => {
+  // Copy log for clipboard
+  const copyLogForClipboard = (log) => {
     const timestamp = format(new Date(log.timestamp || log.event_timestamp), "yyyy-MM-dd'T'HH:mm:ss");
     
-    // Formato estruturado para IAs
     const formattedLog = `---
-🐛 EVENTO DO SISTEMA
+📋 REGISTRO DE EVENTO - HIPOZERO
 ═══════════════════════════════════════
 ⏰ Data/Hora: ${timestamp}
-📋 Tipo: ${log.type?.toUpperCase() || 'INFO'}
+📌 Tipo: ${log.type?.toUpperCase() || 'INFO'}
 👤 Usuário: ${log.user_name || 'Sistema'}
 ═══════════════════════════════════════
 
@@ -268,22 +275,22 @@ ${log.message}
     setCopiedLogId(log.id || timestamp);
     toast({
       title: 'Copiado!',
-      description: 'Evento formatado para análise de IA',
+      description: 'Evento copiado para a área de transferência',
       duration: 2000
     });
     
     setTimeout(() => setCopiedLogId(null), 2000);
   };
 
-  // Copy all logs for AI
-  const copyAllLogsForAI = () => {
+  // Copy all logs
+  const copyAllLogs = () => {
     const allLogsFormatted = liveLogs.map((log, index) => {
       const timestamp = format(new Date(log.timestamp || log.event_timestamp), "yyyy-MM-dd'T'HH:mm:ss");
       return `[${index + 1}] ${timestamp} | ${log.type?.toUpperCase() || 'INFO'} | ${log.user_name || 'Sistema'} | ${log.message}`;
     }).join('\n');
 
     const header = `═══════════════════════════════════════
-📋 HIPOZERO - AUDIT LOG EXPORTADO
+📋 HIPOZERO - REGISTRO DE AUDIT LOG
 📅 Gerado em: ${format(new Date(), "yyyy-MM-dd'T'HH:mm:ss")}
 📊 Total de eventos: ${liveLogs.length}
 ═══════════════════════════════════════
@@ -292,14 +299,14 @@ ${log.message}
     
     navigator.clipboard.writeText(header + allLogsFormatted);
     toast({
-      title: 'Todos os logs copiados!',
-      description: `${liveLogs.length} eventos prontos para análise`,
+      title: 'Logs copiados!',
+      description: `${liveLogs.length} eventos copiados para a área de transferência`,
       duration: 3000
     });
   };
 
-  // Copy bug details for AI
-  const copyBugForAI = (bug) => {
+  // Copy bug details
+  const copyBugDetails = (bug) => {
     const formattedBug = `---
 🐛 RELATÓRIO DE BUG - HIPOZERO
 ═══════════════════════════════════════
@@ -353,7 +360,7 @@ FIM DO RELATÓRIO
     navigator.clipboard.writeText(formattedBug);
     toast({
       title: 'Bug copiado!',
-      description: 'Pronto para análise de IA',
+      description: 'Detalhes copiados para a área de transferência',
       duration: 3000
     });
   };
@@ -483,15 +490,14 @@ FIM DO RELATÓRIO
     return <Badge variant="secondary" className="gap-1"><Clock className="w-3 h-3" /> Pendente</Badge>;
   };
 
-  // Get log icon
-  const getLogIcon = (type) => {
-    switch (type) {
-      case 'error':
-        return <AlertCircle className="w-4 h-4 text-red-500" />;
-      case 'warning':
-        return <AlertTriangle className="w-4 h-4 text-yellow-500" />;
-      default:
-        return <Info className="w-4 h-4 text-blue-500" />;
+  // Get status health indicator
+  const getStatusHealth = () => {
+    if (observabilitySummary.error_rate < 1) {
+      return { color: 'text-green-600', bg: 'bg-green-50 border-green-200', label: 'Excelente' };
+    } else if (observabilitySummary.error_rate < 5) {
+      return { color: 'text-yellow-600', bg: 'bg-yellow-50 border-yellow-200', label: 'Atenção' };
+    } else {
+      return { color: 'text-red-600', bg: 'bg-red-50 border-red-200', label: 'Crítico' };
     }
   };
 
@@ -504,6 +510,8 @@ FIM DO RELATÓRIO
     }
   };
 
+  const statusHealth = getStatusHealth();
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -514,7 +522,7 @@ FIM DO RELATÓRIO
             Relatórios de Bugs
           </h1>
           <p className="text-muted-foreground mt-1">
-            Sistema completo de rastreamento e análise de erros
+            Sistema completo de rastreamento, análise e resolução de erros do sistema
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -542,11 +550,11 @@ FIM DO RELATÓRIO
             Bugs
           </TabsTrigger>
           <TabsTrigger value="audit" className="gap-2">
-            <Activity className="w-4 h-4" />
+            <Terminal className="w-4 h-4" />
             Audit Log
           </TabsTrigger>
           <TabsTrigger value="observability" className="gap-2">
-            <ShieldAlert className="w-4 h-4" />
+            <Activity className="w-4 h-4" />
             Observabilidade
           </TabsTrigger>
         </TabsList>
@@ -645,9 +653,10 @@ FIM DO RELATÓRIO
                   onChange={(e) => setStatusFilter(e.target.value)}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 >
-                  <option value="all">Todos os status</option>
-                  <option value="unresolved">Pendentes</option>
-                  <option value="resolved">Resolvidos</option>
+                  <option value="all">Todos os bugs</option>
+                  <option value="unresolved">Somente Pendentes</option>
+                  <option value="resolved">Somente Resolvidos</option>
+                  <option value="hide-resolved">Pendentes (oculta resolvidos)</option>
                 </select>
 
                 <select
@@ -673,7 +682,7 @@ FIM DO RELATÓRIO
                 <Badge variant="secondary" className="ml-2">{filteredBugs.length}</Badge>
               </CardTitle>
               <CardDescription>
-                Clique em um bug para ver detalhes ou use o botão de copiar para análise de IA
+                Lista de erros capturados automaticamente pelos usuários. Clique em um bug para ver detalhes completos.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -685,6 +694,7 @@ FIM DO RELATÓRIO
                 <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                   <CheckCircle className="w-12 h-12 mb-4 text-green-500" />
                   <p className="text-lg font-medium">Nenhum bug encontrado</p>
+                  <p className="text-sm">Tente ajustar os filtros</p>
                 </div>
               ) : (
                 <div className="space-y-3 max-h-[600px] overflow-y-auto">
@@ -731,11 +741,11 @@ FIM DO RELATÓRIO
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => copyBugForAI(bug)}
+                            onClick={() => copyBugDetails(bug)}
                             className="gap-1 bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-700"
-                            title="Copiar para análise de IA"
+                            title="Copiar detalhes do bug"
                           >
-                            <Clipboard className="w-4 h-4" />
+                            <Copy className="w-4 h-4" />
                           </Button>
                           
                           {!bug.is_resolved && (
@@ -784,21 +794,21 @@ FIM DO RELATÓRIO
                 <div>
                   <CardTitle className="flex items-center gap-2">
                     <Terminal className="w-5 h-5 text-primary" />
-                    Live Audit Log
+                    Registro de Auditoria
                   </CardTitle>
                   <CardDescription>
-                    Eventos formatados para fácil cópia e análise por IAs
+                    Log de eventos operacionais do sistema em tempo real - últimas 100 entradas
                   </CardDescription>
                 </div>
                 <div className="flex gap-2">
                   <Button 
                     variant="outline" 
                     size="sm" 
-                    onClick={copyAllLogsForAI}
+                    onClick={copyAllLogs}
                     className="gap-2 bg-blue-50 hover:bg-blue-100 border-blue-200"
                   >
-                    <Clipboard className="w-4 h-4" />
-                    Copiar Todos para IA
+                    <Copy className="w-4 h-4" />
+                    Copiar Todos os Logs
                   </Button>
                   <Button variant="outline" size="sm" onClick={loadAuditLogs} disabled={auditLogLoading} className="gap-2">
                     <RefreshCw className={`w-4 h-4 ${auditLogLoading ? 'animate-spin' : ''}`} />
@@ -837,7 +847,6 @@ FIM DO RELATÓRIO
                       >
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex-1">
-                            {/* Header */}
                             <div className="flex items-center gap-2 mb-2 flex-wrap">
                               <span className="text-slate-400 font-bold">
                                 #{String(index + 1).padStart(3, '0')}
@@ -856,12 +865,10 @@ FIM DO RELATÓRIO
                               </span>
                             </div>
                             
-                            {/* Message */}
                             <p className="text-slate-200 mb-2 whitespace-pre-wrap">
                               {log.message}
                             </p>
                             
-                            {/* Metadata */}
                             <div className="flex items-center gap-4 text-slate-400 text-[10px] flex-wrap">
                               {log.user_name && (
                                 <span className="flex items-center gap-1">
@@ -878,13 +885,12 @@ FIM DO RELATÓRIO
                             </div>
                           </div>
                           
-                          {/* Copy Button */}
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => copyLogForAI(log)}
+                            onClick={() => copyLogForClipboard(log)}
                             className={`gap-1 ${copiedLogId === (log.id || index) ? 'text-green-400' : 'text-slate-400 hover:text-white'}`}
-                            title="Copiar para análise de IA"
+                            title="Copiar evento"
                           >
                             {copiedLogId === (log.id || index) ? (
                               <Check className="w-4 h-4" />
@@ -904,74 +910,306 @@ FIM DO RELATÓRIO
 
         {/* TAB: OBSERVABILIDADE */}
         <TabsContent value="observability" className="space-y-6">
-          <Card>
+          {/* Status Geral */}
+          <Card className={`border-2 ${statusHealth.bg}`}>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Activity className="w-5 h-5 text-primary" />
-                Observabilidade Técnica
+                <ShieldAlert className="w-5 h-5" />
+                Status Geral do Sistema
               </CardTitle>
               <CardDescription>
-                Métricas de saúde da plataforma nas últimas 24h
+                Visão geral da saúde operacional da plataforma nas últimas 24 horas
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="rounded-lg border border-border bg-muted/20 p-4">
-                  <p className="text-xs text-muted-foreground">Total de Eventos</p>
-                  <p className="text-2xl font-semibold">{observabilitySummary.total_events}</p>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  {observabilitySummary.error_rate < 5 ? (
+                    <CheckCheck className="w-12 h-12 text-green-600" />
+                  ) : (
+                    <AlertOctagon className="w-12 h-12 text-red-600" />
+                  )}
+                  <div>
+                    <p className={`text-2xl font-bold ${statusHealth.color}`}>
+                      {statusHealth.label}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Taxa de erro: {observabilitySummary.error_rate.toFixed(2)}%
+                    </p>
+                  </div>
                 </div>
-                <div className="rounded-lg border border-red-200 bg-red-50 p-4">
-                  <p className="text-xs text-red-700">Erros</p>
-                  <p className="text-2xl font-semibold text-red-700">{observabilitySummary.error_events}</p>
-                </div>
-                <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
-                  <p className="text-xs text-amber-700">Latência Média</p>
-                  <p className="text-2xl font-semibold text-amber-700">
-                    {observabilitySummary.avg_latency_ms.toFixed(0)} ms
+                <div className="text-right">
+                  <p className="text-sm text-muted-foreground">Última verificação</p>
+                  <p className="text-sm font-medium">
+                    {format(new Date(), "dd/MM/yyyy HH:mm")}
                   </p>
-                </div>
-                <div className="rounded-lg border border-border bg-muted/20 p-4">
-                  <p className="text-xs text-muted-foreground">Taxa de Erro</p>
-                  <p className="text-2xl font-semibold">{observabilitySummary.error_rate.toFixed(1)}%</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
+          {/* Métricas Principais */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card className="border-l-4 border-l-blue-500">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Activity className="w-4 h-4 text-blue-500" />
+                  Total de Eventos
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold">{observabilitySummary.total_events.toLocaleString()}</div>
+                <p className="text-xs text-muted-foreground mt-1">Nas últimas 24 horas</p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-l-4 border-l-red-500">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-red-500" />
+                  Total de Erros
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-red-600">{observabilitySummary.error_events.toLocaleString()}</div>
+                <p className="text-xs text-muted-foreground mt-1">Erros registrados</p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-l-4 border-l-amber-500">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Clock3 className="w-4 h-4 text-amber-500" />
+                  Latência Média
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-amber-600">
+                  {observabilitySummary.avg_latency_ms.toFixed(0)} ms
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">Tempo médio de resposta</p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-l-4 border-l-purple-500">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <TrendingDown className="w-4 h-4 text-purple-500" />
+                  Taxa de Erro
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-purple-600">
+                  {observabilitySummary.error_rate.toFixed(2)}%
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">% de eventos com erro</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Detalhes Técnicos */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Sistema de Captura */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Cpu className="w-5 h-5 text-primary" />
+                  Sistema de Captura de Erros
+                </CardTitle>
+                <CardDescription>
+                  Como os erros são capturados automaticamente
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                    <Monitor className="w-5 h-5 text-blue-500 mt-0.5" />
+                    <div>
+                      <p className="font-medium text-sm">JavaScript Errors</p>
+                      <p className="text-xs text-muted-foreground">Captura via window.error</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                    <Zap className="w-5 h-5 text-amber-500 mt-0.5" />
+                    <div>
+                      <p className="font-medium text-sm">Unhandled Promises</p>
+                      <p className="text-xs text-muted-foreground">Captura via unhandledrejection</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                    <FileCode className="w-5 h-5 text-purple-500 mt-0.5" />
+                    <div>
+                      <p className="font-medium text-sm">React Error Boundaries</p>
+                      <p className="text-xs text-muted-foreground">Captura de erros em componentes React</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                    <Terminal className="w-5 h-5 text-green-500 mt-0.5" />
+                    <div>
+                      <p className="font-medium text-sm">Console Errors</p>
+                      <p className="text-xs text-muted-foreground">Logs de console.error</p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Dados Coletados */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Database className="w-5 h-5 text-primary" />
+                  Dados Coletados
+                </CardTitle>
+                <CardDescription>
+                  Informações armazenadas para cada erro
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="p-3 rounded-lg bg-muted/50 text-center">
+                    <FileCode className="w-5 h-5 text-blue-500 mx-auto mb-1" />
+                    <p className="text-xs font-medium">Stack Trace</p>
+                    <p className="text-[10px] text-muted-foreground">Caminho completo do erro</p>
+                  </div>
+                  
+                  <div className="p-3 rounded-lg bg-muted/50 text-center">
+                    <Globe className="w-5 h-5 text-green-500 mx-auto mb-1" />
+                    <p className="text-xs font-medium">Rota/URL</p>
+                    <p className="text-[10px] text-muted-foreground">Página onde ocorreu</p>
+                  </div>
+                  
+                  <div className="p-3 rounded-lg bg-muted/50 text-center">
+                    <User className="w-5 h-5 text-purple-500 mx-auto mb-1" />
+                    <p className="text-xs font-medium">Usuário</p>
+                    <p className="text-[10px] text-muted-foreground">Nome, email, tipo</p>
+                  </div>
+                  
+                  <div className="p-3 rounded-lg bg-muted/50 text-center">
+                    <Smartphone className="w-5 h-5 text-amber-500 mx-auto mb-1" />
+                    <p className="text-xs font-medium">Dispositivo</p>
+                    <p className="text-[10px] text-muted-foreground">Browser, OS, Mobile</p>
+                  </div>
+                  
+                  <div className="p-3 rounded-lg bg-muted/50 text-center">
+                    <Terminal className="w-5 h-5 text-red-500 mx-auto mb-1" />
+                    <p className="text-xs font-medium">Console Log</p>
+                    <p className="text-[10px] text-muted-foreground">Logs antes do erro</p>
+                  </div>
+                  
+                  <div className="p-3 rounded-lg bg-muted/50 text-center">
+                    <HardDrive className="w-5 h-5 text-cyan-500 mx-auto mb-1" />
+                    <p className="text-xs font-medium">Metadados</p>
+                    <p className="text-[10px] text-muted-foreground">Dados adicionais</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Indicadores de Saúde */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <ShieldAlert className="w-5 h-5 text-primary" />
-                Sistema de Captura de Erros
+                <TrendingUp className="w-5 h-5 text-primary" />
+                Indicadores de Saúde
               </CardTitle>
               <CardDescription>
-                Como os erros são capturados e armazenados
+                Métricas de performance e disponibilidade
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="p-4 rounded-lg border">
-                  <h4 className="font-semibold mb-2 flex items-center gap-2">
-                    <Monitor className="w-4 h-4" /> Erros Capturados
-                  </h4>
-                  <ul className="text-sm text-muted-foreground space-y-1">
-                    <li>• window.error (JavaScript)</li>
-                    <li>• unhandledrejection (Promises)</li>
-                    <li>• React Error Boundaries</li>
-                    <li>• Console errors</li>
-                  </ul>
+            <CardContent>
+              <div className="space-y-4">
+                {/* Taxa de Resolução */}
+                <div>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span className="text-muted-foreground">Taxa de Resolução</span>
+                    <span className="font-medium">
+                      {stats.total > 0 ? ((stats.resolved / stats.total) * 100).toFixed(1) : 0}%
+                    </span>
+                  </div>
+                  <div className="h-2 bg-muted rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-green-500 rounded-full transition-all"
+                      style={{ width: `${stats.total > 0 ? (stats.resolved / stats.total) * 100 : 0}%` }}
+                    />
+                  </div>
                 </div>
-                <div className="p-4 rounded-lg border">
-                  <h4 className="font-semibold mb-2 flex items-center gap-2">
-                    <FileCode className="w-4 h-4" /> Dados Coletados
-                  </h4>
-                  <ul className="text-sm text-muted-foreground space-y-1">
-                    <li>• Stack trace completo</li>
-                    <li>• Rota/URL do erro</li>
-                    <li>• Informações do usuário</li>
-                    <li>• Logs do console</li>
-                  </ul>
+
+                {/* Disponibilidade Estimada */}
+                <div>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span className="text-muted-foreground">Disponibilidade</span>
+                    <span className="font-medium text-green-600">
+                      {(100 - observabilitySummary.error_rate).toFixed(2)}%
+                    </span>
+                  </div>
+                  <div className="h-2 bg-muted rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-green-500 rounded-full transition-all"
+                      style={{ width: `${100 - observabilitySummary.error_rate}%` }}
+                    />
+                  </div>
                 </div>
+
+                {/* Performance */}
+                <div>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span className="text-muted-foreground">Performance (Latência)</span>
+                    <span className={`font-medium ${
+                      observabilitySummary.avg_latency_ms < 100 ? 'text-green-600' :
+                      observabilitySummary.avg_latency_ms < 500 ? 'text-yellow-600' : 'text-red-600'
+                    }`}>
+                      {observabilitySummary.avg_latency_ms < 100 ? 'Excelente' :
+                       observabilitySummary.avg_latency_ms < 500 ? 'Bom' : 'Lento'} 
+                      ({observabilitySummary.avg_latency_ms.toFixed(0)}ms)
+                    </span>
+                  </div>
+                  <div className="h-2 bg-muted rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full rounded-full transition-all ${
+                        observabilitySummary.avg_latency_ms < 100 ? 'bg-green-500' :
+                        observabilitySummary.avg_latency_ms < 500 ? 'bg-yellow-500' : 'bg-red-500'
+                      }`}
+                      style={{ width: `${Math.max(10, 100 - (observabilitySummary.avg_latency_ms / 10))}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Informações Adicionais */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Info className="w-5 h-5 text-primary" />
+                Informações Adicionais
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex justify-between items-center py-2 border-b">
+                <span className="text-sm text-muted-foreground">Período de Análise</span>
+                <span className="text-sm font-medium">Últimas 24 horas</span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b">
+                <span className="text-sm text-muted-foreground">Bugs Pendentes</span>
+                <span className="text-sm font-medium text-red-600">{stats.unresolved}</span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b">
+                <span className="text-sm text-muted-foreground">Bugs Críticos</span>
+                <span className="text-sm font-medium text-orange-600">{stats.critical}</span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b">
+                <span className="text-sm text-muted-foreground">Bugs Resolvidos</span>
+                <span className="text-sm font-medium text-green-600">{stats.resolved}</span>
+              </div>
+              <div className="flex justify-between items-center py-2">
+                <span className="text-sm text-muted-foreground">Última Atualização</span>
+                <span className="text-sm font-medium">{format(new Date(), "dd/MM/yyyy HH:mm:ss")}</span>
               </div>
             </CardContent>
           </Card>
@@ -989,16 +1227,16 @@ FIM DO RELATÓRIO
                   Detalhes do Bug #{selectedBug?.id}
                 </DialogTitle>
                 <DialogDescription>
-                  Informações completas para debugging
+                  Informações completas para análise e resolução
                 </DialogDescription>
               </div>
               <Button
                 variant="outline"
-                onClick={() => copyBugForAI(selectedBug)}
+                onClick={() => copyBugDetails(selectedBug)}
                 className="gap-2 bg-blue-50 hover:bg-blue-100 border-blue-200"
               >
-                <Clipboard className="w-4 h-4" />
-                Copiar para IA
+                <Copy className="w-4 h-4" />
+                Copiar Detalhes
               </Button>
             </div>
           </DialogHeader>
@@ -1010,7 +1248,6 @@ FIM DO RELATÓRIO
           ) : selectedBug ? (
             <ScrollArea className="flex-1 -mx-6 px-6">
               <div className="space-y-6 pb-6">
-                {/* Status & Severity */}
                 <div className="flex items-center gap-3 flex-wrap">
                   {getSeverityBadge(selectedBug.severity)}
                   {getTypeBadge(selectedBug.bug_type)}
@@ -1029,7 +1266,6 @@ FIM DO RELATÓRIO
                   )}
                 </div>
 
-                {/* Error Message */}
                 <div>
                   <h3 className="text-sm font-semibold text-muted-foreground mb-2 flex items-center gap-2">
                     <XCircle className="w-4 h-4" /> Mensagem do Erro
@@ -1041,7 +1277,6 @@ FIM DO RELATÓRIO
                   </div>
                 </div>
 
-                {/* Context Info Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <h3 className="text-sm font-semibold text-muted-foreground mb-2 flex items-center gap-2">
@@ -1091,7 +1326,6 @@ FIM DO RELATÓRIO
                   </div>
                 </div>
 
-                {/* Stack Trace */}
                 {selectedBug.stack_trace && (
                   <div>
                     <h3 className="text-sm font-semibold text-muted-foreground mb-2 flex items-center gap-2">
@@ -1105,7 +1339,6 @@ FIM DO RELATÓRIO
                   </div>
                 )}
 
-                {/* Console Log */}
                 {selectedBug.console_log && selectedBug.console_log.length > 0 && (
                   <div>
                     <h3 className="text-sm font-semibold text-muted-foreground mb-2 flex items-center gap-2">
@@ -1131,7 +1364,6 @@ FIM DO RELATÓRIO
                   </div>
                 )}
 
-                {/* Additional Actions */}
                 <div className="flex items-center gap-3 pt-4 border-t">
                   <Button
                     variant="outline"
@@ -1143,11 +1375,11 @@ FIM DO RELATÓRIO
                   </Button>
                   <Button
                     variant="outline"
-                    onClick={() => copyBugForAI(selectedBug)}
+                    onClick={() => copyBugDetails(selectedBug)}
                     className="gap-2 bg-blue-50 hover:bg-blue-100 border-blue-200"
                   >
-                    <Clipboard className="w-4 h-4" />
-                    Copiar para IA
+                    <Copy className="w-4 h-4" />
+                    Copiar Detalhes
                   </Button>
                   <Button
                     variant="destructive"
