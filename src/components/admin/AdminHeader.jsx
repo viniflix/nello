@@ -91,16 +91,19 @@ export default function AdminHeader() {
                   {NAV_ITEMS.map((group) => (
                     <div key={group.section} className="mb-4">
                       <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider px-4 mb-2">{group.section}</p>
-                      {group.items.map((item) => (
-                        <NavLink
-                          key={item.path}
-                          to={item.path}
-                          onClick={() => setIsMobileMenuOpen(false)}
-                          className="flex items-center gap-3 px-4 py-2.5 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent"
-                        >
-                          <item.icon className="w-4 h-4" />{item.name}
-                        </NavLink>
-                      ))}
+                      {group.items.map((item) => {
+                        const IconComponent = item.icon;
+                        return (
+                          <NavLink
+                            key={item.path}
+                            to={item.path}
+                            onClick={() => setIsMobileMenuOpen(false)}
+                            className="flex items-center gap-3 px-4 py-2.5 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent"
+                          >
+                            <IconComponent className="w-4 h-4" />{item.name}
+                          </NavLink>
+                        );
+                      })}
                     </div>
                   ))}
                   <div className="mt-4 pt-4 border-t px-4">
@@ -121,26 +124,32 @@ export default function AdminHeader() {
           </Link>
 
           <nav className="hidden md:flex items-center gap-1">
-            {NAV_ITEMS.map((group) => (
-              <div key={group.section} className="relative group">
-                <button className="px-4 py-2 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent flex items-center gap-1">
-                  <group.items[0].icon className="w-4 h-4" />{group.section}
-                </button>
-                <div className="absolute top-full left-0 mt-1 w-48 rounded-md border bg-popover shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
-                  <div className="p-1">
-                    {group.items.map((item) => (
-                      <NavLink
-                        key={item.path}
-                        to={item.path}
-                        className="flex items-center gap-2 px-3 py-2 rounded-sm text-sm text-muted-foreground hover:text-foreground hover:bg-accent"
-                      >
-                        <item.icon className="w-4 h-4" />{item.name}
-                      </NavLink>
-                    ))}
+            {NAV_ITEMS.map((group) => {
+              const SectionIcon = group.items[0].icon;
+              return (
+                <div key={group.section} className="relative group">
+                  <button className="px-4 py-2 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent flex items-center gap-1">
+                    <SectionIcon className="w-4 h-4" />{group.section}
+                  </button>
+                  <div className="absolute top-full left-0 mt-1 w-48 rounded-md border bg-popover shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+                    <div className="p-1">
+                      {group.items.map((item) => {
+                        const ItemIcon = item.icon;
+                        return (
+                          <NavLink
+                            key={item.path}
+                            to={item.path}
+                            className="flex items-center gap-2 px-3 py-2 rounded-sm text-sm text-muted-foreground hover:text-foreground hover:bg-accent"
+                          >
+                            <ItemIcon className="w-4 h-4" />{item.name}
+                          </NavLink>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </nav>
         </div>
 
