@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { format, subHours, subDays } from 'date-fns';
+import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
   AlertCircle,
@@ -26,9 +26,9 @@ import {
   Download,
   Activity,
   ShieldAlert,
-  Megaphone,
-  Send,
-  List
+  Copy,
+  Clipboard,
+  Check
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -44,15 +44,7 @@ import { getOperationalHealthSummary } from '@/lib/supabase/observability-querie
 
 /**
  * AdminBugReportsPage - Sistema completo de relatório de bugs e audit log
- * 
- * Funcionalidades:
- * - Listagem com filtros (data, tipo, severidade, status)
- * - Busca por usuário, mensagem ou rota
- * - Detalhes completos ao clicar
- * - Marcar como resolvido
- * - Excluir relatórios
- * - Estatísticas de bugs
- * - Audit Log em tempo real
+ * Otimizado para análise por IAs
  */
 export default function AdminBugReportsPage() {
   const { toast } = useToast();
@@ -68,19 +60,20 @@ export default function AdminBugReportsPage() {
   // Audit Log States
   const [liveLogs, setLiveLogs] = useState([]);
   const [auditLogLoading, setAuditLogLoading] = useState(false);
+  const [copiedLogId, setCopiedLogId] = useState(null);
   const auditLogRef = useRef(null);
   
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
-  const [dateFilter, setDateFilter] = useState('24h'); // 1h, 24h, 7d, 30d, all
-  const [typeFilter, setTypeFilter] = useState('all'); // all, frontend, backend, api
-  const [statusFilter, setStatusFilter] = useState('all'); // all, resolved, unresolved
-  const [severityFilter, setSeverityFilter] = useState('all'); // all, critical, error, warning
+  const [dateFilter, setDateFilter] = useState('24h');
+  const [typeFilter, setTypeFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [severityFilter, setSeverityFilter] = useState('all');
   
   // Auto-refresh control
   const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(false);
   const lastManualRefreshRef = useRef(Date.now());
-  const AUTO_REFRESH_INTERVAL = 10 * 60 * 1000; // 10 minutos
+  const AUTO_REFRESH_INTERVAL = 10 * 60 * 1000;
   
   // Stats
   const [stats, setStats] = useState({
@@ -103,7 +96,6 @@ export default function AdminBugReportsPage() {
   const loadBugs = useCallback(async (isManual = false) => {
     setIsLoading(true);
     try {
-      // Se for manual, reset o contador de auto-refresh
       if (isManual) {
         lastManualRefreshRef.current = Date.now();
       }
@@ -188,7 +180,7 @@ export default function AdminBugReportsPage() {
     loadAuditLogs();
   }, [loadBugs, loadStats, loadObservability, loadAuditLogs]);
 
-  // Auto-refresh a cada 10 minutos (só se enabled)
+  // Auto-refresh
   useEffect(() => {
     if (!autoRefreshEnabled) return;
 
@@ -200,7 +192,7 @@ export default function AdminBugReportsPage() {
         loadObservability();
         loadAuditLogs();
       }
-    }, 60000); // Verifica a cada minuto
+    }, 60000);
 
     return () => clearInterval(interval);
   }, [autoRefreshEnabled, loadBugs, loadStats, loadObservability, loadAuditLogs]);
@@ -209,7 +201,6 @@ export default function AdminBugReportsPage() {
   useEffect(() => {
     let filtered = [...bugs];
 
-    // Search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(bug => 
@@ -221,19 +212,16 @@ export default function AdminBugReportsPage() {
       );
     }
 
-    // Type filter
     if (typeFilter !== 'all') {
       filtered = filtered.filter(bug => bug.bug_type === typeFilter);
     }
 
-    // Status filter
     if (statusFilter === 'resolved') {
       filtered = filtered.filter(bug => bug.is_resolved === true);
     } else if (statusFilter === 'unresolved') {
       filtered = filtered.filter(bug => bug.is_resolved !== true);
     }
 
-    // Severity filter
     if (severityFilter !== 'all') {
       filtered = filtered.filter(bug => bug.severity === severityFilter);
     }
@@ -241,7 +229,7 @@ export default function AdminBugReportsPage() {
     setFilteredBugs(filtered);
   }, [bugs, searchQuery, typeFilter, statusFilter, severityFilter]);
 
-  // Manual refresh handler - zera o contador de auto-refresh
+  // Manual refresh
   const handleManualRefresh = () => {
     lastManualRefreshRef.current = Date.now();
     loadBugs(true);
@@ -250,8 +238,123 @@ export default function AdminBugReportsPage() {
     loadAuditLogs();
     toast({
       title: 'Atualizado',
-      description: 'Dados recarregados. Contador de auto-refresh zerado.',
+      description: 'Dados recarregados.',
       duration: 2000
+    });
+  };
+
+  // Copy log for AI - FORMATADO PARA IAs ENTENDEREM
+  const copyLogForAI = (log) => {
+    const timestamp = format(new Date(log.timestamp || log.event_timestamp), "yyyy-MM-dd'T'HH:mm:ss");
+    
+    // Formato estruturado para IAs
+    const formattedLog = `---
+🐛 EVENTO DO SISTEMA
+═══════════════════════════════════════
+⏰ Data/Hora: ${timestamp}
+📋 Tipo: ${log.type?.toUpperCase() || 'INFO'}
+👤 Usuário: ${log.user_name || 'Sistema'}
+═══════════════════════════════════════
+
+📝 Mensagem:
+${log.message}
+
+🔗 Rota: ${log.route || 'N/A'}
+🏷️ Tags: ${log.tags || 'N/A'}
+═══════════════════════════════════════
+---`;
+    
+    navigator.clipboard.writeText(formattedLog);
+    setCopiedLogId(log.id || timestamp);
+    toast({
+      title: 'Copiado!',
+      description: 'Evento formatado para análise de IA',
+      duration: 2000
+    });
+    
+    setTimeout(() => setCopiedLogId(null), 2000);
+  };
+
+  // Copy all logs for AI
+  const copyAllLogsForAI = () => {
+    const allLogsFormatted = liveLogs.map((log, index) => {
+      const timestamp = format(new Date(log.timestamp || log.event_timestamp), "yyyy-MM-dd'T'HH:mm:ss");
+      return `[${index + 1}] ${timestamp} | ${log.type?.toUpperCase() || 'INFO'} | ${log.user_name || 'Sistema'} | ${log.message}`;
+    }).join('\n');
+
+    const header = `═══════════════════════════════════════
+📋 HIPOZERO - AUDIT LOG EXPORTADO
+📅 Gerado em: ${format(new Date(), "yyyy-MM-dd'T'HH:mm:ss")}
+📊 Total de eventos: ${liveLogs.length}
+═══════════════════════════════════════
+
+`;
+    
+    navigator.clipboard.writeText(header + allLogsFormatted);
+    toast({
+      title: 'Todos os logs copiados!',
+      description: `${liveLogs.length} eventos prontos para análise`,
+      duration: 3000
+    });
+  };
+
+  // Copy bug details for AI
+  const copyBugForAI = (bug) => {
+    const formattedBug = `---
+🐛 RELATÓRIO DE BUG - HIPOZERO
+═══════════════════════════════════════
+🆔 ID: ${bug.id}
+⏰ Data: ${format(new Date(bug.created_at), "yyyy-MM-dd'T'HH:mm:ss")}
+🎯 Severidade: ${bug.severity?.toUpperCase() || 'ERROR'}
+💻 Tipo: ${bug.bug_type?.toUpperCase() || 'FRONTEND'}
+📊 Status: ${bug.is_resolved ? '✅ RESOLVIDO' : '⚠️ PENDENTE'}
+═══════════════════════════════════════
+
+👤 USUÁRIO AFETADO
+─────────────────
+Nome: ${bug.user_name || 'Anônimo'}
+Email: ${bug.user_email || 'N/A'}
+Tipo: ${bug.user_type || 'N/A'}
+ID: ${bug.user_id || 'N/A'}
+
+🌐 CONTEXTO
+──────────
+Rota: ${bug.route || 'N/A'}
+Device: ${bug.user_agent?.includes('Mobile') ? '📱 Mobile' : '💻 Desktop'}
+User Agent: ${bug.user_agent || 'N/A'}
+
+❌ MENSAGEM DO ERRO
+──────────────────
+${bug.error_message || 'Sem mensagem'}
+
+📜 STACK TRACE
+──────────────
+${bug.stack_trace || 'Não disponível'}
+
+💻 CONSOLE LOG (${(bug.console_log || []).length} entradas)
+─────────────────────────────────────
+${(bug.console_log || []).map((entry, i) => 
+  `[${format(new Date(entry.ts), 'HH:mm:ss')}] [${entry.level?.toUpperCase()}] ${typeof entry.args === 'string' ? entry.args : JSON.stringify(entry.args)}`
+).join('\n')}
+
+📎 METADADOS
+────────────
+${JSON.stringify(bug.metadata, null, 2)}
+
+📁 ARQUIVO FONTE
+────────────────
+${bug.source_file || 'N/A'}${bug.line_number ? `:${bug.line_number}` : ''}${bug.column_number ? `:${bug.column_number}` : ''}
+
+═══════════════════════════════════════
+FIM DO RELATÓRIO
+═══════════════════════════════════════
+---`;
+    
+    navigator.clipboard.writeText(formattedBug);
+    toast({
+      title: 'Bug copiado!',
+      description: 'Pronto para análise de IA',
+      duration: 3000
     });
   };
 
@@ -384,11 +487,11 @@ export default function AdminBugReportsPage() {
   const getLogIcon = (type) => {
     switch (type) {
       case 'error':
-        return <AlertCircle className="w-3.5 h-3.5 text-red-500" />;
+        return <AlertCircle className="w-4 h-4 text-red-500" />;
       case 'warning':
-        return <AlertTriangle className="w-3.5 h-3.5 text-yellow-500" />;
+        return <AlertTriangle className="w-4 h-4 text-yellow-500" />;
       default:
-        return <Info className="w-3.5 h-3.5 text-blue-500" />;
+        return <Info className="w-4 h-4 text-blue-500" />;
     }
   };
 
@@ -504,7 +607,6 @@ export default function AdminBugReportsPage() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-                {/* Search */}
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
@@ -515,11 +617,10 @@ export default function AdminBugReportsPage() {
                   />
                 </div>
 
-                {/* Date Filter */}
                 <select
                   value={dateFilter}
                   onChange={(e) => setDateFilter(e.target.value)}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 >
                   <option value="1h">Última hora</option>
                   <option value="24h">Últimas 24h</option>
@@ -528,11 +629,10 @@ export default function AdminBugReportsPage() {
                   <option value="all">Todo o período</option>
                 </select>
 
-                {/* Type Filter */}
                 <select
                   value={typeFilter}
                   onChange={(e) => setTypeFilter(e.target.value)}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 >
                   <option value="all">Todos os tipos</option>
                   <option value="frontend">Frontend</option>
@@ -540,22 +640,20 @@ export default function AdminBugReportsPage() {
                   <option value="api">API</option>
                 </select>
 
-                {/* Status Filter */}
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 >
                   <option value="all">Todos os status</option>
                   <option value="unresolved">Pendentes</option>
                   <option value="resolved">Resolvidos</option>
                 </select>
 
-                {/* Severity Filter */}
                 <select
                   value={severityFilter}
                   onChange={(e) => setSeverityFilter(e.target.value)}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 >
                   <option value="all">Todas severidades</option>
                   <option value="critical">Crítico</option>
@@ -575,7 +673,7 @@ export default function AdminBugReportsPage() {
                 <Badge variant="secondary" className="ml-2">{filteredBugs.length}</Badge>
               </CardTitle>
               <CardDescription>
-                Lista de todos os erros reportados pelos usuários
+                Clique em um bug para ver detalhes ou use o botão de copiar para análise de IA
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -587,42 +685,37 @@ export default function AdminBugReportsPage() {
                 <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                   <CheckCircle className="w-12 h-12 mb-4 text-green-500" />
                   <p className="text-lg font-medium">Nenhum bug encontrado</p>
-                  <p className="text-sm">Os filtros podem estar muito restritivos</p>
                 </div>
               ) : (
                 <div className="space-y-3 max-h-[600px] overflow-y-auto">
                   {filteredBugs.map((bug) => (
                     <div
                       key={bug.id}
-                      className={`p-4 rounded-lg border bg-card hover:bg-muted/30 transition-colors cursor-pointer ${
+                      className={`p-4 rounded-lg border bg-card hover:bg-muted/30 transition-colors ${
                         bug.is_resolved ? 'opacity-60 border-dashed' : 'border-l-4 border-l-red-500'
                       }`}
-                      onClick={() => handleOpenBugDetails(bug)}
                     >
                       <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1 min-w-0">
-                          {/* Header Row */}
+                        <div className="flex-1 min-w-0 cursor-pointer" onClick={() => handleOpenBugDetails(bug)}>
                           <div className="flex items-center gap-2 flex-wrap mb-2">
                             {getSeverityBadge(bug.severity)}
                             {getTypeBadge(bug.bug_type)}
                             {getStatusBadge(bug.is_resolved)}
                           </div>
 
-                          {/* Error Message */}
                           <p className="text-sm font-medium text-foreground line-clamp-2">
                             {bug.error_message || 'Erro sem mensagem'}
                           </p>
 
-                          {/* Metadata Row */}
                           <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground flex-wrap">
                             <span className="flex items-center gap-1">
                               <Clock className="w-3 h-3" />
-                              {format(new Date(bug.created_at), "dd/MM/yyyy HH:mm:ss", { locale: ptBR })}
+                              {format(new Date(bug.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
                             </span>
                             
                             <span className="flex items-center gap-1">
                               <Globe className="w-3 h-3" />
-                              {bug.route || 'Rota desconhecida'}
+                              {bug.route || 'N/A'}
                             </span>
 
                             {bug.user_name && (
@@ -634,51 +727,42 @@ export default function AdminBugReportsPage() {
                           </div>
                         </div>
 
-                        {/* Actions */}
                         <div className="flex items-center gap-2 flex-shrink-0">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => copyBugForAI(bug)}
+                            className="gap-1 bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-700"
+                            title="Copiar para análise de IA"
+                          >
+                            <Clipboard className="w-4 h-4" />
+                          </Button>
+                          
                           {!bug.is_resolved && (
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleMarkResolved(bug.id);
-                              }}
-                              className="gap-1 text-green-600 hover:text-green-700 hover:bg-green-50"
+                              onClick={() => handleMarkResolved(bug.id)}
+                              className="gap-1 text-green-600 hover:bg-green-50"
                             >
                               <CheckCircle className="w-4 h-4" />
                             </Button>
                           )}
+                          
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleExportBug(bug);
-                            }}
-                            className="gap-1"
-                          >
-                            <Download className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleOpenBugDetails(bug);
-                            }}
+                            onClick={() => handleOpenBugDetails(bug)}
                             className="gap-1"
                           >
                             <Eye className="w-4 h-4" />
                           </Button>
+                          
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteBug(bug.id);
-                            }}
-                            className="gap-1 text-red-600 hover:text-red-700 hover:bg-red-50"
+                            onClick={() => handleDeleteBug(bug.id)}
+                            className="gap-1 text-red-600 hover:bg-red-50"
                           >
                             <Trash2 className="w-4 h-4" />
                           </Button>
@@ -703,53 +787,111 @@ export default function AdminBugReportsPage() {
                     Live Audit Log
                   </CardTitle>
                   <CardDescription>
-                    Eventos do sistema em tempo real - últimas 100 entradas
+                    Eventos formatados para fácil cópia e análise por IAs
                   </CardDescription>
                 </div>
-                <Button variant="outline" size="sm" onClick={loadAuditLogs} disabled={auditLogLoading} className="gap-2">
-                  <RefreshCw className={`w-4 h-4 ${auditLogLoading ? 'animate-spin' : ''}`} />
-                  Atualizar
-                </Button>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={copyAllLogsForAI}
+                    className="gap-2 bg-blue-50 hover:bg-blue-100 border-blue-200"
+                  >
+                    <Clipboard className="w-4 h-4" />
+                    Copiar Todos para IA
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={loadAuditLogs} disabled={auditLogLoading} className="gap-2">
+                    <RefreshCw className={`w-4 h-4 ${auditLogLoading ? 'animate-spin' : ''}`} />
+                    Atualizar
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
               <div 
                 ref={auditLogRef}
-                className="bg-slate-950 rounded-lg p-4 h-[600px] overflow-y-auto font-mono text-xs"
+                className="bg-slate-950 rounded-lg p-4 h-[600px] overflow-y-auto"
               >
                 {auditLogLoading && liveLogs.length === 0 ? (
                   <div className="flex items-center justify-center h-full">
                     <Loader2 className="w-8 h-8 animate-spin text-primary" />
                   </div>
                 ) : liveLogs.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-                    <Terminal className="w-8 h-8 mb-2 opacity-50" />
-                    <p>Aguardando eventos...</p>
+                  <div className="flex flex-col items-center justify-center h-full text-slate-400">
+                    <Terminal className="w-12 h-12 mb-4 opacity-50" />
+                    <p className="text-lg">Nenhum evento registrado</p>
+                    <p className="text-sm mt-2">Os eventos aparecerão aqui em tempo real</p>
                   </div>
                 ) : (
-                  <div className="space-y-2">
+                  <div className="space-y-3 font-mono text-xs">
                     {liveLogs.map((log, index) => (
                       <div
                         key={log.id || index}
-                        className="flex items-start gap-3 p-2 rounded hover:bg-slate-900/50 transition-colors"
+                        className={`p-4 rounded-lg border transition-all ${
+                          log.type === 'error' 
+                            ? 'bg-red-950/50 border-red-800' 
+                            : log.type === 'warning'
+                            ? 'bg-yellow-950/50 border-yellow-800'
+                            : 'bg-slate-900 border-slate-700'
+                        }`}
                       >
-                        <div className="mt-0.5">
-                          {getLogIcon(log.type)}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="text-slate-400">{formatLogTime(log.timestamp || log.event_timestamp)}</span>
-                            <Badge 
-                              variant={log.type === 'error' ? 'destructive' : log.type === 'warning' ? 'warning' : 'secondary'}
-                              className="text-xs"
-                            >
-                              {log.type?.toUpperCase() || 'INFO'}
-                            </Badge>
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1">
+                            {/* Header */}
+                            <div className="flex items-center gap-2 mb-2 flex-wrap">
+                              <span className="text-slate-400 font-bold">
+                                #{String(index + 1).padStart(3, '0')}
+                              </span>
+                              <span className="bg-slate-700 px-2 py-0.5 rounded text-slate-200">
+                                {formatLogTime(log.timestamp || log.event_timestamp)}
+                              </span>
+                              <span className={`px-2 py-0.5 rounded font-bold ${
+                                log.type === 'error' 
+                                  ? 'bg-red-600 text-white' 
+                                  : log.type === 'warning'
+                                  ? 'bg-yellow-600 text-black'
+                                  : 'bg-blue-600 text-white'
+                              }`}>
+                                {log.type?.toUpperCase() || 'INFO'}
+                              </span>
+                            </div>
+                            
+                            {/* Message */}
+                            <p className="text-slate-200 mb-2 whitespace-pre-wrap">
+                              {log.message}
+                            </p>
+                            
+                            {/* Metadata */}
+                            <div className="flex items-center gap-4 text-slate-400 text-[10px] flex-wrap">
+                              {log.user_name && (
+                                <span className="flex items-center gap-1">
+                                  <User className="w-3 h-3" />
+                                  {log.user_name}
+                                </span>
+                              )}
+                              {log.route && (
+                                <span className="flex items-center gap-1">
+                                  <Globe className="w-3 h-3" />
+                                  {log.route}
+                                </span>
+                              )}
+                            </div>
                           </div>
-                          <p className="text-slate-300">{log.message}</p>
-                          {log.user_name && (
-                            <p className="text-slate-500 text-[10px] mt-1">Usuário: {log.user_name}</p>
-                          )}
+                          
+                          {/* Copy Button */}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => copyLogForAI(log)}
+                            className={`gap-1 ${copiedLogId === (log.id || index) ? 'text-green-400' : 'text-slate-400 hover:text-white'}`}
+                            title="Copiar para análise de IA"
+                          >
+                            {copiedLogId === (log.id || index) ? (
+                              <Check className="w-4 h-4" />
+                            ) : (
+                              <Copy className="w-4 h-4" />
+                            )}
+                          </Button>
                         </div>
                       </div>
                     ))}
@@ -840,13 +982,25 @@ export default function AdminBugReportsPage() {
       <Dialog open={showDetailsModal} onOpenChange={setShowDetailsModal}>
         <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Bug className="w-5 h-5 text-destructive" />
-              Detalhes do Bug #{selectedBug?.id}
-            </DialogTitle>
-            <DialogDescription>
-              Informações completas do erro reportado
-            </DialogDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <DialogTitle className="flex items-center gap-2">
+                  <Bug className="w-5 h-5 text-destructive" />
+                  Detalhes do Bug #{selectedBug?.id}
+                </DialogTitle>
+                <DialogDescription>
+                  Informações completas para debugging
+                </DialogDescription>
+              </div>
+              <Button
+                variant="outline"
+                onClick={() => copyBugForAI(selectedBug)}
+                className="gap-2 bg-blue-50 hover:bg-blue-100 border-blue-200"
+              >
+                <Clipboard className="w-4 h-4" />
+                Copiar para IA
+              </Button>
+            </div>
           </DialogHeader>
 
           {isLoadingDetails ? (
@@ -889,7 +1043,6 @@ export default function AdminBugReportsPage() {
 
                 {/* Context Info Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Time */}
                   <div>
                     <h3 className="text-sm font-semibold text-muted-foreground mb-2 flex items-center gap-2">
                       <Clock className="w-4 h-4" /> Data e Hora
@@ -898,13 +1051,9 @@ export default function AdminBugReportsPage() {
                       <p className="text-sm font-medium">
                         {format(new Date(selectedBug.created_at), "dd 'de' MMMM 'de' yyyy, HH:mm:ss", { locale: ptBR })}
                       </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Há {Math.round((Date.now() - new Date(selectedBug.created_at).getTime()) / 60000)} minutos
-                      </p>
                     </div>
                   </div>
 
-                  {/* User */}
                   <div>
                     <h3 className="text-sm font-semibold text-muted-foreground mb-2 flex items-center gap-2">
                       <User className="w-4 h-4" /> Usuário
@@ -913,23 +1062,20 @@ export default function AdminBugReportsPage() {
                       <p className="text-sm font-medium">{selectedBug.user_name || 'Anônimo'}</p>
                       <p className="text-xs text-muted-foreground">{selectedBug.user_email || 'Sem e-mail'}</p>
                       <p className="text-xs text-muted-foreground">
-                        Tipo: {selectedBug.user_type || 'Desconhecido'} • 
-                        ID: {selectedBug.user_id || 'N/A'}
+                        Tipo: {selectedBug.user_type || 'Desconhecido'}
                       </p>
                     </div>
                   </div>
 
-                  {/* Route */}
                   <div>
                     <h3 className="text-sm font-semibold text-muted-foreground mb-2 flex items-center gap-2">
                       <Globe className="w-4 h-4" /> Rota / URL
                     </h3>
                     <div className="p-3 bg-muted rounded-lg">
-                      <p className="text-sm font-mono break-all">{selectedBug.route || 'Rota desconhecida'}</p>
+                      <p className="text-sm font-mono break-all">{selectedBug.route || 'N/A'}</p>
                     </div>
                   </div>
 
-                  {/* Device */}
                   <div>
                     <h3 className="text-sm font-semibold text-muted-foreground mb-2 flex items-center gap-2">
                       <Smartphone className="w-4 h-4" /> Dispositivo
@@ -939,7 +1085,7 @@ export default function AdminBugReportsPage() {
                         {selectedBug.user_agent?.includes('Mobile') ? '📱 Mobile' : '💻 Desktop'}
                       </p>
                       <p className="text-xs text-muted-foreground mt-1 truncate">
-                        {selectedBug.user_agent || 'User agent não disponível'}
+                        {selectedBug.user_agent || 'N/A'}
                       </p>
                     </div>
                   </div>
@@ -985,20 +1131,6 @@ export default function AdminBugReportsPage() {
                   </div>
                 )}
 
-                {/* Metadata */}
-                {selectedBug.metadata && Object.keys(selectedBug.metadata).length > 0 && (
-                  <div>
-                    <h3 className="text-sm font-semibold text-muted-foreground mb-2 flex items-center gap-2">
-                      <FileCode className="w-4 h-4" /> Metadados Adicionais
-                    </h3>
-                    <div className="p-4 bg-muted rounded-lg overflow-auto max-h-[300px]">
-                      <pre className="text-xs font-mono whitespace-pre-wrap">
-                        {JSON.stringify(selectedBug.metadata, null, 2)}
-                      </pre>
-                    </div>
-                  </div>
-                )}
-
                 {/* Additional Actions */}
                 <div className="flex items-center gap-3 pt-4 border-t">
                   <Button
@@ -1010,12 +1142,20 @@ export default function AdminBugReportsPage() {
                     Exportar JSON
                   </Button>
                   <Button
+                    variant="outline"
+                    onClick={() => copyBugForAI(selectedBug)}
+                    className="gap-2 bg-blue-50 hover:bg-blue-100 border-blue-200"
+                  >
+                    <Clipboard className="w-4 h-4" />
+                    Copiar para IA
+                  </Button>
+                  <Button
                     variant="destructive"
                     onClick={() => handleDeleteBug(selectedBug.id)}
                     className="gap-2 ml-auto"
                   >
                     <Trash2 className="w-4 h-4" />
-                    Excluir Relatório
+                    Excluir
                   </Button>
                 </div>
               </div>
