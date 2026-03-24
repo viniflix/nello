@@ -2,7 +2,7 @@ import React, { useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { patientRoute } from '@/lib/utils/patientRoutes';
 import {
-    MoreVertical, Archive, Trash2, Loader2, AlertCircle, FileText
+    MoreVertical, Archive, Trash2, Loader2, AlertCircle, FileText, Copy, Check
 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -38,6 +38,7 @@ const PatientCard = ({ patient, isOnline, onArchive, onDelete }) => {
     const [isCheckingData, setIsCheckingData] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [showArchiveModal, setShowArchiveModal] = useState(false);
+    const [copied, setCopied] = useState(false);
 
     // B1: cache do resultado via ref para não repetir a query
     const deleteCheckRef = useRef(null);
@@ -69,6 +70,15 @@ const PatientCard = ({ patient, isOnline, onArchive, onDelete }) => {
         ? Math.floor((Date.now() - new Date(patient.created_at)) / (1000 * 60 * 60 * 24))
         : null;
 
+    const copyInviteCode = (e) => {
+        e.stopPropagation();
+        if (patient.patient_invite_code) {
+            navigator.clipboard.writeText(patient.patient_invite_code);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        }
+    };
+
     return (
         <>
             <div
@@ -98,9 +108,14 @@ const PatientCard = ({ patient, isOnline, onArchive, onDelete }) => {
                                 Arquivado
                             </Badge>
                         )}
-                        {isPending && (
+                        {isPending && !patient.patient_invite_code && (
                             <Badge variant="outline" className="h-4 text-[9px] px-1.5 bg-amber-100 text-amber-800 border-amber-200 uppercase tracking-wider dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-700">
-                                Convite Pendente
+                                Convite Enviado
+                            </Badge>
+                        )}
+                        {patient.patient_invite_code && !isArchived && (
+                            <Badge variant="outline" className="h-4 text-[9px] px-1.5 bg-sky-100 text-sky-800 border-sky-200 uppercase tracking-wider dark:bg-sky-900/30 dark:text-sky-400 dark:border-sky-700">
+                                Perfil Offline
                             </Badge>
                         )}
                     </div>
@@ -120,6 +135,15 @@ const PatientCard = ({ patient, isOnline, onArchive, onDelete }) => {
                                     <span className="inline-flex items-center text-[10px] font-medium text-violet-700 bg-violet-500/10 border border-violet-500/20 px-1.5 py-0.5 rounded-full dark:text-violet-400">
                                         Novo paciente
                                     </span>
+                                )}
+                                {patient.patient_invite_code && (
+                                    <button 
+                                        onClick={copyInviteCode}
+                                        className="inline-flex items-center gap-1.5 text-[10px] font-bold text-sky-700 bg-sky-50 border border-sky-200 px-2 py-0.5 rounded-md hover:bg-sky-100 transition-colors"
+                                    >
+                                        ID: {patient.patient_invite_code}
+                                        {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3 opacity-60" />}
+                                    </button>
                                 )}
                                 {patient.phone && (
                                     <span className="inline-flex items-center text-[10px] text-muted-foreground bg-muted/60 border border-border/40 px-1.5 py-0.5 rounded-full truncate max-w-[120px]">

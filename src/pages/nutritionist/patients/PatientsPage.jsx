@@ -141,6 +141,7 @@ const PatientsPage = () => {
     const [activeChip,          setActiveChip]          = useState(null); // 'new30' | 'pending'
     const [showAddPatientModal, setShowAddPatientModal] = useState(false);
     const [showArchivedModal,   setShowArchivedModal]   = useState(false);
+    const [copiedInvite,        setCopiedInvite]        = useState(false);
 
     // Persist state changes
     useEffect(() => { Object.assign(sessionStorage, { [SESSION_KEY]: JSON.stringify({ sortOrder, filterStatus, viewMode }) }); }, [sortOrder, filterStatus, viewMode]);
@@ -180,6 +181,15 @@ const PatientsPage = () => {
         const { success } = await hardDeletePatient(patient.id);
         if (success) { toast({ title: "Conta Excluída", variant: "success" }); fetchPatients(); }
         else toast({ title: "Erro ao excluir", variant: "destructive" });
+    };
+
+    const copyNutritionistInvite = () => {
+        if (user?.profile?.invite_code) {
+            navigator.clipboard.writeText(user.profile.invite_code);
+            setCopiedInvite(true);
+            toast({ title: "Código copiado!", description: "Compartilhe este código para novos pacientes se vincularem a você." });
+            setTimeout(() => setCopiedInvite(false), 2000);
+        }
     };
 
     // ── Derived data ────────────────────────────────────────────────────────
@@ -260,6 +270,17 @@ const PatientsPage = () => {
                             <h1 className="text-2xl md:text-3xl font-bold font-heading uppercase tracking-wide text-primary">
                                 Meus Pacientes <span className="text-muted-foreground/60 mx-1">•</span> <span className="text-foreground">{stats.active}</span>
                             </h1>
+                            {user?.profile?.invite_code && (
+                                <Badge 
+                                    variant="secondary" 
+                                    className="cursor-pointer hover:bg-secondary/80 transition-all font-mono text-[11px] gap-1 px-2.5 py-1 hidden sm:flex items-center border border-primary/10 shadow-sm"
+                                    onClick={copyNutritionistInvite}
+                                >
+                                    <Users className="w-3 h-3 text-primary" />
+                                    CONVITE: {user.profile.invite_code}
+                                    {copiedInvite ? <Check className="w-3 h-3 text-green-600" /> : <Copy className="w-3 h-3 opacity-40" />}
+                                </Badge>
+                            )}
                         </div>
                         <p className="text-sm text-muted-foreground mt-1">Gerencie acompanhamentos, consultas, convites e acesse o histórico clínico.</p>
                     </div>

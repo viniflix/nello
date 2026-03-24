@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Eye, EyeOff, Mail, Lock, User, UserCircle, Scale, Ruler, Target } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, User, UserCircle, Scale, Ruler, Target, Ticket } from 'lucide-react';
 import { DateInputWithCalendar } from '@/components/ui/date-input';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,7 +23,8 @@ export default function RegisterPage() {
     gender: '',
     height: '',
     weight: '',
-    goal: ''
+    goal: '',
+    inviteCode: ''
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -93,6 +94,9 @@ export default function RegisterPage() {
         variant: "destructive",
       });
     } else {
+      if (formData.inviteCode) {
+        localStorage.setItem('pending_invite_code', formData.inviteCode);
+      }
       toast({
         title: "Cadastro realizado com sucesso!",
         description: "Enviamos um link de confirmação para o seu e-mail.",
@@ -255,20 +259,23 @@ export default function RegisterPage() {
                       </div>
 
                       <div className="space-y-2 sm:col-span-2">
-                        <Label htmlFor="goal" className="text-sm font-medium">Objetivo</Label>
+                        <Label htmlFor="inviteCode" className="text-sm font-medium">
+                          Código de Convite <span className="text-xs text-muted-foreground">(opcional)</span>
+                        </Label>
                         <div className="relative">
-                          <Target className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground z-10 pointer-events-none" />
-                          <Select value={formData.goal} onValueChange={(value) => handleInputChange('goal', value)} required>
-                            <SelectTrigger className="pl-10 h-10">
-                              <SelectValue placeholder="Selecione seu objetivo" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="lose">Perder peso</SelectItem>
-                              <SelectItem value="maintain">Manter peso</SelectItem>
-                              <SelectItem value="gain">Ganhar peso</SelectItem>
-                            </SelectContent>
-                          </Select>
+                          <Ticket className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                          <Input
+                            id="inviteCode"
+                            type="text"
+                            placeholder="Ex: ABCD-1234"
+                            value={formData.inviteCode}
+                            onChange={(e) => handleInputChange('inviteCode', e.target.value.toUpperCase())}
+                            className="pl-10 h-10"
+                          />
                         </div>
+                        <p className="text-[10px] text-muted-foreground px-1">
+                          Se o seu nutricionista te passou um código, insira-o aqui para se vincular automaticamente.
+                        </p>
                       </div>
                     </div>
                   </motion.div>

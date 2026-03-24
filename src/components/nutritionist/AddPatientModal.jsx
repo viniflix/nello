@@ -14,9 +14,12 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"; 
+import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { 
     Calendar as CalendarIcon, Loader2, User, Mail, Phone, Users, FileText, 
-    Briefcase, Heart, PenSquare, MapPin, Map, Hash, Building2, Home, Building, Landmark
+    Briefcase, Heart, PenSquare, MapPin, Map, Hash, Building2, Home, Building, Landmark,
+    Smartphone, UserCircle, Layout, Lock, Info, CheckCircle2, UserPlus, ToggleLeft, ToggleRight
 } from "lucide-react";
 import { format, parse } from "date-fns";
 import { ptBR } from 'date-fns/locale';
@@ -30,30 +33,23 @@ const IconInputWrapper = ({ icon: Icon, children }) => (
     </div>
 );
 
-
-const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded }) => {
-    const { user } = useAuth(); 
-    const { toast } = useToast(); 
-    const [step, setStep] = useState("1");
-    
-    const { formData, updateField, resetForm, fillAddress } = usePatientFormStore();
-    const [loading, setLoading] = useState(false); 
-    const [cepLoading, setCepLoading] = useState(false); 
-    
-    // --- ALTERAÇÕES DO CALENDÁRIO ---
+// Assuming DateInputWithCalendar is a new component that needs to be defined or imported
+// For the purpose of this edit, I'll create a placeholder that mimics the original functionality
+// but uses the new props structure implied by the diff.
+const DateInputWithCalendar = ({ value, onChange, required }) => {
     const [localDateString, setLocalDateString] = useState('');
-    const [calendarOpen, setCalendarOpen] = useState(false); // <-- NOVA LINHA: Controla o Popover
+    const [calendarOpen, setCalendarOpen] = useState(false);
 
     useEffect(() => {
-        if (formData.birth_date) {
-            const formattedDate = format(formData.birth_date, 'dd/MM/yyyy');
+        if (value) {
+            const formattedDate = format(value, 'dd/MM/yyyy');
             if (localDateString !== formattedDate) {
                 setLocalDateString(formattedDate);
             }
         } else {
             setLocalDateString('');
         }
-    }, [formData.birth_date]); 
+    }, [value]);
 
     const handleDateInputChange = (e) => {
         const dateStr = e.target.value;
@@ -63,31 +59,121 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded }) => {
             try {
                 const parsedDate = parse(dateStr, 'dd/MM/yyyy', new Date());
                 if (!isNaN(parsedDate) && parsedDate.getFullYear() > 1900 && parsedDate < new Date()) {
-                    updateField('birth_date', parsedDate);
+                    onChange(parsedDate);
                 } else {
-                    updateField('birth_date', null);
+                    onChange(null);
                 }
             } catch {
-                updateField('birth_date', null);
+                onChange(null);
             }
         } else if (dateStr.length === 0) {
-            updateField('birth_date', null);
+            onChange(null);
         }
     };
 
     const handleDateSelect = (date) => {
-        updateField('birth_date', date); 
+        onChange(date); 
         setLocalDateString(date ? format(date, 'dd/MM/yyyy') : ''); 
-        setCalendarOpen(false); // <-- NOVA LINHA: Fecha o calendário APÓS selecionar
+        setCalendarOpen(false);
     };
+
+    return (
+        <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+            <PopoverTrigger asChild>
+                <div className="flex-grow">
+                    <IconInputWrapper icon={CalendarIcon}>
+                        <InputMask
+                            mask="99/99/9999"
+                            placeholder="dd/mm/aaaa"
+                            value={localDateString}
+                            onChange={handleDateInputChange}
+                        >
+                            {(inputProps) => <Input {...inputProps} id="birth_date" className="bg-muted shadow-inner pl-10" required={required} />}
+                        </InputMask>
+                    </IconInputWrapper>
+                </div>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                    mode="single"
+                    selected={value}
+                    onSelect={handleDateSelect}
+                    initialFocus
+                    locale={ptBR}
+                    captionLayout="dropdown-buttons"
+                    fromYear={1900}
+                    toYear={new Date().getFullYear()}
+                />
+            </PopoverContent>
+        </Popover>
+    );
+};
+
+
+const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded }) => {
+    const { user } = useAuth(); 
+    const { toast } = useToast(); 
+    const [step, setStep] = useState("1");
+    
+    const { formData, updateField, resetForm, fillAddress } = usePatientFormStore();
+    const [loading, setLoading] = useState(false); 
+    const [cepLoading, setCepLoading] = useState(false); 
+    const [sendInvite, setSendInvite] = useState(true);
+    const [isOffline, setIsOffline] = useState(false);
+    
+    // --- ALTERAÇÕES DO CALENDÁRIO ---
+    // These local states are now managed within DateInputWithCalendar component
+    // const [localDateString, setLocalDateString] = useState('');
+    // const [calendarOpen, setCalendarOpen] = useState(false); 
+
+    useEffect(() => {
+        // This effect is now handled by the DateInputWithCalendar component's internal useEffect
+        // if (formData.birth_date) {
+        //     const formattedDate = format(formData.birth_date, 'dd/MM/yyyy');
+        //     if (localDateString !== formattedDate) {
+        //         setLocalDateString(formattedDate);
+        //     }
+        // } else {
+        //     setLocalDateString('');
+        // }
+    }, [formData.birth_date]); 
+
+    // These handlers are now part of the DateInputWithCalendar component
+    // const handleDateInputChange = (e) => {
+    //     const dateStr = e.target.value;
+    //     setLocalDateString(dateStr); 
+
+    //     if (dateStr.length === 10) {
+    //         try {
+    //             const parsedDate = parse(dateStr, 'dd/MM/yyyy', new Date());
+    //             if (!isNaN(parsedDate) && parsedDate.getFullYear() > 1900 && parsedDate < new Date()) {
+    //                 updateField('birth_date', parsedDate);
+    //             } else {
+    //                 updateField('birth_date', null);
+    //             }
+    //         } catch {
+    //             updateField('birth_date', null);
+    //         }
+    //     } else if (dateStr.length === 0) {
+    //         updateField('birth_date', null);
+    //     }
+    // };
+
+    // const handleDateSelect = (date) => {
+    //     updateField('birth_date', date); 
+    //     setLocalDateString(date ? format(date, 'dd/MM/yyyy') : ''); 
+    //     setCalendarOpen(false);
+    // };
     // --- FIM DAS ALTERAÇÕES ---
 
     const handleClose = () => {
         setIsOpen(false);
         resetForm();
         setStep("1");
-        setLocalDateString('');
-        setCalendarOpen(false); // <-- NOVA LINHA: Reseta o estado do calendário
+        // setLocalDateString(''); // No longer needed here
+        // setCalendarOpen(false); // No longer needed here
+        setIsOffline(false);
+        setSendInvite(true);
     };
 
     // (handleCepBlur ... sem mudanças)
@@ -116,9 +202,19 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded }) => {
             toast({ title: "Erro", description: "Você não está logado.", variant: "destructive" });
             return;
         }
-        if (!formData.birth_date) {
-            toast({ title: "Campo obrigatório", description: "Data de Nascimento é obrigatória.", variant: "destructive" });
+        if (!formData.name) {
+            toast({ title: "Campo obrigatório", description: "Nome é obrigatório.", variant: "destructive" });
             setStep("1");
+            return;
+        }
+
+        if (!isOffline && (!formData.email || !formData.birth_date)) {
+            toast({
+                title: "Campos obrigatórios",
+                description: "Para convidar um paciente digitalmente, o e-mail e a data de nascimento são obrigatórios.",
+                variant: "destructive",
+            });
+            setLoading(false);
             return;
         }
 
@@ -130,11 +226,20 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded }) => {
             city: formData.city, state: formData.state,
         } : null;
 
+        const defaultPassword = formData.birth_date 
+            ? format(formData.birth_date, 'ddMMyy') 
+            : Math.random().toString(36).slice(-8);
+
         const metadata = {
-            name: formData.name, user_type: 'patient', nutritionist_id: user.id, 
-            birth_date: format(formData.birth_date, 'yyyy-MM-dd'),
-            gender: formData.gender, phone: formData.phone, cpf: formData.cpf,
-            occupation: formData.occupation, civil_status: formData.civil_status,
+            name: formData.name, 
+            user_type: 'patient', 
+            nutritionist_id: user.id, 
+            birth_date: formData.birth_date ? format(formData.birth_date, 'yyyy-MM-dd') : null,
+            gender: formData.gender, 
+            phone: formData.phone, 
+            cpf: formData.cpf,
+            occupation: formData.occupation, 
+            civil_status: formData.civil_status,
             observations: formData.observations,
             needs_password_reset: true
         };
@@ -143,40 +248,49 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded }) => {
             metadata.address = addressData;
         }
         
-        const redirectTo = `${window.location.origin}/patient`;
-        const defaultPassword = format(formData.birth_date, 'ddMMyy');
+        const redirectTo = `${window.location.origin}/login`;
 
         const body = {
-            email: formData.email,
+            email: isOffline ? null : formData.email,
             metadata: metadata,
             redirectTo: redirectTo,
-            defaultPassword: defaultPassword
+            defaultPassword: defaultPassword,
+            isOffline: isOffline,
+            sendInvite: sendInvite
         };
 
         try {
             // Chama a Edge Function 'create-patient'
-            const { data, error } = await supabase.functions.invoke('create-patient', {
+            const { data, error: functionError } = await supabase.functions.invoke('create-patient', {
                 body: JSON.stringify(body)
             });
 
-            if (error) {
-                if (data && data.error) {
-                    throw new Error(data.error);
-                }
-                const errorData = await error.context.json();
+            if (functionError) {
+                const errorData = functionError.context ? await functionError.context.json() : null;
                 if (errorData && errorData.error) {
                     throw new Error(errorData.error);
                 }
-                throw error;
+                throw functionError;
             }
 
-            toast({ title: "Sucesso!", description: `Convite enviado para ${formData.name}.`, variant: "success" });
+            if (isOffline && data?.data?.inviteCode) {
+                toast({
+                    title: "Paciente offline criado!",
+                    description: `Código de acesso: ${data.data.inviteCode}. Salve este código para o paciente resgatar o perfil depois.`,
+                    duration: 10000,
+                });
+            } else if (!isOffline && sendInvite) {
+                toast({ title: "Sucesso!", description: `Convite enviado para ${formData.name}.`, variant: "success" });
+            } else {
+                toast({ title: "Sucesso!", description: `Paciente ${formData.name} adicionado.`, variant: "success" });
+            }
+            
             resetForm(); 
             onPatientAdded(); // Atualiza a lista na página
             handleClose(); 
 
         } catch (error) {
-            toast({ title: "Erro ao enviar convite", description: toPortugueseError(error, 'Não foi possível enviar o convite.'), variant: "destructive" });
+            toast({ title: "Erro ao adicionar paciente", description: toPortugueseError(error, 'Não foi possível adicionar o paciente.'), variant: "destructive" });
         } finally {
             setLoading(false);
         }
@@ -209,12 +323,20 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded }) => {
                                 </IconInputWrapper>
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="email" className="font-semibold">
-                                    Email <span className="text-destructive font-normal">(Obrigatório)</span>
+                                <Label htmlFor="email" className="flex items-center gap-2">
+                                    <Mail className="w-4 h-4 text-muted-foreground" />
+                                    E-mail {!isOffline && <span className="text-destructive">*</span>}
                                 </Label>
-                                <IconInputWrapper icon={Mail}>
-                                    <Input id="email" type="email" value={formData.email} onChange={(e) => updateField('email', e.target.value)} className="bg-muted shadow-inner pl-10" />
-                                </IconInputWrapper>
+                                <Input
+                                    id="email"
+                                    type="email"
+                                    placeholder="exemplo@email.com"
+                                    value={formData.email}
+                                    onChange={(e) => updateField('email', e.target.value)}
+                                    className="h-10 bg-muted shadow-inner pl-10"
+                                    required={!isOffline}
+                                    disabled={isOffline}
+                                />
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="phone" className="font-semibold">Telefone</Label>
@@ -231,29 +353,61 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded }) => {
                             
                             {/* --- INÍCIO DO BLOCO JSX DA DATA (ALTERADO) --- */}
                             <div className="space-y-2">
-                                <Label htmlFor="birth_date" className="font-semibold">
-                                     Data de Nascimento <span className="text-destructive font-normal">(Obrigatório)</span>
+                                <Label htmlFor="birth_date" className="flex items-center gap-2">
+                                     <CalendarIcon className="w-4 h-4 text-muted-foreground" />
+                                     Data de Nascimento {!isOffline && <span className="text-destructive">*</span>}
                                 </Label>
-                                <div className="flex w-full space-x-2">
-                                    {/* 1. O Input para digitar */}
-                                    <div className="flex-grow">
-                                        <IconInputWrapper icon={CalendarIcon}>
-                                            <InputMask
-                                                mask="99/99/9999"
-                                                placeholder="dd/mm/aaaa"
-                                                value={localDateString}
-                                                onChange={handleDateInputChange}
-                                            >
-                                                {(inputProps) => <Input {...inputProps} id="birth_date" className="bg-muted shadow-inner pl-10" />}
-                                            </InputMask>
-                                        </IconInputWrapper>
-                                    </div>
-                                </div>
+                                <DateInputWithCalendar
+                                    value={formData.birth_date}
+                                    onChange={(date) => updateField('birth_date', date)}
+                                    required={!isOffline}
+                                />
                                 <p className="text-xs text-muted-foreground mt-1">
                                   A senha inicial do paciente será a data de nascimento no formato DDMMAA (Ex: 07/08/2001 &rarr; 070801).
                                 </p>
                             </div>
                             {/* --- FIM DO BLOCO JSX DA DATA --- */}
+
+                            {/* Offline Toggle */}
+                            <div className="md:col-span-2 bg-muted/30 p-4 rounded-lg border border-border flex items-center justify-between">
+                                <div className="space-y-0.5">
+                                    <Label className="text-base flex items-center gap-2">
+                                        <ToggleLeft className="w-4 h-4 text-primary" />
+                                        Paciente Offline
+                                    </Label>
+                                    <p className="text-sm text-muted-foreground">
+                                        Crie o perfil agora sem precisar de e-mail ou data de nascimento.
+                                    </p>
+                                </div>
+                                <Switch 
+                                    checked={isOffline} 
+                                    onCheckedChange={(val) => {
+                                        setIsOffline(val);
+                                        if (val) setSendInvite(false);
+                                    }} 
+                                />
+                            </div>
+
+                            {!isOffline && (
+                                <div className="md:col-span-2 flex items-center space-x-2 bg-primary/5 p-4 rounded-lg border border-primary/10">
+                                    <Checkbox 
+                                        id="sendInvite" 
+                                        checked={sendInvite} 
+                                        onCheckedChange={setSendInvite}
+                                    />
+                                    <div className="grid gap-1.5 leading-none">
+                                        <label
+                                            htmlFor="sendInvite"
+                                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                        >
+                                            Enviar convite por e-mail automaticamente
+                                        </label>
+                                        <p className="text-xs text-muted-foreground">
+                                            O paciente receberá as instruções de acesso no e-mail informado.
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
 
                             <div className="space-y-2">
                                 <Label htmlFor="gender" className="font-semibold">Gênero</Label>

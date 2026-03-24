@@ -116,6 +116,38 @@ export function AuthProvider({ children }) {
       }
     }
 
+    // Auto-resgate de código de convite se houver um pendente no localStorage
+    const pendingCode = localStorage.getItem('pending_invite_code');
+    if (pendingCode && nextSession?.user) {
+        try {
+            const { data, error } = await supabase.rpc('redeem_invite_code', {
+                p_invite_code: pendingCode
+            });
+            
+            if (error) throw error;
+            
+            if (data?.success) {
+                // Se o perfil mudou (ex: ID alterado via claim), recarrega o perfil
+                if (data.type === 'profile_claimed') {
+                    const newProfile = await fetchProfileWithRetry(nextSession.user, { retries: 2 });
+                    if (newProfile) {
+                        setUser(curr => ({ ...curr, profile: newProfile }));
+                    }
+                }
+                localStorage.removeItem('pending_invite_code');
+                // Nota: Toasts não podem ser disparados aqui facilmente sem o hook useToast, 
+                // mas como este contexto é global, podemos usar um evento ou deixar para a página de destino.
+            }
+        } catch (err) {
+            console.error('[AuthContext] Erro ao resgatar convite pendente:', err);
+            // Mantém no localStorage para tentar novamente ou limpa se for erro fatal? 
+            // Melhor limpar se for erro de validação (ex: código inválido)
+            if (err.message?.includes('inválido')) {
+                localStorage.removeItem('pending_invite_code');
+            }
+        }
+    }
+
     processingSession.current = false;
   }, [fetchProfileWithRetry, signOut]);
 
