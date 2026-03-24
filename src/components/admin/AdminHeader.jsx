@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
-import { LogOut, Bell, Check, Trash2, Shield, ArrowLeft, Menu } from 'lucide-react';
+import { LogOut, Bell, Check, Trash2, Shield, ArrowLeft, Menu, Bug } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Sheet,
@@ -22,6 +22,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 const ADMIN_NAV_LINKS = [
   { name: 'Dashboard', path: '/admin/dashboard' },
+  { name: 'Bugs', path: '/admin/bugs' },
   { name: 'Usuários', path: '/admin/users' },
   { name: 'Financeiro', path: '/admin/financial' },
   { name: 'Estudo', path: '/admin/study' },
@@ -34,15 +35,11 @@ export default function AdminHeader() {
   const [loadingNotifications, setLoadingNotifications] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  if (!user) return null;
+  // Destinations
+  const backPath = user?.profile?.user_type === 'nutritionist' ? '/nutritionist' : '/patient';
+  const backLabel = user?.profile?.user_type === 'nutritionist' ? 'Área do Nutricionista' : 'Área do Paciente';
 
-  const initials = (user.profile?.name || 'A').substring(0, 2).toUpperCase();
-  const unreadCount = notifications.filter((n) => !n.is_read).length;
-
-  // Destination when clicking "Voltar"
-  const backPath = user.profile?.user_type === 'nutritionist' ? '/nutritionist' : '/patient';
-  const backLabel = user.profile?.user_type === 'nutritionist' ? 'Área do Nutricionista' : 'Área do Paciente';
-
+  // Fetch notifications - hook called before conditionals
   const fetchNotifications = useCallback(async () => {
     if (!user?.id) return;
     setLoadingNotifications(true);
@@ -60,6 +57,11 @@ export default function AdminHeader() {
     fetchNotifications();
   }, [fetchNotifications]);
 
+  // Derive values after hooks
+  const initials = (user?.profile?.name || 'A').substring(0, 2).toUpperCase();
+  const unreadCount = notifications.filter((n) => !n.is_read).length;
+
+  // Handlers
   const handleMarkAllAsRead = async () => {
     const unreadIds = notifications.filter((n) => !n.is_read).map((n) => n.id);
     if (!unreadIds.length) return;
@@ -79,6 +81,8 @@ export default function AdminHeader() {
     e.stopPropagation();
     await signOut();
   };
+
+  if (!user) return null;
 
   return (
     <header className="sticky top-0 z-40 flex h-16 items-center justify-between gap-2 border-b bg-card px-3 md:px-6 min-w-0 overflow-hidden shadow-sm">

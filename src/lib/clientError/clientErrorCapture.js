@@ -59,7 +59,7 @@ const buildErrorSignature = ({ message, stack, name, route }) => {
   return String(h);
 };
 
-export const createClientErrorCapture = ({ getUserContext }) => {
+export const createClientErrorCapture = ({ getUserContext, onErrorCaptured }) => {
   let installed = false;
   let consoleBuffer = [];
   let lastSignatures = new Map(); // signature -> lastMs
@@ -126,8 +126,8 @@ export const createClientErrorCapture = ({ getUserContext }) => {
     // Ensure insert passes RLS:
     // - For admins: is_admin() allows null nutritionist_id
     // - For non-admin: policy requires nutritionist_id = auth.uid(), so we set it to user.id for both roles.
-    const nutritionistId = userContext?.userId || null;
-    const patientId = userContext?.patientId || null;
+    const nutritionistId = userContext?.id || null;
+    const patientId = userContext?.type === 'patient' ? userContext?.id : null;
 
     const signature = buildErrorSignature({ message, stack, name: errorType, route });
     const now = Date.now();
@@ -158,6 +158,7 @@ export const createClientErrorCapture = ({ getUserContext }) => {
       metadata.console = metadata.console.slice(0, 20);
     }
 
+    // Envia para observabilidade original
     await logOperationalEvent({
       module: 'client',
       operation: 'client_error',
@@ -168,6 +169,23 @@ export const createClientErrorCapture = ({ getUserContext }) => {
       errorMessage: message || null,
       metadata,
     });
+
+    // Callback para o novo sistema de bugs (se fornecido)
+    if (typeof onErrorCaptured === 'function') {
+      try {
+        await onErrorCaptured({
+          errorType,
+          message,
+          stackTrace: stack,
+          route,
+          user: userContext,
+          consoleLog: metadata.console,
+          metadata: extra,
+        });
+      } catch (err) {
+        console.error('[ClientErrorCapture] Erro no callback onErrorCaptured:', err);
+      }
+    }
   };
 
   const onWindowError = (event) => {
@@ -255,4 +273,3 @@ export const createClientErrorCapture = ({ getUserContext }) => {
     logNow: (payload) => logClientError(payload),
   };
 };
-
