@@ -1,12 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
   BarChart2, Users, Activity, Target, BookOpen, FileText,
   Calendar, MessageSquare, Award, TrendingUp, TrendingDown,
   Zap, ExternalLink, RefreshCw, Info, Utensils, Scale,
-  ChevronRight, AlertCircle, CheckCircle2, Clock, PieChart, ShieldAlert
+  Clock, AlertCircle, CheckCircle2, PieChart, ShieldAlert,
+  TrendingUpDown, Eye, MousePointer, UserCheck, Timer,
+  ArrowUpRight, ArrowDownRight, Minus
 } from 'lucide-react';
 import {
   AreaChart, Area, BarChart, Bar, PieChart as RechartsPie, Pie, Cell,
@@ -38,6 +40,9 @@ const MODULE_LABELS = {
   food_diary: 'Diário Alimentar',
   agenda: 'Agenda',
   system: 'Sistema',
+  chat: 'Chat',
+  anthropometry: 'Antropometria',
+  auth: 'Autenticação',
 };
 
 const APPT_LABELS = {
@@ -47,6 +52,14 @@ const APPT_LABELS = {
   online: 'Online',
   in_person: 'Presencial',
 };
+
+const ENGAGEMENT_TIERS = [
+  { min: 0, max: 3, label: 'Inativo', color: 'text-red-600', bg: 'bg-red-50', icon: Minus },
+  { min: 4, max: 10, label: 'Baixo', color: 'text-orange-600', bg: 'bg-orange-50', icon: ArrowDownRight },
+  { min: 11, max: 25, label: 'Médio', color: 'text-yellow-600', bg: 'bg-yellow-50', icon: TrendingUpDown },
+  { min: 26, max: 50, label: 'Alto', color: 'text-emerald-600', bg: 'bg-emerald-50', icon: ArrowUpRight },
+  { min: 51, max: Infinity, label: 'Power User', color: 'text-violet-600', bg: 'bg-violet-50', icon: Award },
+];
 
 // ── helpers ────────────────────────────────────────────────────────────────
 const pct = (val) => `${val ?? 0}%`;
@@ -240,50 +253,240 @@ function ModuleUsageBlock({ usage, errors, loading }) {
   );
 }
 
-// ── PostHog panel ──────────────────────────────────────────────────────────
-function PostHogPanel() {
-  const hasKey = !!import.meta.env.VITE_PUBLIC_POSTHOG_KEY;
+// ── Engagement Distribution ────────────────────────────────────────────────
+function EngagementBlock({ distribution, loading }) {
+  if (loading) return <Skeleton className="h-32 w-full" />;
+  if (!distribution) return null;
+
+  const total = Object.values(distribution).reduce((a, b) => a + Number(b), 0);
+
+  return (
+    <div className="space-y-3">
+      {ENGAGEMENT_TIERS.map(tier => {
+        const val = Number(distribution[tier.label.toLowerCase().replace(' ', '_')] || 0);
+        const percent = total > 0 ? (val / total) * 100 : 0;
+        const TierIcon = tier.icon;
+        
+        return (
+          <div key={tier.label} className="flex items-center gap-3">
+            <div className={`p-1.5 rounded-lg ${tier.bg}`}>
+              <TierIcon className={`w-4 h-4 ${tier.color}`} />
+            </div>
+            <div className="flex-1">
+              <div className="flex justify-between text-xs mb-1">
+                <span className="font-medium">{tier.label}</span>
+                <span className="text-muted-foreground">{num(val)} ({percent.toFixed(1)}%)</span>
+              </div>
+              <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                <motion.div
+                  className={`h-full ${tier.color.replace('text-', 'bg-')} rounded-full`}
+                  initial={{ width: 0 }}
+                  animate={{ width: `${percent}%` }}
+                  transition={{ duration: 0.6 }}
+                />
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Funnel Visualization ─────────────────────────────────────────────────
+function FunnelBlock({ funnel, loading }) {
+  if (loading) return <Skeleton className="h-40 w-full" />;
+  if (!funnel) return null;
+
+  const steps = [
+    { key: 'registered', label: 'Cadastro', icon: UserCheck },
+    { key: 'first_meal', label: '1ª Refeição', icon: Utensils },
+    { key: 'first_goal', label: '1ª Meta', icon: Target },
+    { key: 'goal_achieved', label: 'Meta Atingida', icon: Award },
+  ];
+
+  const maxVal = Math.max(...Object.values(funnel).map(Number), 1);
+
+  return (
+    <div className="space-y-2">
+      {steps.map((step, i) => {
+        const val = Number(funnel[step.key] || 0);
+        const percent = (val / maxVal) * 100;
+        const dropOff = i > 0 ? {
+          val: val - Number(funnel[steps[i-1].key] || 0),
+          pct: 100 - (val / Math.max(Number(funnel[steps[i-1].key]), 1) * 100)
+        } : null;
+        const StepIcon = step.icon;
+
+        return (
+          <div key={step.key} className="flex items-center gap-3">
+            <div className="p-1.5 rounded-lg bg-muted">
+              <StepIcon className="w-4 h-4 text-primary" />
+            </div>
+            <div className="flex-1">
+              <div className="flex justify-between text-xs mb-1">
+                <span className="font-medium">{step.label}</span>
+                <span className="text-muted-foreground">{num(val)}</span>
+              </div>
+              <div className="h-2 bg-muted rounded-full overflow-hidden">
+                <motion.div
+                  className="h-full bg-primary rounded-full"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${percent}%` }}
+                  transition={{ duration: 0.5, delay: i * 0.1 }}
+                />
+              </div>
+              {dropOff && dropOff.val < 0 && (
+                <p className="text-[10px] text-red-500 mt-0.5">
+                  -{Math.abs(dropOff.pct).toFixed(1)}% abandono
+                </p>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Analytics Panel (PostHog alternative) ──────────────────────────────────
+function AnalyticsPanel({ metrics }) {
+  const [selectedMetric, setSelectedMetric] = useState('engagement');
+
+  const metricOptions = [
+    { id: 'engagement', label: 'Engajamento', icon: MousePointer },
+    { id: 'retention', label: 'Retenção', icon: UserCheck },
+    { id: 'funnels', label: 'Funis', icon: Target },
+    { id: 'performance', label: 'Performance', icon: Timer },
+  ];
 
   return (
     <div className="space-y-6">
-      <div className={`rounded-xl border p-5 ${hasKey ? 'border-emerald-200 bg-emerald-50/50' : 'border-amber-200 bg-amber-50/50'}`}>
-        <div className="flex items-start gap-3">
-          <div className={`p-2 rounded-lg ${hasKey ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
-            {hasKey ? <CheckCircle2 className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
+      {/* Status Card */}
+      <Card className="border-amber-200 bg-amber-50/50">
+        <CardContent className="p-5">
+          <div className="flex items-start gap-4">
+            <div className="p-3 rounded-xl bg-amber-100">
+              <Eye className="w-6 h-6 text-amber-700" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold text-amber-900">Analytics Comportamental</h3>
+              <p className="text-sm text-amber-700 mt-1">
+                Métricas de comportamento dos usuários na plataforma. Para análises avançadas 
+                (funis, retenção, gravações de sessão), configure o PostHog.
+              </p>
+            </div>
           </div>
-          <div>
-            <p className="font-semibold text-sm">
-              {hasKey ? 'PostHog Ativo — Trackando eventos' : 'PostHog não configurado'}
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              {hasKey
-                ? 'Eventos de comportamento estão sendo capturados. Acesse o dashboard para análises detalhadas.'
-                : 'Adicione VITE_PUBLIC_POSTHOG_KEY ao arquivo .env para ativar o tracking comportamental (gratuito até 1M eventos/mês).'}
-            </p>
-          </div>
-        </div>
+        </CardContent>
+      </Card>
+
+      {/* Quick Metrics */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="p-4 text-center">
+            <MousePointer className="w-5 h-5 text-primary mx-auto mb-2" />
+            <p className="text-2xl font-bold">{num(metrics?.platform?.total_patients || 0)}</p>
+            <p className="text-xs text-muted-foreground">Usuários Totais</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <UserCheck className="w-5 h-5 text-emerald-500 mx-auto mb-2" />
+            <p className="text-2xl font-bold">{num(metrics?.platform?.active_patients_30d || 0)}</p>
+            <p className="text-xs text-muted-foreground">Ativos (30d)</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <Timer className="w-5 h-5 text-amber-500 mx-auto mb-2" />
+            <p className="text-2xl font-bold">{round1(metrics?.appointments?.attendance_rate_pct || 0)}%</p>
+            <p className="text-xs text-muted-foreground">Comparecimento</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <Award className="w-5 h-5 text-violet-500 mx-auto mb-2" />
+            <p className="text-2xl font-bold">{num(metrics?.gamification?.total_achievements_earned || 0)}</p>
+            <p className="text-xs text-muted-foreground">Conquistas</p>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Setup instructions */}
-      {!hasKey && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Como configurar o PostHog (gratuito)</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <ol className="space-y-3 text-sm">
+      {/* Engagement Distribution */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Activity className="w-4 h-4 text-primary" />
+            Distribuição de Engajamento
+          </CardTitle>
+          <CardDescription>
+            Classificação dos pacientes por nível de atividade na plataforma
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <EngagementBlock 
+            distribution={metrics?.engagement_distribution} 
+            loading={!metrics} 
+          />
+        </CardContent>
+      </Card>
+
+      {/* Funnel Preview */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Target className="w-4 h-4 text-primary" />
+            Funil de Conversão
+          </CardTitle>
+          <CardDescription>
+            Jornada típica do paciente: do cadastro ao atingimento de metas
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <FunnelBlock funnel={metrics?.conversion_funnel} loading={!metrics} />
+        </CardContent>
+      </Card>
+
+      {/* PostHog Setup Instructions */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Zap className="w-4 h-4 text-amber-500" />
+            Configurar PostHog para Analytics Avançado
+          </CardTitle>
+          <CardDescription>
+            Ative o tracking comportamental para acessar funis, retenção e gravações
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {[
+              { icon: Target, title: 'Funis de Conversão', desc: 'Cadastro → 1ª refeição → meta criada → meta atingida' },
+              { icon: Users, title: 'Retenção por Coorte', desc: '% de usuários ativos após 7, 14, 30 dias' },
+              { icon: Award, title: 'Gravações de Sessão', desc: 'Analyze UX com gravações anônimas (5.000/mês)' },
+            ].map(({ icon: Icon, title, desc }) => (
+              <div key={title} className="p-4 rounded-lg border bg-muted/30">
+                <Icon className="w-5 h-5 text-primary mb-2" />
+                <p className="font-medium text-sm">{title}</p>
+                <p className="text-xs text-muted-foreground mt-1">{desc}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="border-t pt-4">
+            <h4 className="font-medium text-sm mb-3">Como ativar (gratuito até 1M eventos/mês)</h4>
+            <ol className="space-y-2 text-sm">
               {[
-                { n: 1, text: 'Acesse posthog.com e crie uma conta gratuita', link: 'https://posthog.com' },
-                { n: 2, text: 'Crie um novo projeto chamado "HipoZero"' },
-                { n: 3, text: 'Copie a Project API Key (começa com phc_...)' },
-                { n: 4, text: 'Adicione ao arquivo .env na raiz do projeto:' },
+                { n: 1, text: 'Crie conta em posthog.com', link: 'https://posthog.com' },
+                { n: 2, text: 'Crie projeto "HipoZero" e copie a API Key (phc_...)' },
+                { n: 3, text: 'Adicione ao arquivo .env:' },
               ].map(({ n, text, link }) => (
-                <li key={n} className="flex items-start gap-3">
-                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center font-bold">{n}</span>
-                  <span className="text-muted-foreground pt-0.5">
+                <li key={n} className="flex items-start gap-2">
+                  <span className="flex-shrink-0 w-5 h-5 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center font-bold">{n}</span>
+                  <span className="text-muted-foreground">
                     {text}
                     {link && (
-                      <a href={link} target="_blank" rel="noopener noreferrer" className="ml-2 text-primary inline-flex items-center gap-1 hover:underline">
+                      <a href={link} target="_blank" rel="noopener noreferrer" className="ml-2 text-primary hover:underline inline-flex items-center gap-1">
                         Abrir <ExternalLink className="w-3 h-3" />
                       </a>
                     )}
@@ -291,89 +494,12 @@ function PostHogPanel() {
                 </li>
               ))}
             </ol>
-            <div className="bg-muted rounded-md p-3 font-mono text-xs border border-border">
+            <div className="bg-muted rounded-md p-3 font-mono text-xs mt-3 border">
               <span className="text-muted-foreground"># .env</span><br />
-              <span className="text-green-600">VITE_PUBLIC_POSTHOG_KEY</span>=phc_sua_chave_aqui<br />
+              <span className="text-green-600">VITE_PUBLIC_POSTHOG_KEY</span>=phc_sua_chave<br />
               <span className="text-green-600">VITE_PUBLIC_POSTHOG_HOST</span>=https://us.i.posthog.com
             </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Events being tracked */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Zap className="w-4 h-4 text-amber-500" />
-            Eventos configurados para captura
-          </CardTitle>
-          <CardDescription>Estes eventos são enviados automaticamente ao PostHog quando os usuários interagem com a plataforma</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {[
-              { event: 'meal_logged', desc: 'Refeição registrada no diário', category: 'Nutrição' },
-              { event: 'anamnesis_completed', desc: 'Formulário de anamnese concluído', category: 'Clínico' },
-              { event: 'goal_created', desc: 'Meta nutricional criada', category: 'Metas' },
-              { event: 'goal_completed', desc: 'Meta atingida pelo paciente', category: 'Metas' },
-              { event: 'appointment_scheduled', desc: 'Consulta agendada', category: 'Agenda' },
-              { event: 'appointment_completed', desc: 'Consulta realizada', category: 'Agenda' },
-              { event: 'meal_plan_created', desc: 'Plano alimentar criado', category: 'Nutrição' },
-              { event: 'growth_record_added', desc: 'Medida antropométrica registrada', category: 'Clínico' },
-              { event: 'chat_message_sent', desc: 'Mensagem enviada no chat', category: 'Comunicação' },
-              { event: 'achievement_earned', desc: 'Conquista desbloqueada', category: 'Gamificação' },
-              { event: 'energy_calc_performed', desc: 'Cálculo de TMB/GET realizado', category: 'Clínico' },
-              { event: 'study_area_viewed', desc: 'Área de Estudo acessada', category: 'Admin' },
-            ].map(({ event, desc, category }) => (
-              <div key={event} className="flex items-start gap-2 p-2 rounded-lg bg-muted/30 border border-border/50">
-                <div className="w-2 h-2 rounded-full bg-primary mt-1.5 flex-shrink-0" />
-                <div className="min-w-0">
-                  <code className="text-[10px] font-mono text-primary block">{event}</code>
-                  <p className="text-xs text-muted-foreground truncate">{desc}</p>
-                </div>
-                <Badge variant="outline" className="text-[10px] px-1.5 ml-auto flex-shrink-0">{category}</Badge>
-              </div>
-            ))}
           </div>
-        </CardContent>
-      </Card>
-
-      {/* PostHog features for TCC */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Análises disponíveis no PostHog (TCC)</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {[
-              { icon: '🎯', title: 'Funis de Conversão', desc: 'Cadastro → 1ª refeição → meta criada → meta atingida' },
-              { icon: '📈', title: 'Retenção por Coorte', desc: '% de usuários ativos após 7, 14, 30 dias do cadastro' },
-              { icon: '⏱️', title: 'Sessão Média', desc: 'Quanto tempo nutris e pacientes ficam por sessão' },
-              { icon: '🗺️', title: 'Fluxo de Usuário', desc: 'Caminho percorrido antes de registrar a 1ª refeição' },
-              { icon: '🔥', title: 'Features Mais Usadas', desc: 'Ranking das páginas e funcionalidades por clique' },
-              { icon: '📹', title: 'Gravações de Sessão', desc: '5.000 gravações/mês gratuitas para análise de UX' },
-            ].map(({ icon, title, desc }) => (
-              <div key={title} className="flex items-start gap-3 p-3 rounded-lg border border-border/50 bg-muted/20">
-                <span className="text-xl">{icon}</span>
-                <div>
-                  <p className="text-sm font-medium">{title}</p>
-                  <p className="text-xs text-muted-foreground">{desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-          {hasKey && (
-            <div className="mt-4 flex gap-2">
-              <Button
-                size="sm"
-                onClick={() => window.open('https://us.posthog.com', '_blank')}
-                className="gap-2"
-              >
-                <ExternalLink className="w-4 h-4" />
-                Abrir Dashboard PostHog
-              </Button>
-            </div>
-          )}
         </CardContent>
       </Card>
     </div>
@@ -420,10 +546,10 @@ export default function AdminStudyPage() {
             <div className="p-2 rounded-lg bg-violet-100 text-violet-700">
               <BookOpen className="w-5 h-5" />
             </div>
-            <h1 className="text-3xl font-bold text-foreground">Área de Estudo</h1>
+            <h1 className="text-3xl font-bold text-foreground">Estudos & Análises</h1>
           </div>
           <p className="text-muted-foreground text-sm ml-11">
-            Métricas de pesquisa acadêmica para TCC em Nutrição — dados reais de uso da plataforma
+            Métricas comportamentais, tracking de uso e análises da plataforma
           </p>
         </div>
         <div className="flex items-center gap-3 shrink-0">
@@ -462,9 +588,9 @@ export default function AdminStudyPage() {
               <ShieldAlert className="w-4 h-4" />
               Plataforma
             </TabsTrigger>
-            <TabsTrigger value="posthog" className="flex items-center gap-2 whitespace-nowrap">
-              <Activity className="w-4 h-4" />
-              PostHog
+            <TabsTrigger value="analytics" className="flex items-center gap-2 whitespace-nowrap">
+              <BarChart2 className="w-4 h-4" />
+              Analytics
             </TabsTrigger>
           </TabsList>
         </div>
@@ -514,7 +640,7 @@ export default function AdminStudyPage() {
 
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm text-muted-foreground">Notificações</CardTitle>
+                <CardTitle className="text-sm text-muted-foreground">Taxa de Leitura de Notificações</CardTitle>
               </CardHeader>
               <CardContent>
                 {isLoading ? <Skeleton className="h-16 w-full" /> : (
@@ -719,7 +845,7 @@ export default function AdminStudyPage() {
             </Card>
           </div>
 
-          {/* TMB Protocols */}
+          {/* TMB protocols */}
           <Card>
             <CardHeader>
               <SectionTitle icon={Zap} title="Protocolos de Cálculo Energético (TMB/GET)" description="Quais métodos científicos os nutricionistas mais utilizam" />
@@ -843,26 +969,11 @@ export default function AdminStudyPage() {
               </CardContent>
             </Card>
           </div>
-
-          {/* Research note */}
-          <div className="flex items-start gap-3 p-4 rounded-xl bg-violet-50 border border-violet-200">
-            <div className="p-2 rounded-lg bg-violet-100 text-violet-700 flex-shrink-0">
-              <Info className="w-4 h-4" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-violet-900">Nota Metodológica para o TCC</p>
-              <p className="text-xs text-violet-700 mt-1 leading-relaxed">
-                Todos os dados desta área são agregados e anonimizados — nenhuma informação individualizável é exibida.
-                As métricas refletem o comportamento coletivo dos usuários e são atualizadas em tempo real a partir do banco de dados da plataforma.
-                Para análises individualizadas (com consentimento dos participantes), utilize a seção Usuários.
-              </p>
-            </div>
-          </div>
         </TabsContent>
 
-        {/* ── TAB: POSTHOG ──────────────────────────────────────────────── */}
-        <TabsContent value="posthog" className="mt-6">
-          <PostHogPanel />
+        {/* ── TAB: ANALYTICS ─────────────────────────────────────────────── */}
+        <TabsContent value="analytics" className="mt-6">
+          <AnalyticsPanel metrics={m} />
         </TabsContent>
       </Tabs>
     </div>
