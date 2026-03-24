@@ -32,13 +32,17 @@ export default function AdminHeader() {
   const fetchNotifications = useCallback(async () => {
     if (!user?.id) return;
     setLoadingNotifications(true);
-    const { data } = await supabase
-      .select('id, type, content, is_read, created_at')
-      .from('notifications')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(20);
-    setNotifications(data || []);
+    try {
+      const { data } = await supabase
+        .select('id, type, content, is_read, created_at')
+        .from('notifications')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(20);
+      setNotifications(data || []);
+    } catch (err) {
+      console.error('Error fetching notifications:', err);
+    }
     setLoadingNotifications(false);
   }, [user?.id]);
 
@@ -50,15 +54,23 @@ export default function AdminHeader() {
   const handleMarkAllAsRead = async () => {
     const unreadIds = notifications.filter((n) => !n.is_read).map((n) => n.id);
     if (!unreadIds.length) return;
-    await supabase.from('notifications').update({ is_read: true }).in('id', unreadIds);
-    setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+    try {
+      await supabase.from('notifications').update({ is_read: true }).in('id', unreadIds);
+      setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+    } catch (err) {
+      console.error('Error marking as read:', err);
+    }
   };
 
   const handleClearRead = async () => {
     const readIds = notifications.filter((n) => n.is_read).map((n) => n.id);
     if (!readIds.length) return;
-    await supabase.from('notifications').delete().in('id', readIds);
-    setNotifications((prev) => prev.filter((n) => !n.is_read));
+    try {
+      await supabase.from('notifications').delete().in('id', readIds);
+      setNotifications((prev) => prev.filter((n) => !n.is_read));
+    } catch (err) {
+      console.error('Error clearing notifications:', err);
+    }
   };
 
   const handleLogout = async (e) => {
