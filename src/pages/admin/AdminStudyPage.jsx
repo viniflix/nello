@@ -7,8 +7,8 @@ import {
   Calendar, MessageSquare, Award, TrendingUp, TrendingDown,
   Zap, ExternalLink, RefreshCw, Info, Utensils, Scale,
   Clock, AlertCircle, CheckCircle2, PieChart, ShieldAlert,
-  TrendingUpDown, Eye, MousePointer, UserCheck, Timer,
-  ArrowUpRight, ArrowDownRight, Minus
+  Eye, MousePointer, UserCheck, Timer,
+  ArrowUpRight, ArrowDownRight, Minus, Minus as MinusIcon
 } from 'lucide-react';
 import {
   AreaChart, Area, BarChart, Bar, PieChart as RechartsPie, Pie, Cell,
@@ -56,7 +56,7 @@ const APPT_LABELS = {
 const ENGAGEMENT_TIERS = [
   { min: 0, max: 3, label: 'Inativo', color: 'text-red-600', bg: 'bg-red-50', icon: Minus },
   { min: 4, max: 10, label: 'Baixo', color: 'text-orange-600', bg: 'bg-orange-50', icon: ArrowDownRight },
-  { min: 11, max: 25, label: 'Médio', color: 'text-yellow-600', bg: 'bg-yellow-50', icon: TrendingUpDown },
+  { min: 11, max: 25, label: 'Médio', color: 'text-yellow-600', bg: 'bg-yellow-50', icon: Activity },
   { min: 26, max: 50, label: 'Alto', color: 'text-emerald-600', bg: 'bg-emerald-50', icon: ArrowUpRight },
   { min: 51, max: Infinity, label: 'Power User', color: 'text-violet-600', bg: 'bg-violet-50', icon: Award },
 ];
