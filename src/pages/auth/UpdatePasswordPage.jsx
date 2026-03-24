@@ -78,6 +78,17 @@ export default function UpdatePasswordPage() {
         variant: "destructive",
       });
     } else {
+      if (session?.user?.id) {
+        const { error: profileError } = await supabase
+          .from('user_profiles')
+          .update({ needs_password_reset: false })
+          .eq('id', session.user.id);
+
+        if (profileError) {
+          console.error('[UpdatePassword] Failed to clear needs_password_reset:', profileError);
+        }
+      }
+
       toast({
         title: "Sucesso!",
         description: "Sua senha foi definida. Você já pode fazer o login.",
