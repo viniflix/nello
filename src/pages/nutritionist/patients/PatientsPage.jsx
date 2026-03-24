@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
     Plus, Search, Loader2, ListFilter, Users, ArchiveRestore, Clock,
-    LayoutGrid, List, Flame, MoreVertical, Archive, FileText, MessageCircle, AlertCircle, Trash2
+    LayoutGrid, List, Flame, MoreVertical, Archive, FileText, MessageCircle, AlertCircle, Trash2,
+    Copy, Check
 } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import {
