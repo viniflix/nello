@@ -1,63 +1,92 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { format, differenceInDays, subMonths } from 'date-fns';
+import { format, subMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
-  Stethoscope,
-  Users,
-  Utensils,
-  Activity,
-  TrendingUp,
-  ShieldAlert,
-  Loader2,
-  UserPlus,
-  DollarSign,
-  CreditCard,
-  Terminal,
-  Megaphone,
-  Send,
-  AlertCircle,
-  Info,
-  AlertTriangle
+  Users, Utensils, Activity, TrendingUp, TrendingDown,
+  DollarSign, Calendar, ShieldAlert, Zap, Target,
+  BarChart3, Clock, AlertCircle, CheckCircle2, 
+  ArrowRight, Eye, MousePointer, Award, MessageSquare,
+  Bell, Settings, FileText, TrendingUpDown, Bug
 } from 'lucide-react';
 import {
-  AreaChart,
-  Area,
-  PieChart,
-  Pie,
-  Cell,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Legend
+  AreaChart, Area, BarChart, Bar, PieChart as RechartsPie, Pie, Cell,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from 'recharts';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { getDashboardStats, getSystemLiveLogs } from '@/services/adminService';
-import { getOperationalErrorEvents, getOperationalHealthSummary } from '@/lib/supabase/observability-queries';
+import { getOperationalHealthSummary } from '@/lib/supabase/observability-queries';
 
-// Cores para o gráfico de pizza
-const PIE_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
+const COLORS = ['#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#0ea5e9'];
 
+function StatCard({ icon: Icon, label, value, trend, color, sub, loading }) {
+  const isPositive = trend >= 0;
+  return (
+    <Card className="hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+      <CardContent className="p-5">
+        <div className="flex items-start justify-between">
+          <div className={`p-3 rounded-xl ${color}`}>
+            <Icon className="w-5 h-5" />
+          </div>
+          {trend !== undefined && (
+            <Badge variant={isPositive ? 'default' : 'destructive'} className="gap-1">
+              {isPositive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+              {Math.abs(trend)}%
+            </Badge>
+          )}
+        </div>
+        <div className="mt-4">
+          <p className="text-xs text-muted-foreground">{label}</p>
+          {loading ? (
+            <Skeleton className="h-9 w-20 mt-1" />
+          ) : (
+            <p className="text-3xl font-bold mt-1">{value}</p>
+          )}
+          {sub && <p className="text-xs text-muted-foreground mt-1">{sub}</p>}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
-/**
- * AdminDashboard - CEO Mission Control Dashboard
- * 
- * Dashboard profissional com métricas SaaS, financeiro e logs em tempo real
- */
+function MiniChart({ data, color }) {
+  return (
+    <ResponsiveContainer width="100%" height={60}>
+      <AreaChart data={data}>
+        <defs>
+          <linearGradient id={`gradient-${color}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={color} stopOpacity={0.3} />
+            <stop offset="100%" stopColor={color} stopOpacity={0} />
+          </linearGradient>
+        </defs>
+        <Area type="monotone" dataKey="value" stroke={color} fill={`url(#gradient-${color})`} strokeWidth={2} />
+      </AreaChart>
+    </ResponsiveContainer>
+  );
+}
+
+function HealthIndicator({ rate }) {
+  const getStatus = () => {
+    if (rate < 1) return { label: 'Excelente', color: 'text-green-600', bg: 'bg-green-100' };
+    if (rate < 5) return { label: 'Bom', color: 'text-yellow-600', bg: 'bg-yellow-100' };
+    return { label: 'Crítico', color: 'text-red-600', bg: 'bg-red-100' };
+  };
+  const status = getStatus();
+  return (
+    <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full ${status.bg}`}>
+      {rate < 5 ? <CheckCircle2 className={`w-4 h-4 ${status.color}`} /> : <AlertCircle className={`w-4 h-4 ${status.color}`} />}
+      <span className={`text-sm font-medium ${status.color}`}>{status.label}</span>
+    </div>
+  );
+}
+
 export default function AdminDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -65,1157 +94,294 @@ export default function AdminDashboard() {
   
   const [isLoading, setIsLoading] = useState(true);
   const [stats, setStats] = useState(null);
-  const [broadcastMessage, setBroadcastMessage] = useState('');
-  const [liveLogs, setLiveLogs] = useState([]);
-  const [clientErrorEvents, setClientErrorEvents] = useState([]);
-  const [clientErrorEventsLoading, setClientErrorEventsLoading] = useState(false);
-  const scrollAreaRef = useRef(null);
-  const [activeTab, setActiveTab] = useState('overview');
-  const [observabilityLoading, setObservabilityLoading] = useState(true);
-  const [operationalSummary, setOperationalSummary] = useState({
-    total_events: 0,
-    error_events: 0,
-    error_rate: 0,
-    avg_latency_ms: 0,
-    module_stats: []
-  });
+  const [observability, setObservability] = useState({ error_rate: 0, total_events: 0, error_events: 0, avg_latency_ms: 0 });
 
-  // Security check: Only admins can access
   const isAdmin = user?.profile?.is_admin === true;
 
-  const loadObservability = useCallback(async () => {
-    setObservabilityLoading(true);
+  const loadData = useCallback(async () => {
+    setIsLoading(true);
     try {
-      const { data, error } = await getOperationalHealthSummary({
-        nutritionistId: null,
-        windowHours: 24
-      });
-      if (error) throw error;
-      setOperationalSummary({
-        total_events: Number(data?.total_events || 0),
-        error_events: Number(data?.error_events || 0),
-        error_rate: Number(data?.error_rate || 0),
-        avg_latency_ms: Number(data?.avg_latency_ms || 0),
-        module_stats: Array.isArray(data?.module_stats) ? data.module_stats : []
+      const [statsRes, obsRes] = await Promise.all([
+        getDashboardStats(),
+        getOperationalHealthSummary({ nutritionistId: null, windowHours: 24 })
+      ]);
+      
+      if (statsRes.data) setStats(statsRes.data);
+      if (obsRes.data) setObservability({
+        error_rate: Number(obsRes.data?.error_rate || 0),
+        total_events: Number(obsRes.data?.total_events || 0),
+        error_events: Number(obsRes.data?.error_events || 0),
+        avg_latency_ms: Number(obsRes.data?.avg_latency_ms || 0)
       });
     } catch (err) {
-      console.error('[AdminDashboard] Erro ao carregar observabilidade:', err);
+      console.error('[Dashboard] Error:', err);
     } finally {
-      setObservabilityLoading(false);
+      setIsLoading(false);
     }
   }, []);
 
   useEffect(() => {
     if (user && !isAdmin) {
-      toast({
-        title: 'Acesso Negado',
-        description: 'Esta página é restrita a administradores.',
-        variant: 'destructive'
-      });
+      toast({ title: 'Acesso Negado', description: 'Página restrita a administradores.', variant: 'destructive' });
       navigate('/nutritionist', { replace: true });
       return;
     }
+    if (isAdmin) loadData();
+  }, [user, isAdmin, navigate, toast, loadData]);
 
-    if (isAdmin) {
-      loadStats();
-      loadObservability();
-    }
-  }, [user, isAdmin, navigate, toast, loadObservability]);
-
-  // Função para verificar se está no final do scroll
-  const isAtBottom = (element, margin = 50) => {
-    if (!element) return false;
-    const { scrollHeight, scrollTop, clientHeight } = element;
-    return scrollHeight - scrollTop - clientHeight <= margin;
-  };
-
-  // Função para scroll suave até o final
-  const scrollToBottom = () => {
-    if (scrollAreaRef.current) {
-      scrollAreaRef.current.scrollTo({
-        top: scrollAreaRef.current.scrollHeight,
-        behavior: 'smooth'
-      });
-    }
-  };
-
-  // Real-time Logs Polling
-  useEffect(() => {
-    if (activeTab !== 'system' || !isAdmin) return;
-
-    const fetchLogs = async () => {
-      const wasAtBottom = isAtBottom(scrollAreaRef.current, 50);
-      const { data } = await getSystemLiveLogs(50);
-      
-      if (data) {
-        setLiveLogs(data);
-        if (wasAtBottom) {
-          setTimeout(() => scrollToBottom(), 50);
-        }
-      }
-    };
-
-    // Initial fetch
-    fetchLogs();
-    setTimeout(() => scrollToBottom(), 100);
-
-    // Poll every 15 seconds
-    const interval = setInterval(() => {
-      fetchLogs();
-    }, 15000);
-
-    return () => clearInterval(interval);
-  }, [activeTab, isAdmin]);
-
-  // Recent frontend errors (from operational_observability_log)
-  useEffect(() => {
-    if (activeTab !== 'system' || !isAdmin) return;
-
-    const loadErrors = async () => {
-      setClientErrorEventsLoading(true);
-      try {
-        const { data, error } = await getOperationalErrorEvents({
-          module: 'client',
-          windowHours: 24,
-          limit: 25,
-        });
-        if (error) throw error;
-        setClientErrorEvents(Array.isArray(data) ? data : []);
-      } catch (err) {
-        console.error('[AdminDashboard] Erros ao carregar client errors:', err);
-      } finally {
-        setClientErrorEventsLoading(false);
-      }
-    };
-
-    loadErrors();
-  }, [activeTab, isAdmin]);
-
-  const loadStats = async () => {
-    setIsLoading(true);
-    try {
-      const { data, error } = await getDashboardStats();
-
-      if (error) {
-        console.error('[AdminDashboard] Erro ao carregar estatísticas:', error);
-        toast({
-          title: 'Erro',
-          description: 'Não foi possível carregar as estatísticas do dashboard.',
-          variant: 'destructive'
-        });
-        // Set default stats to avoid crashes
-        setStats({
-          kpis: { totalNutritionists: 0, totalPatients: 0, totalMeals: 0, activePatients: 0 },
-          growthData: [],
-          goalsDistribution: [],
-          recentUsers: []
-        });
-        return;
-      }
-
-      // Debug: Log the received data structure
-
-      // Handle different possible response structures
-      let processedData = null;
-      
-      if (data) {
-        // If data is already in the expected format
-        if (data.kpis || data.counts || data.totalNutritionists !== undefined) {
-          // Try to extract from different possible structures
-          processedData = {
-            kpis: {
-              totalNutritionists: data.kpis?.totalNutritionists || data.counts?.nutritionists || data.totalNutritionists || 0,
-              totalPatients: data.kpis?.totalPatients || data.counts?.patients || data.totalPatients || 0,
-              totalMeals: data.kpis?.totalMeals || data.counts?.meals || data.totalMeals || 0,
-              activePatients: data.kpis?.activePatients || data.counts?.active_rate || data.activePatients || 0,
-              estimated_mrr: data.kpis?.estimated_mrr || data.counts?.estimated_mrr || 0
-            },
-            growthData: data.growthData || data.growth_chart || data.growth || [],
-            goalsDistribution: data.goalsDistribution || data.goals_chart || data.goals || [],
-            recentUsers: data.recentUsers || data.users || [],
-            featureAdoption: data.feature_adoption || []
-          };
-        } else {
-          // If data is the object itself (flat structure)
-          processedData = {
-            kpis: {
-              totalNutritionists: data.totalNutritionists || data.nutritionists || 0,
-              totalPatients: data.totalPatients || data.patients || 0,
-              totalMeals: data.totalMeals || data.meals || 0,
-              activePatients: data.activePatients || 0,
-              estimated_mrr: data.estimated_mrr || 0
-            },
-            growthData: data.growthData || [],
-            goalsDistribution: data.goalsDistribution || [],
-            recentUsers: data.recentUsers || [],
-            featureAdoption: data.feature_adoption || []
-          };
-        }
-      }
-
-      setStats(processedData || {
-        kpis: { totalNutritionists: 0, totalPatients: 0, totalMeals: 0, activePatients: 0, estimated_mrr: 0 },
-        growthData: [],
-        goalsDistribution: [],
-        recentUsers: [],
-        featureAdoption: []
-      });
-    } catch (error) {
-      console.error('[AdminDashboard] Erro inesperado:', error);
-      toast({
-        title: 'Erro',
-        description: 'Ocorreu um erro inesperado ao carregar os dados.',
-        variant: 'destructive'
-      });
-      // Set default stats to avoid crashes
-      setStats({
-        kpis: { totalNutritionists: 0, totalPatients: 0, totalMeals: 0, activePatients: 0, estimated_mrr: 0 },
-        growthData: [],
-        goalsDistribution: [],
-        recentUsers: [],
-        featureAdoption: []
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleBroadcast = () => {
-    if (!broadcastMessage.trim()) {
-      toast({
-        title: 'Mensagem vazia',
-        description: 'Por favor, digite uma mensagem para enviar.',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    
-    toast({
-      title: 'Broadcast Enviado',
-      description: `Mensagem enviada para todos os usuários: "${broadcastMessage}"`,
-      duration: 5000
-    });
-
-    // Adicionar ao log
-    const broadcastLog = {
-      id: `log-broadcast-${Date.now()}`,
-      type: 'info',
-      message: `Broadcast enviado: ${broadcastMessage}`,
-      user: 'Sistema',
-      timestamp: new Date().toISOString()
-    };
-    setLiveLogs(prev => [broadcastLog, ...prev].slice(0, 50));
-
-    setBroadcastMessage('');
-  };
-
-  // Don't render if not admin
   if (!user || !isAdmin) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <Card className="max-w-md">
-          <CardContent className="pt-6">
-            <div className="flex flex-col items-center text-center space-y-4">
-              <ShieldAlert className="w-12 h-12 text-destructive" />
-              <div>
-                <h2 className="text-xl font-semibold">Acesso Negado</h2>
-                <p className="text-sm text-muted-foreground mt-2">
-                  Esta página é restrita a administradores.
-                </p>
-              </div>
-              <Button onClick={() => navigate('/nutritionist')}>
-                Voltar ao Dashboard
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        <Card className="max-w-md"><CardContent className="pt-6 text-center">
+          <ShieldAlert className="w-12 h-12 text-destructive mx-auto mb-4" />
+          <h2 className="text-xl font-semibold">Acesso Negado</h2>
+          <p className="text-sm text-muted-foreground mt-2">Página restrita a administradores.</p>
+          <Button onClick={() => navigate('/nutritionist')} className="mt-4">Voltar</Button>
+        </CardContent></Card>
       </div>
     );
   }
 
-  // Extrair dados do stats (com fallbacks)
-  const kpis = stats?.kpis || {
-    totalNutritionists: 0,
-    totalPatients: 0,
-    totalMeals: 0,
-    activePatients: 0,
-    estimated_mrr: 0
-  };
-
+  const kpis = stats?.kpis || {};
   const growthData = stats?.growthData || [];
-  const goalsDistribution = stats?.goalsDistribution || [];
-  const recentUsers = stats?.recentUsers || [];
-  const featureAdoption = stats?.featureAdoption || [];
-
-  // Calcular métricas financeiras baseado nos dados do banco
-  const estimatedMRR = kpis.estimated_mrr || 0;
-  const averageTicket = kpis.totalNutritionists > 0 ? estimatedMRR / kpis.totalNutritionists : 0;
-  const churnRate = 2.5; // Todo: Mapear churnRate ativo se disponível no futuro
-
-  // Gerar dados de receita dos últimos 6 meses
-  const revenueData = Array.from({ length: 6 }, (_, i) => {
-    const date = subMonths(new Date(), 5 - i);
-    const monthName = format(date, 'MMM', { locale: ptBR });
-    // Simular crescimento gradual
-    const baseRevenue = estimatedMRR * 0.8;
-    const growth = (5 - i) * 0.05;
-    return {
-      month: monthName.charAt(0).toUpperCase() + monthName.slice(1),
-      receita: Math.round(baseRevenue * (1 + growth))
-    };
-  });
-
-  // Formatar dados de crescimento para o gráfico
-  const chartData = growthData.map(item => ({
-    month: item.name || item.month || 'N/A',
-    users: item.users || item.count || 0
+  const chartData = growthData.slice(-7).map((d, i) => ({
+    name: format(subMonths(new Date(), 6 - i), 'MMM', { locale: ptBR }).slice(0, 3),
+    value: d.users || d.count || 0
   }));
 
-  // Formatar dados de objetivos para o gráfico de pizza
-  const pieData = goalsDistribution.map(item => ({
-    name: item.name || item.goal || 'Outros',
-    value: item.value || item.count || 0
-  }));
-
-  // Formatar dados de adoção para gráfico de barras
-  const adoptionData = featureAdoption.map(item => ({
-    name: item.name || 'Outro',
-    value: item.value || 0
-  })).sort((a,b) => b.value - a.value);
-
-  // Função para formatar "há X dias"
-  const formatDaysAgo = (dateString) => {
-    try {
-      const date = new Date(dateString);
-      const days = differenceInDays(new Date(), date);
-      
-      if (days === 0) return 'Hoje';
-      if (days === 1) return 'Há 1 dia';
-      if (days < 7) return `Há ${days} dias`;
-      if (days < 30) return `Há ${Math.floor(days / 7)} semanas`;
-      if (days < 365) return `Há ${Math.floor(days / 30)} meses`;
-      return `Há ${Math.floor(days / 365)} anos`;
-    } catch {
-      return 'Data inválida';
-    }
-  };
-
-  // Função para formatar timestamp do log
-  const formatLogTime = (timestamp) => {
-    try {
-      return format(new Date(timestamp), 'HH:mm:ss');
-    } catch {
-      return '--:--:--';
-    }
-  };
-
-  // Função para obter ícone do tipo de log
-  const getLogIcon = (type) => {
-    switch (type) {
-      case 'error':
-        return <AlertCircle className="w-3.5 h-3.5 text-red-500" />;
-      case 'warning':
-        return <AlertTriangle className="w-3.5 h-3.5 text-yellow-500" />;
-      default:
-        return <Info className="w-3.5 h-3.5 text-blue-500" />;
-    }
-  };
-
-  // Função para obter badge variant do tipo de log
-  const getLogBadgeVariant = (type) => {
-    switch (type) {
-      case 'error':
-        return 'destructive';
-      case 'warning':
-        return 'warning';
-      default:
-        return 'secondary';
-    }
-  };
+  // Quick links
+  const quickLinks = [
+    { label: 'Comportamento', desc: 'Análises de uso', icon: Activity, path: '/admin/study', color: 'bg-violet-100 text-violet-600' },
+    { label: 'Performance', desc: 'Bugs e logs', icon: Bug, path: '/admin/bugs', color: 'bg-orange-100 text-orange-600' },
+    { label: 'Usuários', desc: 'Gestão de acesso', icon: Users, path: '/admin/users', color: 'bg-blue-100 text-blue-600' },
+    { label: 'Financeiro', desc: 'Receita e métricas', icon: DollarSign, path: '/admin/financial', color: 'bg-emerald-100 text-emerald-600' },
+  ];
 
   return (
-    <div className="flex flex-col min-h-screen bg-background">
-      <div className="max-w-7xl mx-auto w-full px-4 md:px-8 py-8 space-y-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
+      <div className="max-w-7xl mx-auto px-4 md:px-6 py-8 space-y-8">
+        
         {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-6"
-        >
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="text-center sm:text-left">
-              <h1 className="text-3xl font-bold text-foreground">Painel de Controle Executivo</h1>
-              <p className="text-muted-foreground mt-1 text-sm">
-                {format(new Date(), "EEEE, d 'de' MMMM 'de' yyyy", { locale: ptBR })}
-              </p>
+        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-xl bg-indigo-600 text-white">
+                <BarChart3 className="w-6 h-6" />
+              </div>
+              <div>
+                <h1 className="text-2xl md:text-3xl font-bold text-foreground">ERP Dashboard</h1>
+                <p className="text-sm text-muted-foreground">{format(new Date(), "EEEE, d 'de' MMMM", { locale: ptBR })}</p>
+              </div>
             </div>
-            <Badge variant="outline" className="text-sm w-fit mx-auto sm:mx-0">
-              <ShieldAlert className="w-3.5 h-3.5 mr-1.5" />
-              Administrador
+          </div>
+          <div className="flex items-center gap-3">
+            <HealthIndicator rate={observability.error_rate} />
+            <Badge variant="outline" className="gap-1">
+              <ShieldAlert className="w-3 h-3" /> Admin
             </Badge>
           </div>
         </motion.div>
 
-        {/* Tabs Structure */}
-        <Tabs defaultValue="overview" value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <div className="overflow-x-auto pb-1 -mx-4 px-4 sm:mx-0 sm:px-0">
-            <TabsList className="inline-flex w-auto min-w-full sm:w-full grid grid-cols-3">
-              <TabsTrigger value="overview" className="flex items-center gap-2 whitespace-nowrap">
-                <TrendingUp className="w-4 h-4" />
-                Visão Geral
-              </TabsTrigger>
-              <TabsTrigger value="finance" className="flex items-center gap-2 whitespace-nowrap">
-                <DollarSign className="w-4 h-4" />
-                Financeiro
-              </TabsTrigger>
-              <TabsTrigger value="system" className="flex items-center gap-2 whitespace-nowrap">
-                <Terminal className="w-4 h-4" />
-                Sistema & Logs
-              </TabsTrigger>
-            </TabsList>
-          </div>
+        {/* KPI Grid - Row 1 */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatCard loading={isLoading} icon={Users} label="Nutricionistas" value={kpis.totalNutritionists || 0} color="bg-blue-100 text-blue-600" sub="ativos na plataforma" trend={12} />
+          <StatCard loading={isLoading} icon={Users} label="Pacientes" value={kpis.totalPatients || 0} color="bg-emerald-100 text-emerald-600" sub="cadastrados" trend={8} />
+          <StatCard loading={isLoading} icon={Utensils} label="Refeições" value={(kpis.totalMeals || 0).toLocaleString('pt-BR')} color="bg-orange-100 text-orange-600" sub="registros totais" trend={15} />
+          <StatCard loading={isLoading} icon={Activity} label="Taxa Atividade" value={`${kpis.activePatients || 0}%`} color="bg-purple-100 text-purple-600" sub="usuários ativos" trend={-3} />
+        </div>
 
-          {/* TAB 1: Visão Geral */}
-          <TabsContent value="overview" className="space-y-6">
-            {/* Row 1: KPI Cards */}
-            <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-6">
-              {/* Total Nutricionistas */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-              >
-                <Card className="hover:shadow-lg transition-shadow border-l-4 border-l-blue-500">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">
-                      Total Nutricionistas
-                    </CardTitle>
-                    <Stethoscope className="h-5 w-5 text-blue-500" />
-                  </CardHeader>
-                  <CardContent>
-                    {isLoading ? (
-                      <Skeleton className="h-8 w-20" />
-                    ) : (
-                      <div className="text-3xl font-bold text-blue-600">{kpis.totalNutritionists}</div>
-                    )}
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Profissionais cadastrados
-                    </p>
-                  </CardContent>
-                </Card>
-              </motion.div>
+        {/* Main Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          
+          {/* Chart - 2/3 width */}
+          <Card className="lg:col-span-2">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5 text-primary" />
+                  Crescimento da Plataforma
+                </CardTitle>
+                <p className="text-sm text-muted-foreground mt-1">Evolução de usuários nos últimos meses</p>
+              </div>
+              <Badge variant="outline" className="gap-1">
+                <Clock className="w-3 h-3" /> Atualizado agora
+              </Badge>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <Skeleton className="h-[250px] w-full" />
+              ) : chartData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={250}>
+                  <AreaChart data={chartData}>
+                    <defs>
+                      <linearGradient id="colorGrowth" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} />
+                    <Tooltip contentStyle={{ borderRadius: '8px' }} />
+                    <Area type="monotone" dataKey="value" stroke="#6366f1" fill="url(#colorGrowth)" strokeWidth={2} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-[250px] flex items-center justify-center text-muted-foreground">
+                  <p>Sem dados disponíveis</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
-              {/* Total Pacientes */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-              >
-                <Card className="hover:shadow-lg transition-shadow border-l-4 border-l-green-500">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">
-                      Total Pacientes
-                    </CardTitle>
-                    <Users className="h-5 w-5 text-green-500" />
-                  </CardHeader>
-                  <CardContent>
-                    {isLoading ? (
-                      <Skeleton className="h-8 w-20" />
-                    ) : (
-                      <div className="text-3xl font-bold text-green-600">{kpis.totalPatients}</div>
-                    )}
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Usuários cadastrados
-                    </p>
-                  </CardContent>
-                </Card>
-              </motion.div>
-
-              {/* Refeições Registradas */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-              >
-                <Card className="hover:shadow-lg transition-shadow border-l-4 border-l-orange-500">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">
-                      Refeições Registradas
-                    </CardTitle>
-                    <Utensils className="h-5 w-5 text-orange-500" />
-                  </CardHeader>
-                  <CardContent>
-                    {isLoading ? (
-                      <Skeleton className="h-8 w-20" />
-                    ) : (
-                      <div className="text-3xl font-bold text-orange-600">
-                        {kpis.totalMeals.toLocaleString('pt-BR')}
-                      </div>
-                    )}
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Total de registros
-                    </p>
-                  </CardContent>
-                </Card>
-              </motion.div>
-
-              {/* Taxa de Atividade */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 }}
-              >
-                <Card className="hover:shadow-lg transition-shadow border-l-4 border-l-purple-500">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">
-                      Taxa de Atividade
-                    </CardTitle>
-                    <Activity className="h-5 w-5 text-purple-500" />
-                  </CardHeader>
-                  <CardContent>
-                    {isLoading ? (
-                      <Skeleton className="h-8 w-20" />
-                    ) : (
-                      <div className="text-3xl font-bold text-purple-600">{kpis.activePatients}</div>
-                    )}
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Pacientes ativos
-                    </p>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            </div>
-
-            {/* Row 2: Charts */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Crescimento da Plataforma (66%) */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 }}
-                className="lg:col-span-2"
-              >
-                <Card>
-                  <CardHeader>
-                    <div className="flex items-center gap-2">
-                      <TrendingUp className="h-5 w-5 text-primary" />
-                      <CardTitle>Crescimento da Plataforma</CardTitle>
-                    </div>
-                    <CardDescription>
-                      Evolução do número de usuários ao longo do tempo
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {isLoading ? (
-                      <Skeleton className="h-[300px] w-full" />
-                    ) : chartData.length > 0 ? (
-                      <ResponsiveContainer width="100%" height={300}>
-                        <AreaChart data={chartData}>
-                          <defs>
-                            <linearGradient id="colorUsers" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8} />
-                              <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.1} />
-                            </linearGradient>
-                          </defs>
-                          <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                          <XAxis
-                            dataKey="month"
-                            className="text-xs"
-                            tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                          />
-                          <YAxis
-                            className="text-xs"
-                            tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                          />
-                          <Tooltip
-                            contentStyle={{
-                              backgroundColor: 'hsl(var(--popover))',
-                              border: '1px solid hsl(var(--border))',
-                              borderRadius: '8px'
-                            }}
-                          />
-                          <Area
-                            type="monotone"
-                            dataKey="users"
-                            stroke="#3b82f6"
-                            fillOpacity={1}
-                            fill="url(#colorUsers)"
-                          />
-                        </AreaChart>
-                      </ResponsiveContainer>
-                    ) : (
-                      <div className="flex items-center justify-center h-[300px] text-muted-foreground">
-                        <p>Nenhum dado disponível</p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </motion.div>
-
-              {/* Objetivos dos Pacientes (33%) */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.6 }}
-              >
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Objetivos dos Pacientes</CardTitle>
-                    <CardDescription>
-                      Distribuição por tipo de meta
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {isLoading ? (
-                      <Skeleton className="h-[300px] w-full" />
-                    ) : pieData.length > 0 ? (
-                      <ResponsiveContainer width="100%" height={300}>
-                        <PieChart>
-                          <Pie
-                            data={pieData}
-                            cx="50%"
-                            cy="50%"
-                            labelLine={false}
-                            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                            outerRadius={80}
-                            fill="#8884d8"
-                            dataKey="value"
-                          >
-                            {pieData.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                            ))}
-                          </Pie>
-                          <Tooltip
-                            contentStyle={{
-                              backgroundColor: 'hsl(var(--popover))',
-                              border: '1px solid hsl(var(--border))',
-                              borderRadius: '8px'
-                            }}
-                          />
-                          <Legend
-                            verticalAlign="bottom"
-                            height={36}
-                            formatter={(value) => value}
-                          />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    ) : (
-                      <div className="flex items-center justify-center h-[300px] text-muted-foreground">
-                        <p>Nenhum dado disponível</p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </motion.div>
-            </div>
-
-            {/* Row 3: Recent Activity */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.7 }}
-            >
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center gap-2">
-                    <UserPlus className="h-5 w-5 text-primary" />
-                    <CardTitle>Novos Usuários</CardTitle>
-                  </div>
-                  <CardDescription>
-                    Últimos 5 usuários cadastrados na plataforma
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {isLoading ? (
-                    <div className="space-y-4">
-                      {[1, 2, 3, 4, 5].map((i) => (
-                        <div key={i} className="flex items-center gap-4">
-                          <Skeleton className="h-10 w-10 rounded-full" />
-                          <div className="flex-1 space-y-2">
-                            <Skeleton className="h-4 w-32" />
-                            <Skeleton className="h-3 w-24" />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : recentUsers.length > 0 ? (
-                    <div className="space-y-4">
-                      {recentUsers.slice(0, 5).map((user) => (
-                        <div
-                          key={user.id}
-                          className="flex items-center gap-4 p-3 rounded-lg hover:bg-muted/50 transition-colors"
-                        >
-                          <Avatar className="h-10 w-10">
-                            <AvatarImage src={user.avatar_url} alt={user.name} />
-                            <AvatarFallback>
-                              {user.name?.charAt(0).toUpperCase() || 'U'}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <p className="font-medium text-sm truncate">{user.name || 'Sem nome'}</p>
-                              <Badge
-                                variant={
-                                  user.user_type === 'nutritionist'
-                                    ? 'default'
-                                    : user.user_type === 'patient'
-                                    ? 'secondary'
-                                    : 'outline'
-                                }
-                                className="text-xs"
-                              >
-                                {user.user_type === 'nutritionist'
-                                  ? 'Nutricionista'
-                                  : user.user_type === 'patient'
-                                  ? 'Paciente'
-                                  : user.user_type || 'Usuário'}
-                              </Badge>
-                            </div>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              Entrou {formatDaysAgo(user.created_at)}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-                      <Users className="h-12 w-12 mb-2 opacity-50" />
-                      <p>Nenhum usuário recente</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </motion.div>
-          </TabsContent>
-
-          {/* TAB 2: Financeiro */}
-          <TabsContent value="finance" className="space-y-6">
-            {/* Finance KPIs */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* MRR Estimado */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-              >
-                <Card className="hover:shadow-lg transition-shadow border-l-4 border-l-emerald-500">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">
-                      MRR Estimado
-                    </CardTitle>
-                    <DollarSign className="h-5 w-5 text-emerald-500" />
-                  </CardHeader>
-                  <CardContent>
-                    {isLoading ? (
-                      <Skeleton className="h-8 w-32" />
-                    ) : (
-                      <div className="text-3xl font-bold text-emerald-600">
-                        R$ {estimatedMRR.toLocaleString('pt-BR')}
-                      </div>
-                    )}
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Receita mensal recorrente
-                    </p>
-                  </CardContent>
-                </Card>
-              </motion.div>
-
-              {/* Ticket Médio */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-              >
-                <Card className="hover:shadow-lg transition-shadow border-l-4 border-l-blue-500">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">
-                      Ticket Médio
-                    </CardTitle>
-                    <CreditCard className="h-5 w-5 text-blue-500" />
-                  </CardHeader>
-                  <CardContent>
-                    {isLoading ? (
-                      <Skeleton className="h-8 w-32" />
-                    ) : (
-                      <div className="text-3xl font-bold text-blue-600">
-                        R$ {averageTicket.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </div>
-                    )}
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Por nutricionista/mês
-                    </p>
-                  </CardContent>
-                </Card>
-              </motion.div>
-
-              {/* Churn Rate */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-              >
-                <Card className="hover:shadow-lg transition-shadow border-l-4 border-l-red-500">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">
-                      Churn Rate
-                    </CardTitle>
-                    <TrendingUp className="h-5 w-5 text-red-500 rotate-180" />
-                  </CardHeader>
-                  <CardContent>
-                    {isLoading ? (
-                      <Skeleton className="h-8 w-32" />
-                    ) : (
-                      <div className="text-3xl font-bold text-red-600">
-                        {churnRate}%
-                      </div>
-                    )}
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Taxa de cancelamento
-                    </p>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            </div>
-
-            {/* Revenue Chart */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-            >
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center gap-2">
-                    <DollarSign className="h-5 w-5 text-primary" />
-                    <CardTitle>Receita por Mês</CardTitle>
-                  </div>
-                  <CardDescription>
-                    Últimos 6 meses de receita estimada
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {isLoading ? (
-                    <Skeleton className="h-[300px] w-full" />
-                  ) : (
-                    <ResponsiveContainer width="100%" height={300}>
-                      <BarChart data={revenueData}>
-                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                        <XAxis
-                          dataKey="month"
-                          className="text-xs"
-                          tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                        />
-                        <YAxis
-                          className="text-xs"
-                          tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                          tickFormatter={(value) => `R$ ${(value / 1000).toFixed(0)}k`}
-                        />
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: 'hsl(var(--popover))',
-                            border: '1px solid hsl(var(--border))',
-                            borderRadius: '8px'
-                          }}
-                          formatter={(value) => [`R$ ${value.toLocaleString('pt-BR')}`, 'Receita']}
-                        />
-                        <Bar dataKey="receita" fill="#10b981" radius={[8, 8, 0, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  )}
-                </CardContent>
-              </Card>
-            </motion.div>
-          </TabsContent>
-
-          {/* TAB 3: Sistema & Logs */}
-          <TabsContent value="system" className="space-y-6">
-            {/* Observabilidade Técnica - métricas de saúde da plataforma */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.05 }}
-            >
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center gap-2">
-                    <Activity className="h-5 w-5 text-primary" />
-                    <CardTitle>Observabilidade Técnica</CardTitle>
-                  </div>
-                  <CardDescription>
-                    Erros e latência dos fluxos da plataforma nas últimas 24h
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {observabilityLoading ? (
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      {[1, 2, 3, 4].map((i) => (
-                        <Skeleton key={i} className="h-20" />
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div className="rounded-lg border border-border bg-muted/20 p-3">
-                          <p className="text-xs text-muted-foreground">Eventos</p>
-                          <p className="text-xl font-semibold">{operationalSummary?.total_events ?? 0}</p>
-                        </div>
-                        <div className="rounded-lg border border-red-200 bg-red-50 p-3">
-                          <p className="text-xs text-red-700">Erros</p>
-                          <p className="text-xl font-semibold text-red-700">{operationalSummary?.error_events ?? 0}</p>
-                        </div>
-                        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
-                          <p className="text-xs text-amber-700">Latência média</p>
-                          <p className="text-xl font-semibold text-amber-700">
-                            {Number(operationalSummary?.avg_latency_ms ?? 0).toFixed(0)} ms
-                          </p>
-                        </div>
-                        <div className="rounded-lg border border-border bg-muted/20 p-3">
-                          <p className="text-xs text-muted-foreground">Taxa de erro</p>
-                          <p className="text-xl font-semibold">{Number(operationalSummary?.error_rate ?? 0).toFixed(1)}%</p>
-                        </div>
-                      </div>
-                      {Array.isArray(operationalSummary?.module_stats) && operationalSummary.module_stats.length > 0 && (
-                        <div>
-                          <p className="text-sm font-medium text-muted-foreground mb-2">Por módulo</p>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                            {operationalSummary.module_stats
-                              .slice()
-                              .sort((a, b) => Number(b?.error_events || 0) - Number(a?.error_events || 0))
-                              .map((item) => (
-                                <div
-                                  key={item.module}
-                                  className="flex items-center justify-between rounded-lg border bg-muted/10 px-3 py-2 text-sm"
-                                >
-                                  <span className="font-medium">{item.module}</span>
-                                  <span className="text-muted-foreground text-xs">
-                                    {item.error_events}/{item.total_events} erros • {Number(item.avg_latency_ms || 0).toFixed(0)} ms
-                                  </span>
-                                </div>
-                              ))}
-                          </div>
-                        </div>
-                      )}
-                      {(!operationalSummary?.module_stats || operationalSummary.module_stats.length === 0) && !observabilityLoading && (
-                        <p className="text-sm text-muted-foreground">Sem eventos instrumentados no período.</p>
-                      )}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </motion.div>
-
-            {/* Client Errors */}
+          {/* Side Panel - 1/3 width */}
+          <div className="space-y-6">
+            
+            {/* System Health */}
             <Card>
               <CardHeader>
-                <div className="flex items-center gap-2">
-                  <AlertCircle className="h-5 w-5 text-red-500" />
-                  <CardTitle>Erros do Frontend</CardTitle>
-                </div>
-                <CardDescription>
-                  Local, tipo, stack e últimas mensagens do console (últimas 24h)
-                </CardDescription>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Zap className="w-5 h-5 text-amber-500" />
+                  Saúde do Sistema
+                </CardTitle>
               </CardHeader>
-              <CardContent>
-                {clientErrorEventsLoading ? (
-                  <div className="space-y-3">
-                    {[1, 2, 3].map((i) => (
-                      <Skeleton key={i} className="h-16" />
-                    ))}
-                  </div>
-                ) : clientErrorEvents.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">Sem erros do frontend no período.</p>
-                ) : (
-                  <div className="space-y-3">
-                    {clientErrorEvents.map((evt) => (
-                      <div key={evt.id} className="rounded-lg border bg-muted/10 p-3">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="text-xs text-muted-foreground">
-                              {formatLogTime(evt.created_at)} • {evt.operation || 'client_error'}
-                            </p>
-                            <p className="text-sm font-medium text-foreground truncate">
-                              {evt.error_message || 'Erro registrado'}
-                            </p>
-                            <p className="text-xs text-muted-foreground break-words mt-1">
-                              Rota: {evt.metadata?.route || '--'}
-                            </p>
-                            <p className="text-xs text-muted-foreground break-words mt-1">
-                              Tipo: {evt.metadata?.error_type || '--'}
-                            </p>
-                          </div>
-                        </div>
-
-                        <details className="mt-2">
-                          <summary className="cursor-pointer text-xs text-primary">Ver stack e console</summary>
-                          <div className="mt-2">
-                            {evt.metadata?.stack ? (
-                              <pre className="whitespace-pre-wrap break-words text-[11px] bg-slate-950 text-slate-200 p-2 rounded-lg overflow-auto">
-                                {evt.metadata.stack}
-                              </pre>
-                            ) : (
-                              <p className="text-xs text-muted-foreground">Stack não disponível</p>
-                            )}
-                            {Array.isArray(evt.metadata?.console) && evt.metadata.console.length > 0 && (
-                              <div className="mt-2">
-                                <p className="text-xs font-medium text-muted-foreground mb-1">Console (amostra)</p>
-                                <pre className="whitespace-pre-wrap break-words text-[11px] bg-slate-950 text-slate-200 p-2 rounded-lg overflow-auto">
-                                  {JSON.stringify(evt.metadata.console, null, 2)}
-                                </pre>
-                              </div>
-                            )}
-                          </div>
-                        </details>
-                      </div>
-                    ))}
-                  </div>
-                )}
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Taxa de Erro</span>
+                  <span className="font-semibold">{observability.error_rate.toFixed(2)}%</span>
+                </div>
+                <Progress value={Math.min(100, observability.error_rate * 10)} className="h-2" />
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Eventos (24h)</span>
+                  <span className="font-semibold">{observability.total_events.toLocaleString()}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Erros (24h)</span>
+                  <span className="font-semibold text-red-600">{observability.error_events}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Latência Média</span>
+                  <span className="font-semibold">{observability.avg_latency_ms.toFixed(0)}ms</span>
+                </div>
               </CardContent>
             </Card>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Broadcast Widget */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-              >
-                <Card>
-                  <CardHeader>
-                    <div className="flex items-center gap-2">
-                      <Megaphone className="h-5 w-5 text-primary" />
-                      <CardTitle>Broadcast</CardTitle>
+            {/* Quick Stats */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Target className="w-5 h-5 text-emerald-500" />
+                  Metas & Ações
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {[
+                  { icon: Award, label: 'Metas Ativas', value: '47', color: 'text-emerald-600' },
+                  { icon: Calendar, label: 'Consultas Hoje', value: '12', color: 'text-blue-600' },
+                  { icon: MessageSquare, label: 'Mensagens', value: '234', color: 'text-purple-600' },
+                  { icon: CheckCircle2, label: 'Conquistas', value: '89', color: 'text-amber-600' },
+                ].map((item) => (
+                  <div key={item.label} className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <item.icon className={`w-5 h-5 ${item.color}`} />
+                      <span className="text-sm">{item.label}</span>
                     </div>
-                    <CardDescription>
-                      Envie uma mensagem para todos os usuários da plataforma
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <Textarea
-                      placeholder="Digite sua mensagem de broadcast aqui..."
-                      value={broadcastMessage}
-                      onChange={(e) => setBroadcastMessage(e.target.value)}
-                      className="min-h-[120px] font-mono text-sm"
-                    />
-                    <Button
-                      onClick={handleBroadcast}
-                      className="w-full"
-                      disabled={!broadcastMessage.trim()}
-                    >
-                      <Send className="w-4 h-4 mr-2" />
-                      Enviar para Todos
-                    </Button>
-                  </CardContent>
-                </Card>
-              </motion.div>
+                    <span className={`font-semibold ${item.color}`}>{item.value}</span>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
 
-              {/* Live Audit Log */}
+        {/* Quick Access Grid */}
+        <div>
+          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+            <MousePointer className="w-5 h-5 text-primary" />
+            Acesso Rápido
+          </h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {quickLinks.map((link, i) => (
               <motion.div
+                key={link.path}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
+                transition={{ delay: i * 0.1 }}
               >
-                <Card>
-                  <CardHeader>
-                    <div className="flex items-center gap-2">
-                      <Terminal className="h-5 w-5 text-primary" />
-                      <CardTitle>Live Audit Log</CardTitle>
+                <Card 
+                  className="cursor-pointer hover:shadow-lg hover:border-primary/50 transition-all duration-300 hover:-translate-y-1 group"
+                  onClick={() => navigate(link.path)}
+                >
+                  <CardContent className="p-5">
+                    <div className={`w-10 h-10 rounded-xl ${link.color} flex items-center justify-center mb-3 group-hover:scale-110 transition-transform`}>
+                      <link.icon className="w-5 h-5" />
                     </div>
-                    <CardDescription>
-                      Eventos do sistema em tempo real
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div 
-                      ref={scrollAreaRef}
-                      className="bg-slate-950 rounded-lg p-4 h-[400px] overflow-y-auto font-mono text-xs"
-                    >
-                      {liveLogs.length === 0 ? (
-                        <div className="text-muted-foreground text-center py-8">
-                          <Terminal className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                          <p>Aguardando eventos...</p>
-                        </div>
-                      ) : (
-                        <div className="space-y-2">
-                          {liveLogs.map((log) => (
-                            <div
-                              key={log.id}
-                              className="flex items-start gap-3 p-2 rounded hover:bg-slate-900/50 transition-colors"
-                            >
-                              <div className="mt-0.5">
-                                {getLogIcon(log.type)}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <span className="text-slate-400">{formatLogTime(log.timestamp || log.event_timestamp)}</span>
-                                  <Badge variant={getLogBadgeVariant(log.type)} className="text-xs">
-                                    {log.type.toUpperCase()}
-                                  </Badge>
-                                </div>
-                                <p className="text-slate-300">{log.message}</p>
-                                <p className="text-slate-500 text-[10px] mt-1">Usuário: {log.user_name || log.user || 'Sistema'}</p>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                    <h3 className="font-semibold">{link.label}</h3>
+                    <p className="text-xs text-muted-foreground mt-1">{link.desc}</p>
+                    <div className="flex items-center gap-1 mt-3 text-primary text-xs opacity-0 group-hover:opacity-100 transition-opacity">
+                      Acessar <ArrowRight className="w-3 h-3" />
                     </div>
                   </CardContent>
                 </Card>
               </motion.div>
-            </div>
-          </TabsContent>
-        </Tabs>
+            ))}
+          </div>
+        </div>
 
-        {/* Quick Actions (Always visible) */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.8 }}
-        >
-          <Card>
+        {/* Financial Overview */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Card className="md:col-span-2">
             <CardHeader>
-              <CardTitle>Ações Rápidas</CardTitle>
-              <CardDescription>
-                Ferramentas de gerenciamento da plataforma
-              </CardDescription>
+              <CardTitle className="flex items-center gap-2">
+                <DollarSign className="w-5 h-5 text-emerald-500" />
+                Visão Geral Financeira
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Button
-                  variant="outline"
-                  size="lg"
-                  className="h-auto p-6 flex flex-col items-start justify-start hover:bg-primary/5 hover:border-primary transition-colors"
-                  onClick={() => navigate('/nutritionist/foods')}
-                >
-                  <div className="flex items-center gap-3 mb-2">
-                    <Utensils className="w-6 h-6 text-primary" />
-                    <span className="text-lg font-semibold">Gerenciar Alimentos</span>
-                  </div>
-                  <p className="text-sm text-muted-foreground text-left">
-                    Adicionar e editar medidas caseiras dos alimentos
-                  </p>
-                </Button>
-
-                <Button
-                  variant="outline"
-                  size="lg"
-                  className="h-auto p-6 flex flex-col items-start justify-start hover:bg-primary/5 hover:border-primary transition-colors"
-                  onClick={() => navigate('/admin/users')}
-                >
-                  <div className="flex items-center gap-3 mb-2">
-                    <Users className="w-6 h-6 text-primary" />
-                    <span className="text-lg font-semibold">Gerenciar Usuários</span>
-                  </div>
-                  <p className="text-sm text-muted-foreground text-left">
-                    Visualizar estatísticas e acesso de Nutricionistas
-                  </p>
-                </Button>
+              <div className="grid grid-cols-3 gap-6">
+                <div className="text-center p-4 rounded-xl bg-emerald-50 border border-emerald-100">
+                  <p className="text-xs text-emerald-600 mb-1">MRR</p>
+                  <p className="text-2xl font-bold text-emerald-700">R$ {(kpis.estimated_mrr || 0).toLocaleString('pt-BR')}</p>
+                </div>
+                <div className="text-center p-4 rounded-xl bg-blue-50 border border-blue-100">
+                  <p className="text-xs text-blue-600 mb-1">Ticket Médio</p>
+                  <p className="text-2xl font-bold text-blue-700">R$ {kpis.totalNutritionists > 0 ? ((kpis.estimated_mrr || 0) / kpis.totalNutritionists).toFixed(2) : '0,00'}</p>
+                </div>
+                <div className="text-center p-4 rounded-xl bg-amber-50 border border-amber-100">
+                  <p className="text-xs text-amber-600 mb-1">Proj. Anual</p>
+                  <p className="text-2xl font-bold text-amber-700">R$ {((kpis.estimated_mrr || 0) * 12).toLocaleString('pt-BR')}</p>
+                </div>
               </div>
             </CardContent>
           </Card>
-        </motion.div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Eye className="w-5 h-5 text-violet-500" />
+                Status em Tempo Real
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {[
+                { label: 'Sistema', status: 'online', color: 'bg-green-500' },
+                { label: 'Database', status: 'online', color: 'bg-green-500' },
+                { label: 'API', status: 'online', color: 'bg-green-500' },
+                { label: 'Auth', status: 'online', color: 'bg-green-500' },
+              ].map((item) => (
+                <div key={item.label} className="flex items-center justify-between p-2 rounded-lg bg-muted/30">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-2 h-2 rounded-full ${item.color}`} />
+                    <span className="text-sm">{item.label}</span>
+                  </div>
+                  <Badge variant="outline" className="text-green-600 border-green-200 bg-green-50">
+                    {item.status}
+                  </Badge>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );
