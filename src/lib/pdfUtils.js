@@ -211,7 +211,8 @@ export const exportAgendaToPdf = async (appointments, periodType, periodLabel, n
                 const date = new Date(appt.appointment_time);
                 const dateStr = date.toLocaleDateString('pt-BR');
                 const timeStr = date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-                return `${dateStr} ${timeStr} | ${appt.patient?.name || 'Não identificado'} | ${appt.status || 'scheduled'}`;
+                const patientName = appt.patient?.name || appt.unregistered_patient_name || 'Não identificado';
+                return `${dateStr} ${timeStr} | ${patientName} | ${appt.status || 'scheduled'}`;
             }),
         ],
     }, async () => {
@@ -305,7 +306,7 @@ export const exportAgendaToPdf = async (appointments, periodType, periodLabel, n
         tableRows.push([
             dateStr,
             timeStr,
-            appt.patient?.name || 'Não identificado',
+            appt.patient?.name || appt.unregistered_patient_name || 'Não identificado',
             typeMap[appt.appointment_type] || 'Não especificado',
             statusMap[appt.status] || 'Agendada'
         ]);
@@ -380,15 +381,21 @@ export const exportMealPlanToPdf = async (mealPlan, patientName, nutritionistNam
         lines: [
             `Paciente: ${patientName || 'Não informado'}`,
             `Nutricionista: ${nutritionistName || 'Não informado'}`,
+            `Observações Gerais: ${mealPlan?.description || 'Nenhuma'}`,
             ...(mealPlan?.meals || []).flatMap((meal) => {
                 const mealName = translateMealType ? translateMealType(meal.meal_type) : (meal.name || meal.meal_type || 'Refeição');
                 const rows = (meal.foods || []).map((food) => {
                     const qty = formatQuantityWithUnit
                         ? formatQuantityWithUnit(food.quantity || 0, food.unit || '', food.measure)
                         : `${food.quantity || 0} ${food.unit || ''}`;
-                    return `  - ${food.food?.name || 'Alimento'} | ${qty}`;
+                    const foodName = food.patient_description || food.food?.name || 'Alimento';
+                    const substitutes = (food.substitutes || []).length > 0 
+                        ? ` (Opções: ${food.substitutes.map(s => s.name).join(', ')})` 
+                        : '';
+                    return `  - ${foodName}${substitutes} | ${qty}`;
                 });
-                return [`${mealName}${meal.meal_time ? ` (${meal.meal_time})` : ''}`, ...rows];
+                const mealNotes = meal.notes ? [`  Obs: ${meal.notes}`] : [];
+                return [`${mealName}${meal.meal_time ? ` (${meal.meal_time})` : ''}`, ...rows, ...mealNotes];
             }),
         ],
     }, async () => {
@@ -483,7 +490,24 @@ export const exportMealPlanToPdf = async (mealPlan, patientName, nutritionistNam
 
     // Data de geração
     doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`, 14, yPosition);
-    yPosition += 10;
+    yPosition += 8;
+
+    // Observações Gerais
+    if (mealPlan.description) {
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...PRIMARY_COLOR);
+        doc.text('Observações Gerais:', 14, yPosition);
+        yPosition += 5;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.setTextColor(...TEXT_COLOR);
+        const splitDescription = doc.splitTextToSize(mealPlan.description, pageWidth - 28);
+        doc.text(splitDescription, 14, yPosition);
+        yPosition += (splitDescription.length * 5) + 5;
+    }
+
+    yPosition += 2;
 
     // Calcular totais do plano (macros e micros)
     const planTotals = (mealPlan.meals || []).reduce((acc, meal) => {
@@ -581,16 +605,23 @@ export const exportMealPlanToPdf = async (mealPlan, patientName, nutritionistNam
 
         // Tabela de alimentos (sempre apenas com macros)
         if (foods.length > 0) {
-            const tableData = foods.map(food => [
-                food.food?.name || 'Alimento',
-                formatQuantityWithUnit
-                    ? formatQuantityWithUnit(food.quantity || 0, food.unit || '', food.measure)
-                    : `${food.quantity || 0} ${food.unit || ''}`,
-                Math.round(food.calories || 0),
-                Math.round(food.protein || 0),
-                Math.round(food.carbs || 0),
-                Math.round(food.fat || 0)
-            ]);
+            const tableData = foods.map(food => {
+                const foodName = food.patient_description || food.food?.name || 'Alimento';
+                const substitutes = (food.substitutes || []).length > 0 
+                    ? `\nRelativo a: ${foodName}\nOpções: ${food.substitutes.map(s => s.name).join(', ')}` 
+                    : foodName;
+
+                return [
+                    substitutes,
+                    formatQuantityWithUnit
+                        ? formatQuantityWithUnit(food.quantity || 0, food.unit || '', food.measure)
+                        : `${food.quantity || 0} ${food.unit || ''}`,
+                    Math.round(food.calories || 0),
+                    Math.round(food.protein || 0),
+                    Math.round(food.carbs || 0),
+                    Math.round(food.fat || 0)
+                ];
+            });
 
             autoTable(doc, {
                 startY: yPosition,
@@ -632,8 +663,9 @@ export const exportMealPlanToPdf = async (mealPlan, patientName, nutritionistNam
             doc.setFontSize(8);
             doc.setTextColor(...MUTED_COLOR);
             doc.setFont('helvetica', 'italic');
-            doc.text(`Obs: ${meal.notes}`, 14, yPosition);
-            yPosition += 6;
+            const splitNotes = doc.splitTextToSize(`Obs: ${meal.notes}`, pageWidth - 28);
+            doc.text(splitNotes, 14, yPosition);
+            yPosition += (splitNotes.length * 4) + 2;
         }
 
         // Espaço entre refeições

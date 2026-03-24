@@ -75,7 +75,7 @@ const getBucketPath = (url) => {
             return pathSegments.slice(2).join('/').split('?')[0];
         }
     } catch (e) {
-        console.error('Error parsing storage URL:', e);
+        console.error('Erro ao interpretar URL do storage:', e);
     }
     return url;
 };
@@ -163,10 +163,10 @@ const MediaViewer = ({ mediaPath, messageText, onImageClick }) => {
             setLoading(true);
             const { data, error } = await supabase.storage
                 .from(BUCKET_NAME)
-                .createSignedUrl(cleanPath, 3600); // 1 hour validity for better UX
+                .createSignedUrl(cleanPath, 3600); // 1 hora de validade para melhor UX
 
             if (error) {
-                console.error(`Error creating signed URL for bucket ${BUCKET_NAME} and path ${cleanPath}:`, error);
+                console.error(`Erro ao criar URL assinada para o bucket ${BUCKET_NAME} e caminho ${cleanPath}:`, error);
                 setSignedUrl('');
             } else {
                 setSignedUrl(data.signedUrl);
@@ -205,7 +205,7 @@ const MediaViewer = ({ mediaPath, messageText, onImageClick }) => {
 
     if (fileType === 'pdf') {
         return (
-             <a href={signedUrl} download={messageText || 'document.pdf'} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-2 bg-background/50 rounded-lg hover:bg-background/80 transition-colors">
+             <a href={signedUrl} download={messageText || 'documento.pdf'} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-2 bg-background/50 rounded-lg hover:bg-background/80 transition-colors">
                 <FileText className="w-8 h-8 text-primary flex-shrink-0" />
                 <div className="flex-grow"><p className="text-sm font-medium text-foreground truncate">{messageText || 'Documento PDF'}</p><p className="text-xs text-muted-foreground">Clique para baixar</p></div>
                 <Download className="w-5 h-5 text-muted-foreground" />
@@ -314,17 +314,17 @@ const ChatPage = ({ propRecipientId, isEmbedded = false }) => {
 
   useEffect(() => { if (user && recipientId) fetchMessages(user.id, recipientId); }, [user, recipientId, fetchMessages]);
   
-  // Auto-scroll to bottom when messages change or on mount
+  // Rolar automaticamente para o final quando as mensagens mudam ou ao montar
   useEffect(() => {
     if (messagesContainerRef.current && messages.length > 0) {
-      // Use setTimeout to ensure DOM is updated
+      // Usa setTimeout para garantir que o DOM foi atualizado
       setTimeout(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
       }, 100);
     }
   }, [messages]);
 
-  // Scroll to bottom on initial load
+  // Rolar para o fim na carga inicial
   useEffect(() => {
     if (messagesContainerRef.current && !messagesLoading && messages.length > 0) {
       setTimeout(() => {
@@ -342,7 +342,6 @@ const ChatPage = ({ propRecipientId, isEmbedded = false }) => {
       setTyping(false);
     }, 2000);
   };
-
 
   const handleFileChange = (event) => {
     const file = event.target.files[0];
@@ -385,7 +384,7 @@ const ChatPage = ({ propRecipientId, isEmbedded = false }) => {
       mediaPath = filePath;
       
       if (mediaType === 'audio') {
-        messageText = ''; 
+        messageText = '';
       }
     }
 
@@ -434,7 +433,6 @@ const ChatPage = ({ propRecipientId, isEmbedded = false }) => {
     }
   };
   
-  const handleBack = () => { (user?.profile?.user_type === 'nutritionist' ? navigate('/nutritionist') : navigate('/patient')); };
   const groupedMessages = messages.reduce((acc, msg) => {
     const date = format(parseISO(msg.created_at), 'yyyy-MM-dd');
     if (!acc[date]) acc[date] = [];
@@ -461,8 +459,7 @@ const ChatPage = ({ propRecipientId, isEmbedded = false }) => {
         mediaType={modalMedia.type}
         onClose={() => setModalMedia({ path: null, type: null })}
       />
-
-      {/* Header - Fixed at top of container */}
+      {/* Cabeçalho - fixo no topo do container */}
       <header className="shrink-0 bg-white border-b p-4 flex items-center shadow-md z-30">
         {!isEmbedded && (
           <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="mr-2">
@@ -482,7 +479,7 @@ const ChatPage = ({ propRecipientId, isEmbedded = false }) => {
             {isUserOnline(recipientId) ? (
               <div className="flex items-center gap-1.5 leading-none">
                 <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse shrink-0" />
-                <p className="text-xs font-medium text-green-600">Online</p>
+                <p className="text-xs font-medium text-green-600">Disponível</p>
                 {isUserTyping(recipientId) && (
                   <span className="text-[10px] text-primary animate-pulse font-medium ml-1.5">
                     digitando...
@@ -498,7 +495,7 @@ const ChatPage = ({ propRecipientId, isEmbedded = false }) => {
         </div>
       </header>
 
-      {/* Message List - Scrollable area */}
+      {/* Lista de mensagens - área com rolagem */}
       <main ref={messagesContainerRef} className="flex-1 overflow-y-auto p-4 space-y-2">
         {Object.entries(groupedMessages).map(([date, msgs]) => (
           <Fragment key={date}>
@@ -534,10 +531,10 @@ const ChatPage = ({ propRecipientId, isEmbedded = false }) => {
             </div>
           </Fragment>
         ))}
+
         <div ref={messagesEndRef} />
       </main>
-
-      {/* Input Area - Fixed at bottom of container */}
+      {/* Área de entrada - fixa na base do container */}
       <footer className="shrink-0 bg-white p-4 border-t shadow-lg z-20">
         {isArchived ? (
             <div className="flex items-center justify-center p-3 sm:p-4 bg-muted/50 rounded-xl border border-dashed border-border flex-col text-center">
@@ -548,7 +545,7 @@ const ChatPage = ({ propRecipientId, isEmbedded = false }) => {
           <>
             {mediaPreview && (
               <div className="relative p-2 mb-2 border rounded-lg max-w-sm flex items-center gap-2 bg-slate-50">
-                {mediaType === 'image' && <img src={mediaPreview} alt="Preview" className="max-h-24 rounded" />}
+                {mediaType === 'image' && <img src={mediaPreview} alt="Prévia" className="max-h-24 rounded" />}
                 {mediaType === 'video' && <video src={mediaPreview} className="max-h-24 rounded" muted loop autoPlay />}
                 {mediaType === 'audio' && <AudioPlayer src={mediaPreview} />}
                 {mediaType === 'pdf' && (

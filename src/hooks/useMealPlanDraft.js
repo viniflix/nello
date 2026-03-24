@@ -7,6 +7,7 @@ import {
     addMealToPlan,
     deleteMealFromPlan,
     addFoodToMeal,
+    addFoodsToMeal,
     getMealPlanById
 } from '@/lib/supabase/meal-plan-queries';
 
@@ -58,6 +59,7 @@ export function useMealPlanDraft({ patientId, nutritionistId, enabled = false })
      * Cria o registro no banco e retorna o id.
      */
     const startNewDraft = useCallback(async () => {
+        setSaveStatus('saving');
         const { data, error } = await createDraftMealPlan(patientId, nutritionistId);
         if (error || !data) {
             setSaveStatus('error');
@@ -65,7 +67,7 @@ export function useMealPlanDraft({ patientId, nutritionistId, enabled = false })
         }
         setDraftId(data.id);
         latestDraftIdRef.current = data.id;
-        setSaveStatus('saved');
+        setSaveStatus('idle'); // Status volta a idle após criar rascunho base (vazio)
         return data.id;
     }, [patientId, nutritionistId]);
 
@@ -110,7 +112,7 @@ export function useMealPlanDraft({ patientId, nutritionistId, enabled = false })
             const { error } = await updateDraftMealPlan(currentDraftId, planData);
             setSaveStatus(error ? 'error' : 'saved');
         }, 800);
-    }, []);
+    }, []); // latestDraftIdRef ensures we always have the current ID without needing it in deps
 
     /**
      * Adiciona uma refeição ao rascunho no banco e retorna o ID gerado.
@@ -137,24 +139,20 @@ export function useMealPlanDraft({ patientId, nutritionistId, enabled = false })
             return null;
         }
 
-        // Salvar cada alimento da refeição
-        for (const food of mealData.foods || []) {
-            await addFoodToMeal({
-                meal_plan_meal_id: newMeal.id,
-                food_id: food.food_id,
-                quantity: food.quantity,
-                unit: food.unit,
-                calories: food.calories,
-                protein: food.protein,
-                carbs: food.carbs,
-                fat: food.fat,
-                notes: food.notes || null,
-                order_index: food.order_index ?? 0
-            });
+        // Salvar todos os alimentos da refeição em lote (batch) para máxima performance
+        try {
+            if (mealData.foods && mealData.foods.length > 0) {
+                const { error: batchError } = await addFoodsToMeal(newMeal.id, mealData.foods);
+                if (batchError) throw batchError;
+            }
+            
+            setSaveStatus('saved');
+            return newMeal.id;
+        } catch (foodError) {
+            console.error('Erro ao salvar alimentos da refeição em lote no rascunho:', foodError);
+            setSaveStatus('error');
+            return newMeal.id; // Retorna o ID da refeição pelo menos
         }
-
-        setSaveStatus('saved');
-        return newMeal.id;
     }, []);
 
     /**
@@ -183,43 +181,39 @@ export function useMealPlanDraft({ patientId, nutritionistId, enabled = false })
 
         setSaveStatus('saving');
 
-        // Delete old meal (cascade removes its foods too)
-        if (oldDbId) {
-            await deleteMealFromPlan(oldDbId);
-        }
+        try {
+            // Delete old meal (cascade removes its foods too)
+            if (oldDbId) {
+                await deleteMealFromPlan(oldDbId);
+            }
 
-        // Re-create with updated data
-        const { data: newMeal, error: mealError } = await addMealToPlan({
-            meal_plan_id: currentDraftId,
-            name: mealData.name,
-            meal_type: mealData.meal_type,
-            meal_time: mealData.meal_time || null,
-            notes: mealData.notes || null,
-            order_index: orderIndex ?? 0
-        });
+            // Re-create with updated data
+            const { data: newMeal, error: mealError } = await addMealToPlan({
+                meal_plan_id: currentDraftId,
+                name: mealData.name,
+                meal_type: mealData.meal_type,
+                meal_time: mealData.meal_time || null,
+                notes: mealData.notes || null,
+                order_index: orderIndex ?? 0
+            });
 
-        if (mealError || !newMeal) {
+            if (mealError || !newMeal) {
+                setSaveStatus('error');
+                return null;
+            }
+ 
+            if (mealData.foods && mealData.foods.length > 0) {
+                const { error: batchError } = await addFoodsToMeal(newMeal.id, mealData.foods);
+                if (batchError) throw batchError;
+            }
+ 
+            setSaveStatus('saved');
+            return newMeal.id;
+        } catch (error) {
+            console.error('Erro ao atualizar refeição no rascunho:', error);
             setSaveStatus('error');
             return null;
         }
-
-        for (const food of mealData.foods || []) {
-            await addFoodToMeal({
-                meal_plan_meal_id: newMeal.id,
-                food_id: food.food_id,
-                quantity: food.quantity,
-                unit: food.unit,
-                calories: food.calories,
-                protein: food.protein,
-                carbs: food.carbs,
-                fat: food.fat,
-                notes: food.notes || null,
-                order_index: food.order_index ?? 0
-            });
-        }
-
-        setSaveStatus('saved');
-        return newMeal.id;
     }, []);
 
     /**

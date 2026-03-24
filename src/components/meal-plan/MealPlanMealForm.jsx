@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, X, Edit } from 'lucide-react';
+import { Plus, Trash2, X, Edit, ArrowRightLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { TimeInput } from '@/components/ui/date-input';
@@ -24,6 +24,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import AddFoodToMealDialog from './AddFoodToMealDialog';
 import { formatQuantityWithUnit } from '@/lib/utils/measureTranslations';
+import SubstitutionDialog from './SubstitutionDialog';
 
 const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null }) => {
     const [formData, setFormData] = useState({
@@ -36,6 +37,8 @@ const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null }) => {
     const [foods, setFoods] = useState([]);
     const [showAddFood, setShowAddFood] = useState(false);
     const [editingFood, setEditingFood] = useState(null);
+    const [showSubstitutions, setShowSubstitutions] = useState(false);
+    const [substitutingFood, setSubstitutingFood] = useState(null);
     const [errors, setErrors] = useState({});
 
     const mealTypes = [
@@ -99,6 +102,19 @@ const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null }) => {
 
     const handleRemoveFood = (tempId) => {
         setFoods(prev => prev.filter(f => f.tempId !== tempId));
+    };
+
+    const handleOpenSubstitutions = (food) => {
+        setSubstitutingFood(food);
+        setShowSubstitutions(true);
+    };
+
+    const handleSaveSubstitutions = (substitutes) => {
+        setFoods(prev => prev.map(f => 
+            f.tempId === substitutingFood.tempId 
+                ? { ...f, substitutes } 
+                : f
+        ));
     };
 
     const handleFoodDialogClose = () => {
@@ -292,7 +308,21 @@ const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null }) => {
                                                 className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
                                             >
                                                 <div className="flex-1">
-                                                    <div className="font-semibold">{food.food.name}</div>
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="font-semibold">
+                                                            {food.patient_description || food.food?.name}
+                                                        </div>
+                                                        {food.patient_description && (
+                                                            <span className="text-[10px] text-muted-foreground italic">
+                                                                ({food.food?.name})
+                                                            </span>
+                                                        )}
+                                                        {food.substitutes?.length > 0 && (
+                                                            <Badge variant="outline" className="h-5 text-[10px] bg-green-50 text-green-700 border-green-200">
+                                                                {food.substitutes.length} substitutos
+                                                            </Badge>
+                                                        )}
+                                                    </div>
                                                     <div className="text-sm text-muted-foreground">
                                                         {formatQuantityWithUnit(food.quantity, food.unit, food.measure)} •
                                                         {' '}{food.calories} kcal •
@@ -307,6 +337,15 @@ const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null }) => {
                                                     )}
                                                 </div>
                                                 <div className="flex gap-2">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => handleOpenSubstitutions(food)}
+                                                        title="Gerenciar substituições"
+                                                        className={food.substitutes?.length > 0 ? "text-primary bg-primary/5" : ""}
+                                                    >
+                                                        <ArrowRightLeft className="h-4 w-4" />
+                                                    </Button>
                                                     <Button
                                                         variant="ghost"
                                                         size="sm"
@@ -378,6 +417,15 @@ const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null }) => {
                 onAdd={editingFood ? handleUpdateFood : handleAddFood}
                 initialData={editingFood}
                 mealName={formData.meal_type === 'other' ? formData.name : mealTypes.find(t => t.value === formData.meal_type)?.label}
+            />
+
+            {/* Dialog para substituições */}
+            <SubstitutionDialog
+                isOpen={showSubstitutions}
+                onClose={() => setShowSubstitutions(false)}
+                originalFood={substitutingFood}
+                initialSubstitutes={substitutingFood?.substitutes}
+                onSave={handleSaveSubstitutions}
             />
         </>
     );

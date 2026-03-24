@@ -19,6 +19,7 @@ const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName, initialData = n
     const [selectedFood, setSelectedFood] = useState(null);
     const [portion, setPortion] = useState({ quantity: 100, measureId: null });
     const [notes, setNotes] = useState('');
+    const [patientDescription, setPatientDescription] = useState('');
     const [calculatedNutrition, setCalculatedNutrition] = useState(null);
     const [showFoodSelector, setShowFoodSelector] = useState(false);
     const [errors, setErrors] = useState({});
@@ -32,6 +33,7 @@ const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName, initialData = n
                 measureId: initialData.unit === 'gram' ? null : initialData.unit
             });
             setNotes(initialData.notes || '');
+            setPatientDescription(initialData.patient_description || '');
             setCalculatedNutrition({
                 calories: initialData.calories || 0,
                 protein: initialData.protein || 0,
@@ -81,7 +83,8 @@ const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName, initialData = n
             protein: calculatedNutrition?.protein || 0,
             carbs: calculatedNutrition?.carbs || 0,
             fat: calculatedNutrition?.fat || 0,
-            notes: notes.trim() || null
+            notes: notes.trim() || null,
+            patient_description: patientDescription.trim() || null
         };
 
         onAdd(foodData);
@@ -92,6 +95,7 @@ const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName, initialData = n
         setSelectedFood(null);
         setPortion({ quantity: 100, measureId: null });
         setNotes('');
+        setPatientDescription('');
         setCalculatedNutrition(null);
         setErrors({});
         onClose();
@@ -154,6 +158,34 @@ const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName, initialData = n
                             {errors.food && (
                                 <p className="text-xs text-destructive">{errors.food}</p>
                             )}
+                        </div>
+
+                        {/* Nome para o Paciente */}
+                        <div className="space-y-2">
+                            <Label htmlFor="patientDescription">Descrição para o paciente</Label>
+                            <p className="text-[11px] text-muted-foreground">
+                                O nome abaixo será exibido no material do plano alimentar do paciente. Ajuste se quiser usar a nomenclatura mais familiar para ele.
+                            </p>
+                            <div className="relative">
+                                <Textarea
+                                    id="patientDescription"
+                                    rows={1}
+                                    placeholder={selectedFood ? `Ex: ${selectedFood.name}` : "Ex: Banana prata média"}
+                                    value={patientDescription}
+                                    onChange={(e) => setPatientDescription(e.target.value)}
+                                    className="pr-20"
+                                />
+                                {patientDescription && (
+                                    <Button
+                                        variant="ghost"
+                                        size="xs"
+                                        className="absolute right-2 top-2 h-7 text-[10px] text-muted-foreground hover:text-primary border hover:bg-primary/5"
+                                        onClick={() => setPatientDescription('')}
+                                    >
+                                        Restaurar nome original
+                                    </Button>
+                                )}
+                            </div>
                         </div>
 
                         {/* Seletor de Porção (Novo - Mais Simples) */}

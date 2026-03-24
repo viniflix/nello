@@ -18,7 +18,7 @@ const AuthContext = createContext();
 export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error('useAuth deve ser usado dentro de um AuthProvider');
   }
   return context;
 }
@@ -63,12 +63,12 @@ export function AuthProvider({ children }) {
           await new Promise(resolve => setTimeout(resolve, delayMs * (attempt + 1)));
           continue;
         }
-        console.warn('[AuthContext] Profile still missing after retries.');
+        console.warn('[AuthContext] Perfil ainda ausente após as tentativas.');
         return null;
       }
 
       if (error) {
-        console.error('[AuthContext] Error fetching profile:', error);
+        console.error('[AuthContext] Erro ao buscar perfil:', error);
         return null;
       }
     }
@@ -76,7 +76,7 @@ export function AuthProvider({ children }) {
     return null;
   }, []);
 
-  // Helper: process session and set user state (used by getSession + onAuthStateChange)
+  // Auxiliar: processa a sessão e ajusta o estado do usuário (usado por getSession + onAuthStateChange)
   const pendingSessionRef = useRef(null);
 
   const processSession = useCallback(async (session, event) => {
@@ -96,7 +96,7 @@ export function AuthProvider({ children }) {
 
         const profile = await fetchProfileWithRetry(nextSession.user, { retries: 4, delayMs: 350 });
         if (!profile) {
-          console.error('[AuthContext] Failed to fetch profile after retries, signing out');
+          console.error('[AuthContext] Falha ao buscar perfil após tentativas, encerrando sessão');
           await signOut();
           continue;
         }
@@ -106,10 +106,10 @@ export function AuthProvider({ children }) {
         try {
           identifyUser({ ...nextSession.user, profile });
         } catch (err) {
-          if (import.meta.env.DEV) console.error('[AuthContext] Analytics error:', err);
+          if (import.meta.env.DEV) console.error('[AuthContext] Erro de analytics:', err);
         }
       } catch (error) {
-        console.error('[AuthContext] Error in processSession:', error);
+        console.error('[AuthContext] Erro no processSession:', error);
         if (nextEvent === 'INITIAL_SESSION') {
           setUser(null);
         }
@@ -123,20 +123,20 @@ export function AuthProvider({ children }) {
     let mounted = true;
 
     const initAuth = async () => {
-      // Ensure we start in loading state
+      // Garantir início em estado de carregamento
       setLoading(true);
       
-      // Safety failsafe: don't let the app hang on "Verificando sessão..." forever
-      // This is critical if PostHog or Supabase calls hang due to ad-blockers or network
+      // Failsafe de segurança: evita travar em "Verificando sessão..." para sempre
+      // Importante caso PostHog ou Supabase travem por ad-blockers ou rede
       const failsafe = setTimeout(() => {
         if (mounted) {
-          console.warn('[AuthContext] Initial session check timed out, forcing loading=false');
+          console.warn('[AuthContext] Verificação inicial de sessão expirou, forçando loading=false');
           setLoading(false);
         }
       }, 10000); // 10 seconds timeout
 
       try {
-        // Recovery of session from memory/storage
+        // Recupera a sessão da memória/armazenamento
         const { data, error } = await supabase.auth.getSession();
         
         if (error) throw error;
@@ -147,16 +147,16 @@ export function AuthProvider({ children }) {
         }
 
         if (data?.session?.user) {
-          // Await the profile matching to ensure we have full user data before stopping loader
+          // Aguarda o perfil para garantir os dados completos antes de encerrar o loader
           await processSession(data.session, 'INITIAL_SESSION');
         } else {
           setUser(null);
         }
       } catch (err) {
-        console.error('[AuthContext] Fatal error during initAuth:', err);
+        console.error('[AuthContext] Erro fatal durante initAuth:', err);
         if (mounted) setUser(null);
       } finally {
-        // GUARANTEED: app always leaves loading state if mounted
+        // GARANTIDO: o app sempre sai do estado de loading se estiver montado
         if (mounted) {
           clearTimeout(failsafe);
           setLoading(false);
@@ -189,7 +189,7 @@ export function AuthProvider({ children }) {
           }
         }
       } catch (err) {
-        if (import.meta.env.DEV) console.error('[AuthContext] Error in onAuthStateChange handler:', err);
+        if (import.meta.env.DEV) console.error('[AuthContext] Erro no handler onAuthStateChange:', err);
       }
     });
 

@@ -332,12 +332,12 @@ const MealPlanPage = () => {
                 if (result.error) throw result.error;
             } else if (finalPlanData.draftId) {
                 // Novo plano via rascunho: promove para ativo e atualiza metadados
+                // Primeiro atualizamos tudo no rascunho para garantir que não haja perda de dados
+                const syncResult = await updateFullMealPlan(finalPlanData.draftId, finalPlanData);
+                if (syncResult.error) throw syncResult.error;
+
                 const result = await promoteDraftToActive(finalPlanData.draftId, patientId);
                 if (result.error) throw result.error;
-
-                // Atualiza os dados básicos do plano agora promovido
-                const updateResult = await updateFullMealPlan(finalPlanData.draftId, finalPlanData);
-                if (updateResult.error) console.warn('Erro ao atualizar metadados do plano promovido:', updateResult.error);
             } else {
 
                 // Fallback: criação tradicional (sem rascunho prévio)
@@ -353,35 +353,9 @@ const MealPlanPage = () => {
 
                 if (result.error) throw result.error;
 
-                for (const meal of planData.meals) {
-                    const mealResult = await addMealToPlan({
-                        meal_plan_id: result.data.id,
-                        name: meal.name,
-                        meal_type: meal.meal_type,
-                        meal_time: meal.meal_time,
-                        notes: meal.notes,
-                        order_index: meal.order_index
-                    });
-
-                    if (mealResult.error) throw mealResult.error;
-
-                    for (const food of meal.foods || []) {
-                        const foodResult = await addFoodToMeal({
-                            meal_plan_meal_id: mealResult.data.id,
-                            food_id: food.food_id,
-                            quantity: food.quantity,
-                            unit: food.unit,
-                            calories: food.calories,
-                            protein: food.protein,
-                            carbs: food.carbs,
-                            fat: food.fat,
-                            notes: food.notes,
-                            order_index: food.order_index || 0
-                        });
-
-                        if (foodResult?.error) throw foodResult.error;
-                    }
-                }
+                // Preencher o plano com as refeições/alimentos usando o novo motor de batch
+                const updateResult = await updateFullMealPlan(result.data.id, finalPlanData);
+                if (updateResult.error) throw updateResult.error;
             }
 
             toast({
@@ -415,7 +389,7 @@ const MealPlanPage = () => {
         }
     };
 
-    // Salvar plano sem ativar — botão "Salvar sem ativar"
+    // Salvar plano sem ativar
     const handleSaveDraft = async (planData) => {
         setSubmitting(true);
         try {
@@ -424,26 +398,37 @@ const MealPlanPage = () => {
 
             let result;
             if (finalPlanData.draftId) {
-                // Rename/Update the draft first to ensure meals are persisted
-                await updateFullMealPlan(finalPlanData.draftId, finalPlanData);
+                // Sync UI state to DB first
+                const updateResult = await updateFullMealPlan(finalPlanData.draftId, finalPlanData);
+                if (updateResult.error) throw updateResult.error;
+
+                // Convert draft to a "Saved" (inactive) plan
                 result = await saveDraftAsPlan(finalPlanData.draftId);
+                if (result.error) throw result.error;
             } else {
-                // No draft exists yet: Create one, populate it, then save it as a plan
-                const draftResult = await createDraftMealPlan(patientId, nutritionistId);
-                if (draftResult.error) throw draftResult.error;
-                
-                const draftId = draftResult.data.id;
-                // Save the full structure to this new draft
-                await updateFullMealPlan(draftId, finalPlanData);
-                // Promote it to a saved plan (inactive)
-                result = await saveDraftAsPlan(draftId);
+                // Fallback creation without draft
+                result = await createMealPlan({
+                    patient_id: patientId,
+                    nutritionist_id: nutritionistId,
+                    name: finalPlanData.name,
+                    description: finalPlanData.description,
+                    active_days: finalPlanData.active_days,
+                    start_date: finalPlanData.start_date,
+                    end_date: finalPlanData.end_date || null,
+                    is_active: false,
+                    is_draft: false
+                });
+
+                if (result.error) throw result.error;
+
+                // Preencher o plano com as refeições/alimentos usando o novo motor de batch
+                const updateResult = await updateFullMealPlan(result.data.id, finalPlanData);
+                if (updateResult.error) throw updateResult.error;
             }
 
-            if (result.error) throw result.error;
-
             toast({
-                title: 'Plano salvo',
-                description: 'Plano salvo sem ser ativado. Você pode ativá-lo a qualquer momento.',
+                title: 'Rascunho salvo',
+                description: 'O rascunho foi salvo na lista de planos sem ser ativado.',
                 variant: 'success'
             });
 
@@ -451,10 +436,10 @@ const MealPlanPage = () => {
             setEditingPlan(null);
             await loadPlans();
         } catch (error) {
-            console.error('Erro ao salvar plano:', error);
+            console.error('Erro ao salvar rascunho:', error);
             toast({
-                title: 'Erro',
-                description: error?.message || 'Não foi possível salvar o plano.',
+                title: 'Erro ao salvar rascunho',
+                description: error?.message || 'Não foi possível salvar o rascunho.',
                 variant: 'destructive'
             });
         } finally {

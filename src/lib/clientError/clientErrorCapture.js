@@ -8,16 +8,16 @@ const redactSensitiveText = (input) => {
   if (typeof input !== 'string') return input;
   let out = input;
 
-  // Redact tokens in query params (ex: token=...)
+  // Redige tokens em query params (ex: token=...)
   out = out.replace(/([?&]token=)[^&\s]+/gi, '$1[redacted]');
 
-  // Redact Bearer tokens
-  out = out.replace(/(Bearer\s+)[A-Za-z0-9\-_\.]+/gi, '$1[redacted]');
+  // Redige tokens Bearer
+  out = out.replace(/(Bearer\s+)[A-Za-z0-9\-_.]+/gi, '$1[redacted]');
 
-  // Redact JWT-looking strings
+  // Redige strings com formato de JWT
   out = out.replace(/\beyJ[A-Za-z0-9\-_]+\.[A-Za-z0-9\-_]+\.[A-Za-z0-9\-_]+\b/g, '[jwt-redacted]');
 
-  // Redact common key/value tokens
+  // Redige tokens comuns em chave/valor
   out = out.replace(/\b(api[_-]?key|secret|authorization)\b\s*[:=]\s*['"]?[^'"\s]+['"]?/gi, '$1:[redacted]');
 
   return out;
@@ -35,7 +35,7 @@ const safeStringify = (value, maxLen = 2000) => {
     try {
       return redactSensitiveText(String(value).slice(0, maxLen));
     } catch {
-      return '[unserializable]';
+      return '[nao-serializavel]';
     }
   }
 };
@@ -53,7 +53,7 @@ const getCircularReplacer = () => {
 
 const buildErrorSignature = ({ message, stack, name, route }) => {
   const base = `${name || ''}|${message || ''}|${stack ? stack.slice(0, 400) : ''}|${route || ''}`;
-  // Simple hash to keep signature small
+  // Hash simples para manter a assinatura pequena
   let h = 0;
   for (let i = 0; i < base.length; i += 1) h = (h * 31 + base.charCodeAt(i)) >>> 0;
   return String(h);
@@ -69,7 +69,7 @@ export const createClientErrorCapture = ({ getUserContext, onErrorCaptured }) =>
     const entry = {
       ts: Date.now(),
       level,
-      // Keep it compact: serialize first 3 args only
+      // Mantem compacto: serializa apenas os 3 primeiros args
       args: Array.from(args || []).slice(0, 3).map((a) => safeStringify(a)),
     };
     consoleBuffer = [entry, ...consoleBuffer].slice(0, MAX_CONSOLE_ENTRIES);
@@ -123,9 +123,9 @@ export const createClientErrorCapture = ({ getUserContext, onErrorCaptured }) =>
   const logClientError = async ({ errorType, message, stack, route, extra }) => {
     const userContext = typeof getUserContext === 'function' ? getUserContext() : null;
 
-    // Ensure insert passes RLS:
-    // - For admins: is_admin() allows null nutritionist_id
-    // - For non-admin: policy requires nutritionist_id = auth.uid(), so we set it to user.id for both roles.
+    // Garante que o insert passe no RLS:
+    // - Para admins: is_admin() permite nutritionist_id null
+    // - Para nao-admin: policy exige nutritionist_id = auth.uid(), entao usamos user.id em ambos.
     const nutritionistId = userContext?.id || null;
     const patientId = userContext?.type === 'patient' ? userContext?.id : null;
 
@@ -135,7 +135,7 @@ export const createClientErrorCapture = ({ getUserContext, onErrorCaptured }) =>
     if (last && now - last < DEDUPE_WINDOW_MS) return;
     lastSignatures.set(signature, now);
 
-    // Cap signature map growth
+    // Limita o crescimento do mapa de assinaturas
     if (lastSignatures.size > MAX_ERROR_SIGNATURES) {
       const keys = Array.from(lastSignatures.keys());
       keys.slice(0, Math.max(0, keys.length - MAX_ERROR_SIGNATURES)).forEach((k) => lastSignatures.delete(k));
@@ -153,7 +153,7 @@ export const createClientErrorCapture = ({ getUserContext, onErrorCaptured }) =>
       })),
     };
 
-    // Avoid huge payloads
+    // Evita payloads gigantes
     if (metadata.console && metadata.console.length > 0) {
       metadata.console = metadata.console.slice(0, 20);
     }
@@ -195,7 +195,7 @@ export const createClientErrorCapture = ({ getUserContext, onErrorCaptured }) =>
     const errorType = error?.name || 'Error';
     const stack = error?.stack || null;
 
-    // Fire and forget
+    // Dispara e nao aguarda
     void logClientError({
       errorType,
       message: message ? redactSensitiveText(String(message)) : null,
@@ -229,7 +229,7 @@ export const createClientErrorCapture = ({ getUserContext, onErrorCaptured }) =>
 
     void logClientError({
       errorType,
-      message: message ? redactSensitiveText(String(message)) : 'Unhandled rejection',
+      message: message ? redactSensitiveText(String(message)) : 'Rejeicao nao tratada',
       stack,
       route,
       extra: {
@@ -269,7 +269,7 @@ export const createClientErrorCapture = ({ getUserContext, onErrorCaptured }) =>
   return {
     install,
     uninstall,
-    // Expose for React ErrorBoundary so we can include componentStack
+    // Exposto para o React ErrorBoundary incluir componentStack
     logNow: (payload) => logClientError(payload),
   };
 };

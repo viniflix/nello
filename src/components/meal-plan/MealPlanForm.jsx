@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Save, X, Plus, Trash2, Edit, Calendar, CloudOff, Cloud, Loader2, AlertTriangle, CheckCircle2, History } from 'lucide-react';
+import { 
+    Save, X, Plus, Trash2, Edit, Calendar, CloudOff, Cloud, 
+    Loader2, AlertTriangle, CheckCircle2, History, FolderOpen, RefreshCw 
+} from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,6 +12,16 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle
+} from '@/components/ui/alert-dialog';
 import MealPlanMealForm from './MealPlanMealForm';
 import MacrosChart from './MacrosChart';
 import { getReferenceValues, simulateMealPlanPortionAdjustment, getMealPlanById } from '@/lib/supabase/meal-plan-queries';
@@ -59,6 +72,7 @@ const MealPlanForm = ({
     const [meals, setMeals] = useState([]);
     const [showMealForm, setShowMealForm] = useState(false);
     const [editingMeal, setEditingMeal] = useState(null);
+    const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
     const [errors, setErrors] = useState({});
     const [referenceValues, setReferenceValues] = useState(null);
     const [portionScaleFactor, setPortionScaleFactor] = useState(1);
@@ -126,26 +140,33 @@ const MealPlanForm = ({
 
     // Recover meals when resuming an existing draft
     const handleResumeDraft = async () => {
-        const fullPlan = await draft.resumeExistingDraft();
-        if (fullPlan) {
-            setFormData({
-                name: fullPlan.name || '',
-                description: fullPlan.description || '',
-                start_date: fullPlan.start_date || new Date().toISOString().split('T')[0],
-                end_date: fullPlan.end_date || '',
-                active_days: fullPlan.active_days || []
-            });
+        try {
+            setLoading(true);
+            const fullPlan = await draft.resumeExistingDraft();
+            if (fullPlan) {
+                setFormData({
+                    name: fullPlan.name || '',
+                    description: fullPlan.description || '',
+                    start_date: fullPlan.start_date || new Date().toISOString().split('T')[0],
+                    end_date: fullPlan.end_date || '',
+                    active_days: fullPlan.active_days?.length ? fullPlan.active_days : ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+                });
 
-            const mealsWithTempId = (fullPlan.meals || []).map((meal, idx) => ({
-                ...meal,
-                tempId: meal.id || Date.now() + idx,
-                dbId: meal.id,
-                foods: (meal.foods || []).map((food, foodIdx) => ({
-                    ...food,
-                    tempId: food.id || Date.now() + idx + foodIdx + 1000
-                }))
-            }));
-            setMeals(mealsWithTempId);
+                const mealsWithTempId = (fullPlan.meals || []).map((meal, idx) => ({
+                    ...meal,
+                    tempId: `draft-meal-${meal.id}-${idx}`,
+                    dbId: meal.id,
+                    foods: (meal.foods || []).map((food, foodIdx) => ({
+                        ...food,
+                        tempId: `draft-food-${food.food_id || foodIdx}-${Date.now()}`
+                    }))
+                }));
+                setMeals(mealsWithTempId);
+            }
+        } catch (error) {
+            console.error('Error resuming draft:', error);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -360,41 +381,42 @@ const MealPlanForm = ({
             <form onSubmit={handleApplyPlan} className="space-y-6">
 
                 {/* Draft Recovery Banner */}
+                {/* Recovery Banner */}
                 {showDraftBanner && (
-                    <Alert className="border-amber-500/50 bg-amber-50 dark:bg-amber-950/30">
-                        <History className="h-4 w-4 text-amber-600" />
-                        <AlertDescription className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                            <div>
-                                <p className="font-semibold text-amber-800 dark:text-amber-200">Rascunho encontrado</p>
-                                <p className="text-sm text-amber-700 dark:text-amber-300">
-                                    Você tem um plano em criação salvo em{' '}
-                                    <strong>"{draft.existingDraft.name}"</strong>.
-                                    Deseja continuar de onde parou?
-                                </p>
-                            </div>
+                    <Alert className="mb-6 bg-amber-50 border-amber-200">
+                        <FolderOpen className="h-4 w-4 text-amber-600" />
+                        <AlertDescription className="flex items-center justify-between w-full gap-4">
+                            <span className="text-sm text-amber-800">
+                                Identificamos um rascunho inacabado para este paciente. Deseja retomá-lo?
+                            </span>
                             <div className="flex gap-2 flex-shrink-0">
                                 <Button
-                                    type="button"
-                                    size="sm"
                                     variant="outline"
-                                    onClick={handleDiscardDraftAndStartFresh}
-                                    className="border-amber-500 text-amber-700 hover:bg-amber-100"
+                                    size="sm"
+                                    className="bg-white border-amber-300 text-amber-800 hover:bg-amber-100"
+                                    onClick={handleResumeDraft}
                                 >
-                                    <X className="h-3.5 w-3.5 mr-1.5" />
-                                    Descartar
+                                    Retomar Rascunho
                                 </Button>
                                 <Button
-                                    type="button"
+                                    variant="ghost"
                                     size="sm"
-                                    onClick={handleResumeDraft}
-                                    className="bg-amber-600 hover:bg-amber-700 text-white"
+                                    className="text-amber-700 hover:bg-amber-100 hover:text-amber-900 border border-transparent hover:border-amber-200"
+                                    onClick={() => setShowDiscardConfirm(true)}
                                 >
-                                    <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
-                                    Retomar rascunho
+                                    Descartar
                                 </Button>
                             </div>
                         </AlertDescription>
                     </Alert>
+                )}
+
+                {/* Draft Initialization Loading */}
+                {!isEditing && !draft.draftId && !draft.existingDraft && (
+                    <div className="mb-6 p-4 border border-dashed rounded-lg bg-muted/30 flex items-center justify-center gap-3 text-muted-foreground animate-pulse">
+                        <RefreshCw className="h-4 w-4 animate-spin text-primary" />
+                        <span className="text-sm">Iniciando rascunho de segurança...</span>
+                    </div>
                 )}
 
                 {/* Informações Básicas */}
@@ -638,14 +660,14 @@ const MealPlanForm = ({
                                     <div className="flex items-center justify-between">
                                         <CardTitle className="text-lg">Refeições</CardTitle>
                                         <Button
-                                            type="button"
-                                            size="sm"
-                                            onClick={() => { setEditingMeal(null); setShowMealForm(true); }}
-                                            disabled={loading}
-                                        >
-                                            <Plus className="h-4 w-4 mr-2" />
-                                            Adicionar Refeição
-                                        </Button>
+                                        size="sm"
+                                        onClick={() => setShowMealForm(true)}
+                                        disabled={!isEditing && !draft.draftId}
+                                        title={(!isEditing && !draft.draftId) ? "Aguarde a inicialização do rascunho" : ""}
+                                    >
+                                        <Plus className="h-4 w-4 mr-2" />
+                                        Nova Refeição
+                                    </Button>
                                     </div>
                                 </CardHeader>
                                 <CardContent>
@@ -782,6 +804,30 @@ const MealPlanForm = ({
                 onSave={editingMeal ? handleUpdateMeal : handleAddMeal}
                 initialData={editingMeal}
             />
+
+            {/* Confirmação de Descarte de Rascunho */}
+            <AlertDialog open={showDiscardConfirm} onOpenChange={setShowDiscardConfirm}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Descartar rascunho?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Isso apagará permanentemente todos os dados do rascunho pendente. Esta ação não pode ser desfeita.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Voltar</AlertDialogCancel>
+                        <AlertDialogAction
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            onClick={async () => {
+                                await draft.discardExistingAndStartNew();
+                                setShowDiscardConfirm(false);
+                            }}
+                        >
+                            Confirmar Descarte
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </>
     );
 };

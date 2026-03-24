@@ -61,13 +61,21 @@ const MealPlanView = ({ mealPlanItems }) => {
               {meal.meal_plan_foods && meal.meal_plan_foods.length > 0 ? (
                 <ul className="space-y-1.5">
                   {meal.meal_plan_foods.map((foodItem, index) => (
-                    <li key={index} className="flex justify-between items-center text-sm">
-                      <span className="text-foreground">
-                        {foodItem.foods?.name || 'Alimento sem nome'}
-                      </span>
-                      <span className="font-medium text-primary">
-                        {formatQuantityWithUnit(foodItem.quantity || 0, foodItem.unit || '', foodItem.measure)}
-                      </span>
+                    <li key={index} className="space-y-1">
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-foreground">
+                          {foodItem.patient_description || foodItem.foods?.name || 'Alimento sem nome'}
+                        </span>
+                        <span className="font-medium text-primary">
+                          {formatQuantityWithUnit(foodItem.quantity || 0, foodItem.unit || '', foodItem.measure)}
+                        </span>
+                      </div>
+                      {foodItem.substitutes && foodItem.substitutes.length > 0 && (
+                        <div className="text-[11px] text-muted-foreground ml-3 bg-muted/30 p-1 rounded italic">
+                          <span className="font-semibold text-[10px] uppercase mr-1">Opções:</span>
+                          {foodItem.substitutes.map(s => s.name).join(', ')}
+                        </div>
+                      )}
                     </li>
                   ))}
                 </ul>

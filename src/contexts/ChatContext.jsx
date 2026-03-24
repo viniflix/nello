@@ -8,7 +8,7 @@ const ChatContext = createContext();
 export function useChat() {
   const context = useContext(ChatContext);
   if (!context) {
-    throw new Error('useChat must be used within a ChatProvider');
+    throw new Error('useChat deve ser usado dentro de um ChatProvider');
   }
   return context;
 }
@@ -30,7 +30,7 @@ export function ChatProvider({ children }) {
     if (!error && data) {
       setConversations(data);
     } else if (error) {
-      console.error('Error fetching conversations:', error);
+      console.error('Erro ao buscar conversas:', error);
     }
   }, [user]);
 
@@ -39,7 +39,7 @@ export function ChatProvider({ children }) {
 
       const { error } = await supabase.rpc('mark_chat_notifications_as_read', { p_user_id: user.id, p_sender_id: senderId });
       if (error) {
-        console.error("Failed to mark chat as read:", error);
+        console.error("Falha ao marcar chat como lido:", error);
         return;
       }
 
@@ -56,7 +56,7 @@ export function ChatProvider({ children }) {
           newSet.delete(senderId);
           return newSet;
       });
-      // Refresh conversations list to update unread counts
+      // Atualiza conversas para atualizar contagem de não lidos
       fetchConversations();
   }, [user, fetchConversations]);
 
@@ -72,7 +72,7 @@ export function ChatProvider({ children }) {
       .order('created_at', { ascending: true });
 
     if (error) {
-      console.error('Error fetching messages:', error);
+      console.error('Erro ao buscar mensagens:', error);
       setMessages([]);
     } else {
       setMessages(data);
@@ -87,11 +87,11 @@ export function ChatProvider({ children }) {
     const { error } = await supabase.from('chats').insert([newMessageData]);
 
     if (error) {
-      console.error('Error sending message:', error);
+      console.error('Erro ao enviar mensagem:', error);
       toast({ title: "Erro", description: "Não foi possível enviar a mensagem.", variant: "destructive" });
       return null;
     }
-    // Refresh conversations so the recipient moves to top
+    // Atualiza conversas para mover o destinatário ao topo
     fetchConversations();
     return true;
   };
@@ -143,7 +143,7 @@ export function ChatProvider({ children }) {
         const isFromMe = newMessage.from_id === user.id;
         
         if (isForMe || isFromMe) {
-            fetchConversations(); // Re-order list and update snippets
+            fetchConversations(); // Reordena a lista e atualiza os trechos
         }
 
         if (isForMe) {
@@ -164,7 +164,7 @@ export function ChatProvider({ children }) {
         }
     }).subscribe((status, err) => {
         if (status === 'CHANNEL_ERROR') {
-          console.error(`Channel error:`, err);
+          console.error(`Erro no canal:`, err);
         }
     });
 
