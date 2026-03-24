@@ -211,7 +211,7 @@ export const exportAgendaToPdf = async (appointments, periodType, periodLabel, n
                 const date = new Date(appt.appointment_time);
                 const dateStr = date.toLocaleDateString('pt-BR');
                 const timeStr = date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-                const patientName = appt.patient?.name || appt.unregistered_patient_name || 'Não identificado';
+                const patientName = appt.patient?.name || appt.unregistered_patient_name || appt.patient_name || 'Não identificado';
                 return `${dateStr} ${timeStr} | ${patientName} | ${appt.status || 'scheduled'}`;
             }),
         ],
@@ -306,7 +306,7 @@ export const exportAgendaToPdf = async (appointments, periodType, periodLabel, n
         tableRows.push([
             dateStr,
             timeStr,
-            appt.patient?.name || appt.unregistered_patient_name || 'Não identificado',
+            appt.patient?.name || appt.unregistered_patient_name || appt.patient_name || 'Não identificado',
             typeMap[appt.appointment_type] || 'Não especificado',
             statusMap[appt.status] || 'Agendada'
         ]);

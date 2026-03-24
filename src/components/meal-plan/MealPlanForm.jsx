@@ -79,6 +79,7 @@ const MealPlanForm = ({
     const [portionScope, setPortionScope] = useState('all');
     const [portionMealId, setPortionMealId] = useState('');
     const [portionFoodId, setPortionFoodId] = useState('');
+    const [isResuming, setIsResuming] = useState(false);
 
     // Draft auto-save — only active when creating a new plan (not editing)
     const draft = useMealPlanDraft({
@@ -141,7 +142,7 @@ const MealPlanForm = ({
     // Recover meals when resuming an existing draft
     const handleResumeDraft = async () => {
         try {
-            setLoading(true);
+            setIsResuming(true);
             const fullPlan = await draft.resumeExistingDraft();
             if (fullPlan) {
                 setFormData({
@@ -166,7 +167,7 @@ const MealPlanForm = ({
         } catch (error) {
             console.error('Error resuming draft:', error);
         } finally {
-            setLoading(false);
+            setIsResuming(false);
         }
     };
 
@@ -375,6 +376,16 @@ const MealPlanForm = ({
 
     // Existing draft recovery banner
     const showDraftBanner = !isEditing && draft.existingDraft && !draft.draftId;
+
+    // Show loading state while resuming
+    if (isResuming) {
+        return (
+            <div className="flex flex-col items-center justify-center p-12 space-y-4">
+                <RefreshCw className="h-8 w-8 text-primary animate-spin" />
+                <p className="text-muted-foreground">Restaurando rascunho...</p>
+            </div>
+        );
+    }
 
     return (
         <>

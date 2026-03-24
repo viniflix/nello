@@ -23,7 +23,7 @@ export default function PatientInvitesPage() {
     }
     setLoading(true);
     try {
-      const { data, error } = await supabase.rpc('redeem_invite_code', { input_code: trimmed });
+      const { data, error } = await supabase.rpc('redeem_invite_code', { p_invite_code: trimmed });
       if (error) throw error;
 
       const result = typeof data === 'string' ? JSON.parse(data) : data;

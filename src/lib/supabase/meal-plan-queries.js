@@ -1279,192 +1279,87 @@ export const getMealPlanVersions = async (planId, limit = 20) => {
 export const updateFullMealPlan = async (planId, planData) => {
     const startedAt = Date.now();
     try {
-        const [{ data: currentPlan, error: currentPlanError }, { data: authData }] = await Promise.all([
-            getMealPlanById(planId),
-            supabase.auth.getUser()
-        ]);
-        if (currentPlanError) throw currentPlanError;
-        if (!currentPlan) throw new Error('Plano não encontrado');
-
+        const { data: authData } = await supabase.auth.getUser();
         const actorId = authData?.user?.id || null;
-        
-        // Segurança: Verificar se o plano pertence ao nutricionista logado
-        if (actorId && currentPlan.nutritionist_id && currentPlan.nutritionist_id !== actorId) {
-            console.error('[Security] Tentativa de edição de plano de outro nutricionista:', {
-                planId, actorId, planOwner: currentPlan.nutritionist_id
-            });
-            throw new Error('Não autorizado: você não tem permissão para editar este plano.');
-        }
 
-        // Versioning is best-effort — never blocks the actual save
-        let nextVersion = 1;
-        try {
-            const latestVersion = await getLatestMealPlanVersion(planId);
-            nextVersion = (latestVersion?.version_number || 0) + 1;
-
-            if (!latestVersion) {
-                await createMealPlanVersionSnapshot({
-                    mealPlan: currentPlan,
-                    versionNumber: 1,
-                    changeReason: 'baseline_inicial',
-                    createdBy: actorId,
-                    metadata: { origin: 'updateFullMealPlan' }
-                });
-                nextVersion = 2;
-            }
-        } catch (versioningError) {
-            console.warn('[updateFullMealPlan] Falha no versionamento (não-bloqueante):', versioningError);
-        }
-
-        // 1. Atualizar informações básicas do plano
-        const { error: updateError } = await supabase
-            .from('meal_plans')
-            .update({
+        // Perform atomic upsert via RPC
+        const { data: rpcResult, error: rpcError } = await supabase.rpc('upsert_full_meal_plan', {
+            p_plan_id: planId,
+            p_plan_data: {
                 name: planData.name,
                 description: planData.description,
-                active_days: planData.active_days,
                 start_date: planData.start_date,
-                end_date: planData.end_date || null
-            })
-            .eq('id', planId);
-
-        if (updateError) throw updateError;
-
-        // 2. Deletar todas as refeições antigas (CASCADE deletará os alimentos)
-        const { error: deleteError } = await supabase
-            .from('meal_plan_meals')
-            .delete()
-            .eq('meal_plan_id', planId);
-
-        if (deleteError) throw deleteError;
-
-        // 3. Preparar e inserir refeições em lote
-        const mealsToInsert = (planData.meals || []).map((meal, index) => ({
-            meal_plan_id: planId,
-            name: meal.name,
-            meal_type: meal.meal_type,
-            meal_time: meal.meal_time,
-            notes: meal.notes,
-            order_index: meal.order_index ?? index
-        }));
-
-        if (mealsToInsert.length === 0) return { data: true, error: null };
-
-        const { data: dbMeals, error: mealsError } = await supabase
-            .from('meal_plan_meals')
-            .insert(mealsToInsert)
-            .select('id, order_index');
-
-        if (mealsError) throw mealsError;
-
-        // 4. Preparar e inserir alimentos em lote
-        const allFoodsToInsert = [];
-        const uiMeals = planData.meals || [];
-
-        uiMeals.forEach((uiMeal, uiMealIdx) => {
-            // Casar refeição do UI com a inserida no DB (pelo order_index único)
-            const dbMeal = dbMeals.find(m => m.order_index === (uiMeal.order_index ?? uiMealIdx));
-            if (!dbMeal) return;
-
-            (uiMeal.foods || []).forEach((food, foodIdx) => {
-                allFoodsToInsert.push({
-                    meal_plan_meal_id: dbMeal.id,
+                end_date: planData.end_date || null,
+                is_active: planData.is_active ?? true,
+                is_draft: planData.is_draft ?? false,
+                daily_calories: planData.daily_calories || 0,
+                daily_protein: planData.daily_protein || 0,
+                daily_carbs: planData.daily_carbs || 0,
+                daily_fat: planData.daily_fat || 0
+            },
+            p_meals: (planData.meals || []).map((meal, idx) => ({
+                name: meal.name,
+                meal_type: meal.meal_type || 'other',
+                meal_time: meal.meal_time || null,
+                notes: meal.notes || null,
+                order_index: meal.order_index ?? idx,
+                total_calories: meal.calories || meal.total_calories || 0,
+                total_protein: meal.protein || meal.total_protein || 0,
+                total_carbs: meal.carbs || meal.total_carbs || 0,
+                total_fat: meal.fat || meal.total_fat || 0,
+                foods: (meal.foods || []).map((food, fIdx) => ({
                     food_id: food.food_id,
-                    quantity: food.quantity,
-                    unit: food.unit,
+                    quantity: food.quantity || 0,
+                    unit: food.unit || null,
                     calories: food.calories || 0,
                     protein: food.protein || 0,
                     carbs: food.carbs || 0,
                     fat: food.fat || 0,
-                    notes: food.notes,
-                    patient_description: food.patient_description,
-                    order_index: food.order_index ?? foodIdx,
-                    _ui_meal_idx: uiMealIdx,
-                    _ui_food_idx: foodIdx
-                });
-            });
+                    notes: food.notes || null,
+                    patient_description: food.patient_description || null,
+                    order_index: food.order_index ?? fIdx,
+                    substitutes: (food.substitutes || []).map(sub => ({
+                        id: sub.id || sub.food_id,
+                        notes: sub.notes || null
+                    }))
+                }))
+            }))
         });
 
-        if (allFoodsToInsert.length > 0) {
-            // Removemos as propriedades auxiliares antes de inserir
-            const cleanFoods = allFoodsToInsert.map(({ _ui_meal_idx, _ui_food_idx, ...f }) => f);
-            const { data: dbFoods, error: foodsError } = await supabase
-                .from('meal_plan_foods')
-                .insert(cleanFoods)
-                .select('id, meal_plan_meal_id, order_index');
+        if (rpcError) throw rpcError;
 
-            if (foodsError) throw foodsError;
-
-            // 5. Preparar e inserir substituições em lote
-            const allSubstitutesToInsert = [];
-            dbFoods.forEach((dbFood, dbFoodIdx) => {
-                // Recuperar o alimento UI correspondente usando o index original do mapeamento
-                const mapping = allFoodsToInsert[dbFoodIdx];
-                const uiFood = uiMeals[mapping._ui_meal_idx]?.foods[mapping._ui_food_idx];
-
-                if (uiFood && uiFood.substitutes && Array.isArray(uiFood.substitutes)) {
-                    uiFood.substitutes.forEach(sub => {
-                        allSubstitutesToInsert.push({
-                            original_food_id: dbFood.id,
-                            substitute_food_id: sub.id || sub.food_id
-                        });
-                    });
-                }
-            });
-
-            if (allSubstitutesToInsert.length > 0) {
-                const { error: subsError } = await supabase
-                    .from('meal_plan_food_substitutions')
-                    .insert(allSubstitutesToInsert);
-                if (subsError) throw subsError;
-            }
-        }
-
-        // 4. Buscar plano completo atualizado
+        // Fetch updated data for UI
         const updatedResult = await getMealPlanById(planId);
         if (updatedResult.error) throw updatedResult.error;
 
-        // 5. Gravar nova versão após atualização (best-effort)
+        // Versioning (Best-effort as before)
         try {
+            const latestVersion = await getLatestMealPlanVersion(planId);
+            const nextVersion = (latestVersion?.version_number || 0) + 1;
             await createMealPlanVersionSnapshot({
                 mealPlan: updatedResult.data,
                 versionNumber: nextVersion,
-                changeReason: planData?.change_reason || 'edicao_manual_plano',
+                changeReason: planData?.change_reason || 'edicao_manual_atômica',
                 createdBy: actorId,
-                isRollback: Boolean(planData?.is_rollback),
-                metadata: { origin: 'updateFullMealPlan' }
+                metadata: { origin: 'updateFullMealPlan_rpc' }
             });
-        } catch (versioningError) {
-            console.warn('[updateFullMealPlan] Falha ao gravar versão pós-atualização (não-bloqueante):', versioningError);
+        } catch (vError) {
+            console.warn('[updateFullMealPlan] Versioning failed:', vError);
         }
 
         await logOperationalEvent({
             module: 'meal_plan',
-            operation: 'update_full_meal_plan',
+            operation: 'update_full_meal_plan_rpc',
             eventType: 'success',
             latencyMs: Date.now() - startedAt,
             nutritionistId: actorId,
             patientId: updatedResult?.data?.patient_id || null,
-            metadata: {
-                plan_id: planId,
-                meals_count: Array.isArray(planData?.meals) ? planData.meals.length : 0,
-                is_rollback: Boolean(planData?.is_rollback)
-            }
+            metadata: { plan_id: planId, meals_count: planData.meals?.length }
         });
 
         return updatedResult;
     } catch (error) {
-        logSupabaseError('Erro ao atualizar plano alimentar', error);
-        await logOperationalEvent({
-            module: 'meal_plan',
-            operation: 'update_full_meal_plan',
-            eventType: 'error',
-            latencyMs: Date.now() - startedAt,
-            nutritionistId: null,
-            patientId: null,
-            errorMessage: error?.message || String(error),
-            metadata: { plan_id: planId }
-        });
+        logSupabaseError('Erro ao atualizar plano alimentar (RPC)', error);
         return { data: null, error };
     }
 };
