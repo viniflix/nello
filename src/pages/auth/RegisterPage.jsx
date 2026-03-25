@@ -76,24 +76,26 @@ export default function RegisterPage() {
       return;
     }
 
-    const { error } = await signUp({
+    const { data, error } = await signUp({
       email: formData.email,
       password: formData.password,
       options: {
         data: profileData,
-        emailRedirectTo: `${window.location.origin}/login`,
+        emailRedirectTo: `${window.location.origin}/auth/v1/verify?redirect_to=${window.location.origin}/update-password`,
       }
     });
 
     setLoading(false);
 
     if (error) {
+      console.error('[RegisterPage] Erro no cadastro:', error);
       toast({
         title: "Erro no cadastro",
         description: toPortugueseError(error, 'Não foi possível concluir o cadastro.'),
         variant: "destructive",
       });
     } else {
+      console.log('[RegisterPage] Cadastro realizado:', data);
       if (formData.inviteCode) {
         localStorage.setItem('pending_invite_code', formData.inviteCode);
       }
@@ -150,6 +152,7 @@ export default function RegisterPage() {
                       value={formData.name}
                       onChange={(e) => handleInputChange('name', e.target.value)}
                       required
+                      maxLength={100}
                       className="pl-10 h-10"
                     />
                   </div>
@@ -166,6 +169,7 @@ export default function RegisterPage() {
                       value={formData.email}
                       onChange={(e) => handleInputChange('email', e.target.value)}
                       required
+                      maxLength={100}
                       className="pl-10 h-10"
                     />
                   </div>
@@ -206,6 +210,7 @@ export default function RegisterPage() {
                           value={formData.birth_date}
                           onChange={(value) => handleInputChange('birth_date', value)}
                           required
+                          max={new Date().toISOString().split('T')[0]}
                           className="h-10"
                         />
                       </div>
@@ -235,6 +240,9 @@ export default function RegisterPage() {
                             placeholder="175"
                             value={formData.height}
                             onChange={(e) => handleInputChange('height', e.target.value)}
+                            min={50}
+                            max={250}
+                            onInput={(e) => e.target.value = e.target.value.slice(0, 3)}
                             className="pl-10 h-10"
                           />
                         </div>
@@ -253,6 +261,9 @@ export default function RegisterPage() {
                             placeholder="70.5"
                             value={formData.weight}
                             onChange={(e) => handleInputChange('weight', e.target.value)}
+                            min={10}
+                            max={500}
+                            onInput={(e) => e.target.value = e.target.value.slice(0, 5)}
                             className="pl-10 h-10"
                           />
                         </div>
@@ -269,7 +280,8 @@ export default function RegisterPage() {
                             type="text"
                             placeholder="Ex: ABCD-1234"
                             value={formData.inviteCode}
-                            onChange={(e) => handleInputChange('inviteCode', e.target.value.toUpperCase())}
+                            onChange={(e) => handleInputChange('inviteCode', e.target.value)}
+                            maxLength={20}
                             className="pl-10 h-10"
                           />
                         </div>
@@ -295,6 +307,7 @@ export default function RegisterPage() {
                       value={formData.password}
                       onChange={(e) => handleInputChange('password', e.target.value)}
                       required
+                      maxLength={72}
                       className="pl-10 pr-10 h-10"
                     />
                     <button
@@ -318,6 +331,7 @@ export default function RegisterPage() {
                       value={formData.confirmPassword}
                       onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
                       required
+                      maxLength={72}
                       className="pl-10 pr-10 h-10"
                     />
                     <button

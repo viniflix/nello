@@ -96,11 +96,25 @@ const DateInputWithCalendar = ({
     const formatDateAsUserTypes = (input) => {
         const digits = input.replace(/\D/g, '');
         if (digits.length === 0) return '';
-        const d = digits.slice(0, 2);
-        const m = digits.slice(2, 4);
-        const y = digits.slice(4, 8);
-        let out = d.length >= 2 ? d.padStart(2, '0') : d;
-        if (digits.length > 2) out += '/' + (m.length >= 2 ? m.padStart(2, '0') : m);
+        
+        let d = digits.slice(0, 2);
+        let m = digits.slice(2, 4);
+        let y = digits.slice(4, 8);
+
+        // Basic validation during typing
+        if (d.length === 2) {
+            const day = parseInt(d);
+            if (day === 0) d = '01';
+            if (day > 31) d = '31';
+        }
+        if (m.length === 2) {
+            const month = parseInt(m);
+            if (month === 0) m = '01';
+            if (month > 12) m = '12';
+        }
+
+        let out = d;
+        if (digits.length > 2) out += '/' + m;
         if (digits.length > 4) out += '/' + y;
         return out;
     };
@@ -111,16 +125,36 @@ const DateInputWithCalendar = ({
         setDisplayValue(formatted);
 
         if (!onChange) return;
-        if (formatted.trim() === '') {
+        if (formatted.trim() === '' || formatted.length < 10) {
             onChange('');
             return;
         }
 
         const parsed = parseDateValue(formatted);
-        if (parsed) {
+        if (parsed && isValid(parsed)) {
+            // Check for impossible dates like 31/02
+            const [d, m, y] = formatted.split('/').map(Number);
+            if (parsed.getDate() !== d || (parsed.getMonth() + 1) !== m) {
+                // date-fns parse might roll over 31/02 to 03/03
+                onChange('');
+                return;
+            }
+            
+            // Apply min/max constraints if provided
+            if (minDate && parsed < minDate) {
+                onChange('');
+                return;
+            }
+            if (maxDate && parsed > maxDate) {
+                onChange('');
+                return;
+            }
+
             onChange(formatDateValue(parsed));
             setDisplayMonth(parsed);
             setYearInput(String(parsed.getFullYear()));
+        } else {
+            onChange('');
         }
     };
 

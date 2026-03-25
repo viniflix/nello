@@ -255,7 +255,7 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded }) => {
             );
         }
         
-        const redirectTo = `${window.location.origin}/login`;
+        const redirectTo = `${window.location.origin}/update-password`;
 
         const body = {
             email: isOffline ? null : clean(formData.email),
@@ -297,6 +297,7 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded }) => {
             handleClose(); 
 
         } catch (error) {
+            console.error('[AddPatientModal] Erro ao adicionar paciente:', error);
             toast({ title: "Erro ao adicionar paciente", description: toPortugueseError(error, 'Não foi possível adicionar o paciente.'), variant: "destructive" });
         } finally {
             setLoading(false);
@@ -339,6 +340,7 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded }) => {
                                         value={formData.name} 
                                         onChange={(e) => updateField('name', e.target.value)} 
                                         placeholder="Nome oficial do paciente"
+                                        maxLength={100}
                                         className="bg-muted/50 focus:bg-background shadow-sm pl-10 h-10 transition-all font-medium border-muted-foreground/20" 
                                     />
                                 </IconInputWrapper>
@@ -355,6 +357,7 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded }) => {
                                         placeholder="exemplo@email.com"
                                         value={formData.email}
                                         onChange={(e) => updateField('email', e.target.value)}
+                                        maxLength={100}
                                         className="h-10 bg-muted/50 focus:bg-background shadow-sm pl-10 transition-all border-muted-foreground/20"
                                     />
                                 </IconInputWrapper>
@@ -368,6 +371,7 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded }) => {
                                     value={formData.birth_date}
                                     onChange={(date) => updateField('birth_date', date)}
                                     required={!isOffline}
+                                    max={new Date().toISOString().split('T')[0]}
                                 />
                             </div>
 
@@ -431,7 +435,7 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded }) => {
                             <div className="space-y-2.5">
                                 <Label htmlFor="occupation" className="text-xs font-black uppercase tracking-widest text-muted-foreground">Profissão</Label>
                                 <IconInputWrapper icon={Briefcase}>
-                                    <Input id="occupation" value={formData.occupation} onChange={(e) => updateField('occupation', e.target.value)} placeholder="Ex: Engenheiro" className="bg-muted/50 focus:bg-background shadow-sm pl-10 h-10 border-muted-foreground/20" />
+                                    <Input id="occupation" value={formData.occupation} onChange={(e) => updateField('occupation', e.target.value)} placeholder="Ex: Engenheiro" maxLength={100} className="bg-muted/50 focus:bg-background shadow-sm pl-10 h-10 border-muted-foreground/20" />
                                 </IconInputWrapper>
                             </div>
 
@@ -454,7 +458,7 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded }) => {
                             <div className="md:col-span-2 space-y-2.5">
                                 <Label htmlFor="observations" className="text-xs font-black uppercase tracking-widest text-muted-foreground">Observações Iniciais</Label>
                                 <IconInputWrapper icon={PenSquare}>
-                                    <Textarea id="observations" value={formData.observations} onChange={(e) => updateField('observations', e.target.value)} placeholder="Anotações importantes..." className="bg-muted/50 focus:bg-background resize-none shadow-sm pl-10 transition-all border-muted-foreground/20 h-24" />
+                                    <Textarea id="observations" value={formData.observations} onChange={(e) => updateField('observations', e.target.value)} placeholder="Anotações importantes..." maxLength={1000} className="bg-muted/50 focus:bg-background resize-none shadow-sm pl-10 transition-all border-muted-foreground/20 h-24" />
                                 </IconInputWrapper>
                             </div>
                         </div>
@@ -478,37 +482,37 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded }) => {
                             <div className="md:col-span-2 space-y-2.5">
                                 <Label htmlFor="street" className="text-xs font-black uppercase tracking-widest text-muted-foreground">Endereço (Rua, Av.)</Label>
                                 <IconInputWrapper icon={Map}>
-                                    <Input id="street" value={formData.street} onChange={(e) => updateField('street', e.target.value)} className="bg-muted/50 focus:bg-background shadow-sm pl-10 h-10 border-muted-foreground/20" />
+                                    <Input id="street" value={formData.street} onChange={(e) => updateField('street', e.target.value)} maxLength={100} className="bg-muted/50 focus:bg-background shadow-sm pl-10 h-10 border-muted-foreground/20" />
                                 </IconInputWrapper>
                             </div>
                             <div className="md:col-span-1 space-y-2.5">
                                 <Label htmlFor="number" className="text-xs font-black uppercase tracking-widest text-muted-foreground">Número</Label>
                                 <IconInputWrapper icon={Hash}>
-                                    <Input id="number" value={formData.number} onChange={(e) => updateField('number', e.target.value)} className="bg-muted/50 focus:bg-background shadow-sm pl-10 h-10 border-muted-foreground/20" />
+                                    <Input id="number" value={formData.number} onChange={(e) => updateField('number', e.target.value)} maxLength={10} className="bg-muted/50 focus:bg-background shadow-sm pl-10 h-10 border-muted-foreground/20" />
                                 </IconInputWrapper>
                             </div>
                             <div className="md:col-span-2 space-y-2.5">
                                 <Label htmlFor="complement" className="text-xs font-black uppercase tracking-widest text-muted-foreground">Complemento</Label>
                                 <IconInputWrapper icon={Building2}>
-                                    <Input id="complement" value={formData.complement} onChange={(e) => updateField('complement', e.target.value)} className="bg-muted/50 focus:bg-background shadow-sm pl-10 h-10 border-muted-foreground/20" />
+                                    <Input id="complement" value={formData.complement} onChange={(e) => updateField('complement', e.target.value)} maxLength={100} className="bg-muted/50 focus:bg-background shadow-sm pl-10 h-10 border-muted-foreground/20" />
                                 </IconInputWrapper>
                             </div>
                             <div className="md:col-span-1 space-y-2.5">
                                 <Label htmlFor="neighborhood" className="text-xs font-black uppercase tracking-widest text-muted-foreground">Bairro</Label>
                                 <IconInputWrapper icon={Home}>
-                                    <Input id="neighborhood" value={formData.neighborhood} onChange={(e) => updateField('neighborhood', e.target.value)} className="bg-muted/50 focus:bg-background shadow-sm pl-10 h-10 border-muted-foreground/20" />
+                                    <Input id="neighborhood" value={formData.neighborhood} onChange={(e) => updateField('neighborhood', e.target.value)} maxLength={100} className="bg-muted/50 focus:bg-background shadow-sm pl-10 h-10 border-muted-foreground/20" />
                                 </IconInputWrapper>
                             </div>
                             <div className="md:col-span-1 space-y-2.5">
                                 <Label htmlFor="city" className="text-xs font-black uppercase tracking-widest text-muted-foreground">Cidade</Label>
                                 <IconInputWrapper icon={Building}>
-                                    <Input id="city" value={formData.city} onChange={(e) => updateField('city', e.target.value)} className="bg-muted/50 focus:bg-background shadow-sm pl-10 h-10 border-muted-foreground/20" />
+                                    <Input id="city" value={formData.city} onChange={(e) => updateField('city', e.target.value)} maxLength={100} className="bg-muted/50 focus:bg-background shadow-sm pl-10 h-10 border-muted-foreground/20" />
                                 </IconInputWrapper>
                             </div>
                             <div className="md:col-span-1 space-y-2.5">
                                 <Label htmlFor="state" className="text-xs font-black uppercase tracking-widest text-muted-foreground">Estado (UF)</Label>
                                 <IconInputWrapper icon={Landmark}>
-                                    <Input id="state" value={formData.state} onChange={(e) => updateField('state', e.target.value)} className="bg-muted/50 focus:bg-background shadow-sm pl-10 h-10 border-muted-foreground/20" />
+                                    <Input id="state" value={formData.state} onChange={(e) => updateField('state', e.target.value)} maxLength={2} className="bg-muted/50 focus:bg-background shadow-sm pl-10 h-10 border-muted-foreground/20" />
                                 </IconInputWrapper>
                             </div>
                         </div>
