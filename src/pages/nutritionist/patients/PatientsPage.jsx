@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { motion, AnimatePresence } from 'framer-motion';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import AddPatientModal from '@/components/nutritionist/AddPatientModal';
 import ArchivedPatientsModal from '@/components/nutritionist/ArchivedPatientsModal';
 import PatientCard from '@/components/nutritionist/PatientCard';
@@ -289,48 +290,6 @@ const PatientsPage = () => {
                     </div>
                 </div>
 
-                {/* ── Global Invitation Card ── */}
-                {user?.profile?.invite_code && (
-                    <motion.div 
-                        initial={{ opacity: 0, scale: 0.98 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="mb-8 p-6 rounded-2xl border border-primary/20 bg-primary/5 shadow-sm relative overflow-hidden group"
-                    >
-                        <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                            <Users className="w-24 h-24 text-primary" />
-                        </div>
-                        
-                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
-                            <div className="flex-1 max-w-2xl">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <Badge className="bg-primary text-primary-foreground font-bold px-2 py-0.5 rounded text-[10px]">
-                                        PARA NOVOS PACIENTES
-                                    </Badge>
-                                </div>
-                                <h2 className="text-xl font-bold text-foreground mb-2 flex items-center gap-2">
-                                    Expandir sua Base de Pacientes
-                                </h2>
-                                <p className="text-sm text-muted-foreground leading-relaxed">
-                                    Compartilhe seu <strong>Código de Convite Global</strong> com pessoas que ainda não estão cadastradas. 
-                                    Ao criar uma conta usando este código, elas serão vinculadas automaticamente à sua agenda.
-                                </p>
-                            </div>
-
-                            <div className="flex flex-col items-center gap-3 bg-background/60 backdrop-blur-sm p-4 rounded-xl border border-primary/10 shadow-inner">
-                                <span className="text-[10px] font-bold text-muted-foreground tracking-widest uppercase">Seu Código Global</span>
-                                <div 
-                                    onClick={copyNutritionistInvite}
-                                    className="flex items-center gap-3 px-6 py-3 bg-white dark:bg-neutral-800 rounded-lg border-2 border-primary/30 cursor-pointer hover:border-primary transition-all shadow-sm active:scale-95"
-                                >
-                                    <span className="text-2xl font-black font-mono tracking-wider text-primary">{user.profile.invite_code}</span>
-                                    {copiedInvite ? <Check className="w-5 h-5 text-green-600" /> : <Copy className="w-5 h-5 text-muted-foreground opacity-60" />}
-                                </div>
-                                <p className="text-[10px] text-muted-foreground text-center">Clique no código para copiar e compartilhar</p>
-                            </div>
-                        </div>
-                    </motion.div>
-                )}
-
                 {/* ── Search + Filters ── */}
                 <Card className="bg-card shadow-card-dark rounded-xl overflow-hidden">
                     <CardHeader className="pb-3 border-b">
@@ -396,89 +355,92 @@ const PatientsPage = () => {
                         </div>
                     </CardHeader>
 
-                    <CardContent className="pt-4 bg-muted/10">
-                        {loading ? (
-                            <div className="flex justify-center items-center h-40"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
-                        ) : filteredPatients.length > 0 ? (
-                            viewMode === 'grid' ? (
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 auto-rows-fr">
-                                    <AnimatePresence mode="popLayout">
-                                        {filteredPatients.map((patient) => (
-                                            <motion.div
-                                                key={`grid-${patient.id}`}
-                                                initial={{ opacity: 0, scale: 0.98 }}
-                                                animate={{ opacity: 1, scale: 1 }}
-                                                exit={{ opacity: 0, scale: 0.95 }}
-                                                transition={{ duration: 0.15 }}
-                                                className="h-full"
-                                            >
-                                                <PatientCard patient={patient} isOnline={isUserOnline(patient.id)} onArchive={handleArchive} onDelete={handleDelete} />
-                                            </motion.div>
-                                        ))}
-                                    </AnimatePresence>
+                    <CardContent className="pt-4 bg-muted/10 p-0">
+                        <ScrollArea className="h-[450px] md:h-[650px] w-full p-4 md:p-6">
+                            {loading ? (
+                                <div className="flex justify-center items-center h-40"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
+                            ) : filteredPatients.length > 0 ? (
+                                <div className="pr-1">
+                                    {viewMode === 'grid' ? (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 auto-rows-fr">
+                                            <AnimatePresence mode="popLayout">
+                                                {filteredPatients.map((patient) => (
+                                                    <motion.div
+                                                        key={`grid-${patient.id}`}
+                                                        initial={{ opacity: 0, scale: 0.98 }}
+                                                        animate={{ opacity: 1, scale: 1 }}
+                                                        exit={{ opacity: 0, scale: 0.95 }}
+                                                        transition={{ duration: 0.15 }}
+                                                        className="h-full"
+                                                    >
+                                                        <PatientCard patient={patient} isOnline={isUserOnline(patient.id)} onArchive={handleArchive} onDelete={handleDelete} />
+                                                    </motion.div>
+                                                ))}
+                                            </AnimatePresence>
+                                        </div>
+                                    ) : (
+                                        <div className="rounded-md border bg-background overflow-hidden">
+                                            <Table>
+                                                <TableHeader>
+                                                    <TableRow>
+                                                        <TableHead>Paciente</TableHead>
+                                                        <TableHead className="hidden md:table-cell">Status</TableHead>
+                                                        <TableHead className="hidden lg:table-cell">Telefone</TableHead>
+                                                        <TableHead className="hidden lg:table-cell">Membro Desde</TableHead>
+                                                        <TableHead className="text-right w-[80px]">Ações</TableHead>
+                                                    </TableRow>
+                                                </TableHeader>
+                                                <TableBody className="overflow-hidden">
+                                                    <AnimatePresence mode="popLayout">
+                                                        {filteredPatients.map(patient => {
+                                                            const isArchived = patient.is_active === false || patient.arquivadoHistorico;
+                                                            return (
+                                                                <motion.tr
+                                                                    key={`list-${patient.id}`}
+                                                                    initial={{ opacity: 0, y: -5 }}
+                                                                    animate={{ opacity: 1, y: 0 }}
+                                                                    exit={{ opacity: 0, y: 5 }}
+                                                                    transition={{ duration: 0.15 }}
+                                                                    className={`border-b group transition-colors hover:bg-muted/40 ${isArchived ? 'opacity-50' : 'cursor-pointer'}`}
+                                                                    onClick={e => {
+                                                                        // Allow clicking row to navigate, except if clicking an interactive element
+                                                                        if (!isArchived && !e.target.closest('button')) navigate(patientRoute(patient, 'hub'));
+                                                                    }}
+                                                                >
+                                                                    <TableCell>
+                                                                        <div className="flex items-center gap-3">
+                                                                            <div className={`w-2 h-2 rounded-full flex-shrink-0 ${isUserOnline(patient.id) ? 'bg-green-500 animate-pulse' : 'bg-muted-foreground/30'}`} />
+                                                                            <div>
+                                                                                <p className="font-semibold text-sm text-foreground">{patient.name}</p>
+                                                                                <p className="text-xs text-muted-foreground">{patient.email}</p>
+                                                                            </div>
+                                                                        </div>
+                                                                    </TableCell>
+                                                                    <TableCell className="hidden md:table-cell">
+                                                                        {isArchived ? <Badge variant="outline" className="text-[10px] border-dashed">Arquivado</Badge>
+                                                                            : patient.needs_password_reset ? <Badge variant="outline" className="text-[10px] bg-amber-50 text-amber-700 border-amber-200">Convite Pendente</Badge>
+                                                                            : <Badge variant="outline" className="text-[10px] bg-emerald-50 text-emerald-700 border-emerald-200">Ativo</Badge>}
+                                                                    </TableCell>
+                                                                    <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">
+                                                                        {patient.phone || <span className="opacity-50">—</span>}
+                                                                    </TableCell>
+                                                                    <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">
+                                                                        {formatDate(patient.created_at)}
+                                                                    </TableCell>
+                                                                    <TableCell className="text-right">
+                                                                        <ListActionsMenu patient={patient} onArchive={handleArchive} onDelete={handleDelete} />
+                                                                    </TableCell>
+                                                                </motion.tr>
+                                                            );
+                                                        })}
+                                                    </AnimatePresence>
+                                                </TableBody>
+                                            </Table>
+                                        </div>
+                                    )}
                                 </div>
                             ) : (
-                                <div className="rounded-md border bg-background">
-                                    <Table>
-                                        <TableHeader>
-                                            <TableRow>
-                                                <TableHead>Paciente</TableHead>
-                                                <TableHead className="hidden md:table-cell">Status</TableHead>
-                                                <TableHead className="hidden lg:table-cell">Telefone</TableHead>
-                                                <TableHead className="hidden lg:table-cell">Membro Desde</TableHead>
-                                                <TableHead className="text-right w-[80px]">Ações</TableHead>
-                                            </TableRow>
-                                        </TableHeader>
-                                        <TableBody className="overflow-hidden">
-                                            <AnimatePresence mode="popLayout">
-                                                {filteredPatients.map(patient => {
-                                                    const isArchived = patient.is_active === false || patient.arquivadoHistorico;
-                                                    return (
-                                                        <motion.tr
-                                                            key={`list-${patient.id}`}
-                                                            initial={{ opacity: 0, y: -5 }}
-                                                            animate={{ opacity: 1, y: 0 }}
-                                                            exit={{ opacity: 0, y: 5 }}
-                                                            transition={{ duration: 0.15 }}
-                                                            className={`border-b group transition-colors hover:bg-muted/40 ${isArchived ? 'opacity-50' : 'cursor-pointer'}`}
-                                                            onClick={e => {
-                                                                // Allow clicking row to navigate, except if clicking an interactive element
-                                                                if (!isArchived && !e.target.closest('button')) navigate(patientRoute(patient, 'hub'));
-                                                            }}
-                                                        >
-                                                            <TableCell>
-                                                                <div className="flex items-center gap-3">
-                                                                    <div className={`w-2 h-2 rounded-full flex-shrink-0 ${isUserOnline(patient.id) ? 'bg-green-500 animate-pulse' : 'bg-muted-foreground/30'}`} />
-                                                                    <div>
-                                                                        <p className="font-semibold text-sm text-foreground">{patient.name}</p>
-                                                                        <p className="text-xs text-muted-foreground">{patient.email}</p>
-                                                                    </div>
-                                                                </div>
-                                                            </TableCell>
-                                                            <TableCell className="hidden md:table-cell">
-                                                                {isArchived ? <Badge variant="outline" className="text-[10px] border-dashed">Arquivado</Badge>
-                                                                    : patient.needs_password_reset ? <Badge variant="outline" className="text-[10px] bg-amber-50 text-amber-700 border-amber-200">Convite Pendente</Badge>
-                                                                    : <Badge variant="outline" className="text-[10px] bg-emerald-50 text-emerald-700 border-emerald-200">Ativo</Badge>}
-                                                            </TableCell>
-                                                            <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">
-                                                                {patient.phone || <span className="opacity-50">—</span>}
-                                                            </TableCell>
-                                                            <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">
-                                                                {formatDate(patient.created_at)}
-                                                            </TableCell>
-                                                            <TableCell className="text-right">
-                                                                <ListActionsMenu patient={patient} onArchive={handleArchive} onDelete={handleDelete} />
-                                                            </TableCell>
-                                                        </motion.tr>
-                                                    );
-                                                })}
-                                            </AnimatePresence>
-                                        </TableBody>
-                                    </Table>
-                                </div>
-                            )
-                        ) : (
-                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center justify-center p-12 text-center border-2 border-dashed rounded-xl bg-background mt-4">
+                                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center justify-center p-12 text-center border-2 border-dashed rounded-xl bg-background mt-4">
                                 <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
                                     <Search className="w-8 h-8 text-primary/40" />
                                 </div>
@@ -491,8 +453,51 @@ const PatientsPage = () => {
                                 )}
                             </motion.div>
                         )}
+                        </ScrollArea>
                     </CardContent>
                 </Card>
+
+                {/* ── Global Invitation Card ── */}
+                {user?.profile?.invite_code && (
+                    <motion.div 
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="mt-8 p-6 rounded-2xl border border-primary/20 bg-primary/5 shadow-sm relative overflow-hidden group"
+                    >
+                        <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                            <Users className="w-24 h-24 text-primary" />
+                        </div>
+                        
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+                            <div className="flex-1 max-w-2xl">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <Badge className="bg-primary text-primary-foreground font-bold px-2 py-0.5 rounded text-[10px]">
+                                        AUTO-CADASTRO
+                                    </Badge>
+                                </div>
+                                <h2 className="text-xl font-bold text-foreground mb-2 flex items-center gap-2">
+                                    Expandir sua Base de Pacientes
+                                </h2>
+                                <p className="text-sm text-muted-foreground leading-relaxed">
+                                    Compartilhe seu <strong>Código de Convite Global</strong> com pessoas que ainda não estão cadastradas. 
+                                    Ao criar uma conta através da tela de registro usando este código, elas serão vinculadas automaticamente à sua agenda.
+                                </p>
+                            </div>
+
+                            <div className="flex flex-col items-center gap-3 bg-background/60 backdrop-blur-sm p-4 rounded-xl border border-primary/10 shadow-inner">
+                                <span className="text-[10px] font-bold text-muted-foreground tracking-widest uppercase">Seu Código de Convite</span>
+                                <div 
+                                    onClick={copyNutritionistInvite}
+                                    className="flex items-center gap-3 px-6 py-3 bg-white dark:bg-neutral-800 rounded-lg border-2 border-primary/30 cursor-pointer hover:border-primary transition-all shadow-sm active:scale-95"
+                                >
+                                    <span className="text-2xl font-black font-mono tracking-wider text-primary">{user.profile.invite_code}</span>
+                                    {copiedInvite ? <Check className="w-5 h-5 text-green-600" /> : <Copy className="w-5 h-5 text-muted-foreground opacity-60" />}
+                                </div>
+                                <p className="text-[10px] text-muted-foreground text-center">Clique no código para copiar e compartilhar</p>
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
             </motion.div>
 
             {/* Modals Globais */}
