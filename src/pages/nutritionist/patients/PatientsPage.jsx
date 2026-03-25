@@ -385,241 +385,239 @@ const PatientsPage = () => {
                     )}
                 </AnimatePresence>
 
-                <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
-                    {/* ── Main List Area (80%) ── */}
-                    <div className="lg:col-span-4 space-y-6">
-                        <Card className="bg-card shadow-card-dark rounded-xl overflow-hidden">
-                            <CardHeader className="pb-3 border-b">
-                                <div className="flex flex-col gap-3">
-                                    <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
-                                        <h3 className="font-semibold text-foreground text-sm uppercase tracking-wider flex items-center gap-2">
-                                            <ListFilter className="w-4 h-4 text-primary" /> Busca e Filtros
-                                        </h3>
+                <div className="space-y-6">
+                    <Card className="bg-card shadow-card-dark rounded-xl overflow-hidden">
+                        <CardHeader className="pb-3 border-b">
+                            <div className="flex flex-col gap-3">
+                                <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
+                                    <h3 className="font-semibold text-foreground text-sm uppercase tracking-wider flex items-center gap-2">
+                                        <ListFilter className="w-4 h-4 text-primary" /> Busca e Filtros
+                                    </h3>
 
-                                        {/* Smart Chips */}
-                                        {!loading && activePatients.length > 0 && (
-                                            <div className="flex flex-wrap items-center justify-center sm:justify-end gap-2">
-                                                {stats.new30 > 0 && (
-                                                    <Badge variant="outline" className={`cursor-pointer text-[11px] gap-1 transition-colors px-2.5 py-1 ${activeChip === 'new30' ? 'bg-orange-500 text-white hover:bg-orange-600 border-transparent shadow-sm' : 'bg-orange-50 text-orange-700 hover:bg-orange-100 border-orange-200/60'}`} onClick={() => handleChipClick('new30')}>
-                                                        <Flame className={`w-3 h-3 ${activeChip === 'new30' ? 'text-white' : 'text-orange-500'}`} /> Adicionados Recentes ({stats.new30})
-                                                    </Badge>
-                                                )}
-                                                {stats.pending > 0 && (
-                                                    <Badge variant="outline" className={`cursor-pointer text-[11px] gap-1 transition-colors px-2.5 py-1 ${activeChip === 'pending' ? 'bg-amber-500 text-white hover:bg-amber-600 border-transparent shadow-sm' : 'bg-amber-50 text-amber-700 hover:bg-amber-100 border-amber-200/60'}`} onClick={() => handleChipClick('pending')}>
-                                                        <Clock className={`w-3 h-3 ${activeChip === 'pending' ? 'text-white' : 'text-amber-500'}`} /> Convites Pendentes ({stats.pending})
-                                                    </Badge>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    <div className="flex flex-col sm:flex-row gap-3 pt-1">
-                                        <div className="relative flex-1 min-w-0">
-                                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                                            <Input placeholder="Procurar paciente (Nome, Email, CPF...)" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-10 bg-muted/40 border-border focus-visible:ring-1 focus-visible:ring-primary h-10 transition-all focus:bg-background" />
-                                        </div>
-                                        <div className="flex gap-2 shrink-0">
-                                            <ToggleGroup type="single" value={viewMode} onValueChange={v => v && setViewMode(v)} className="border border-input rounded-md bg-muted/30">
-                                                <ToggleGroupItem value="grid" aria-label="Grid view" className="h-10 w-10"><LayoutGrid className="h-4 w-4" /></ToggleGroupItem>
-                                                <ToggleGroupItem value="list" aria-label="List view" className="h-10 w-10"><List className="h-4 w-4" /></ToggleGroupItem>
-                                            </ToggleGroup>
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button variant="outline" className="h-10 shrink-0 font-medium">
-                                                        Filtros Avançados
-                                                        {(filterStatus !== 'all' || sortOrder !== 'name_asc') && <span className="ml-1.5 w-1.5 h-1.5 rounded-full bg-primary inline-block" />}
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end" className="w-[220px]">
-                                                    <DropdownMenuLabel>Status da Conta</DropdownMenuLabel>
-                                                    <DropdownMenuRadioGroup value={filterStatus} onValueChange={(v) => { setFilterStatus(v); setActiveChip(null); }}>
-                                                        <DropdownMenuRadioItem value="all">Todos</DropdownMenuRadioItem>
-                                                        <DropdownMenuRadioItem value="active">Em Tratamento (Ativos)</DropdownMenuRadioItem>
-                                                        <DropdownMenuRadioItem value="pending">Convites Pendentes</DropdownMenuRadioItem>
-                                                        <DropdownMenuRadioItem value="online">Apenas Online Agora</DropdownMenuRadioItem>
-                                                    </DropdownMenuRadioGroup>
-                                                    <DropdownMenuSeparator />
-                                                    <DropdownMenuLabel>Ordenação</DropdownMenuLabel>
-                                                    <DropdownMenuRadioGroup value={sortOrder} onValueChange={setSortOrder}>
-                                                        {Object.entries(sortOptions).map(([key, { label }]) => (
-                                                            <DropdownMenuRadioItem key={key} value={key}>{label}</DropdownMenuRadioItem>
-                                                        ))}
-                                                    </DropdownMenuRadioGroup>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
-                                        </div>
-                                    </div>
-                                </div>
-                            </CardHeader>
-
-                            <CardContent className="pt-4 bg-muted/10 p-0">
-                                <ScrollArea className="h-[400px] md:h-[550px] w-full p-4 md:p-6">
-                            {loading ? (
-                                <div className="flex justify-center items-center h-40"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
-                            ) : filteredPatients.length > 0 ? (
-                                <div className="pr-1">
-                                    {viewMode === 'grid' ? (
-                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 auto-rows-fr">
-                                            <AnimatePresence mode="popLayout">
-                                                {filteredPatients.map((patient) => (
-                                                    <motion.div
-                                                        key={`grid-${patient.id}`}
-                                                        initial={{ opacity: 0, scale: 0.98 }}
-                                                        animate={{ opacity: 1, scale: 1 }}
-                                                        exit={{ opacity: 0, scale: 0.95 }}
-                                                        transition={{ duration: 0.15 }}
-                                                        className="h-full"
-                                                    >
-                                                        <PatientCard patient={patient} isOnline={isUserOnline(patient.id)} onArchive={handleArchive} onDelete={handleDelete} />
-                                                    </motion.div>
-                                                ))}
-                                            </AnimatePresence>
-                                        </div>
-                                    ) : (
-                                        <div className="rounded-md border bg-background overflow-hidden">
-                                            <Table>
-                                                <TableHeader>
-                                                    <TableRow>
-                                                        <TableHead>Paciente</TableHead>
-                                                        <TableHead className="hidden md:table-cell">Status</TableHead>
-                                                        <TableHead className="hidden lg:table-cell">Telefone</TableHead>
-                                                        <TableHead className="hidden lg:table-cell">Membro Desde</TableHead>
-                                                        <TableHead className="text-right w-[80px]">Ações</TableHead>
-                                                    </TableRow>
-                                                </TableHeader>
-                                                <TableBody className="overflow-hidden">
-                                                    <AnimatePresence mode="popLayout">
-                                                        {filteredPatients.map(patient => {
-                                                            const isArchived = patient.is_active === false || patient.arquivadoHistorico;
-                                                            return (
-                                                                <motion.tr
-                                                                    key={`list-${patient.id}`}
-                                                                    initial={{ opacity: 0, y: -5 }}
-                                                                    animate={{ opacity: 1, y: 0 }}
-                                                                    exit={{ opacity: 0, y: 5 }}
-                                                                    transition={{ duration: 0.15 }}
-                                                                    className={`border-b group transition-colors hover:bg-muted/40 ${isArchived ? 'opacity-50' : 'cursor-pointer'}`}
-                                                                    onClick={e => {
-                                                                        // Allow clicking row to navigate, except if clicking an interactive element
-                                                                        if (!isArchived && !e.target.closest('button')) navigate(patientRoute(patient, 'hub'));
-                                                                    }}
-                                                                >
-                                                                    <TableCell>
-                                                                        <div className="flex items-center gap-3">
-                                                                            <div className={`w-2 h-2 rounded-full flex-shrink-0 ${isUserOnline(patient.id) ? 'bg-green-500 animate-pulse' : 'bg-muted-foreground/30'}`} />
-                                                                            <div>
-                                                                                <p className="font-semibold text-sm text-foreground">{patient.name}</p>
-                                                                                <p className="text-xs text-muted-foreground">{patient.email}</p>
-                                                                            </div>
-                                                                        </div>
-                                                                    </TableCell>
-                                                                    <TableCell className="hidden md:table-cell">
-                                                                        {isArchived ? <Badge variant="outline" className="text-[10px] border-dashed">Arquivado</Badge>
-                                                                            : patient.needs_password_reset ? <Badge variant="outline" className="text-[10px] bg-amber-50 text-amber-700 border-amber-200">Convite Pendente</Badge>
-                                                                            : <Badge variant="outline" className="text-[10px] bg-emerald-50 text-emerald-700 border-emerald-200">Ativo</Badge>}
-                                                                    </TableCell>
-                                                                    <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">
-                                                                        {patient.phone || <span className="opacity-50">—</span>}
-                                                                    </TableCell>
-                                                                    <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">
-                                                                        {formatDate(patient.created_at)}
-                                                                    </TableCell>
-                                                                    <TableCell className="text-right">
-                                                                        <ListActionsMenu patient={patient} onArchive={handleArchive} onDelete={handleDelete} />
-                                                                    </TableCell>
-                                                                </motion.tr>
-                                                            );
-                                                        })}
-                                                    </AnimatePresence>
-                                                </TableBody>
-                                            </Table>
+                                    {/* Smart Chips */}
+                                    {!loading && activePatients.length > 0 && (
+                                        <div className="flex flex-wrap items-center justify-center sm:justify-end gap-2">
+                                            {stats.new30 > 0 && (
+                                                <Badge variant="outline" className={`cursor-pointer text-[11px] gap-1 transition-colors px-2.5 py-1 ${activeChip === 'new30' ? 'bg-orange-500 text-white hover:bg-orange-600 border-transparent shadow-sm' : 'bg-orange-50 text-orange-700 hover:bg-orange-100 border-orange-200/60'}`} onClick={() => handleChipClick('new30')}>
+                                                    <Flame className={`w-3 h-3 ${activeChip === 'new30' ? 'text-white' : 'text-orange-500'}`} /> Adicionados Recentes ({stats.new30})
+                                                </Badge>
+                                            )}
+                                            {stats.pending > 0 && (
+                                                <Badge variant="outline" className={`cursor-pointer text-[11px] gap-1 transition-colors px-2.5 py-1 ${activeChip === 'pending' ? 'bg-amber-500 text-white hover:bg-amber-600 border-transparent shadow-sm' : 'bg-amber-50 text-amber-700 hover:bg-amber-100 border-amber-200/60'}`} onClick={() => handleChipClick('pending')}>
+                                                    <Clock className={`w-3 h-3 ${activeChip === 'pending' ? 'text-white' : 'text-amber-500'}`} /> Convites Pendentes ({stats.pending})
+                                                </Badge>
+                                            )}
                                         </div>
                                     )}
                                 </div>
-                            ) : (
-                                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center justify-center p-12 text-center border-2 border-dashed rounded-xl bg-background mt-4">
-                                    <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                                        <Search className="w-8 h-8 text-primary/40" />
+
+                                <div className="flex flex-col sm:flex-row gap-3 pt-1">
+                                    <div className="relative flex-1 min-w-0">
+                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                                        <Input placeholder="Procurar paciente (Nome, Email, CPF...)" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-10 bg-muted/40 border-border focus-visible:ring-1 focus-visible:ring-primary h-10 transition-all focus:bg-background" />
                                     </div>
-                                    <h3 className="text-lg font-bold text-foreground mb-1">{emptyMessage.title}</h3>
-                                    {emptyMessage.sub && <p className="text-muted-foreground text-sm max-w-[300px]">{emptyMessage.sub}</p>}
-                                    {filterStatus === 'all' && !searchTerm && !activeChip && (
-                                        <Button onClick={() => setShowAddPatientModal(true)} className="mt-6">
-                                            <Plus className="w-4 h-4 mr-2" /> Cadastrar Primeiro Paciente
-                                        </Button>
-                                    )}
-                                </motion.div>
-                            )}
-                        </ScrollArea>
-                    </CardContent>
-                </Card>
-            </div>
-
-            {/* ── Sidebar: Invitation Widget (20%) ── */}
-            <div className="lg:col-span-1 h-full">
-                {user?.profile?.invite_code && (
-                    <motion.div 
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        className="p-5 rounded-2xl border border-primary/20 bg-primary/5 shadow-sm space-y-5 sticky top-8"
-                    >
-                        <div className="space-y-1">
-                            <Badge className="bg-primary text-primary-foreground font-bold px-1.5 py-0 rounded text-[9px] uppercase tracking-wider">
-                                Auto-Cadastro
-                            </Badge>
-                            <h2 className="text-lg font-black text-foreground flex items-center gap-2">
-                                Novo Vínculo
-                            </h2>
-                            <p className="text-[11px] text-muted-foreground leading-snug">
-                                Pacientes se vinculam a você informando este código no cadastro.
-                            </p>
-                        </div>
-
-                        {/* Invite Code Display */}
-                        <div className="flex flex-col items-center gap-2 bg-background/80 backdrop-blur-sm p-4 rounded-xl border border-primary/10 shadow-inner group">
-                            <span className="text-[9px] font-bold text-muted-foreground tracking-widest uppercase">Seu Código</span>
-                            <div 
-                                onClick={copyNutritionistInvite}
-                                className="w-full flex items-center justify-between px-4 py-3 bg-white dark:bg-neutral-800 rounded-lg border-2 border-primary/30 cursor-pointer hover:border-primary transition-all shadow-sm active:scale-95"
-                            >
-                                <span className="text-xl font-black font-mono tracking-widest text-primary">{user.profile.invite_code}</span>
-                                {copiedInvite ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4 text-muted-foreground opacity-40 group-hover:opacity-100" />}
+                                    <div className="flex gap-2 shrink-0">
+                                        <ToggleGroup type="single" value={viewMode} onValueChange={v => v && setViewMode(v)} className="border border-input rounded-md bg-muted/30">
+                                            <ToggleGroupItem value="grid" aria-label="Grid view" className="h-10 w-10"><LayoutGrid className="h-4 w-4" /></ToggleGroupItem>
+                                            <ToggleGroupItem value="list" aria-label="List view" className="h-10 w-10"><List className="h-4 w-4" /></ToggleGroupItem>
+                                        </ToggleGroup>
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="outline" className="h-10 shrink-0 font-medium">
+                                                    Filtros Avançados
+                                                    {(filterStatus !== 'all' || sortOrder !== 'name_asc') && <span className="ml-1.5 w-1.5 h-1.5 rounded-full bg-primary inline-block" />}
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end" className="w-[220px]">
+                                                <DropdownMenuLabel>Status da Conta</DropdownMenuLabel>
+                                                <DropdownMenuRadioGroup value={filterStatus} onValueChange={(v) => { setFilterStatus(v); setActiveChip(null); }}>
+                                                    <DropdownMenuRadioItem value="all">Todos</DropdownMenuRadioItem>
+                                                    <DropdownMenuRadioItem value="active">Em Tratamento (Ativos)</DropdownMenuRadioItem>
+                                                    <DropdownMenuRadioItem value="pending">Convites Pendentes</DropdownMenuRadioItem>
+                                                    <DropdownMenuRadioItem value="online">Apenas Online Agora</DropdownMenuRadioItem>
+                                                </DropdownMenuRadioGroup>
+                                                <DropdownMenuSeparator />
+                                                <DropdownMenuLabel>Ordenação</DropdownMenuLabel>
+                                                <DropdownMenuRadioGroup value={sortOrder} onValueChange={setSortOrder}>
+                                                    {Object.entries(sortOptions).map(([key, { label }]) => (
+                                                        <DropdownMenuRadioItem key={key} value={key}>{label}</DropdownMenuRadioItem>
+                                                    ))}
+                                                </DropdownMenuRadioGroup>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    </div>
+                                </div>
                             </div>
-                            <p className="text-[9px] text-muted-foreground text-center">Clique para copiar</p>
-                        </div>
+                        </CardHeader>
 
-                        {/* Step-by-Step Compact */}
-                        <div className="space-y-4">
-                            <h4 className="text-[10px] font-bold text-primary uppercase tracking-widest flex items-center gap-2">
-                                <Clock className="w-3 h-3" /> Como Funciona?
-                            </h4>
-                            <div className="space-y-4 relative before:absolute before:left-[9px] before:top-2 before:bottom-2 before:w-[1px] before:bg-primary/20">
+                        <CardContent className="pt-4 bg-muted/10 p-0">
+                            <ScrollArea className="h-[400px] md:h-[550px] w-full p-4 md:p-6">
+                        {loading ? (
+                            <div className="flex justify-center items-center h-40"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
+                        ) : filteredPatients.length > 0 ? (
+                            <div className="pr-1">
+                                {viewMode === 'grid' ? (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 auto-rows-fr">
+                                        <AnimatePresence mode="popLayout">
+                                            {filteredPatients.map((patient) => (
+                                                <motion.div
+                                                    key={`grid-${patient.id}`}
+                                                    initial={{ opacity: 0, scale: 0.98 }}
+                                                    animate={{ opacity: 1, scale: 1 }}
+                                                    exit={{ opacity: 0, scale: 0.95 }}
+                                                    transition={{ duration: 0.15 }}
+                                                    className="h-full"
+                                                >
+                                                    <PatientCard patient={patient} isOnline={isUserOnline(patient.id)} onArchive={handleArchive} onDelete={handleDelete} />
+                                                </motion.div>
+                                            ))}
+                                        </AnimatePresence>
+                                    </div>
+                                ) : (
+                                    <div className="rounded-md border bg-background overflow-hidden">
+                                        <Table>
+                                            <TableHeader>
+                                                <TableRow>
+                                                    <TableHead>Paciente</TableHead>
+                                                    <TableHead className="hidden md:table-cell">Status</TableHead>
+                                                    <TableHead className="hidden lg:table-cell">Telefone</TableHead>
+                                                    <TableHead className="hidden lg:table-cell">Membro Desde</TableHead>
+                                                    <TableHead className="text-right w-[80px]">Ações</TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody className="overflow-hidden">
+                                                <AnimatePresence mode="popLayout">
+                                                    {filteredPatients.map(patient => {
+                                                        const isArchived = patient.is_active === false || patient.arquivadoHistorico;
+                                                        return (
+                                                            <motion.tr
+                                                                key={`list-${patient.id}`}
+                                                                initial={{ opacity: 0, y: -5 }}
+                                                                animate={{ opacity: 1, y: 0 }}
+                                                                exit={{ opacity: 0, y: 5 }}
+                                                                transition={{ duration: 0.15 }}
+                                                                className={`border-b group transition-colors hover:bg-muted/40 ${isArchived ? 'opacity-50' : 'cursor-pointer'}`}
+                                                                onClick={e => {
+                                                                    // Allow clicking row to navigate, except if clicking an interactive element
+                                                                    if (!isArchived && !e.target.closest('button')) navigate(patientRoute(patient, 'hub'));
+                                                                }}
+                                                            >
+                                                                <TableCell>
+                                                                    <div className="flex items-center gap-3">
+                                                                        <div className={`w-2 h-2 rounded-full flex-shrink-0 ${isUserOnline(patient.id) ? 'bg-green-500 animate-pulse' : 'bg-muted-foreground/30'}`} />
+                                                                        <div>
+                                                                            <p className="font-semibold text-sm text-foreground">{patient.name}</p>
+                                                                            <p className="text-xs text-muted-foreground">{patient.email}</p>
+                                                                        </div>
+                                                                    </div>
+                                                                </TableCell>
+                                                                <TableCell className="hidden md:table-cell">
+                                                                    {isArchived ? <Badge variant="outline" className="text-[10px] border-dashed">Arquivado</Badge>
+                                                                        : patient.needs_password_reset ? <Badge variant="outline" className="text-[10px] bg-amber-50 text-amber-700 border-amber-200">Convite Pendente</Badge>
+                                                                        : <Badge variant="outline" className="text-[10px] bg-emerald-50 text-emerald-700 border-emerald-200">Ativo</Badge>}
+                                                                </TableCell>
+                                                                <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">
+                                                                    {patient.phone || <span className="opacity-50">—</span>}
+                                                                </TableCell>
+                                                                <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">
+                                                                    {formatDate(patient.created_at)}
+                                                                </TableCell>
+                                                                <TableCell className="text-right">
+                                                                    <ListActionsMenu patient={patient} onArchive={handleArchive} onDelete={handleDelete} />
+                                                                </TableCell>
+                                                            </motion.tr>
+                                                        );
+                                                    })}
+                                                </AnimatePresence>
+                                            </TableBody>
+                                        </Table>
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center justify-center p-12 text-center border-2 border-dashed rounded-xl bg-background mt-4">
+                                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                                    <Search className="w-8 h-8 text-primary/40" />
+                                </div>
+                                <h3 className="text-lg font-bold text-foreground mb-1">{emptyMessage.title}</h3>
+                                {emptyMessage.sub && <p className="text-muted-foreground text-sm max-w-[300px]">{emptyMessage.sub}</p>}
+                                {filterStatus === 'all' && !searchTerm && !activeChip && (
+                                    <Button onClick={() => setShowAddPatientModal(true)} className="mt-6">
+                                        <Plus className="w-4 h-4 mr-2" /> Cadastrar Primeiro Paciente
+                                    </Button>
+                                )}
+                            </motion.div>
+                        )}
+                    </ScrollArea>
+                </CardContent>
+            </Card>
+
+            {/* ── Auto-Cadastro Section (Bottom) ── */}
+            {user?.profile?.invite_code && (
+                <motion.div 
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="p-6 md:p-8 rounded-2xl border border-primary/20 bg-primary/5 shadow-sm space-y-6"
+                >
+                    <div className="flex flex-col md:flex-row gap-8 items-start">
+                        <div className="flex-1 space-y-4">
+                            <div className="space-y-2">
+                                <Badge className="bg-primary text-primary-foreground font-bold px-2 py-0.5 rounded text-[10px] uppercase tracking-wider">
+                                    Auto-Cadastro de Pacientes
+                                </Badge>
+                                <h2 className="text-2xl font-black text-foreground">
+                                    Expanda sua base de pacientes
+                                </h2>
+                                <p className="text-sm text-muted-foreground leading-relaxed max-w-xl">
+                                    Compartilhe seu código global para que pacientes possam se vincular a você automaticamente ao criar uma conta. Você receberá uma notificação para aprovar cada novo vínculo.
+                                </p>
+                            </div>
+
+                            {/* Step-by-Step */}
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-2">
                                 {[
-                                    { text: "Copie o seu código", icon: Copy },
-                                    { text: "Paciente cadastra via código", icon: Users },
-                                    { text: "Você aprova o vínculo", icon: Check }
+                                    { text: "Copie e compartilhe seu código global", icon: Copy, title: "1. Compartilhe" },
+                                    { text: "O paciente insere o código no cadastro", icon: Users, title: "2. Cadastro" },
+                                    { text: "Você aprova a solicitação de vínculo", icon: Check, title: "3. Aprove" }
                                 ].map((step, idx) => (
-                                    <div key={idx} className="flex gap-3 items-start relative z-10">
-                                        <div className="flex-shrink-0 w-5 h-5 rounded-full bg-white dark:bg-neutral-800 border-2 border-primary/30 text-primary flex items-center justify-center font-bold text-[9px]">
-                                            {idx + 1}
+                                    <div key={idx} className="flex flex-col gap-2">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs border border-primary/20">
+                                                {idx + 1}
+                                            </div>
+                                            <h4 className="font-bold text-xs uppercase tracking-tight text-foreground">{step.title}</h4>
                                         </div>
-                                        <span className="text-[11px] font-medium text-muted-foreground/80 leading-tight pt-0.5">{step.text}</span>
+                                        <p className="text-[11px] text-muted-foreground leading-snug">{step.text}</p>
                                     </div>
                                 ))}
                             </div>
                         </div>
 
-                        <div className="pt-2">
-                            <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 flex gap-2 items-start">
-                                <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
-                                <p className="text-[10px] text-amber-800 leading-tight">
-                                    <strong>Atenção:</strong> Você precisa aprovar cada novo vínculo no topo desta página.
-                                </p>
+                        <div className="w-full md:w-72 shrink-0">
+                            <div className="bg-background/80 backdrop-blur-sm p-5 rounded-xl border border-primary/10 shadow-sm flex flex-col items-center gap-3">
+                                <span className="text-[10px] font-bold text-muted-foreground tracking-widest uppercase">Seu Código Global</span>
+                                <div 
+                                    onClick={copyNutritionistInvite}
+                                    className="w-full flex items-center justify-between px-5 py-4 bg-white dark:bg-neutral-800 rounded-xl border-2 border-primary/30 cursor-pointer hover:border-primary transition-all shadow-md active:scale-95 group"
+                                >
+                                    <span className="text-2xl font-black font-mono tracking-widest text-primary">{user.profile.invite_code}</span>
+                                    {copiedInvite ? <Check className="w-5 h-5 text-green-600" /> : <Copy className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />}
+                                </div>
+                                <p className="text-[10px] text-muted-foreground">Clique no código para copiar</p>
+                                
+                                <div className="w-full pt-2">
+                                    <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 flex gap-2 items-start">
+                                        <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
+                                        <p className="text-[10px] text-amber-900/80 leading-tight">
+                                            Vínculos precisam ser aprovados manualmente.
+                                        </p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    </motion.div>
-                )}
-            </div>
+                    </div>
+                </motion.div>
+            )}
         </div>
 
         {/* Modals Globais */}
