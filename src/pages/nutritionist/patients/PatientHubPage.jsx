@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, RefreshCw, AlertCircle, Activity, Stethoscope, User, Utensils, Heart, CheckSquare } from 'lucide-react';
+import { ArrowLeft, RefreshCw, AlertCircle, Activity, Stethoscope, User, Utensils, Heart, CheckSquare, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { motion } from 'framer-motion';
 import { usePatientHub } from '@/hooks/usePatientHub';
 import { useResolvedPatientId } from '@/hooks/useResolvedPatientId';
 import PatientProfileSummary from '@/components/patient-hub/PatientProfileSummary';
@@ -234,6 +236,44 @@ const PatientHubPage = () => {
                         onScheduleAppointment={handleScheduleAppointment}
                     />
                 </section>
+
+                {/* ALERTA DE PERFIL OFFLINE - Se o paciente tiver código de convite mas ainda não tiver 'claimado' a conta */}
+                {patientData.patient_invite_code && (
+                    <motion.div 
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="w-full"
+                    >
+                        <Alert className="bg-sky-50 border-sky-200 dark:bg-sky-900/20 dark:border-sky-800">
+                            <AlertCircle className="h-5 w-5 text-sky-600 dark:text-sky-400" />
+                            <div className="ml-2">
+                                <h4 className="font-bold text-sky-900 dark:text-sky-300 flex items-center gap-2">
+                                    Perfil Offline Ativo
+                                    <Badge variant="outline" className="bg-sky-100 text-sky-800 border-sky-200 text-[10px] py-0">PENDENTE VÍNCULO</Badge>
+                                </h4>
+                                <AlertDescription className="text-sky-800/80 dark:text-sky-400/80 mt-1">
+                                    Este paciente ainda não possui uma conta digital. Forneça o <strong>Código de Convite Individual</strong> abaixo para que ele possa baixar o aplicativo e acessar este prontuário.
+                                    <div className="mt-3 flex items-center gap-3">
+                                        <div className="bg-white dark:bg-sky-950 px-4 py-2 rounded-lg border border-sky-200 font-mono text-lg font-black tracking-widest text-sky-700 shadow-sm">
+                                            {patientData.patient_invite_code}
+                                        </div>
+                                        <Button 
+                                            variant="outline" 
+                                            size="sm" 
+                                            className="h-9 border-sky-300 text-sky-700 hover:bg-sky-100"
+                                            onClick={() => {
+                                                navigator.clipboard.writeText(patientData.patient_invite_code);
+                                                // TODO: Toast feedback
+                                            }}
+                                        >
+                                            <Copy className="w-4 h-4 mr-2" /> Copiar Código
+                                        </Button>
+                                    </div>
+                                </AlertDescription>
+                            </div>
+                        </Alert>
+                    </motion.div>
+                )}
 
                 {/* BLOCO 2 - Jornada Clínica (Guia Discreto) */}
                 <section>

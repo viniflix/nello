@@ -271,17 +271,6 @@ const PatientsPage = () => {
                             <h1 className="text-2xl md:text-3xl font-bold font-heading uppercase tracking-wide text-primary">
                                 Meus Pacientes <span className="text-muted-foreground/60 mx-1">•</span> <span className="text-foreground">{stats.active}</span>
                             </h1>
-                            {user?.profile?.invite_code && (
-                                <Badge 
-                                    variant="secondary" 
-                                    className="cursor-pointer hover:bg-secondary/80 transition-all font-mono text-[11px] gap-1 px-2.5 py-1 hidden sm:flex items-center border border-primary/10 shadow-sm"
-                                    onClick={copyNutritionistInvite}
-                                >
-                                    <Users className="w-3 h-3 text-primary" />
-                                    CONVITE: {user.profile.invite_code}
-                                    {copiedInvite ? <Check className="w-3 h-3 text-green-600" /> : <Copy className="w-3 h-3 opacity-40" />}
-                                </Badge>
-                            )}
                         </div>
                         <p className="text-sm text-muted-foreground mt-1">Gerencie acompanhamentos, consultas, convites e acesse o histórico clínico.</p>
                     </div>
@@ -299,6 +288,48 @@ const PatientsPage = () => {
                         </Button>
                     </div>
                 </div>
+
+                {/* ── Global Invitation Card ── */}
+                {user?.profile?.invite_code && (
+                    <motion.div 
+                        initial={{ opacity: 0, scale: 0.98 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="mb-8 p-6 rounded-2xl border border-primary/20 bg-primary/5 shadow-sm relative overflow-hidden group"
+                    >
+                        <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                            <Users className="w-24 h-24 text-primary" />
+                        </div>
+                        
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+                            <div className="flex-1 max-w-2xl">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <Badge className="bg-primary text-primary-foreground font-bold px-2 py-0.5 rounded text-[10px]">
+                                        PARA NOVOS PACIENTES
+                                    </Badge>
+                                </div>
+                                <h2 className="text-xl font-bold text-foreground mb-2 flex items-center gap-2">
+                                    Expandir sua Base de Pacientes
+                                </h2>
+                                <p className="text-sm text-muted-foreground leading-relaxed">
+                                    Compartilhe seu <strong>Código de Convite Global</strong> com pessoas que ainda não estão cadastradas. 
+                                    Ao criar uma conta usando este código, elas serão vinculadas automaticamente à sua agenda.
+                                </p>
+                            </div>
+
+                            <div className="flex flex-col items-center gap-3 bg-background/60 backdrop-blur-sm p-4 rounded-xl border border-primary/10 shadow-inner">
+                                <span className="text-[10px] font-bold text-muted-foreground tracking-widest uppercase">Seu Código Global</span>
+                                <div 
+                                    onClick={copyNutritionistInvite}
+                                    className="flex items-center gap-3 px-6 py-3 bg-white dark:bg-neutral-800 rounded-lg border-2 border-primary/30 cursor-pointer hover:border-primary transition-all shadow-sm active:scale-95"
+                                >
+                                    <span className="text-2xl font-black font-mono tracking-wider text-primary">{user.profile.invite_code}</span>
+                                    {copiedInvite ? <Check className="w-5 h-5 text-green-600" /> : <Copy className="w-5 h-5 text-muted-foreground opacity-60" />}
+                                </div>
+                                <p className="text-[10px] text-muted-foreground text-center">Clique no código para copiar e compartilhar</p>
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
 
                 {/* ── Search + Filters ── */}
                 <Card className="bg-card shadow-card-dark rounded-xl overflow-hidden">

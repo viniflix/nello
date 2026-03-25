@@ -128,9 +128,16 @@ const PatientProfileSummary = ({
 
                     {/* Informações Básicas */}
                     <div className="flex-1">
-                        <h2 className="text-2xl font-bold text-foreground mb-2 pr-10">
-                            {patientData?.name || 'Paciente'}
-                        </h2>
+                        <div className="flex items-center gap-2 mb-2">
+                            <h2 className="text-2xl font-bold text-foreground pr-10">
+                                {patientData?.name || 'Paciente'}
+                            </h2>
+                            {patientData?.patient_invite_code && (
+                                <Badge variant="outline" className="bg-sky-50 text-sky-700 border-sky-200 text-[10px] font-mono">
+                                    INVITE: {patientData.patient_invite_code}
+                                </Badge>
+                            )}
+                        </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                             <div className="flex items-center gap-2 text-muted-foreground">
