@@ -121,7 +121,7 @@ export function AuthProvider({ children }) {
     if (pendingCode && nextSession?.user) {
         try {
             const { data, error } = await supabase.rpc('redeem_invite_code', {
-                p_invite_code: pendingCode
+                input_code: pendingCode
             });
             
             if (error) throw error;

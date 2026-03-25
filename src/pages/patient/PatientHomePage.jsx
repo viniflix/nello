@@ -29,6 +29,7 @@ export default function PatientHomePage() {
   const [registeredMeals, setRegisteredMeals] = useState([]);
   const [prescriptionGoal, setPrescriptionGoal] = useState(null); // Metas de macros
   const [currentProgress, setCurrentProgress] = useState(null); // Progresso atual
+  const [linkStatus, setLinkStatus] = useState('active'); // pending | active | rejected
   const [loading, setLoading] = useState(true);
   const [showNotifications, setShowNotifications] = useState(false);
   const { unreadCount } = useNotifications();
@@ -39,6 +40,25 @@ export default function PatientHomePage() {
 
     const today = new Date();
     const todayStr = format(today, 'yyyy-MM-dd');
+
+    // 0. Verificar status do vínculo se houver um nutricionista
+    if (user.profile?.nutritionist_id) {
+        const { data: linkData } = await supabase
+            .from('nutritionist_patients')
+            .select('status')
+            .eq('nutritionist_id', user.profile.nutritionist_id)
+            .eq('patient_id', user.id)
+            .maybeSingle();
+        
+        if (linkData) {
+            setLinkStatus(linkData.status);
+            // Se estiver pendente, não precisa carregar o resto (opcional, mas economiza recursos)
+            if (linkData.status === 'pending') {
+                setLoading(false);
+                return;
+            }
+        }
+    }
 
     // 1. Buscar plano alimentar ativo do paciente usando o helper padrão
     // Isso resolve o erro 400 de join inválido com a view 'foods'
@@ -132,6 +152,33 @@ export default function PatientHomePage() {
         transition={{ duration: 0.5 }}
         className="max-w-7xl mx-auto w-full px-4 md:px-8 py-8"
       >
+        {/* Estado Pendente */}
+        {linkStatus === 'pending' && (
+            <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="flex flex-col items-center justify-center py-12 px-6 bg-amber-50 rounded-2xl border-2 border-dashed border-amber-200 text-center"
+            >
+                <div className="w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center mb-6">
+                    <Clock className="w-10 h-10 text-amber-600 animate-pulse" />
+                </div>
+                <h2 className="text-2xl font-bold text-amber-900 mb-2">Vínculo em Análise</h2>
+                <p className="text-amber-800/80 max-w-md mx-auto mb-8">
+                    Sua solicitação enviada para o nutricionista está aguardando aprovação. 
+                    Assim que ele aceitar, seu plano alimentar e diário serão liberados automaticamente.
+                </p>
+                <Button 
+                    variant="outline" 
+                    className="border-amber-300 text-amber-700 hover:bg-amber-100"
+                    onClick={() => loadData()}
+                >
+                    <Clock className="w-4 h-4 mr-2" /> Verificar novamente
+                </Button>
+            </motion.div>
+        )}
+
+        {linkStatus === 'active' && (
+            <>
         {/* Header */}
         <div className="mb-8 flex items-start justify-between">
           <div>
@@ -393,7 +440,9 @@ export default function PatientHomePage() {
             </motion.div>
           </div>
         </div>
-      </motion.div>
+      </>
+    )}
+  </motion.div>
 
       {/* Painel de Notificações */}
       <NotificationsPanel isOpen={showNotifications} setIsOpen={setShowNotifications} />

@@ -1506,11 +1506,22 @@ export const fetchAllNutritionistPatients = async (nutritionistId) => {
 
         if (linkError) throw linkError;
 
+        // 3. Busca os status na tabela nutritionist_patients para diferenciar pendentes
+        const { data: linkStatuses, error: statusError } = await supabase
+            .from('nutritionist_patients')
+            .select('patient_id, status')
+            .eq('nutritionist_id', nutritionistId);
+
+        if (statusError) throw statusError;
+
+        const statusMap = new Map((linkStatuses || []).map(ls => [ls.patient_id, ls.status]));
+
         const active = [];
         const archived = [];
+        const pending = [];
         const seenArchivedIds = new Set();
 
-        // Processa os links de arquivados (se o usuário já estiver aqui, é arquivado independente de user_profiles)
+        // Processa os links de arquivados
         (archivedLinks || []).forEach(link => {
             seenArchivedIds.add(link.patient_id);
             archived.push({
@@ -1524,18 +1535,21 @@ export const fetchAllNutritionistPatients = async (nutritionistId) => {
 
         // Processa os perfis atuais
         (profiles || []).forEach(p => {
+            const status = statusMap.get(p.id) || 'active'; // Default active se não tiver link (caso antigo)
+
             if (p.is_active === false || seenArchivedIds.has(p.id)) {
-                // Se está inativo mas não foi pego no loop acima (arquivado apenas na flag)
                 if (!seenArchivedIds.has(p.id)) {
-                    archived.push(p);
+                    archived.push({ ...p, link_status: status });
                     seenArchivedIds.add(p.id);
                 }
+            } else if (status === 'pending') {
+                pending.push({ ...p, link_status: 'pending' });
             } else {
-                active.push(p);
+                active.push({ ...p, link_status: status });
             }
         });
 
-        return { active, archived, error: null };
+        return { active, archived, pending, error: null };
     } catch (error) {
         logSupabaseError('Erro ao buscar pacientes unificados', error);
         return { active: [], archived: [], error };
@@ -1639,5 +1653,33 @@ export const hardDeletePatient = async (patientId) => {
     } catch (error) {
         logSupabaseError('Erro ao excluir conta do paciente permanentemente', error);
         return { success: false, error };
+    }
+};
+
+/**
+ * Aprova um vínculo pendente de paciente
+ */
+export const approvePatientLink = async (patientId) => {
+    try {
+        const { data, error } = await supabase.rpc('approve_patient_link', { p_patient_id: patientId });
+        if (error) throw error;
+        return { success: data?.success, message: data?.message };
+    } catch (error) {
+        logSupabaseError('Erro ao aprovar vínculo', error);
+        return { success: false, message: error.message };
+    }
+};
+
+/**
+ * Rejeita um vínculo pendente de paciente
+ */
+export const rejectPatientLink = async (patientId) => {
+    try {
+        const { data, error } = await supabase.rpc('reject_patient_link', { p_patient_id: patientId });
+        if (error) throw error;
+        return { success: data?.success, message: data?.message };
+    } catch (error) {
+        logSupabaseError('Erro ao rejeitar vínculo', error);
+        return { success: false, message: error.message };
     }
 };

@@ -142,7 +142,7 @@ const PatientCard = ({ patient, isOnline, onArchive, onDelete }) => {
                                         className="inline-flex items-center gap-1.5 text-[10px] font-bold text-sky-700 bg-sky-50 border border-sky-200 px-2 py-0.5 rounded-md hover:bg-sky-100 transition-colors"
                                         title="Código único para este perfil offline. Peça ao paciente para usar este código no cadastro para reivindicar este perfil."
                                     >
-                                        Convite Individual: {patient.patient_invite_code}
+                                        Código de Convite Individual: {patient.patient_invite_code}
                                         {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3 opacity-60" />}
                                     </button>
                                 )}

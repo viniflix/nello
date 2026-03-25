@@ -27,7 +27,8 @@ import ArchivedPatientsModal from '@/components/nutritionist/ArchivedPatientsMod
 import PatientCard from '@/components/nutritionist/PatientCard';
 import { usePatientFormStore } from '@/stores/usePatientFormStore';
 import {
-    fetchAllNutritionistPatients, archivePatient, hardDeletePatient, getModulesStatus
+    fetchAllNutritionistPatients, archivePatient, hardDeletePatient, getModulesStatus,
+    approvePatientLink, rejectPatientLink
 } from '@/lib/supabase/patient-queries';
 import { useOnlinePresence } from '@/hooks/useOnlinePresence';
 import { useToast } from '@/components/ui/use-toast';
@@ -140,6 +141,7 @@ const PatientsPage = () => {
     const [sortOrder,           setSortOrder]           = useState(persisted.sortOrder     || 'name_asc');
     const [filterStatus,        setFilterStatus]        = useState(persisted.filterStatus  || 'all');
     const [viewMode,            setViewMode]            = useState(persisted.viewMode      || 'grid');
+    const [pendingRequests,     setPendingRequests]     = useState([]);
     const [activeChip,          setActiveChip]          = useState(null); // 'new30' | 'pending'
     const [showAddPatientModal, setShowAddPatientModal] = useState(false);
     const [showArchivedModal,   setShowArchivedModal]   = useState(false);
@@ -162,9 +164,12 @@ const PatientsPage = () => {
     const fetchPatients = useCallback(async () => {
         if (!user?.id) return;
         setLoading(true);
-        const { active, archived, error } = await fetchAllNutritionistPatients(user.id);
+        const { active, archived, pending, error } = await fetchAllNutritionistPatients(user.id);
         if (error) { toast({ title: "Erro", description: "Falha ao carregar.", variant: "destructive" }); }
-        else { setPatients([...active, ...archived]); }
+        else { 
+            setPatients([...active, ...archived]); 
+            setPendingRequests(pending || []);
+        }
         setLoading(false);
     }, [user?.id, toast]);
 
@@ -183,6 +188,26 @@ const PatientsPage = () => {
         const { success } = await hardDeletePatient(patient.id);
         if (success) { toast({ title: "Conta Excluída", variant: "success" }); fetchPatients(); }
         else toast({ title: "Erro ao excluir", variant: "destructive" });
+    };
+
+    const handleApprove = async (patientId) => {
+        const { success, message } = await approvePatientLink(patientId);
+        if (success) {
+            toast({ title: "Solicitação Aprovada", description: "O paciente agora está vinculado a você.", variant: "success" });
+            fetchPatients();
+        } else {
+            toast({ title: "Erro ao aprovar", description: message, variant: "destructive" });
+        }
+    };
+
+    const handleReject = async (patientId) => {
+        const { success, message } = await rejectPatientLink(patientId);
+        if (success) {
+            toast({ title: "Solicitação Recusada", description: "O vínculo foi removido.", variant: "success" });
+            fetchPatients();
+        } else {
+            toast({ title: "Erro ao recusar", description: message, variant: "destructive" });
+        }
     };
 
     const copyNutritionistInvite = () => {
@@ -210,8 +235,18 @@ const PatientsPage = () => {
         const thirtyDaysAgo = new Date(new Date() - 30 * 24 * 60 * 60 * 1000);
         const new30 = activeList.filter(p => new Date(p.created_at) >= thirtyDaysAgo).length;
 
-        return { activePatients: activeList, archivedPatients: archivedList, stats: { active: activeList.length, online, pending, new30 } };
-    }, [patients, isUserOnline]);
+        return { 
+            activePatients: activeList, 
+            archivedPatients: archivedList, 
+            stats: { 
+                active: activeList.length, 
+                online, 
+                pending: pending + pendingRequests.length, 
+                new30,
+                requests: pendingRequests.length
+            } 
+        };
+    }, [patients, isUserOnline, pendingRequests]);
 
     // Auto-close archived modal when list empties (e.g. after last archived patient is deleted)
     useEffect(() => {
@@ -289,6 +324,66 @@ const PatientsPage = () => {
                         </Button>
                     </div>
                 </div>
+
+                {/* ── Pending Requests Section ── */}
+                <AnimatePresence>
+                    {pendingRequests.length > 0 && (
+                        <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            className="mb-8 overflow-hidden"
+                        >
+                            <div className="bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-900/40 rounded-xl p-6 shadow-sm">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/60 flex items-center justify-center text-amber-600">
+                                        <Clock className="w-5 h-5" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-lg font-bold text-amber-900 dark:text-amber-100 uppercase tracking-tight">Solicitações de Vínculo</h3>
+                                        <p className="text-sm text-amber-700/80 dark:text-amber-300/60">Aprove os pacientes abaixo para iniciar o acompanhamento.</p>
+                                    </div>
+                                    <Badge className="ml-auto bg-amber-500 hover:bg-amber-500 text-white border-0 px-2 py-0.5">{pendingRequests.length}</Badge>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    {pendingRequests.map((req) => (
+                                        <Card key={req.id} className="bg-background border-amber-200/40 shadow-sm overflow-hidden group hover:border-amber-400 transition-colors">
+                                            <CardContent className="p-4">
+                                                <div className="flex items-center gap-3 mb-4">
+                                                    <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center text-lg font-bold">
+                                                        {req.name?.charAt(0)}
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="font-bold text-foreground truncate text-sm">{req.name}</p>
+                                                        <p className="text-[11px] text-muted-foreground truncate">{req.email}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="flex gap-2">
+                                                    <Button 
+                                                        size="sm" 
+                                                        className="flex-1 bg-amber-500 hover:bg-amber-600 text-white font-bold h-8 text-xs"
+                                                        onClick={() => handleApprove(req.id)}
+                                                    >
+                                                        Aceitar
+                                                    </Button>
+                                                    <Button 
+                                                        size="sm" 
+                                                        variant="ghost" 
+                                                        className="h-8 text-[11px] text-muted-foreground hover:text-destructive font-medium"
+                                                        onClick={() => handleReject(req.id)}
+                                                    >
+                                                        Recusar
+                                                    </Button>
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+                                    ))}
+                                </div>
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
 
                 {/* ── Search + Filters ── */}
                 <Card className="bg-card shadow-card-dark rounded-xl overflow-hidden">
@@ -476,12 +571,31 @@ const PatientsPage = () => {
                                     </Badge>
                                 </div>
                                 <h2 className="text-xl font-bold text-foreground mb-2 flex items-center gap-2">
-                                    Expandir sua Base de Pacientes
+                                    Vincular Novos Pacientes
                                 </h2>
-                                <p className="text-sm text-muted-foreground leading-relaxed">
-                                    Compartilhe seu <strong>Código de Convite Global</strong> com pessoas que ainda não estão cadastradas. 
-                                    Ao criar uma conta através da tela de registro usando este código, elas serão vinculadas automaticamente à sua agenda.
+                                <p className="text-sm text-muted-foreground leading-relaxed mb-4">
+                                    Compartilhe seu <strong>Código de Convite Global</strong> com pacientes que ainda não estão vinculados ao seu perfil. 
+                                    Ao criar uma conta com seu código, eles enviarão uma solicitação de vínculo que aparecerá no topo desta página para sua aprovação.
                                 </p>
+
+                                <div className="bg-background/40 rounded-lg p-4 border border-primary/10">
+                                    <h4 className="text-xs font-bold text-primary uppercase tracking-widest mb-3 flex items-center gap-2">
+                                        <Clock className="w-3 h-3" /> Passo a Passo para o Paciente:
+                                    </h4>
+                                    <ul className="space-y-2.5">
+                                        {[
+                                            "Copie o seu código ao lado.",
+                                            "Envie para o paciente e peça para ele acessar o site e clicar em 'Cadastrar'.",
+                                            "No formulário, ele deve inserir o seu código no campo 'Código do Nutricionista'.",
+                                            "Após ele concluir o cadastro, aprove a solicitação no topo desta tela."
+                                        ].map((step, idx) => (
+                                            <li key={idx} className="flex gap-3 text-xs text-muted-foreground">
+                                                <span className="flex-shrink-0 w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-[10px]">{idx + 1}</span>
+                                                <span className="leading-tight">{step}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
                             </div>
 
                             <div className="flex flex-col items-center gap-3 bg-background/60 backdrop-blur-sm p-4 rounded-xl border border-primary/10 shadow-inner">
