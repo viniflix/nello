@@ -356,7 +356,7 @@ const PatientsPage = () => {
                     </CardHeader>
 
                     <CardContent className="pt-4 bg-muted/10 p-0">
-                        <ScrollArea className="h-[450px] md:h-[650px] w-full p-4 md:p-6">
+                        <ScrollArea className="h-[320px] md:h-[460px] w-full p-4 md:p-6">
                             {loading ? (
                                 <div className="flex justify-center items-center h-40"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
                             ) : filteredPatients.length > 0 ? (
