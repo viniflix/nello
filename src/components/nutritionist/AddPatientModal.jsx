@@ -46,6 +46,8 @@ const DateInputWithCalendar = ({ value, onChange, required }) => {
             if (localDateString !== formattedDate) {
                 setLocalDateString(formattedDate);
             }
+        } else if (!value && localDateString.length === 10) {
+            // Keep local string if it was an invalid date being typed
         } else {
             setLocalDateString('');
         }
@@ -55,10 +57,10 @@ const DateInputWithCalendar = ({ value, onChange, required }) => {
         const dateStr = e.target.value;
         setLocalDateString(dateStr); 
 
-        if (dateStr.length === 10) {
+        if (dateStr.replace(/[_/]/g, '').length === 8) {
             try {
                 const parsedDate = parse(dateStr, 'dd/MM/yyyy', new Date());
-                if (!isNaN(parsedDate) && parsedDate.getFullYear() > 1900 && parsedDate < new Date()) {
+                if (!isNaN(parsedDate) && parsedDate.getFullYear() > 1900 && parsedDate <= new Date()) {
                     onChange(parsedDate);
                 } else {
                     onChange(null);
@@ -66,7 +68,7 @@ const DateInputWithCalendar = ({ value, onChange, required }) => {
             } catch {
                 onChange(null);
             }
-        } else if (dateStr.length === 0) {
+        } else if (dateStr.length === 0 || dateStr.replace(/[_/]/g, '').length === 0) {
             onChange(null);
         }
     };
@@ -78,34 +80,51 @@ const DateInputWithCalendar = ({ value, onChange, required }) => {
     };
 
     return (
-        <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
-            <PopoverTrigger asChild>
-                <div className="flex-grow">
-                    <IconInputWrapper icon={CalendarIcon}>
-                        <InputMask
-                            mask="99/99/9999"
-                            placeholder="dd/mm/aaaa"
-                            value={localDateString}
-                            onChange={handleDateInputChange}
-                        >
-                            {(inputProps) => <Input {...inputProps} id="birth_date" className="bg-muted shadow-inner pl-10" required={required} />}
-                        </InputMask>
-                    </IconInputWrapper>
-                </div>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                    mode="single"
-                    selected={value}
-                    onSelect={handleDateSelect}
-                    initialFocus
-                    locale={ptBR}
-                    captionLayout="dropdown-buttons"
-                    fromYear={1900}
-                    toYear={new Date().getFullYear()}
-                />
-            </PopoverContent>
-        </Popover>
+        <div className="flex gap-2">
+            <div className="relative flex-grow">
+                <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                <InputMask
+                    mask="99/99/9999"
+                    placeholder="dd/mm/aaaa"
+                    value={localDateString}
+                    onChange={handleDateInputChange}
+                >
+                    {(inputProps) => (
+                        <Input 
+                            {...inputProps} 
+                            id="birth_date" 
+                            className="bg-muted/50 focus:bg-background shadow-sm pl-10 h-10 transition-all border-muted-foreground/20" 
+                            required={required} 
+                        />
+                    )}
+                </InputMask>
+            </div>
+            
+            <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+                <PopoverTrigger asChild>
+                    <Button 
+                        variant="outline" 
+                        size="icon" 
+                        className="h-10 w-10 shrink-0 bg-muted/30 hover:bg-primary/10 hover:text-primary border-muted-foreground/20 transition-colors"
+                        type="button"
+                    >
+                        <CalendarIcon className="h-4 w-4" />
+                    </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="end">
+                    <Calendar
+                        mode="single"
+                        selected={value}
+                        onSelect={handleDateSelect}
+                        initialFocus
+                        locale={ptBR}
+                        captionLayout="dropdown-buttons"
+                        fromYear={1900}
+                        toYear={new Date().getFullYear()}
+                    />
+                </PopoverContent>
+            </Popover>
+        </div>
     );
 };
 
@@ -119,24 +138,9 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded }) => {
     const [loading, setLoading] = useState(false); 
     const [cepLoading, setCepLoading] = useState(false); 
     const [sendInvite, setSendInvite] = useState(true);
-    const [isOffline, setIsOffline] = useState(false);
-    
-    // --- ALTERAÇÕES DO CALENDÁRIO ---
-    // These local states are now managed within DateInputWithCalendar component
-    // const [localDateString, setLocalDateString] = useState('');
-    // const [calendarOpen, setCalendarOpen] = useState(false); 
 
-    useEffect(() => {
-        // This effect is now handled by the DateInputWithCalendar component's internal useEffect
-        // if (formData.birth_date) {
-        //     const formattedDate = format(formData.birth_date, 'dd/MM/yyyy');
-        //     if (localDateString !== formattedDate) {
-        //         setLocalDateString(formattedDate);
-        //     }
-        // } else {
-        //     setLocalDateString('');
-        // }
-    }, [formData.birth_date]); 
+    // Derive isOffline from email content
+    const isOffline = !formData.email || formData.email.trim() === '';
 
     // These handlers are now part of the DateInputWithCalendar component
     // const handleDateInputChange = (e) => {
@@ -170,9 +174,6 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded }) => {
         setIsOpen(false);
         resetForm();
         setStep("1");
-        // setLocalDateString(''); // No longer needed here
-        // setCalendarOpen(false); // No longer needed here
-        setIsOffline(false);
         setSendInvite(true);
     };
 
@@ -230,28 +231,33 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded }) => {
             ? format(formData.birth_date, 'ddMMyy') 
             : Math.random().toString(36).slice(-8);
 
+        const clean = (val) => typeof val === 'string' ? val.trim() : val;
+
         const metadata = {
-            name: formData.name, 
+            name: clean(formData.name), 
             user_type: 'patient', 
             nutritionist_id: user.id, 
             birth_date: formData.birth_date ? format(formData.birth_date, 'yyyy-MM-dd') : null,
             gender: formData.gender, 
-            phone: formData.phone, 
-            cpf: formData.cpf,
-            occupation: formData.occupation, 
+            phone: clean(formData.phone), 
+            cpf: clean(formData.cpf),
+            occupation: clean(formData.occupation), 
             civil_status: formData.civil_status,
-            observations: formData.observations,
+            observations: clean(formData.observations),
             needs_password_reset: true
         };
 
         if (addressData) {
-            metadata.address = addressData;
+            // Clean address string fields
+            metadata.address = Object.fromEntries(
+                Object.entries(addressData).map(([k, v]) => [k, clean(v)])
+            );
         }
         
         const redirectTo = `${window.location.origin}/login`;
 
         const body = {
-            email: isOffline ? null : formData.email,
+            email: isOffline ? null : clean(formData.email),
             metadata: metadata,
             redirectTo: redirectTo,
             defaultPassword: defaultPassword,
@@ -299,152 +305,141 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded }) => {
     return (
         <Dialog open={isOpen} onOpenChange={handleClose}>
             <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                    <DialogTitle className="font-clash text-2xl text-primary">Adicionar Novo Paciente</DialogTitle>
-                    <DialogDescription>
-                        Preencha os campos abaixo para enviar um convite de acesso ao paciente.
+                <DialogHeader className="pb-2">
+                    <DialogTitle className="font-heading text-3xl font-black text-primary tracking-tight">
+                        {isOffline ? "Novo Perfil Offline" : "Convidar Paciente"}
+                    </DialogTitle>
+                    <DialogDescription className="text-muted-foreground font-medium">
+                        {isOffline 
+                            ? "Crie um perfil para gestão interna dos dados do paciente." 
+                            : "O paciente será cadastrado e receberá um acesso digital via e-mail."}
                     </DialogDescription>
                 </DialogHeader>
 
                 <Tabs value={step} onValueChange={setStep} className="w-full">
-                    <TabsList className="grid  w-full grid-cols-2">
-                        <TabsTrigger value="1">1. Dados Pessoais</TabsTrigger>
-                        <TabsTrigger value="2">2. Endereço (Opcional)</TabsTrigger>
+                    <TabsList className="grid w-full grid-cols-2 bg-muted/50 p-1 mb-4 h-12">
+                        <TabsTrigger value="1" className="data-[state=active]:bg-background data-[state=active]:shadow-sm font-bold text-xs uppercase tracking-wider">
+                            <User className="w-4 h-4 mr-2" /> Dados Pessoais
+                        </TabsTrigger>
+                        <TabsTrigger value="2" className="data-[state=active]:bg-background data-[state=active]:shadow-sm font-bold text-xs uppercase tracking-wider">
+                            <MapPin className="w-4 h-4 mr-2" /> Endereço
+                        </TabsTrigger>
                     </TabsList>
 
-                    <TabsContent value="1">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
-                            <div className="md:col-span-2 space-y-2">
-                                <Label htmlFor="name" className="font-semibold">
-                                    Nome Completo <span className="text-destructive font-normal">(Obrigatório)</span>
+                    <TabsContent value="1" className="mt-0 outline-none">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 py-2">
+                            <div className="md:col-span-2 space-y-2.5">
+                                <Label htmlFor="name" className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                                    Nome Completo <span className="text-destructive">*</span>
                                 </Label>
                                 <IconInputWrapper icon={User}>
-                                    <Input id="name" value={formData.name} onChange={(e) => updateField('name', e.target.value)} className="bg-muted shadow-inner pl-10" />
+                                    <Input 
+                                        id="name" 
+                                        value={formData.name} 
+                                        onChange={(e) => updateField('name', e.target.value)} 
+                                        placeholder="Nome oficial do paciente"
+                                        className="bg-muted/50 focus:bg-background shadow-sm pl-10 h-10 transition-all font-medium border-muted-foreground/20" 
+                                    />
                                 </IconInputWrapper>
                             </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="email" className="flex items-center gap-2">
-                                    <Mail className="w-4 h-4 text-muted-foreground" />
+
+                            <div className="space-y-2.5">
+                                <Label htmlFor="email" className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
                                     E-mail {!isOffline && <span className="text-destructive">*</span>}
                                 </Label>
-                                <Input
-                                    id="email"
-                                    type="email"
-                                    placeholder="exemplo@email.com"
-                                    value={formData.email}
-                                    onChange={(e) => updateField('email', e.target.value)}
-                                    className="h-10 bg-muted shadow-inner pl-10"
-                                    required={!isOffline}
-                                    disabled={isOffline}
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="phone" className="font-semibold">Telefone</Label>
-                                <IconInputWrapper icon={Phone}>
-                                    <InputMask
-                                        mask="(99) 99999-9999" 
-                                        value={formData.phone}
-                                        onChange={(e) => updateField('phone', e.target.value)}
-                                    >
-                                        {(inputProps) => <Input {...inputProps} id="phone" className="bg-muted shadow-inner pl-10" />}
-                                    </InputMask>
+                                <IconInputWrapper icon={Mail}>
+                                    <Input
+                                        id="email"
+                                        type="email"
+                                        placeholder="exemplo@email.com"
+                                        value={formData.email}
+                                        onChange={(e) => updateField('email', e.target.value)}
+                                        className="h-10 bg-muted/50 focus:bg-background shadow-sm pl-10 transition-all border-muted-foreground/20"
+                                    />
                                 </IconInputWrapper>
                             </div>
-                            
-                            {/* --- INÍCIO DO BLOCO JSX DA DATA (ALTERADO) --- */}
-                            <div className="space-y-2">
-                                <Label htmlFor="birth_date" className="flex items-center gap-2">
-                                     <CalendarIcon className="w-4 h-4 text-muted-foreground" />
-                                     Data de Nascimento {!isOffline && <span className="text-destructive">*</span>}
+
+                            <div className="space-y-2.5">
+                                <Label htmlFor="birth_date" className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                                    Data de Nascimento {!isOffline && <span className="text-destructive">*</span>}
                                 </Label>
                                 <DateInputWithCalendar
                                     value={formData.birth_date}
                                     onChange={(date) => updateField('birth_date', date)}
                                     required={!isOffline}
                                 />
-                                <p className="text-xs text-muted-foreground mt-1">
-                                  A senha inicial do paciente será a data de nascimento no formato DDMMAA (Ex: 07/08/2001 &rarr; 070801).
-                                </p>
-                            </div>
-                            {/* --- FIM DO BLOCO JSX DA DATA --- */}
-
-                            {/* Offline Toggle */}
-                            <div className="md:col-span-2 bg-muted/30 p-4 rounded-lg border border-border flex items-center justify-between">
-                                <div className="space-y-0.5">
-                                    <Label className="text-base flex items-center gap-2">
-                                        <ToggleLeft className="w-4 h-4 text-primary" />
-                                        Paciente Offline
-                                    </Label>
-                                    <p className="text-sm text-muted-foreground">
-                                        Crie o perfil agora sem precisar de e-mail ou data de nascimento.
-                                    </p>
-                                </div>
-                                <Switch 
-                                    checked={isOffline} 
-                                    onCheckedChange={(val) => {
-                                        setIsOffline(val);
-                                        if (val) setSendInvite(false);
-                                    }} 
-                                />
                             </div>
 
                             {!isOffline && (
-                                <div className="md:col-span-2 flex items-center space-x-2 bg-primary/5 p-4 rounded-lg border border-primary/10">
-                                    <Checkbox 
-                                        id="sendInvite" 
-                                        checked={sendInvite} 
-                                        onCheckedChange={setSendInvite}
-                                    />
-                                    <div className="grid gap-1.5 leading-none">
-                                        <label
-                                            htmlFor="sendInvite"
-                                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                                        >
-                                            Enviar convite por e-mail automaticamente
-                                        </label>
-                                        <p className="text-xs text-muted-foreground">
-                                            O paciente receberá as instruções de acesso no e-mail informado.
-                                        </p>
+                                <motion.div 
+                                    initial={{ opacity: 0, y: -10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    className="md:col-span-2 bg-primary/5 border border-primary/20 rounded-xl p-4 flex gap-3 items-center"
+                                >
+                                    <div className="p-2 bg-primary/10 rounded-full shrink-0">
+                                        <Lock className="w-4 h-4 text-primary" />
                                     </div>
-                                </div>
+                                    <p className="text-xs text-primary/80 leading-relaxed font-medium">
+                                        <strong>Atenção:</strong> A senha inicial será a data de nascimento no formato **DDMMAA**. 
+                                        <br />Ex: 07/08/2001 &rarr; <span className="font-mono bg-primary/10 px-1 rounded">070801</span>.
+                                    </p>
+                                </motion.div>
                             )}
 
-                            <div className="space-y-2">
-                                <Label htmlFor="gender" className="font-semibold">Gênero</Label>
-                                <IconInputWrapper icon={Users}>
+                            <div className="space-y-2.5">
+                                <Label htmlFor="phone" className="text-xs font-black uppercase tracking-widest text-muted-foreground">Telefone</Label>
+                                <IconInputWrapper icon={Phone}>
+                                    <InputMask
+                                        mask="(99) 99999-9999" 
+                                        value={formData.phone}
+                                        onChange={(e) => updateField('phone', e.target.value)}
+                                    >
+                                        {(inputProps) => <Input {...inputProps} id="phone" className="bg-muted/50 focus:bg-background shadow-sm pl-10 h-10 border-muted-foreground/20" />}
+                                    </InputMask>
+                                </IconInputWrapper>
+                            </div>
+
+                            <div className="space-y-2.5">
+                                <Label htmlFor="gender" className="text-xs font-black uppercase tracking-widest text-muted-foreground">Gênero</Label>
+                                <div className="relative">
+                                    <Users className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
                                     <Select name="gender" value={formData.gender} onValueChange={(value) => updateField('gender', value)}>
-                                        <SelectTrigger className="bg-muted shadow-inner pl-10"><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                                        <SelectTrigger className="bg-muted/50 focus:bg-background shadow-sm pl-10 h-10 border-muted-foreground/20"><SelectValue placeholder="Selecione..." /></SelectTrigger>
                                         <SelectContent>
                                             <SelectItem value="Masculino">Masculino</SelectItem>
                                             <SelectItem value="Feminino">Feminino</SelectItem>
                                             <SelectItem value="Outro">Outro</SelectItem>
                                         </SelectContent>
                                     </Select>
-                                </IconInputWrapper>
+                                </div>
                             </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="cpf" className="font-semibold">CPF</Label>
+
+                            <div className="space-y-2.5">
+                                <Label htmlFor="cpf" className="text-xs font-black uppercase tracking-widest text-muted-foreground">CPF</Label>
                                 <IconInputWrapper icon={FileText}>
                                     <InputMask
                                         mask="999.999.999-99"
                                         value={formData.cpf}
                                         onChange={(e) => updateField('cpf', e.target.value)}
                                     >
-                                        {(inputProps) => <Input {...inputProps} id="cpf" className="bg-muted shadow-inner pl-10" />}
+                                        {(inputProps) => <Input {...inputProps} id="cpf" className="bg-muted/50 focus:bg-background shadow-sm pl-10 h-10 border-muted-foreground/20" />}
                                     </InputMask>
                                 </IconInputWrapper>
                             </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="occupation" className="font-semibold">Profissão</Label>
+
+                            <div className="space-y-2.5">
+                                <Label htmlFor="occupation" className="text-xs font-black uppercase tracking-widest text-muted-foreground">Profissão</Label>
                                 <IconInputWrapper icon={Briefcase}>
-                                    <Input id="occupation" value={formData.occupation} onChange={(e) => updateField('occupation', e.target.value)} className="bg-muted shadow-inner pl-10" />
+                                    <Input id="occupation" value={formData.occupation} onChange={(e) => updateField('occupation', e.target.value)} placeholder="Ex: Engenheiro" className="bg-muted/50 focus:bg-background shadow-sm pl-10 h-10 border-muted-foreground/20" />
                                 </IconInputWrapper>
                             </div>
-                            <div className="md:col-span-2 space-y-2">
-                                <Label htmlFor="civil_status" className="font-semibold">Estado Civil</Label>
-                                <IconInputWrapper icon={Heart}>
+
+                            <div className="md:col-span-2 space-y-2.5">
+                                <Label htmlFor="civil_status" className="text-xs font-black uppercase tracking-widest text-muted-foreground">Estado Civil</Label>
+                                <div className="relative">
+                                    <Heart className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
                                     <Select name="civil_status" value={formData.civil_status} onValueChange={(value) => updateField('civil_status', value)}>
-                                        <SelectTrigger className="bg-muted shadow-inner pl-10"><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                                        <SelectTrigger className="bg-muted/50 focus:bg-background shadow-sm pl-10 h-10 border-muted-foreground/20"><SelectValue placeholder="Selecione..." /></SelectTrigger>
                                         <SelectContent>
                                             <SelectItem value="Solteiro(a)">Solteiro(a)</SelectItem>
                                             <SelectItem value="Casado(a)">Casado(a)</SelectItem>
@@ -453,21 +448,21 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded }) => {
                                             <SelectItem value="União Estável">União Estável</SelectItem>
                                         </SelectContent>
                                     </Select>
-                                </IconInputWrapper>
+                                </div>
                             </div>
-                            <div className="md:col-span-2 space-y-2">
-                                <Label htmlFor="observations" className="font-semibold">Observações Iniciais</Label>
+                            <div className="md:col-span-2 space-y-2.5">
+                                <Label htmlFor="observations" className="text-xs font-black uppercase tracking-widest text-muted-foreground">Observações Iniciais</Label>
                                 <IconInputWrapper icon={PenSquare}>
-                                    <Textarea id="observations" value={formData.observations} onChange={(e) => updateField('observations', e.target.value)} className="bg-muted resize-none shadow-inner pl-10" />
+                                    <Textarea id="observations" value={formData.observations} onChange={(e) => updateField('observations', e.target.value)} placeholder="Anotações importantes..." className="bg-muted/50 focus:bg-background resize-none shadow-sm pl-10 transition-all border-muted-foreground/20 h-24" />
                                 </IconInputWrapper>
                             </div>
                         </div>
                     </TabsContent>
 
-                    <TabsContent value="2">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 py-4">
-                            <div className="md:col-span-1 space-y-2">
-                                <Label htmlFor="cep" className="font-semibold">CEP</Label>
+                    <TabsContent value="2" className="mt-0 outline-none">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 py-2">
+                            <div className="md:col-span-1 space-y-2.5">
+                                <Label htmlFor="cep" className="text-xs font-black uppercase tracking-widest text-muted-foreground">CEP</Label>
                                 <IconInputWrapper icon={MapPin}>
                                     <InputMask
                                         mask="99999-999"
@@ -475,57 +470,61 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded }) => {
                                         onChange={(e) => updateField('cep', e.target.value)}
                                         onBlur={(e) => handleCepBlur(e.target.value)}
                                     >
-                                        {(inputProps) => <Input {...inputProps} id="cep" className="bg-muted shadow-inner pl-10" />}
+                                        {(inputProps) => <Input {...inputProps} id="cep" className="bg-muted/50 focus:bg-background shadow-sm pl-10 h-10 border-muted-foreground/20" />}
                                     </InputMask>
                                 </IconInputWrapper>
                             </div>
-                            <div className="md:col-span-2 space-y-2">
-                                <Label htmlFor="street" className="font-semibold">Endereço (Rua, Av.)</Label>
+                            <div className="md:col-span-2 space-y-2.5">
+                                <Label htmlFor="street" className="text-xs font-black uppercase tracking-widest text-muted-foreground">Endereço (Rua, Av.)</Label>
                                 <IconInputWrapper icon={Map}>
-                                    <Input id="street" value={formData.street} onChange={(e) => updateField('street', e.target.value)} className="bg-muted shadow-inner pl-10" />
+                                    <Input id="street" value={formData.street} onChange={(e) => updateField('street', e.target.value)} className="bg-muted/50 focus:bg-background shadow-sm pl-10 h-10 border-muted-foreground/20" />
                                 </IconInputWrapper>
                             </div>
-                            <div className="md:col-span-1 space-y-2">
-                                <Label htmlFor="number" className="font-semibold">Número</Label>
+                            <div className="md:col-span-1 space-y-2.5">
+                                <Label htmlFor="number" className="text-xs font-black uppercase tracking-widest text-muted-foreground">Número</Label>
                                 <IconInputWrapper icon={Hash}>
-                                    <Input id="number" value={formData.number} onChange={(e) => updateField('number', e.target.value)} className="bg-muted shadow-inner pl-10" />
+                                    <Input id="number" value={formData.number} onChange={(e) => updateField('number', e.target.value)} className="bg-muted/50 focus:bg-background shadow-sm pl-10 h-10 border-muted-foreground/20" />
                                 </IconInputWrapper>
                             </div>
-                            <div className="md:col-span-2 space-y-2">
-                                <Label htmlFor="complement" className="font-semibold">Complemento</Label>
+                            <div className="md:col-span-2 space-y-2.5">
+                                <Label htmlFor="complement" className="text-xs font-black uppercase tracking-widest text-muted-foreground">Complemento</Label>
                                 <IconInputWrapper icon={Building2}>
-                                    <Input id="complement" value={formData.complement} onChange={(e) => updateField('complement', e.target.value)} className="bg-muted shadow-inner pl-10" />
+                                    <Input id="complement" value={formData.complement} onChange={(e) => updateField('complement', e.target.value)} className="bg-muted/50 focus:bg-background shadow-sm pl-10 h-10 border-muted-foreground/20" />
                                 </IconInputWrapper>
                             </div>
-                            <div className="md:col-span-1 space-y-2">
-                                <Label htmlFor="neighborhood" className="font-semibold">Bairro</Label>
+                            <div className="md:col-span-1 space-y-2.5">
+                                <Label htmlFor="neighborhood" className="text-xs font-black uppercase tracking-widest text-muted-foreground">Bairro</Label>
                                 <IconInputWrapper icon={Home}>
-                                    <Input id="neighborhood" value={formData.neighborhood} onChange={(e) => updateField('neighborhood', e.target.value)} className="bg-muted shadow-inner pl-10" />
+                                    <Input id="neighborhood" value={formData.neighborhood} onChange={(e) => updateField('neighborhood', e.target.value)} className="bg-muted/50 focus:bg-background shadow-sm pl-10 h-10 border-muted-foreground/20" />
                                 </IconInputWrapper>
                             </div>
-                            <div className="md:col-span-1 space-y-2">
-                                <Label htmlFor="city" className="font-semibold">Cidade</Label>
+                            <div className="md:col-span-1 space-y-2.5">
+                                <Label htmlFor="city" className="text-xs font-black uppercase tracking-widest text-muted-foreground">Cidade</Label>
                                 <IconInputWrapper icon={Building}>
-                                    <Input id="city" value={formData.city} onChange={(e) => updateField('city', e.target.value)} className="bg-muted shadow-inner pl-10" />
+                                    <Input id="city" value={formData.city} onChange={(e) => updateField('city', e.target.value)} className="bg-muted/50 focus:bg-background shadow-sm pl-10 h-10 border-muted-foreground/20" />
                                 </IconInputWrapper>
                             </div>
-                            <div className="md:col-span-1 space-y-2">
-                                <Label htmlFor="state" className="font-semibold">Estado (UF)</Label>
+                            <div className="md:col-span-1 space-y-2.5">
+                                <Label htmlFor="state" className="text-xs font-black uppercase tracking-widest text-muted-foreground">Estado (UF)</Label>
                                 <IconInputWrapper icon={Landmark}>
-                                    <Input id="state" value={formData.state} onChange={(e) => updateField('state', e.target.value)} className="bg-muted shadow-inner pl-10" />
+                                    <Input id="state" value={formData.state} onChange={(e) => updateField('state', e.target.value)} className="bg-muted/50 focus:bg-background shadow-sm pl-10 h-10 border-muted-foreground/20" />
                                 </IconInputWrapper>
                             </div>
                         </div>
                     </TabsContent>
                 </Tabs>
 
-                <DialogFooter>
-                    <Button variant="outline" onClick={handleClose} disabled={loading}>
+                <DialogFooter className="mt-4 pt-4 border-t gap-3">
+                    <Button variant="ghost" onClick={handleClose} disabled={loading} className="font-bold text-xs uppercase tracking-widest h-11 px-6">
                         Cancelar
                     </Button>
-                    <Button onClick={handleSavePatient} disabled={loading}>
-                        {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                        {loading ? "Enviando Convite..." : "Salvar e Enviar Convite"}
+                    <Button 
+                        onClick={handleSavePatient} 
+                        disabled={loading}
+                        className="font-bold text-xs uppercase tracking-widest bg-primary hover:bg-primary/90 h-11 px-8 shadow-lg shadow-primary/20"
+                    >
+                        {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-4 w-4" />}
+                        {loading ? "Processando..." : (isOffline ? "Salvar Perfil" : "Salvar e Convidar")}
                     </Button>
                 </DialogFooter>
             </DialogContent>
