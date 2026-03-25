@@ -25,6 +25,7 @@ import { format, parse } from "date-fns";
 import { ptBR } from 'date-fns/locale';
 import { cn } from "@/lib/utils"; 
 import { toPortugueseError } from '@/lib/utils/errorMessages';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const IconInputWrapper = ({ icon: Icon, children }) => (
     <div className="relative">
