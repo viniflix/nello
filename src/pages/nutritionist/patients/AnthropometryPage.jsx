@@ -643,7 +643,7 @@ const AnthropometryPage = () => {
                                 <p className="text-sm font-semibold text-foreground">{latestRecord.weight} kg</p>
                             </div>
                         )}
-                        {idealWeightRange && (
+                        {idealWeightRange?.min !== undefined && idealWeightRange?.max !== undefined && (
                             <div className="rounded-md border bg-primary/5 border-primary/20 px-3 py-2 shadow-sm">
                                 <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Faixa de peso ideal</p>
                                 <p className="text-sm font-semibold text-[#5f6f52]">
@@ -773,7 +773,7 @@ const AnthropometryPage = () => {
                 )}
                 
                 {/* Somatotipo Chart (se houver dados do último registro) */}
-                {latestRecord?.results?.somatotype && (
+                {latestRecord?.results?.somatotype && typeof latestRecord.results.somatotype === 'object' && (
                     <SomatotypeChart somatotype={latestRecord.results.somatotype} />
                 )}
                 

@@ -231,9 +231,11 @@ export function calculateSomatotype(params) {
  * @returns {string} Descrição do somatotipo
  */
 export function getSomatotypeDescription(endo, meso, ecto) {
-  if (!endo || !meso || !ecto) return 'Incompleto';
+  if (typeof endo !== 'number' || typeof meso !== 'number' || typeof ecto !== 'number') return 'Incompleto';
 
   const max = Math.max(endo, meso, ecto);
+  
+  if (max === 0) return 'Indefinido';
   
   if (max === endo) {
     if (meso > ecto) return 'Endomorfo-Mesomorfo';

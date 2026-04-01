@@ -90,7 +90,7 @@ export default function CompositionCharts({ data = [] }) {
     if (!data || data.length === 0) return [];
 
     return data
-      .filter(record => record.results?.somatotype)
+      .filter(record => record.results?.somatotype && typeof record.results.somatotype === 'object')
       .map(record => {
         const somatotype = record.results.somatotype;
         const date = new Date(record.record_date);
@@ -98,14 +98,17 @@ export default function CompositionCharts({ data = [] }) {
         // Coordenadas para o gráfico triangular
         // X = Ectomorphy - Endomorphy
         // Y = 2 * Mesomorphy - (Endomorphy + Ectomorphy)
+        const xVal = typeof somatotype.x === 'number' ? somatotype.x : ((somatotype.ecto || 0) - (somatotype.endo || 0));
+        const yVal = typeof somatotype.y === 'number' ? somatotype.y : (2 * (somatotype.meso || 0) - ((somatotype.endo || 0) + (somatotype.ecto || 0)));
+
         return {
           date: format(date, 'dd/MM/yyyy', { locale: ptBR }),
           dateValue: date,
-          x: somatotype.x || (somatotype.ecto - somatotype.endo),
-          y: somatotype.y || (2 * somatotype.meso - (somatotype.endo + somatotype.ecto)),
-          endo: somatotype.endo,
-          meso: somatotype.meso,
-          ecto: somatotype.ecto
+          x: xVal,
+          y: yVal,
+          endo: somatotype.endo || 0,
+          meso: somatotype.meso || 0,
+          ecto: somatotype.ecto || 0
         };
       })
       .sort((a, b) => a.dateValue - b.dateValue);

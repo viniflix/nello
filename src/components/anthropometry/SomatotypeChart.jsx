@@ -22,7 +22,7 @@ import { getSomatotypeDescription } from '@/lib/utils/anthropometry-calculations
  * Y-Axis: 2 * Mesomorphy - (Endomorphy + Ectomorphy) (range: -5 a 10)
  */
 const SomatotypeChart = ({ somatotype, className = '' }) => {
-  if (!somatotype || !somatotype.x || !somatotype.y) {
+  if (!somatotype || typeof somatotype.x !== 'number' || typeof somatotype.y !== 'number') {
     return (
       <Card className={className}>
         <CardHeader>
@@ -56,12 +56,12 @@ const SomatotypeChart = ({ somatotype, className = '' }) => {
         <div className="bg-background border border-border rounded-lg p-3 shadow-lg">
           <p className="font-semibold text-sm mb-2">Somatotipo</p>
           <div className="space-y-1 text-xs">
-            <p><span className="font-medium">Endomorfia:</span> {somatotype.endo}</p>
-            <p><span className="font-medium">Mesomorfia:</span> {somatotype.meso}</p>
-            <p><span className="font-medium">Ectomorfia:</span> {somatotype.ecto}</p>
+            <p><span className="font-medium">Endomorfia:</span> {somatotype?.endo ?? 0}</p>
+            <p><span className="font-medium">Mesomorfia:</span> {somatotype?.meso ?? 0}</p>
+            <p><span className="font-medium">Ectomorfia:</span> {somatotype?.ecto ?? 0}</p>
             <p className="pt-2 border-t border-border mt-2">
               <span className="font-medium">Classificação:</span>{' '}
-              {getSomatotypeDescription(somatotype.endo, somatotype.meso, somatotype.ecto)}
+              {getSomatotypeDescription(somatotype?.endo, somatotype?.meso, somatotype?.ecto)}
             </p>
           </div>
         </div>
@@ -73,12 +73,15 @@ const SomatotypeChart = ({ somatotype, className = '' }) => {
   // Determinar cor baseada na posição
   const getPointColor = () => {
     // Cores baseadas na dominância
-    const { endo, meso, ecto } = somatotype;
+    const endo = somatotype?.endo ?? 0;
+    const meso = somatotype?.meso ?? 0;
+    const ecto = somatotype?.ecto ?? 0;
     const max = Math.max(endo, meso, ecto);
     
-    if (max === endo) return '#ef4444'; // Vermelho para Endomorfo
-    if (max === meso) return '#22c55e'; // Verde para Mesomorfo
-    return '#3b82f6'; // Azul para Ectomorfo
+    if (max === endo && max > 0) return '#ef4444'; // Vermelho para Endomorfo
+    if (max === meso && max > 0) return '#22c55e'; // Verde para Mesomorfo
+    if (max === ecto && max > 0) return '#3b82f6'; // Azul para Ectomorfo
+    return '#8b5cf6'; // Roxo se tudo 0
   };
 
   return (
@@ -87,7 +90,7 @@ const SomatotypeChart = ({ somatotype, className = '' }) => {
         <CardTitle className="text-lg flex items-center justify-between">
           <span>Somatotipo (Heath-Carter)</span>
           <Badge variant="outline" className="ml-2">
-            {getSomatotypeDescription(somatotype.endo, somatotype.meso, somatotype.ecto)}
+            {getSomatotypeDescription(somatotype?.endo, somatotype?.meso, somatotype?.ecto)}
           </Badge>
         </CardTitle>
         <CardDescription>
@@ -154,21 +157,21 @@ const SomatotypeChart = ({ somatotype, className = '' }) => {
             <div className="text-center p-3 bg-red-50 dark:bg-red-950/20 rounded-lg">
               <p className="text-xs text-muted-foreground mb-1">Endomorfia</p>
               <p className="text-2xl font-bold text-red-600 dark:text-red-400">
-                {somatotype.endo}
+                {somatotype?.endo ?? 0}
               </p>
               <p className="text-xs text-muted-foreground mt-1">Gordura relativa</p>
             </div>
             <div className="text-center p-3 bg-green-50 dark:bg-green-950/20 rounded-lg">
               <p className="text-xs text-muted-foreground mb-1">Mesomorfia</p>
               <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-                {somatotype.meso}
+                {somatotype?.meso ?? 0}
               </p>
               <p className="text-xs text-muted-foreground mt-1">Massa muscular/óssea</p>
             </div>
             <div className="text-center p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
               <p className="text-xs text-muted-foreground mb-1">Ectomorfia</p>
               <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                {somatotype.ecto}
+                {somatotype?.ecto ?? 0}
               </p>
               <p className="text-xs text-muted-foreground mt-1">Linearidade</p>
             </div>
