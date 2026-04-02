@@ -25,7 +25,8 @@ export function useAuth() {
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [initializing, setInitializing] = useState(true);
   const navigate = useNavigate();
   const processingSession = useRef(false);
 
@@ -159,11 +160,10 @@ export function AuthProvider({ children }) {
       setLoading(true);
       
       // Failsafe de segurança: evita travar em "Verificando sessão..." para sempre
-      // Importante caso PostHog ou Supabase travem por ad-blockers ou rede
       const failsafe = setTimeout(() => {
         if (mounted) {
-          console.warn('[AuthContext] Verificação inicial de sessão expirou, forçando loading=false');
-          setLoading(false);
+          console.warn('[AuthContext] Verificação inicial de sessão expirou, forçando initializing=false');
+          setInitializing(false);
         }
       }, 10000); // 10 seconds timeout
 
@@ -191,7 +191,7 @@ export function AuthProvider({ children }) {
         // GARANTIDO: o app sempre sai do estado de loading se estiver montado
         if (mounted) {
           clearTimeout(failsafe);
-          setLoading(false);
+          setInitializing(false);
         }
       }
     };
@@ -217,17 +217,17 @@ export function AuthProvider({ children }) {
 
       try {
         if (session?.user) {
-          // Só mostra loading para logins explícitos e garante que não interrompe a UI em atualizações silenciosas
-          const isExplicitLogin = event === 'SIGNED_IN';
+          // Só mostra loading visual se NÃO tivermos o usuário ainda (evita flicker na volta de abas)
+          const isNewLogin = !user;
           
-          if (isExplicitLogin) {
+          if (isNewLogin) {
             setLoading(true);
           }
           
           // processSession garante que temos o perfil sincronizado
           await processSession(session, event);
           
-          if (isExplicitLogin) {
+          if (isNewLogin) {
             setLoading(false);
           }
         } else if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
@@ -260,12 +260,13 @@ export function AuthProvider({ children }) {
     signOut,
     user,
     loading,
+    initializing,
     updateUserProfile,
   };
 
   return (
     <AuthContext.Provider value={value}>
-      {loading ? <AuthLoadingFallback /> : children}
+      {(initializing || (loading && !user)) ? <AuthLoadingFallback /> : children}
     </AuthContext.Provider>
   );
 }

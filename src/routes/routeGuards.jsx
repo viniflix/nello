@@ -15,10 +15,10 @@ export const PageLoadingFallback = () => (
 
 // Wrapper para rotas de autenticação (login, register)
 export const AuthWrapper = ({ children }) => {
-    const { user, loading } = useAuth();
+    const { user, loading, initializing } = useAuth();
     const location = useLocation();
 
-    if (loading) {
+    if (initializing || (loading && !user)) {
         return <PageLoadingFallback />;
     }
 
@@ -33,10 +33,10 @@ export const AuthWrapper = ({ children }) => {
 
 // Componente de rota protegida
 export const ProtectedRoute = ({ children, userType, requireAdmin = false, allowAnyUserType = false }) => {
-  const { user, loading } = useAuth();
+  const { user, loading, initializing } = useAuth();
   const location = useLocation();
 
-  if (loading) {
+  if (initializing || (loading && !user)) {
     return <PageLoadingFallback />;
   }
 
