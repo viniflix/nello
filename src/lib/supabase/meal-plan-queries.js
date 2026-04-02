@@ -1837,7 +1837,7 @@ export const createDraftMealPlan = async (patientId, nutritionistId) => {
 };
 
 /**
- * Busca o rascunho pendente de um nutricionista para um paciente.
+ * Busca o rascunho pendente (O MAIS RECENTE) de um nutricionista para um paciente.
  * Retorna o plano COMPLETO com refeições e alimentos para garantir recovery correto.
  * @param {string} patientId
  * @param {string} nutritionistId
@@ -1845,26 +1845,50 @@ export const createDraftMealPlan = async (patientId, nutritionistId) => {
  */
 export const getDraftMealPlan = async (patientId, nutritionistId) => {
     try {
-        // Passo 1: encontra o ID do rascunho mais recente
-        const { data: draftMeta, error } = await supabase
+        const { data: drafts, error } = await getDraftMealPlans(patientId, nutritionistId);
+        if (error) throw error;
+        
+        return { data: drafts && drafts.length > 0 ? drafts[0] : null, error: null };
+    } catch (error) {
+        logSupabaseError('Erro ao buscar rascunho singular do plano alimentar', error);
+        return { data: null, error };
+    }
+};
+
+/**
+ * Busca TODOS os rascunhos pendentes de um nutricionista para um paciente.
+ * Retorna uma lista de planos COMPLETOS (com refeições e alimentos).
+ * @param {string} patientId
+ * @param {string} nutritionistId
+ * @returns {Promise<{data: array, error: object}>}
+ */
+export const getDraftMealPlans = async (patientId, nutritionistId) => {
+    try {
+        // Passo 1: encontra os IDs de todos os rascunhos (ordenados por update desc)
+        const { data: draftMetas, error } = await supabase
             .from('meal_plans')
             .select('id')
             .eq('patient_id', patientId)
             .eq('nutritionist_id', nutritionistId)
             .eq('is_draft', true)
-            .order('updated_at', { ascending: false })
-            .limit(1)
-            .maybeSingle();
+            .order('updated_at', { ascending: false });
 
         if (error) throw error;
-        if (!draftMeta) return { data: null, error: null };
+        if (!draftMetas || draftMetas.length === 0) return { data: [], error: null };
 
-        // Passo 2: busca o plano COMPLETO com refeições e alimentos
-        // Isso garante que o recovery do formulário tenha todos os dados necessários
-        return getMealPlanById(draftMeta.id);
+        // Passo 2: busca o plano COMPLETO para cada um (para recovery no form ou count de itens)
+        const draftsPromises = draftMetas.map(meta => getMealPlanById(meta.id));
+        const results = await Promise.all(draftsPromises);
+        
+        // Filtra os que deram sucesso
+        const drafts = results
+            .filter(res => res.data && !res.error)
+            .map(res => res.data);
+
+        return { data: drafts, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao buscar rascunho do plano alimentar', error);
-        return { data: null, error };
+        logSupabaseError('Erro ao buscar rascunhos pendentes', error);
+        return { data: [], error };
     }
 };
 
@@ -1927,6 +1951,34 @@ export const deleteDraftMealPlan = async (draftId) => {
         return { data: { id: draftId }, error: null };
     } catch (error) {
         logSupabaseError('Erro ao deletar rascunho do plano alimentar', error);
+        return { data: null, error };
+    }
+};
+
+/**
+ * Deleta TODOS os planos rascunhos pendentes de um paciente (e suas refeições/alimentos por CASCADE).
+ * @param {string} patientId
+ * @returns {Promise<{data: object, error: object}>}
+ */
+export const deleteAllDraftMealPlans = async (patientId) => {
+    try {
+        if (!patientId) throw new Error('patientId é obrigatório para deletar rascunhos');
+
+        const { data: userData } = await supabase.auth.getUser();
+        const actorId = userData?.user?.id;
+        if (!actorId) throw new Error('Usuário não autenticado');
+
+        const { error } = await supabase
+            .from('meal_plans')
+            .delete()
+            .eq('patient_id', patientId)
+            .eq('is_draft', true)
+            .eq('nutritionist_id', actorId);
+
+        if (error) throw error;
+        return { data: { success: true }, error: null };
+    } catch (error) {
+        logSupabaseError('Erro ao deletar todos os rascunhos', error);
         return { data: null, error };
     }
 };

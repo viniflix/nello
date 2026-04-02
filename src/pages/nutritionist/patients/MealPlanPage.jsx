@@ -57,7 +57,9 @@ import {
     promoteDraftToActive,
     saveDraftAsPlan,
     getDraftMealPlan,
+    getDraftMealPlans,
     deleteDraftMealPlan,
+    deleteAllDraftMealPlans,
     createDraftMealPlan
 } from '@/lib/supabase/meal-plan-queries';
 import { supabase } from '@/lib/customSupabaseClient';
@@ -101,8 +103,10 @@ const MealPlanPage = () => {
     const [restoringVersion, setRestoringVersion] = useState(false);
     const [energyCalculation, setEnergyCalculation] = useState(null);
     const [syncFlags, setSyncFlags] = useState(null);
-    const [pendingDraft, setPendingDraft] = useState(null); // rascunho detectado na lista
+    const [pendingDrafts, setPendingDrafts] = useState([]); // rascunhos detectados na lista
     const [discardingDraft, setDiscardingDraft] = useState(false);
+    const [draftToDelete, setDraftToDelete] = useState(null); // Para o modal de confirmação de descarte de rascunho
+    const [discardAllDraftsDialogOpen, setDiscardAllDraftsDialogOpen] = useState(false);
 
     // Obter ID do nutricionista
     useEffect(() => {
@@ -137,23 +141,23 @@ const MealPlanPage = () => {
         loadPatientName();
     }, [patientId]);
 
-    // Carregar planos + rascunho em paralelo (single source of truth)
+    // Carregar planos + rascunhos em paralelo (single source of truth)
     const loadPlans = useCallback(async () => {
         if (!patientId) return;
 
         setLoading(true);
         try {
-            const [plansResult, activeResult, draftResult] = await Promise.all([
+            const [plansResult, activeResult, draftsResult] = await Promise.all([
                 getMealPlans(patientId),
                 getActiveMealPlan(patientId),
-                nutritionistId ? getDraftMealPlan(patientId, nutritionistId) : Promise.resolve({ data: null })
+                nutritionistId ? getDraftMealPlans(patientId, nutritionistId) : Promise.resolve({ data: [] })
             ]);
 
             if (plansResult.error) throw plansResult.error;
 
             setPlans(plansResult.data || []);
             setActivePlan(activeResult.data);
-            setPendingDraft(draftResult.data || null);
+            setPendingDrafts(draftsResult.data || []);
         } catch (error) {
             console.error('Erro ao carregar planos:', error);
             toast({
@@ -243,10 +247,12 @@ const MealPlanPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [patientId, nutritionistId]);
 
-    const handleDiscardPendingDraft = async () => {
-        if (!pendingDraft) return;
+    const handleDiscardPendingDraft = async (targetDraftId = null) => {
+        const idToDelete = targetDraftId || (pendingDrafts.length > 0 ? pendingDrafts[0].id : null);
+        if (!idToDelete) return;
+
         setDiscardingDraft(true);
-        const { error } = await deleteDraftMealPlan(pendingDraft.id);
+        const { error } = await deleteDraftMealPlan(idToDelete);
         setDiscardingDraft(false);
 
         if (error) {
@@ -258,25 +264,65 @@ const MealPlanPage = () => {
             return;
         }
 
-        // Confirma no banco que realmente foi deletado
-        const { data: stillExists } = await getDraftMealPlan(patientId, nutritionistId);
-        setPendingDraft(stillExists || null);
+        // Re-carregar a lista completa para garantir sincronia e contador correto
+        const { data: updatedDrafts } = await getDraftMealPlans(patientId, nutritionistId);
+        setPendingDrafts(updatedDrafts || []);
+        
+        toast({ title: 'Rascunho descartado com sucesso', variant: 'default' });
+    };
 
-        if (!stillExists) {
-            toast({ title: 'Rascunho descartado com sucesso', variant: 'default' });
-        } else {
+    const handleDiscardAllDrafts = async () => {
+        if (!patientId) return;
+        setDiscardingDraft(true);
+        const { error } = await deleteAllDraftMealPlans(patientId);
+        setDiscardingDraft(false);
+
+        if (error) {
             toast({
-                title: 'Atenção',
-                description: 'O rascunho pode não ter sido removido completamente.',
+                title: 'Erro ao descartar rascunhos',
+                description: 'Ocorreu um erro ao remover os rascunhos.',
                 variant: 'destructive'
             });
+        } else {
+            setPendingDrafts([]);
+            setDiscardAllDraftsDialogOpen(false);
+            toast({ title: 'Todos os rascunhos foram descartados', variant: 'default' });
         }
     };
 
-    const handleResumePendingDraft = () => {
-        // Passa o pendingDraft completo (com refeições) para o form — sem re-fetch
+    const handleResumePendingDraft = (draft = null) => {
+        // Se nenhum draft for passado, retoma o MAIS RECENTE da fila (banner)
+        const targetDraft = draft || (pendingDrafts.length > 0 ? pendingDrafts[0] : null);
+        if (!targetDraft) return;
+
         setEditingPlan(null);
+        // O MealPlanForm lidará com o carregamento do rascunho via targetDraft
         setShowForm(true);
+    };
+
+    const formatRelativeTime = (isoDate) => {
+        if (!isoDate) return '';
+        const date = new Date(isoDate);
+        if (Number.isNaN(date.getTime())) return '';
+
+        const diffMs = Date.now() - date.getTime();
+        const diffHours = diffMs / 3600000;
+
+        if (diffHours < 24) {
+            if (diffHours < 1) {
+                const minutes = Math.floor(diffMs / 60000);
+                return minutes < 1 ? 'agora mesmo' : `há ${minutes} min`;
+            }
+            return `há ${Math.floor(diffHours)} h`;
+        }
+
+        return date.toLocaleString('pt-BR', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
     };
 
     const formatSyncUpdateTime = (isoDate) => {
@@ -867,32 +913,66 @@ const MealPlanPage = () => {
             </div>
 
             {/* Rascunho pendente detectado */}
-            {pendingDraft && !showForm && (
+            {!showForm && pendingDrafts.length > 0 && (
                 <Alert className="mb-4 border-blue-300 bg-blue-50 dark:bg-blue-950/30">
                     <AlertCircle className="h-4 w-4 text-blue-600" />
                     <AlertDescription className="text-blue-800 dark:text-blue-200">
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             <div>
                                 <p className="font-semibold">Rascunho em andamento</p>
-                                <p className="text-sm">
-                                    Você tem um plano em criação salvo: <strong>"{pendingDraft.name}"</strong>.
-                                    Deseja continuar de onde parou?
+                                <p className="mt-1 text-sm">
+                                    {pendingDrafts.length === 1 
+                                        ? `Você tem um plano em criação salvo: "${pendingDrafts[0].name || 'Novo Plano'}". Deseja continuar de onde parou?`
+                                        : `Você possui ${pendingDrafts.length} rascunhos pendentes. Deseja continuar o mais recente ("${pendingDrafts[0].name || 'Novo Plano'}")?`
+                                    }
                                 </p>
                             </div>
-                            <div className="flex gap-2 flex-shrink-0">
-                                <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="border-blue-300 text-blue-700 hover:bg-blue-100"
-                                    onClick={handleDiscardPendingDraft}
-                                    disabled={discardingDraft}
-                                >
-                                    {discardingDraft ? 'Descartando...' : 'Descartar'}
-                                </Button>
+                            <div className="flex flex-col gap-2 sm:flex-row">
+                                {pendingDrafts.length > 1 ? (
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                className="text-blue-700 hover:bg-blue-100 dark:text-blue-200 dark:hover:bg-blue-900/50"
+                                                disabled={discardingDraft}
+                                            >
+                                                Descartar <MoreVertical className="ml-1 h-3 w-3" />
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                            <DropdownMenuItem 
+                                                className="text-destructive focus:text-destructive"
+                                                onClick={() => {
+                                                    setDraftToDelete(pendingDrafts[0]);
+                                                }}
+                                            >
+                                                Descartar este rascunho
+                                            </DropdownMenuItem>
+                                            <DropdownMenuSeparator />
+                                            <DropdownMenuItem 
+                                                className="text-destructive focus:bg-destructive focus:text-destructive-foreground font-semibold"
+                                                onClick={() => setDiscardAllDraftsDialogOpen(true)}
+                                            >
+                                                Descartar TODOS os rascunhos
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                ) : (
+                                    <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="text-blue-700 hover:bg-blue-100 dark:text-blue-200 dark:hover:bg-blue-900/50"
+                                        onClick={() => setDraftToDelete(pendingDrafts[0])}
+                                        disabled={discardingDraft}
+                                    >
+                                        Descartar
+                                    </Button>
+                                )}
                                 <Button
                                     size="sm"
                                     className="bg-blue-600 hover:bg-blue-700 text-white"
-                                    onClick={handleResumePendingDraft}
+                                    onClick={() => handleResumePendingDraft(pendingDrafts[0])}
                                 >
                                     Retomar rascunho
                                 </Button>
@@ -1206,7 +1286,7 @@ const MealPlanPage = () => {
                     <CardTitle>Todos os Planos</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    {!pendingDraft && plans.length === 0 ? (
+                    {pendingDrafts.length === 0 && plans.length === 0 ? (
                         <Alert>
                             <AlertDescription>
                                 Nenhum plano alimentar criado ainda. Clique em "Novo Plano" para começar.
@@ -1214,17 +1294,17 @@ const MealPlanPage = () => {
                         </Alert>
                     ) : (
                         <div className="space-y-3">
-                            {/* RASCUNHO PENDENTE NO TOPO DA LISTA */}
-                            {pendingDraft && (
-                                <div className="p-4 border-2 border-amber-200 bg-amber-50/50 border-dashed rounded-lg transition-colors">
+                            {/* RASCUNHOS PENDENTES NO TOPO DA LISTA */}
+                            {pendingDrafts.map((draft) => (
+                                <div key={draft.id} className="p-4 border-2 border-amber-200 bg-amber-50/50 border-dashed rounded-lg transition-colors">
                                     <div className="flex items-start justify-between">
                                         <div className="flex-1">
                                             <div className="flex items-center gap-2">
-                                                <h3 className="font-semibold text-amber-900">{pendingDraft.name || 'Novo Plano Alimentar'}</h3>
+                                                <h3 className="font-semibold text-amber-900">{draft.name || 'Novo Plano Alimentar'}</h3>
                                                 <Badge className="bg-amber-500 hover:bg-amber-600">Rascunho Não Salvo</Badge>
                                             </div>
                                             <div className="text-sm text-amber-700/80 mt-1">
-                                                Pendente de ativação ou conclusão
+                                                {formatRelativeTime(draft.updated_at)} • Pendente de ativação ou conclusão
                                             </div>
                                         </div>
                                         <div className="flex gap-2">
@@ -1232,7 +1312,7 @@ const MealPlanPage = () => {
                                                 variant="outline"
                                                 size="sm"
                                                 className="border-amber-300 bg-white text-amber-800 hover:bg-amber-100"
-                                                onClick={handleResumePendingDraft}
+                                                onClick={() => handleResumePendingDraft(draft)}
                                                 title="Retomar edição"
                                             >
                                                 <Edit className="h-4 w-4 mr-2" />
@@ -1242,7 +1322,7 @@ const MealPlanPage = () => {
                                                 variant="ghost"
                                                 size="sm"
                                                 className="text-destructive hover:bg-red-50 hover:text-destructive"
-                                                onClick={handleDiscardPendingDraft}
+                                                onClick={() => setDraftToDelete(draft)}
                                                 disabled={discardingDraft}
                                                 title="Descartar rascunho"
                                             >
@@ -1251,7 +1331,7 @@ const MealPlanPage = () => {
                                         </div>
                                     </div>
                                 </div>
-                            )}
+                            ))}
 
                             {/* PLANOS SALVOS */}
                             {plans.map((plan) => (
@@ -1320,6 +1400,69 @@ const MealPlanPage = () => {
                     )}
                 </CardContent>
             </Card>
+
+            {/* Dialog de Confirmação de Exclusão de Rascunho */}
+            <AlertDialog open={!!draftToDelete} onOpenChange={(open) => !open && setDraftToDelete(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Confirmar Descarte de Rascunho</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Tem certeza que deseja descartar o rascunho <strong>"{draftToDelete?.name || 'Novo Plano'}"</strong>?
+                            {draftToDelete && (
+                                <div className="mt-4 p-3 bg-muted rounded-md text-sm space-y-1">
+                                    <p className="font-semibold text-foreground">Conteúdo do rascunho:</p>
+                                    <ul className="list-disc list-inside text-muted-foreground">
+                                        <li>{draftToDelete.meals?.length || 0} refeições configuradas</li>
+                                        <li>
+                                            {(draftToDelete.meals || []).reduce((acc, meal) => acc + (meal.items?.length || 0), 0)} alimentos adicionados
+                                        </li>
+                                    </ul>
+                                </div>
+                            )}
+                            <p className="mt-4 text-destructive font-medium">Esta ação não pode ser desfeita.</p>
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel onClick={() => setDraftToDelete(null)}>
+                            Manter rascunho
+                        </AlertDialogCancel>
+                        <AlertDialogAction 
+                            onClick={async () => {
+                                const id = draftToDelete.id;
+                                setDraftToDelete(null);
+                                await handleDiscardPendingDraft(id);
+                            }} 
+                            className="bg-destructive hover:bg-destructive/90"
+                        >
+                            {discardingDraft ? 'Descartando...' : 'Descartar rascunho'}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Dialog de Descartar TODOS os Rascunhos */}
+            <AlertDialog open={discardAllDraftsDialogOpen} onOpenChange={setDiscardAllDraftsDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="text-destructive">Descartar TODOS os Rascunhos?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Esta ação removerá permanentemente os <strong>{pendingDrafts.length} rascunhos</strong> deste paciente.
+                            Planos alimentares já ativos ou arquivados não serão afetados.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel onClick={() => setDiscardAllDraftsDialogOpen(false)}>
+                            Cancelar
+                        </AlertDialogCancel>
+                        <AlertDialogAction 
+                            onClick={handleDiscardAllDrafts} 
+                            className="bg-destructive hover:bg-destructive/90"
+                        >
+                            {discardingDraft ? 'Descartando...' : 'Descartar Tudo'}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
 
             {/* Dialog de Confirmação de Exclusão */}
             <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
