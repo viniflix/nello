@@ -23,15 +23,20 @@ const SubstitutionDialog = ({ isOpen, onClose, originalFood, initialSubstitutes 
     const [suggestions, setSuggestions] = useState([]);
     const [loadingSuggestions, setLoadingSuggestions] = useState(false);
 
+    // Efeito para carregar o estado inicial quando o diálogo abrir para um alimento específico
     useEffect(() => {
-        if (isOpen) {
+        if (isOpen && originalFood) {
             setSubstitutes(initialSubstitutes || []);
             loadSuggestions();
+        } else if (!isOpen) {
+            // Limpar estados ao fechar para evitar vazamento de memória ou flashes de dados antigos
+            setSuggestions([]);
+            setLoadingSuggestions(false);
         }
-    }, [isOpen, initialSubstitutes]);
+    }, [isOpen, originalFood?.id, originalFood?.tempId]);
 
     const loadSuggestions = async () => {
-        if (!originalFood?.food?.group) return;
+        if (!originalFood?.food?.group || loadingSuggestions) return;
         
         setLoadingSuggestions(true);
         try {
@@ -272,12 +277,6 @@ const SubstitutionDialog = ({ isOpen, onClose, originalFood, initialSubstitutes 
                         </div>
                     </div>
 
-                        <Alert className="bg-blue-50/50 border-blue-100">
-                            <AlertCircle className="h-4 w-4 text-blue-600" />
-                            <AlertDescription className="text-[11px] text-blue-700">
-                                Idealmente, substitutos devem ter variação de ±50 kcal e ±3g de macros em relação ao alimento original (proporcionalmente).
-                            </AlertDescription>
-                        </Alert>
 
                     <DialogFooter>
                         <Button variant="outline" onClick={onClose}>Cancelar</Button>

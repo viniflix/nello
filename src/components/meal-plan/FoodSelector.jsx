@@ -42,10 +42,14 @@ const FoodSelector = ({ isOpen, onClose, onSelect, targetGroup, targetCalories }
     }, [isOpen, searchTerm, sourceFilter, onlySameGroup]);
 
     const searchFoods = async () => {
+        // Não buscar se o termo for curto demais
         if (searchTerm.length < 2) {
             setFoods([]);
             return;
         }
+
+        // Evitar chamadas redundantes se já estiver carregando
+        if (loading) return;
 
         setLoading(true);
         try {
