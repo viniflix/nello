@@ -1,7 +1,7 @@
 import { supabase } from '@/lib/customSupabaseClient';
 import { formatDateToIsoDate, getTodayIsoDate } from '@/lib/utils/date';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
-import { logOperationalEvent } from './observability-queries';
+
 
 /**
  * Mapeia food_id (da view foods) para reference_food_id ou nutritionist_food_id
@@ -74,28 +74,12 @@ export const getPatientMeals = async (patientId, filters = {}, limit = 50, offse
             }))
         }));
 
-        await logOperationalEvent({
-            module: 'food_diary',
-            operation: 'get_patient_meals',
-            eventType: 'success',
-            latencyMs: Date.now() - startedAt,
-            patientId: patientId || null,
-            metadata: {
-                items_count: Array.isArray(data) ? data.length : 0
-            }
-        });
+        /* logOperationalEvent removed */
 
         return { data: dataWithFoodId, error: null, count };
     } catch (error) {
         logSupabaseError('Erro ao buscar refeições', error);
-        await logOperationalEvent({
-            module: 'food_diary',
-            operation: 'get_patient_meals',
-            eventType: 'error',
-            latencyMs: Date.now() - startedAt,
-            patientId: patientId || null,
-            errorMessage: error?.message || String(error)
-        });
+        /* logOperationalEvent removed */
         return { data: null, error };
     }
 };

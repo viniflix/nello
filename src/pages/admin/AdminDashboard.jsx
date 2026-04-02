@@ -22,7 +22,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { getDashboardStats, getSystemLiveLogs } from '@/services/adminService';
-import { getOperationalHealthSummary } from '@/lib/supabase/observability-queries';
+
 
 const COLORS = ['#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#0ea5e9'];
 
@@ -103,7 +103,7 @@ export default function AdminDashboard() {
     try {
       const [statsRes, obsRes] = await Promise.all([
         getDashboardStats(),
-        getOperationalHealthSummary({ nutritionistId: null, windowHours: 24 })
+        /* getOperationalHealthSummary removed */
       ]);
       
       if (statsRes.data) setStats(statsRes.data);

@@ -3,7 +3,7 @@ import { format } from 'date-fns';
 import { saveTransaction } from './financial-queries';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
 import { syncAppointmentNotificationSchedule, transitionAppointmentStatus } from './appointment-notifications-queries';
-import { logOperationalEvent } from './observability-queries';
+
 import { dispatchMessageTemplate } from './message-templates-queries';
 
 const STATUS_FALLBACK = 'scheduled';
@@ -98,15 +98,7 @@ export async function createAppointmentWithFinance(appointmentData, financialDat
 
     if (appointmentError) {
         logSupabaseError('Error creating appointment', appointmentError);
-        await logOperationalEvent({
-            module: 'agenda',
-            operation: 'create_appointment_with_finance',
-            eventType: 'error',
-            latencyMs: Date.now() - startedAt,
-            nutritionistId: nutritionist_id || null,
-            patientId: patient_id || null,
-            errorMessage: appointmentError?.message || String(appointmentError)
-        });
+        /* logOperationalEvent removed */
         throw appointmentError;
     }
 
@@ -175,17 +167,7 @@ export async function createAppointmentWithFinance(appointmentData, financialDat
         }
     }
 
-    await logOperationalEvent({
-        module: 'agenda',
-        operation: 'create_appointment_with_finance',
-        eventType: 'success',
-        latencyMs: Date.now() - startedAt,
-        nutritionistId: nutritionist_id || null,
-        patientId: patient_id || null,
-        metadata: {
-            has_financial_transaction: Boolean(transaction)
-        }
-    });
+    /* logOperationalEvent removed */
 
     return { appointment, transaction };
 }
@@ -210,15 +192,7 @@ export async function updateAppointment(appointmentId, appointmentData) {
 
     if (currentError) {
         logSupabaseError('Error loading current appointment status', currentError);
-        await logOperationalEvent({
-            module: 'agenda',
-            operation: 'update_appointment',
-            eventType: 'error',
-            latencyMs: Date.now() - startedAt,
-            nutritionistId,
-            patientId,
-            errorMessage: currentError?.message || String(currentError)
-        });
+        /* logOperationalEvent removed */
         throw currentError;
     }
 
@@ -238,15 +212,7 @@ export async function updateAppointment(appointmentId, appointmentData) {
 
     if (error) {
         logSupabaseError('Error updating appointment', error);
-        await logOperationalEvent({
-            module: 'agenda',
-            operation: 'update_appointment',
-            eventType: 'error',
-            latencyMs: Date.now() - startedAt,
-            nutritionistId,
-            patientId,
-            errorMessage: error?.message || String(error)
-        });
+        /* logOperationalEvent removed */
         throw error;
     }
 
@@ -301,15 +267,7 @@ export async function updateAppointment(appointmentId, appointmentData) {
 
     if (refreshedError) {
         logSupabaseError('Error fetching refreshed appointment', refreshedError);
-        await logOperationalEvent({
-            module: 'agenda',
-            operation: 'update_appointment',
-            eventType: 'error',
-            latencyMs: Date.now() - startedAt,
-            nutritionistId,
-            patientId,
-            errorMessage: refreshedError?.message || String(refreshedError)
-        });
+        /* logOperationalEvent removed */
         throw refreshedError;
     }
 
@@ -346,17 +304,7 @@ export async function updateAppointment(appointmentId, appointmentData) {
         }
     }
 
-    await logOperationalEvent({
-        module: 'agenda',
-        operation: 'update_appointment',
-        eventType: 'success',
-        latencyMs: Date.now() - startedAt,
-        nutritionistId: refreshed?.nutritionist_id || nutritionistId,
-        patientId: refreshed?.patient_id || patientId,
-        metadata: {
-            status: finalStatus || null
-        }
-    });
+    /* logOperationalEvent removed */
 
     return refreshed;
 }
@@ -408,27 +356,11 @@ export async function getAppointments(nutritionistId, filters = {}) {
 
     if (error) {
         logSupabaseError('Error fetching appointments', error);
-        await logOperationalEvent({
-            module: 'agenda',
-            operation: 'get_appointments',
-            eventType: 'error',
-            latencyMs: Date.now() - startedAt,
-            nutritionistId: nutritionistId || null,
-            errorMessage: error?.message || String(error)
-        });
+        /* logOperationalEvent removed */
         throw error;
     }
 
-    await logOperationalEvent({
-        module: 'agenda',
-        operation: 'get_appointments',
-        eventType: 'success',
-        latencyMs: Date.now() - startedAt,
-        nutritionistId: nutritionistId || null,
-        metadata: {
-            items_count: Array.isArray(data) ? data.length : 0
-        }
-    });
+    /* logOperationalEvent removed */
 
     return data || [];
 }

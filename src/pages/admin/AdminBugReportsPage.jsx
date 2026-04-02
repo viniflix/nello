@@ -48,7 +48,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { getSystemLiveLogs } from '@/services/adminService';
-import { supabase } from '@/lib/supabase/client';
+import { supabase } from '@/lib/customSupabaseClient';
 
 /**
  * AdminBugReportsPage - Sistema completo de relatório de bugs e audit log

@@ -2,7 +2,7 @@ import { supabase } from '@/lib/customSupabaseClient';
 import { calculateCaloriesFromMacros } from '@/lib/utils/nutrition-calculations';
 import { getTodayIsoDate } from '@/lib/utils/date';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
-import { logOperationalEvent } from './observability-queries';
+
 
 // =====================================================
 // MEAL PLANS - Planos Alimentares
@@ -1347,15 +1347,7 @@ export const updateFullMealPlan = async (planId, planData) => {
             console.warn('[updateFullMealPlan] Versioning failed:', vError);
         }
 
-        await logOperationalEvent({
-            module: 'meal_plan',
-            operation: 'update_full_meal_plan_rpc',
-            eventType: 'success',
-            latencyMs: Date.now() - startedAt,
-            nutritionistId: actorId,
-            patientId: updatedResult?.data?.patient_id || null,
-            metadata: { plan_id: planId, meals_count: planData.meals?.length }
-        });
+        /* logOperationalEvent removed */
 
         return updatedResult;
     } catch (error) {

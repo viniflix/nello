@@ -2,7 +2,7 @@ import { supabase } from '@/lib/customSupabaseClient';
 import { translateMealType } from '@/utils/mealTranslations';
 import { buildActivityEventPayload, logSupabaseError } from '@/lib/supabase/query-helpers';
 import { classifyLabResultsRiskBatch, getLabRiskRules } from '@/lib/supabase/lab-results-queries';
-import { logOperationalEvent } from './observability-queries';
+
 import { isUuid } from '@/lib/utils/patientRoutes';
 
 let hasActivityLogTable = true;
@@ -1272,29 +1272,13 @@ export const getComprehensiveActivityFeed = async (nutritionistId, limit = 20) =
             }
         });
 
-        await logOperationalEvent({
-            module: 'feed',
-            operation: 'get_comprehensive_activity_feed',
-            eventType: 'success',
-            latencyMs: Date.now() - startedAt,
-            nutritionistId: nutritionistId || null,
-            metadata: {
-                items_count: activities.length
-            }
-        });
+        /* logOperationalEvent removed */
 
         activityFeedCache = { key: cacheKey, data: activities, ts: Date.now() };
         return { data: activities, error: null };
     } catch (error) {
         logSupabaseError('Erro ao buscar feed de atividades', error);
-        await logOperationalEvent({
-            module: 'feed',
-            operation: 'get_comprehensive_activity_feed',
-            eventType: 'error',
-            latencyMs: Date.now() - startedAt,
-            nutritionistId: nutritionistId || null,
-            errorMessage: error?.message || String(error)
-        });
+        /* logOperationalEvent removed */
         return { data: [], error };
     }
 };

@@ -1,4 +1,4 @@
-import { logOperationalEvent } from '@/lib/supabase/observability-queries';
+
 
 const MAX_CONSOLE_ENTRIES = 30;
 const MAX_ERROR_SIGNATURES = 200;
@@ -159,16 +159,7 @@ export const createClientErrorCapture = ({ getUserContext, onErrorCaptured }) =>
     }
 
     // Envia para observabilidade original
-    await logOperationalEvent({
-      module: 'client',
-      operation: 'client_error',
-      eventType: 'error',
-      latencyMs: 0,
-      nutritionistId,
-      patientId,
-      errorMessage: message || null,
-      metadata,
-    });
+    /* logOperationalEvent removed */
 
     // Callback para o novo sistema de bugs (se fornecido)
     if (typeof onErrorCaptured === 'function') {
