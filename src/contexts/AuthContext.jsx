@@ -3,6 +3,8 @@ import { Loader2 } from 'lucide-react';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useNavigate } from 'react-router-dom';
 import { identifyUser, resetUser } from '@/analytics/posthog';
+import { useQueryClient } from '@tanstack/react-query';
+import { useProfile } from '@/hooks/useProfile';
 
 const AuthLoadingFallback = () => (
   <div className="flex min-h-screen items-center justify-center bg-background">
@@ -27,57 +29,82 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(false);
   const [initializing, setInitializing] = useState(true);
+  const [isOffline, setIsOffline] = useState(!window.navigator.onLine);
   const navigate = useNavigate();
   const processingSession = useRef(false);
+  const queryClient = useQueryClient();
+
+  // Busca o perfil via React Query
+  const { data: profile, isLoading: isProfileLoading, isError: isProfileError } = useProfile(user?.id);
+
+  // Sincronização em tempo real (Realtime)
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const channel = supabase
+      .channel(`profile-updates-${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'user_profiles',
+          filter: `id=eq.${user.id}`
+        },
+        () => {
+          if (import.meta.env.DEV) console.log('[AuthContext] Realtime invalidate query: profile');
+          queryClient.invalidateQueries({ queryKey: ['profile', user.id] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id, queryClient]);
+
+  // Monitora conectividade global
+  useEffect(() => {
+    const handleStatusChange = () => setIsOffline(!window.navigator.onLine);
+    window.addEventListener('online', handleStatusChange);
+    window.addEventListener('offline', handleStatusChange);
+    return () => {
+      window.removeEventListener('online', handleStatusChange);
+      window.removeEventListener('offline', handleStatusChange);
+    };
+  }, []);
+
+  // Sincroniza o perfil do React Query com o estado do usuário do contexto
+  useEffect(() => {
+    if (profile) {
+      setUser(prev => {
+        if (!prev) return null;
+        // Só atualiza se o perfil for diferente ou novo para evitar re-renders infinitos
+        if (JSON.stringify(prev.profile) === JSON.stringify(profile)) return prev;
+        return { ...prev, profile };
+      });
+      
+      // Identifica o usuário no Analytics (agora com dados sanitizados)
+      identifyUser({ id: user.id, profile });
+    } else if (isProfileError && isOffline) {
+        // Se houver erro de perfil mas estivermos offline, mantemos o que temos (graceful degradation)
+        if (import.meta.env.DEV) console.warn('[AuthContext] Perfil indisponível devido a offline, mantendo sessão.');
+    }
+  }, [profile, user?.id, isProfileError, isOffline]);
 
   const signOut = useCallback(async () => {
     setUser(null);
     resetUser(); // PostHog: limpa identidade ao sair
+    queryClient.clear(); // Limpa cache global ao sair
     try {
       await supabase.auth.signOut();
     } catch (error) {
       console.error('Erro ao fazer logout:', error);
     }
     navigate('/login', { replace: true });
-  }, [navigate]);
+  }, [navigate, queryClient]);
 
-  const fetchProfileWithRetry = useCallback(async (sessionUser, options = {}) => {
-    const { retries = 3, delayMs = 400 } = options;
-    for (let attempt = 0; attempt <= retries; attempt += 1) {
-      const { data: profile, error } = await supabase
-        .from('user_profiles')
-        .select('*')
-        .eq('id', sessionUser.id)
-        .single();
-
-      if (profile && !error) {
-        return {
-          ...profile,
-          name: profile.full_name ?? profile.name,
-          user_type: profile.user_type ?? profile.role,
-          is_admin: profile.is_admin === true,
-        };
-      }
-
-      if (error?.code === 'PGRST116') {
-        if (attempt < retries) {
-          await new Promise(resolve => setTimeout(resolve, delayMs * (attempt + 1)));
-          continue;
-        }
-        console.warn('[AuthContext] Perfil ainda ausente após as tentativas.');
-        return null;
-      }
-
-      if (error) {
-        console.error('[AuthContext] Erro ao buscar perfil:', error);
-        return null;
-      }
-    }
-
-    return null;
-  }, []);
-
-  // Auxiliar: processa a sessão e ajusta o estado do usuário (usado por getSession + onAuthStateChange)
+  // Auxiliar: processa a sessão (usado por getSession + onAuthStateChange)
   const pendingSessionRef = useRef(null);
 
   const processSession = useCallback(async (session, event) => {
@@ -95,20 +122,12 @@ export function AuthProvider({ children }) {
           continue;
         }
 
-        const profile = await fetchProfileWithRetry(nextSession.user, { retries: 4, delayMs: 350 });
-        if (!profile) {
-          console.error('[AuthContext] Falha ao buscar perfil após tentativas, encerrando sessão');
-          await signOut();
-          continue;
-        }
-
-        setUser({ ...nextSession.user, profile });
-
-        try {
-          identifyUser({ ...nextSession.user, profile });
-        } catch (err) {
-          if (import.meta.env.DEV) console.error('[AuthContext] Erro de analytics:', err);
-        }
+        // Agora apenas definimos o usuário base. O perfil virá via useProfile hook.
+        // Se já temos um perfil cacheado, mantemos para evitar UI flickering
+        setUser(prev => ({ 
+          ...nextSession.user, 
+          profile: prev?.id === nextSession.user.id ? prev.profile : null 
+        }));
       } catch (error) {
         console.error('[AuthContext] Erro no processSession:', error);
         if (nextEvent === 'INITIAL_SESSION') {
@@ -128,21 +147,12 @@ export function AuthProvider({ children }) {
             if (error) throw error;
             
             if (data?.success) {
-                // Se o perfil mudou (ex: ID alterado via claim), recarrega o perfil
-                if (data.type === 'profile_claimed') {
-                    const newProfile = await fetchProfileWithRetry(nextSession.user, { retries: 2 });
-                    if (newProfile) {
-                        setUser(curr => ({ ...curr, profile: newProfile }));
-                    }
-                }
+                // Ao resgatar convite, invalidamos o cache para forçar recarga imediata do perfil novo
+                queryClient.invalidateQueries({ queryKey: ['profile', nextSession.user.id] });
                 localStorage.removeItem('pending_invite_code');
-                // Nota: Toasts não podem ser disparados aqui facilmente sem o hook useToast, 
-                // mas como este contexto é global, podemos usar um evento ou deixar para a página de destino.
             }
         } catch (err) {
             console.error('[AuthContext] Erro ao resgatar convite pendente:', err);
-            // Mantém no localStorage para tentar novamente ou limpa se for erro fatal? 
-            // Melhor limpar se for erro de validação (ex: código inválido)
             if (err.message?.includes('inválido')) {
                 localStorage.removeItem('pending_invite_code');
             }
@@ -150,7 +160,7 @@ export function AuthProvider({ children }) {
     }
 
     processingSession.current = false;
-  }, [fetchProfileWithRetry, signOut]);
+  }, [signOut, queryClient]);
 
   useEffect(() => {
     let mounted = true;
@@ -178,14 +188,21 @@ export function AuthProvider({ children }) {
         }
 
         if (data?.session?.user) {
-          // Aguarda o perfil para garantir os dados completos antes de encerrar o loader
+          // Aguarda o processamento inicial da sessão
           await processSession(data.session, 'INITIAL_SESSION');
         } else {
           setUser(null);
         }
       } catch (err) {
-        console.error('[AuthContext] Erro fatal durante initAuth:', err);
-        if (mounted) setUser(null);
+        // GRACEFUL DEGRADATION: Se falhar por rede, mas houver uma sessão local, não desloga.
+        const isNetworkError = !window.navigator.onLine || err.message?.includes('fetch');
+        if (isNetworkError) {
+            console.warn('[AuthContext] Falha de rede no boot, tentando manter sessão local.');
+            setIsOffline(true);
+        } else {
+            console.error('[AuthContext] Erro fatal durante initAuth:', err);
+            if (mounted) setUser(null);
+        }
       } finally {
         // GARANTIDO: o app sempre sai do estado de loading se estiver montado
         if (mounted) {
@@ -261,12 +278,13 @@ export function AuthProvider({ children }) {
     user,
     loading,
     initializing,
+    isOffline,
     updateUserProfile,
   };
 
   return (
     <AuthContext.Provider value={value}>
-      {(initializing || (loading && !user)) ? <AuthLoadingFallback /> : children}
+      {(initializing || (loading && !user) || (user && !user.profile && isProfileLoading)) ? <AuthLoadingFallback /> : children}
     </AuthContext.Provider>
   );
 }

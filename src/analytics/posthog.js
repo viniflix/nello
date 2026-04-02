@@ -21,12 +21,10 @@ export function identifyUser(user) {
       return;
     }
 
+    // Sanitização estrita: Envia apenas metadados de acesso, sem PII/PHI
     posthog.identify(user.id, {
       user_type: user.profile?.user_type,
       is_admin: user.profile?.is_admin ?? false,
-      has_crn: !!user.profile?.crn,
-      patient_category: user.profile?.patient_category,
-      signup_date: user.profile?.created_at,
     });
   } catch (err) {
     // Silent catch - we don't want analytics to break the app
