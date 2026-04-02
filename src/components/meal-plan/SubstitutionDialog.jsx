@@ -16,8 +16,10 @@ import { Badge } from '@/components/ui/badge';
 import FoodSelector from './FoodSelector';
 import { getSuggestedSubstitutes } from '@/lib/supabase/meal-plan-queries';
 import { Loader2, ChevronDown, ChevronUp, Scale, Info } from 'lucide-react';
-import { getSubstitutionAnalysis, formatDiff } from '@/lib/utils/foodSubstitution';
+import { getSubstitutionAnalysis, formatDiff, calculateEquivalentPortion, getMacroProportions } from '@/lib/utils/foodSubstitution';
 import { Progress } from '@/components/ui/progress';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { zap } from 'lucide-react'; // For Pro-Max vibe
 
 const SubstitutionDialog = ({ isOpen, onClose, originalFood, initialSubstitutes = [], onSave }) => {
     const [substitutes, setSubstitutes] = useState([]);
@@ -85,17 +87,17 @@ const SubstitutionDialog = ({ isOpen, onClose, originalFood, initialSubstitutes 
     };
 
     const renderDelta = (val, limit = 2) => {
-        if (Math.abs(val) < 0.1) return <span className="text-[10px] text-green-600 font-mono">OK</span>;
-        const isOver = Math.abs(val) > limit;
+        const numeric = Math.abs(val);
+        if (numeric < 0.1) return <span className="text-[10px] text-green-600 font-bold uppercase tracking-tighter">OK</span>;
+        const isOver = numeric > limit;
         return (
-            <span className={`text-[10px] px-1 rounded flex items-center gap-0.5 font-mono ${
+            <span className={`text-[10px] px-1.5 py-0.5 rounded-md flex items-center gap-0.5 font-mono leading-none border transition-all ${
                 isOver 
-                ? 'bg-destructive/10 text-destructive font-bold border border-destructive/20' 
-                : 'bg-muted text-muted-foreground border border-transparent'
+                ? 'bg-destructive/10 text-destructive font-bold border-destructive/20 shadow-sm' 
+                : 'bg-muted/50 text-muted-foreground border-transparent'
             }`}>
-                {val > 0 ? '+' : '-'}{Math.abs(val).toFixed(1)}
-                {isOver && val > 0 && <Plus className="h-2 w-2" />}
-                {isOver && val < 0 && <X className="h-2 w-2 rotate-45" />}
+                {val > 0 ? '+' : '-'}{numeric.toFixed(1)}
+                {isOver && <AlertCircle className="h-2 w-2 ml-0.5 animate-pulse" />}
             </span>
         );
     };
@@ -110,69 +112,132 @@ const SubstitutionDialog = ({ isOpen, onClose, originalFood, initialSubstitutes 
             kcal: (originalFood.calories / originalFood.quantity) * 100,
             p: (originalFood.protein / originalFood.quantity) * 100,
             c: (originalFood.carbs / originalFood.quantity) * 100,
-            g: (originalFood.fat / originalFood.quantity) * 100
+            g: (originalFood.fat / originalFood.quantity) * 100,
+            fiber: (originalFood.fiber / originalFood.quantity) * 100
         };
 
+        const origProps = getMacroProportions(originalBase.p, originalBase.c, originalBase.g);
+        const subProps = getMacroProportions(subFood.protein, subFood.carbs, subFood.fat);
+        const equivalentQty = calculateEquivalentPortion(originalBase.kcal, subFood.calories);
+
         const macros = [
-            { label: 'Prot', orig: originalBase.p, sub: subFood.protein, color: 'bg-blue-500' },
-            { label: 'Carb', orig: originalBase.c, sub: subFood.carbs, color: 'bg-amber-500' },
-            { label: 'Gord', orig: originalBase.g, sub: subFood.fat, color: 'bg-rose-500' }
+            { label: 'Prot', orig: originalBase.p, sub: subFood.protein, color: 'bg-blue-500', icon: 'P' },
+            { label: 'Carb', orig: originalBase.c, sub: subFood.carbs, color: 'bg-amber-500', icon: 'C' },
+            { label: 'Gord', orig: originalBase.g, sub: subFood.fat, color: 'bg-rose-500', icon: 'G' }
         ];
 
         return (
-            <div className="mt-4 p-4 bg-muted/50 rounded-xl border border-dashed animate-in fade-in slide-in-from-top-2 duration-300">
-                <div className="flex items-center gap-2 mb-4 text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                    <Scale className="h-3 w-3" />
-                    Comparativo Detalhado (Base 100g)
+            <div className="mt-4 p-5 bg-background/60 backdrop-blur-md rounded-2xl border-2 border-primary/10 shadow-sm animate-in fade-in zoom-in duration-300">
+                <div className="flex items-center justify-between mb-5">
+                    <div className="flex items-center gap-2 text-xs font-bold text-primary uppercase tracking-widest">
+                        <Scale className="h-4 w-4" />
+                        ANÁLISE COMPARATIVA PRO
+                    </div>
+                    {Math.abs(subFood.calories - originalBase.kcal) > 10 && (
+                        <Badge variant="secondary" className="bg-primary/10 text-primary hover:bg-primary/20 border-primary/20 flex gap-1.5 items-center py-1">
+                            <Info className="h-3 w-3" />
+                            Sugerido: <span className="font-bold underline">{Math.round(equivalentQty)}g</span> para equivaler
+                        </Badge>
+                    )}
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Visualização de Macros */}
-                    <div className="space-y-4">
-                        {macros.map(m => {
-                            const max = Math.max(m.orig, m.sub, 1);
-                            return (
-                                <div key={m.label} className="space-y-1.5">
-                                    <div className="flex justify-between text-[10px] font-bold uppercase">
-                                        <span>{m.label}</span>
-                                        <span className={Math.abs(m.sub - m.orig) > 2 ? 'text-destructive' : 'text-green-600'}>
-                                            {m.sub.toFixed(1)}g vs {m.orig.toFixed(1)}g
-                                        </span>
-                                    </div>
-                                    <div className="relative h-2 w-full bg-muted rounded-full overflow-hidden">
-                                        <div 
-                                            className={`absolute left-0 top-0 h-full ${m.color} opacity-30`} 
-                                            style={{ width: `${(m.orig / max) * 100}%` }}
-                                        />
-                                        <div 
-                                            className={`absolute left-0 top-0 h-full ${m.color}`} 
-                                            style={{ width: `${(m.sub / max) * 100}%` }}
-                                        />
-                                    </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    {/* Visualização de Macros Empilhada (Stacked) */}
+                    <div className="space-y-6">
+                        <div className="space-y-2">
+                            <div className="flex justify-between text-[10px] uppercase font-bold text-muted-foreground">
+                                <span>Distribuição Calórica % (P/C/G)</span>
+                            </div>
+                            {/* Stacked Bar Original */}
+                            <div className="relative h-4 w-full bg-muted rounded-lg overflow-hidden flex shadow-inner">
+                                <div className="h-full bg-blue-500" style={{ width: `${origProps.p}%` }} title={`Original P: ${origProps.p.toFixed(0)}%`} />
+                                <div className="h-full bg-amber-500" style={{ width: `${origProps.c}%` }} title={`Original C: ${origProps.c.toFixed(0)}%`} />
+                                <div className="h-full bg-rose-500" style={{ width: `${origProps.f}%` }} title={`Original G: ${origProps.f.toFixed(0)}%`} />
+                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                    <span className="text-[9px] font-bold text-white drop-shadow-md">ORIGINAL</span>
                                 </div>
-                            )
-                        })}
-                    </div>
-
-                    {/* Vantagens / Observações */}
-                    <div className="flex flex-col justify-center bg-background p-3 rounded-lg border text-xs space-y-3">
-                        <div className="flex items-start gap-2">
-                            <Info className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />
-                            <div>
-                                <p className="font-bold">Análise Clínica:</p>
-                                <p className="text-muted-foreground leading-relaxed mt-0.5">
-                                    {analysis.isRecommended 
-                                        ? "Esta substituição mantém o equilíbrio nutricional planejado." 
-                                        : `Variação expressiva identificada: ${analysis.reason}.`}
-                                </p>
+                            </div>
+                            {/* Stacked Bar Substituto */}
+                            <div className="relative h-4 w-full bg-muted rounded-lg overflow-hidden flex shadow-inner">
+                                <div className="h-full bg-blue-500" style={{ width: `${subProps.p}%` }} title={`Substituto P: ${subProps.p.toFixed(0)}%`} />
+                                <div className="h-full bg-amber-500" style={{ width: `${subProps.c}%` }} title={`Substituto C: ${subProps.c.toFixed(0)}%`} />
+                                <div className="h-full bg-rose-500" style={{ width: `${subProps.f}%` }} title={`Substituto G: ${subProps.f.toFixed(0)}%`} />
+                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                    <span className="text-[9px] font-bold text-white drop-shadow-md uppercase">{subFood.name}</span>
+                                </div>
                             </div>
                         </div>
-                        {subFood.fiber > (originalFood.fiber || 0) && (
-                            <div className="flex items-center gap-2 text-green-600 font-semibold">
-                                <Plus className="h-3 w-3" />
-                                Maior teor de fibras (+{(subFood.fiber - (originalFood.fiber || 0)).toFixed(1)}g)
+
+                        <div className="space-y-3">
+                            {macros.map(m => {
+                                const max = Math.max(m.orig, m.sub, 1);
+                                const isDiff = Math.abs(m.sub - m.orig) > 2;
+                                return (
+                                    <div key={m.label} className="space-y-1">
+                                        <div className="flex justify-between text-[10px] font-bold">
+                                            <span className="flex items-center gap-1">
+                                                <span className={`w-2 h-2 rounded-full ${m.color}`} />
+                                                {m.label}
+                                            </span>
+                                            <span className={isDiff ? 'text-destructive font-black' : 'text-green-600'}>
+                                                {m.sub.toFixed(1)}g <span className="text-muted-foreground/50 font-normal">vs {m.orig.toFixed(1)}g</span>
+                                            </span>
+                                        </div>
+                                        <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                                            <div 
+                                                className={`h-full transition-all duration-700 ease-out ${m.color}`}
+                                                style={{ width: `${(m.sub / max) * 100}%` }}
+                                            />
+                                        </div>
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    </div>
+
+                    {/* Vantagens / Inteligência Clínica */}
+                    <div className="flex flex-col justify-between">
+                        <div className="bg-white/40 backdrop-blur-sm p-4 rounded-xl border border-primary/10 shadow-inner space-y-3 h-full">
+                            <div className="flex items-start gap-3">
+                                <div className="p-2 bg-primary/10 rounded-lg shrink-0 border border-primary/5">
+                                    <Scale className="h-4 w-4 text-primary" />
+                                </div>
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <p className="font-bold text-sm text-primary leading-none">Análise Clínica</p>
+                                        {analysis.similarityScore < 10 && (
+                                            <Badge variant="outline" className="h-4 text-[8px] bg-green-500 text-white border-none animate-pulse">MATCH PERFEITO</Badge>
+                                        )}
+                                    </div>
+                                    <p className="text-muted-foreground text-[11px] leading-relaxed mt-1.5 font-medium">
+                                        {analysis.isRecommended 
+                                            ? "Substituição clinicamente segura. Preserva a densidade energética e macro-calórica do plano original." 
+                                            : `Impacto identificado: ${analysis.reason}. A viabilidade depende do ajuste na gramagem sugerido.`}
+                                    </p>
+                                </div>
                             </div>
-                        )}
+                            
+                            <div className="pt-2 border-t border-primary/5 space-y-2">
+                                <p className="text-[10px] font-bold text-muted-foreground uppercase">Insights Extras:</p>
+                                <div className="flex flex-wrap gap-2">
+                                    {subFood.fiber > originalBase.fiber && (
+                                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-[10px] py-0">
+                                            + Fibras ({formatDiff(subFood.fiber - originalBase.fiber, 'g')})
+                                        </Badge>
+                                    )}
+                                    {subFood.sodium < (originalFood.sodium || 999) && (
+                                        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-[10px] py-0">
+                                            Menos Sódio
+                                        </Badge>
+                                    )}
+                                    {analysis.groupMatch && (
+                                        <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200 text-[10px] py-0">
+                                            Mesmo Grupo
+                                        </Badge>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

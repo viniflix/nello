@@ -98,7 +98,28 @@ export const getSubstitutionAnalysis = (baseFood, candidateFood) => {
     similarityScore,
     macroDiffTotal,
     microDiffTotal,
+    macroDiffTotal,
+    microDiffTotal,
     groupMatch
+  };
+};
+
+export const calculateEquivalentPortion = (originalKcal, substituteKcalPer100g) => {
+  if (!substituteKcalPer100g || substituteKcalPer100g <= 0) return 0;
+  // (Original Kcal / Sub Kcal per 100g) * 100g
+  return (originalKcal / substituteKcalPer100g) * 100;
+};
+
+export const getMacroProportions = (protein, carbs, fat) => {
+  const pKcal = (protein || 0) * 4;
+  const cKcal = (carbs || 0) * 4;
+  const fKcal = (fat || 0) * 9;
+  const total = pKcal + cKcal + fKcal || 1;
+
+  return {
+    p: (pKcal / total) * 100,
+    c: (cKcal / total) * 100,
+    f: (fKcal / total) * 100
   };
 };
 
