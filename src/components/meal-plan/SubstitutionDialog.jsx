@@ -84,6 +84,22 @@ const SubstitutionDialog = ({ isOpen, onClose, originalFood, initialSubstitutes 
         }
     };
 
+    const renderDelta = (val, limit = 2) => {
+        if (Math.abs(val) < 0.1) return <span className="text-[10px] text-green-600 font-mono">OK</span>;
+        const isOver = Math.abs(val) > limit;
+        return (
+            <span className={`text-[10px] px-1 rounded flex items-center gap-0.5 font-mono ${
+                isOver 
+                ? 'bg-destructive/10 text-destructive font-bold border border-destructive/20' 
+                : 'bg-muted text-muted-foreground border border-transparent'
+            }`}>
+                {val > 0 ? '+' : '-'}{Math.abs(val).toFixed(1)}
+                {isOver && val > 0 && <Plus className="h-2 w-2" />}
+                {isOver && val < 0 && <X className="h-2 w-2 rotate-45" />}
+            </span>
+        );
+    };
+
     const handleSave = () => {
         onSave(substitutes);
         onClose();
