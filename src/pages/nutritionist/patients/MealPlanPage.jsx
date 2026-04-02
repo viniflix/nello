@@ -103,7 +103,8 @@ const MealPlanPage = () => {
     const [restoringVersion, setRestoringVersion] = useState(false);
     const [energyCalculation, setEnergyCalculation] = useState(null);
     const [syncFlags, setSyncFlags] = useState(null);
-    const [pendingDrafts, setPendingDrafts] = useState([]); // rascunhos detectados na lista
+    const [pendingDrafts, setPendingDrafts] = useState([]); // lista de todos os rascunhos detectados
+    const [pendingDraft, setPendingDraft] = useState(null); // rascunho específico sendo retomado no momento no form
     const [discardingDraft, setDiscardingDraft] = useState(false);
     const [draftToDelete, setDraftToDelete] = useState(null); // Para o modal de confirmação de descarte de rascunho
     const [discardAllDraftsDialogOpen, setDiscardAllDraftsDialogOpen] = useState(false);
@@ -267,6 +268,11 @@ const MealPlanPage = () => {
         // Re-carregar a lista completa para garantir sincronia e contador correto
         const { data: updatedDrafts } = await getDraftMealPlans(patientId, nutritionistId);
         setPendingDrafts(updatedDrafts || []);
+
+        // Se estiver descartando o que está aberto no momento no form
+        if (pendingDraft && (pendingDraft.id === idToDelete || !targetDraftId)) {
+            setPendingDraft(null);
+        }
         
         toast({ title: 'Rascunho descartado com sucesso', variant: 'default' });
     };
@@ -285,6 +291,7 @@ const MealPlanPage = () => {
             });
         } else {
             setPendingDrafts([]);
+            setPendingDraft(null); // Limpa o rascunho ativo no form se houver
             setDiscardAllDraftsDialogOpen(false);
             toast({ title: 'Todos os rascunhos foram descartados', variant: 'default' });
         }
@@ -296,7 +303,7 @@ const MealPlanPage = () => {
         if (!targetDraft) return;
 
         setEditingPlan(null);
-        // O MealPlanForm lidará com o carregamento do rascunho via targetDraft
+        setPendingDraft(targetDraft); 
         setShowForm(true);
     };
 
@@ -442,6 +449,7 @@ const MealPlanPage = () => {
 
             setShowForm(false);
             setEditingPlan(null);
+            setPendingDraft(null);
             await loadPlans();
         } catch (error) {
             console.error('Erro ao salvar plano:', error);
@@ -501,6 +509,7 @@ const MealPlanPage = () => {
 
             setShowForm(false);
             setEditingPlan(null);
+            setPendingDraft(null);
             await loadPlans();
         } catch (error) {
             console.error('Erro ao salvar rascunho:', error);
