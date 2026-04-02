@@ -203,7 +203,11 @@ describe('deleteDraftMealPlan', () => {
     });
 
     it('deve retornar { data, error: null } se a deleção for bem-sucedida', async () => {
-        mockMaybeSingle.mockResolvedValue({ data: { id: 5 }, error: null });
+        // O delete encadeia 3 eq(). O último deve resolver a promise.
+        mockEq
+            .mockReturnValueOnce(chainable)
+            .mockReturnValueOnce(chainable)
+            .mockResolvedValueOnce({ error: null });
 
         const result = await deleteDraftMealPlan(5);
 
@@ -212,7 +216,10 @@ describe('deleteDraftMealPlan', () => {
 
     it('deve retornar { data: null, error } se a deleção falhar', async () => {
         const dbError = new Error('delete failed');
-        mockMaybeSingle.mockResolvedValue({ data: null, error: dbError });
+        mockEq
+            .mockReturnValueOnce(chainable)
+            .mockReturnValueOnce(chainable)
+            .mockResolvedValueOnce({ error: dbError });
 
         const result = await deleteDraftMealPlan(5);
 

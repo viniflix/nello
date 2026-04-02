@@ -1901,31 +1901,36 @@ export const updateDraftMealPlan = async (draftId, planData) => {
 
 /**
  * Deleta um plano rascunho (e suas refeições/alimentos por CASCADE).
- * Chamado ao apertar "Cancelar" no formulário.
+ * Chamado ao apertar "Descartar" ou "Cancelar" no formulário.
  * @param {number} draftId
  * @returns {Promise<{data: object, error: object}>}
  */
 export const deleteDraftMealPlan = async (draftId) => {
     try {
+        if (!draftId) throw new Error('draftId é obrigatório para deletar rascunho');
+
         const { data: userData } = await supabase.auth.getUser();
         const actorId = userData?.user?.id;
+        if (!actorId) throw new Error('Usuário não autenticado');
 
-        const { data, error } = await supabase
+        // DELETE simples sem .select().maybeSingle() — evita sucesso silencioso
+        // quando 0 rows são afetados (ex: RLS block ou actorId mismatch)
+        const { error } = await supabase
             .from('meal_plans')
             .delete()
             .eq('id', draftId)
             .eq('is_draft', true)
-            .eq('nutritionist_id', actorId) // Segurança extra: só deleta se for o dono
-            .select()
-            .maybeSingle();
+            .eq('nutritionist_id', actorId);
 
         if (error) throw error;
-        return { data, error: null };
+        // Retorna data sintético para compatibilidade com chamadores que checam .data
+        return { data: { id: draftId }, error: null };
     } catch (error) {
         logSupabaseError('Erro ao deletar rascunho do plano alimentar', error);
         return { data: null, error };
     }
 };
+
 
 /**
  * Promove um rascunho para plano ativo de forma ATÔMICA via RPC SQL.

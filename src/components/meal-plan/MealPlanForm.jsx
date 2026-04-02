@@ -91,8 +91,12 @@ const MealPlanForm = ({
         enabled: !isEditing && !pendingDraft
     });
 
-    // Banner de recovery: usa pendingDraft (prop da página) OU existingDraft interno (fallback)
-    const draftToRecover = pendingDraft || draft.existingDraft;
+    // Ref para garantir auto-resume executar só uma vez
+    const hasAutoResumed = useRef(false);
+
+    // Banner de recovery: só mostra quando o usuário veio por "Novo Plano" (não por "Retomar")
+    // Se pendingDraft veio como prop, o auto-resume já trata — sem mostrar o banner
+    const draftToRecover = draft.existingDraft; // NÃO inclui pendingDraft aqui propositalmente
 
     const daysOfWeek = [
         { value: 'monday', label: 'Segunda' },
@@ -137,13 +141,18 @@ const MealPlanForm = ({
         }
     }, [initialData, loadReferenceValues]);
 
-    // When creating without pendingDraft: start a new draft on mount (or after discarding)
+    // Auto-resume quando pendingDraft é passado como prop (usuário clicou "Retomar" na listagem)
+    // Não precisa clicar "Retomar" de NOVO dentro do formulário
     useEffect(() => {
-        if (isEditing || pendingDraft || draft.existingDraft !== null || draft.isInitializing) return;
-        if (!draft.draftId) {
-            draft.startNewDraft();
-        }
-    }, [isEditing, pendingDraft, draft.existingDraft, draft.isInitializing, draft.draftId]);
+        if (!pendingDraft || isEditing || hasAutoResumed.current) return;
+        hasAutoResumed.current = true;
+        handleResumeDraft();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [pendingDraft, isEditing]);
+
+    // Quando sem pendingDraft e sem rascunho interno: não cria draft automaticamente!
+    // O draft será criado LAZY, apenas quando a primeira refeição for adicionada.
+    // Isso evita o bug onde "Descartar" cria um novo draft vazio que reaparece no refresh.
 
     // Recover meals when resuming a draft (from prop or from internal hook)
     const handleResumeDraft = async () => {
@@ -189,9 +198,13 @@ const MealPlanForm = ({
     const handleDiscardDraftAndStartFresh = async () => {
         if (pendingDraft) {
             await import('@/lib/supabase/meal-plan-queries').then(m => m.deleteDraftMealPlan(pendingDraft.id));
-            onDraftDiscarded?.(); // notifica página mãe para limpar pendingDraft
-        } else {
-            await draft.discardExistingAndStartNew();
+            onDraftDiscarded?.();
+        } else if (draft.existingDraft) {
+            // Deleta o rascunho antigo sem criar um novo (criação é lazy)
+            await import('@/lib/supabase/meal-plan-queries').then(m => m.deleteDraftMealPlan(draft.existingDraft.id));
+            draft.clearExistingDraft(); // sinaliza ao hook que não há mais draft pendente
+        } else if (draft.draftId) {
+            await draft.discardDraft(); // deleta o draft atual (novo, mas vazio)
         }
         setFormData({
             name: '',
@@ -230,12 +243,16 @@ const MealPlanForm = ({
     const handleSelectWeekends = () => handleChange('active_days', ['saturday', 'sunday']);
 
     const handleAddMeal = async (mealData) => {
-        const activeDraftId = draft.draftId;
+        let activeDraftId = draft.draftId;
 
-        // Guard: impede adição de refeições antes do draft estar pronto no banco
+        // Criação LAZY: se ainda não tem draft, cria agora (na 1ª refeição)
+        // Isso evita drafts vazios que reaparecem após descartar
         if (!isEditing && !activeDraftId) {
-            console.warn('[MealPlanForm] handleAddMeal chamado antes do draftId estar pronto. Abortando.');
-            return;
+            activeDraftId = await draft.startNewDraft();
+            if (!activeDraftId) {
+                console.error('[MealPlanForm] Não foi possível criar rascunho. Refeição não adicionada.');
+                return;
+            }
         }
 
         const newMealData = { ...mealData, tempId: Date.now(), order_index: meals.length };
@@ -402,7 +419,8 @@ const MealPlanForm = ({
         return `${signal}${numeric.toFixed(unit === 'kcal' ? 0 : 1)}${unit ? ` ${unit}` : ''}`;
     };
 
-    // Existing draft recovery banner — usa prop pendingDraft (da página) ou existingDraft interno
+    // Existing draft recovery banner — só aparece quando o usuário veio por "Novo Plano"
+    // (draft.existingDraft detectado internamente). NÃO aparece quando veio por "Retomar" (pendingDraft prop).
     const showDraftBanner = !isEditing && draftToRecover && !draft.draftId;
 
     // Show loading state while resuming
@@ -450,8 +468,9 @@ const MealPlanForm = ({
                     </Alert>
                 )}
 
-                {/* Draft Initialization Loading */}
-                {!isEditing && !draft.draftId && !draft.existingDraft && (
+                {/* Draft Initialization Loading — só mostra durante inicialização real do hook */}
+                {/* NÃO mostra quando pendingDraft está sendo retomado (auto-resume via prop) */}
+                {!isEditing && !draft.draftId && !draft.existingDraft && !pendingDraft && !isResuming && draft.isInitializing && (
                     <div className="mb-6 p-4 border border-dashed rounded-lg bg-muted/30 flex items-center justify-center gap-3 text-muted-foreground animate-pulse">
                         <RefreshCw className="h-4 w-4 animate-spin text-primary" />
                         <span className="text-sm">Iniciando rascunho de segurança...</span>

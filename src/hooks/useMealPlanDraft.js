@@ -87,6 +87,7 @@ export function useMealPlanDraft({ patientId, nutritionistId, enabled = false })
 
     /**
      * Descarta o rascunho pré-existente e começa um novo.
+     * NOTA: prefira clearExistingDraft() para criarção lazy.
      */
     const discardExistingAndStartNew = useCallback(async () => {
         if (existingDraft) {
@@ -95,6 +96,14 @@ export function useMealPlanDraft({ patientId, nutritionistId, enabled = false })
         }
         return startNewDraft();
     }, [existingDraft, startNewDraft]);
+
+    /**
+     * Limpa o existingDraft do estado local sem criar um novo draft.
+     * Usado em conjunto com criação lazy: o draft só é criado na 1ª refeição adicionada.
+     */
+    const clearExistingDraft = useCallback(() => {
+        setExistingDraft(null);
+    }, []);
 
     /**
      * Salva os dados básicos do plano (nome, descrição, datas, dias) com debounce.
@@ -262,6 +271,7 @@ export function useMealPlanDraft({ patientId, nutritionistId, enabled = false })
         startNewDraft,
         resumeExistingDraft,
         discardExistingAndStartNew,
+        clearExistingDraft,
         savePlanInfo,
         saveMeal,
         updateMeal,
@@ -270,4 +280,3 @@ export function useMealPlanDraft({ patientId, nutritionistId, enabled = false })
         setActiveDraftId
     };
 }
-

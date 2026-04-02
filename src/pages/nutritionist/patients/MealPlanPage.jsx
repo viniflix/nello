@@ -137,21 +137,23 @@ const MealPlanPage = () => {
         loadPatientName();
     }, [patientId]);
 
-    // Carregar planos
+    // Carregar planos + rascunho em paralelo (single source of truth)
     const loadPlans = useCallback(async () => {
         if (!patientId) return;
 
         setLoading(true);
         try {
-            const [plansResult, activeResult] = await Promise.all([
+            const [plansResult, activeResult, draftResult] = await Promise.all([
                 getMealPlans(patientId),
-                getActiveMealPlan(patientId)
+                getActiveMealPlan(patientId),
+                nutritionistId ? getDraftMealPlan(patientId, nutritionistId) : Promise.resolve({ data: null })
             ]);
 
             if (plansResult.error) throw plansResult.error;
 
             setPlans(plansResult.data || []);
             setActivePlan(activeResult.data);
+            setPendingDraft(draftResult.data || null);
         } catch (error) {
             console.error('Erro ao carregar planos:', error);
             toast({
@@ -162,7 +164,7 @@ const MealPlanPage = () => {
         } finally {
             setLoading(false);
         }
-    }, [patientId, toast]);
+    }, [patientId, nutritionistId, toast]);
 
     useEffect(() => {
         loadPlans();
@@ -234,14 +236,11 @@ const MealPlanPage = () => {
         loadSyncFlags();
     }, [patientId]);
 
-    // Detectar rascunho pendente na listagem
+    // O checkPendingDraft foi incorporado ao loadPlans acima para garantir sincronia
+    // Mantemos apenas o trigger quando nutritionistId muda (resolvido antes dos planos)
     useEffect(() => {
-        const checkPendingDraft = async () => {
-            if (!patientId || !nutritionistId) return;
-            const { data } = await getDraftMealPlan(patientId, nutritionistId);
-            setPendingDraft(data || null);
-        };
-        checkPendingDraft();
+        if (patientId && nutritionistId) loadPlans();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [patientId, nutritionistId]);
 
     const handleDiscardPendingDraft = async () => {
@@ -249,16 +248,28 @@ const MealPlanPage = () => {
         setDiscardingDraft(true);
         const { error } = await deleteDraftMealPlan(pendingDraft.id);
         setDiscardingDraft(false);
-        // Só limpa estado local se o banco confirmar a deleção com sucesso
+
         if (error) {
             toast({
                 title: 'Erro ao descartar rascunho',
                 description: 'Não foi possível remover o rascunho. Tente novamente.',
                 variant: 'destructive'
             });
+            return;
+        }
+
+        // Confirma no banco que realmente foi deletado
+        const { data: stillExists } = await getDraftMealPlan(patientId, nutritionistId);
+        setPendingDraft(stillExists || null);
+
+        if (!stillExists) {
+            toast({ title: 'Rascunho descartado com sucesso', variant: 'default' });
         } else {
-            setPendingDraft(null);
-            toast({ title: 'Rascunho descartado', variant: 'default' });
+            toast({
+                title: 'Atenção',
+                description: 'O rascunho pode não ter sido removido completamente.',
+                variant: 'destructive'
+            });
         }
     };
 
@@ -1195,7 +1206,7 @@ const MealPlanPage = () => {
                     <CardTitle>Todos os Planos</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    {plans.length === 0 ? (
+                    {!pendingDraft && plans.length === 0 ? (
                         <Alert>
                             <AlertDescription>
                                 Nenhum plano alimentar criado ainda. Clique em "Novo Plano" para começar.
@@ -1203,6 +1214,46 @@ const MealPlanPage = () => {
                         </Alert>
                     ) : (
                         <div className="space-y-3">
+                            {/* RASCUNHO PENDENTE NO TOPO DA LISTA */}
+                            {pendingDraft && (
+                                <div className="p-4 border-2 border-amber-200 bg-amber-50/50 border-dashed rounded-lg transition-colors">
+                                    <div className="flex items-start justify-between">
+                                        <div className="flex-1">
+                                            <div className="flex items-center gap-2">
+                                                <h3 className="font-semibold text-amber-900">{pendingDraft.name || 'Novo Plano Alimentar'}</h3>
+                                                <Badge className="bg-amber-500 hover:bg-amber-600">Rascunho Não Salvo</Badge>
+                                            </div>
+                                            <div className="text-sm text-amber-700/80 mt-1">
+                                                Pendente de ativação ou conclusão
+                                            </div>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="border-amber-300 bg-white text-amber-800 hover:bg-amber-100"
+                                                onClick={handleResumePendingDraft}
+                                                title="Retomar edição"
+                                            >
+                                                <Edit className="h-4 w-4 mr-2" />
+                                                Retomar
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="text-destructive hover:bg-red-50 hover:text-destructive"
+                                                onClick={handleDiscardPendingDraft}
+                                                disabled={discardingDraft}
+                                                title="Descartar rascunho"
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* PLANOS SALVOS */}
                             {plans.map((plan) => (
                                 <div
                                     key={plan.id}
