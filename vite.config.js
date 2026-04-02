@@ -1,6 +1,7 @@
 import path from 'node:path';
 import react from '@vitejs/plugin-react';
 import { createLogger, defineConfig } from 'vite';
+import { sentryVitePlugin } from "@sentry/vite-plugin";
 
 const isDev = process.env.NODE_ENV !== 'production';
 let inlineEditPlugin, editModeDevPlugin;
@@ -194,7 +195,13 @@ export default defineConfig({
 	plugins: [
 		// ...(isDev ? [inlineEditPlugin(), editModeDevPlugin()] : []), // Removed to fix visual-editor 404s and SES warnings in console
 		react(),
-		addTransformIndexHtml
+		addTransformIndexHtml,
+        sentryVitePlugin({
+          org: process.env.SENTRY_ORG || "nello",
+          project: process.env.SENTRY_PROJECT || "javascript-react",
+          authToken: process.env.SENTRY_AUTH_TOKEN,
+          telemetry: false,
+        }),
 	],
 	server: {
 		cors: true,
