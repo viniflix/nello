@@ -98,8 +98,6 @@ export const getSubstitutionAnalysis = (baseFood, candidateFood) => {
     similarityScore,
     macroDiffTotal,
     microDiffTotal,
-    macroDiffTotal,
-    microDiffTotal,
     groupMatch
   };
 };
