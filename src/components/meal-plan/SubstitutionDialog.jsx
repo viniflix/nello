@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, X, Trash2, Check, AlertCircle } from 'lucide-react';
+import { Search, X, Trash2, Plus, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -14,7 +14,6 @@ import {
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import FoodSelector from './FoodSelector';
-import { calculateCaloriesFromMacros } from '@/lib/utils/nutrition-calculations';
 
 const SubstitutionDialog = ({ isOpen, onClose, originalFood, initialSubstitutes = [], onSave }) => {
     const [substitutes, setSubstitutes] = useState([]);
@@ -59,10 +58,10 @@ const SubstitutionDialog = ({ isOpen, onClose, originalFood, initialSubstitutes 
         const carbDelta = subFood.carbs - originalBaseCarb;
         const fatDelta = subFood.fat - originalBaseFat;
 
-        const isBalanced = Math.abs(kcalDelta) <= 50 && 
-                          Math.abs(protDelta) <= 3 && 
-                          Math.abs(carbDelta) <= 3 && 
-                          Math.abs(fatDelta) <= 3;
+        const isBalanced = Math.abs(kcalDelta) <= 30 && 
+                          Math.abs(protDelta) <= 2 && 
+                          Math.abs(carbDelta) <= 2 && 
+                          Math.abs(fatDelta) <= 2;
         
         return {
             isBalanced,
@@ -71,10 +70,10 @@ const SubstitutionDialog = ({ isOpen, onClose, originalFood, initialSubstitutes 
             carbDelta,
             fatDelta,
             violations: [
-                Math.abs(kcalDelta) > 50 && `${kcalDelta > 0 ? '+' : ''}${Math.round(kcalDelta)} kcal fora do limite (±50 kcal)`,
-                Math.abs(protDelta) > 3 && `proteína ${protDelta > 0 ? '+' : ''}${protDelta.toFixed(1)}g fora do limite (±3g)`,
-                Math.abs(carbDelta) > 3 && `carboidrato ${carbDelta > 0 ? '+' : ''}${carbDelta.toFixed(1)}g fora do limite (±3g)`,
-                Math.abs(fatDelta) > 3 && `gordura ${fatDelta > 0 ? '+' : ''}${fatDelta.toFixed(1)}g fora do limite (±3g)`
+                Math.abs(kcalDelta) > 30 && `${kcalDelta > 0 ? '+' : ''}${Math.round(kcalDelta)} kcal fora (±30 kcal)`,
+                Math.abs(protDelta) > 2 && `proteína ${protDelta > 0 ? '+' : ''}${protDelta.toFixed(1)}g fora (±2g)`,
+                Math.abs(carbDelta) > 2 && `carboidrato ${carbDelta > 0 ? '+' : ''}${carbDelta.toFixed(1)}g fora (±2g)`,
+                Math.abs(fatDelta) > 2 && `gordura ${fatDelta > 0 ? '+' : ''}${fatDelta.toFixed(1)}g fora (±2g)`
             ].filter(Boolean)
         };
     };
@@ -232,6 +231,8 @@ const SubstitutionDialog = ({ isOpen, onClose, originalFood, initialSubstitutes 
                 isOpen={showFoodSelector}
                 onClose={() => setShowFoodSelector(false)}
                 onSelect={handleAddSubstitute}
+                targetGroup={originalFood?.food?.group}
+                targetCalories={(originalFood?.calories / originalFood?.quantity) * 100}
             />
         </>
     );

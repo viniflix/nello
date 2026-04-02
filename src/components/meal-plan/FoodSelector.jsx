@@ -16,13 +16,14 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/lib/customSupabaseClient';
 import QuickFoodCreateDialog from './QuickFoodCreateDialog';
 
-const FoodSelector = ({ isOpen, onClose, onSelect }) => {
+const FoodSelector = ({ isOpen, onClose, onSelect, targetGroup, targetCalories }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [foods, setFoods] = useState([]);
     const [loading, setLoading] = useState(false);
     const [selectedFood, setSelectedFood] = useState(null);
     const [sourceFilter, setSourceFilter] = useState(null);
     const [quickCreateOpen, setQuickCreateOpen] = useState(false);
+    const [onlySameGroup, setOnlySameGroup] = useState(!!targetGroup);
 
     const sources = [
         { value: null, label: 'Todos' },
@@ -38,7 +39,7 @@ const FoodSelector = ({ isOpen, onClose, onSelect }) => {
         if (isOpen) {
             searchFoods();
         }
-    }, [isOpen, searchTerm, sourceFilter]);
+    }, [isOpen, searchTerm, sourceFilter, onlySameGroup]);
 
     const searchFoods = async () => {
         if (searchTerm.length < 2) {
@@ -58,6 +59,10 @@ const FoodSelector = ({ isOpen, onClose, onSelect }) => {
 
             if (sourceFilter) {
                 query = query.eq('source', sourceFilter);
+            }
+
+            if (onlySameGroup && targetGroup) {
+                query = query.eq('group', targetGroup);
             }
 
             const { data, error } = await query;
@@ -109,7 +114,10 @@ const FoodSelector = ({ isOpen, onClose, onSelect }) => {
                 <DialogHeader className="shrink-0">
                     <DialogTitle>Buscar Alimento</DialogTitle>
                     <DialogDescription>
-                        Procure alimentos por nome nas bases de dados nutricionais
+                        {targetCalories 
+                            ? `Buscando substitutos para ~${Math.round(targetCalories)} kcal${targetGroup ? ` do grupo ${targetGroup}` : ''}`
+                            : 'Procure alimentos por nome nas bases de dados nutricionais'
+                        }
                     </DialogDescription>
                 </DialogHeader>
 
@@ -131,7 +139,7 @@ const FoodSelector = ({ isOpen, onClose, onSelect }) => {
                     </div>
 
                     {/* Filtro de fonte */}
-                    <div className="shrink-0 flex gap-2 flex-wrap">
+                    <div className="shrink-0 flex gap-2 flex-wrap items-center">
                         {sources.map((source) => (
                             <Badge
                                 key={source.value || 'all'}
@@ -142,6 +150,16 @@ const FoodSelector = ({ isOpen, onClose, onSelect }) => {
                                 {source.label}
                             </Badge>
                         ))}
+                        
+                        {targetGroup && (
+                            <Badge
+                                variant={onlySameGroup ? 'default' : 'outline'}
+                                className={`cursor-pointer border-amber-300 ml-2 ${onlySameGroup ? 'bg-amber-500 hover:bg-amber-600' : 'text-amber-700'}`}
+                                onClick={() => setOnlySameGroup(!onlySameGroup)}
+                            >
+                                {onlySameGroup ? 'Apenas ' : 'Filtrar por '}{targetGroup}
+                            </Badge>
+                        )}
                     </div>
 
                     {/* Lista de resultados */}
@@ -213,8 +231,15 @@ const FoodSelector = ({ isOpen, onClose, onSelect }) => {
                                                 )}
                                             </div>
                                             <div className="ml-4 text-right text-sm">
-                                                <div className="font-semibold">{food.calories} kcal</div>
-                                                <div className="text-muted-foreground text-xs">
+                                                <div className="flex flex-col items-end gap-1">
+                                                    <div className="font-semibold">{food.calories} kcal</div>
+                                                    {targetCalories && Math.abs(food.calories - targetCalories) <= 30 && (
+                                                        <Badge variant="outline" className="text-[9px] h-4 bg-green-50 text-green-700 border-green-200">
+                                                            Calorias Similares
+                                                        </Badge>
+                                                    )}
+                                                </div>
+                                                <div className="text-muted-foreground text-xs mt-1">
                                                     P: {food.protein}g | C: {food.carbs}g | G: {food.fat}g
                                                 </div>
                                             </div>
