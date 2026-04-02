@@ -156,8 +156,7 @@ export function AuthProvider({ children }) {
     let mounted = true;
 
     const initAuth = async () => {
-      // Garantir início em estado de carregamento
-      setLoading(true);
+      // Não usamos setLoading(true) aqui, initializing=true (default) é suficiente para o splash screen.
       
       // Failsafe de segurança: evita travar em "Verificando sessão..." para sempre
       const failsafe = setTimeout(() => {
@@ -217,14 +216,15 @@ export function AuthProvider({ children }) {
 
       try {
         if (session?.user) {
-          // Só mostra loading visual se NÃO tivermos o usuário ainda (evita flicker na volta de abas)
-          const isNewLogin = !user;
+          // Só mostra loading visual se for um login explicito (quando não temos usuário ainda)
+          // Se já temos um usuário, o processSession ocorre silenciosamente em background.
+          const isNewLogin = !user && !initializing;
           
           if (isNewLogin) {
             setLoading(true);
           }
           
-          // processSession garante que temos o perfil sincronizado
+          // processSession sincroniza perfil e dados
           await processSession(session, event);
           
           if (isNewLogin) {
