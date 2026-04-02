@@ -47,9 +47,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
-import { getBugReports, getBugReportById, markBugAsResolved, deleteBugReport, getBugStats } from '@/services/bugReportService';
 import { getSystemLiveLogs } from '@/services/adminService';
-import { getOperationalHealthSummary } from '@/lib/supabase/observability-queries';
+import { supabase } from '@/lib/supabase/client';
 
 /**
  * AdminBugReportsPage - Sistema completo de relatório de bugs e audit log
@@ -108,62 +107,42 @@ export default function AdminBugReportsPage() {
         lastManualRefreshRef.current = Date.now();
       }
       
-      const windowHours = dateFilter === '1h' ? 1 : 
-                          dateFilter === '24h' ? 24 : 
-                          dateFilter === '7d' ? 168 : 
-                          dateFilter === '30d' ? 720 : null;
-      
-      const { data, error } = await getBugReports({ windowHours });
+      const { data, error } = await supabase.functions.invoke('sentry-issues');
       
       if (error) throw error;
       setBugs(data || []);
+      
+      // Update stats based on Sentry issues
+      const issues = data || [];
+      const unresolved = issues.filter((i) => i.status === 'unresolved').length;
+      setStats({
+        total: issues.length,
+        unresolved: unresolved,
+        resolved: issues.length - unresolved,
+        critical: issues.filter((i) => i.level === 'fatal' || i.level === 'error').length,
+        last24h: issues.filter((i) => {
+            const date = new Date(i.firstSeen);
+            return (Date.now() - date.getTime()) < 24 * 60 * 60 * 1000;
+        }).length
+      });
+
     } catch (err) {
-      console.error('[AdminBugReports] Erro ao carregar bugs:', err);
+      console.error('[AdminBugReports] Erro ao carregar do Sentry:', err);
       toast({
         title: 'Erro',
-        description: 'Não foi possível carregar os relatórios de bugs.',
+        description: 'Não foi possível carregar as Issues do Sentry. Verifique a Edge Function.',
         variant: 'destructive'
       });
     } finally {
       setIsLoading(false);
     }
-  }, [dateFilter, toast]);
+  }, [toast]);
 
-  // Load stats
-  const loadStats = useCallback(async () => {
-    try {
-      const { data, error } = await getBugStats();
-      if (error) throw error;
-      setStats(data || {
-        total: 0,
-        unresolved: 0,
-        resolved: 0,
-        critical: 0,
-        last24h: 0
-      });
-    } catch (err) {
-      console.error('[AdminBugReports] Erro ao carregar estatísticas:', err);
-    }
-  }, []);
+  // Load stats (handled by loadBugs now)
+  const loadStats = useCallback(async () => {}, []);
 
-  // Load observability
-  const loadObservability = useCallback(async () => {
-    try {
-      const { data, error } = await getOperationalHealthSummary({
-        nutritionistId: null,
-        windowHours: 24
-      });
-      if (error) throw error;
-      setObservabilitySummary({
-        total_events: Number(data?.total_events || 0),
-        error_events: Number(data?.error_events || 0),
-        error_rate: Number(data?.error_rate || 0),
-        avg_latency_ms: Number(data?.avg_latency_ms || 0)
-      });
-    } catch (err) {
-      console.error('[AdminBugReports] Erro ao carregar observabilidade:', err);
-    }
-  }, []);
+  // Observability is now obsolete
+  const loadObservability = useCallback(async () => {}, []);
 
   // Load audit logs
   const loadAuditLogs = useCallback(async () => {
@@ -706,76 +685,50 @@ FIM DO RELATÓRIO
                       }`}
                     >
                       <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1 min-w-0 cursor-pointer" onClick={() => handleOpenBugDetails(bug)}>
+                        <div className="flex-1 min-w-0 cursor-pointer" onClick={() => bug.permalink && window.open(bug.permalink, '_blank')}>
                           <div className="flex items-center gap-2 flex-wrap mb-2">
-                            {getSeverityBadge(bug.severity)}
-                            {getTypeBadge(bug.bug_type)}
-                            {getStatusBadge(bug.is_resolved)}
+                            {getSeverityBadge(bug.level)}
+                            {getTypeBadge(bug.type)}
+                            {getStatusBadge(bug.status === 'resolved')}
                           </div>
 
                           <p className="text-sm font-medium text-foreground line-clamp-2">
-                            {bug.error_message || 'Erro sem mensagem'}
+                            {bug.title || 'Erro sem mensagem'}
                           </p>
 
                           <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground flex-wrap">
                             <span className="flex items-center gap-1">
                               <Clock className="w-3 h-3" />
-                              {format(new Date(bug.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                              {bug.lastSeen ? format(new Date(bug.lastSeen), "dd/MM/yyyy HH:mm", { locale: ptBR }) : 'N/A'}
                             </span>
                             
                             <span className="flex items-center gap-1">
                               <Globe className="w-3 h-3" />
-                              {bug.route || 'N/A'}
+                              {bug.permalink ? <a href={bug.permalink} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline">Abrir no Sentry</a> : 'N/A'}
                             </span>
 
-                            {bug.user_name && (
-                              <span className="flex items-center gap-1">
-                                <User className="w-3 h-3" />
-                                {bug.user_name}
-                              </span>
-                            )}
+                            <span className="flex items-center gap-1">
+                              <User className="w-3 h-3" />
+                              Afetados: {bug.userCount || 0} (Ocorrências: {bug.count || 0})
+                            </span>
                           </div>
                         </div>
 
                         <div className="flex items-center gap-2 flex-shrink-0">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => copyBugDetails(bug)}
-                            className="gap-1 bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-700"
-                            title="Copiar detalhes do bug"
-                          >
-                            <Copy className="w-4 h-4" />
-                          </Button>
-                          
-                          {!bug.is_resolved && (
+                          {bug.permalink && (
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => handleMarkResolved(bug.id)}
-                              className="gap-1 text-green-600 hover:bg-green-50"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                window.open(bug.permalink, '_blank');
+                              }}
+                              className="gap-1 bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-700"
+                              title="Gerenciar no Sentry"
                             >
-                              <CheckCircle className="w-4 h-4" />
+                              <Eye className="w-4 h-4" /> Ver no Sentry
                             </Button>
                           )}
-                          
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleOpenBugDetails(bug)}
-                            className="gap-1"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </Button>
-                          
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleDeleteBug(bug.id)}
-                            className="gap-1 text-red-600 hover:bg-red-50"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
                         </div>
                       </div>
                     </div>
