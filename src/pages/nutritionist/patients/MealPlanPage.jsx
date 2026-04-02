@@ -914,7 +914,11 @@ const MealPlanPage = () => {
                             Gerencie os planos alimentares do paciente
                         </p>
                     </div>
-                    <Button size="sm" onClick={() => setShowForm(true)} className="w-full sm:w-auto">
+                    <Button size="sm" onClick={() => {
+                        setPendingDraft(null);
+                        setEditingPlan(null);
+                        setShowForm(true);
+                    }} className="w-full sm:w-auto">
                         <Plus className="h-4 w-4 mr-2" />
                         Novo Plano
                     </Button>

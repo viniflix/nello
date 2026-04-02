@@ -11,6 +11,7 @@ import { logSupabaseError } from '@/lib/supabase/query-helpers';
 const FOOD_FIELDS = `
     id,
     name,
+    group,
     source,
     description,
     portion_size,
@@ -2107,6 +2108,43 @@ export const getFoodSubstitutions = async (mealPlanFoodId) => {
         return { data: foods || [], error: null };
     } catch (error) {
         logSupabaseError('Erro ao buscar substituições', error);
+        return { data: [], error };
+    }
+};
+
+/**
+ * Busca sugestões de alimentos para substituição baseados em grupo e calorias.
+ * @param {string} targetGroup Grupo do alimento original
+ * @param {number} targetCalories Calorias do alimento original (normalizada p/ 100g se necessário)
+ * @param {number} limit Quantidade máxima de sugestões a retornar
+ */
+export const getSuggestedSubstitutes = async (targetGroup, targetCalories, limit = 6) => {
+    try {
+        if (!targetGroup) return { data: [], error: null };
+
+        // Buscamos um conjunto maior do mesmo grupo para ordenar por proximidade calórica no JS
+        const { data: groupFoods, error } = await supabase
+            .from('foods')
+            .select(FOOD_FIELDS)
+            .eq('group', targetGroup)
+            .eq('is_active', true)
+            .limit(100);
+
+        if (error) throw error;
+        if (!groupFoods || groupFoods.length === 0) return { data: [], error: null };
+
+        // Ordenação por proximidade absoluta de calorias
+        const sorted = [...groupFoods]
+            .sort((a, b) => {
+                const diffA = Math.abs((a.calories || 0) - (targetCalories || 0));
+                const diffB = Math.abs((b.calories || 0) - (targetCalories || 0));
+                return diffA - diffB;
+            })
+            .slice(0, limit);
+
+        return { data: sorted, error: null };
+    } catch (error) {
+        logSupabaseError('Erro ao buscar sugestões de substitutos', error);
         return { data: [], error };
     }
 };

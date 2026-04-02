@@ -14,24 +14,51 @@ import {
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import FoodSelector from './FoodSelector';
+import { getSuggestedSubstitutes } from '@/lib/supabase/meal-plan-queries';
+import { Loader2 } from 'lucide-react';
 
 const SubstitutionDialog = ({ isOpen, onClose, originalFood, initialSubstitutes = [], onSave }) => {
     const [substitutes, setSubstitutes] = useState([]);
     const [showFoodSelector, setShowFoodSelector] = useState(false);
+    const [suggestions, setSuggestions] = useState([]);
+    const [loadingSuggestions, setLoadingSuggestions] = useState(false);
 
     useEffect(() => {
         if (isOpen) {
             setSubstitutes(initialSubstitutes || []);
+            loadSuggestions();
         }
     }, [isOpen, initialSubstitutes]);
 
+    const loadSuggestions = async () => {
+        if (!originalFood?.food?.group) return;
+        
+        setLoadingSuggestions(true);
+        try {
+            const baseKcal = (originalFood.calories / originalFood.quantity) * 100;
+            const { data } = await getSuggestedSubstitutes(originalFood.food.group, baseKcal);
+            // Filtrar itens que já estão na lista de substitutos iniciais
+            const filtered = (data || []).filter(item => 
+                !initialSubstitutes.some(s => String(s.id) === String(item.id))
+            );
+            setSuggestions(filtered);
+        } catch (error) {
+            console.error('Erro ao carregar sugestões:', error);
+        } finally {
+            setLoadingSuggestions(false);
+        }
+    };
+
     const handleAddSubstitute = (food) => {
-        // Evitar duplicatas
-        if (substitutes.some(s => s.id === food.id)) {
+        if (!food) return;
+        // Evitar duplicatas (usando String para maior segurança no match de IDs)
+        if (substitutes.some(s => String(s.id) === String(food.id))) {
             setShowFoodSelector(false);
             return;
         }
         setSubstitutes(prev => [...prev, food]);
+        // Se estava nas sugestões, remove de lá para não confundir
+        setSuggestions(prev => prev.filter(s => String(s.id) !== String(food.id)));
         setShowFoodSelector(false);
     };
 
@@ -79,13 +106,17 @@ const SubstitutionDialog = ({ isOpen, onClose, originalFood, initialSubstitutes 
     };
 
     const renderDelta = (val, limit = 3) => {
-        if (Math.abs(val) < 0.1) return null;
+        if (Math.abs(val) < 0.1) return <span className="text-[10px] text-green-600 font-mono">OK</span>;
         const isOver = Math.abs(val) > limit;
         return (
-            <span className={`text-[10px] flex items-center gap-0.5 ${isOver ? 'text-destructive font-bold' : 'text-muted-foreground'}`}>
-                {val > 0 ? <Plus className="h-2 w-2" /> : <X className="h-2 w-2 rotate-45" />}
-                {Math.abs(val).toFixed(1)}
-                {val > 0 ? ' ↑' : ' ↓'}
+            <span className={`text-[10px] px-1 rounded flex items-center gap-0.5 font-mono ${
+                isOver 
+                ? 'bg-destructive/10 text-destructive font-bold border border-destructive/20' 
+                : 'bg-muted text-muted-foreground border border-transparent'
+            }`}>
+                {val > 0 ? '+' : '-'}{Math.abs(val).toFixed(1)}
+                {isOver && val > 0 && <Plus className="h-2 w-2" />}
+                {isOver && val < 0 && <X className="h-2 w-2 rotate-45" />}
             </span>
         );
     };
@@ -97,7 +128,7 @@ const SubstitutionDialog = ({ isOpen, onClose, originalFood, initialSubstitutes 
                     <DialogHeader>
                         <DialogTitle>Substituições de Alimento</DialogTitle>
                         <DialogDescription>
-                            Diferença de mais ou menos 50 kcal e ±3g de macros (carboidratos, proteínas e gorduras).
+                            Diferença tolerada de ±30 kcal e ±2g de macros para ser considerado ideal.
                         </DialogDescription>
                     </DialogHeader>
 
@@ -129,6 +160,35 @@ const SubstitutionDialog = ({ isOpen, onClose, originalFood, initialSubstitutes 
                                             <div className="font-bold">{((originalFood.fat / originalFood.quantity) * 100).toFixed(1)}</div>
                                         </div>
                                     </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* SUGESTÕES AUTOMÁTICAS */}
+                        {loadingSuggestions ? (
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground animate-pulse">
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                Buscando sugestões de mesmo grupo...
+                            </div>
+                        ) : suggestions.length > 0 && (
+                            <div className="space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <Label className="text-xs uppercase text-muted-foreground font-bold">Sugestões de Mesma Caloria ({originalFood?.food?.group})</Label>
+                                </div>
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                    {suggestions.map(s => (
+                                        <button
+                                            key={s.id}
+                                            onClick={() => handleAddSubstitute(s)}
+                                            className="text-left p-2 border rounded-lg bg-card hover:bg-green-50 hover:border-green-200 transition-all group"
+                                        >
+                                            <div className="text-[11px] font-semibold truncate leading-tight group-hover:text-green-700">{s.name}</div>
+                                            <div className="flex items-center justify-between mt-1">
+                                                <span className="text-[10px] text-muted-foreground">{Math.round(s.calories)} kcal</span>
+                                                <Plus className="h-3 w-3 text-muted-foreground group-hover:text-green-600" />
+                                            </div>
+                                        </button>
+                                    ))}
                                 </div>
                             </div>
                         )}
@@ -169,22 +229,21 @@ const SubstitutionDialog = ({ isOpen, onClose, originalFood, initialSubstitutes 
                                                         <div className="text-xs text-muted-foreground mt-1 flex gap-4 items-center">
                                                             <div className="flex items-center gap-1.5 focus:bg-muted p-0.5 rounded">
                                                                 <span className="font-semibold text-foreground">{sub.calories} kcal</span>
-                                                                {renderDelta(balance.kcalDelta, 50)}
+                                                                {renderDelta(balance.kcalDelta, 30)}
                                                             </div>
                                                             <div className="flex items-center gap-1.5 p-0.5 rounded">
                                                                 <span>P: {sub.protein.toFixed(1)}g</span>
-                                                                {renderDelta(balance.protDelta, 3)}
+                                                                {renderDelta(balance.protDelta, 2)}
                                                             </div>
                                                             <div className="flex items-center gap-1.5 p-0.5 rounded">
                                                                 <span>C: {sub.carbs.toFixed(1)}g</span>
-                                                                {renderDelta(balance.carbDelta, 3)}
+                                                                {renderDelta(balance.carbDelta, 2)}
                                                             </div>
                                                             <div className="flex items-center gap-1.5 p-0.5 rounded">
                                                                 <span>G: {sub.fat.toFixed(1)}g</span>
-                                                                {renderDelta(balance.fatDelta, 3)}
+                                                                {renderDelta(balance.fatDelta, 2)}
                                                             </div>
                                                         </div>
-                                                        
                                                         {balance.violations.length > 0 && (
                                                             <div className="mt-2 text-[10px] text-destructive flex flex-wrap gap-x-2 gap-y-0.5">
                                                                 {balance.violations.map((v, i) => (
