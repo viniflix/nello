@@ -209,12 +209,17 @@ export function AuthProvider({ children }) {
 
       try {
         if (session?.user) {
-          setLoading(true);
+          // Diferenciação de eventos: evita reload obstrutivo em TOKEN_REFRESHED
+          if (event === 'SIGNED_IN') {
+            setLoading(true);
+          }
+          
+          // Refresh silencioso: processa em background sem loader
           await processSession(session, event);
-          setLoading(false);
-        } else if (event === 'SIGNED_OUT') {
-          setUser(null);
-          setLoading(false);
+          
+          if (event === 'SIGNED_IN') {
+            setLoading(false);
+          }
         } else if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
           if (!session) {
             setUser(null);
