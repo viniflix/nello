@@ -15,8 +15,10 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/lib/customSupabaseClient';
 import QuickFoodCreateDialog from './QuickFoodCreateDialog';
+import { getSubstitutionAnalysis } from '@/lib/utils/foodSubstitution';
+import { AlertCircle, FolderSync } from 'lucide-react';
 
-const FoodSelector = ({ isOpen, onClose, onSelect, targetGroup, targetCalories }) => {
+const FoodSelector = ({ isOpen, onClose, onSelect, targetGroup, targetCalories, originalFood }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [foods, setFoods] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -198,58 +200,83 @@ const FoodSelector = ({ isOpen, onClose, onSelect, targetGroup, targetCalories }
 
                         {!loading && foods.length > 0 && (
                             <div className="space-y-2">
-                                {foods.map((food) => (
-                                    <div
-                                        key={food.id}
-                                        className={`
-                                            p-3 border rounded-lg cursor-pointer transition-colors
-                                            ${selectedFood?.id === food.id
-                                                ? 'bg-primary/10 border-primary'
-                                                : 'hover:bg-muted'
-                                            }
-                                        `}
-                                        onClick={() => setSelectedFood(food)}
-                                    >
-                                        <div className="flex items-start justify-between">
-                                            <div className="flex-1">
-                                                <div className="flex items-center gap-2">
-                                                    <h4 className="font-semibold">{food.name}</h4>
-                                                    {selectedFood?.id === food.id && (
-                                                        <Check className="h-4 w-4 text-primary" />
-                                                    )}
-                                                </div>
-                                                <div className="flex gap-2 mt-1">
-                                                    <Badge variant="outline" className="text-xs">
-                                                        {food.source || 'N/A'}
-                                                    </Badge>
-                                                    {food.group && (
-                                                        <span className="text-xs text-muted-foreground">
-                                                            {food.group}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                {food.description && (
-                                                    <p className="text-sm text-muted-foreground mt-1 line-clamp-1">
-                                                        {food.description}
-                                                    </p>
-                                                )}
-                                            </div>
-                                            <div className="ml-4 text-right text-sm">
-                                                <div className="flex flex-col items-end gap-1">
-                                                    <div className="font-semibold">{food.calories} kcal</div>
-                                                    {targetCalories && Math.abs(food.calories - targetCalories) <= 30 && (
-                                                        <Badge variant="outline" className="text-[9px] h-4 bg-green-50 text-green-700 border-green-200">
-                                                            Calorias Similares
+                                {foods.map((food) => {
+                                    const analysis = originalFood ? getSubstitutionAnalysis({
+                                        calories: (originalFood.calories / originalFood.quantity) * 100,
+                                        protein: (originalFood.protein / originalFood.quantity) * 100,
+                                        carbs: (originalFood.carbs / originalFood.quantity) * 100,
+                                        fat: (originalFood.fat / originalFood.quantity) * 100,
+                                        group: originalFood.food?.group
+                                    }, food) : null;
+
+                                    return (
+                                        <div
+                                            key={food.id}
+                                            className={`
+                                                p-3 border rounded-xl cursor-pointer transition-colors
+                                                ${selectedFood?.id === food.id
+                                                    ? 'bg-primary/10 border-primary'
+                                                    : 'hover:bg-muted'
+                                                }
+                                            `}
+                                            onClick={() => setSelectedFood(food)}
+                                        >
+                                            <div className="flex items-start justify-between">
+                                                <div className="flex-1">
+                                                    <div className="flex items-center gap-2">
+                                                        <h4 className="font-semibold">{food.name}</h4>
+                                                        {selectedFood?.id === food.id && (
+                                                            <Check className="h-4 w-4 text-primary" />
+                                                        )}
+                                                        {analysis && (
+                                                            <div className="flex gap-1">
+                                                                {analysis.isRecommended ? (
+                                                                    <Badge className="h-4 text-[9px] bg-green-100 text-green-700 border-green-200">
+                                                                        Equivalente
+                                                                    </Badge>
+                                                                ) : (
+                                                                    <Badge variant="outline" className="h-4 text-[9px] bg-amber-50 text-amber-700 border-amber-200">
+                                                                        Variação
+                                                                    </Badge>
+                                                                )}
+                                                                {!analysis.groupMatch && (
+                                                                    <Badge variant="outline" className="h-4 text-[9px] border-dashed">
+                                                                        <FolderSync className="h-2 w-2 mr-1" />
+                                                                        Grupo Dif.
+                                                                    </Badge>
+                                                                )}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex gap-2 mt-1">
+                                                        <Badge variant="outline" className="text-[10px] h-4">
+                                                            {food.source || 'N/A'}
                                                         </Badge>
+                                                        {food.group && (
+                                                            <span className="text-[10px] text-muted-foreground">
+                                                                {food.group}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    {analysis && !analysis.isRecommended && (
+                                                        <div className="mt-1.5 text-[10px] text-destructive flex items-center gap-1 font-medium">
+                                                            <AlertCircle className="h-2.5 w-2.5" />
+                                                            {analysis.reason}
+                                                        </div>
                                                     )}
                                                 </div>
-                                                <div className="text-muted-foreground text-xs mt-1">
-                                                    P: {food.protein}g | C: {food.carbs}g | G: {food.fat}g
+                                                <div className="ml-4 text-right text-sm">
+                                                    <div className="flex flex-col items-end gap-1">
+                                                        <div className="font-bold">{food.calories} kcal</div>
+                                                    </div>
+                                                    <div className="text-muted-foreground text-[10px] mt-1 tabular-nums">
+                                                        P:{food.protein.toFixed(1)} C:{food.carbs.toFixed(1)} G:{food.fat.toFixed(1)}
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         )}
                     </div>

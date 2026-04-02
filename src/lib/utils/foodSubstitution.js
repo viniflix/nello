@@ -1,8 +1,8 @@
 export const SUBSTITUTION_LIMITS = {
-  calories: 50,
-  protein: 3,
-  carbs: 3,
-  fat: 3
+  calories: 30,
+  protein: 2,
+  carbs: 2,
+  fat: 2
 };
 
 const toNumber = (value) => {
