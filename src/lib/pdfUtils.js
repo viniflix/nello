@@ -583,10 +583,11 @@ export const exportMealPlanToPdf = async (mealPlan, patientName, nutritionistNam
     // Refeições
     for (let index = 0; index < sortedMeals.length; index++) {
         const meal = sortedMeals[index];
-        const foods = meal.foods || []; // Corrigido: era meal.meal_plan_foods
+        const foods = meal.foods || [];
 
-        // Estimar altura necessária para esta refeição
-        const estimatedHeight = 15 + (foods.length + 1) * 7 + (meal.notes ? 10 : 0);
+        // Conta linhas extras de obs. de alimentos para estimativa de altura
+        const foodNotesLines = foods.filter(f => f.notes).length;
+        const estimatedHeight = 15 + (foods.length + 1) * 8 + foodNotesLines * 5 + (meal.notes ? 10 : 0);
 
         // Se não couber na página, adicionar nova página
         if (yPosition + estimatedHeight > pageHeight - 30) {
@@ -603,24 +604,33 @@ export const exportMealPlanToPdf = async (mealPlan, patientName, nutritionistNam
         doc.text(`${mealName}${mealTime ? ` • ${mealTime}` : ''}`, 14, yPosition);
         yPosition += 7;
 
-        // Tabela de alimentos (sempre apenas com macros)
+        // Tabela de alimentos
         if (foods.length > 0) {
-            const tableData = foods.map(food => {
+            // Montar rows: cada alimento pode ter uma sub-linha de observação
+            const tableData = [];
+            foods.forEach(food => {
                 const foodName = food.patient_description || food.food?.name || 'Alimento';
-                const substitutes = (food.substitutes || []).length > 0 
-                    ? `\nRelativo a: ${foodName}\nOpções: ${food.substitutes.map(s => s.name).join(', ')}` 
+                const substitutes = (food.substitutes || []).length > 0
+                    ? `${foodName}\nOpções: ${food.substitutes.map(s => s.name).join(', ')}`
                     : foodName;
 
-                return [
+                tableData.push([
                     substitutes,
                     formatQuantityWithUnit
                         ? formatQuantityWithUnit(food.quantity || 0, food.unit || '', food.measure)
                         : `${food.quantity || 0} ${food.unit || ''}`,
-                    Math.round(food.calories || 0),
-                    Math.round(food.protein || 0),
-                    Math.round(food.carbs || 0),
-                    Math.round(food.fat || 0)
-                ];
+                    `${Math.round(food.calories || 0)} kcal`,
+                    `${Math.round(food.protein || 0)} g`,
+                    `${Math.round(food.carbs || 0)} g`,
+                    `${Math.round(food.fat || 0)} g`
+                ]);
+
+                // Linha de obs. específica do alimento
+                if (food.notes) {
+                    tableData.push([
+                        { content: `↳ Obs: ${food.notes}`, colSpan: 6, styles: { fontStyle: 'italic', textColor: MUTED_COLOR, fontSize: 7.5, cellPadding: { top: 1, bottom: 2, left: 6, right: 2 } } }
+                    ]);
+                }
             });
 
             autoTable(doc, {
@@ -643,11 +653,11 @@ export const exportMealPlanToPdf = async (mealPlan, patientName, nutritionistNam
                 },
                 columnStyles: {
                     0: { halign: 'left', cellWidth: 'auto' },
-                    1: { halign: 'center', cellWidth: 30 },
-                    2: { halign: 'center', cellWidth: 23 },
-                    3: { halign: 'center', cellWidth: 23 },
+                    1: { halign: 'center', cellWidth: 28 },
+                    2: { halign: 'center', cellWidth: 25 },
+                    3: { halign: 'center', cellWidth: 22 },
                     4: { halign: 'center', cellWidth: 28 },
-                    5: { halign: 'center', cellWidth: 23 }
+                    5: { halign: 'center', cellWidth: 22 }
                 },
                 alternateRowStyles: {
                     fillColor: LIGHT_BG
@@ -658,14 +668,19 @@ export const exportMealPlanToPdf = async (mealPlan, patientName, nutritionistNam
             yPosition = doc.lastAutoTable.finalY + 3;
         }
 
-        // Observação (se houver)
+        // Observação da refeição (verificar quebra de página antes de imprimir)
         if (meal.notes) {
+            const splitNotes = doc.splitTextToSize(`📋 Obs. da refeição: ${meal.notes}`, pageWidth - 28);
+            const notesHeight = splitNotes.length * 4.5 + 2;
+            if (yPosition + notesHeight > pageHeight - 20) {
+                doc.addPage();
+                yPosition = 20;
+            }
             doc.setFontSize(8);
             doc.setTextColor(...MUTED_COLOR);
             doc.setFont('helvetica', 'italic');
-            const splitNotes = doc.splitTextToSize(`Obs: ${meal.notes}`, pageWidth - 28);
             doc.text(splitNotes, 14, yPosition);
-            yPosition += (splitNotes.length * 4) + 2;
+            yPosition += notesHeight;
         }
 
         // Espaço entre refeições
