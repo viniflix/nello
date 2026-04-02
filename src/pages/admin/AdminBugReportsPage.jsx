@@ -107,7 +107,9 @@ export default function AdminBugReportsPage() {
         lastManualRefreshRef.current = Date.now();
       }
       
-      const { data, error } = await supabase.functions.invoke('sentry-issues');
+      const { data, error } = await supabase.functions.invoke('sentry-proxy', {
+        method: 'GET',
+      });
       
       if (error) throw error;
       setBugs(data || []);
