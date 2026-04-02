@@ -297,13 +297,17 @@ const MealPlanPage = () => {
         }
     };
 
-    const handleResumePendingDraft = (draft = null) => {
+    const handleResumePendingDraft = async (draft = null) => {
         // Se nenhum draft for passado, retoma o MAIS RECENTE da fila (banner)
         const targetDraft = draft || (pendingDrafts.length > 0 ? pendingDrafts[0] : null);
         if (!targetDraft) return;
 
+        // Busca o plano completo (com refeições e alimentos) antes de abrir o form
+        // Isso garante que as macros serão hidratadas corretamente
+        const { data: fullDraft } = await getMealPlanById(targetDraft.id);
+
         setEditingPlan(null);
-        setPendingDraft(targetDraft); 
+        setPendingDraft(fullDraft || targetDraft); 
         setShowForm(true);
     };
 

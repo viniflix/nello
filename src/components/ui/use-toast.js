@@ -70,8 +70,10 @@ const normalizeToastPayload = (props) => {
     normalized.variant = "destructive"
   } else if (level === "warning") {
     normalized.title = "Aviso"
+    normalized.variant = "warning"
   } else if (level === "success") {
     normalized.title = "Sucesso"
+    normalized.variant = "success"
   }
 
   if (typeof normalized.description === "string" && level === "error") {

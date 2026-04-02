@@ -297,12 +297,12 @@ const MealPlanForm = ({
 
     const calculateDailyTotals = () => meals.reduce(
         (acc, meal) => ({
-            calories: acc.calories + (meal.calories || 0),
-            protein: acc.protein + (meal.protein || 0),
-            carbs: acc.carbs + (meal.carbs || 0),
-            fat: acc.fat + (meal.fat || 0)
+            daily_calories: acc.daily_calories + (meal.calories || 0),
+            daily_protein: acc.daily_protein + (meal.protein || 0),
+            daily_carbs: acc.daily_carbs + (meal.carbs || 0),
+            daily_fat: acc.daily_fat + (meal.fat || 0)
         }),
-        { calories: 0, protein: 0, carbs: 0, fat: 0 }
+        { daily_calories: 0, daily_protein: 0, daily_carbs: 0, daily_fat: 0 }
     );
 
     const validate = () => {
@@ -770,10 +770,10 @@ const MealPlanForm = ({
 
                         <div className="lg:col-span-4">
                             <MacrosChart
-                                protein={dailyTotals.protein}
-                                carbs={dailyTotals.carbs}
-                                fat={dailyTotals.fat}
-                                calories={dailyTotals.calories}
+                                protein={dailyTotals.daily_protein}
+                                carbs={dailyTotals.daily_carbs}
+                                fat={dailyTotals.daily_fat}
+                                calories={dailyTotals.daily_calories}
                                 patientId={patientId}
                                 patientSlugOrId={patientSlugOrId}
                                 planId={initialData?.id}

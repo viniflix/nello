@@ -8,7 +8,8 @@ import {
     deleteMealFromPlan,
     addFoodToMeal,
     addFoodsToMeal,
-    getMealPlanById
+    getMealPlanById,
+    recalculateMealNutrition
 } from '@/lib/supabase/meal-plan-queries';
 
 /**
@@ -160,6 +161,8 @@ export function useMealPlanDraft({ patientId, nutritionistId, enabled = false })
                 setSaveStatus('error');
                 return newMeal.id; // refeição existe no banco, mas alimentos falharam
             }
+            // Recalcular totais da refeição e do plano após salvar alimentos
+            await recalculateMealNutrition(newMeal.id);
         }
 
         setSaveStatus('saved'); // confirmação real: refeição + alimentos persistidos
@@ -216,6 +219,8 @@ export function useMealPlanDraft({ patientId, nutritionistId, enabled = false })
                     // Nova refeição existe mas sem alimentos — ainda melhor que perder tudo
                     // Continua para deletar a antiga de qualquer forma
                 }
+                // Recalcular totais da refeição e do plano após salvar alimentos
+                await recalculateMealNutrition(newMeal.id);
             }
 
             // PASSO 3: AGORA deleta a antiga (nova está garantida)
