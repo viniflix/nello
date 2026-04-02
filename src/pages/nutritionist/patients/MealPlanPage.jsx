@@ -247,14 +247,24 @@ const MealPlanPage = () => {
     const handleDiscardPendingDraft = async () => {
         if (!pendingDraft) return;
         setDiscardingDraft(true);
-        await deleteDraftMealPlan(pendingDraft.id);
-        setPendingDraft(null);
+        const { error } = await deleteDraftMealPlan(pendingDraft.id);
         setDiscardingDraft(false);
-        toast({ title: 'Rascunho descartado', variant: 'default' });
+        // Só limpa estado local se o banco confirmar a deleção com sucesso
+        if (error) {
+            toast({
+                title: 'Erro ao descartar rascunho',
+                description: 'Não foi possível remover o rascunho. Tente novamente.',
+                variant: 'destructive'
+            });
+        } else {
+            setPendingDraft(null);
+            toast({ title: 'Rascunho descartado', variant: 'default' });
+        }
     };
 
     const handleResumePendingDraft = () => {
-        // Open the form — MealPlanForm will detect and offer to resume the draft
+        // Passa o pendingDraft completo (com refeições) para o form — sem re-fetch
+        setEditingPlan(null);
         setShowForm(true);
     };
 
@@ -794,12 +804,15 @@ const MealPlanPage = () => {
                     patientSlugOrId={paramValue}
                     nutritionistId={nutritionistId}
                     initialData={editingPlan}
+                    pendingDraft={!editingPlan ? pendingDraft : null}
                     onSubmit={handleSubmit}
                     onSaveDraft={handleSaveDraft}
                     onCancel={() => {
                         setShowForm(false);
                         setEditingPlan(null);
+                        setPendingDraft(null);
                     }}
+                    onDraftDiscarded={() => setPendingDraft(null)}
                     loading={submitting}
                 />
             </div>

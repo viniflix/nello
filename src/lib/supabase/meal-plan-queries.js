@@ -428,39 +428,28 @@ export const archiveMealPlan = async (planId) => {
 };
 
 /**
- * Define um plano como ativo e desativa todos os outros do mesmo paciente
+ * Define um plano como ativo de forma ATÔMICA via RPC SQL.
+ * Desativa todos os outros planos do paciente e ativa o plano alvo
+ * dentro de uma única transação no banco — sem risco de race condition.
  * @param {number} planId - ID do plano a ativar
  * @returns {Promise<{data: object, error: object}>}
  */
 export const setActiveMealPlan = async (planId) => {
     try {
-        // Primeiro, buscar o plano para saber o patient_id
-        const { data: plan, error: planError } = await supabase
+        // RPC atômica: desativa todos + ativa o plano dentro de 1 transação
+        const { error: rpcError } = await supabase
+            .rpc('set_active_meal_plan', { p_plan_id: planId });
+
+        if (rpcError) throw rpcError;
+
+        // Busca o plano atualizado para retornar ao caller
+        const { data, error: fetchError } = await supabase
             .from('meal_plans')
-            .select('patient_id')
+            .select('*')
             .eq('id', planId)
             .single();
 
-        if (planError) throw planError;
-
-        // Desativar todos os planos do paciente
-        const { error: deactivateError } = await supabase
-            .from('meal_plans')
-            .update({ is_active: false })
-            .eq('patient_id', plan.patient_id)
-            .eq('is_active', true);
-
-        if (deactivateError) throw deactivateError;
-
-        // Ativar o plano específico
-        const { data, error } = await supabase
-            .from('meal_plans')
-            .update({ is_active: true })
-            .eq('id', planId)
-            .select()
-            .single();
-
-        if (error) throw error;
+        if (fetchError) throw fetchError;
         return { data, error: null };
     } catch (error) {
         logSupabaseError('Erro ao ativar plano alimentar', error);
@@ -1849,16 +1838,17 @@ export const createDraftMealPlan = async (patientId, nutritionistId) => {
 
 /**
  * Busca o rascunho pendente de um nutricionista para um paciente.
- * Retorna apenas um rascunho (o mais recente), ou null se não houver.
+ * Retorna o plano COMPLETO com refeições e alimentos para garantir recovery correto.
  * @param {string} patientId
  * @param {string} nutritionistId
  * @returns {Promise<{data: object|null, error: object}>}
  */
 export const getDraftMealPlan = async (patientId, nutritionistId) => {
     try {
-        const { data, error } = await supabase
+        // Passo 1: encontra o ID do rascunho mais recente
+        const { data: draftMeta, error } = await supabase
             .from('meal_plans')
-            .select('id, name, description, start_date, end_date, active_days, created_at, updated_at')
+            .select('id')
             .eq('patient_id', patientId)
             .eq('nutritionist_id', nutritionistId)
             .eq('is_draft', true)
@@ -1867,7 +1857,11 @@ export const getDraftMealPlan = async (patientId, nutritionistId) => {
             .maybeSingle();
 
         if (error) throw error;
-        return { data: data || null, error: null };
+        if (!draftMeta) return { data: null, error: null };
+
+        // Passo 2: busca o plano COMPLETO com refeições e alimentos
+        // Isso garante que o recovery do formulário tenha todos os dados necessários
+        return getMealPlanById(draftMeta.id);
     } catch (error) {
         logSupabaseError('Erro ao buscar rascunho do plano alimentar', error);
         return { data: null, error };
@@ -1934,39 +1928,31 @@ export const deleteDraftMealPlan = async (draftId) => {
 };
 
 /**
- * Promove um rascunho para plano ativo, desativando os outros planos ativos do paciente.
- * Chamado ao apertar "Aplicar Plano Alimentar" no formulário.
+ * Promove um rascunho para plano ativo de forma ATÔMICA via RPC SQL.
+ * Desativa todos os planos ativos e promove o draft dentro de 1 transação.
  * @param {number} draftId
  * @param {string} patientId - Necessário para desativar outros planos ativos
  * @returns {Promise<{data: object, error: object}>}
  */
 export const promoteDraftToActive = async (draftId, patientId) => {
     try {
-        // Desativar outros planos ativos do paciente
-        const { error: deactivateError } = await supabase
-            .from('meal_plans')
-            .update({ is_active: false })
-            .eq('patient_id', patientId)
-            .eq('is_active', true)
-            .eq('is_draft', false);
+        // RPC atômica: desativa ativos + promove draft dentro de 1 transação
+        const { error: rpcError } = await supabase
+            .rpc('promote_draft_to_active', {
+                p_draft_id: draftId,
+                p_patient_id: patientId
+            });
 
-        if (deactivateError) {
-            console.warn('Erro ao desativar planos anteriores:', deactivateError);
-        }
+        if (rpcError) throw rpcError;
 
-        // Promover rascunho para ativo
-        const { data, error } = await supabase
+        // Busca o plano promovido para retornar ao caller
+        const { data, error: fetchError } = await supabase
             .from('meal_plans')
-            .update({
-                is_draft: false,
-                is_active: true,
-                updated_at: new Date().toISOString()
-            })
+            .select('*')
             .eq('id', draftId)
-            .select()
             .single();
 
-        if (error) throw error;
+        if (fetchError) throw fetchError;
         return { data, error: null };
     } catch (error) {
         logSupabaseError('Erro ao promover rascunho para plano ativo', error);

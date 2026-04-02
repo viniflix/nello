@@ -225,5 +225,13 @@ export default defineConfig({
 				'@babel/types'
 			]
 		}
+	},
+	test: {
+		globals: true,
+		environment: 'jsdom',
+		setupFiles: ['./src/__tests__/setup.js'],
+		alias: {
+			'@': path.resolve(__dirname, './src'),
+		},
 	}
 });

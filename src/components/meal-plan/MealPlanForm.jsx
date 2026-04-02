@@ -54,9 +54,11 @@ const MealPlanForm = ({
     patientSlugOrId,
     nutritionistId,
     initialData = null,
+    pendingDraft = null,   // rascunho completo já carregado pela página mãe
     onSubmit,
     onSaveDraft,
     onCancel,
+    onDraftDiscarded,       // callback após descartar rascunho interno
     loading = false
 }) => {
     const isEditing = Boolean(initialData?.id);
@@ -82,11 +84,15 @@ const MealPlanForm = ({
     const [isResuming, setIsResuming] = useState(false);
 
     // Draft auto-save — only active when creating a new plan (not editing)
+    // enabled=false quando já temos um pendingDraft vindo da página mãe (evita double query)
     const draft = useMealPlanDraft({
         patientId,
         nutritionistId,
-        enabled: !isEditing
+        enabled: !isEditing && !pendingDraft
     });
+
+    // Banner de recovery: usa pendingDraft (prop da página) OU existingDraft interno (fallback)
+    const draftToRecover = pendingDraft || draft.existingDraft;
 
     const daysOfWeek = [
         { value: 'monday', label: 'Segunda' },
@@ -131,19 +137,28 @@ const MealPlanForm = ({
         }
     }, [initialData, loadReferenceValues]);
 
-    // When creating: start a new draft on mount (or after discarding existing one)
+    // When creating without pendingDraft: start a new draft on mount (or after discarding)
     useEffect(() => {
-        if (isEditing || draft.existingDraft !== null || draft.isInitializing) return;
+        if (isEditing || pendingDraft || draft.existingDraft !== null || draft.isInitializing) return;
         if (!draft.draftId) {
             draft.startNewDraft();
         }
-    }, [isEditing, draft.existingDraft, draft.isInitializing, draft.draftId]);
+    }, [isEditing, pendingDraft, draft.existingDraft, draft.isInitializing, draft.draftId]);
 
-    // Recover meals when resuming an existing draft
+    // Recover meals when resuming a draft (from prop or from internal hook)
     const handleResumeDraft = async () => {
         try {
             setIsResuming(true);
-            const fullPlan = await draft.resumeExistingDraft();
+
+            let fullPlan;
+            if (pendingDraft) {
+                // Draft já está completo (vindo da página mãe) — sem nova query ao banco
+                fullPlan = pendingDraft;
+                draft.setActiveDraftId(pendingDraft.id);
+            } else {
+                fullPlan = await draft.resumeExistingDraft();
+            }
+
             if (fullPlan) {
                 setFormData({
                     name: fullPlan.name || '',
@@ -165,14 +180,19 @@ const MealPlanForm = ({
                 setMeals(mealsWithTempId);
             }
         } catch (error) {
-            console.error('Error resuming draft:', error);
+            console.error('[MealPlanForm] Error resuming draft:', error);
         } finally {
             setIsResuming(false);
         }
     };
 
     const handleDiscardDraftAndStartFresh = async () => {
-        await draft.discardExistingAndStartNew();
+        if (pendingDraft) {
+            await import('@/lib/supabase/meal-plan-queries').then(m => m.deleteDraftMealPlan(pendingDraft.id));
+            onDraftDiscarded?.(); // notifica página mãe para limpar pendingDraft
+        } else {
+            await draft.discardExistingAndStartNew();
+        }
         setFormData({
             name: '',
             description: '',
@@ -210,10 +230,18 @@ const MealPlanForm = ({
     const handleSelectWeekends = () => handleChange('active_days', ['saturday', 'sunday']);
 
     const handleAddMeal = async (mealData) => {
+        const activeDraftId = draft.draftId;
+
+        // Guard: impede adição de refeições antes do draft estar pronto no banco
+        if (!isEditing && !activeDraftId) {
+            console.warn('[MealPlanForm] handleAddMeal chamado antes do draftId estar pronto. Abortando.');
+            return;
+        }
+
         const newMealData = { ...mealData, tempId: Date.now(), order_index: meals.length };
 
-        if (!isEditing && draft.draftId) {
-            // Persist meal + foods to draft immediately
+        if (!isEditing && activeDraftId) {
+            // Persiste refeição + alimentos no rascunho imediatamente
             const dbMealId = await draft.saveMeal({ ...mealData, order_index: meals.length });
             newMealData.dbId = dbMealId;
         }
@@ -374,8 +402,8 @@ const MealPlanForm = ({
         return `${signal}${numeric.toFixed(unit === 'kcal' ? 0 : 1)}${unit ? ` ${unit}` : ''}`;
     };
 
-    // Existing draft recovery banner
-    const showDraftBanner = !isEditing && draft.existingDraft && !draft.draftId;
+    // Existing draft recovery banner — usa prop pendingDraft (da página) ou existingDraft interno
+    const showDraftBanner = !isEditing && draftToRecover && !draft.draftId;
 
     // Show loading state while resuming
     if (isResuming) {

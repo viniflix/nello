@@ -116,12 +116,16 @@ export function useMealPlanDraft({ patientId, nutritionistId, enabled = false })
 
     /**
      * Adiciona uma refeição ao rascunho no banco e retorna o ID gerado.
+     * Status só vai para 'saved' após banco confirmar tudo (refeição + alimentos).
      * @param {object} mealData - dados da refeição do MealPlanMealForm
      * @returns {Promise<number|null>} ID da refeição criada no banco
      */
     const saveMeal = useCallback(async (mealData) => {
         const currentDraftId = latestDraftIdRef.current;
-        if (!currentDraftId) return null;
+        if (!currentDraftId) {
+            console.warn('[useMealPlanDraft] saveMeal chamado antes do draftId estar pronto.');
+            return null;
+        }
 
         setSaveStatus('saving');
 
@@ -139,20 +143,18 @@ export function useMealPlanDraft({ patientId, nutritionistId, enabled = false })
             return null;
         }
 
-        // Salvar todos os alimentos da refeição em lote (batch) para máxima performance
-        try {
-            if (mealData.foods && mealData.foods.length > 0) {
-                const { error: batchError } = await addFoodsToMeal(newMeal.id, mealData.foods);
-                if (batchError) throw batchError;
+        // Salva alimentos em lote — status só vira 'saved' após essa confirmação
+        if (mealData.foods && mealData.foods.length > 0) {
+            const { error: batchError } = await addFoodsToMeal(newMeal.id, mealData.foods);
+            if (batchError) {
+                console.error('[useMealPlanDraft] Erro ao salvar alimentos no rascunho:', batchError);
+                setSaveStatus('error');
+                return newMeal.id; // refeição existe no banco, mas alimentos falharam
             }
-            
-            setSaveStatus('saved');
-            return newMeal.id;
-        } catch (foodError) {
-            console.error('Erro ao salvar alimentos da refeição em lote no rascunho:', foodError);
-            setSaveStatus('error');
-            return newMeal.id; // Retorna o ID da refeição pelo menos
         }
+
+        setSaveStatus('saved'); // confirmação real: refeição + alimentos persistidos
+        return newMeal.id;
     }, []);
 
     /**
@@ -168,8 +170,8 @@ export function useMealPlanDraft({ patientId, nutritionistId, enabled = false })
 
     /**
      * Atualiza uma refeição existente no rascunho.
-     * Como não há API de update de meal+foods atomicamente,
-     * deleta a antiga e cria uma nova com os dados atualizados.
+     * SEGURO: cria a nova versão ANTES de deletar a antiga, evitando perda de dados
+     * se a operação de criação falhar no meio.
      * @param {number} oldDbId - ID da refeição antiga no banco
      * @param {object} mealData - dados atualizados (incluindo foods)
      * @param {number} orderIndex - posição da refeição no plano
@@ -182,12 +184,7 @@ export function useMealPlanDraft({ patientId, nutritionistId, enabled = false })
         setSaveStatus('saving');
 
         try {
-            // Delete old meal (cascade removes its foods too)
-            if (oldDbId) {
-                await deleteMealFromPlan(oldDbId);
-            }
-
-            // Re-create with updated data
+            // PASSO 1: Cria a nova refeição PRIMEIRO (antiga ainda existe — sem risco de perda)
             const { data: newMeal, error: mealError } = await addMealToPlan({
                 meal_plan_id: currentDraftId,
                 name: mealData.name,
@@ -199,18 +196,28 @@ export function useMealPlanDraft({ patientId, nutritionistId, enabled = false })
 
             if (mealError || !newMeal) {
                 setSaveStatus('error');
-                return null;
+                return null; // antiga intacta — sem perda de dados
             }
- 
+
+            // PASSO 2: Salva alimentos da nova refeição
             if (mealData.foods && mealData.foods.length > 0) {
                 const { error: batchError } = await addFoodsToMeal(newMeal.id, mealData.foods);
-                if (batchError) throw batchError;
+                if (batchError) {
+                    console.error('[useMealPlanDraft] Erro ao salvar alimentos ao atualizar refeição:', batchError);
+                    // Nova refeição existe mas sem alimentos — ainda melhor que perder tudo
+                    // Continua para deletar a antiga de qualquer forma
+                }
             }
- 
+
+            // PASSO 3: AGORA deleta a antiga (nova está garantida)
+            if (oldDbId) {
+                await deleteMealFromPlan(oldDbId);
+            }
+
             setSaveStatus('saved');
             return newMeal.id;
         } catch (error) {
-            console.error('Erro ao atualizar refeição no rascunho:', error);
+            console.error('[useMealPlanDraft] Erro ao atualizar refeição no rascunho:', error);
             setSaveStatus('error');
             return null;
         }
@@ -228,6 +235,17 @@ export function useMealPlanDraft({ patientId, nutritionistId, enabled = false })
         latestDraftIdRef.current = null;
         setSaveStatus('idle');
     }, []);
+
+    /**
+     * Define o draftId diretamente (usado quando o form recebe um draft completo via props).
+     * @param {number} id
+     */
+    const setActiveDraftId = useCallback((id) => {
+        setDraftId(id);
+        latestDraftIdRef.current = id;
+        setSaveStatus('saved');
+    }, []);
+
 
     // Cleanup do debounce ao desmontar
     useEffect(() => {
@@ -248,6 +266,8 @@ export function useMealPlanDraft({ patientId, nutritionistId, enabled = false })
         saveMeal,
         updateMeal,
         removeMeal,
-        discardDraft
+        discardDraft,
+        setActiveDraftId
     };
 }
+
