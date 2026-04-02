@@ -34,8 +34,8 @@ export default function AdminHeader() {
     setLoadingNotifications(true);
     try {
       const { data } = await supabase
-        .select('id, type, content, is_read, created_at')
         .from('notifications')
+        .select('id, type, content, is_read, created_at')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(20);

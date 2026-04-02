@@ -101,18 +101,13 @@ export default function AdminDashboard() {
   const loadData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [statsRes, obsRes] = await Promise.all([
-        getDashboardStats(),
-        /* getOperationalHealthSummary removed */
+      const [statsRes] = await Promise.all([
+        getDashboardStats()
       ]);
       
-      if (statsRes.data) setStats(statsRes.data);
-      if (obsRes.data) setObservability({
-        error_rate: Number(obsRes.data?.error_rate || 0),
-        total_events: Number(obsRes.data?.total_events || 0),
-        error_events: Number(obsRes.data?.error_events || 0),
-        avg_latency_ms: Number(obsRes.data?.avg_latency_ms || 0)
-      });
+      if (statsRes && statsRes.data) setStats(statsRes.data);
+      // Keep observability zeroed since we removed legacy logger
+      setObservability({ error_rate: 0, total_events: 0, error_events: 0, avg_latency_ms: 0 });
     } catch (err) {
       console.error('[Dashboard] Error:', err);
     } finally {
