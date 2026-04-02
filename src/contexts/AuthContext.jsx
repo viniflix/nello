@@ -207,17 +207,27 @@ export function AuthProvider({ children }) {
         return;
       }
 
+      // NOVO: Refresh silencioso - atualiza o token sem disparar o loader ou re-buscar o perfil
+      if (event === 'TOKEN_REFRESHED') {
+        if (session?.user) {
+          setUser(prev => prev ? { ...session.user, profile: prev.profile } : null);
+        }
+        return;
+      }
+
       try {
         if (session?.user) {
-          // Diferenciação de eventos: evita reload obstrutivo em TOKEN_REFRESHED
-          if (event === 'SIGNED_IN') {
+          // Só mostra loading para logins explícitos e garante que não interrompe a UI em atualizações silenciosas
+          const isExplicitLogin = event === 'SIGNED_IN';
+          
+          if (isExplicitLogin) {
             setLoading(true);
           }
           
-          // Refresh silencioso: processa em background sem loader
+          // processSession garante que temos o perfil sincronizado
           await processSession(session, event);
           
-          if (event === 'SIGNED_IN') {
+          if (isExplicitLogin) {
             setLoading(false);
           }
         } else if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
