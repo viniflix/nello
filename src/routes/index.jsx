@@ -17,8 +17,8 @@ const AppLayout = () => {
   }
 
   const getHomePath = () => {
-    if (!user) return "/login";
-    return user.profile.user_type === 'nutritionist' ? '/nutritionist' : '/patient';
+    if (!user || !user?.profile) return "/login";
+    return user?.profile?.user_type === 'nutritionist' ? '/nutritionist' : '/patient';
   };
 
   return (

@@ -273,7 +273,7 @@ export default function PatientProfilePage() {
                     <p className="text-xs text-muted-foreground mb-1">Data de Nascimento</p>
                     <p className="text-sm font-medium text-foreground">
                       {user?.profile?.birth_date
-                        ? format(new Date(user.profile.birth_date), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
+                        ? format(new Date(user?.profile?.birth_date), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
                         : 'Não informado'
                       }
                     </p>
@@ -289,7 +289,7 @@ export default function PatientProfilePage() {
                     <p className="text-xs text-muted-foreground mb-1">Altura</p>
                     <p className="text-sm font-medium text-foreground">
                       {user?.profile?.height
-                        ? `${user.profile.height} cm`
+                        ? `${user?.profile?.height} cm`
                         : 'Não informado'
                       }
                     </p>
@@ -305,7 +305,7 @@ export default function PatientProfilePage() {
                     <p className="text-xs text-muted-foreground mb-1">Peso</p>
                     <p className="text-sm font-medium text-foreground">
                       {user?.profile?.weight
-                        ? `${user.profile.weight} kg`
+                        ? `${user?.profile?.weight} kg`
                         : 'Não informado'
                       }
                     </p>
@@ -328,15 +328,15 @@ export default function PatientProfilePage() {
                         <p className="text-sm font-medium text-foreground">
                           {[
                             user?.profile?.address?.street && user?.profile?.address?.number
-                              ? `${user.profile.address.street}, ${user.profile.address.number}`
+                              ? `${user?.profile?.address?.street}, ${user?.profile?.address?.number}`
                               : user?.profile?.address?.street || '',
                             user?.profile?.address?.complement || '',
                             user?.profile?.address?.neighborhood || '',
                             user?.profile?.address?.city && user?.profile?.address?.state
-                              ? `${user.profile.address.city} - ${user.profile.address.state}`
+                              ? `${user?.profile?.address?.city} - ${user?.profile?.address?.state}`
                               : user?.profile?.address?.city || user?.profile?.address?.state || '',
                             user?.profile?.address?.zipcode
-                              ? `CEP: ${user.profile.address.zipcode}`
+                              ? `CEP: ${user?.profile?.address?.zipcode}`
                               : ''
                           ].filter(Boolean).join(', ') || 'Endereço não informado'}
                         </p>

@@ -45,14 +45,14 @@ export default function PatientEditProfilePage() {
 
   useEffect(() => {
     if (user?.profile) {
-      const address = user.profile.address || {};
+      const address = user?.profile?.address || {};
       setFormData({
-        name: user.profile.name || '',
-        phone: user.profile.phone || '',
-        birth_date: user.profile.birth_date || '',
-        gender: user.profile.gender || '',
-        height: user.profile.height || '',
-        weight: user.profile.weight || '',
+        name: user?.profile?.name || '',
+        phone: user?.profile?.phone || '',
+        birth_date: user?.profile?.birth_date || '',
+        gender: user?.profile?.gender || '',
+        height: user?.profile?.height || '',
+        weight: user?.profile?.weight || '',
         zipcode: address.zipcode || '',
         street: address.street || '',
         number: address.number || '',

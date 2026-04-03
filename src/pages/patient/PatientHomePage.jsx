@@ -32,6 +32,7 @@ export default function PatientHomePage() {
   const [linkStatus, setLinkStatus] = useState('active'); // pending | active | rejected
   const [loading, setLoading] = useState(true);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [isArchived, setIsArchived] = useState(false);
   const { unreadCount } = useNotifications();
 
   const loadData = useCallback(async () => {
@@ -42,21 +43,21 @@ export default function PatientHomePage() {
     const todayStr = format(today, 'yyyy-MM-dd');
 
     // 0. Verificar status do vínculo se houver um nutricionista
-    if (user.profile?.nutritionist_id) {
+    if (user?.profile?.nutritionist_id) {
         const { data: linkData } = await supabase
             .from('nutritionist_patients')
             .select('status')
-            .eq('nutritionist_id', user.profile.nutritionist_id)
-            .eq('patient_id', user.id)
+            .eq('nutritionist_id', user?.profile?.nutritionist_id)
+            .eq('patient_id', user?.id)
             .maybeSingle();
         
-        if (linkData) {
-            setLinkStatus(linkData.status);
-            // Se estiver pendente, não precisa carregar o resto (opcional, mas economiza recursos)
-            if (linkData.status === 'pending') {
-                setLoading(false);
-                return;
-            }
+        setIsArchived(linkData?.status === 'archived');
+        setLinkStatus(linkData?.status || 'active');
+
+        // Se estiver pendente, não precisa carregar o resto
+        if (linkData?.status === 'pending') {
+            setLoading(false);
+            return;
         }
     }
 

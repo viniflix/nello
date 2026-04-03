@@ -57,7 +57,13 @@ export const ProtectedRoute = ({ children, userType, requireAdmin = false, allow
   const { user, loading, initializing, isOffline } = useAuth();
   const location = useLocation();
 
-  if (initializing || (loading && !user)) {
+  if (initializing || loading) {
+    return <PageLoadingFallback />;
+  }
+
+  // Se o usuário existe mas o perfil ainda está sendo carregado pelo hook useProfile
+  // e não estamos offline (onde usaríamos o cache), mostramos o loading para evitar crash.
+  if (user && !user?.profile && !isOffline) {
     return <PageLoadingFallback />;
   }
 
@@ -66,12 +72,17 @@ export const ProtectedRoute = ({ children, userType, requireAdmin = false, allow
     return <ConnectionRequired />;
   }
 
-  if (!user || (!user.profile && !isOffline)) {
+  if (!user || (!user?.profile && !isOffline)) {
     // Save current location to redirect back after login
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  const isAdmin = user.profile.is_admin === true;
+  // Safeguard: Se chegamos aqui sem perfil (mesmo offline), precisamos esperar ou mostrar conexão necessária
+  if (!user?.profile) {
+    return isOffline ? <ConnectionRequired /> : <PageLoadingFallback />;
+  }
+
+  const isAdmin = user?.profile?.is_admin === true;
 
   // Admin tem acesso a qualquer rota
   if (isAdmin) {
@@ -80,21 +91,20 @@ export const ProtectedRoute = ({ children, userType, requireAdmin = false, allow
 
   // Admin-only routes: require admin flag
   if (requireAdmin) {
-    const correctDashboard = user.profile.user_type === 'nutritionist' ? '/nutritionist' : '/patient';
+    const correctDashboard = user?.profile?.user_type === 'nutritionist' ? '/nutritionist' : '/patient';
     return <Navigate to={correctDashboard} replace />;
   }
 
   // Regular routes: check user_type
-  if (userType && user.profile.user_type !== userType) {
-    const correctDashboard = user.profile.user_type === 'nutritionist' ? '/nutritionist' : '/patient';
+  if (userType && user?.profile?.user_type !== userType) {
+    const correctDashboard = user?.profile?.user_type === 'nutritionist' ? '/nutritionist' : '/patient';
     return <Navigate to={correctDashboard} replace />;
   }
 
   // Interceptador para paciente que não atualizou a senha ainda
-  if (user.profile.user_type === 'patient' && user.profile.needs_password_reset === true) {
+  if (user?.profile?.user_type === 'patient' && user?.profile?.needs_password_reset === true) {
     return <ForcePasswordUpdate />;
   }
 
   return children;
 };
-

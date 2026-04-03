@@ -207,12 +207,12 @@ const DashboardHeader = ({ user, logout }) => {
 
   if (!user) return null;
 
-  const initials = (user.profile?.name || 'U').substring(0, 2).toUpperCase();
+  const initials = (user?.profile?.name || 'U').substring(0, 2).toUpperCase();
   const { totalUnreadMessages } = useChat();
 
-  const navigationLinks = user.profile?.user_type === 'nutritionist' ? getNutritionistLinks() : [];
-  const isAdmin = user.profile?.is_admin === true;
-  const shouldShowNotifications = user.profile?.user_type === 'nutritionist';
+  const navigationLinks = user?.profile?.user_type === 'nutritionist' ? getNutritionistLinks() : [];
+  const isAdmin = user?.profile?.is_admin === true;
+  const shouldShowNotifications = user?.profile?.user_type === 'nutritionist';
   const unreadCount = notifications.filter((item) => !item.is_read).length;
 
   const fetchNotifications = useCallback(async () => {
@@ -578,18 +578,18 @@ const DashboardHeader = ({ user, logout }) => {
 
             {/* Nome (oculto em telas pequenas) */}
             <span className="hidden lg:inline text-sm font-medium text-foreground">
-              {user.profile?.name || 'Nutricionista'}
+              {user?.profile?.name || 'Nutricionista'}
             </span>
 
             {/* Dropdown de Perfil */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0">
-                  {user.profile?.avatar_url ? (
+                  {user?.profile?.avatar_url ? (
                     <div className="h-10 w-10 rounded-full border-2 border-primary overflow-hidden">
                       <img
-                        src={user.profile.avatar_url}
-                        alt={user.profile?.name}
+                        src={user?.profile.avatar_url}
+                        alt={user?.profile?.name}
                         className="w-full h-full object-cover"
                       />
                     </div>
@@ -604,7 +604,7 @@ const DashboardHeader = ({ user, logout }) => {
               <DropdownMenuContent className="w-56" align="end" forceMount>
                 <DropdownMenuLabel>
                   <div className="flex flex-col space-y-1 min-w-0">
-                    <p className="text-sm font-medium leading-none truncate">{user.profile?.name}</p>
+                    <p className="text-sm font-medium leading-none truncate">{user?.profile?.name}</p>
                     <p className="text-xs leading-none text-muted-foreground truncate">
                       {user.email}
                     </p>

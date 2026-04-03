@@ -208,7 +208,7 @@ export default function AdminHeader() {
               <Button variant="ghost" className="relative h-9 w-9 rounded-full p-0">
                 {user.profile?.avatar_url ? (
                   <div className="h-9 w-9 rounded-full border-2 border-indigo-400 overflow-hidden">
-                    <img src={user.profile.avatar_url} alt={user.profile?.name} className="w-full h-full object-cover" />
+                    <img src={user?.profile?.avatar_url} alt={user?.profile?.name} className="w-full h-full object-cover" />
                   </div>
                 ) : (
                   <div className="h-9 w-9 rounded-full bg-indigo-100 border-2 border-indigo-400 flex items-center justify-center">

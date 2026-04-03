@@ -212,7 +212,7 @@ const PatientsPage = () => {
 
     const copyNutritionistInvite = () => {
         if (user?.profile?.invite_code) {
-            navigator.clipboard.writeText(user.profile.invite_code);
+            navigator.clipboard.writeText(user?.profile?.invite_code);
             setCopiedInvite(true);
             toast({ title: "Código copiado!", description: "Compartilhe este código para novos pacientes se vincularem a você." });
             setTimeout(() => setCopiedInvite(false), 2000);
@@ -600,7 +600,7 @@ const PatientsPage = () => {
                                     onClick={copyNutritionistInvite}
                                     className="w-full flex items-center justify-between px-5 py-4 bg-white dark:bg-neutral-800 rounded-xl border-2 border-primary/30 cursor-pointer hover:border-primary transition-all shadow-md active:scale-95 group"
                                 >
-                                    <span className="text-2xl font-black font-mono tracking-widest text-primary">{user.profile.invite_code}</span>
+                                    <span className="text-2xl font-black font-mono tracking-widest text-primary">{user?.profile?.invite_code}</span>
                                     {copiedInvite ? <Check className="w-5 h-5 text-green-600" /> : <Copy className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />}
                                 </div>
                                 <p className="text-[10px] text-muted-foreground">Clique no código para copiar</p>

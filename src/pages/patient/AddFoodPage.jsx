@@ -53,7 +53,7 @@ const AddFoodPage = () => {
 
     const fetchFoods = useCallback(async () => {
         if (!user || !user.profile) return;
-        const nutritionistId = user.profile.nutritionist_id;
+        const nutritionistId = user?.profile?.nutritionist_id;
     
         const { data, error } = await supabase
             .from('foods')

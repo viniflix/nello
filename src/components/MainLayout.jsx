@@ -6,7 +6,7 @@ import DashboardHeader from '@/components/DashboardHeader';
 const MainLayout = () => {
   const { user, signOut } = useAuth();
 
-  if (!user || !user.profile) {
+  if (!user || !user?.profile) {
     return null;
   }
 
