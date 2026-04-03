@@ -77,8 +77,12 @@ const ListActionsMenu = ({ patient, onArchive, onDelete }) => {
 
     return (
         <>
-            <div onClick={e => e.stopPropagation()}>
-                <DropdownMenu onOpenChange={handleOpen}>
+            <div 
+                onClick={e => e.stopPropagation()} 
+                onPointerDown={e => e.stopPropagation()}
+                onPointerUp={e => e.stopPropagation()}
+            >
+                <DropdownMenu onOpenChange={handleOpen} modal={false}>
                     <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon" className="h-8 w-8">
                             {isCheckingData ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /> : <MoreVertical className="h-4 w-4" />}

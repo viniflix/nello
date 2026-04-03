@@ -148,8 +148,13 @@ const PatientCard = ({ patient, isOnline, onArchive, onDelete }) => {
                 </div>
 
                 {/* Dropdown — isolated from card click zone (B2) */}
-                <div onClick={e => e.stopPropagation()} className="flex-shrink-0 -mt-1 -mr-1">
-                    <DropdownMenu onOpenChange={handleDropdownOpen}>
+                <div 
+                    onClick={e => e.stopPropagation()} 
+                    onPointerDown={e => e.stopPropagation()}
+                    onPointerUp={e => e.stopPropagation()}
+                    className="flex-shrink-0 -mt-1 -mr-1"
+                >
+                    <DropdownMenu onOpenChange={handleDropdownOpen} modal={false}>
                         <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground">
                                 {isCheckingData
