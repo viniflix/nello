@@ -33,9 +33,9 @@ export function useProfile(userId) {
       // Mapeamento de normalização para compatibilidade com a versão anterior do AuthContext
       return {
         ...profile,
-        name: profile.full_name ?? profile.name,
-        user_type: profile.user_type ?? profile.role,
-        is_admin: profile.is_admin === true,
+        name: profile?.full_name ?? profile?.name,
+        user_type: profile?.user_type ?? profile?.role,
+        is_admin: profile?.is_admin === true,
       };
     },
     enabled: !!userId,

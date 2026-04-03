@@ -82,6 +82,7 @@ export const ProtectedRoute = ({ children, userType, requireAdmin = false, allow
     return isOffline ? <ConnectionRequired /> : <PageLoadingFallback />;
   }
 
+  const userRole = user?.profile?.user_type;
   const isAdmin = user?.profile?.is_admin === true;
 
   // Admin tem acesso a qualquer rota

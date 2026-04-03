@@ -284,7 +284,7 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider value={value}>
-      {(initializing || (loading && !user) || (user && !user.profile && isProfileLoading)) ? <AuthLoadingFallback /> : children}
+      {(initializing || (loading && !user) || (user && !user.profile)) ? <AuthLoadingFallback /> : children}
     </AuthContext.Provider>
   );
 }
