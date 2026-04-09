@@ -198,10 +198,10 @@ const MacrosChart = ({ protein, carbs, fat, calories, patientId, patientSlugOrId
     return (
         <Card className="h-full flex flex-col bg-background border-border shadow-sm">
             <CardHeader className="pb-3 pt-5">
-                <CardTitle className="text-base font-semibold flex items-center justify-between">
+                <CardTitle className="text-base font-semibold flex items-center justify-center w-full">
                     <div className="flex items-center gap-2 text-foreground">
                         <Flame className="w-4 h-4 text-[#c4661f]" />
-                        Análise Nutricional
+                        Análise&nbsp;&nbsp;&nbsp;Nutricional
                     </div>
                 </CardTitle>
 

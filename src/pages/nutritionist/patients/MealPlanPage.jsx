@@ -71,6 +71,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { patientHubRoute, patientRoute } from '@/lib/utils/patientRoutes';
 import { getLatestEnergyCalculation } from '@/lib/supabase/energy-queries';
 import PlanTargetMonitor from '@/components/meal-plan/PlanTargetMonitor';
+import NotificationCenter from '@/components/meal-plan/NotificationCenter';
 import { getPatientModuleSyncFlags, clearPatientModuleSyncFlags } from '@/lib/supabase/anthropometry-queries';
 
 const MealPlanPage = () => {
@@ -916,14 +917,14 @@ const MealPlanPage = () => {
                         variant="ghost"
                         size="sm"
                         onClick={() => navigate(patientHubRoute({ id: patientId, slug: paramValue }, 'nutrition'))}
-                        className="gap-2 -ml-2 shrink-0 text-[#5f6f52] hover:text-[#5f6f52] hover:bg-[#5f6f52]/10"
+                        className="gap-2 -ml-2 shrink-0 text-[#5f6f52] hover:text-[#5f6f52] hover:bg-[#5f6f52]/10 font-bold"
                     >
                         <ArrowLeft className="w-4 h-4 shrink-0" />
                         Voltar
                     </Button>
-                    <Button variant="outline" size="sm" onClick={loadPlans} className="flex-shrink-0">
+                    <Button variant="outline" size="sm" onClick={loadPlans} className="flex-shrink-0 border-2 font-bold h-9">
                         <RefreshCw className="h-4 w-4 mr-2" />
-                        <span className="hidden sm:inline">Atualizar</span>
+                        Atualizar
                     </Button>
                 </div>
                 <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
@@ -938,17 +939,21 @@ const MealPlanPage = () => {
                     </div>
                     <div className="flex gap-2 w-full sm:w-auto">
                         {activePlan && plans.length > 0 && (
-                            <Button size="sm" variant="outline" onClick={() => setPlansModalOpen(true)} className="flex-1 sm:flex-initial gap-2">
+                            <Button size="sm" variant="outline" onClick={() => setPlansModalOpen(true)} className="flex-1 sm:flex-initial gap-2 border-2 h-10 font-bold">
                                 <FolderOpen className="h-4 w-4" />
-                                <span className="hidden sm:inline">Meus Planos</span>
-                                <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">{plans.length}</Badge>
+                                Meus Planos
+                                <Badge variant="outline" className="ml-1 h-5 min-w-[20px] px-1 justify-center border-[#5f6f52] text-[#5f6f52] font-black">{plans.length}</Badge>
                             </Button>
                         )}
-                        <Button size="sm" onClick={() => {
-                            setPendingDraft(null);
-                            setEditingPlan(null);
-                            setShowForm(true);
-                        }} className="flex-1 sm:flex-initial">
+                        <Button 
+                            size="sm" 
+                            onClick={() => {
+                                setPendingDraft(null);
+                                setEditingPlan(null);
+                                setShowForm(true);
+                            }} 
+                            className="flex-1 sm:flex-initial h-10 px-6 font-bold bg-primary hover:bg-primary/90 text-white transition-all active:scale-95 shadow-sm"
+                        >
                             <Plus className="h-4 w-4 mr-2" />
                             Novo Plano
                         </Button>
@@ -956,131 +961,39 @@ const MealPlanPage = () => {
                 </div>
             </div>
 
-            {/* Rascunho pendente detectado */}
-            {!showForm && pendingDrafts.length > 0 && (
-                <Alert className="mb-4 border-blue-300 bg-blue-50 dark:bg-blue-950/30">
-                    <AlertCircle className="h-4 w-4 text-blue-600" />
-                    <AlertDescription className="text-blue-800 dark:text-blue-200">
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                            <div>
-                                <p className="font-semibold">Rascunho em andamento</p>
-                                <p className="mt-1 text-sm">
-                                    {pendingDrafts.length === 1 
-                                        ? `Você tem um plano em criação salvo: "${pendingDrafts[0].name || 'Novo Plano'}". Deseja continuar de onde parou?`
-                                        : `Você possui ${pendingDrafts.length} rascunhos pendentes. Deseja continuar o mais recente ("${pendingDrafts[0].name || 'Novo Plano'}")?`
-                                    }
-                                </p>
-                            </div>
-                            <div className="flex flex-col gap-2 sm:flex-row">
-                                {pendingDrafts.length > 1 ? (
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button
-                                                size="sm"
-                                                variant="ghost"
-                                                className="text-blue-700 hover:bg-blue-100 dark:text-blue-200 dark:hover:bg-blue-900/50"
-                                                disabled={discardingDraft}
-                                            >
-                                                Descartar <MoreVertical className="ml-1 h-3 w-3" />
-                                            </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end">
-                                            <DropdownMenuItem 
-                                                className="text-destructive focus:text-destructive"
-                                                onClick={() => {
-                                                    setDraftToDelete(pendingDrafts[0]);
-                                                }}
-                                            >
-                                                Descartar este rascunho
-                                            </DropdownMenuItem>
-                                            <DropdownMenuSeparator />
-                                            <DropdownMenuItem 
-                                                className="text-destructive focus:bg-destructive focus:text-destructive-foreground font-semibold"
-                                                onClick={() => setDiscardAllDraftsDialogOpen(true)}
-                                            >
-                                                Descartar TODOS os rascunhos
-                                            </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
-                                ) : (
-                                    <Button
-                                        size="sm"
-                                        variant="ghost"
-                                        className="text-blue-700 hover:bg-blue-100 dark:text-blue-200 dark:hover:bg-blue-900/50"
-                                        onClick={() => setDraftToDelete(pendingDrafts[0])}
-                                        disabled={discardingDraft}
-                                    >
-                                        Descartar
-                                    </Button>
-                                )}
-                                <Button
-                                    size="sm"
-                                    className="bg-blue-600 hover:bg-blue-700 text-white"
-                                    onClick={() => handleResumePendingDraft(pendingDrafts[0])}
-                                >
-                                    Retomar rascunho
-                                </Button>
-                            </div>
-                        </div>
-                    </AlertDescription>
-                </Alert>
-            )}
+            <div className="flex flex-col gap-[3px]">
+                {/* Centro de Notificações Inteligentes */}
+                {!showForm && (
+                    <NotificationCenter 
+                        isDiscarding={discardingDraft}
+                        pendingDrafts={pendingDrafts}
+                        syncFlags={syncFlags}
+                        onDiscardDraft={(draft) => setDraftToDelete(draft)}
+                        onDiscardAllDrafts={() => setDiscardAllDraftsDialogOpen(true)}
+                        onResumeDraft={handleResumePendingDraft}
+                        onMarkAsReviewed={handleMarkMealPlanAsReviewed}
+                        onReviewNow={() => {
+                            if (activePlan?.id) {
+                                handleEdit(activePlan.id);
+                            } else {
+                                setShowForm(true);
+                            }
+                        }}
+                    />
+                )}
 
-            {syncFlags?.needs_meal_plan_review && (
-                <Alert className="mb-6 border-amber-200 bg-amber-50">
-                    <AlertCircle className="h-4 w-4 text-amber-700" />
+                {/* Target Monitor - Status do GET vs Plano */}
+                <PlanTargetMonitor
+                    targetCalories={energyCalculation?.final_planned_kcal ?? energyCalculation?.get_with_activities ?? energyCalculation?.get ?? energyCalculation?.get_result ?? null}
+                    currentCalories={activePlan?.daily_calories || 0}
+                    patientId={patientId}
+                    patientSlugOrId={paramValue}
+                    energyCalculation={energyCalculation}
+                />
 
-                    <AlertDescription className="text-amber-800">
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                            <div>
-                                <p>A antropometria foi atualizada recentemente. Revise o plano alimentar e salve para sincronizar.</p>
-                                {syncFlags?.anthropometry_updated_at && (
-                                    <p className="mt-1 text-xs text-amber-700/90">
-                                        {formatSyncUpdateTime(syncFlags.anthropometry_updated_at)}
-                                    </p>
-                                )}
-                            </div>
-                            <div className="flex flex-col gap-2 sm:flex-row">
-                                <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="border-amber-300 bg-white text-amber-800 hover:bg-amber-100"
-                                    onClick={() => {
-                                        if (activePlan?.id) {
-                                            handleEdit(activePlan.id);
-                                        } else {
-                                            setShowForm(true);
-                                        }
-                                    }}
-                                >
-                                    Revisar agora
-                                </Button>
-                                <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    className="text-amber-900 hover:bg-amber-100"
-                                    onClick={handleMarkMealPlanAsReviewed}
-                                >
-                                    Marcar como revisado
-                                </Button>
-                            </div>
-                        </div>
-                    </AlertDescription>
-                </Alert>
-            )}
-
-            {/* Target Monitor */}
-            <PlanTargetMonitor
-                targetCalories={energyCalculation?.final_planned_kcal ?? energyCalculation?.get_with_activities ?? energyCalculation?.get ?? energyCalculation?.get_result ?? null}
-                currentCalories={activePlan?.daily_calories || 0}
-                patientId={patientId}
-                patientSlugOrId={paramValue}
-                energyCalculation={energyCalculation}
-            />
-
-            {/* Plano Ativo */}
-            {activePlan && (
-                <Card className="mb-6 border-primary shadow-sm">
+                {/* Plano Ativo */}
+                {activePlan && (
+                <Card className="border-primary shadow-sm">
                     <CardHeader>
                         <div className="flex flex-col gap-4">
                             {/* Título e Badge */}
@@ -1096,7 +1009,7 @@ const MealPlanPage = () => {
                                     <Button
                                         size="sm"
                                         onClick={() => handleEdit(activePlan.id)}
-                                        className="hidden sm:flex"
+                                        className="hidden sm:flex bg-[#5f6f52] hover:bg-[#4a5740] text-white font-bold h-9 px-4 shadow-sm"
                                     >
                                         <Edit className="h-4 w-4 mr-2" />
                                         Editar Plano
@@ -1393,11 +1306,39 @@ const MealPlanPage = () => {
                     </CardHeader>
                     <CardContent>
                         {pendingDrafts.length === 0 && plans.length === 0 ? (
-                            <Alert>
-                                <AlertDescription>
-                                    Nenhum plano alimentar criado ainda. Clique em "Novo Plano" para começar.
-                                </AlertDescription>
-                            </Alert>
+                            <div className="flex flex-col items-center justify-center py-12 text-center">
+                                <div className="p-4 bg-muted/20 rounded-full mb-4">
+                                    <Utensils className="w-12 h-12 text-muted-foreground opacity-20" />
+                                </div>
+                                <h3 className="text-xl font-bold mb-2">Nenhum Plano Ativo</h3>
+                                <p className="text-muted-foreground max-w-md mb-8">
+                                    Este paciente ainda não possui um plano alimentar ativo. 
+                                    Crie um novo plano ou utilize um modelo para começar.
+                                </p>
+                                <div className="flex flex-col sm:flex-row gap-4 w-full justify-center px-4">
+                                    <Button 
+                                        onClick={() => {
+                                            setPendingDraft(null);
+                                            setEditingPlan(null);
+                                            setShowForm(true);
+                                        }}
+                                        size="lg"
+                                        className="font-bold h-12 px-8 bg-primary hover:bg-primary/90 text-white w-full sm:w-auto shadow-md"
+                                    >
+                                        <Plus className="w-5 h-5 mr-2" />
+                                        Criar Primeiro Plano
+                                    </Button>
+                                    <Button 
+                                        variant="outline" 
+                                        size="lg"
+                                        onClick={() => setTemplateManagerOpen(true)}
+                                        className="font-bold h-12 px-8 border-2 w-full sm:w-auto"
+                                    >
+                                        <Copy className="w-5 h-5 mr-2" />
+                                        Usar Modelo
+                                    </Button>
+                                </div>
+                            </div>
                         ) : (
                             <div className="space-y-3">
                                 {pendingDrafts.map((draft) => (
@@ -1463,6 +1404,9 @@ const MealPlanPage = () => {
                     </CardContent>
                 </Card>
             )}
+            </div>
+
+
 
             {/* Modal "Meus Planos" - quando plano ativo existe */}
             <Dialog open={plansModalOpen} onOpenChange={(open) => { setPlansModalOpen(open); if (!open) setPlansSearchTerm(''); }}>
