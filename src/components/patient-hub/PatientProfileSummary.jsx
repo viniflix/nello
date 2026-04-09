@@ -133,8 +133,8 @@ const PatientProfileSummary = ({
                                 {patientData?.name || 'Paciente'}
                             </h2>
                             {patientData?.patient_invite_code && (
-                                <Badge variant="outline" className="bg-sky-50 text-sky-700 border-sky-200 text-[10px] font-mono">
-                                    INVITE: {patientData.patient_invite_code}
+                                <Badge variant="outline" className="bg-sky-50 text-sky-700 border-sky-200 text-[10px] font-semibold uppercase tracking-wide">
+                                    Sem conta
                                 </Badge>
                             )}
                         </div>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useResolvedPatientId } from '@/hooks/useResolvedPatientId';
-import { ArrowLeft, Plus, Trash2, Copy, Archive, RefreshCw, Edit, BarChart3, Download, FileText, MoreVertical, Utensils, Save, FolderOpen, ShoppingCart, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Copy, Archive, RefreshCw, Edit, BarChart3, Download, FileText, MoreVertical, Utensils, Save, FolderOpen, ShoppingCart, AlertCircle, Calendar, CalendarCheck, CalendarDays, UtensilsCrossed, Info, Send, ChevronDown, ChevronUp, Search, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -108,6 +108,10 @@ const MealPlanPage = () => {
     const [discardingDraft, setDiscardingDraft] = useState(false);
     const [draftToDelete, setDraftToDelete] = useState(null); // Para o modal de confirmação de descarte de rascunho
     const [discardAllDraftsDialogOpen, setDiscardAllDraftsDialogOpen] = useState(false);
+    const [plansModalOpen, setPlansModalOpen] = useState(false);
+    const [plansSearchTerm, setPlansSearchTerm] = useState('');
+    const [versionsExpanded, setVersionsExpanded] = useState(false);
+    const [fullActivePlan, setFullActivePlan] = useState(null);
 
     // Obter ID do nutricionista
     useEffect(() => {
@@ -214,6 +218,20 @@ const MealPlanPage = () => {
             }
         };
         loadVersions();
+    }, [activePlan?.id]);
+
+    // Lazy load full plan data for micros tab
+    useEffect(() => {
+        const loadFullPlan = async () => {
+            if (!activePlan?.id) { setFullActivePlan(null); return; }
+            try {
+                const { data } = await getMealPlanById(activePlan.id);
+                setFullActivePlan(data);
+            } catch (e) {
+                console.error('Erro ao carregar plano completo:', e);
+            }
+        };
+        loadFullPlan();
     }, [activePlan?.id]);
 
     // Carregar cálculo de energia
@@ -478,7 +496,7 @@ const MealPlanPage = () => {
             let result;
             if (finalPlanData.draftId) {
                 // Sync UI state to DB first
-                const updateResult = await updateFullMealPlan(finalPlanData.draftId, finalPlanData);
+                const updateResult = await updateFullMealPlan(finalPlanData.draftId, { ...finalPlanData, is_active: false });
                 if (updateResult.error) throw updateResult.error;
 
                 // Convert draft to a "Saved" (inactive) plan
@@ -501,7 +519,7 @@ const MealPlanPage = () => {
                 if (result.error) throw result.error;
 
                 // Preencher o plano com as refeições/alimentos usando o novo motor de batch
-                const updateResult = await updateFullMealPlan(result.data.id, finalPlanData);
+                const updateResult = await updateFullMealPlan(result.data.id, { ...finalPlanData, is_active: false });
                 if (updateResult.error) throw updateResult.error;
             }
 
@@ -918,14 +936,23 @@ const MealPlanPage = () => {
                             Gerencie os planos alimentares do paciente
                         </p>
                     </div>
-                    <Button size="sm" onClick={() => {
-                        setPendingDraft(null);
-                        setEditingPlan(null);
-                        setShowForm(true);
-                    }} className="w-full sm:w-auto">
-                        <Plus className="h-4 w-4 mr-2" />
-                        Novo Plano
-                    </Button>
+                    <div className="flex gap-2 w-full sm:w-auto">
+                        {activePlan && plans.length > 0 && (
+                            <Button size="sm" variant="outline" onClick={() => setPlansModalOpen(true)} className="flex-1 sm:flex-initial gap-2">
+                                <FolderOpen className="h-4 w-4" />
+                                <span className="hidden sm:inline">Meus Planos</span>
+                                <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">{plans.length}</Badge>
+                            </Button>
+                        )}
+                        <Button size="sm" onClick={() => {
+                            setPendingDraft(null);
+                            setEditingPlan(null);
+                            setShowForm(true);
+                        }} className="flex-1 sm:flex-initial">
+                            <Plus className="h-4 w-4 mr-2" />
+                            Novo Plano
+                        </Button>
+                    </div>
                 </div>
             </div>
 
@@ -1063,33 +1090,26 @@ const MealPlanPage = () => {
                                     <Badge className="bg-primary">Ativo</Badge>
                                 </CardTitle>
 
-                                {/* Botões de Ação */}
+                                {/* Botões de Ação - Reorganizados */}
                                 <div className="flex items-center gap-2">
+                                    {/* Editar Plano - PRIMÁRIO */}
                                     <Button
                                         size="sm"
-                                        variant="outline"
                                         onClick={() => handleEdit(activePlan.id)}
                                         className="hidden sm:flex"
                                     >
                                         <Edit className="h-4 w-4 mr-2" />
-                                        Editar
+                                        Editar Plano
                                     </Button>
-                                    <Button
-                                        size="sm"
-                                        onClick={() => navigate(patientRoute({ id: patientId, slug: paramValue }, `meal-plan/${activePlan.id}/summary`))}
-                                        className="hidden sm:flex"
-                                    >
-                                        <BarChart3 className="h-4 w-4 mr-2" />
-                                        Resumo Nutricional
-                                    </Button>
+                                    {/* Exportar PDF - SECUNDÁRIO VISÍVEL */}
                                     <Button
                                         size="sm"
                                         variant="outline"
-                                        onClick={handleGenerateShoppingList}
+                                        onClick={() => setExportDialogOpen(true)}
                                         className="hidden sm:flex"
                                     >
-                                        <ShoppingCart className="h-4 w-4 mr-2" />
-                                        Lista de Compras
+                                        <Download className="h-4 w-4 mr-2" />
+                                        Exportar PDF
                                     </Button>
 
                                     {/* Dropdown de Ações Secundárias */}
@@ -1106,25 +1126,31 @@ const MealPlanPage = () => {
                                                     <Edit className="h-4 w-4 mr-2" />
                                                     Editar Plano
                                                 </DropdownMenuItem>
-                                                <DropdownMenuItem onClick={() => navigate(patientRoute({ id: patientId, slug: paramValue }, `meal-plan/${activePlan.id}/summary`))}>
-                                                    <BarChart3 className="h-4 w-4 mr-2" />
-                                                    Ver Resumo Nutricional
+                                                <DropdownMenuItem onClick={() => setExportDialogOpen(true)}>
+                                                    <Download className="h-4 w-4 mr-2" />
+                                                    Exportar PDF
                                                 </DropdownMenuItem>
                                                 <DropdownMenuSeparator />
                                             </div>
 
-                                            {/* Ações secundárias (sempre visíveis) */}
-                                            <DropdownMenuItem onClick={() => setExportDialogOpen(true)}>
-                                                <Download className="h-4 w-4 mr-2" />
-                                                Exportar PDF
+                                            {/* Ações secundárias */}
+                                            <DropdownMenuItem onClick={() => navigate(patientRoute({ id: patientId, slug: paramValue }, `meal-plan/${activePlan.id}/summary`))}>
+                                                <BarChart3 className="h-4 w-4 mr-2" />
+                                                Resumo Nutricional
                                             </DropdownMenuItem>
                                             <DropdownMenuItem onClick={handleGenerateShoppingList}>
                                                 <ShoppingCart className="h-4 w-4 mr-2" />
-                                                Gerar Lista de Compras
+                                                Lista de Compras
                                             </DropdownMenuItem>
                                             <DropdownMenuItem onClick={() => handleCopy(activePlan.id)}>
-                                                <Copy className="h-4 w-4 mr-2" />
-                                                Copiar como Modelo
+                                                <Send className="h-4 w-4 mr-2" />
+                                                Enviar para Paciente
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => {
+                                                setSaveTemplateDialogOpen(true);
+                                            }}>
+                                                <Save className="h-4 w-4 mr-2" />
+                                                Salvar como Template
                                             </DropdownMenuItem>
                                             <DropdownMenuSeparator />
                                             <DropdownMenuItem
@@ -1145,54 +1171,101 @@ const MealPlanPage = () => {
                             <p className="text-muted-foreground mb-4">{activePlan.description}</p>
                         )}
 
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                            <div>
-                                <div className="text-sm text-muted-foreground">Início</div>
-                                <div className="font-semibold">{formatDate(activePlan.start_date)}</div>
+                        {/* Metadata Grid com Ícones */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+                            <div className="p-3 rounded-lg border bg-muted/20">
+                                <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
+                                    <Calendar className="w-3.5 h-3.5" />
+                                    Início
+                                </div>
+                                <div className="font-semibold text-sm">{formatDate(activePlan.start_date)}</div>
                             </div>
-                            <div>
-                                <div className="text-sm text-muted-foreground">Término</div>
-                                <div className="font-semibold">
+                            <div className="p-3 rounded-lg border bg-muted/20">
+                                <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
+                                    <CalendarCheck className="w-3.5 h-3.5" />
+                                    Término
+                                </div>
+                                <div className="font-semibold text-sm">
                                     {activePlan.end_date ? formatDate(activePlan.end_date) : 'Indeterminado'}
                                 </div>
                             </div>
-                            <div>
-                                <div className="text-sm text-muted-foreground">Dias Ativos</div>
-                                <div className="font-semibold">{getDaysLabel(activePlan.active_days)}</div>
+                            <div className="p-3 rounded-lg border bg-muted/20">
+                                <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
+                                    <CalendarDays className="w-3.5 h-3.5" />
+                                    Dias Ativos
+                                </div>
+                                <div className="font-semibold text-sm">{getDaysLabel(activePlan.active_days)}</div>
                             </div>
-                            <div>
-                                <div className="text-sm text-muted-foreground">Refeições</div>
-                                <div className="font-semibold">{activePlan.meals?.length || 0}</div>
+                            <div className="p-3 rounded-lg border bg-muted/20">
+                                <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
+                                    <UtensilsCrossed className="w-3.5 h-3.5" />
+                                    Refeições
+                                </div>
+                                <div className="font-semibold text-sm">{activePlan.meals?.length || 0}</div>
                             </div>
                         </div>
 
-                        {/* Grid: Refeições (60%) + Macronutrientes (40%) */}
+                        {/* Grid: Refeições (60%) + Painel Nutricional (40%) */}
                         <div className="grid grid-cols-1 lg:grid-cols-10 gap-6">
                             {/* Refeições - 60% */}
                             <div className="lg:col-span-6">
                                 {activePlan.meals && activePlan.meals.length > 0 ? (
                                     <div className="space-y-2">
-                                        <div className="font-semibold mb-3">Refeições:</div>
-                                        {activePlan.meals.map((meal, index) => (
-                                            <div key={meal.id} className="p-3 border rounded-lg bg-muted/30">
-                                                <div className="flex items-center justify-between">
-                                                    <div>
-                                                        <div className="font-medium">
-                                                            {index + 1}. {meal.name}
-                                                            {meal.meal_time && (
-                                                                <span className="text-sm text-muted-foreground ml-2">
-                                                                    às {meal.meal_time}
+                                        <div className="font-semibold mb-3 flex items-center gap-2">
+                                            <UtensilsCrossed className="w-4 h-4 text-muted-foreground" />
+                                            Refeições
+                                        </div>
+                                        {activePlan.meals.map((meal, index) => {
+                                            const mealCalPct = activePlan.daily_calories > 0
+                                                ? ((meal.total_calories || 0) / activePlan.daily_calories) * 100
+                                                : 0;
+                                            const mealColors = ['#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#0088fe', '#00c49f', '#ffbb28', '#ff6b6b', '#a57ed0'];
+                                            const mealColor = mealColors[index % mealColors.length];
+
+                                            return (
+                                                <div key={meal.id} className="group p-3 border rounded-lg bg-background hover:shadow-sm transition-all duration-150">
+                                                    <div className="flex items-center gap-3">
+                                                        {/* Color indicator */}
+                                                        <div
+                                                            className="w-1 h-10 rounded-full flex-shrink-0"
+                                                            style={{ backgroundColor: mealColor }}
+                                                        />
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="flex items-center justify-between gap-2">
+                                                                <div className="font-medium text-sm truncate">
+                                                                    {meal.name}
+                                                                </div>
+                                                                <div className="flex items-center gap-2 flex-shrink-0">
+                                                                    {meal.meal_time && (
+                                                                        <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-md">
+                                                                            {meal.meal_time}
+                                                                        </span>
+                                                                    )}
+                                                                    <span className="text-xs font-semibold" style={{ color: mealColor }}>
+                                                                        {(meal.total_calories || 0).toFixed(0)} kcal
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                            {/* Calorie % bar */}
+                                                            <div className="flex items-center gap-2 mt-1.5">
+                                                                <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                                                                    <div
+                                                                        className="h-full rounded-full transition-all duration-500"
+                                                                        style={{ width: `${Math.min(mealCalPct, 100)}%`, backgroundColor: mealColor, opacity: 0.7 }}
+                                                                    />
+                                                                </div>
+                                                                <span className="text-[10px] text-muted-foreground w-8 text-right">
+                                                                    {mealCalPct.toFixed(0)}%
                                                                 </span>
-                                                            )}
-                                                        </div>
-                                                        <div className="text-sm text-muted-foreground">
-                                                            {meal.foods?.length || 0} alimento(s) •
-                                                            {' '}{meal.total_calories?.toFixed(0) || 0} kcal
+                                                            </div>
+                                                            <div className="text-[10px] text-muted-foreground mt-0.5">
+                                                                {meal.foods?.length || 0} alimento(s)
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 ) : (
                                     <Alert>
@@ -1203,7 +1276,7 @@ const MealPlanPage = () => {
                                 )}
                             </div>
 
-                            {/* Macronutrientes - 40% (somente visualização) */}
+                            {/* Painel Nutricional - 40% */}
                             <div className="lg:col-span-4">
                                 <MacrosChart
                                     protein={activePlan.daily_protein || 0}
@@ -1216,207 +1289,274 @@ const MealPlanPage = () => {
                                     referenceValues={referenceValues}
                                     onReferenceUpdate={null}
                                     readOnly={true}
+                                    plan={fullActivePlan}
+                                    activePlanId={activePlan.id}
                                 />
                             </div>
                         </div>
-                    </CardContent>
-                </Card>
-            )}
 
-            {activePlan && (
-                <Card className="mb-6">
-                    <CardHeader>
-                        <CardTitle className="text-lg">Histórico de Versões do Plano</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        {versionsLoading ? (
-                            <p className="text-sm text-muted-foreground">Carregando versões...</p>
-                        ) : mealPlanVersions.length === 0 ? (
-                            <p className="text-sm text-muted-foreground">
-                                Nenhuma versão registrada ainda. Ao salvar edições, o histórico será criado automaticamente.
-                            </p>
-                        ) : (
-                            <>
-                                <div className="grid gap-3 md:grid-cols-[1fr_auto] items-end">
-                                    <div>
-                                        <label className="text-sm font-medium text-foreground">Comparar plano atual com versão</label>
-                                        <select
-                                            className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                                            value={selectedVersionId}
-                                            onChange={(event) => setSelectedVersionId(event.target.value)}
-                                        >
-                                            {mealPlanVersions.map((version) => (
-                                                <option key={version.id} value={String(version.id)}>
-                                                    Versão {version.version_number} • {new Date(version.created_at).toLocaleString('pt-BR')}
-                                                    {version.is_rollback ? ' • rollback' : ''}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <Button
-                                        variant="outline"
-                                        disabled={!selectedVersion || restoringVersion}
-                                        onClick={handleRestoreVersion}
-                                    >
-                                        {restoringVersion ? 'Restaurando...' : 'Restaurar versão'}
-                                    </Button>
-                                </div>
-
-                                {selectedVersion && currentMetrics && baseMetrics ? (
-                                    <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-                                        <div className="rounded-lg border p-3">
-                                            <p className="text-xs text-muted-foreground">Kcal/dia</p>
-                                            <p className="text-lg font-semibold">{currentMetrics.calories.toFixed(0)}</p>
-                                            <p className="text-xs text-muted-foreground">Delta: {buildDelta(currentMetrics.calories, baseMetrics.calories)}</p>
-                                        </div>
-                                        <div className="rounded-lg border p-3">
-                                            <p className="text-xs text-muted-foreground">Proteína</p>
-                                            <p className="text-lg font-semibold">{currentMetrics.protein.toFixed(1)} g</p>
-                                            <p className="text-xs text-muted-foreground">Delta: {buildDelta(currentMetrics.protein, baseMetrics.protein)}</p>
-                                        </div>
-                                        <div className="rounded-lg border p-3">
-                                            <p className="text-xs text-muted-foreground">Carboidratos</p>
-                                            <p className="text-lg font-semibold">{currentMetrics.carbs.toFixed(1)} g</p>
-                                            <p className="text-xs text-muted-foreground">Delta: {buildDelta(currentMetrics.carbs, baseMetrics.carbs)}</p>
-                                        </div>
-                                        <div className="rounded-lg border p-3">
-                                            <p className="text-xs text-muted-foreground">Gorduras</p>
-                                            <p className="text-lg font-semibold">{currentMetrics.fat.toFixed(1)} g</p>
-                                            <p className="text-xs text-muted-foreground">Delta: {buildDelta(currentMetrics.fat, baseMetrics.fat)}</p>
-                                        </div>
-                                        <div className="rounded-lg border p-3">
-                                            <p className="text-xs text-muted-foreground">Refeições</p>
-                                            <p className="text-lg font-semibold">{currentMetrics.mealsCount}</p>
-                                            <p className="text-xs text-muted-foreground">Delta: {buildDelta(currentMetrics.mealsCount, baseMetrics.mealsCount)}</p>
+                        {/* Histórico de Versões - Colapsável */}
+                        {mealPlanVersions.length > 0 && (
+                            <div className="mt-6 border-t pt-4">
+                                <button
+                                    type="button"
+                                    onClick={() => setVersionsExpanded(!versionsExpanded)}
+                                    className="flex items-center justify-between w-full group"
+                                >
+                                    <div className="flex items-center gap-2">
+                                        <History className="w-4 h-4 text-muted-foreground" />
+                                        <span className="text-sm font-semibold text-foreground">Histórico de Versões</span>
+                                        <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">{mealPlanVersions.length}</Badge>
+                                        <div className="relative">
+                                            <Info className="w-3.5 h-3.5 text-muted-foreground cursor-help peer" />
+                                            <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-64 p-2.5 bg-foreground text-background text-xs rounded-lg shadow-lg opacity-0 pointer-events-none peer-hover:opacity-100 transition-opacity z-50">
+                                                Cada vez que você salva uma edição no plano, uma versão é criada automaticamente. Compare mudanças e restaure versões anteriores.
+                                            </div>
                                         </div>
                                     </div>
-                                ) : null}
-                            </>
+                                    {versionsExpanded ? (
+                                        <ChevronUp className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+                                    ) : (
+                                        <ChevronDown className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+                                    )}
+                                </button>
+
+                                {versionsExpanded && (
+                                    <div className="mt-4 space-y-4 animate-in slide-in-from-top-2 duration-200">
+                                        <div className="grid gap-3 md:grid-cols-[1fr_auto] items-end">
+                                            <div>
+                                                <label className="text-sm font-medium text-foreground">Comparar plano atual com versão</label>
+                                                <select
+                                                    className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                                    value={selectedVersionId}
+                                                    onChange={(event) => setSelectedVersionId(event.target.value)}
+                                                >
+                                                    {mealPlanVersions.map((version) => (
+                                                        <option key={version.id} value={String(version.id)}>
+                                                            Versão {version.version_number} • {new Date(version.created_at).toLocaleString('pt-BR')}
+                                                            {version.is_rollback ? ' • rollback' : ''}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            <Button
+                                                variant="outline"
+                                                disabled={!selectedVersion || restoringVersion}
+                                                onClick={handleRestoreVersion}
+                                            >
+                                                {restoringVersion ? 'Restaurando...' : 'Restaurar versão'}
+                                            </Button>
+                                        </div>
+
+                                        {selectedVersion && currentMetrics && baseMetrics ? (
+                                            <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+                                                <div className="rounded-lg border p-3">
+                                                    <p className="text-xs text-muted-foreground">Kcal/dia</p>
+                                                    <p className="text-lg font-semibold">{currentMetrics.calories.toFixed(0)}</p>
+                                                    <p className="text-xs text-muted-foreground">Delta: {buildDelta(currentMetrics.calories, baseMetrics.calories)}</p>
+                                                </div>
+                                                <div className="rounded-lg border p-3">
+                                                    <p className="text-xs text-muted-foreground">Proteína</p>
+                                                    <p className="text-lg font-semibold">{currentMetrics.protein.toFixed(1)} g</p>
+                                                    <p className="text-xs text-muted-foreground">Delta: {buildDelta(currentMetrics.protein, baseMetrics.protein)}</p>
+                                                </div>
+                                                <div className="rounded-lg border p-3">
+                                                    <p className="text-xs text-muted-foreground">Carboidratos</p>
+                                                    <p className="text-lg font-semibold">{currentMetrics.carbs.toFixed(1)} g</p>
+                                                    <p className="text-xs text-muted-foreground">Delta: {buildDelta(currentMetrics.carbs, baseMetrics.carbs)}</p>
+                                                </div>
+                                                <div className="rounded-lg border p-3">
+                                                    <p className="text-xs text-muted-foreground">Gorduras</p>
+                                                    <p className="text-lg font-semibold">{currentMetrics.fat.toFixed(1)} g</p>
+                                                    <p className="text-xs text-muted-foreground">Delta: {buildDelta(currentMetrics.fat, baseMetrics.fat)}</p>
+                                                </div>
+                                                <div className="rounded-lg border p-3">
+                                                    <p className="text-xs text-muted-foreground">Refeições</p>
+                                                    <p className="text-lg font-semibold">{currentMetrics.mealsCount}</p>
+                                                    <p className="text-xs text-muted-foreground">Delta: {buildDelta(currentMetrics.mealsCount, baseMetrics.mealsCount)}</p>
+                                                </div>
+                                            </div>
+                                        ) : null}
+                                    </div>
+                                )}
+                            </div>
                         )}
                     </CardContent>
                 </Card>
             )}
 
-            {/* Lista de Planos */}
-            <Card>
-                <CardHeader>
-                    <CardTitle>Todos os Planos</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    {pendingDrafts.length === 0 && plans.length === 0 ? (
-                        <Alert>
-                            <AlertDescription>
-                                Nenhum plano alimentar criado ainda. Clique em "Novo Plano" para começar.
-                            </AlertDescription>
-                        </Alert>
-                    ) : (
-                        <div className="space-y-3">
-                            {/* RASCUNHOS PENDENTES NO TOPO DA LISTA */}
-                            {pendingDrafts.map((draft) => (
-                                <div key={draft.id} className="p-4 border-2 border-amber-200 bg-amber-50/50 border-dashed rounded-lg transition-colors">
-                                    <div className="flex items-start justify-between">
-                                        <div className="flex-1">
-                                            <div className="flex items-center gap-2">
-                                                <h3 className="font-semibold text-amber-900">{draft.name || 'Novo Plano Alimentar'}</h3>
-                                                <Badge className="bg-amber-500 hover:bg-amber-600">Rascunho Não Salvo</Badge>
+            {/* Lista de Planos - Inline quando NÃO tem plano ativo */}
+            {!activePlan && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Todos os Planos</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        {pendingDrafts.length === 0 && plans.length === 0 ? (
+                            <Alert>
+                                <AlertDescription>
+                                    Nenhum plano alimentar criado ainda. Clique em "Novo Plano" para começar.
+                                </AlertDescription>
+                            </Alert>
+                        ) : (
+                            <div className="space-y-3">
+                                {pendingDrafts.map((draft) => (
+                                    <div key={draft.id} className="p-4 border-2 border-amber-200 bg-amber-50/50 border-dashed rounded-lg transition-colors">
+                                        <div className="flex items-start justify-between">
+                                            <div className="flex-1">
+                                                <div className="flex items-center gap-2">
+                                                    <h3 className="font-semibold text-amber-900">{draft.name || 'Novo Plano Alimentar'}</h3>
+                                                    <Badge className="bg-amber-500 hover:bg-amber-600">Rascunho</Badge>
+                                                </div>
+                                                <div className="text-sm text-amber-700/80 mt-1">
+                                                    {formatRelativeTime(draft.updated_at)} • Pendente
+                                                </div>
                                             </div>
-                                            <div className="text-sm text-amber-700/80 mt-1">
-                                                {formatRelativeTime(draft.updated_at)} • Pendente de ativação ou conclusão
-                                            </div>
-                                        </div>
-                                        <div className="flex gap-2">
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                className="border-amber-300 bg-white text-amber-800 hover:bg-amber-100"
-                                                onClick={() => handleResumePendingDraft(draft)}
-                                                title="Retomar edição"
-                                            >
-                                                <Edit className="h-4 w-4 mr-2" />
-                                                Retomar
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className="text-destructive hover:bg-red-50 hover:text-destructive"
-                                                onClick={() => setDraftToDelete(draft)}
-                                                disabled={discardingDraft}
-                                                title="Descartar rascunho"
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-
-                            {/* PLANOS SALVOS */}
-                            {plans.map((plan) => (
-                                <div
-                                    key={plan.id}
-                                    className="p-4 border rounded-lg hover:bg-muted/50 transition-colors"
-                                >
-                                    <div className="flex items-start justify-between">
-                                        <div className="flex-1">
-                                            <div className="flex items-center gap-2">
-                                                <h3 className="font-semibold">{plan.name}</h3>
-                                                {plan.is_active && <Badge variant="outline">Ativo</Badge>}
-                                                {!plan.is_active && <Badge variant="secondary">Arquivado</Badge>}
-                                            </div>
-                                            <div className="text-sm text-muted-foreground mt-1">
-                                                {formatDate(plan.start_date)}
-                                                {plan.end_date && ` até ${formatDate(plan.end_date)}`}
-                                                {' '}• {getDaysLabel(plan.active_days)}
-                                                {' '}• {plan.daily_calories?.toFixed(0) || 0} kcal/dia
-                                            </div>
-                                        </div>
-                                        <div className="flex gap-2">
-                                            {/* Botão Ativar - só aparece se plano está inativo */}
-                                            {!plan.is_active && (
-                                                <Button
-                                                    variant="default"
-                                                    size="sm"
-                                                    onClick={() => handleSetActive(plan.id)}
-                                                    title="Ativar este plano"
-                                                >
-                                                    <RefreshCw className="h-4 w-4" />
+                                            <div className="flex gap-2">
+                                                <Button variant="outline" size="sm" className="border-amber-300 bg-white text-amber-800 hover:bg-amber-100" onClick={() => handleResumePendingDraft(draft)} title="Retomar edição">
+                                                    <Edit className="h-4 w-4 mr-2" />Retomar
                                                 </Button>
-                                            )}
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => handleEdit(plan.id)}
-                                                title="Editar plano"
-                                            >
-                                                <Edit className="h-4 w-4" />
-                                            </Button>
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => handleCopy(plan.id)}
-                                                title="Copiar modelo"
-                                            >
-                                                <Copy className="h-4 w-4" />
-                                            </Button>
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => {
-                                                    setPlanToDelete(plan.id);
-                                                    setDeleteDialogOpen(true);
-                                                }}
-                                                title="Deletar plano"
-                                            >
-                                                <Trash2 className="h-4 w-4 text-destructive" />
-                                            </Button>
+                                                <Button variant="ghost" size="sm" className="text-destructive hover:bg-red-50 hover:text-destructive" onClick={() => setDraftToDelete(draft)} disabled={discardingDraft} title="Descartar rascunho">
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            </div>
                                         </div>
                                     </div>
+                                ))}
+                                {plans.map((plan) => (
+                                    <div key={plan.id} className="p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                                        <div className="flex items-start justify-between">
+                                            <div className="flex-1">
+                                                <div className="flex items-center gap-2">
+                                                    <h3 className="font-semibold">{plan.name}</h3>
+                                                    {plan.is_active && <Badge variant="outline" className="border-green-300 text-green-700">Ativo</Badge>}
+                                                    {!plan.is_active && <Badge variant="secondary">Arquivado</Badge>}
+                                                </div>
+                                                <div className="text-sm text-muted-foreground mt-1">
+                                                    {formatDate(plan.start_date)}
+                                                    {plan.end_date && ` até ${formatDate(plan.end_date)}`}
+                                                    {' '}• {getDaysLabel(plan.active_days)}
+                                                    {' '}• {plan.daily_calories?.toFixed(0) || 0} kcal/dia
+                                                </div>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                {!plan.is_active && (
+                                                    <Button variant="default" size="sm" onClick={() => handleSetActive(plan.id)} title="Ativar este plano">
+                                                        <RefreshCw className="h-4 w-4" />
+                                                    </Button>
+                                                )}
+                                                <Button variant="outline" size="sm" onClick={() => handleEdit(plan.id)} title="Editar plano">
+                                                    <Edit className="h-4 w-4" />
+                                                </Button>
+                                                <Button variant="outline" size="sm" onClick={() => handleCopy(plan.id)} title="Enviar para paciente">
+                                                    <Send className="h-4 w-4" />
+                                                </Button>
+                                                <Button variant="outline" size="sm" onClick={() => { setPlanToDelete(plan.id); setDeleteDialogOpen(true); }} title="Deletar plano">
+                                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+            )}
+
+            {/* Modal "Meus Planos" - quando plano ativo existe */}
+            <Dialog open={plansModalOpen} onOpenChange={(open) => { setPlansModalOpen(open); if (!open) setPlansSearchTerm(''); }}>
+                <DialogContent className="max-w-3xl max-h-[80vh]">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <FolderOpen className="h-5 w-5 text-primary" />
+                            Planos Alimentares
+                        </DialogTitle>
+                        <DialogDescription>
+                            {plans.length} plano(s) • {pendingDrafts.length} rascunho(s)
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    {/* Busca */}
+                    <div className="relative">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            placeholder="Buscar por nome do plano..."
+                            value={plansSearchTerm}
+                            onChange={(e) => setPlansSearchTerm(e.target.value)}
+                            className="pl-10"
+                        />
+                    </div>
+
+                    <div className="overflow-y-auto max-h-[50vh] space-y-2 pr-1">
+                        {/* Rascunhos */}
+                        {pendingDrafts.filter(d => !plansSearchTerm || (d.name || '').toLowerCase().includes(plansSearchTerm.toLowerCase())).map((draft) => (
+                            <div key={draft.id} className="p-3 border-2 border-amber-200 bg-amber-50/50 border-dashed rounded-lg">
+                                <div className="flex items-center justify-between gap-2">
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2">
+                                            <h4 className="font-semibold text-sm text-amber-900 truncate">{draft.name || 'Novo Plano'}</h4>
+                                            <Badge className="bg-amber-500 hover:bg-amber-600 shrink-0 text-[10px]">Rascunho</Badge>
+                                        </div>
+                                        <p className="text-xs text-amber-700/70 mt-0.5">{formatRelativeTime(draft.updated_at)}</p>
+                                    </div>
+                                    <div className="flex gap-1.5 shrink-0">
+                                        <Button variant="outline" size="sm" className="h-8 border-amber-300 text-amber-800" onClick={() => { handleResumePendingDraft(draft); setPlansModalOpen(false); }}>
+                                            <Edit className="h-3.5 w-3.5 mr-1" />Retomar
+                                        </Button>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDraftToDelete(draft)}>
+                                            <Trash2 className="h-3.5 w-3.5" />
+                                        </Button>
+                                    </div>
                                 </div>
-                            ))}
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
+                            </div>
+                        ))}
+
+                        {/* Planos salvos */}
+                        {plans.filter(p => !plansSearchTerm || p.name.toLowerCase().includes(plansSearchTerm.toLowerCase())).map((plan) => (
+                            <div key={plan.id} className="p-3 border rounded-lg hover:bg-muted/30 transition-colors">
+                                <div className="flex items-center justify-between gap-2">
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2">
+                                            <h4 className="font-semibold text-sm truncate">{plan.name}</h4>
+                                            {plan.is_active && <Badge variant="outline" className="border-green-300 text-green-700 shrink-0 text-[10px]">Ativo</Badge>}
+                                            {!plan.is_active && <Badge variant="secondary" className="shrink-0 text-[10px]">Arquivado</Badge>}
+                                        </div>
+                                        <p className="text-xs text-muted-foreground mt-0.5">
+                                            {formatDate(plan.start_date)}
+                                            {plan.end_date && ` → ${formatDate(plan.end_date)}`}
+                                            {' '}• {plan.daily_calories?.toFixed(0) || 0} kcal/dia
+                                        </p>
+                                    </div>
+                                    <div className="flex gap-1.5 shrink-0">
+                                        {!plan.is_active && (
+                                            <Button variant="default" size="icon" className="h-8 w-8" onClick={() => { handleSetActive(plan.id); setPlansModalOpen(false); }} title="Ativar">
+                                                <RefreshCw className="h-3.5 w-3.5" />
+                                            </Button>
+                                        )}
+                                        <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => { handleEdit(plan.id); setPlansModalOpen(false); }} title="Editar">
+                                            <Edit className="h-3.5 w-3.5" />
+                                        </Button>
+                                        <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleCopy(plan.id)} title="Enviar para paciente">
+                                            <Send className="h-3.5 w-3.5" />
+                                        </Button>
+                                        <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => { setPlanToDelete(plan.id); setDeleteDialogOpen(true); }} title="Deletar">
+                                            <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+
+                        {plans.filter(p => !plansSearchTerm || p.name.toLowerCase().includes(plansSearchTerm.toLowerCase())).length === 0 &&
+                         pendingDrafts.filter(d => !plansSearchTerm || (d.name || '').toLowerCase().includes(plansSearchTerm.toLowerCase())).length === 0 && (
+                            <div className="text-center py-8 text-muted-foreground text-sm">
+                                Nenhum plano encontrado
+                            </div>
+                        )}
+                    </div>
+                </DialogContent>
+            </Dialog>
 
             {/* Dialog de Confirmação de Exclusão de Rascunho */}
             <AlertDialog open={!!draftToDelete} onOpenChange={(open) => !open && setDraftToDelete(null)}>

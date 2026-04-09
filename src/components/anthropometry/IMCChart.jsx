@@ -85,7 +85,7 @@ const IMCChart = ({ data = [], patientAge = null, patientSex = null, patientEthn
         const hCm = parseFloat(lastRecordWithHeight.height);
         const wNow = parseFloat(lastRecordWithHeight.weight);
         const gender = patientSex?.toLowerCase() || '';
-        const isMale = gender.includes('m') || gender === 'masculino' || gender === 'male';
+        const isMale = /^(male|masculino|m)$/i.test(String(gender || '').trim());
         
         brocaIdeal = isMale 
             ? 52 + (0.75 * (hCm - 152.4))

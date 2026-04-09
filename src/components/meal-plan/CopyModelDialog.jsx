@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Copy, Search, X, Check } from 'lucide-react';
+import { Search, X, Check, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,6 +13,7 @@ import {
     DialogFooter
 } from '@/components/ui/dialog';
 import { supabase } from '@/lib/customSupabaseClient';
+import { GradientAvatar } from '@/components/nutritionist/PatientCard';
 
 const CopyModelDialog = ({ isOpen, onClose, planId, planName, onCopy }) => {
     const [patients, setPatients] = useState([]);
@@ -32,7 +33,8 @@ const CopyModelDialog = ({ isOpen, onClose, planId, planName, onCopy }) => {
         if (searchTerm) {
             const filtered = patients.filter(p =>
                 p.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                p.email?.toLowerCase().includes(searchTerm.toLowerCase())
+                p.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                p.phone?.includes(searchTerm)
             );
             setFilteredPatients(filtered);
         } else {
@@ -48,9 +50,10 @@ const CopyModelDialog = ({ isOpen, onClose, planId, planName, onCopy }) => {
 
             const { data, error } = await supabase
                 .from('user_profiles')
-                .select('id, name, email')
+                .select('id, name, email, phone, avatar_url')
                 .eq('user_type', 'patient')
                 .eq('nutritionist_id', user.id)
+                .eq('is_active', true)
                 .order('name', { ascending: true });
 
             if (error) throw error;
@@ -71,7 +74,7 @@ const CopyModelDialog = ({ isOpen, onClose, planId, planName, onCopy }) => {
             await onCopy(selectedPatient.id);
             handleClose();
         } catch (error) {
-            console.error('Erro ao copiar modelo:', error);
+            console.error('Erro ao enviar plano:', error);
         } finally {
             setCopying(false);
         }
@@ -83,13 +86,25 @@ const CopyModelDialog = ({ isOpen, onClose, planId, planName, onCopy }) => {
         onClose();
     };
 
+    const formatPhone = (phone) => {
+        if (!phone) return null;
+        const cleaned = phone.replace(/\D/g, '');
+        if (cleaned.length === 11) {
+            return `(${cleaned.slice(0, 2)}) ${cleaned.slice(2, 7)}-${cleaned.slice(7)}`;
+        }
+        return phone;
+    };
+
     return (
         <Dialog open={isOpen} onOpenChange={handleClose}>
             <DialogContent className="max-w-2xl">
                 <DialogHeader>
-                    <DialogTitle>Copiar Modelo de Dieta</DialogTitle>
+                    <DialogTitle className="flex items-center gap-2">
+                        <Send className="h-5 w-5 text-primary" />
+                        Enviar Plano para Paciente
+                    </DialogTitle>
                     <DialogDescription>
-                        Selecione o paciente para aplicar o plano: <strong>{planName}</strong>
+                        Selecione o paciente que receberá uma cópia do plano: <strong>{planName}</strong>
                     </DialogDescription>
                 </DialogHeader>
 
@@ -101,7 +116,7 @@ const CopyModelDialog = ({ isOpen, onClose, planId, planName, onCopy }) => {
                             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input
                                 id="search"
-                                placeholder="Digite o nome ou email do paciente..."
+                                placeholder="Nome, email ou telefone..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 className="pl-10"
@@ -111,7 +126,7 @@ const CopyModelDialog = ({ isOpen, onClose, planId, planName, onCopy }) => {
                     </div>
 
                     {/* Lista de Pacientes */}
-                    <ScrollArea className="h-[400px] border rounded-md p-4">
+                    <ScrollArea className="h-[400px] border rounded-md p-3">
                         {loading && (
                             <div className="text-center py-8 text-muted-foreground">
                                 Carregando pacientes...
@@ -130,23 +145,33 @@ const CopyModelDialog = ({ isOpen, onClose, planId, planName, onCopy }) => {
                                     <div
                                         key={patient.id}
                                         className={`
-                                            p-3 border rounded-lg cursor-pointer transition-colors
+                                            p-3 border rounded-lg cursor-pointer transition-all duration-150
                                             ${selectedPatient?.id === patient.id
-                                                ? 'bg-primary/10 border-primary'
-                                                : 'hover:bg-muted'
+                                                ? 'bg-primary/10 border-primary shadow-sm'
+                                                : 'hover:bg-muted/50 hover:border-border'
                                             }
                                         `}
                                         onClick={() => setSelectedPatient(patient)}
                                     >
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex-1">
+                                        <div className="flex items-center gap-3">
+                                            <GradientAvatar
+                                                name={patient.name}
+                                                avatarUrl={patient.avatar_url}
+                                                size={40}
+                                            />
+                                            <div className="flex-1 min-w-0">
                                                 <div className="flex items-center gap-2">
-                                                    <h4 className="font-semibold">{patient.name}</h4>
+                                                    <h4 className="font-semibold text-sm truncate">{patient.name}</h4>
                                                     {selectedPatient?.id === patient.id && (
-                                                        <Check className="h-4 w-4 text-primary" />
+                                                        <div className="flex-shrink-0 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
+                                                            <Check className="h-3 w-3 text-primary-foreground" />
+                                                        </div>
                                                     )}
                                                 </div>
-                                                <p className="text-sm text-muted-foreground">{patient.email}</p>
+                                                <p className="text-xs text-muted-foreground truncate">{patient.email}</p>
+                                                {patient.phone && (
+                                                    <p className="text-xs text-muted-foreground">{formatPhone(patient.phone)}</p>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
@@ -162,8 +187,8 @@ const CopyModelDialog = ({ isOpen, onClose, planId, planName, onCopy }) => {
                         Cancelar
                     </Button>
                     <Button onClick={handleCopy} disabled={!selectedPatient || copying}>
-                        <Copy className="h-4 w-4 mr-2" />
-                        {copying ? 'Copiando...' : 'Copiar Modelo'}
+                        <Send className="h-4 w-4 mr-2" />
+                        {copying ? 'Enviando...' : 'Enviar Plano'}
                     </Button>
                 </DialogFooter>
             </DialogContent>

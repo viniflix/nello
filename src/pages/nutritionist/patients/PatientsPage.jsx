@@ -556,72 +556,7 @@ const PatientsPage = () => {
                 </CardContent>
             </Card>
 
-            {/* ── Auto-Cadastro Section (Bottom) ── */}
-            {user?.profile?.invite_code && (
-                <motion.div 
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="p-6 md:p-8 rounded-2xl border border-primary/20 bg-primary/5 shadow-sm space-y-6"
-                >
-                    <div className="flex flex-col md:flex-row gap-8 items-start">
-                        <div className="flex-1 space-y-4">
-                            <div className="space-y-2">
-                                <Badge className="bg-primary text-primary-foreground font-bold px-2 py-0.5 rounded text-[10px] uppercase tracking-wider">
-                                    Auto-Cadastro de Pacientes
-                                </Badge>
-                                <h2 className="text-2xl font-black text-foreground">
-                                    Expanda sua base de pacientes
-                                </h2>
-                                <p className="text-sm text-muted-foreground leading-relaxed max-w-xl">
-                                    Compartilhe seu código global para que pacientes possam se vincular a você automaticamente ao criar uma conta. Você receberá uma notificação para aprovar cada novo vínculo.
-                                </p>
-                            </div>
 
-                            {/* Step-by-Step */}
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-2">
-                                {[
-                                    { text: "Copie e compartilhe seu código global", icon: Copy, title: "1. Compartilhe" },
-                                    { text: "O paciente insere o código no cadastro", icon: Users, title: "2. Cadastro" },
-                                    { text: "Você aprova a solicitação de vínculo", icon: Check, title: "3. Aprove" }
-                                ].map((step, idx) => (
-                                    <div key={idx} className="flex flex-col gap-2">
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs border border-primary/20">
-                                                {idx + 1}
-                                            </div>
-                                            <h4 className="font-bold text-xs uppercase tracking-tight text-foreground">{step.title}</h4>
-                                        </div>
-                                        <p className="text-[11px] text-muted-foreground leading-snug">{step.text}</p>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div className="w-full md:w-72 shrink-0">
-                            <div className="bg-background/80 backdrop-blur-sm p-5 rounded-xl border border-primary/10 shadow-sm flex flex-col items-center gap-3">
-                                <span className="text-[10px] font-bold text-muted-foreground tracking-widest uppercase">Seu Código Global</span>
-                                <div 
-                                    onClick={copyNutritionistInvite}
-                                    className="w-full flex items-center justify-between px-5 py-4 bg-white dark:bg-neutral-800 rounded-xl border-2 border-primary/30 cursor-pointer hover:border-primary transition-all shadow-md active:scale-95 group"
-                                >
-                                    <span className="text-2xl font-black font-mono tracking-widest text-primary">{user?.profile?.invite_code}</span>
-                                    {copiedInvite ? <Check className="w-5 h-5 text-green-600" /> : <Copy className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />}
-                                </div>
-                                <p className="text-[10px] text-muted-foreground">Clique no código para copiar</p>
-                                
-                                <div className="w-full pt-2">
-                                    <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 flex gap-2 items-start">
-                                        <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
-                                        <p className="text-[10px] text-amber-900/80 leading-tight">
-                                            Vínculos precisam ser aprovados manualmente.
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </motion.div>
-            )}
         </div>
 
         {/* Modals Globais */}

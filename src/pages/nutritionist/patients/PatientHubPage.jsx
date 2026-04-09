@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, RefreshCw, AlertCircle, Activity, Stethoscope, User, Utensils, Heart, CheckSquare, Copy } from 'lucide-react';
+import { ArrowLeft, RefreshCw, AlertCircle, Activity, Stethoscope, User, Utensils, Heart, CheckSquare, Copy, ChevronDown, ChevronUp, Check, Link as LinkIcon, Hash } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { usePatientHub } from '@/hooks/usePatientHub';
+import { useAuth } from '@/contexts/AuthContext';
 import { useResolvedPatientId } from '@/hooks/useResolvedPatientId';
 import PatientProfileSummary from '@/components/patient-hub/PatientProfileSummary';
 import PatientJourneyWidget from '@/components/patient-hub/PatientJourneyWidget';
@@ -26,6 +27,7 @@ const PatientHubPage = () => {
     const patientId = resolvedId;
     const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
+    const { user } = useAuth();
     const [activeTab, setActiveTab] = useState(() => {
         // Ler tab dos query params (quando volta de um módulo)
         const tabFromUrl = searchParams.get('tab');
@@ -36,6 +38,8 @@ const PatientHubPage = () => {
         return 'feed';
     });
     const [isEditProfileModalOpen, setIsEditProfileModalOpen] = useState(false);
+    const [isInviteExpanded, setIsInviteExpanded] = useState(false);
+    const [copyState, setCopyState] = useState('idle'); // idle | copied
 
     // Sincronizar tab quando URL mudar (ex: navegação programática com ?tab=)
     useEffect(() => {
@@ -226,6 +230,109 @@ const PatientHubPage = () => {
 
             {/* Conteúdo Principal */}
             <main className="max-w-7xl mx-auto w-full p-4 md:p-8 space-y-8 min-w-0 overflow-x-hidden">
+                {/* ALERTA DE PERFIL OFFLINE - Em cima e Minimizável */}
+                {patientData.patient_invite_code && (
+                    <section className="w-full">
+                        <Alert className="bg-gradient-to-r from-sky-50 to-blue-50 border-sky-200 dark:from-sky-900/20 dark:to-blue-900/20 dark:border-sky-800 shadow-sm relative overflow-hidden transition-all duration-300">
+                            <div className="absolute right-0 top-0 w-32 h-32 bg-sky-500/10 rounded-full blur-xl -mr-10 -mt-10 pointer-events-none" />
+                            
+                            {/* Header / Trigger */}
+                            <div 
+                                className="flex items-center justify-between cursor-pointer select-none relative z-10"
+                                onClick={() => setIsInviteExpanded(!isInviteExpanded)}
+                            >
+                                <div className="flex items-center gap-2">
+                                    <AlertCircle className="h-5 w-5 text-sky-600 dark:text-sky-400 shrink-0" />
+                                    <h4 className="font-bold text-sky-900 dark:text-sky-300 flex items-center gap-2">
+                                        Acesso do Paciente (Convite)
+                                        <Badge variant="outline" className="bg-sky-100 text-sky-800 border-sky-300 text-[10px] py-0 hidden sm:inline-flex">AGUARDANDO VÍNCULO</Badge>
+                                    </h4>
+                                </div>
+                                <Button variant="ghost" size="sm" className="h-8 text-sky-700 hover:text-sky-900 hover:bg-sky-200/50 dark:text-sky-400">
+                                    {isInviteExpanded ? 'Ocultar' : 'Expandir'}
+                                    {isInviteExpanded ? <ChevronUp className="w-4 h-4 ml-1" /> : <ChevronDown className="w-4 h-4 ml-1" />}
+                                </Button>
+                            </div>
+
+                            {/* Conteúdo Expandido */}
+                            <AnimatePresence>
+                                {isInviteExpanded && (
+                                    <motion.div 
+                                        initial={{ height: 0, opacity: 0, marginTop: 0 }}
+                                        animate={{ height: 'auto', opacity: 1, marginTop: 16 }}
+                                        exit={{ height: 0, opacity: 0, marginTop: 0 }}
+                                        className="relative z-10 overflow-hidden"
+                                    >
+                                        <div className="text-sky-800/90 dark:text-sky-400/90 text-sm w-full space-y-4">
+                                            <p>Este paciente foi cadastrado offline. Para que ele tenha acesso ao Prontuário, Fotos e Check-ins, escolha uma das formas de convite abaixo:</p>
+                                            
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
+                                                {/* Método 1: Link Mágico */}
+                                                <div className="bg-white/60 dark:bg-black/20 rounded-md border border-sky-200 dark:border-sky-800/50 p-3 flex flex-col gap-3 min-w-0">
+                                                    <div className="flex items-center gap-2 font-semibold text-sky-900 dark:text-sky-300 text-xs sm:text-sm">
+                                                        <LinkIcon className="w-4 h-4 shrink-0" />
+                                                        <span>1. Link Mágico <span className="text-sky-600 dark:text-sky-400">(Recomendado)</span></span>
+                                                    </div>
+                                                    <p className="text-xs text-sky-700/80 dark:text-sky-500/80 leading-relaxed flex-1">Copie a mensagem pronta com o link de acesso direto para enviar ao paciente.</p>
+                                                    <div className="px-2 py-2 text-[10px] sm:text-xs bg-sky-50 dark:bg-sky-900/40 rounded border border-sky-100 dark:border-sky-800/50 font-mono break-all select-all leading-relaxed">
+                                                        {window.location.origin}/convite?token={patientData.patient_invite_code}
+                                                    </div>
+                                                    <Button 
+                                                        size="sm" 
+                                                        className={`mt-auto w-full h-9 transition-all text-xs sm:text-sm ${copyState === 'link-copied' ? 'bg-green-600 hover:bg-green-700 text-white' : 'bg-sky-600 hover:bg-sky-700 text-white'}`}
+                                                        onClick={() => {
+                                                            const link = `${window.location.origin}/convite?token=${patientData.patient_invite_code}`;
+                                                            const msg = `Olá, aqui é ${user?.profile?.name}, seu nutricionista! Seu acompanhamento nutricional detalhado no HipoZero já está pronto! Clique no link, crie sua senha com rapidez e acesse seu plano alimentar: ${link}`;
+                                                            navigator.clipboard.writeText(msg);
+                                                            setCopyState('link-copied');
+                                                            setTimeout(() => setCopyState('idle'), 2000);
+                                                        }}
+                                                    >
+                                                        {copyState === 'link-copied' ? (
+                                                            <><Check className="w-4 h-4 mr-1.5" /> Mensagem Copiada!</>
+                                                        ) : (
+                                                            <><Copy className="w-4 h-4 mr-1.5" /> Copiar Link e Mensagem</>
+                                                        )}
+                                                    </Button>
+                                                </div>
+
+                                                {/* Método 2: Código de Convite */}
+                                                <div className="bg-white/60 dark:bg-black/20 rounded-md border border-sky-200 dark:border-sky-800/50 p-3 flex flex-col gap-3 min-w-0">
+                                                    <div className="flex items-center gap-2 font-semibold text-sky-900 dark:text-sky-300 text-xs sm:text-sm">
+                                                        <Hash className="w-4 h-4 shrink-0" />
+                                                        <span>2. Código de Convite</span>
+                                                    </div>
+                                                    <p className="text-xs text-sky-700/80 dark:text-sky-500/80 leading-relaxed flex-1">Se o paciente já está na plataforma, informe este código para que ele resgate o vínculo manualmente.</p>
+                                                    <div className="flex items-center justify-between bg-sky-50 dark:bg-sky-900/40 rounded border border-sky-100 dark:border-sky-800/50 px-3 py-2 gap-2">
+                                                        <span className="text-[10px] font-semibold text-sky-900 dark:text-sky-300 uppercase tracking-wide shrink-0">Código:</span>
+                                                        <span className="font-mono font-bold tracking-widest text-sky-700 dark:text-sky-400 select-all text-sm truncate">{patientData.patient_invite_code}</span>
+                                                    </div>
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        className={`mt-auto w-full h-9 transition-all text-xs sm:text-sm border-sky-300 dark:border-sky-700 ${copyState === 'code-copied' ? 'bg-green-50 text-green-700 border-green-300 hover:bg-green-100 dark:bg-green-900/20 dark:text-green-400 dark:border-green-700' : 'text-sky-700 hover:bg-sky-50 dark:text-sky-400 dark:hover:bg-sky-900/30'}`}
+                                                        onClick={() => {
+                                                            navigator.clipboard.writeText(patientData.patient_invite_code);
+                                                            setCopyState('code-copied');
+                                                            setTimeout(() => setCopyState('idle'), 2000);
+                                                        }}
+                                                    >
+                                                        {copyState === 'code-copied' ? (
+                                                            <><Check className="w-4 h-4 mr-1.5" /> Código Copiado!</>
+                                                        ) : (
+                                                            <><Copy className="w-4 h-4 mr-1.5" /> Copiar Código</>
+                                                        )}
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </Alert>
+                    </section>
+                )}
+
                 {/* BLOCO 1 - Perfil do Paciente */}
                 <section>
                     <PatientProfileSummary
@@ -236,44 +343,6 @@ const PatientHubPage = () => {
                         onScheduleAppointment={handleScheduleAppointment}
                     />
                 </section>
-
-                {/* ALERTA DE PERFIL OFFLINE - Se o paciente tiver código de convite mas ainda não tiver 'claimado' a conta */}
-                {patientData.patient_invite_code && (
-                    <motion.div 
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="w-full"
-                    >
-                        <Alert className="bg-sky-50 border-sky-200 dark:bg-sky-900/20 dark:border-sky-800">
-                            <AlertCircle className="h-5 w-5 text-sky-600 dark:text-sky-400" />
-                            <div className="ml-2">
-                                <h4 className="font-bold text-sky-900 dark:text-sky-300 flex items-center gap-2">
-                                    Perfil Offline Ativo
-                                    <Badge variant="outline" className="bg-sky-100 text-sky-800 border-sky-200 text-[10px] py-0">PENDENTE VÍNCULO</Badge>
-                                </h4>
-                                <AlertDescription className="text-sky-800/80 dark:text-sky-400/80 mt-1">
-                                    Este paciente ainda não possui uma conta digital. Forneça o <strong>Código de Convite Individual</strong> abaixo para que ele possa baixar o aplicativo e acessar este prontuário.
-                                    <div className="mt-3 flex items-center gap-3">
-                                        <div className="bg-white dark:bg-sky-950 px-4 py-2 rounded-lg border border-sky-200 font-mono text-lg font-black tracking-widest text-sky-700 shadow-sm">
-                                            {patientData.patient_invite_code}
-                                        </div>
-                                        <Button 
-                                            variant="outline" 
-                                            size="sm" 
-                                            className="h-9 border-sky-300 text-sky-700 hover:bg-sky-100"
-                                            onClick={() => {
-                                                navigator.clipboard.writeText(patientData.patient_invite_code);
-                                                // TODO: Toast feedback
-                                            }}
-                                        >
-                                            <Copy className="w-4 h-4 mr-2" /> Copiar Código
-                                        </Button>
-                                    </div>
-                                </AlertDescription>
-                            </div>
-                        </Alert>
-                    </motion.div>
-                )}
 
                 {/* BLOCO 2 - Jornada Clínica (Guia Discreto) */}
                 <section>

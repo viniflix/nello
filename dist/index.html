@@ -7,12 +7,12 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 		<!-- 
 		  CSP: Protege contra injeção de scripts e define origens permitidas.
-		  Removemos unsafe-eval para maior segurança.
+		  Configurado para garantir segurança máxima em produção e compatibilidade com ambiente local.
 		-->
-		<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.posthog.com https://*.supabase.co; script-src-elem 'self' 'unsafe-inline' 'unsafe-eval' https://*.posthog.com https://*.supabase.co; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https:; media-src 'self' data: https://*.supabase.co blob:; connect-src 'self' data: https://*.supabase.co wss://*.supabase.co https://us.i.posthog.com https://us-assets.i.posthog.com https://*.sentry.io; worker-src 'self' blob:; frame-src 'self';" />
+		<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://us-assets.i.posthog.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https://afyoidxrshkmplxhcyeh.supabase.co http://localhost:* https://www.shutterstock.com https://*.shutterstock.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https://afyoidxrshkmplxhcyeh.supabase.co wss://afyoidxrshkmplxhcyeh.supabase.co https://us.i.posthog.com https://us-assets.i.posthog.com https://o4511147428478976.ingest.us.sentry.io http://localhost:* ws://localhost:*; media-src 'self' data: https://afyoidxrshkmplxhcyeh.supabase.co blob:; worker-src 'self' blob:; object-src 'none';" />
 		<title>HipoZero - Home</title>
-		<script type="module" crossorigin src="/assets/index-CyoxVIMT.js"></script>
-		<link rel="stylesheet" crossorigin href="/assets/index-Dd-WyVqB.css">
+		<script type="module" crossorigin src="/assets/index-DeL9z2pk.js"></script>
+		<link rel="stylesheet" crossorigin href="/assets/index-BcWHzGZd.css">
 		<script type="module">
 window.onerror = (message, source, lineno, colno, errorObj) => {
 	const errorDetails = errorObj ? JSON.stringify({

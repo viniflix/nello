@@ -1667,3 +1667,13 @@ export const rejectPatientLink = async (patientId) => {
         return { success: false, message: error.message };
     }
 };
+export async function getInviteDetails(inviteCode) {
+  try {
+    const { data, error } = await supabase.rpc('get_invite_details', { p_invite_code: inviteCode });
+    if (error) throw error;
+    return { success: true, data: data?.[0] };
+  } catch (error) {
+    console.error('Erro getInviteDetails:', error);
+    return { success: false, message: error.message };
+  }
+}

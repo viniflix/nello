@@ -170,22 +170,25 @@ export const createMealPlan = async (planData) => {
             description,
             active_days,
             start_date,
-            end_date
+            end_date,
+            is_active = true
         } = planData;
 
-        // Desativar outros planos ativos do mesmo paciente
-        const { error: deactivateError } = await supabase
-            .from('meal_plans')
-            .update({ is_active: false })
-            .eq('patient_id', patient_id)
-            .eq('is_active', true);
+        // Desativar outros planos ativos do mesmo paciente apenas se o novo plano for ativo
+        if (is_active) {
+            const { error: deactivateError } = await supabase
+                .from('meal_plans')
+                .update({ is_active: false })
+                .eq('patient_id', patient_id)
+                .eq('is_active', true);
 
-        if (deactivateError) {
-            console.warn('Erro ao desativar planos anteriores:', deactivateError);
-            // Não lançar erro, apenas avisar
+            if (deactivateError) {
+                console.warn('Erro ao desativar planos anteriores:', deactivateError);
+                // Não lançar erro, apenas avisar
+            }
         }
 
-        // Criar novo plano ativo
+        // Criar novo plano de acordo com is_active
         const { data, error } = await supabase
             .from('meal_plans')
             .insert([{
@@ -196,7 +199,7 @@ export const createMealPlan = async (planData) => {
                 active_days: active_days || ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
                 start_date: start_date || getTodayIsoDate(),
                 end_date: end_date || null,
-                is_active: true
+                is_active: is_active
             }])
             .select()
             .single();

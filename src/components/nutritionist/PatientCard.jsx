@@ -115,7 +115,7 @@ const PatientCard = ({ patient, isOnline, onArchive, onDelete }) => {
                         )}
                         {patient.patient_invite_code && !isArchived && (
                             <Badge variant="outline" className="h-4 text-[9px] px-1.5 bg-sky-100 text-sky-800 border-sky-200 uppercase tracking-wider dark:bg-sky-900/30 dark:text-sky-400 dark:border-sky-700">
-                                Perfil Offline
+                                Sem conta
                             </Badge>
                         )}
                     </div>

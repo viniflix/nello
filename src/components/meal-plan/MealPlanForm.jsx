@@ -718,6 +718,7 @@ const MealPlanForm = ({
                                     <div className="flex items-center justify-between">
                                         <CardTitle className="text-lg">Refeições</CardTitle>
                                         <Button
+                                        type="button"
                                         size="sm"
                                         onClick={() => setShowMealForm(true)}
                                         disabled={!isEditing && !draft.draftId}

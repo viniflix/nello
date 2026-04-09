@@ -156,7 +156,7 @@ const AnthropometryForm = ({
 
             // Fórmula de Broca Modificada por sexo
             const gender = patientGender?.toLowerCase() || '';
-            const isMale = gender.includes('m') || gender === 'masculino' || gender === 'male';
+            const isMale = /^(male|masculino|m)$/i.test(String(gender || '').trim());
             const heightCm = parseFloat(height);
             const broca = isMale
                 ? 52 + (0.75 * (heightCm - 152.4))
@@ -203,7 +203,7 @@ const AnthropometryForm = ({
         const height = parseFloat(formData.height);
         const age = patientBirthDate ? differenceInYears(new Date(), new Date(patientBirthDate)) : null;
         const gender = patientGender?.toLowerCase() || '';
-        const isMale = gender.includes('m') || gender === 'masculino' || gender === 'male';
+        const isMale = /^(male|masculino|m)$/i.test(String(gender || '').trim());
 
         if (!weight || !height) {
             setCompositionResults(null);
@@ -307,7 +307,7 @@ const AnthropometryForm = ({
         const height = parseFloat(formData.height);
         const wrist = parseFloat(formData.bone_diameters?.punho);
         const gender = patientGender?.toLowerCase() || '';
-        const isMale = gender.includes('m') || gender === 'masculino' || gender === 'male';
+        const isMale = /^(male|masculino|m)$/i.test(String(gender || '').trim());
 
         if (height && wrist) {
             const frame = calculateFrameSize(height, wrist, isMale);
@@ -329,7 +329,7 @@ const AnthropometryForm = ({
         const armCirc = formData.circumferences.braco_contraido_e || formData.circumferences.braco_contraido_d;
         const calfCirc = formData.circumferences.panturrilha_e || formData.circumferences.panturrilha_d;
         const gender = patientGender?.toLowerCase() || '';
-        const isMale = gender.includes('m') || gender === 'masculino' || gender === 'male';
+        const isMale = /^(male|masculino|m)$/i.test(String(gender || '').trim());
 
         if (height && weight) {
             const somatotypeResult = calculateSomatotype({
@@ -510,7 +510,7 @@ const AnthropometryForm = ({
     const getRCQCategory = (rcq) => {
         if (!rcq) return null;
         const gender = patientGender?.toLowerCase() || '';
-        const isMale = gender.includes('m') || gender === 'masculino' || gender === 'male';
+        const isMale = /^(male|masculino|m)$/i.test(String(gender || '').trim());
         const threshold = isMale ? 0.90 : 0.85;
         if (rcq < threshold) return { label: 'Baixo risco', color: 'text-green-600' };
         if (rcq < threshold + 0.10) return { label: 'Risco moderado', color: 'text-yellow-600' };

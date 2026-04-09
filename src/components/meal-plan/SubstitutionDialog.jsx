@@ -18,7 +18,7 @@ import { getSuggestedSubstitutes } from '@/lib/supabase/meal-plan-queries';
 import { Loader2, ChevronDown, ChevronUp, Scale, Info } from 'lucide-react';
 import { getSubstitutionAnalysis, formatDiff, calculateEquivalentPortion, getMacroProportions } from '@/lib/utils/foodSubstitution';
 import { Progress } from '@/components/ui/progress';
-import { zap } from 'lucide-react'; // For Pro-Max vibe
+
 
 const SubstitutionDialog = ({ isOpen, onClose, originalFood, initialSubstitutes = [], onSave }) => {
     const [substitutes, setSubstitutes] = useState([]);
