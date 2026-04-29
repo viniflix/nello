@@ -9,7 +9,7 @@ const SOURCE_CONFIG = {
     'TACO':      { label: 'TACO — Tabela Brasileira de Composição de Alimentos (UNICAMP)', short: 'TACO',      color: 'bg-blue-50 text-blue-700 border-blue-200' },
     'TBCA':      { label: 'TBCA — Tabela Brasileira de Composição de Alimentos (USP)',     short: 'TBCA',      color: 'bg-pink-50 text-pink-700 border-pink-200' },
     'USDA':      { label: 'USDA — United States Department of Agriculture',                short: 'USDA',      color: 'bg-violet-50 text-violet-700 border-violet-200' },
-    'TUCUNDUVA': { label: 'Tabela Tucunduvá',                                              short: 'Tucunduvá', color: 'bg-orange-50 text-orange-700 border-orange-200' },
+    'TUCUNDUVA': { label: 'Tabela Tucunduva',                                              short: 'Tucunduva', color: 'bg-orange-50 text-orange-700 border-orange-200' },
     'Nello':     { label: 'Banco Nello',                                                   short: 'Nello',     color: 'bg-cyan-50 text-cyan-700 border-cyan-200' },
     'custom':    { label: 'Alimento Personalizado',                                        short: 'Pessoal',   color: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
 };

@@ -13,7 +13,7 @@ const SOURCE_CONFIG = {
     'TACO':      { label: 'TACO',         color: 'bg-blue-50 text-blue-700 border-blue-200' },
     'TBCA':      { label: 'TBCA',         color: 'bg-pink-50 text-pink-700 border-pink-200' },
     'USDA':      { label: 'USDA',         color: 'bg-violet-50 text-violet-700 border-violet-200' },
-    'TUCUNDUVA': { label: 'Tucunduvá',    color: 'bg-orange-50 text-orange-700 border-orange-200' },
+    'TUCUNDUVA': { label: 'Tucunduva',    color: 'bg-orange-50 text-orange-700 border-orange-200' },
     'Nello':     { label: 'Nello',        color: 'bg-cyan-50 text-cyan-700 border-cyan-200' },
     'custom':    { label: 'Personalizado', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
 };
@@ -70,30 +70,41 @@ const FoodCardHorizontal = ({ food, isCustom = false, onView, onEdit, onDelete }
                 {cal ? `${cal} kcal` : '—'}
             </div>
 
-            {/* Ações */}
-            <div className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-slate-400 hover:text-slate-700">
-                            <MoreVertical className="h-4 w-4" />
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="text-sm">
-                        <DropdownMenuItem onClick={() => onView && onView(food)}>
-                            <Eye className="h-4 w-4 mr-2 text-slate-400" /> Ver detalhes
-                        </DropdownMenuItem>
-                        {isCustom && onEdit && (
-                            <DropdownMenuItem onClick={() => onEdit(food)}>
-                                <Edit className="h-4 w-4 mr-2 text-slate-400" /> Editar
-                            </DropdownMenuItem>
-                        )}
-                        {isCustom && onDelete && (
-                            <DropdownMenuItem onClick={() => onDelete(food)} className="text-red-600 focus:text-red-600">
-                                <Trash2 className="h-4 w-4 mr-2" /> Excluir
-                            </DropdownMenuItem>
-                        )}
-                    </DropdownMenuContent>
-                </DropdownMenu>
+            {/* Ações — sempre visíveis */}
+            <div className="flex items-center gap-1 flex-shrink-0" onClick={e => e.stopPropagation()}>
+                {/* Botão principal: Ver detalhes */}
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0 text-slate-400 hover:text-emerald-700 hover:bg-emerald-50"
+                    onClick={() => onView && onView(food)}
+                    title="Ver detalhes"
+                >
+                    <Eye className="h-4 w-4" />
+                </Button>
+
+                {/* Menu extra apenas para alimentos personalizados */}
+                {isCustom && (onEdit || onDelete) && (
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-slate-400 hover:text-slate-700">
+                                <MoreVertical className="h-4 w-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="text-sm">
+                            {onEdit && (
+                                <DropdownMenuItem onClick={() => onEdit(food)}>
+                                    <Edit className="h-4 w-4 mr-2 text-slate-400" /> Editar
+                                </DropdownMenuItem>
+                            )}
+                            {onDelete && (
+                                <DropdownMenuItem onClick={() => onDelete(food)} className="text-red-600 focus:text-red-600">
+                                    <Trash2 className="h-4 w-4 mr-2" /> Excluir
+                                </DropdownMenuItem>
+                            )}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                )}
             </div>
         </div>
     );

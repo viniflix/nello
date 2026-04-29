@@ -21,7 +21,7 @@ const SOURCE_TABS = [
   { id: 'all',       label: 'Todos',          publicSource: null },
   { id: 'TACO',      label: 'TACO',           publicSource: 'TACO' },
   { id: 'TBCA',      label: 'TBCA',           publicSource: 'TBCA' },
-  { id: 'TUCUNDUVA', label: 'Tucunduvá',      publicSource: 'TUCUNDUVA' },
+  { id: 'TUCUNDUVA', label: 'Tucunduva',      publicSource: 'TUCUNDUVA' },
   { id: 'USDA',      label: 'USDA',           publicSource: 'USDA' },
   { id: 'Nello',     label: 'Nello',          publicSource: 'Nello' },
   { id: 'custom',    label: 'Meus Alimentos', publicSource: null },
@@ -200,7 +200,7 @@ export default function FoodBankSection() {
                 <p className="text-3xl font-black text-slate-800 mt-1 leading-none">
                   {statsLoading ? '…' : stats.public.toLocaleString('pt-BR')}
                 </p>
-                <p className="text-xs text-slate-400 mt-1.5">TACO · TBCA · USDA · Tucunduvá · Nello</p>
+                <p className="text-xs text-slate-400 mt-1.5">TACO · TBCA · USDA · Tucunduva · Nello</p>
               </div>
               <Database className="w-8 h-8 text-slate-300 shrink-0 mt-0.5" />
             </div>
