@@ -315,7 +315,7 @@ export const getMealPlanById = async (planId) => {
                 if (mealPlanFoodIds.length > 0) {
                     const { data: subs } = await supabase
                         .from('meal_plan_food_substitutions')
-                        .select('meal_plan_food_id, substitute_food_id')
+                        .select('meal_plan_food_id, substitute_food_id, quantity, unit')
                         .in('meal_plan_food_id', mealPlanFoodIds);
                     
                     if (subs && subs.length > 0) {
@@ -325,7 +325,15 @@ export const getMealPlanById = async (planId) => {
 
                         substitutionsMap = subs.reduce((acc, s) => {
                             if (!acc[s.meal_plan_food_id]) acc[s.meal_plan_food_id] = [];
-                            acc[s.meal_plan_food_id].push(subFoodsMap[String(s.substitute_food_id)]);
+                            const subFood = subFoodsMap[String(s.substitute_food_id)];
+                            if (subFood) {
+                                acc[s.meal_plan_food_id].push({
+                                    ...subFood,
+                                    quantity: s.quantity,
+                                    unit: s.unit,
+                                    measure: s.unit && /^\d+$/.test(String(s.unit)) ? measuresMap[Number(s.unit)] : null
+                                });
+                            }
                             return acc;
                         }, {});
                     }
@@ -633,7 +641,9 @@ export const addFoodsToMeal = async (mealId, foods = []) => {
                 uiFood.substitutes.forEach(sub => {
                     allSubstitutes.push({
                         meal_plan_food_id: dbFood.id,
-                        substitute_food_id: sub.id || sub.food_id
+                        substitute_food_id: sub.id || sub.food_id,
+                        quantity: sub.quantity || null,
+                        unit: sub.unit || null
                     });
                 });
             }
@@ -1716,8 +1726,10 @@ export const applyTemplateToPatient = async (templateId, patientId, startDate = 
                 if (originalFood && originalFood.substitutes && Array.isArray(originalFood.substitutes)) {
                     originalFood.substitutes.forEach(sub => {
                         allSubstitutesToInsert.push({
-                            original_food_id: dbFood.id,
-                            substitute_food_id: sub.id || sub.food_id
+                            meal_plan_food_id: dbFood.id,
+                            substitute_food_id: sub.id || sub.food_id,
+                            quantity: sub.quantity || null,
+                            unit: sub.unit || null
                         });
                     });
                 }
@@ -2063,14 +2075,16 @@ export const saveFoodSubstitutions = async (mealPlanFoodId, substitutes = []) =>
         await supabase
             .from('meal_plan_food_substitutions')
             .delete()
-            .eq('original_food_id', mealPlanFoodId);
+            .eq('meal_plan_food_id', mealPlanFoodId);
 
         if (!substitutes || substitutes.length === 0) return { data: [], error: null };
 
         // 2. Inserir novas
         const inserts = substitutes.map(sub => ({
-            original_food_id: mealPlanFoodId,
-            substitute_food_id: sub.id || sub.food_id
+            meal_plan_food_id: mealPlanFoodId,
+            substitute_food_id: sub.id || sub.food_id,
+            quantity: sub.quantity || null,
+            unit: sub.unit || null
         }));
 
         const { data, error } = await supabase
@@ -2094,8 +2108,8 @@ export const getFoodSubstitutions = async (mealPlanFoodId) => {
     try {
         const { data: subs, error: subsError } = await supabase
             .from('meal_plan_food_substitutions')
-            .select('substitute_food_id')
-            .eq('original_food_id', mealPlanFoodId);
+            .select('substitute_food_id, quantity, unit')
+            .eq('meal_plan_food_id', mealPlanFoodId);
 
         if (subsError) throw subsError;
         if (!subs || subs.length === 0) return { data: [], error: null };
@@ -2108,7 +2122,18 @@ export const getFoodSubstitutions = async (mealPlanFoodId) => {
             .in('id', foodIds);
 
         if (foodsError) throw foodsError;
-        return { data: foods || [], error: null };
+        
+        // Mapear quantidades e unidades para o resultado
+        const result = (foods || []).map(food => {
+            const subData = subs.find(s => s.substitute_food_id === food.id);
+            return {
+                ...food,
+                quantity: subData?.quantity || null,
+                unit: subData?.unit || null
+            };
+        });
+
+        return { data: result, error: null };
     } catch (error) {
         logSupabaseError('Erro ao buscar substituições', error);
         return { data: [], error };

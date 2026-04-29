@@ -556,11 +556,17 @@ const MealPlanPDF = ({
                         {food.substitutes && food.substitutes.length > 0 ? (
                           <View style={[styles.substituteBlock, { marginLeft: 10 }]}>
                             <Text style={[styles.substituteTitle, { fontSize: 8 }]}>Ou substitua por:</Text>
-                            {food.substitutes.map((sub, sIndex) => (
-                              <View key={sIndex} style={[styles.substituteItem, { marginBottom: 2 }]}>
-                                <Text style={styles.substituteText}>• {sub.name}</Text>
-                              </View>
-                            ))}
+                            {food.substitutes.map((sub, sIndex) => {
+                              const subQty = sub.quantity || 100;
+                              const subMeasureName = sub.measure ? sub.measure.name : (sub.unit && sub.unit !== 'grams' ? sub.unit : 'g');
+                              const formattedSubQty = subMeasureName === 'g' || subMeasureName === 'ml' ? `${subQty}${subMeasureName}` : `${subQty} ${subMeasureName}`;
+                              
+                              return (
+                                <View key={sIndex} style={[styles.substituteItem, { marginBottom: 2 }]}>
+                                  <Text style={styles.substituteText}>• <Text style={{ fontFamily: 'Roboto', fontWeight: 700 }}>{formattedSubQty}</Text> de {sub.name}</Text>
+                                </View>
+                              );
+                            })}
                           </View>
                         ) : null}
                       </View>

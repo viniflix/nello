@@ -17,6 +17,8 @@ import FoodSelector from './FoodSelector';
 import { getSuggestedSubstitutes } from '@/lib/supabase/meal-plan-queries';
 import { Loader2, ChevronDown, ChevronUp, Scale, Info } from 'lucide-react';
 import { getSubstitutionAnalysis, formatDiff, calculateEquivalentPortion, getMacroProportions } from '@/lib/utils/foodSubstitution';
+import { calculateEquivalentGrams, checkMacroDeviations, convertGramsToMeasure } from '@/lib/utils/nutritionCalculations';
+import { PortionSelector } from '@/components/nutrition/PortionSelector';
 import { Progress } from '@/components/ui/progress';
 
 
@@ -62,14 +64,43 @@ const SubstitutionDialog = ({ isOpen, onClose, originalFood, initialSubstitutes 
         }
     };
 
-    const handleAddSubstitute = (food) => {
+    const handleAddSubstitute = async (food) => {
         if (!food) return;
         // Evitar duplicatas (usando String para maior segurança no match de IDs)
         if (substitutes.some(s => String(s.id) === String(food.id))) {
             setShowFoodSelector(false);
             return;
         }
-        setSubstitutes(prev => [...prev, food]);
+
+        const originalKcal = originalFood?.calories || 0;
+        const equivGrams = calculateEquivalentGrams(originalKcal, food);
+
+        let bestMeasure = { quantity: Math.round(equivGrams) || 100, measureId: 'grams', isApproximate: false };
+        
+        try {
+            // Importar supabase client lazy ou global se já estiver
+            const { supabase } = await import('@/lib/supabase/client');
+            const [foodMeasuresRes, allMeasuresRes] = await Promise.all([
+                supabase.from('food_household_measures').select('*').eq('food_id', food.id),
+                supabase.from('household_measures').select('*')
+            ]);
+            
+            if (foodMeasuresRes.data && allMeasuresRes.data) {
+                const match = convertGramsToMeasure(equivGrams, foodMeasuresRes.data, allMeasuresRes.data);
+                if (match) bestMeasure = match;
+            }
+        } catch (error) {
+            console.error("Erro na conversão inteligente:", error);
+        }
+
+        const newSub = {
+            ...food,
+            quantity: bestMeasure.quantity,
+            unit: bestMeasure.measureId,
+            isApproximate: bestMeasure.isApproximate
+        };
+
+        setSubstitutes(prev => [...prev, newSub]);
         // Se estava nas sugestões, remove de lá para não confundir
         setSuggestions(prev => prev.filter(s => String(s.id) !== String(food.id)));
         setShowFoodSelector(false);
@@ -108,35 +139,56 @@ const SubstitutionDialog = ({ isOpen, onClose, originalFood, initialSubstitutes 
 
     const renderSubstitutionDetail = (subFood, analysis) => {
         const originalBase = {
-            kcal: (originalFood.calories / originalFood.quantity) * 100,
-            p: (originalFood.protein / originalFood.quantity) * 100,
-            c: (originalFood.carbs / originalFood.quantity) * 100,
-            g: (originalFood.fat / originalFood.quantity) * 100,
-            fiber: (originalFood.fiber / originalFood.quantity) * 100
+            kcal: originalFood.calories || 0,
+            p: originalFood.protein || 0,
+            c: originalFood.carbs || 0,
+            g: originalFood.fat || 0,
+            fiber: originalFood.fiber || 0
         };
 
+        const subRatio = (subFood.quantity || 100) / (subFood.portion_size || 100);
+        const subKcal = subFood.calories * subRatio;
+        const subP = subFood.protein * subRatio;
+        const subC = subFood.carbs * subRatio;
+        const subG = subFood.fat * subRatio;
+        const subFiber = (subFood.fiber || 0) * subRatio;
+
         const origProps = getMacroProportions(originalBase.p, originalBase.c, originalBase.g);
-        const subProps = getMacroProportions(subFood.protein, subFood.carbs, subFood.fat);
-        const equivalentQty = calculateEquivalentPortion(originalBase.kcal, subFood.calories);
+        const subProps = getMacroProportions(subP, subC, subG);
 
         const macros = [
-            { label: 'Prot', orig: originalBase.p, sub: subFood.protein, color: 'bg-blue-500', icon: 'P' },
-            { label: 'Carb', orig: originalBase.c, sub: subFood.carbs, color: 'bg-amber-500', icon: 'C' },
-            { label: 'Gord', orig: originalBase.g, sub: subFood.fat, color: 'bg-rose-500', icon: 'G' }
+            { label: 'Prot', orig: originalBase.p, sub: subP, color: 'bg-blue-500', icon: 'P' },
+            { label: 'Carb', orig: originalBase.c, sub: subC, color: 'bg-amber-500', icon: 'C' },
+            { label: 'Gord', orig: originalBase.g, sub: subG, color: 'bg-rose-500', icon: 'G' }
         ];
+
+        const deviations = checkMacroDeviations(originalBase.kcal, originalBase.p, originalBase.c, originalBase.g, subFood, subFood.quantity || 100);
 
         return (
             <div className="mt-4 p-5 bg-background/60 backdrop-blur-md rounded-2xl border-2 border-primary/10 shadow-sm animate-in fade-in zoom-in duration-300">
+                <div className="mb-6 bg-card p-4 rounded-xl border border-primary/10 shadow-sm">
+                    <Label className="text-sm font-bold text-primary mb-3 block">1. Ajustar Porção da Substituição</Label>
+                    <PortionSelector 
+                        food={subFood}
+                        value={{ quantity: subFood.quantity || 100, measureId: subFood.unit || 'grams' }}
+                        onChange={(val) => {
+                            setSubstitutes(prev => prev.map(s => s.id === subFood.id ? { ...s, quantity: val.quantity, unit: val.measureId } : s));
+                        }}
+                        showNutrition={false}
+                    />
+                </div>
+
                 <div className="flex items-center justify-between mb-5">
                     <div className="flex items-center gap-2 text-xs font-bold text-primary uppercase tracking-widest">
                         <Scale className="h-4 w-4" />
-                        ANÁLISE COMPARATIVA PRO
+                        2. ANÁLISE COMPARATIVA
                     </div>
-                    {Math.abs(subFood.calories - originalBase.kcal) > 10 && (
-                        <Badge variant="secondary" className="bg-primary/10 text-primary hover:bg-primary/20 border-primary/20 flex gap-1.5 items-center py-1">
-                            <Info className="h-3 w-3" />
-                            Sugerido: <span className="font-bold underline">{Math.round(equivalentQty)}g</span> para equivaler
-                        </Badge>
+                    {deviations.hasDeviation && (
+                        <div className="flex flex-col gap-1 items-end">
+                            {deviations.messages.map((msg, i) => (
+                                <Badge key={i} variant="destructive" className="text-[10px] py-0">{msg}</Badge>
+                            ))}
+                        </div>
                     )}
                 </div>
 
@@ -219,9 +271,9 @@ const SubstitutionDialog = ({ isOpen, onClose, originalFood, initialSubstitutes 
                             <div className="pt-2 border-t border-primary/5 space-y-2">
                                 <p className="text-[10px] font-bold text-muted-foreground uppercase">Insights Extras:</p>
                                 <div className="flex flex-wrap gap-2">
-                                    {subFood.fiber > originalBase.fiber && (
+                                    {subFiber > originalBase.fiber && (
                                         <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-[10px] py-0">
-                                            + Fibras ({formatDiff(subFood.fiber - originalBase.fiber, 'g')})
+                                            + Fibras ({formatDiff(subFiber - originalBase.fiber, 'g')})
                                         </Badge>
                                     )}
                                     {subFood.sodium < (originalFood.sodium || 999) && (
@@ -331,14 +383,20 @@ const SubstitutionDialog = ({ isOpen, onClose, originalFood, initialSubstitutes 
                             ) : (
                                 <div className="grid grid-cols-1 gap-3 max-h-[450px] overflow-y-auto pr-2">
                                     {substitutes.map(sub => {
+                                        const subRatio = (sub.quantity || 100) / (sub.portion_size || 100);
+                                        const dynKcal = sub.calories * subRatio;
+                                        const dynP = sub.protein * subRatio;
+                                        const dynC = sub.carbs * subRatio;
+                                        const dynG = sub.fat * subRatio;
+                                        
                                         const analysis = getSubstitutionAnalysis({
-                                            calories: (originalFood.calories / originalFood.quantity) * 100,
-                                            protein: (originalFood.protein / originalFood.quantity) * 100,
-                                            carbs: (originalFood.carbs / originalFood.quantity) * 100,
-                                            fat: (originalFood.fat / originalFood.quantity) * 100,
-                                            fiber: (originalFood.fiber / originalFood.quantity) * 100,
+                                            calories: originalFood.calories,
+                                            protein: originalFood.protein,
+                                            carbs: originalFood.carbs,
+                                            fat: originalFood.fat,
+                                            fiber: originalFood.fiber || 0,
                                             group: originalFood.food?.group
-                                        }, sub);
+                                        }, { ...sub, calories: dynKcal, protein: dynP, carbs: dynC, fat: dynG });
                                         
                                         const isExpanded = expandedId === sub.id;
 
@@ -348,33 +406,36 @@ const SubstitutionDialog = ({ isOpen, onClose, originalFood, initialSubstitutes 
                                                     <div className="flex-1 cursor-pointer" onClick={() => setExpandedId(isExpanded ? null : sub.id)}>
                                                         <div className="flex items-center gap-2">
                                                             <span className="font-semibold">{sub.name}</span>
+                                                            <Badge variant="outline" className="h-5 text-[10px] bg-muted/50 border-muted font-bold text-primary">
+                                                                {sub.quantity || 100} {sub.unit === 'grams' || !sub.unit ? 'g' : 'medida(s)'}
+                                                            </Badge>
                                                             {analysis.isRecommended ? (
                                                                 <Badge className="h-5 text-[10px] bg-green-100 text-green-700 border-green-200 hover:bg-green-100">
-                                                                    Equivalente Nutricional
+                                                                    Equivalente
                                                                 </Badge>
                                                             ) : (
                                                                 <Badge variant="outline" className="h-5 text-[10px] bg-amber-50 text-amber-700 border-amber-200">
-                                                                    Variação Significativa
+                                                                    Atenção (Macros)
                                                                 </Badge>
                                                             )}
                                                             {isExpanded ? <ChevronUp className="h-3 w-3 text-muted-foreground" /> : <ChevronDown className="h-3 w-3 text-muted-foreground" />}
                                                         </div>
                                                         <div className="text-xs text-muted-foreground mt-1 flex gap-4 items-center">
                                                             <div className="flex items-center gap-1.5 p-0.5 rounded">
-                                                                <span className="font-bold text-foreground">{sub.calories} kcal</span>
-                                                                {renderDelta(analysis.diffs.calories, 30)}
+                                                                <span className="font-bold text-foreground">{Math.round(dynKcal)} kcal</span>
+                                                                {renderDelta(dynKcal - originalFood.calories, 30)}
                                                             </div>
                                                             <div className="flex items-center gap-1.5 p-0.5 rounded">
-                                                                <span>P: {sub.protein.toFixed(1)}g</span>
-                                                                {renderDelta(analysis.diffs.protein, 2)}
+                                                                <span>P: {dynP.toFixed(1)}g</span>
+                                                                {renderDelta(dynP - originalFood.protein, 2)}
                                                             </div>
                                                             <div className="flex items-center gap-1.5 p-0.5 rounded">
-                                                                <span>C: {sub.carbs.toFixed(1)}g</span>
-                                                                {renderDelta(analysis.diffs.carbs, 2)}
+                                                                <span>C: {dynC.toFixed(1)}g</span>
+                                                                {renderDelta(dynC - originalFood.carbs, 2)}
                                                             </div>
                                                             <div className="flex items-center gap-1.5 p-0.5 rounded">
-                                                                <span>G: {sub.fat.toFixed(1)}g</span>
-                                                                {renderDelta(analysis.diffs.fat, 2)}
+                                                                <span>G: {dynG.toFixed(1)}g</span>
+                                                                {renderDelta(dynG - originalFood.fat, 2)}
                                                             </div>
                                                         </div>
                                                     </div>
