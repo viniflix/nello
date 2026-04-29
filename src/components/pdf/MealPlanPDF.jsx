@@ -376,7 +376,7 @@ const MealPlanPDF = ({
                         
                         {/* Food Notes */}
                         {food.notes && (
-                          <Text style={styles.foodNotes}>↳ Obs: {food.notes}</Text>
+                          <Text style={styles.foodNotes}>- Obs: {food.notes}</Text>
                         )}
 
                         {/* Substitutes */}
@@ -399,7 +399,7 @@ const MealPlanPDF = ({
 
               {/* Meal Notes */}
               {meal.notes && (
-                <Text style={styles.mealNotes}>📋 {meal.notes}</Text>
+                <Text style={styles.mealNotes}>Obs. da refeição: {meal.notes}</Text>
               )}
             </View>
           );

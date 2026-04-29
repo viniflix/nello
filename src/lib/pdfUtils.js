@@ -401,11 +401,9 @@ export const exportMealPlanToPdf = async (mealPlan, patientName, nutritionistNam
                 return [`${mealName}${meal.meal_time ? ` (${meal.meal_time})` : ''}`, ...rows, ...mealNotes];
             }),
         ],
-    // Agora, renderiza usando @react-pdf/renderer
-    // Removemos todo o código legado do jsPDF a partir daqui
-
-    // Calcular totais do plano (macros e micros)
-    const planTotals = (mealPlan.meals || []).reduce((acc, meal) => {
+    }, async () => {
+        // Calcular totais do plano (macros e micros)
+        const planTotals = (mealPlan.meals || []).reduce((acc, meal) => {
         const mealFoods = meal.foods || [];
         const mealTotals = mealFoods.reduce((mealAcc, food) => ({
             calories: mealAcc.calories + (food.calories || 0),

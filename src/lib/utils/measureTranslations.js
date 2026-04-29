@@ -41,13 +41,15 @@ export const translateMeasure = (code, measure = null) => {
         return measure.name;
     }
 
+    const strCode = String(code || '').trim();
+
     // Se o código for apenas números (um ID que não foi carregado), não exibi-lo como texto
-    if (!measureTranslations[code] && /^\d+$/.test(code)) {
+    if (!measureTranslations[strCode] && /^\d+$/.test(strCode)) {
         return '';
     }
 
     // Caso contrário, usar tradução do código ou o próprio código
-    return measureTranslations[code] || code;
+    return measureTranslations[strCode] || strCode;
 };
 
 /**
@@ -59,6 +61,10 @@ export const translateMeasure = (code, measure = null) => {
  */
 export const formatQuantityWithUnit = (quantity, unit, measure = null) => {
     const translatedUnit = translateMeasure(unit, measure);
+
+    if (!translatedUnit) {
+        return `${quantity}`;
+    }
 
     // Para gramas e ml, colocar o número junto com a unidade
     if (unit === 'gram' || unit === 'ml') {
