@@ -304,12 +304,12 @@ const MealPlanPDF = ({
         </View>
 
         {/* Observações Gerais */}
-        {mealPlan.description && (
+        {mealPlan.description ? (
           <View style={styles.generalNotes}>
             <Text style={styles.notesTitle}>Observações Gerais</Text>
             <Text>{mealPlan.description}</Text>
           </View>
-        )}
+        ) : null}
 
         {/* Macros Totais */}
         <View style={styles.macrosCard}>
@@ -340,10 +340,10 @@ const MealPlanPDF = ({
             <View key={index} style={styles.mealSection} wrap={false}>
               <View style={styles.mealHeader}>
                 <Text style={styles.mealTitle}>{mealName}</Text>
-                {meal.meal_time && <Text style={styles.mealTime}>• {meal.meal_time}</Text>}
+                {meal.meal_time ? <Text style={styles.mealTime}>• {meal.meal_time}</Text> : null}
               </View>
 
-              {foods.length > 0 && (
+              {foods.length > 0 ? (
                 <>
                   <View style={styles.tableHeader}>
                     <Text style={[styles.colFood, styles.thText]}>Alimento</Text>
@@ -363,9 +363,9 @@ const MealPlanPDF = ({
                         <View style={styles.foodRow}>
                           <View style={styles.colFood}>
                             <Text style={styles.foodName}>{foodName}</Text>
-                            {food.patient_description && food.food?.name && (
+                            {food.patient_description && food.food?.name ? (
                               <Text style={styles.foodOriginalName}>({food.food.name})</Text>
-                            )}
+                            ) : null}
                           </View>
                           <Text style={[styles.colQty, { fontSize: 9 }]}>{qty}</Text>
                           <Text style={[styles.colKcal, { fontSize: 9 }]}>{Math.round(food.calories || 0)}</Text>
@@ -375,12 +375,12 @@ const MealPlanPDF = ({
                         </View>
                         
                         {/* Food Notes */}
-                        {food.notes && (
+                        {food.notes ? (
                           <Text style={styles.foodNotes}>- Obs: {food.notes}</Text>
-                        )}
+                        ) : null}
 
                         {/* Substitutes */}
-                        {food.substitutes && food.substitutes.length > 0 && (
+                        {food.substitutes && food.substitutes.length > 0 ? (
                           <View style={styles.substituteBlock}>
                             <Text style={styles.substituteTitle}>Opções de Substituição:</Text>
                             {food.substitutes.map((sub, sIndex) => (
@@ -390,17 +390,17 @@ const MealPlanPDF = ({
                               </View>
                             ))}
                           </View>
-                        )}
+                        ) : null}
                       </View>
                     );
                   })}
                 </>
-              )}
+              ) : null}
 
               {/* Meal Notes */}
-              {meal.notes && (
+              {meal.notes ? (
                 <Text style={styles.mealNotes}>Obs. da refeição: {meal.notes}</Text>
-              )}
+              ) : null}
             </View>
           );
         })}
