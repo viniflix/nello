@@ -9,14 +9,17 @@ import {
     SelectValue
 } from '@/components/ui/select';
 import { calculateNutrition } from '@/lib/supabase/meal-plan-queries';
-import { useHouseholdMeasures } from '@/hooks/useHouseholdMeasures';
+import { useAllMeasures } from '@/hooks/useHouseholdMeasures';
 import { useFoodMeasures } from '@/hooks/useFoodMeasures';
 
 /**
  * Seletor de medidas em cascata (3 etapas):
- * 1. Selecionar grupo de medidas (Volume, Unidade, Peso)
+ * 1. Selecionar grupo de medidas (Volume, Unidade, Peso, Minhas Medidas)
  * 2. Selecionar medida específica do grupo
  * 3. Informar quantidade
+ *
+ * Suporta medidas do sistema (household_measures) e medidas personalizadas
+ * do nutricionista (nutritionist_custom_measures).
  */
 const CascadeMeasureSelector = ({
     food,
@@ -27,30 +30,27 @@ const CascadeMeasureSelector = ({
     onMeasureChange,
     onNutritionCalculated
 }) => {
-    // Buscar medidas genéricas usando hook
-    const { data: standardMeasures = [], isLoading: loadingStandard } = useHouseholdMeasures();
+    // Buscar medidas do sistema + medidas personalizadas do nutricionista
+    const { data: allMeasures = [], isLoading } = useAllMeasures();
 
-    // Buscar medidas específicas do alimento usando hook
+    // Buscar medidas específicas do alimento (conversões por alimento)
     const { data: foodMeasures = [], isLoading: loadingFood } = useFoodMeasures(food?.id);
 
     const [measures, setMeasures] = useState([]);
     const [selectedCategory, setSelectedCategory] = useState('');
 
-    const loading = loadingStandard || loadingFood;
-
     useEffect(() => {
-        // Combinar medidas padrão com flags de conversão específica
-        if (standardMeasures.length > 0) {
-            const measuresWithFlags = standardMeasures.map(measure => ({
+        if (allMeasures.length > 0) {
+            const measuresWithFlags = allMeasures.map(measure => ({
                 ...measure,
-                hasSpecificConversion: foodMeasures.some(
-                    fm => fm.measure_id === measure.id
-                )
+                hasSpecificConversion: measure.source === 'system'
+                    ? foodMeasures.some(fm => fm.measure_id === measure.id)
+                    : false,
             }));
-
             setMeasures(measuresWithFlags);
         }
-    }, [standardMeasures, foodMeasures]);
+    }, [allMeasures, foodMeasures]);
+
 
     useEffect(() => {
         if (food && quantity && unit) {
@@ -100,7 +100,8 @@ const CascadeMeasureSelector = ({
         volume: 'Volume',
         weight: 'Peso',
         unit: 'Unidade',
-        other: 'Outras'
+        other: 'Outras',
+        custom: 'Minhas Medidas',
     };
 
     // Ícones/Descrições das categorias
@@ -108,7 +109,8 @@ const CascadeMeasureSelector = ({
         volume: 'Colheres, xícaras, copos, etc.',
         weight: 'Gramas',
         unit: 'Unidades, fatias, porções, etc.',
-        other: 'Outras medidas'
+        other: 'Outras medidas',
+        custom: 'Medidas criadas por você',
     };
 
     // Obter categorias disponíveis
@@ -185,10 +187,22 @@ const CascadeMeasureSelector = ({
                                 >
                                     <div className="flex items-center justify-between w-full">
                                         <div className="flex flex-col">
-                                            <span className="font-medium">{measure.name}</span>
+                                            <span className="font-medium flex items-center gap-1.5">
+                                                {measure.name}
+                                                {measure.source === 'custom' && (
+                                                    <span className="text-xs bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full font-semibold">
+                                                        Pessoal
+                                                    </span>
+                                                )}
+                                            </span>
                                             {measure.description && (
                                                 <span className="text-xs text-muted-foreground">
                                                     {measure.description}
+                                                </span>
+                                            )}
+                                            {measure.source === 'custom' && (
+                                                <span className="text-xs text-emerald-600 font-medium">
+                                                    1 unidade = {measure.grams_equivalent}g
                                                 </span>
                                             )}
                                         </div>

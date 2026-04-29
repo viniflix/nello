@@ -1,9 +1,11 @@
 /**
  * Hook para buscar medidas genéricas (household_measures)
+ * e combinar com medidas personalizadas do nutricionista.
  * Usa padrão useState + useEffect (sem React Query)
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { getCustomMeasures } from '@/lib/supabase/custom-measures-queries';
 import { getAllHouseholdMeasures } from '@/lib/supabase/food-measures-queries';
 
 /**
@@ -89,5 +91,63 @@ export const categoryDescriptions = {
   volume: 'Colheres, xícaras, copos, etc.',
   weight: 'Gramas e quilogramas',
   unit: 'Unidades, fatias, porções, etc.',
-  other: 'Outras medidas'
+  other: 'Outras medidas',
+  custom: 'Medidas criadas por você'
+};
+
+/**
+ * Hook unificado que combina medidas do sistema + medidas personalizadas do nutricionista.
+ * Usado nos seletores do plano alimentar, PDF e diário.
+ *
+ * Retorna measures com campo `source`:
+ *  - 'system'  → vem de household_measures (padrão, read-only)
+ *  - 'custom'  → vem de nutritionist_custom_measures (do próprio nutricionista)
+ *
+ * @returns {{ data: Array, systemMeasures: Array, customMeasures: Array, isLoading, error, refetch }}
+ */
+export const useAllMeasures = () => {
+  const [systemMeasures, setSystemMeasures] = useState([]);
+  const [customMeasures, setCustomMeasures] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const load = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const [systemResult, customResult] = await Promise.all([
+        getAllHouseholdMeasures(),
+        getCustomMeasures(),
+      ]);
+
+      if (systemResult.error) throw systemResult.error;
+
+      setSystemMeasures((systemResult.data || []).map(m => ({ ...m, source: 'system' })));
+      setCustomMeasures((customResult.data || []).map(m => ({
+        ...m,
+        // Normalizar campos para interface unificada
+        category: 'custom',
+        source: 'custom',
+        ml_equivalent: null,
+      })));
+    } catch (err) {
+      console.error('Erro ao carregar medidas:', err);
+      setError(err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const data = useMemo(() => [...systemMeasures, ...customMeasures], [systemMeasures, customMeasures]);
+
+  return {
+    data,
+    systemMeasures,
+    customMeasures,
+    isLoading,
+    error,
+    refetch: load,
+  };
 };

@@ -9,33 +9,31 @@ import {
     SelectValue
 } from '@/components/ui/select';
 import { calculateNutrition } from '@/lib/supabase/meal-plan-queries';
-import { useHouseholdMeasures } from '@/hooks/useHouseholdMeasures';
+import { useAllMeasures } from '@/hooks/useHouseholdMeasures';
 import { useFoodMeasures } from '@/hooks/useFoodMeasures';
 
 const MeasureSelector = ({ food, quantity, unit, onQuantityChange, onUnitChange, onMeasureChange, onNutritionCalculated }) => {
-    // Buscar medidas genéricas usando hook
-    const { data: standardMeasures = [], isLoading: loadingStandard } = useHouseholdMeasures();
+    // Buscar medidas do sistema + medidas personalizadas do nutricionista
+    const { data: allMeasures = [], isLoading } = useAllMeasures();
 
     // Buscar medidas específicas do alimento usando hook
     const { data: foodMeasures = [], isLoading: loadingFood } = useFoodMeasures(food?.id);
 
     const [measures, setMeasures] = useState([]);
 
-    const loading = loadingStandard || loadingFood;
+    const loading = isLoading || loadingFood;
 
     useEffect(() => {
-        // Combinar medidas padrão com flags de conversão específica
-        if (standardMeasures.length > 0) {
-            const measuresWithFlags = standardMeasures.map(measure => ({
+        if (allMeasures.length > 0) {
+            const measuresWithFlags = allMeasures.map(measure => ({
                 ...measure,
-                hasSpecificConversion: foodMeasures.some(
-                    fm => fm.measure_id === measure.id
-                )
+                hasSpecificConversion: measure.source === 'system'
+                    ? foodMeasures.some(fm => fm.measure_id === measure.id)
+                    : false,
             }));
-
             setMeasures(measuresWithFlags);
         }
-    }, [standardMeasures, foodMeasures]);
+    }, [allMeasures, foodMeasures]);
 
     useEffect(() => {
         if (food && quantity && unit) {
@@ -74,7 +72,8 @@ const MeasureSelector = ({ food, quantity, unit, onQuantityChange, onUnitChange,
         volume: 'Medidas de Volume',
         weight: 'Medidas de Peso',
         unit: 'Unidades',
-        other: 'Outras'
+        other: 'Outras',
+        custom: 'Minhas Medidas',
     };
 
     return (
@@ -130,16 +129,27 @@ const MeasureSelector = ({ food, quantity, unit, onQuantityChange, onUnitChange,
                                             className="pl-6"
                                         >
                                             <div className="flex items-center justify-between w-full">
-                                                <span>{measure.name}</span>
+                                                <span className="flex items-center gap-1.5">
+                                                    {measure.name}
+                                                    {measure.source === 'custom' && (
+                                                        <span className="text-xs bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full font-semibold">
+                                                            Pessoal
+                                                        </span>
+                                                    )}
+                                                </span>
                                                 {measure.hasSpecificConversion && (
                                                     <span className="ml-2 text-xs text-primary">★</span>
                                                 )}
                                             </div>
-                                            {measure.description && (
+                                            {measure.source === 'custom' ? (
+                                                <div className="text-xs text-emerald-600 font-medium">
+                                                    1 unidade = {measure.grams_equivalent}g
+                                                </div>
+                                            ) : measure.description ? (
                                                 <div className="text-xs text-muted-foreground">
                                                     {measure.description}
                                                 </div>
-                                            )}
+                                            ) : null}
                                         </SelectItem>
                                     ))}
                                 </React.Fragment>

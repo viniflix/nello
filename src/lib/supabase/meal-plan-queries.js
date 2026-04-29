@@ -289,25 +289,62 @@ export const getMealPlanById = async (planId) => {
                     };
                 }
 
-                const foodsMap = await getFoodsMapByIds((foods || []).map((f) => f.food_id));
+                // Resolver medidas para os alimentos:
+                // - unit numérico (legacy) → busca em household_measures por id
+                // - unit 'code' string → busca em household_measures por code
+                // - unit 'custom_*' → busca em nutritionist_custom_measures por code
+                const allUnits = (foods || []).map(f => f.unit).filter(Boolean);
 
-                // Buscar medidas caseiras para os alimentos (quando unit é um ID numérico)
-                const measureIds = (foods || [])
-                    .filter(f => f.unit && /^\d+$/.test(String(f.unit)))
-                    .map(f => Number(f.unit));
+                let measuresMap = {}; // key: unit value → measure object
 
-                let measuresMap = {};
-                if (measureIds.length > 0) {
+                // IDs numéricos (legado)
+                const numericIds = allUnits
+                    .filter(u => /^\d+$/.test(String(u)))
+                    .map(u => Number(u));
+
+                if (numericIds.length > 0) {
                     const { data: measures } = await supabase
                         .from('household_measures')
                         .select('id, name, code, grams_equivalent')
-                        .in('id', measureIds);
-
-                    measuresMap = (measures || []).reduce((acc, m) => {
-                        acc[m.id] = m;
-                        return acc;
-                    }, {});
+                        .in('id', numericIds);
+                    (measures || []).forEach(m => {
+                        measuresMap[m.id] = { ...m, source: 'system' };
+                    });
                 }
+
+                // Codes de medidas do sistema (string não numérica, sem prefixo custom_)
+                const systemCodes = allUnits
+                    .filter(u => u && !/^\d+$/.test(String(u)) && !String(u).startsWith('custom_') && u !== 'gram');
+
+                if (systemCodes.length > 0) {
+                    const { data: measures } = await supabase
+                        .from('household_measures')
+                        .select('id, name, code, grams_equivalent')
+                        .in('code', systemCodes);
+                    (measures || []).forEach(m => {
+                        measuresMap[m.code] = { ...m, source: 'system' };
+                    });
+                }
+
+                // Codes de medidas personalizadas (prefixo custom_)
+                const customCodes = allUnits
+                    .filter(u => u && String(u).startsWith('custom_'));
+
+                if (customCodes.length > 0) {
+                    const { data: customMeasures } = await supabase
+                        .from('nutritionist_custom_measures')
+                        .select('id, name, code, grams_equivalent, category, description')
+                        .in('code', customCodes);
+                    (customMeasures || []).forEach(m => {
+                        measuresMap[m.code] = { ...m, source: 'custom' };
+                    });
+                }
+
+                const resolveMeasure = (unit) => {
+                    if (!unit) return null;
+                    if (/^\d+$/.test(String(unit))) return measuresMap[Number(unit)] || null;
+                    return measuresMap[unit] || null;
+                };
 
                 // Buscar substituições para todos os alimentos da refeição de uma vez
                 const mealPlanFoodIds = (foods || []).map(f => f.id);
@@ -331,7 +368,7 @@ export const getMealPlanById = async (planId) => {
                                     ...subFood,
                                     quantity: s.quantity,
                                     unit: s.unit,
-                                    measure: s.unit && /^\d+$/.test(String(s.unit)) ? measuresMap[Number(s.unit)] : null
+                                    measure: resolveMeasure(s.unit)
                                 });
                             }
                             return acc;
@@ -340,12 +377,13 @@ export const getMealPlanById = async (planId) => {
                 }
 
                 // Transformar estrutura dos alimentos: foods (plural) -> food (singular)
+                const foodsMap = await getFoodsMapByIds((foods || []).map((f) => f.food_id));
                 const transformedFoods = (foods || []).map(f => ({
                     ...f,
                     food: foodsMap[String(f.food_id)] || null,
                     foods: foodsMap[String(f.food_id)] || null,
-                    measure: f.unit && /^\d+$/.test(String(f.unit)) ? measuresMap[Number(f.unit)] : null,  // Incluir dados da medida caseira
-                    substitutes: substitutionsMap[f.id] || [] // Incluir substitutos
+                    measure: resolveMeasure(f.unit),
+                    substitutes: substitutionsMap[f.id] || []
                 }));
 
                 return {

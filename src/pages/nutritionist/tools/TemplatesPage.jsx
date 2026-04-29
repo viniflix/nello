@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import CheckinTemplateBuilder from '@/components/nutritionist/CheckinTemplateBuilder';
 import MessageTemplatesSection from '@/components/templates/MessageTemplatesSection';
 import FoodBankSection from '@/components/templates/FoodBankSection';
+import CustomMeasuresSection from '@/components/nutritionist/CustomMeasuresSection';
 import {
   FileText,
   Coffee,
@@ -32,6 +33,7 @@ import {
   Construction,
   MessageSquare,
   Database,
+  Scale,
 } from 'lucide-react';
 
 // ─── Nutrição: Card de Template ───────────────────────────────────────────────
@@ -348,6 +350,7 @@ const FormsSection = ({ navigate }) => (
 const GROUPS = [
   { id: 'nutrition', label: 'Nutrição', icon: Salad },
   { id: 'foodbank', label: 'Banco de Alimentos', icon: Database },
+  { id: 'measures', label: 'Medidas Caseiras', icon: Scale },
   { id: 'forms', label: 'Formulários & Acompanhamento', icon: ClipboardList },
 ];
 
@@ -512,6 +515,9 @@ export default function TemplatesPage() {
 
       {/* ── Grupo: Banco de Alimentos ── */}
       {activeGroup === 'foodbank' && <FoodBankSection />}
+
+      {/* ── Grupo: Medidas Caseiras ── */}
+      {activeGroup === 'measures' && <CustomMeasuresSection />}
 
       {/* ── Grupo: Formulários & Acompanhamento ── */}
       {activeGroup === 'forms' && (
