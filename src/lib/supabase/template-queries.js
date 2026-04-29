@@ -49,21 +49,44 @@ export async function cloneMealTemplateToPlan(mealTemplateId, mealPlanId, mealTy
 }
 
 /**
+ * Helper to fetch food details from the 'foods' view by IDs.
+ */
+export async function getFoodsMapByIds(foodIds) {
+  const uniqueIds = [...new Set(foodIds.filter(Boolean))];
+  if (uniqueIds.length === 0) return {};
+
+  const { data, error } = await supabase
+    .from('foods')
+    .select('id, name, calories, protein, carbs, fat, fiber, group')
+    .in('id', uniqueIds);
+
+  if (error) {
+    console.error('Error fetching food details:', error);
+    return {};
+  }
+
+  return (data || []).reduce((acc, food) => {
+    acc[food.id] = food;
+    return acc;
+  }, {});
+}
+
+/**
  * Loads a full diet template with its meals and foods from diet_templates.
  * Normalizes to the format used by ImportMealFromProtocolDialog.
  * @param {string} templateId - UUID of the diet_template.
  * @returns {Promise<{data: object, error: null}>}
  */
 export async function getDietTemplateWithMeals(templateId) {
-  const { data, error } = await supabase
+  // Step 1: Fetch template and meals/foods structure without the join
+  const { data: template, error } = await supabase
     .from('diet_templates')
     .select(`
       id, name, description, tags,
       diet_template_meals (
         id, name, time, order_index,
         diet_template_foods (
-          id, food_id, quantity, unit, observation, order_index,
-          food:food_id ( id, name, calories, protein, carbs, fat, fiber, group )
+          id, food_id, quantity, unit, observation, order_index
         )
       )
     `)
@@ -72,25 +95,34 @@ export async function getDietTemplateWithMeals(templateId) {
 
   if (error) throw error;
 
-  // Normalizar refeições para o formato esperado pelos componentes
-  const meals = (data.diet_template_meals || [])
+  // Step 2: Collect all food_ids
+  const allFoodIds = (template.diet_template_meals || []).flatMap(m => 
+    (m.diet_template_foods || []).map(f => f.food_id)
+  );
+
+  // Step 3: Fetch food details from the 'foods' view
+  const foodsMap = await getFoodsMapByIds(allFoodIds);
+
+  // Step 4: Normalizar refeições para o formato esperado pelos componentes
+  const meals = (template.diet_template_meals || [])
     .sort((a, b) => a.order_index - b.order_index)
     .map(m => {
       const foods = (m.diet_template_foods || [])
         .sort((a, b) => a.order_index - b.order_index)
         .map(f => {
+          const foodDetails = foodsMap[f.food_id] || null;
           const ratio = (f.quantity || 100) / 100;
           return {
             id: f.id,
-            food: f.food,
+            food: foodDetails,
             food_id: f.food_id,
             quantity: f.quantity,
             unit: f.unit,
             observation: f.observation,
-            calories: f.food ? (f.food.calories || 0) * ratio : 0,
-            protein: f.food ? (f.food.protein || 0) * ratio : 0,
-            carbs: f.food ? (f.food.carbs || 0) * ratio : 0,
-            fat: f.food ? (f.food.fat || 0) * ratio : 0,
+            calories: foodDetails ? (foodDetails.calories || 0) * ratio : 0,
+            protein: foodDetails ? (foodDetails.protein || 0) * ratio : 0,
+            carbs: foodDetails ? (foodDetails.carbs || 0) * ratio : 0,
+            fat: foodDetails ? (foodDetails.fat || 0) * ratio : 0,
           };
         });
 
@@ -104,6 +136,6 @@ export async function getDietTemplateWithMeals(templateId) {
       };
     });
 
-  return { data: { ...data, meals }, error: null };
+  return { data: { ...template, meals }, error: null };
 }
 

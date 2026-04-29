@@ -3,7 +3,7 @@ import { supabase } from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/components/ui/use-toast';
-import { getDietTemplateWithMeals } from '@/lib/supabase/template-queries';
+import { getDietTemplateWithMeals, getFoodsMapByIds } from '@/lib/supabase/template-queries';
 
 /**
  * Hook para criar e editar templates de nutrição.
@@ -73,72 +73,86 @@ export function useTemplateBuilder(type, templateId = null) {
           });
         }
       } else if (type === 'meal') {
-        const { data, error } = await supabase
+        const { data: mealData, error } = await supabase
           .from('meal_templates')
           .select(`
             id, name, description, tags,
             meal_template_foods (
-              id, food_id, quantity, unit, observation, order_index,
-              food:food_id ( id, name, calories, protein, carbs, fat )
+              id, food_id, quantity, unit, observation, order_index
             )
           `)
           .eq('id', id)
           .single();
 
         if (error) throw error;
+
+        // Fetch food details
+        const foodIds = (mealData.meal_template_foods || []).map(f => f.food_id);
+        const foodsMap = await getFoodsMapByIds(foodIds);
+
         setFormData({
-          name: data.name || '',
-          description: data.description || '',
-          tags: data.tags || [],
+          name: mealData.name || '',
+          description: mealData.description || '',
+          tags: mealData.tags || [],
           meals: [],
-          foods: (data.meal_template_foods || [])
+          foods: (mealData.meal_template_foods || [])
             .sort((a, b) => a.order_index - b.order_index)
-            .map(f => ({
-              _id: f.id,
-              food_id: f.food_id,
-              name: f.food?.name || '',
-              food: f.food,
-              quantity: f.quantity,
-              unit: f.unit,
-              observation: f.observation || '',
-            })),
+            .map(f => {
+              const foodDetails = foodsMap[f.food_id];
+              return {
+                _id: f.id,
+                food_id: f.food_id,
+                name: foodDetails?.name || '',
+                food: foodDetails,
+                quantity: f.quantity,
+                unit: f.unit,
+                observation: f.observation || '',
+              };
+            }),
           ingredients: [],
           yield_quantity: 1,
           yield_unit: 'portion',
           preparation_method: '',
         });
       } else if (type === 'recipe') {
-        const { data, error } = await supabase
+        const { data: recipeData, error } = await supabase
           .from('recipes')
           .select(`
             id, name, description, preparation_method, yield_quantity, yield_unit,
             recipe_ingredients (
-              id, food_id, quantity, unit,
-              food:food_id ( id, name, calories, protein, carbs, fat )
+              id, food_id, quantity, unit
             )
           `)
           .eq('id', id)
           .single();
 
         if (error) throw error;
+
+        // Fetch food details
+        const foodIds = (recipeData.recipe_ingredients || []).map(f => f.food_id);
+        const foodsMap = await getFoodsMapByIds(foodIds);
+
         setFormData({
-          name: data.name || '',
-          description: data.description || '',
+          name: recipeData.name || '',
+          description: recipeData.description || '',
           tags: [],
           meals: [],
           foods: [],
-          ingredients: (data.recipe_ingredients || []).map(f => ({
-            _id: f.id,
-            food_id: f.food_id,
-            name: f.food?.name || '',
-            food: f.food,
-            quantity: f.quantity,
-            unit: f.unit,
-            observation: '',
-          })),
-          yield_quantity: data.yield_quantity || 1,
-          yield_unit: data.yield_unit || 'portion',
-          preparation_method: data.preparation_method || '',
+          ingredients: (recipeData.recipe_ingredients || []).map(f => {
+            const foodDetails = foodsMap[f.food_id];
+            return {
+              _id: f.id,
+              food_id: f.food_id,
+              name: foodDetails?.name || '',
+              food: foodDetails,
+              quantity: f.quantity,
+              unit: f.unit,
+              observation: '',
+            };
+          }),
+          yield_quantity: recipeData.yield_quantity || 1,
+          yield_unit: recipeData.yield_unit || 'portion',
+          preparation_method: recipeData.preparation_method || '',
         });
       }
     } catch (err) {

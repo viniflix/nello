@@ -108,9 +108,20 @@ export default function TemplateBuilder() {
   };
 
   const handleTagsKeyDown = (e) => {
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' || e.key === ',') {
       e.preventDefault();
       handleTagsBlur();
+    }
+  };
+
+  const handleTagsChange = (val) => {
+    // Se a última letra digitada for uma vírgula, confirma a tag imediatamente
+    if (val.endsWith(',')) {
+      const parsed = parseTagsFromRaw(val);
+      setFormData(prev => ({ ...prev, tags: [...new Set([...prev.tags, ...parsed])] }));
+      setTagsRaw('');
+    } else {
+      setTagsRaw(val);
     }
   };
 
@@ -346,7 +357,7 @@ export default function TemplateBuilder() {
                 <input
                   type="text"
                   value={tagsRaw}
-                  onChange={(e) => setTagsRaw(e.target.value)}
+                  onChange={(e) => handleTagsChange(e.target.value)}
                   onBlur={handleTagsBlur}
                   onKeyDown={handleTagsKeyDown}
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm"

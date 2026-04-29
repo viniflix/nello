@@ -18,7 +18,7 @@ import { getSuggestedSubstitutes } from '@/lib/supabase/meal-plan-queries';
 import { Loader2, ChevronDown, ChevronUp, Scale, Info } from 'lucide-react';
 import { getSubstitutionAnalysis, formatDiff, calculateEquivalentPortion, getMacroProportions } from '@/lib/utils/foodSubstitution';
 import { calculateEquivalentGrams, checkMacroDeviations, convertGramsToMeasure } from '@/lib/utils/nutritionCalculations';
-import { PortionSelector } from '@/components/nutrition/PortionSelector';
+import { PremiumPortionSelector } from '@/components/nutrition';
 import { Progress } from '@/components/ui/progress';
 
 
@@ -168,7 +168,7 @@ const SubstitutionDialog = ({ isOpen, onClose, originalFood, initialSubstitutes 
             <div className="mt-4 p-5 bg-background/60 backdrop-blur-md rounded-2xl border-2 border-primary/10 shadow-sm animate-in fade-in zoom-in duration-300">
                 <div className="mb-6 bg-card p-4 rounded-xl border border-primary/10 shadow-sm">
                     <Label className="text-sm font-bold text-primary mb-3 block">1. Ajustar Porção da Substituição</Label>
-                    <PortionSelector 
+                    <PremiumPortionSelector 
                         food={subFood}
                         value={{ quantity: subFood.quantity || 100, measureId: subFood.unit && subFood.unit !== 'grams' ? subFood.unit : null, measureCode: subFood.unit === 'grams' ? 'gram' : (subFood.unit || 'gram') }}
                         onChange={(val) => {

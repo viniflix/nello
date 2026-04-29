@@ -196,9 +196,9 @@ const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName, initialData = n
                             </div>
                         </div>
 
-                        {/* Seletor de Porção (Novo - Mais Simples) */}
+                        {/* Seletor de Porção (Premium) */}
                         <div className="space-y-2">
-                            <PortionSelector
+                            <PremiumPortionSelector
                                 food={selectedFood}
                                 value={portion}
                                 onChange={setPortion}
