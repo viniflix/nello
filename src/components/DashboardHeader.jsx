@@ -28,8 +28,7 @@ const getNutritionistLinks = () => {
     { name: 'Pacientes', path: '/nutritionist/patients' },
     { name: 'Agenda', path: '/nutritionist/agenda' },
     { name: 'Financeiro', path: '/nutritionist/financial' },
-    { name: 'Banco de Alimentos', path: '/nutritionist/food-bank' },
-    { name: 'Meus Templates', path: '/nutritionist/templates' },
+    { name: 'Protocolos', path: '/nutritionist/templates' },
   ];
 };
 

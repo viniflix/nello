@@ -12,6 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import CheckinTemplateBuilder from '@/components/nutritionist/CheckinTemplateBuilder';
 import MessageTemplatesSection from '@/components/templates/MessageTemplatesSection';
+import FoodBankSection from '@/components/templates/FoodBankSection';
 import {
   FileText,
   Coffee,
@@ -30,6 +31,7 @@ import {
   ExternalLink,
   Construction,
   MessageSquare,
+  Database,
 } from 'lucide-react';
 
 // ─── Nutrição: Card de Template ───────────────────────────────────────────────
@@ -345,6 +347,7 @@ const FormsSection = ({ navigate }) => (
 // ─── Página Principal ──────────────────────────────────────────────────────────
 const GROUPS = [
   { id: 'nutrition', label: 'Nutrição', icon: Salad },
+  { id: 'foodbank', label: 'Banco de Alimentos', icon: Database },
   { id: 'forms', label: 'Formulários & Acompanhamento', icon: ClipboardList },
 ];
 
@@ -383,13 +386,13 @@ export default function TemplatesPage() {
   return (
     <div className="container mx-auto px-4 py-6 max-w-7xl">
       <Helmet>
-        <title>Hub de Templates - HipoZero</title>
+        <title>Protocolos - HipoZero</title>
       </Helmet>
 
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-slate-800">Hub de Templates</h1>
-        <p className="text-slate-500 mt-1">Gerencie todos os seus modelos: dietas, refeições, receitas, check-ins e formulários.</p>
+        <h1 className="text-2xl font-bold text-slate-800">Protocolos</h1>
+        <p className="text-slate-500 mt-1">Gerencie seus protocolos de dietas, banco de alimentos, formulários, check-ins e modelos de mensagem.</p>
       </div>
 
       {/* Seletor de Grupo */}
@@ -506,6 +509,9 @@ export default function TemplatesPage() {
           )}
         </>
       )}
+
+      {/* ── Grupo: Banco de Alimentos ── */}
+      {activeGroup === 'foodbank' && <FoodBankSection />}
 
       {/* ── Grupo: Formulários & Acompanhamento ── */}
       {activeGroup === 'forms' && (

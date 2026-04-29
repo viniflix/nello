@@ -68,7 +68,7 @@ export const nutritionistRoutes = (
         <Route path="/nutritionist/alerts" element={<AlertsPage />} />
         <Route path="/nutritionist/chat" element={<ChatDashboardPage />} />
         <Route path="/nutritionist/chat/:patientId" element={<ChatDashboardPage />} />
-        <Route path="/nutritionist/food-bank" element={<FoodBankPage />} />
+        <Route path="/nutritionist/food-bank" element={<Navigate to="/nutritionist/templates" replace />} />
         <Route path="/nutritionist/financial" element={<FinancialPage />} />
         <Route path="/nutritionist/agenda" element={<AgendaPage />} />
         <Route path="/nutritionist/message-templates" element={<Navigate to="/nutritionist/templates" replace />} />
