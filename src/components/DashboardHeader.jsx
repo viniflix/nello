@@ -30,6 +30,7 @@ const getNutritionistLinks = () => {
     { name: 'Check-ins', path: '/nutritionist/checkins' },
     { name: 'Financeiro', path: '/nutritionist/financial' },
     { name: 'Banco de Alimentos', path: '/nutritionist/food-bank' },
+    { name: 'Meus Templates', path: '/nutritionist/templates' },
   ];
 };
 
