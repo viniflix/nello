@@ -162,12 +162,10 @@ const styles = StyleSheet.create({
   foodOriginalName: {
     fontSize: 8,
     color: colors.muted,
-    fontStyle: 'italic',
   },
   foodNotes: {
     fontSize: 8,
     color: colors.muted,
-    fontStyle: 'italic',
     marginTop: 2,
     paddingLeft: 10,
     borderLeftWidth: 1,
@@ -205,7 +203,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.greenLight,
     borderRadius: 4,
     fontSize: 9,
-    fontStyle: 'italic',
     color: colors.greenDark,
   },
   footer: {
