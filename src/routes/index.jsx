@@ -9,6 +9,9 @@ import { patientRoutes } from './patientRoutes';
 import { adminRoutes } from './adminRoutes';
 import PresenceGlobal from '@/components/PresenceGlobal';
 
+// Rota Omnichannel Public Facing (Sem Auth Block)
+const PatientFacingAnamnesis = React.lazy(() => import('@/pages/public/anamnesis/PatientFacingUi.jsx'));
+
 const AppLayout = () => {
   const { user, loading } = useAuth();
 
@@ -31,6 +34,9 @@ const AppLayout = () => {
               {nutritionistRoutes}
               {patientRoutes}
               {adminRoutes}
+              
+              {/* Rota Externa Segura: Formulários Omnichannel Mobile-First */}
+              <Route path="/f/:token" element={<PatientFacingAnamnesis />} />
               
               {/* Rotas de redirecionamento */}
               <Route path="/" element={<Navigate to={getHomePath()} replace />} />

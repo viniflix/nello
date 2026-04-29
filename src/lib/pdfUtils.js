@@ -1,6 +1,9 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import html2canvas from 'html2canvas';
+import { pdf } from '@react-pdf/renderer';
+import React from 'react';
+import MealPlanPDF from '@/components/pdf/MealPlanPDF';
 import { loadLogo } from './pdf/pdfAssets';
 import { generatePdfViaEdge } from './pdf/edgePdfFallback';
 
@@ -398,116 +401,8 @@ export const exportMealPlanToPdf = async (mealPlan, patientName, nutritionistNam
                 return [`${mealName}${meal.meal_time ? ` (${meal.meal_time})` : ''}`, ...rows, ...mealNotes];
             }),
         ],
-    }, async () => {
-    const doc = new jsPDF();
-    const pageWidth = doc.internal.pageSize.width;
-    const pageHeight = doc.internal.pageSize.height;
-
-    // Cores do projeto HipoZero
-    const PRIMARY_COLOR = [70, 125, 70];      // Verde
-    const SECONDARY_COLOR = [238, 103, 6];    // Laranja
-    const TEXT_COLOR = [68, 64, 60];          // Stone-800
-    const MUTED_COLOR = [120, 113, 108];      // Stone-500
-    const LIGHT_BG = [245, 245, 244];         // Stone-100
-
-    let yPosition = 20;
-
-    // Configurar fonte
-    doc.setFont('helvetica');
-
-    // Logo do HipoZero
-    const logoData = await loadLogo();
-    if (logoData) {
-        // Carregar a imagem para obter dimensões reais
-        await new Promise((resolve) => {
-            const img = new Image();
-            img.onload = () => {
-                // Calcular largura como 20% da largura da página
-                const logoWidth = pageWidth * 0.20;
-                // Calcular altura proporcionalmente baseado na proporção da imagem
-                const logoHeight = (img.height / img.width) * logoWidth;
-                
-                try {
-                    doc.addImage(logoData, 'PNG', 14, 10, logoWidth, logoHeight);
-                } catch (err) {
-                    console.warn('Falha ao adicionar logo ao PDF:', err);
-                }
-                resolve();
-            };
-            img.onerror = () => {
-                console.warn('Falha ao carregar dimensões da logo');
-                resolve();
-            };
-            img.src = logoData;
-        });
-    }
-
-    // Título
-    doc.setFontSize(20);
-    doc.setTextColor(...PRIMARY_COLOR);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Plano Alimentar', pageWidth / 2, 20, { align: 'center' });
-
-    // Linha decorativa
-    doc.setDrawColor(...PRIMARY_COLOR);
-    doc.setLineWidth(0.5);
-    doc.line(14, 24, pageWidth - 14, 24);
-
-    yPosition = 32;
-
-    // Informações do cabeçalho
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-    doc.setTextColor(...TEXT_COLOR);
-
-    if (patientName) {
-        doc.text(`Paciente: ${patientName}`, 14, yPosition);
-        yPosition += 5;
-    }
-
-    if (nutritionistName) {
-        const capitalizeName = (name) => {
-            if (!name) return 'Não informado';
-            return name
-                .toLowerCase()
-                .split(' ')
-                .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-                .join(' ');
-        };
-        doc.text(`Nutricionista: ${capitalizeName(nutritionistName)}`, 14, yPosition);
-        yPosition += 5;
-    }
-
-    // Período do plano
-    if (mealPlan.start_date) {
-        const startDate = new Date(mealPlan.start_date).toLocaleDateString('pt-BR');
-        const endDate = mealPlan.end_date
-            ? new Date(mealPlan.end_date).toLocaleDateString('pt-BR')
-            : 'Indeterminado';
-        doc.text(`Período: ${startDate} até ${endDate}`, 14, yPosition);
-        yPosition += 5;
-    }
-
-    // Data de geração
-    doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`, 14, yPosition);
-    yPosition += 8;
-
-    // Observações Gerais
-    if (mealPlan.description) {
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(...PRIMARY_COLOR);
-        doc.text('Observações Gerais:', 14, yPosition);
-        yPosition += 5;
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(9);
-        doc.setTextColor(...TEXT_COLOR);
-        const splitDescription = doc.splitTextToSize(mealPlan.description, pageWidth - 28);
-        doc.text(splitDescription, 14, yPosition);
-        yPosition += (splitDescription.length * 5) + 5;
-    }
-
-    yPosition += 2;
+    // Agora, renderiza usando @react-pdf/renderer
+    // Removemos todo o código legado do jsPDF a partir daqui
 
     // Calcular totais do plano (macros e micros)
     const planTotals = (mealPlan.meals || []).reduce((acc, meal) => {
@@ -558,217 +453,29 @@ export const exportMealPlanToPdf = async (mealPlan, patientName, nutritionistNam
         vitamin_a: 0, vitamin_c: 0, vitamin_d: 0
     });
 
-    // Resumo de Macros
-    doc.setFillColor(...LIGHT_BG);
-    doc.roundedRect(14, yPosition, pageWidth - 28, 20, 2, 2, 'F');
+    // Renderizar PDF usando @react-pdf/renderer
+    const doc = <MealPlanPDF 
+      mealPlan={mealPlan} 
+      patientName={patientName} 
+      nutritionistName={nutritionistName} 
+      includeNutrients={includeNutrients} 
+      translateMealType={translateMealType} 
+      planTotals={planTotals} 
+    />;
 
-    doc.setFontSize(9);
-    doc.setTextColor(...TEXT_COLOR);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Meta Diária Total:', 18, yPosition + 6);
-
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(...MUTED_COLOR);
-    const macroText = `${Math.round(planTotals.calories)} kcal  •  Proteínas: ${Math.round(planTotals.protein)}g  •  Carboidratos: ${Math.round(planTotals.carbs)}g  •  Gorduras: ${Math.round(planTotals.fat)}g`;
-    doc.text(macroText, 18, yPosition + 13);
-
-    yPosition += 28;
-
-    // Ordenar refeições
-    const mealOrder = ['breakfast', 'morning_snack', 'lunch', 'afternoon_snack', 'dinner', 'supper'];
-    const sortedMeals = [...(mealPlan.meals || [])].sort(
-        (a, b) => mealOrder.indexOf(a.meal_type) - mealOrder.indexOf(b.meal_type)
-    );
-
-    // Refeições
-    for (let index = 0; index < sortedMeals.length; index++) {
-        const meal = sortedMeals[index];
-        const foods = meal.foods || [];
-
-        // Conta linhas extras de obs. de alimentos para estimativa de altura
-        const foodNotesLines = foods.filter(f => f.notes).length;
-        const estimatedHeight = 15 + (foods.length + 1) * 8 + foodNotesLines * 5 + (meal.notes ? 10 : 0);
-
-        // Se não couber na página, adicionar nova página
-        if (yPosition + estimatedHeight > pageHeight - 30) {
-            doc.addPage();
-            yPosition = 20;
-        }
-
-        // Nome da refeição e horário
-        doc.setFontSize(12);
-        doc.setTextColor(...PRIMARY_COLOR);
-        doc.setFont('helvetica', 'bold');
-        const mealName = translateMealType ? translateMealType(meal.meal_type) : meal.name;
-        const mealTime = meal.meal_time || '';
-        doc.text(`${mealName}${mealTime ? ` • ${mealTime}` : ''}`, 14, yPosition);
-        yPosition += 7;
-
-        // Tabela de alimentos
-        if (foods.length > 0) {
-            // Montar rows: cada alimento pode ter uma sub-linha de observação
-            const tableData = [];
-            foods.forEach(food => {
-                const foodName = food.patient_description || food.food?.name || 'Alimento';
-                const substitutes = (food.substitutes || []).length > 0
-                    ? `${foodName}\nOpções: ${food.substitutes.map(s => s.name).join(', ')}`
-                    : foodName;
-
-                tableData.push([
-                    substitutes,
-                    formatQuantityWithUnit
-                        ? formatQuantityWithUnit(food.quantity || 0, food.unit || '', food.measure)
-                        : `${food.quantity || 0} ${food.unit || ''}`,
-                    `${Math.round(food.calories || 0)} kcal`,
-                    `${Math.round(food.protein || 0)} g`,
-                    `${Math.round(food.carbs || 0)} g`,
-                    `${Math.round(food.fat || 0)} g`
-                ]);
-
-                // Linha de obs. específica do alimento
-                if (food.notes) {
-                    tableData.push([
-                        { content: `↳ Obs: ${food.notes}`, colSpan: 6, styles: { fontStyle: 'italic', textColor: MUTED_COLOR, fontSize: 7.5, cellPadding: { top: 1, bottom: 2, left: 6, right: 2 } } }
-                    ]);
-                }
-            });
-
-            autoTable(doc, {
-                startY: yPosition,
-                head: [['Alimento', 'Quantidade', 'Calorias', 'Proteína', 'Carboidrato', 'Gordura']],
-                body: tableData,
-                theme: 'striped',
-                headStyles: {
-                    fillColor: PRIMARY_COLOR,
-                    textColor: [255, 255, 255],
-                    fontSize: 9,
-                    fontStyle: 'bold',
-                    halign: 'center',
-                    font: 'helvetica'
-                },
-                bodyStyles: {
-                    fontSize: 8,
-                    textColor: TEXT_COLOR,
-                    font: 'helvetica'
-                },
-                columnStyles: {
-                    0: { halign: 'left', cellWidth: 'auto' },
-                    1: { halign: 'center', cellWidth: 28 },
-                    2: { halign: 'center', cellWidth: 25 },
-                    3: { halign: 'center', cellWidth: 22 },
-                    4: { halign: 'center', cellWidth: 28 },
-                    5: { halign: 'center', cellWidth: 22 }
-                },
-                alternateRowStyles: {
-                    fillColor: LIGHT_BG
-                },
-                margin: { left: 14, right: 14 }
-            });
-
-            yPosition = doc.lastAutoTable.finalY + 3;
-        }
-
-        // Observação da refeição (verificar quebra de página antes de imprimir)
-        if (meal.notes) {
-            const splitNotes = doc.splitTextToSize(`📋 Obs. da refeição: ${meal.notes}`, pageWidth - 28);
-            const notesHeight = splitNotes.length * 4.5 + 2;
-            if (yPosition + notesHeight > pageHeight - 20) {
-                doc.addPage();
-                yPosition = 20;
-            }
-            doc.setFontSize(8);
-            doc.setTextColor(...MUTED_COLOR);
-            doc.setFont('helvetica', 'italic');
-            doc.text(splitNotes, 14, yPosition);
-            yPosition += notesHeight;
-        }
-
-        // Espaço entre refeições
-        if (index < sortedMeals.length - 1) {
-            yPosition += 5;
-        }
-    }
-
-    // Seção de Micronutrientes (apenas se includeNutrients = true)
-    if (includeNutrients) {
-        // Verificar se precisa de nova página
-        if (yPosition + 80 > pageHeight - 30) {
-            doc.addPage();
-            yPosition = 20;
-        } else {
-            yPosition += 10;
-        }
-
-        // Título da seção
-        doc.setFontSize(14);
-        doc.setTextColor(...PRIMARY_COLOR);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Resumo de Micronutrientes', 14, yPosition);
-        yPosition += 10;
-
-        // Tabela de micronutrientes
-        const micronutrientsData = [
-            ['Fibras', `${Math.round(planTotals.fiber)}g`],
-            ['Sódio', `${Math.round(planTotals.sodium)}mg`],
-            ['Cálcio', `${Math.round(planTotals.calcium)}mg`],
-            ['Ferro', `${Math.round(planTotals.iron)}mg`],
-            ['Magnésio', `${Math.round(planTotals.magnesium)}mg`],
-            ['Potássio', `${Math.round(planTotals.potassium)}mg`],
-            ['Zinco', `${Math.round(planTotals.zinc)}mg`],
-            ['Vitamina A', `${Math.round(planTotals.vitamin_a)}µg`],
-            ['Vitamina C', `${Math.round(planTotals.vitamin_c)}mg`],
-            ['Vitamina D', `${Math.round(planTotals.vitamin_d)}µg`]
-        ];
-
-        autoTable(doc, {
-            startY: yPosition,
-            head: [['Micronutriente', 'Quantidade Total']],
-            body: micronutrientsData,
-            theme: 'striped',
-            headStyles: {
-                fillColor: SECONDARY_COLOR, // Laranja para diferenciar
-                textColor: [255, 255, 255],
-                fontSize: 10,
-                fontStyle: 'bold',
-                halign: 'center',
-                font: 'helvetica'
-            },
-            bodyStyles: {
-                fontSize: 9,
-                textColor: TEXT_COLOR,
-                font: 'helvetica'
-            },
-            columnStyles: {
-                0: { halign: 'left', cellWidth: 100 },
-                1: { halign: 'center', cellWidth: 'auto' }
-            },
-            alternateRowStyles: {
-                fillColor: LIGHT_BG
-            },
-            margin: { left: 14, right: 14 }
-        });
-
-        yPosition = doc.lastAutoTable.finalY + 10;
-    }
-
-    // Rodapé em todas as páginas
-    const pageCount = doc.internal.getNumberOfPages();
-    for (let i = 1; i <= pageCount; i++) {
-        doc.setPage(i);
-        doc.setFontSize(8);
-        doc.setTextColor(...MUTED_COLOR);
-        doc.setFont('helvetica', 'normal');
-        doc.text(
-            `Página ${i} de ${pageCount}`,
-            pageWidth - 14,
-            pageHeight - 10,
-            { align: 'right' }
-        );
-    }
-
-    // Salvar PDF
+    const blob = await pdf(doc).toBlob();
+    
+    // Fazer download do arquivo
     const nutrientsLabel = includeNutrients ? 'completo' : 'simples';
     const fileName = `plano-alimentar-${nutrientsLabel}-${patientName?.replace(/\s+/g, '-').toLowerCase() || 'paciente'}-${new Date().toISOString().split('T')[0]}.pdf`;
-    doc.save(fileName);
+    
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
     });
 };

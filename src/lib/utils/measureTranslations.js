@@ -41,7 +41,12 @@ export const translateMeasure = (code, measure = null) => {
         return measure.name;
     }
 
-    // Caso contrário, usar tradução do código
+    // Se o código for apenas números (um ID que não foi carregado), não exibi-lo como texto
+    if (!measureTranslations[code] && /^\d+$/.test(code)) {
+        return '';
+    }
+
+    // Caso contrário, usar tradução do código ou o próprio código
     return measureTranslations[code] || code;
 };
 

@@ -30,7 +30,8 @@ const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName, initialData = n
             setSelectedFood(initialData.food);
             setPortion({
                 quantity: initialData.quantity || 100,
-                measureId: initialData.unit === 'gram' ? null : initialData.unit
+                measureId: initialData.unit === 'gram' ? null : initialData.unit,
+                measure: initialData.measure || null
             });
             setNotes(initialData.notes || '');
             setPatientDescription(initialData.patient_description || '');
@@ -47,7 +48,7 @@ const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName, initialData = n
         setSelectedFood(food);
         setShowFoodSelector(false);
         // Resetar porção ao trocar alimento
-        setPortion({ quantity: 100, measureId: null });
+        setPortion({ quantity: 100, measureId: null, measure: null });
         setCalculatedNutrition(null);
     };
 
@@ -79,6 +80,7 @@ const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName, initialData = n
             food: selectedFood, // Para exibição
             quantity: portion.quantity,
             unit: portion.measureId || 'gram', // ID da medida ou 'gram'
+            measure: portion.measure || null, // Objeto completo da medida
             calories: calculatedNutrition?.calories || 0,
             protein: calculatedNutrition?.protein || 0,
             carbs: calculatedNutrition?.carbs || 0,
@@ -93,7 +95,7 @@ const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName, initialData = n
 
     const handleClose = () => {
         setSelectedFood(null);
-        setPortion({ quantity: 100, measureId: null });
+        setPortion({ quantity: 100, measureId: null, measure: null });
         setNotes('');
         setPatientDescription('');
         setCalculatedNutrition(null);

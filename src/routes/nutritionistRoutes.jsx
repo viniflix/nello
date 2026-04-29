@@ -32,6 +32,10 @@ const ChatPage = lazy(() => import('@/pages/shared/ChatPage.jsx'));
 const ChatDashboardPage = lazy(() => import('@/pages/shared/ChatDashboardPage.jsx'));
 const CheckinManagerPage = lazy(() => import('@/pages/nutritionist/tools/CheckinManagerPage.jsx'));
 
+// Sprint 1 UX Shell - Formbuilder e Configs de Anamnese
+const AnamnesisTemplatesList = lazy(() => import('@/pages/nutritionist/settings/anamnesis-templates/TemplatesList.jsx'));
+const AnamnesisTemplateBuilder = lazy(() => import('@/pages/nutritionist/settings/anamnesis-templates/TemplateBuilder.jsx'));
+
 export const nutritionistRoutes = (
     <Route 
         element={
@@ -67,6 +71,11 @@ export const nutritionistRoutes = (
         <Route path="/nutritionist/agenda" element={<AgendaPage />} />
         <Route path="/nutritionist/message-templates" element={<MessageTemplatesPage />} />
         <Route path="/nutritionist/checkins" element={<CheckinManagerPage />} />
+        
+        {/* Settings Globais da Clinica - Módulo Anamnese */}
+        <Route path="/nutritionist/settings/anamnesis-templates" element={<AnamnesisTemplatesList />} />
+        <Route path="/nutritionist/settings/anamnesis-templates/new" element={<AnamnesisTemplateBuilder />} />
+        <Route path="/nutritionist/settings/anamnesis-templates/:templateId/edit" element={<AnamnesisTemplateBuilder />} />
         {/* Admin-only routes (nutritionist layout) */}
         <Route 
             path="/nutritionist/foods" 

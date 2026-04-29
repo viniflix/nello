@@ -147,9 +147,13 @@ export function PortionSelector({
     };
 
     const handleMeasureChange = (newMeasureId) => {
+        const parsedId = newMeasureId === 'grams' ? null : parseInt(newMeasureId);
+        const selectedMeasure = parsedId ? allMeasures.find(m => m.id === parsedId) : null;
+        
         onChange({
             ...value,
-            measureId: newMeasureId === 'grams' ? null : parseInt(newMeasureId)
+            measureId: parsedId,
+            measure: selectedMeasure
         });
     };
 
