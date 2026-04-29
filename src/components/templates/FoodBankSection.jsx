@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Search, Plus, Database, Package, Loader2, X, ChevronLeft, ChevronRight, SlidersHorizontal, ChevronDown } from 'lucide-react';
+import { Search, Plus, Database, Package, Loader2, X, ChevronLeft, ChevronRight, SlidersHorizontal, ChevronDown, BookOpen } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
@@ -68,7 +68,7 @@ export default function FoodBankSection() {
   const [page,    setPage]    = useState(0);
   const [total,   setTotal]   = useState(0);
 
-  const [stats, setStats] = useState({ custom: 0, public: 0, totalAll: 0 });
+  const [stats, setStats] = useState({ custom: 0, public: 0, totalAll: 0, taco: 0, tbca: 0, tucunduva: 0, usda: 0, nello: 0 });
   const [statsLoading, setStatsLoading] = useState(true);
 
   const [selectedFood,  setSelectedFood]  = useState(null);
@@ -91,15 +91,32 @@ export default function FoodBankSection() {
     if (!user?.id) return;
     setStatsLoading(true);
     try {
-      const [customRes, publicRes] = await Promise.all([
+      const [customRes, publicRes, tacoRes, tbcaRes, tucRes, usdaRes, nelloRes] = await Promise.all([
         supabase.from('foods').select('id', { count: 'exact', head: true })
           .eq('is_active', true).or(`source.eq.custom,nutritionist_id.eq.${user.id}`),
         supabase.from('foods').select('id', { count: 'exact', head: true })
           .eq('is_active', true).neq('source', 'custom').is('nutritionist_id', null),
+        supabase.from('foods').select('id', { count: 'exact', head: true })
+          .eq('is_active', true).eq('source', 'TACO').is('nutritionist_id', null),
+        supabase.from('foods').select('id', { count: 'exact', head: true })
+          .eq('is_active', true).eq('source', 'TBCA').is('nutritionist_id', null),
+        supabase.from('foods').select('id', { count: 'exact', head: true })
+          .eq('is_active', true).eq('source', 'TUCUNDUVA').is('nutritionist_id', null),
+        supabase.from('foods').select('id', { count: 'exact', head: true })
+          .eq('is_active', true).eq('source', 'USDA').is('nutritionist_id', null),
+        supabase.from('foods').select('id', { count: 'exact', head: true })
+          .eq('is_active', true).eq('source', 'Nello').is('nutritionist_id', null),
       ]);
-      const pub   = publicRes.count  || 0;
-      const cust  = customRes.count  || 0;
-      setStats({ custom: cust, public: pub, totalAll: pub + cust });
+      const pub  = publicRes.count  || 0;
+      const cust = customRes.count  || 0;
+      setStats({
+        public: pub, custom: cust, totalAll: pub + cust,
+        taco: tacoRes.count  || 0,
+        tbca: tbcaRes.count  || 0,
+        tucunduva: tucRes.count   || 0,
+        usda: usdaRes.count  || 0,
+        nello: nelloRes.count || 0,
+      });
     } finally {
       setStatsLoading(false);
     }
@@ -207,17 +224,17 @@ export default function FoodBankSection() {
           </CardContent>
         </Card>
 
-        <Card className="border-emerald-200 bg-emerald-50/40 hover:border-emerald-300 transition-colors">
+        <Card className="border-slate-200 hover:border-slate-300 transition-colors">
           <CardContent className="pt-4 pb-3">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-xs text-emerald-700 font-medium">Meus Alimentos</p>
-                <p className="text-3xl font-black text-emerald-700 mt-1 leading-none">
+                <p className="text-xs text-slate-500 font-medium">Meus Alimentos</p>
+                <p className="text-3xl font-black text-slate-800 mt-1 leading-none">
                   {statsLoading ? '…' : stats.custom}
                 </p>
-                <p className="text-xs text-emerald-500 mt-1.5">criados por você</p>
+                <p className="text-xs text-slate-400 mt-1.5">criados por você</p>
               </div>
-              <Package className="w-8 h-8 text-emerald-300 shrink-0 mt-0.5" />
+              <Package className="w-8 h-8 text-slate-300 shrink-0 mt-0.5" />
             </div>
           </CardContent>
         </Card>
@@ -232,9 +249,7 @@ export default function FoodBankSection() {
                 </p>
                 <p className="text-xs text-slate-400 mt-1.5">alimentos disponíveis</p>
               </div>
-              <div className="w-8 h-8 flex items-center justify-center shrink-0 mt-0.5">
-                <span className="text-2xl">🥦</span>
-              </div>
+              <BookOpen className="w-8 h-8 text-slate-300 shrink-0 mt-0.5" />
             </div>
           </CardContent>
         </Card>
@@ -378,19 +393,39 @@ export default function FoodBankSection() {
 
       {/* ── Tabs de fonte ────────────────────────────────────────────────── */}
       <div className="flex gap-1 flex-wrap bg-slate-100 p-1 rounded-xl mb-5">
-        {SOURCE_TABS.map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => { setActiveSource(tab.id); setPage(0); }}
-            className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-all ${
-              activeSource === tab.id
-                ? 'bg-white text-emerald-700 shadow-sm'
-                : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200/50'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
+        {SOURCE_TABS.map(tab => {
+          // Determina contagem a mostrar ao lado do label
+          const countMap = {
+            all: stats.totalAll,
+            TACO: stats.taco,
+            TBCA: stats.tbca,
+            TUCUNDUVA: stats.tucunduva,
+            USDA: stats.usda,
+            Nello: stats.nello,
+            custom: stats.custom,
+          };
+          const count = countMap[tab.id];
+          return (
+            <button
+              key={tab.id}
+              onClick={() => { setActiveSource(tab.id); setPage(0); }}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg transition-all ${
+                activeSource === tab.id
+                  ? 'bg-white text-emerald-700 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200/50'
+              }`}
+            >
+              {tab.label}
+              {!statsLoading && count != null && (
+                <span className={`text-xs ${
+                  activeSource === tab.id ? 'text-emerald-500' : 'text-slate-400'
+                }`}>
+                  ({count.toLocaleString('pt-BR')})
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {/* ── Resultados ───────────────────────────────────────────────────── */}
