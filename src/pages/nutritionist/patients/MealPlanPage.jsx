@@ -113,6 +113,7 @@ const MealPlanPage = () => {
     const [plansSearchTerm, setPlansSearchTerm] = useState('');
     const [versionsExpanded, setVersionsExpanded] = useState(false);
     const [fullActivePlan, setFullActivePlan] = useState(null);
+    const [newPlanChoiceOpen, setNewPlanChoiceOpen] = useState(false);
 
     // Obter ID do nutricionista
     useEffect(() => {
@@ -947,11 +948,7 @@ const MealPlanPage = () => {
                         )}
                         <Button 
                             size="sm" 
-                            onClick={() => {
-                                setPendingDraft(null);
-                                setEditingPlan(null);
-                                setShowForm(true);
-                            }} 
+                            onClick={() => setNewPlanChoiceOpen(true)} 
                             className="flex-1 sm:flex-initial h-10 px-6 font-bold bg-primary hover:bg-primary/90 text-white transition-all active:scale-95 shadow-sm"
                         >
                             <Plus className="h-4 w-4 mr-2" />
@@ -1717,6 +1714,77 @@ const MealPlanPage = () => {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+            {/* ── Modal: Escolha para Novo Plano ──────────────────────────────── */}
+            <Dialog open={newPlanChoiceOpen} onOpenChange={setNewPlanChoiceOpen}>
+                <DialogContent className="max-w-sm">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <Plus className="w-5 h-5 text-primary" />
+                            Novo Plano Alimentar
+                        </DialogTitle>
+                        <DialogDescription>
+                            Como deseja criar o novo plano?
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid grid-cols-1 gap-3 py-2">
+                        <Card
+                            className="cursor-pointer hover:bg-accent/50 transition-colors border-2 hover:border-primary"
+                            onClick={() => {
+                                setNewPlanChoiceOpen(false);
+                                setPendingDraft(null);
+                                setEditingPlan(null);
+                                setShowForm(true);
+                            }}
+                        >
+                            <CardContent className="flex items-start gap-3 p-4">
+                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                                    <Plus className="h-5 w-5" />
+                                </div>
+                                <div className="flex-1 space-y-1">
+                                    <h4 className="text-sm font-semibold leading-none">Criar do zero</h4>
+                                    <p className="text-xs text-muted-foreground">
+                                        Montar um novo plano personalizado, adicionando refeições e alimentos manualmente.
+                                    </p>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        <Card
+                            className="cursor-pointer hover:bg-accent/50 transition-colors border-2 hover:border-primary"
+                            onClick={() => {
+                                setNewPlanChoiceOpen(false);
+                                setTemplateManagerOpen(true);
+                            }}
+                        >
+                            <CardContent className="flex items-start gap-3 p-4">
+                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700">
+                                    <Copy className="h-5 w-5" />
+                                </div>
+                                <div className="flex-1 space-y-1">
+                                    <h4 className="text-sm font-semibold leading-none">Usar protocolo</h4>
+                                    <p className="text-xs text-muted-foreground">
+                                        Importar um plano do banco de protocolos e adaptá-lo para este paciente.
+                                    </p>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* ── Modal: Importar Protocolo de Dieta ────────────────────── */}
+            <TemplateManagerDialog
+                open={templateManagerOpen}
+                onOpenChange={setTemplateManagerOpen}
+                patientId={patientId}
+                nutritionistId={nutritionistId}
+                onTemplateApplied={(newPlan) => {
+                    loadPlans();
+                    if (newPlan?.id) {
+                        toast({ title: 'Protocolo aplicado!', description: 'O plano foi importado e ativado para o paciente.' });
+                    }
+                }}
+            />
 
         </div>
     );

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { 
     Save, X, Plus, Trash2, Edit, Calendar, CloudOff, Cloud, 
-    Loader2, AlertTriangle, CheckCircle2, History, FolderOpen, RefreshCw 
+    Loader2, AlertTriangle, CheckCircle2, History, FolderOpen, RefreshCw, Download
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import MealPlanMealForm from './MealPlanMealForm';
 import MacrosChart from './MacrosChart';
+import ImportMealFromProtocolDialog from './ImportMealFromProtocolDialog';
 import { getReferenceValues, simulateMealPlanPortionAdjustment, getMealPlanById } from '@/lib/supabase/meal-plan-queries';
 import { useMealPlanDraft } from '@/hooks/useMealPlanDraft';
 
@@ -75,6 +76,7 @@ const MealPlanForm = ({
     const [showMealForm, setShowMealForm] = useState(false);
     const [editingMeal, setEditingMeal] = useState(null);
     const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
+    const [showImportMealDialog, setShowImportMealDialog] = useState(false);
     const [errors, setErrors] = useState({});
     const [referenceValues, setReferenceValues] = useState(null);
     const [portionScaleFactor, setPortionScaleFactor] = useState(1);
@@ -717,16 +719,28 @@ const MealPlanForm = ({
                                 <CardHeader>
                                     <div className="flex items-center justify-between">
                                         <CardTitle className="text-lg">Refeições</CardTitle>
-                                        <Button
-                                        type="button"
-                                        size="sm"
-                                        onClick={() => setShowMealForm(true)}
-                                        disabled={!isEditing && !draft.draftId}
-                                        title={(!isEditing && !draft.draftId) ? "Aguarde a inicialização do rascunho" : ""}
-                                    >
-                                        <Plus className="h-4 w-4 mr-2" />
-                                        Nova Refeição
-                                    </Button>
+                                        <div className="flex gap-2">
+                                            <Button
+                                                type="button"
+                                                size="sm"
+                                                variant="outline"
+                                                onClick={() => setShowImportMealDialog(true)}
+                                                title="Importar refeição de um protocolo salvo"
+                                            >
+                                                <Download className="h-4 w-4 mr-2" />
+                                                Do Protocolo
+                                            </Button>
+                                            <Button
+                                            type="button"
+                                            size="sm"
+                                            onClick={() => setShowMealForm(true)}
+                                            disabled={!isEditing && !draft.draftId}
+                                            title={(!isEditing && !draft.draftId) ? "Aguarde a inicialização do rascunho" : ""}
+                                        >
+                                            <Plus className="h-4 w-4 mr-2" />
+                                            Nova Refeição
+                                        </Button>
+                                        </div>
                                     </div>
                                 </CardHeader>
                                 <CardContent>
@@ -791,15 +805,26 @@ const MealPlanForm = ({
                         <CardHeader>
                             <div className="flex items-center justify-between">
                                 <CardTitle className="text-lg">Refeições</CardTitle>
-                                <Button
-                                    type="button"
-                                    size="sm"
-                                    onClick={() => { setEditingMeal(null); setShowMealForm(true); }}
-                                    disabled={loading || showDraftBanner}
-                                >
-                                    <Plus className="h-4 w-4 mr-2" />
-                                    Adicionar Refeição
-                                </Button>
+                                <div className="flex gap-2">
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => setShowImportMealDialog(true)}
+                                    >
+                                        <Download className="h-4 w-4 mr-2" />
+                                        Do Protocolo
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        onClick={() => { setEditingMeal(null); setShowMealForm(true); }}
+                                        disabled={loading || showDraftBanner}
+                                    >
+                                        <Plus className="h-4 w-4 mr-2" />
+                                        Adicionar Refeição
+                                    </Button>
+                                </div>
                             </div>
                         </CardHeader>
                         <CardContent>
@@ -862,6 +887,30 @@ const MealPlanForm = ({
                 onClose={() => { setShowMealForm(false); setEditingMeal(null); }}
                 onSave={editingMeal ? handleUpdateMeal : handleAddMeal}
                 initialData={editingMeal}
+            />
+
+            {/* Dialog: Importar refeições de um protocolo */}
+            <ImportMealFromProtocolDialog
+                open={showImportMealDialog}
+                onOpenChange={setShowImportMealDialog}
+                nutritionistId={nutritionistId}
+                onImport={async (templateMeals) => {
+                    for (const meal of templateMeals) {
+                        await handleAddMeal({
+                            name: meal.name,
+                            meal_type: meal.meal_type,
+                            meal_time: meal.meal_time,
+                            notes: meal.notes,
+                            order_index: meals.length,
+                            foods: meal.foods || [],
+                            calories: meal.calories,
+                            protein: meal.protein,
+                            carbs: meal.carbs,
+                            fat: meal.fat,
+                        });
+                    }
+                    setShowImportMealDialog(false);
+                }}
             />
 
             {/* Confirmação de Descarte de Rascunho */}
