@@ -452,14 +452,14 @@ export const exportMealPlanToPdf = async (mealPlan, patientName, nutritionistNam
     });
 
     // Renderizar PDF usando @react-pdf/renderer
-    const doc = <MealPlanPDF 
-      mealPlan={mealPlan} 
-      patientName={patientName} 
-      nutritionistName={nutritionistName} 
-      includeNutrients={includeNutrients} 
-      translateMealType={translateMealType} 
-      planTotals={planTotals} 
-    />;
+    const doc = React.createElement(MealPlanPDF, {
+      mealPlan,
+      patientName,
+      nutritionistName,
+      includeNutrients,
+      translateMealType,
+      planTotals
+    });
 
     const blob = await pdf(doc).toBlob();
     
