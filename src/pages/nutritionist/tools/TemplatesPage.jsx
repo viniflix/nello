@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import CheckinTemplateBuilder from '@/components/nutritionist/CheckinTemplateBuilder';
+import MessageTemplatesSection from '@/components/templates/MessageTemplatesSection';
 import {
   FileText,
   Coffee,
@@ -28,6 +29,7 @@ import {
   Salad,
   ExternalLink,
   Construction,
+  MessageSquare,
 } from 'lucide-react';
 
 // ─── Nutrição: Card de Template ───────────────────────────────────────────────
@@ -354,6 +356,7 @@ const NUTRITION_TABS = [
 
 const FORMS_TABS = [
   { id: 'checkins', label: 'Check-ins', icon: CheckSquare },
+  { id: 'messages', label: 'Modelos de Mensagem', icon: MessageSquare },
   { id: 'forms', label: 'Formulários', icon: ClipboardList },
 ];
 
@@ -529,6 +532,7 @@ export default function TemplatesPage() {
 
           {/* Conteúdo dinâmico */}
           {activeFormsTab === 'checkins' && <CheckinsSection />}
+          {activeFormsTab === 'messages' && <MessageTemplatesSection />}
           {activeFormsTab === 'forms' && <FormsSection navigate={navigate} />}
         </>
       )}

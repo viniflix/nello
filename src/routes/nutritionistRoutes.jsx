@@ -1,5 +1,5 @@
 import React, { lazy } from 'react';
-import { Route } from 'react-router-dom';
+import { Route, Navigate } from 'react-router-dom';
 import { ProtectedRoute } from './routeGuards';
 import MainLayout from '@/components/MainLayout.jsx';
 
@@ -71,7 +71,7 @@ export const nutritionistRoutes = (
         <Route path="/nutritionist/food-bank" element={<FoodBankPage />} />
         <Route path="/nutritionist/financial" element={<FinancialPage />} />
         <Route path="/nutritionist/agenda" element={<AgendaPage />} />
-        <Route path="/nutritionist/message-templates" element={<MessageTemplatesPage />} />
+        <Route path="/nutritionist/message-templates" element={<Navigate to="/nutritionist/templates" replace />} />
         <Route path="/nutritionist/checkins" element={<CheckinManagerPage />} />
         <Route path="/nutritionist/templates" element={<TemplatesPage />} />
         <Route path="/nutritionist/templates/new/:type" element={<TemplateBuilder />} />
