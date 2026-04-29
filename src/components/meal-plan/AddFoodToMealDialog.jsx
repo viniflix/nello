@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import FoodSelector from './FoodSelector';
-import { PortionSelector } from '@/components/nutrition';
+import { PremiumPortionSelector } from '@/components/nutrition';
 
 const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName, initialData = null }) => {
     const [selectedFood, setSelectedFood] = useState(null);

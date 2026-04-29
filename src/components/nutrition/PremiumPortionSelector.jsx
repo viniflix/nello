@@ -22,12 +22,7 @@ import {
   ChevronDown,
   Info
 } from 'lucide-react';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+
 
 const CATEGORY_ICONS = {
   volume: <Utensils className="w-3.5 h-3.5" />,
@@ -234,14 +229,9 @@ export function PremiumPortionSelector({
                             {m.name}
                           </span>
                           {m.hasSpecific && (
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500 shrink-0 ml-2" />
-                                </TooltipTrigger>
-                                <TooltipContent>Conversão específica p/ este alimento</TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
+                            <span title="Conversão específica p/ este alimento" className="cursor-help">
+                              <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500 shrink-0 ml-2" />
+                            </span>
                           )}
                         </div>
                         <span className="text-[10px] text-slate-400 font-normal leading-tight">
