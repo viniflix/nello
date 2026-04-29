@@ -10,21 +10,40 @@ export function useTemplates(type = 'diet') {
 
   const fetchTemplates = useCallback(async () => {
     if (!user) return;
-    
+
     setLoading(true);
     setError(null);
     try {
-      let tableName = '';
-      if (type === 'diet') tableName = 'diet_templates';
-      else if (type === 'meal') tableName = 'meal_templates';
-      else if (type === 'recipe') tableName = 'recipes';
-      else throw new Error('Invalid template type');
+      let data, fetchError;
 
-      const { data, error: fetchError } = await supabase
-        .from(tableName)
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+      if (type === 'diet') {
+        // Templates de dieta completa ficam em meal_plans com is_template = true
+        ({ data, error: fetchError } = await supabase
+          .from('meal_plans')
+          .select('id, name, description, template_tags, active_days, created_at, updated_at')
+          .eq('is_template', true)
+          .eq('nutritionist_id', user.id)
+          .order('created_at', { ascending: false }));
+
+        // Normaliza para o formato esperado pelos componentes (campo "tags")
+        if (data) {
+          data = data.map(t => ({ ...t, tags: t.template_tags || [] }));
+        }
+      } else if (type === 'meal') {
+        ({ data, error: fetchError } = await supabase
+          .from('meal_templates')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false }));
+      } else if (type === 'recipe') {
+        ({ data, error: fetchError } = await supabase
+          .from('recipes')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false }));
+      } else {
+        throw new Error('Invalid template type');
+      }
 
       if (fetchError) throw fetchError;
       setTemplates(data || []);
@@ -42,22 +61,29 @@ export function useTemplates(type = 'diet') {
 
   const deleteTemplate = async (templateId) => {
     if (!user) return false;
-    
-    try {
-      let tableName = '';
-      if (type === 'diet') tableName = 'diet_templates';
-      else if (type === 'meal') tableName = 'meal_templates';
-      else if (type === 'recipe') tableName = 'recipes';
-      
-      const { error } = await supabase
-        .from(tableName)
-        .delete()
-        .eq('id', templateId)
-        .eq('user_id', user.id);
 
-      if (error) throw error;
-      
-      // Update local state
+    try {
+      let deleteError;
+
+      if (type === 'diet') {
+        // Templates de dieta ficam em meal_plans
+        ({ error: deleteError } = await supabase
+          .from('meal_plans')
+          .delete()
+          .eq('id', templateId)
+          .eq('is_template', true)
+          .eq('nutritionist_id', user.id));
+      } else {
+        const tableName = type === 'meal' ? 'meal_templates' : 'recipes';
+        ({ error: deleteError } = await supabase
+          .from(tableName)
+          .delete()
+          .eq('id', templateId)
+          .eq('user_id', user.id));
+      }
+
+      if (deleteError) throw deleteError;
+
       setTemplates(prev => prev.filter(t => t.id !== templateId));
       return true;
     } catch (err) {
