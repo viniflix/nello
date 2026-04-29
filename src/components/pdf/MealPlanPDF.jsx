@@ -549,13 +549,13 @@ const MealPlanPDF = ({
                         
                         {/* Observações da Nutri para o Alimento */}
                         {food.notes ? (
-                          <Text style={styles.foodNotesPatient}>💡 Obs: {food.notes}</Text>
+                          <Text style={styles.foodNotesPatient}>Obs: {food.notes}</Text>
                         ) : null}
 
                         {/* Opções de Substituição */}
                         {food.substitutes && food.substitutes.length > 0 ? (
                           <View style={[styles.substituteBlock, { marginLeft: 10 }]}>
-                            <Text style={[styles.substituteTitle, { fontSize: 8 }]}>↳ Ou substitua por:</Text>
+                            <Text style={[styles.substituteTitle, { fontSize: 8 }]}>Ou substitua por:</Text>
                             {food.substitutes.map((sub, sIndex) => (
                               <View key={sIndex} style={[styles.substituteItem, { marginBottom: 2 }]}>
                                 <Text style={styles.substituteText}>• {sub.name}</Text>
