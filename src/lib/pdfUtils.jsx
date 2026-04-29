@@ -11,6 +11,7 @@ const withEdgePdfFallback = async (options, generateClientPdf) => {
   try {
     await generateClientPdf();
   } catch (error) {
+    console.error("Erro ao gerar PDF no cliente:", error);
     await generatePdfViaEdge(options);
   }
 };
@@ -452,14 +453,14 @@ export const exportMealPlanToPdf = async (mealPlan, patientName, nutritionistNam
     });
 
     // Renderizar PDF usando @react-pdf/renderer
-    const doc = React.createElement(MealPlanPDF, {
-      mealPlan,
-      patientName,
-      nutritionistName,
-      includeNutrients,
-      translateMealType,
-      planTotals
-    });
+    const doc = <MealPlanPDF 
+      mealPlan={mealPlan} 
+      patientName={patientName} 
+      nutritionistName={nutritionistName} 
+      includeNutrients={includeNutrients} 
+      translateMealType={translateMealType} 
+      planTotals={planTotals} 
+    />;
 
     const blob = await pdf(doc).toBlob();
     
