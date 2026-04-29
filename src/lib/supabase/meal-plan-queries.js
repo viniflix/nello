@@ -293,8 +293,8 @@ export const getMealPlanById = async (planId) => {
 
                 // Buscar medidas caseiras para os alimentos (quando unit é um ID numérico)
                 const measureIds = (foods || [])
-                    .filter(f => f.unit && typeof f.unit === 'number')
-                    .map(f => f.unit);
+                    .filter(f => f.unit && /^\d+$/.test(String(f.unit)))
+                    .map(f => Number(f.unit));
 
                 let measuresMap = {};
                 if (measureIds.length > 0) {
@@ -336,7 +336,7 @@ export const getMealPlanById = async (planId) => {
                     ...f,
                     food: foodsMap[String(f.food_id)] || null,
                     foods: foodsMap[String(f.food_id)] || null,
-                    measure: typeof f.unit === 'number' ? measuresMap[f.unit] : null,  // Incluir dados da medida caseira
+                    measure: f.unit && /^\d+$/.test(String(f.unit)) ? measuresMap[Number(f.unit)] : null,  // Incluir dados da medida caseira
                     substitutes: substitutionsMap[f.id] || [] // Incluir substitutos
                 }));
 

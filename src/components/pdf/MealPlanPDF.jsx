@@ -135,10 +135,10 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     marginTop: 5,
   },
-  colFood: { flex: 3 },
-  colQty: { flex: 1, textAlign: 'center' },
-  colKcal: { flex: 1, textAlign: 'center' },
-  colMacro: { flex: 0.8, textAlign: 'center' },
+  colFood: { flex: 2.5 },
+  colQty: { flex: 1.2, textAlign: 'center' },
+  colKcal: { flex: 0.9, textAlign: 'center' },
+  colMacro: { flex: 1.1, textAlign: 'center' },
   thText: {
     fontWeight: 700,
     fontSize: 8,
@@ -337,7 +337,8 @@ const MealPlanPDF = ({
             <View key={index} style={styles.mealSection} wrap={false}>
               <View style={styles.mealHeader}>
                 <Text style={styles.mealTitle}>{mealName}</Text>
-                {meal.meal_time ? <Text style={styles.mealTime}>• {meal.meal_time}</Text> : null}
+                {meal.meal_time ? <Text style={styles.mealTime}>• {meal.meal_time.substring(0, 5)}</Text> : null}
+                <Text style={styles.mealTime}>• {Math.round(meal.calories || meal.total_calories || 0)} kcal</Text>
               </View>
 
               {foods.length > 0 ? (
@@ -346,9 +347,9 @@ const MealPlanPDF = ({
                     <Text style={[styles.colFood, styles.thText]}>Alimento</Text>
                     <Text style={[styles.colQty, styles.thText]}>Quantidade</Text>
                     <Text style={[styles.colKcal, styles.thText]}>Kcal</Text>
-                    <Text style={[styles.colMacro, styles.thText]}>PTN</Text>
-                    <Text style={[styles.colMacro, styles.thText]}>CHO</Text>
-                    <Text style={[styles.colMacro, styles.thText]}>LIP</Text>
+                    <Text style={[styles.colMacro, styles.thText]}>Proteína</Text>
+                    <Text style={[styles.colMacro, styles.thText]}>Carboidrato</Text>
+                    <Text style={[styles.colMacro, styles.thText]}>Gordura</Text>
                   </View>
 
                   {foods.map((food, fIndex) => {
