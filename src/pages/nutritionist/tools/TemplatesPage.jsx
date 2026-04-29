@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { useTemplates } from '@/hooks/useTemplates';
@@ -20,7 +20,6 @@ import {
   UtensilsCrossed,
   Plus,
   Search,
-  MoreVertical,
   Edit2,
   Trash2,
   Loader2,
@@ -37,80 +36,121 @@ import {
 } from 'lucide-react';
 
 // ─── Nutrição: Card de Template ───────────────────────────────────────────────
-const NutritionCard = ({ template, type, onDelete, toast }) => {
+const NutritionCard = React.memo(({ template, type, onDelete, toast }) => {
   const navigate = useNavigate();
   const [isDeleting, setIsDeleting] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
+
+  const typeLabel = { diet: 'Dieta', meal: 'Refeição', recipe: 'Receita' }[type];
+  const typeBadgeClass = {
+    diet: 'bg-emerald-100 text-emerald-800',
+    meal: 'bg-blue-100 text-blue-800',
+    recipe: 'bg-amber-100 text-amber-800',
+  }[type];
 
   const handleDelete = async () => {
-    if (window.confirm('Tem certeza que deseja excluir este template? Esta ação não pode ser desfeita.')) {
-      setIsDeleting(true);
-      const success = await onDelete(template.id);
-      if (success) {
-        toast({ title: 'Sucesso', description: 'Template excluído com sucesso!' });
-      } else {
-        toast({ title: 'Erro', description: 'Erro ao excluir template.', variant: 'destructive' });
-        setIsDeleting(false);
-      }
+    const mealInfo = template.meal_count > 0
+      ? `Este template possui ${template.meal_count} refeição(ões) e ${template.food_count} alimento(s). `
+      : '';
+    if (!window.confirm(`${mealInfo}Excluir "${template.name}"? Esta ação não pode ser desfeita.`)) return;
+    setIsDeleting(true);
+    const success = await onDelete(template.id);
+    if (success) {
+      toast({ title: 'Sucesso', description: 'Template excluído.' });
+    } else {
+      toast({ title: 'Erro', description: 'Não foi possível excluir o template.', variant: 'destructive' });
+      setIsDeleting(false);
     }
   };
 
+  const formattedDate = new Date(template.created_at).toLocaleDateString('pt-BR', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+  });
+
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 hover:shadow-md transition-shadow group flex flex-col h-full">
-      <div className="flex justify-between items-start mb-3">
-        <div className="p-2 bg-emerald-50 rounded-lg text-emerald-600">
+    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-emerald-200 transition-all flex flex-col h-full p-5 gap-3 group">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-2">
+        <div className="p-2 bg-emerald-50 rounded-lg text-emerald-600 shrink-0">
           {type === 'diet' && <FileText className="w-5 h-5" />}
           {type === 'meal' && <Coffee className="w-5 h-5" />}
           {type === 'recipe' && <UtensilsCrossed className="w-5 h-5" />}
         </div>
-        <div className="relative">
-          <button
-            onClick={() => setMenuOpen(o => !o)}
-            className="text-slate-400 hover:text-slate-600 p-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
-          >
-            <MoreVertical className="w-5 h-5" />
-          </button>
-          {menuOpen && (
-            <div className="absolute right-0 mt-1 w-36 bg-white rounded-md shadow-lg border border-slate-100 z-10 overflow-hidden">
-              <button
-                onClick={() => navigate(`/nutritionist/templates/edit/${template.id}`)}
-                className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
-              >
-                <Edit2 className="w-4 h-4" /> Editar
-              </button>
-              <button
-                onClick={handleDelete}
-                disabled={isDeleting}
-                className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
-              >
-                {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                Excluir
-              </button>
-            </div>
-          )}
-        </div>
+        <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${typeBadgeClass}`}>
+          {typeLabel}
+        </span>
       </div>
 
-      <h3 className="text-lg font-semibold text-slate-800 mb-1 line-clamp-1" title={template.name}>
-        {template.name}
-      </h3>
-      <p className="text-sm text-slate-500 mb-4 line-clamp-2 flex-grow">
-        {template.description || 'Sem descrição'}
-      </p>
+      {/* Nome e descrição */}
+      <div className="flex-1">
+        <h3
+          className="text-base font-bold text-slate-800 line-clamp-2 leading-snug"
+          title={template.name}
+        >
+          {template.name}
+        </h3>
+        {template.description && (
+          <p className="text-xs text-slate-500 mt-1 line-clamp-2">{template.description}</p>
+        )}
+      </div>
 
-      {template.tags && template.tags.length > 0 && (
-        <div className="flex flex-wrap gap-1 mt-auto">
-          {template.tags.slice(0, 3).map((tag, idx) => (
-            <span key={idx} className="px-2 py-1 bg-slate-100 text-slate-600 text-xs rounded-full">{tag}</span>
+      {/* Stats de conteúdo */}
+      {type === 'diet' && (template.meal_count > 0 || template.food_count > 0) && (
+        <div className="flex items-center gap-3 text-xs text-slate-500 bg-slate-50 rounded-lg px-3 py-2">
+          <span className="flex items-center gap-1.5">
+            <Coffee className="w-3.5 h-3.5 text-slate-400" />
+            {template.meal_count} refeição(ões)
+          </span>
+          <span className="text-slate-300">·</span>
+          <span className="flex items-center gap-1.5">
+            <Salad className="w-3.5 h-3.5 text-slate-400" />
+            {template.food_count} alimento(s)
+          </span>
+        </div>
+      )}
+
+      {/* Tags */}
+      {template.tags?.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {template.tags.slice(0, 4).map((tag, idx) => (
+            <span
+              key={idx}
+              className="px-2.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-100 text-xs rounded-full font-medium"
+            >
+              {tag}
+            </span>
           ))}
-          {template.tags.length > 3 && (
-            <span className="px-2 py-1 bg-slate-100 text-slate-600 text-xs rounded-full">+{template.tags.length - 3}</span>
+          {template.tags.length > 4 && (
+            <span className="px-2.5 py-0.5 bg-slate-100 text-slate-500 text-xs rounded-full">
+              +{template.tags.length - 4}
+            </span>
           )}
         </div>
       )}
+
+      {/* Footer */}
+      <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+        <span className="text-xs text-slate-400">{formattedDate}</span>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => navigate(`/nutritionist/templates/edit/${type}/${template.id}`)}
+            className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
+            title="Editar"
+          >
+            <Edit2 className="w-4 h-4" />
+          </button>
+          <button
+            onClick={handleDelete}
+            disabled={isDeleting}
+            className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all disabled:opacity-50"
+            title="Excluir"
+          >
+            {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+          </button>
+        </div>
+      </div>
     </div>
   );
-};
+});
 
 // ─── Check-ins: Seção Inline ──────────────────────────────────────────────────
 const CheckinsSection = () => {
@@ -379,9 +419,12 @@ export default function TemplatesPage() {
     activeGroup === 'nutrition' ? activeNutritionTab : 'diet'
   );
 
-  const filteredTemplates = templates.filter(t =>
-    t.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (t.description && t.description.toLowerCase().includes(searchTerm.toLowerCase()))
+  const filteredTemplates = useMemo(
+    () => templates.filter(t =>
+      t.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (t.description && t.description.toLowerCase().includes(searchTerm.toLowerCase()))
+    ),
+    [templates, searchTerm]
   );
 
   const currentNutritionTab = NUTRITION_TABS.find(t => t.id === activeNutritionTab);

@@ -15,7 +15,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/components/ui/use-toast';
 import { useTemplates } from '@/hooks/useTemplates';
-import { getMealPlanById } from '@/lib/supabase/meal-plan-queries';
+import { getDietTemplateWithMeals } from '@/lib/supabase/template-queries';
 
 /**
  * Dialog para importar refeições específicas de um protocolo (template de dieta)
@@ -36,14 +36,16 @@ export default function ImportMealFromProtocolDialog({ open, onOpenChange, nutri
 
     useEffect(() => {
         if (!selectedTemplate) { setTemplateMeals([]); setSelectedMealIds(new Set()); return; }
-        const load = async () => {
+    const load = async () => {
             setLoadingMeals(true);
             try {
-                const { data } = await getMealPlanById(selectedTemplate.id);
+                const { data } = await getDietTemplateWithMeals(selectedTemplate.id);
                 const meals = data?.meals || [];
                 setTemplateMeals(meals);
                 // Pré-seleciona todas
                 setSelectedMealIds(new Set(meals.map(m => m.id ?? m.tempId)));
+            } catch (err) {
+                console.error('[ImportMealFromProtocolDialog] Error loading template meals:', err.message);
             } finally {
                 setLoadingMeals(false);
             }

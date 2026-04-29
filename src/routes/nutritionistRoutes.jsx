@@ -75,7 +75,7 @@ export const nutritionistRoutes = (
         <Route path="/nutritionist/checkins" element={<CheckinManagerPage />} />
         <Route path="/nutritionist/templates" element={<TemplatesPage />} />
         <Route path="/nutritionist/templates/new/:type" element={<TemplateBuilder />} />
-        <Route path="/nutritionist/templates/edit/:id" element={<TemplateBuilder />} />
+        <Route path="/nutritionist/templates/edit/:type/:id" element={<TemplateBuilder />} />
         
         {/* Settings Globais da Clinica - Módulo Anamnese */}
         <Route path="/nutritionist/settings/anamnesis-templates" element={<AnamnesisTemplatesList />} />
