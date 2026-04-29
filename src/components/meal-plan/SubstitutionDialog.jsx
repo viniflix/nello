@@ -79,7 +79,7 @@ const SubstitutionDialog = ({ isOpen, onClose, originalFood, initialSubstitutes 
         
         try {
             // Importar supabase client lazy ou global se já estiver
-            const { supabase } = await import('@/lib/supabase/client');
+            const { supabase } = await import('@/lib/customSupabaseClient');
             const [foodMeasuresRes, allMeasuresRes] = await Promise.all([
                 supabase.from('food_household_measures').select('*').eq('food_id', food.id),
                 supabase.from('household_measures').select('*')
