@@ -1,36 +1,67 @@
 import React, { useState, useEffect } from 'react';
-import { X, Package, Database, Info } from 'lucide-react';
+import { X, Package, Database, Leaf, Zap, Droplets, Activity, Info, ChevronRight } from 'lucide-react';
 import { getFoodMeasures } from '@/lib/supabase/foodService';
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogDescription
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 
-/**
- * FoodDetailsDialog - Modal completo com todos os dados do alimento
- * 
- * @param {Object} food - Dados completos do alimento
- * @param {boolean} open - Se o dialog está aberto
- * @param {Function} onOpenChange - Callback quando o estado muda
- */
+const SOURCE_CONFIG = {
+    'TACO':      { label: 'TACO — Tabela Brasileira de Composição de Alimentos (UNICAMP)', short: 'TACO',      color: 'bg-blue-50 text-blue-700 border-blue-200' },
+    'TBCA':      { label: 'TBCA — Tabela Brasileira de Composição de Alimentos (USP)',     short: 'TBCA',      color: 'bg-pink-50 text-pink-700 border-pink-200' },
+    'USDA':      { label: 'USDA — United States Department of Agriculture',                short: 'USDA',      color: 'bg-violet-50 text-violet-700 border-violet-200' },
+    'TUCUNDUVA': { label: 'Tabela Tucunduvá',                                              short: 'Tucunduvá', color: 'bg-orange-50 text-orange-700 border-orange-200' },
+    'Nello':     { label: 'Banco Nello',                                                   short: 'Nello',     color: 'bg-cyan-50 text-cyan-700 border-cyan-200' },
+    'custom':    { label: 'Alimento Personalizado',                                        short: 'Pessoal',   color: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+};
+
+const fmt = (v, d = 1) => (v != null && !isNaN(v) ? Number(v).toFixed(d) : null);
+const fmtInt = (v) => (v != null && !isNaN(v) ? Math.round(v) : null);
+
+// Barra de macros tipo semáforo
+const MacroBar = ({ protein, carbs, fat }) => {
+    const total = (protein || 0) + (carbs || 0) + (fat || 0);
+    if (!total) return null;
+    const pPct = Math.round((protein / total) * 100);
+    const cPct = Math.round((carbs / total) * 100);
+    const fPct = 100 - pPct - cPct;
+    return (
+        <div className="flex h-2 w-full rounded-full overflow-hidden gap-px">
+            <div className="bg-violet-500" style={{ width: `${pPct}%` }} title={`Proteína ${pPct}%`} />
+            <div className="bg-blue-400" style={{ width: `${cPct}%` }} title={`Carboidratos ${cPct}%`} />
+            <div className="bg-orange-400" style={{ width: `${fPct}%` }} title={`Gordura ${fPct}%`} />
+        </div>
+    );
+};
+
+// Célula de nutriente grande (macros hero)
+const MacroHero = ({ value, unit, label, bg, text }) => (
+    <div className={`flex-1 rounded-xl p-3 text-center ${bg}`}>
+        <p className={`text-2xl font-bold ${text}`}>{value ?? '—'}</p>
+        <p className="text-xs text-slate-500 mt-0.5">{unit}</p>
+        <p className="text-xs font-semibold text-slate-600 mt-1">{label}</p>
+    </div>
+);
+
+// Linha de micronutriente
+const MicroRow = ({ label, value, unit }) => {
+    if (value == null) return null;
+    return (
+        <div className="flex items-center justify-between py-2 border-b border-slate-100 last:border-0">
+            <span className="text-sm text-slate-600">{label}</span>
+            <span className="text-sm font-semibold text-slate-800">{value} <span className="text-slate-400 font-normal">{unit}</span></span>
+        </div>
+    );
+};
+
 const FoodDetailsDialog = ({ food, open, onOpenChange }) => {
     const [displayFood, setDisplayFood] = useState(food);
+    const [activeTab, setActiveTab] = useState('macros');
 
-    useEffect(() => {
-        setDisplayFood(food);
-    }, [food]);
-
+    useEffect(() => { setDisplayFood(food); setActiveTab('macros'); }, [food]);
     useEffect(() => {
         if (open && food?.id && (!food.food_measures || food.food_measures.length === 0)) {
             getFoodMeasures(food.id).then((measures) => {
-                setDisplayFood((prev) => (prev && prev.id === food.id ? { ...prev, food_measures: measures } : prev));
+                setDisplayFood(prev => prev?.id === food.id ? { ...prev, food_measures: measures } : prev);
             });
         }
     }, [open, food?.id]);
@@ -38,327 +69,207 @@ const FoodDetailsDialog = ({ food, open, onOpenChange }) => {
     const f = displayFood || food;
     if (!f) return null;
 
-    const sourceLabels = {
-        'TACO': 'TACO - Tabela Brasileira de Composição de Alimentos',
-        'IBGE': 'IBGE - Instituto Brasileiro de Geografia e Estatística',
-        'USDA': 'USDA - United States Department of Agriculture',
-        'Tucunduva': 'Tucunduva',
-        'TBCA': 'TBCA - Tabela Brasileira de Composição de Alimentos',
-        'custom': 'Personalizado'
-    };
+    const src = SOURCE_CONFIG[f.source] || { label: f.source, short: f.source, color: 'bg-slate-100 text-slate-600 border-slate-200' };
+    const cal = fmtInt(f.calories);
+    const hasMicros = f.calcium || f.iron || f.magnesium || f.phosphorus || f.potassium || f.zinc ||
+                      f.vitamin_a || f.vitamin_c || f.vitamin_d || f.vitamin_e || f.vitamin_b12 || f.folate;
+    const hasDetails = f.fiber || f.sugar || f.saturated_fat || f.trans_fat || f.cholesterol || f.sodium;
 
-    const sourceColors = {
-        'TACO': 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300',
-        'IBGE': 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300',
-        'USDA': 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300',
-        'Tucunduva': 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300',
-        'TBCA': 'bg-pink-100 text-pink-700 dark:bg-pink-900 dark:text-pink-300',
-        'custom': 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300'
-    };
+    const TABS = [
+        { id: 'macros', label: 'Macros' },
+        { id: 'micros', label: 'Micros', disabled: !hasMicros },
+        { id: 'info',   label: 'Informações' },
+    ];
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-4xl max-h-[90vh] w-[95vw] sm:w-full p-4 sm:p-6">
-                <DialogHeader className="pb-3 sm:pb-4">
-                    <DialogTitle className="text-lg sm:text-xl flex items-center gap-2 flex-wrap">
-                        <Package className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
-                        <span className="break-words">{f.name}</span>
-                    </DialogTitle>
-                    <DialogDescription className="mt-2">
-                        {f.group && <span className="block text-xs sm:text-sm">{f.group}</span>}
-                        {f.source && (
-                            <Badge 
-                                variant="outline" 
-                                className={`${sourceColors[f.source] || ''} mt-2 text-xs`}
-                            >
-                                {sourceLabels[f.source] || f.source}
-                            </Badge>
-                        )}
-                    </DialogDescription>
-                </DialogHeader>
+            <DialogContent className="max-w-lg w-[95vw] p-0 gap-0 overflow-hidden rounded-2xl border-0 shadow-2xl">
 
-                <ScrollArea className="max-h-[calc(90vh-120px)] sm:max-h-[70vh] pr-2 sm:pr-4">
-                    <Tabs defaultValue="macros" className="w-full">
-                        <TabsList className="grid w-full grid-cols-3 h-auto p-1 gap-1">
-                            <TabsTrigger value="macros" className="text-xs sm:text-sm px-2 sm:px-4 py-2">
-                                <span className="hidden sm:inline">Macronutrientes</span>
-                                <span className="sm:hidden">Macros</span>
-                            </TabsTrigger>
-                            <TabsTrigger value="micros" className="text-xs sm:text-sm px-2 sm:px-4 py-2">
-                                <span className="hidden sm:inline">Micronutrientes</span>
-                                <span className="sm:hidden">Micros</span>
-                            </TabsTrigger>
-                            <TabsTrigger value="info" className="text-xs sm:text-sm px-2 sm:px-4 py-2">
-                                Informações
-                            </TabsTrigger>
-                        </TabsList>
+                {/* ── Header colorido ─────────────────────────────────────── */}
+                <div className="bg-gradient-to-br from-slate-800 to-slate-700 text-white px-5 pt-5 pb-4">
+                    <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                            <Badge className={`${src.color} border text-xs font-semibold mb-2`}>{src.short}</Badge>
+                            <h2 className="text-lg font-bold text-white leading-tight break-words">{f.name}</h2>
+                            {f.group && <p className="text-slate-300 text-xs mt-1">{f.group}</p>}
+                        </div>
+                        <button onClick={() => onOpenChange(false)} className="text-slate-400 hover:text-white p-1 rounded-lg transition-colors shrink-0">
+                            <X className="w-5 h-5" />
+                        </button>
+                    </div>
 
-                        {/* TAB 1: Macronutrientes */}
-                        <TabsContent value="macros" className="space-y-3 sm:space-y-4 mt-3 sm:mt-4">
-                            <Card>
-                                <CardHeader className="pb-3">
-                                    <CardTitle className="text-sm sm:text-base">Valores por 100g</CardTitle>
-                                </CardHeader>
-                                <CardContent className="pt-0">
-                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
-                                        <div className="text-center p-2 sm:p-4 bg-red-50 dark:bg-red-950/20 rounded-lg">
-                                            <p className="text-[10px] sm:text-xs text-muted-foreground mb-1">Calorias</p>
-                                            <p className="text-lg sm:text-2xl font-bold text-red-600 dark:text-red-400">
-                                                {f.calories ? Math.round(f.calories) : '—'}
-                                            </p>
-                                            <p className="text-[10px] sm:text-xs text-muted-foreground">kcal</p>
+                    {/* Caloria grande */}
+                    {cal && (
+                        <div className="mt-3 flex items-baseline gap-2">
+                            <span className="text-4xl font-black text-white">{cal}</span>
+                            <span className="text-slate-300 text-sm">kcal por 100g</span>
+                        </div>
+                    )}
+
+                    {/* Barra de macros */}
+                    <div className="mt-3 space-y-1">
+                        <MacroBar protein={f.protein} carbs={f.carbs} fat={f.fat} />
+                        <div className="flex gap-4 text-xs text-slate-300">
+                            <span><span className="w-2 h-2 rounded-full bg-violet-500 inline-block mr-1" />P: {fmt(f.protein) ?? '—'}g</span>
+                            <span><span className="w-2 h-2 rounded-full bg-blue-400 inline-block mr-1" />C: {fmt(f.carbs) ?? '—'}g</span>
+                            <span><span className="w-2 h-2 rounded-full bg-orange-400 inline-block mr-1" />G: {fmt(f.fat) ?? '—'}g</span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* ── Tabs ─────────────────────────────────────────────────── */}
+                <div className="flex bg-white border-b border-slate-100 px-4">
+                    {TABS.map(t => (
+                        <button
+                            key={t.id}
+                            onClick={() => !t.disabled && setActiveTab(t.id)}
+                            disabled={t.disabled}
+                            className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                                t.disabled ? 'text-slate-300 cursor-not-allowed border-transparent' :
+                                activeTab === t.id
+                                    ? 'text-emerald-700 border-emerald-600'
+                                    : 'text-slate-500 border-transparent hover:text-slate-800'
+                            }`}
+                        >
+                            {t.label}
+                        </button>
+                    ))}
+                </div>
+
+                {/* ── Conteúdo ─────────────────────────────────────────────── */}
+                <ScrollArea className="max-h-[55vh]">
+                    <div className="p-5 bg-slate-50">
+
+                        {/* TAB: Macros */}
+                        {activeTab === 'macros' && (
+                            <div className="space-y-4">
+                                {/* Heroes */}
+                                <div className="flex gap-2">
+                                    <MacroHero value={fmt(f.protein)} unit="g" label="Proteína"    bg="bg-violet-50" text="text-violet-700" />
+                                    <MacroHero value={fmt(f.carbs)}   unit="g" label="Carboidratos" bg="bg-blue-50"   text="text-blue-700" />
+                                    <MacroHero value={fmt(f.fat)}     unit="g" label="Gorduras"     bg="bg-orange-50" text="text-orange-600" />
+                                </div>
+
+                                {/* Detalhes extras */}
+                                {hasDetails && (
+                                    <div className="bg-white rounded-xl border border-slate-200 divide-y divide-slate-100">
+                                        <div className="px-4 py-2.5 flex items-center gap-2">
+                                            <Leaf className="w-4 h-4 text-green-500" />
+                                            <span className="text-sm font-semibold text-slate-700">Detalhes</span>
                                         </div>
-                                        <div className="text-center p-2 sm:p-4 bg-purple-50 dark:bg-purple-950/20 rounded-lg">
-                                            <p className="text-[10px] sm:text-xs text-muted-foreground mb-1">Proteína</p>
-                                            <p className="text-lg sm:text-2xl font-bold text-purple-600 dark:text-purple-400">
-                                                {f.protein ? f.protein.toFixed(1) : '—'}
-                                            </p>
-                                            <p className="text-[10px] sm:text-xs text-muted-foreground">g</p>
-                                        </div>
-                                        <div className="text-center p-2 sm:p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
-                                            <p className="text-[10px] sm:text-xs text-muted-foreground mb-1">Carboidratos</p>
-                                            <p className="text-lg sm:text-2xl font-bold text-blue-600 dark:text-blue-400">
-                                                {f.carbs ? f.carbs.toFixed(1) : '—'}
-                                            </p>
-                                            <p className="text-[10px] sm:text-xs text-muted-foreground">g</p>
-                                        </div>
-                                        <div className="text-center p-2 sm:p-4 bg-orange-50 dark:bg-orange-950/20 rounded-lg">
-                                            <p className="text-[10px] sm:text-xs text-muted-foreground mb-1">Gorduras</p>
-                                            <p className="text-lg sm:text-2xl font-bold text-orange-600 dark:text-orange-400">
-                                                {f.fat ? f.fat.toFixed(1) : '—'}
-                                            </p>
-                                            <p className="text-[10px] sm:text-xs text-muted-foreground">g</p>
+                                        <div className="px-4">
+                                            <MicroRow label="Fibra alimentar" value={fmt(f.fiber)} unit="g" />
+                                            <MicroRow label="Açúcares totais" value={fmt(f.sugar)} unit="g" />
+                                            <MicroRow label="Gordura saturada" value={fmt(f.saturated_fat)} unit="g" />
+                                            <MicroRow label="Gordura trans" value={fmt(f.trans_fat)} unit="g" />
+                                            <MicroRow label="Colesterol" value={fmtInt(f.cholesterol)} unit="mg" />
+                                            <MicroRow label="Sódio" value={fmtInt(f.sodium)} unit="mg" />
                                         </div>
                                     </div>
-                                </CardContent>
-                            </Card>
+                                )}
+                            </div>
+                        )}
 
-                            {/* Gorduras Detalhadas */}
-                            {(f.saturated_fat || f.trans_fat || f.monounsaturated_fat || f.polyunsaturated_fat || f.cholesterol || f.fiber || f.sugar || f.sodium) && (
-                                <Card>
-                                    <CardHeader className="pb-3">
-                                        <CardTitle className="text-sm sm:text-base">Gorduras Detalhadas e Outros</CardTitle>
-                                    </CardHeader>
-                                    <CardContent className="pt-0">
-                                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-4">
-                                            {f.fiber && (
-                                                <div className="space-y-1">
-                                                    <p className="text-xs text-muted-foreground">Fibra</p>
-                                                    <p className="text-lg font-semibold">{f.fiber.toFixed(1)} g</p>
-                                                </div>
-                                            )}
-                                            {f.sugar && (
-                                                <div className="space-y-1">
-                                                    <p className="text-xs text-muted-foreground">Açúcares</p>
-                                                    <p className="text-lg font-semibold">{f.sugar.toFixed(1)} g</p>
-                                                </div>
-                                            )}
-                                            {f.saturated_fat && (
-                                                <div className="space-y-1">
-                                                    <p className="text-xs text-muted-foreground">Gordura Saturada</p>
-                                                    <p className="text-lg font-semibold">{f.saturated_fat.toFixed(1)} g</p>
-                                                </div>
-                                            )}
-                                            {f.trans_fat && (
-                                                <div className="space-y-1">
-                                                    <p className="text-xs text-muted-foreground">Gordura Trans</p>
-                                                    <p className="text-lg font-semibold">{f.trans_fat.toFixed(1)} g</p>
-                                                </div>
-                                            )}
-                                            {f.monounsaturated_fat && (
-                                                <div className="space-y-1">
-                                                    <p className="text-xs text-muted-foreground">Gordura Monoinsaturada</p>
-                                                    <p className="text-lg font-semibold">{f.monounsaturated_fat.toFixed(1)} g</p>
-                                                </div>
-                                            )}
-                                            {f.polyunsaturated_fat && (
-                                                <div className="space-y-1">
-                                                    <p className="text-xs text-muted-foreground">Gordura Poliinsaturada</p>
-                                                    <p className="text-lg font-semibold">{f.polyunsaturated_fat.toFixed(1)} g</p>
-                                                </div>
-                                            )}
-                                            {f.cholesterol && (
-                                                <div className="space-y-1">
-                                                    <p className="text-xs text-muted-foreground">Colesterol</p>
-                                                    <p className="text-lg font-semibold">{f.cholesterol.toFixed(0)} mg</p>
-                                                </div>
-                                            )}
-                                            {f.sodium && (
-                                                <div className="space-y-1">
-                                                    <p className="text-xs text-muted-foreground">Sódio</p>
-                                                    <p className="text-lg font-semibold">{f.sodium.toFixed(0)} mg</p>
-                                                </div>
-                                            )}
+                        {/* TAB: Micros */}
+                        {activeTab === 'micros' && (
+                            <div className="space-y-3">
+                                {/* Minerais */}
+                                {(f.calcium || f.iron || f.magnesium || f.phosphorus || f.potassium || f.zinc) && (
+                                    <div className="bg-white rounded-xl border border-slate-200 divide-y divide-slate-100">
+                                        <div className="px-4 py-2.5 flex items-center gap-2">
+                                            <Droplets className="w-4 h-4 text-blue-500" />
+                                            <span className="text-sm font-semibold text-slate-700">Minerais</span>
                                         </div>
-                                    </CardContent>
-                                </Card>
-                            )}
-                        </TabsContent>
+                                        <div className="px-4">
+                                            <MicroRow label="Cálcio" value={fmt(f.calcium)} unit="mg" />
+                                            <MicroRow label="Ferro" value={fmt(f.iron)} unit="mg" />
+                                            <MicroRow label="Magnésio" value={fmt(f.magnesium)} unit="mg" />
+                                            <MicroRow label="Fósforo" value={fmt(f.phosphorus)} unit="mg" />
+                                            <MicroRow label="Potássio" value={fmt(f.potassium)} unit="mg" />
+                                            <MicroRow label="Zinco" value={fmt(f.zinc)} unit="mg" />
+                                        </div>
+                                    </div>
+                                )}
 
-                        {/* TAB 2: Micronutrientes */}
-                        <TabsContent value="micros" className="space-y-3 sm:space-y-4 mt-3 sm:mt-4">
-                            {(f.calcium || f.iron || f.magnesium || f.phosphorus || f.potassium || f.zinc || 
-                              f.vitamin_a || f.vitamin_c || f.vitamin_d || f.vitamin_e || f.vitamin_b12 || f.folate) ? (
-                                <>
-                                    {/* Minerais */}
-                                    {(f.calcium || f.iron || f.magnesium || f.phosphorus || f.potassium || f.zinc) && (
-                                        <Card>
-                                            <CardHeader className="pb-3">
-                                                <CardTitle className="text-sm sm:text-base">Minerais (mg por 100g)</CardTitle>
-                                            </CardHeader>
-                                            <CardContent className="pt-0">
-                                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-4">
-                                                    {f.calcium && (
-                                                        <div className="space-y-1">
-                                                            <p className="text-xs text-muted-foreground">Cálcio</p>
-                                                            <p className="text-lg font-semibold">{f.calcium.toFixed(1)} mg</p>
-                                                        </div>
-                                                    )}
-                                                    {f.iron && (
-                                                        <div className="space-y-1">
-                                                            <p className="text-xs text-muted-foreground">Ferro</p>
-                                                            <p className="text-lg font-semibold">{f.iron.toFixed(1)} mg</p>
-                                                        </div>
-                                                    )}
-                                                    {f.magnesium && (
-                                                        <div className="space-y-1">
-                                                            <p className="text-xs text-muted-foreground">Magnésio</p>
-                                                            <p className="text-lg font-semibold">{f.magnesium.toFixed(1)} mg</p>
-                                                        </div>
-                                                    )}
-                                                    {f.phosphorus && (
-                                                        <div className="space-y-1">
-                                                            <p className="text-xs text-muted-foreground">Fósforo</p>
-                                                            <p className="text-lg font-semibold">{f.phosphorus.toFixed(1)} mg</p>
-                                                        </div>
-                                                    )}
-                                                    {f.potassium && (
-                                                        <div className="space-y-1">
-                                                            <p className="text-xs text-muted-foreground">Potássio</p>
-                                                            <p className="text-lg font-semibold">{f.potassium.toFixed(1)} mg</p>
-                                                        </div>
-                                                    )}
-                                                    {f.zinc && (
-                                                        <div className="space-y-1">
-                                                            <p className="text-xs text-muted-foreground">Zinco</p>
-                                                            <p className="text-lg font-semibold">{f.zinc.toFixed(1)} mg</p>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-                                    )}
+                                {/* Vitaminas */}
+                                {(f.vitamin_a || f.vitamin_c || f.vitamin_d || f.vitamin_e || f.vitamin_b12 || f.folate) && (
+                                    <div className="bg-white rounded-xl border border-slate-200 divide-y divide-slate-100">
+                                        <div className="px-4 py-2.5 flex items-center gap-2">
+                                            <Zap className="w-4 h-4 text-amber-500" />
+                                            <span className="text-sm font-semibold text-slate-700">Vitaminas</span>
+                                        </div>
+                                        <div className="px-4">
+                                            <MicroRow label="Vitamina A" value={fmt(f.vitamin_a)} unit="mg" />
+                                            <MicroRow label="Vitamina C" value={fmt(f.vitamin_c)} unit="mg" />
+                                            <MicroRow label="Vitamina D" value={fmt(f.vitamin_d)} unit="mg" />
+                                            <MicroRow label="Vitamina E" value={fmt(f.vitamin_e)} unit="mg" />
+                                            <MicroRow label="Vitamina B12" value={fmt(f.vitamin_b12)} unit="mg" />
+                                            <MicroRow label="Folato" value={fmt(f.folate)} unit="mg" />
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
 
-                                    {/* Vitaminas */}
-                                    {(f.vitamin_a || f.vitamin_c || f.vitamin_d || f.vitamin_e || f.vitamin_b12 || f.folate) && (
-                                        <Card>
-                                            <CardHeader className="pb-3">
-                                                <CardTitle className="text-sm sm:text-base">Vitaminas (mg por 100g)</CardTitle>
-                                            </CardHeader>
-                                            <CardContent className="pt-0">
-                                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-4">
-                                                    {f.vitamin_a && (
-                                                        <div className="space-y-1">
-                                                            <p className="text-xs text-muted-foreground">Vitamina A</p>
-                                                            <p className="text-lg font-semibold">{f.vitamin_a.toFixed(1)} mg</p>
-                                                        </div>
-                                                    )}
-                                                    {f.vitamin_c && (
-                                                        <div className="space-y-1">
-                                                            <p className="text-xs text-muted-foreground">Vitamina C</p>
-                                                            <p className="text-lg font-semibold">{f.vitamin_c.toFixed(1)} mg</p>
-                                                        </div>
-                                                    )}
-                                                    {f.vitamin_d && (
-                                                        <div className="space-y-1">
-                                                            <p className="text-xs text-muted-foreground">Vitamina D</p>
-                                                            <p className="text-lg font-semibold">{f.vitamin_d.toFixed(1)} mg</p>
-                                                        </div>
-                                                    )}
-                                                    {f.vitamin_e && (
-                                                        <div className="space-y-1">
-                                                            <p className="text-xs text-muted-foreground">Vitamina E</p>
-                                                            <p className="text-lg font-semibold">{f.vitamin_e.toFixed(1)} mg</p>
-                                                        </div>
-                                                    )}
-                                                    {f.vitamin_b12 && (
-                                                        <div className="space-y-1">
-                                                            <p className="text-xs text-muted-foreground">Vitamina B12</p>
-                                                            <p className="text-lg font-semibold">{f.vitamin_b12.toFixed(1)} mg</p>
-                                                        </div>
-                                                    )}
-                                                    {f.folate && (
-                                                        <div className="space-y-1">
-                                                            <p className="text-xs text-muted-foreground">Folato</p>
-                                                            <p className="text-lg font-semibold">{f.folate.toFixed(1)} mg</p>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-                                    )}
-                                </>
-                            ) : (
-                                <Card>
-                                    <CardContent className="py-8 text-center">
-                                        <Info className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-                                        <p className="text-sm text-muted-foreground">
-                                            Nenhum micronutriente cadastrado para este alimento
-                                        </p>
-                                    </CardContent>
-                                </Card>
-                            )}
-                        </TabsContent>
-
-                        {/* TAB 3: Informações */}
-                        <TabsContent value="info" className="space-y-3 sm:space-y-4 mt-3 sm:mt-4">
-                            <Card>
-                                <CardHeader className="pb-3">
-                                    <CardTitle className="text-sm sm:text-base">Informações Gerais</CardTitle>
-                                </CardHeader>
-                                <CardContent className="pt-0 space-y-3 sm:space-y-4">
-                                    {f.description && (
-                                        <div>
-                                            <p className="text-xs text-muted-foreground mb-1">Descrição</p>
-                                            <p className="text-sm">{f.description}</p>
+                        {/* TAB: Informações */}
+                        {activeTab === 'info' && (
+                            <div className="space-y-3">
+                                <div className="bg-white rounded-xl border border-slate-200 divide-y divide-slate-100">
+                                    <div className="px-4 py-2.5 flex items-center gap-2">
+                                        <Info className="w-4 h-4 text-slate-400" />
+                                        <span className="text-sm font-semibold text-slate-700">Informações gerais</span>
+                                    </div>
+                                    <div className="px-4 py-3 space-y-3">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-sm text-slate-500">Fonte</span>
+                                            <Badge className={`${src.color} border text-xs`}>{src.label}</Badge>
                                         </div>
-                                    )}
-                                    {f.preparation && (
-                                        <div>
-                                            <p className="text-xs text-muted-foreground mb-1">Modo de Preparo</p>
-                                            <p className="text-sm">{f.preparation}</p>
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-sm text-slate-500">Porção padrão</span>
+                                            <span className="text-sm font-semibold text-slate-800">{f.portion_size || 100}g</span>
                                         </div>
-                                    )}
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <p className="text-xs text-muted-foreground mb-1">Porção Padrão</p>
-                                            <p className="text-sm font-semibold">{f.portion_size || 100}g</p>
-                                        </div>
-                                        {f.source && (
-                                            <div>
-                                                <p className="text-xs text-muted-foreground mb-1">Fonte</p>
-                                                <Badge variant="outline" className={sourceColors[f.source]}>
-                                                    {sourceLabels[f.source] || f.source}
-                                                </Badge>
+                                        {f.base_unit && (
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-sm text-slate-500">Unidade base</span>
+                                                <span className="text-sm font-semibold text-slate-800">{f.base_unit}</span>
                                             </div>
                                         )}
                                     </div>
-                                    {f.food_measures && f.food_measures.length > 0 && (
-                                        <div>
-                                            <p className="text-xs text-muted-foreground mb-2">Medidas Caseiras Cadastradas</p>
-                                            <div className="flex flex-wrap gap-2">
-                                                {f.food_measures.map((measure) => (
-                                                    <Badge key={measure.id} variant="outline">
-                                                        {measure.measure_label} ({measure.quantity_grams}g)
-                                                    </Badge>
-                                                ))}
-                                            </div>
+                                    {f.description && (
+                                        <div className="px-4 py-3">
+                                            <p className="text-xs text-slate-400 mb-1 font-medium uppercase tracking-wide">Descrição</p>
+                                            <p className="text-sm text-slate-700 leading-relaxed">{f.description}</p>
                                         </div>
                                     )}
-                                </CardContent>
-                            </Card>
-                        </TabsContent>
-                    </Tabs>
+                                    {f.preparation && (
+                                        <div className="px-4 py-3">
+                                            <p className="text-xs text-slate-400 mb-1 font-medium uppercase tracking-wide">Modo de preparo</p>
+                                            <p className="text-sm text-slate-700 leading-relaxed">{f.preparation}</p>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {f.food_measures && f.food_measures.length > 0 && (
+                                    <div className="bg-white rounded-xl border border-slate-200">
+                                        <div className="px-4 py-2.5 border-b border-slate-100 flex items-center gap-2">
+                                            <Activity className="w-4 h-4 text-emerald-500" />
+                                            <span className="text-sm font-semibold text-slate-700">Medidas caseiras</span>
+                                        </div>
+                                        <div className="divide-y divide-slate-100">
+                                            {f.food_measures.map(m => (
+                                                <div key={m.id} className="px-4 py-2.5 flex items-center justify-between">
+                                                    <span className="text-sm text-slate-700">{m.measure_label}</span>
+                                                    <span className="text-sm font-semibold text-slate-800 flex items-center gap-1">
+                                                        {m.quantity_grams}g <ChevronRight className="w-3 h-3 text-slate-300" />
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
                 </ScrollArea>
             </DialogContent>
         </Dialog>
@@ -366,4 +277,3 @@ const FoodDetailsDialog = ({ food, open, onOpenChange }) => {
 };
 
 export default FoodDetailsDialog;
-

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Search, Plus, Database, Package, Loader2, X, ChevronLeft, ChevronRight, SlidersHorizontal } from 'lucide-react';
+import { Search, Plus, Database, Package, Loader2, X, ChevronLeft, ChevronRight, SlidersHorizontal, ChevronDown } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import FoodCardHorizontal from '@/components/nutrition/FoodCardHorizontal';
 import FoodDetailsDialog from '@/components/nutrition/FoodDetailsDialog';
 import SmartFoodForm from '@/components/nutrition/SmartFoodForm';
@@ -16,135 +16,143 @@ import { useDebounce } from '@/hooks/useDebounce';
 
 const ITEMS_PER_PAGE = 20;
 
-// Fonte → valor usado na query
+// Fontes reais do banco
 const SOURCE_TABS = [
-  { id: 'all',        label: 'Todos',           publicSource: null },
-  { id: 'TACO',       label: 'TACO',            publicSource: 'TACO' },
-  { id: 'TBCA',       label: 'TBCA',            publicSource: 'TBCA' },
-  { id: 'Tucunduva',  label: 'Tucunduvá',       publicSource: 'Tucunduva' },
-  { id: 'USDA',       label: 'USDA',            publicSource: 'USDA' },
-  { id: 'IBGE',       label: 'IBGE',            publicSource: 'IBGE' },
-  { id: 'custom',     label: 'Meus Alimentos',  publicSource: null },
+  { id: 'all',       label: 'Todos',          publicSource: null },
+  { id: 'TACO',      label: 'TACO',           publicSource: 'TACO' },
+  { id: 'TBCA',      label: 'TBCA',           publicSource: 'TBCA' },
+  { id: 'TUCUNDUVA', label: 'Tucunduvá',      publicSource: 'TUCUNDUVA' },
+  { id: 'USDA',      label: 'USDA',           publicSource: 'USDA' },
+  { id: 'Nello',     label: 'Nello',          publicSource: 'Nello' },
+  { id: 'custom',    label: 'Meus Alimentos', publicSource: null },
 ];
 
-// Grupos alimentares comuns para filtro rápido
+// Grupos alimentares para filtro
 const FOOD_GROUPS = [
-  'Todos os grupos', 'Carnes e derivados', 'Leite e derivados', 'Cereais e derivados',
+  'Carnes e derivados', 'Leite e derivados', 'Cereais e derivados',
   'Leguminosas', 'Frutas', 'Verduras e Hortaliças', 'Gorduras e óleos',
-  'Bebidas', 'Açúcares e produtos de confeitaria', 'Ovos', 'Pescados',
+  'Bebidas', 'Açúcares e confeitaria', 'Ovos', 'Pescados',
   'Alimentos preparados', 'Outros',
 ];
 
-// Badge de caloria colorido
-const CalorieBadge = ({ kcal }) => {
-  if (!kcal) return null;
-  const color = kcal < 50 ? 'text-green-700 bg-green-50 border-green-200'
-    : kcal < 150 ? 'text-yellow-700 bg-yellow-50 border-yellow-200'
-    : kcal < 300 ? 'text-orange-700 bg-orange-50 border-orange-200'
-    : 'text-red-700 bg-red-50 border-red-200';
-  return (
-    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${color}`}>
-      {Math.round(kcal)} kcal/100g
-    </span>
-  );
-};
+// Faixas calóricas — coluna real é "calories"
+const CAL_RANGES = [
+  { id: 'low',  label: 'Baixa caloria',  desc: '< 100 kcal',      min: null, max: 100 },
+  { id: 'mid',  label: 'Moderada',       desc: '100 – 250 kcal',  min: 100,  max: 250 },
+  { id: 'high', label: 'Alta caloria',   desc: '≥ 250 kcal',      min: 250,  max: null },
+];
+
+// Filtro de macro dominante
+const MACRO_FILTERS = [
+  { id: 'protein', label: 'Rico em proteína',    desc: '≥ 15g proteína/100g' },
+  { id: 'carbs',   label: 'Rico em carboidratos', desc: '≥ 40g carbs/100g' },
+  { id: 'fat',     label: 'Rico em gorduras',     desc: '≥ 15g gordura/100g' },
+  { id: 'fiber',   label: 'Rico em fibra',        desc: '≥ 5g fibra/100g' },
+];
 
 export default function FoodBankSection() {
   const { user } = useAuth();
   const { toast } = useToast();
 
   const [activeSource, setActiveSource] = useState('all');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [groupFilter, setGroupFilter] = useState('Todos os grupos');
-  const [calFilter, setCalFilter] = useState('all');
+  const [searchTerm, setSearchTerm]     = useState('');
+  const [filterOpen, setFilterOpen]     = useState(false);
 
-  const [foods, setFoods] = useState([]);
+  // Filtros múltiplos
+  const [groupFilters,  setGroupFilters]  = useState([]);   // grupos alimentares selecionados
+  const [calFilter,     setCalFilter]     = useState(null); // id do CAL_RANGES
+  const [macroFilter,   setMacroFilter]   = useState(null); // id do MACRO_FILTERS
+
+  const [foods,   setFoods]   = useState([]);
   const [loading, setLoading] = useState(false);
-  const [page, setPage] = useState(0);
-  const [total, setTotal] = useState(0);
+  const [page,    setPage]    = useState(0);
+  const [total,   setTotal]   = useState(0);
 
-  const [stats, setStats] = useState({ custom: 0, public: 0, taco: 0, tbca: 0, usda: 0, ibge: 0, tucunduva: 0 });
+  const [stats, setStats] = useState({ custom: 0, public: 0, totalAll: 0 });
   const [statsLoading, setStatsLoading] = useState(true);
 
-  const [selectedFood, setSelectedFood] = useState(null);
-  const [detailsOpen, setDetailsOpen] = useState(false);
-  const [createOpen, setCreateOpen] = useState(false);
-  const [editOpen, setEditOpen] = useState(false);
-  const [foodToEdit, setFoodToEdit] = useState(null);
-  const [deleteOpen, setDeleteOpen] = useState(false);
-  const [foodToDelete, setFoodToDelete] = useState(null);
+  const [selectedFood,  setSelectedFood]  = useState(null);
+  const [detailsOpen,   setDetailsOpen]   = useState(false);
+  const [createOpen,    setCreateOpen]    = useState(false);
+  const [editOpen,      setEditOpen]      = useState(false);
+  const [foodToEdit,    setFoodToEdit]    = useState(null);
+  const [deleteOpen,    setDeleteOpen]    = useState(false);
+  const [foodToDelete,  setFoodToDelete]  = useState(null);
 
   const debouncedSearch = useDebounce(searchTerm, 300);
-  const isCustom = activeSource === 'custom';
-  const totalPages = Math.ceil(total / ITEMS_PER_PAGE);
+  const isCustom    = activeSource === 'custom';
+  const totalPages  = Math.ceil(total / ITEMS_PER_PAGE);
 
-  // ── Stats ──────────────────────────────────────────────────────────────────
+  // Conta quantos filtros extras estão ativos
+  const activeFilterCount = groupFilters.length + (calFilter ? 1 : 0) + (macroFilter ? 1 : 0);
+
+  // ── Stats ────────────────────────────────────────────────────────────────
   const fetchStats = useCallback(async () => {
     if (!user?.id) return;
     setStatsLoading(true);
     try {
-      const [customRes, publicRes, tacoRes, tbcaRes, usdaRes, ibgeRes, tucRes] = await Promise.all([
-        supabase.from('foods').select('id', { count: 'exact', head: true }).eq('is_active', true).or(`source.eq.custom,nutritionist_id.eq.${user.id}`),
-        supabase.from('foods').select('id', { count: 'exact', head: true }).eq('is_active', true).neq('source', 'custom').is('nutritionist_id', null),
-        supabase.from('foods').select('id', { count: 'exact', head: true }).eq('is_active', true).eq('source', 'TACO').is('nutritionist_id', null),
-        supabase.from('foods').select('id', { count: 'exact', head: true }).eq('is_active', true).eq('source', 'TBCA').is('nutritionist_id', null),
-        supabase.from('foods').select('id', { count: 'exact', head: true }).eq('is_active', true).eq('source', 'USDA').is('nutritionist_id', null),
-        supabase.from('foods').select('id', { count: 'exact', head: true }).eq('is_active', true).eq('source', 'IBGE').is('nutritionist_id', null),
-        supabase.from('foods').select('id', { count: 'exact', head: true }).eq('is_active', true).eq('source', 'Tucunduva').is('nutritionist_id', null),
+      const [customRes, publicRes] = await Promise.all([
+        supabase.from('foods').select('id', { count: 'exact', head: true })
+          .eq('is_active', true).or(`source.eq.custom,nutritionist_id.eq.${user.id}`),
+        supabase.from('foods').select('id', { count: 'exact', head: true })
+          .eq('is_active', true).neq('source', 'custom').is('nutritionist_id', null),
       ]);
-      setStats({
-        custom: customRes.count || 0,
-        public: publicRes.count || 0,
-        taco: tacoRes.count || 0,
-        tbca: tbcaRes.count || 0,
-        usda: usdaRes.count || 0,
-        ibge: ibgeRes.count || 0,
-        tucunduva: tucRes.count || 0,
-      });
+      const pub   = publicRes.count  || 0;
+      const cust  = customRes.count  || 0;
+      setStats({ custom: cust, public: pub, totalAll: pub + cust });
     } finally {
       setStatsLoading(false);
     }
   }, [user?.id]);
 
-  // ── Foods query ────────────────────────────────────────────────────────────
+  // ── Foods query ──────────────────────────────────────────────────────────
   const fetchFoods = useCallback(async (pg = 0) => {
     if (!user?.id) return;
     setLoading(true);
     try {
       const offset = pg * ITEMS_PER_PAGE;
-      let query = supabase
+      let q = supabase
         .from('foods')
         .select('*', { count: 'exact' })
         .eq('is_active', true)
         .order('name', { ascending: true })
         .range(offset, offset + ITEMS_PER_PAGE - 1);
 
-      // Filtro por fonte
+      // Filtro de fonte
       if (isCustom) {
-        query = query.or(`source.eq.custom,nutritionist_id.eq.${user.id}`);
+        q = q.or(`source.eq.custom,nutritionist_id.eq.${user.id}`);
       } else {
-        query = query.neq('source', 'custom').is('nutritionist_id', null);
+        q = q.neq('source', 'custom').is('nutritionist_id', null);
         const tab = SOURCE_TABS.find(t => t.id === activeSource);
-        if (tab?.publicSource) query = query.eq('source', tab.publicSource);
+        if (tab?.publicSource) q = q.eq('source', tab.publicSource);
       }
 
-      // Busca por texto
+      // Busca textual
       if (debouncedSearch.trim()) {
         const s = debouncedSearch.trim();
-        query = query.or(`name.ilike.%${s}%,group.ilike.%${s}%,description.ilike.%${s}%`);
+        q = q.or(`name.ilike.%${s}%,group.ilike.%${s}%,description.ilike.%${s}%`);
       }
 
-      // Filtro por grupo alimentar
-      if (groupFilter && groupFilter !== 'Todos os grupos') {
-        query = query.ilike('group', `%${groupFilter}%`);
+      // Grupos alimentares (OR entre os selecionados)
+      if (groupFilters.length > 0) {
+        const orParts = groupFilters.map(g => `group.ilike.%${g}%`).join(',');
+        q = q.or(orParts);
       }
 
-      // Filtro por calorias
-      if (calFilter === 'low')    query = query.lt('kcal', 100);
-      if (calFilter === 'mid')    query = query.gte('kcal', 100).lt('kcal', 250);
-      if (calFilter === 'high')   query = query.gte('kcal', 250);
+      // Faixa calórica — coluna: calories
+      const calRange = CAL_RANGES.find(r => r.id === calFilter);
+      if (calRange) {
+        if (calRange.min != null) q = q.gte('calories', calRange.min);
+        if (calRange.max != null) q = q.lt('calories', calRange.max);
+      }
 
-      const { data, error, count } = await query;
+      // Filtro de macro dominante
+      if (macroFilter === 'protein') q = q.gte('protein', 15);
+      if (macroFilter === 'carbs')   q = q.gte('carbs', 40);
+      if (macroFilter === 'fat')     q = q.gte('fat', 15);
+      if (macroFilter === 'fiber')   q = q.gte('fiber', 5);
+
+      const { data, error, count } = await q;
       if (error) throw error;
       setFoods(data || []);
       setTotal(count || 0);
@@ -153,153 +161,234 @@ export default function FoodBankSection() {
     } finally {
       setLoading(false);
     }
-  }, [user?.id, activeSource, isCustom, debouncedSearch, groupFilter, calFilter, toast]);
+  }, [user?.id, activeSource, isCustom, debouncedSearch, groupFilters, calFilter, macroFilter, toast]);
 
   useEffect(() => { fetchStats(); }, [fetchStats]);
-  useEffect(() => { setPage(0); fetchFoods(0); }, [activeSource, debouncedSearch, groupFilter, calFilter]);
+  useEffect(() => { setPage(0); fetchFoods(0); }, [activeSource, debouncedSearch, groupFilters, calFilter, macroFilter]);
 
-  const handlePageChange = (newPage) => { setPage(newPage); fetchFoods(newPage); };
+  const handlePageChange = (p) => { setPage(p); fetchFoods(p); };
 
   const handleDeleteConfirm = async () => {
     if (!foodToDelete) return;
     const { error } = await supabase.from('foods').delete().eq('id', foodToDelete.id);
     if (error) { toast({ title: 'Erro ao excluir', variant: 'destructive' }); return; }
-    toast({ title: 'Alimento excluído com sucesso' });
+    toast({ title: 'Alimento excluído' });
     setDeleteOpen(false); setFoodToDelete(null);
     fetchFoods(0); fetchStats();
   };
 
   const handleCreateSuccess = () => { setCreateOpen(false); fetchFoods(0); fetchStats(); };
-  const handleEditSuccess = () => { setEditOpen(false); setFoodToEdit(null); fetchFoods(0); fetchStats(); };
+  const handleEditSuccess   = () => { setEditOpen(false); setFoodToEdit(null); fetchFoods(0); fetchStats(); };
 
-  // Split 2 colunas
   const columns = useMemo(() => {
     const mid = Math.ceil(foods.length / 2);
     return [foods.slice(0, mid), foods.slice(mid)];
   }, [foods]);
 
+  const clearFilters = () => { setGroupFilters([]); setCalFilter(null); setMacroFilter(null); };
+  const toggleGroup = (g) => setGroupFilters(prev => prev.includes(g) ? prev.filter(x => x !== g) : [...prev, g]);
+
   return (
     <>
-      {/* ── Stats Cards ────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-        <Card className="border-slate-200">
+      {/* ── Stats Cards (3) ─────────────────────────────────────────────── */}
+      <div className="grid grid-cols-3 gap-3 mb-6">
+        <Card className="border-slate-200 hover:border-slate-300 transition-colors">
           <CardContent className="pt-4 pb-3">
-            <p className="text-xs text-slate-500 font-medium">Alimentos Públicos</p>
-            <p className="text-2xl font-bold text-slate-800 mt-0.5">{statsLoading ? '…' : stats.public.toLocaleString('pt-BR')}</p>
-            <p className="text-xs text-slate-400 mt-1">TACO · TBCA · USDA · IBGE</p>
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs text-slate-500 font-medium">Banco Público</p>
+                <p className="text-3xl font-black text-slate-800 mt-1 leading-none">
+                  {statsLoading ? '…' : stats.public.toLocaleString('pt-BR')}
+                </p>
+                <p className="text-xs text-slate-400 mt-1.5">TACO · TBCA · USDA · Tucunduvá · Nello</p>
+              </div>
+              <Database className="w-8 h-8 text-slate-300 shrink-0 mt-0.5" />
+            </div>
           </CardContent>
         </Card>
-        <Card className="border-slate-200">
+
+        <Card className="border-emerald-200 bg-emerald-50/40 hover:border-emerald-300 transition-colors">
           <CardContent className="pt-4 pb-3">
-            <p className="text-xs text-slate-500 font-medium">Meus Alimentos</p>
-            <p className="text-2xl font-bold text-emerald-700 mt-0.5">{statsLoading ? '…' : stats.custom}</p>
-            <p className="text-xs text-slate-400 mt-1">personalizados por você</p>
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs text-emerald-700 font-medium">Meus Alimentos</p>
+                <p className="text-3xl font-black text-emerald-700 mt-1 leading-none">
+                  {statsLoading ? '…' : stats.custom}
+                </p>
+                <p className="text-xs text-emerald-500 mt-1.5">criados por você</p>
+              </div>
+              <Package className="w-8 h-8 text-emerald-300 shrink-0 mt-0.5" />
+            </div>
           </CardContent>
         </Card>
-        <Card className="border-slate-200">
+
+        <Card className="border-slate-200 hover:border-slate-300 transition-colors">
           <CardContent className="pt-4 pb-3">
-            <p className="text-xs text-slate-500 font-medium">TACO</p>
-            <p className="text-2xl font-bold text-slate-800 mt-0.5">{statsLoading ? '…' : stats.taco.toLocaleString('pt-BR')}</p>
-            <p className="text-xs text-slate-400 mt-1">UNICAMP</p>
-          </CardContent>
-        </Card>
-        <Card className="border-slate-200">
-          <CardContent className="pt-4 pb-3">
-            <p className="text-xs text-slate-500 font-medium">TBCA · USDA · IBGE</p>
-            <p className="text-2xl font-bold text-slate-800 mt-0.5">
-              {statsLoading ? '…' : (stats.tbca + stats.usda + stats.ibge + stats.tucunduva).toLocaleString('pt-BR')}
-            </p>
-            <p className="text-xs text-slate-400 mt-1">outras tabelas</p>
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs text-slate-500 font-medium">Total no banco</p>
+                <p className="text-3xl font-black text-slate-800 mt-1 leading-none">
+                  {statsLoading ? '…' : stats.totalAll.toLocaleString('pt-BR')}
+                </p>
+                <p className="text-xs text-slate-400 mt-1.5">alimentos disponíveis</p>
+              </div>
+              <div className="w-8 h-8 flex items-center justify-center shrink-0 mt-0.5">
+                <span className="text-2xl">🥦</span>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* ── Toolbar: Busca + Filtros ─────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-4">
+      {/* ── Toolbar ──────────────────────────────────────────────────────── */}
+      <div className="flex flex-col sm:flex-row gap-2 mb-3">
+        {/* Busca */}
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
           <Input
             placeholder="Buscar por nome, grupo ou descrição..."
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
-            className="pl-9"
+            className="pl-9 bg-white border-slate-200"
           />
         </div>
 
-        <Select value={groupFilter} onValueChange={setGroupFilter}>
-          <SelectTrigger className="w-full sm:w-52">
-            <SlidersHorizontal className="w-4 h-4 mr-2 text-slate-400 shrink-0" />
-            <SelectValue placeholder="Grupo alimentar" />
-          </SelectTrigger>
-          <SelectContent>
-            {FOOD_GROUPS.map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        {/* Botão de filtros combinados */}
+        <Popover open={filterOpen} onOpenChange={setFilterOpen}>
+          <PopoverTrigger asChild>
+            <Button variant="outline" className={`gap-2 border-slate-200 bg-white ${activeFilterCount > 0 ? 'border-emerald-400 text-emerald-700' : ''}`}>
+              <SlidersHorizontal className="w-4 h-4" />
+              Filtros
+              {activeFilterCount > 0 && (
+                <Badge className="bg-emerald-600 text-white text-xs px-1.5 py-0 h-4 min-w-4 rounded-full">
+                  {activeFilterCount}
+                </Badge>
+              )}
+              <ChevronDown className="w-3 h-3 text-slate-400" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-80 p-0" align="end">
+            <div className="p-3 border-b border-slate-100 flex items-center justify-between">
+              <span className="text-sm font-semibold text-slate-700">Filtros avançados</span>
+              {activeFilterCount > 0 && (
+                <button onClick={clearFilters} className="text-xs text-emerald-600 hover:text-emerald-800 font-medium">
+                  Limpar tudo
+                </button>
+              )}
+            </div>
 
-        <Select value={calFilter} onValueChange={setCalFilter}>
-          <SelectTrigger className="w-full sm:w-44">
-            <SelectValue placeholder="Faixa calórica" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todas as calorias</SelectItem>
-            <SelectItem value="low">Baixa caloria (&lt;100 kcal)</SelectItem>
-            <SelectItem value="mid">Moderada (100–250 kcal)</SelectItem>
-            <SelectItem value="high">Alta caloria (≥250 kcal)</SelectItem>
-          </SelectContent>
-        </Select>
+            {/* Faixa calórica */}
+            <div className="p-3 border-b border-slate-100">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Faixa calórica</p>
+              <div className="flex gap-1 flex-wrap">
+                {CAL_RANGES.map(r => (
+                  <button
+                    key={r.id}
+                    onClick={() => setCalFilter(prev => prev === r.id ? null : r.id)}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors ${
+                      calFilter === r.id
+                        ? 'bg-emerald-600 text-white border-emerald-600'
+                        : 'bg-white text-slate-600 border-slate-200 hover:border-emerald-300'
+                    }`}
+                    title={r.desc}
+                  >
+                    {r.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Macro dominante */}
+            <div className="p-3 border-b border-slate-100">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Perfil nutricional</p>
+              <div className="flex gap-1 flex-wrap">
+                {MACRO_FILTERS.map(m => (
+                  <button
+                    key={m.id}
+                    onClick={() => setMacroFilter(prev => prev === m.id ? null : m.id)}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors ${
+                      macroFilter === m.id
+                        ? 'bg-emerald-600 text-white border-emerald-600'
+                        : 'bg-white text-slate-600 border-slate-200 hover:border-emerald-300'
+                    }`}
+                    title={m.desc}
+                  >
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Grupo alimentar */}
+            <div className="p-3">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
+                Grupo alimentar {groupFilters.length > 0 && `(${groupFilters.length})`}
+              </p>
+              <div className="flex flex-wrap gap-1 max-h-40 overflow-y-auto">
+                {FOOD_GROUPS.map(g => (
+                  <button
+                    key={g}
+                    onClick={() => toggleGroup(g)}
+                    className={`px-2 py-1 rounded-lg text-xs font-medium border transition-colors ${
+                      groupFilters.includes(g)
+                        ? 'bg-emerald-600 text-white border-emerald-600'
+                        : 'bg-white text-slate-600 border-slate-200 hover:border-emerald-300'
+                    }`}
+                  >
+                    {g}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </PopoverContent>
+        </Popover>
 
         <Button onClick={() => setCreateOpen(true)} className="bg-emerald-600 hover:bg-emerald-700 shrink-0">
-          <Plus className="w-4 h-4 mr-2" /> Novo Alimento
+          <Plus className="w-4 h-4 mr-1.5" /> Novo Alimento
         </Button>
       </div>
 
-      {/* Filtro ativo */}
-      {(searchTerm || groupFilter !== 'Todos os grupos' || calFilter !== 'all') && (
-        <div className="flex items-center gap-2 mb-4 flex-wrap">
-          <Badge variant="outline" className="text-slate-600">
-            {total} resultado{total !== 1 ? 's' : ''}
-          </Badge>
-          <Button variant="ghost" size="sm" className="h-7 text-xs text-slate-500"
-            onClick={() => { setSearchTerm(''); setGroupFilter('Todos os grupos'); setCalFilter('all'); }}>
-            <X className="w-3 h-3 mr-1" /> Limpar filtros
-          </Button>
+      {/* Chips de filtros ativos */}
+      {activeFilterCount > 0 && (
+        <div className="flex items-center gap-2 mb-3 flex-wrap">
+          <span className="text-xs text-slate-500">{total.toLocaleString('pt-BR')} resultado{total !== 1 ? 's' : ''}:</span>
+          {calFilter && (
+            <button onClick={() => setCalFilter(null)}
+              className="flex items-center gap-1 text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full hover:bg-emerald-100">
+              {CAL_RANGES.find(r => r.id === calFilter)?.label} <X className="w-3 h-3" />
+            </button>
+          )}
+          {macroFilter && (
+            <button onClick={() => setMacroFilter(null)}
+              className="flex items-center gap-1 text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full hover:bg-emerald-100">
+              {MACRO_FILTERS.find(m => m.id === macroFilter)?.label} <X className="w-3 h-3" />
+            </button>
+          )}
+          {groupFilters.map(g => (
+            <button key={g} onClick={() => toggleGroup(g)}
+              className="flex items-center gap-1 text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full hover:bg-emerald-100">
+              {g} <X className="w-3 h-3" />
+            </button>
+          ))}
+          <button onClick={clearFilters} className="text-xs text-slate-400 hover:text-slate-600 underline ml-1">
+            Limpar todos
+          </button>
         </div>
       )}
 
       {/* ── Tabs de fonte ────────────────────────────────────────────────── */}
-      <div className="flex gap-1 flex-wrap bg-slate-100 p-1 rounded-xl mb-6">
+      <div className="flex gap-1 flex-wrap bg-slate-100 p-1 rounded-xl mb-5">
         {SOURCE_TABS.map(tab => (
           <button
             key={tab.id}
             onClick={() => { setActiveSource(tab.id); setPage(0); }}
-            className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg transition-all ${
+            className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-all ${
               activeSource === tab.id
                 ? 'bg-white text-emerald-700 shadow-sm'
                 : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200/50'
             }`}
           >
             {tab.label}
-            {tab.id === 'all' && !statsLoading && (
-              <span className="text-xs text-slate-400">({(stats.public + stats.custom).toLocaleString('pt-BR')})</span>
-            )}
-            {tab.id === 'custom' && !statsLoading && (
-              <span className="text-xs text-slate-400">({stats.custom})</span>
-            )}
-            {tab.id === 'TACO' && !statsLoading && (
-              <span className="text-xs text-slate-400">({stats.taco.toLocaleString('pt-BR')})</span>
-            )}
-            {tab.id === 'TBCA' && !statsLoading && (
-              <span className="text-xs text-slate-400">({stats.tbca.toLocaleString('pt-BR')})</span>
-            )}
-            {tab.id === 'USDA' && !statsLoading && (
-              <span className="text-xs text-slate-400">({stats.usda.toLocaleString('pt-BR')})</span>
-            )}
-            {tab.id === 'IBGE' && !statsLoading && (
-              <span className="text-xs text-slate-400">({stats.ibge.toLocaleString('pt-BR')})</span>
-            )}
-            {tab.id === 'Tucunduva' && !statsLoading && (
-              <span className="text-xs text-slate-400">({stats.tucunduva.toLocaleString('pt-BR')})</span>
-            )}
           </button>
         ))}
       </div>
@@ -311,10 +400,10 @@ export default function FoodBankSection() {
         </div>
       ) : foods.length === 0 ? (
         <div className="bg-white rounded-xl border border-dashed border-slate-300 p-12 text-center flex flex-col items-center">
-          <Database className="w-12 h-12 text-slate-300 mb-4" />
-          <h3 className="text-lg font-medium text-slate-700 mb-1">Nenhum alimento encontrado</h3>
+          <Database className="w-12 h-12 text-slate-200 mb-4" />
+          <h3 className="text-lg font-semibold text-slate-700 mb-1">Nenhum alimento encontrado</h3>
           <p className="text-sm text-slate-400 max-w-sm mb-5">
-            {searchTerm ? `Nenhum resultado para "${searchTerm}".` : 'Tente ajustar os filtros.'}
+            {searchTerm ? `Nenhum resultado para "${searchTerm}".` : 'Tente ajustar os filtros ou a tabela selecionada.'}
           </p>
           {isCustom && (
             <Button onClick={() => setCreateOpen(true)} className="bg-emerald-600 hover:bg-emerald-700">
@@ -324,29 +413,23 @@ export default function FoodBankSection() {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 mb-5">
             {columns.map((col, ci) => (
-              <div key={ci} className="space-y-2">
+              <div key={ci} className="space-y-1.5">
                 {col.map(food => (
-                  <div key={food.id} className="relative">
-                    <FoodCardHorizontal
-                      food={food}
-                      isCustom={isCustom || food.source === 'custom'}
-                      onView={f => { setSelectedFood(f); setDetailsOpen(true); }}
-                      onEdit={isCustom ? f => { setFoodToEdit(f); setEditOpen(true); } : undefined}
-                      onDelete={isCustom ? f => { setFoodToDelete(f); setDeleteOpen(true); } : undefined}
-                    />
-                    {/* Calorie badge overlay */}
-                    <div className="absolute top-2 right-2 pointer-events-none">
-                      <CalorieBadge kcal={food.kcal} />
-                    </div>
-                  </div>
+                  <FoodCardHorizontal
+                    key={food.id}
+                    food={food}
+                    isCustom={isCustom || food.source === 'custom'}
+                    onView={f => { setSelectedFood(f); setDetailsOpen(true); }}
+                    onEdit={isCustom ? f => { setFoodToEdit(f); setEditOpen(true); } : undefined}
+                    onDelete={isCustom ? f => { setFoodToDelete(f); setDeleteOpen(true); } : undefined}
+                  />
                 ))}
               </div>
             ))}
           </div>
 
-          {/* Paginação */}
           {totalPages > 1 && (
             <div className="flex flex-col sm:flex-row items-center justify-between gap-3 py-4 border-t border-slate-100">
               <p className="text-sm text-slate-500">
@@ -393,7 +476,7 @@ export default function FoodBankSection() {
           <DialogHeader>
             <DialogTitle>Excluir alimento?</DialogTitle>
             <DialogDescription>
-              O alimento <strong>"{foodToDelete?.name}"</strong> será excluído permanentemente. Esta ação não pode ser desfeita.
+              <strong>"{foodToDelete?.name}"</strong> será excluído permanentemente.
             </DialogDescription>
           </DialogHeader>
           <div className="flex justify-end gap-2 mt-4">
