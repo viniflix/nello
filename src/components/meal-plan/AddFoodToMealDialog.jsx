@@ -17,7 +17,7 @@ import { PortionSelector } from '@/components/nutrition';
 
 const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName, initialData = null }) => {
     const [selectedFood, setSelectedFood] = useState(null);
-    const [portion, setPortion] = useState({ quantity: 100, measureId: null });
+    const [portion, setPortion] = useState({ quantity: 100, measureId: null, measureCode: 'gram' });
     const [notes, setNotes] = useState('');
     const [patientDescription, setPatientDescription] = useState('');
     const [calculatedNutrition, setCalculatedNutrition] = useState(null);
@@ -28,9 +28,14 @@ const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName, initialData = n
     useEffect(() => {
         if (initialData) {
             setSelectedFood(initialData.food);
+            // Suporta legado (unit numérico) e novo formato (unit = code string)
+            const unitCode = initialData.unit === 'gram' || !initialData.unit
+                ? 'gram'
+                : initialData.unit;
             setPortion({
                 quantity: initialData.quantity || 100,
-                measureId: initialData.unit === 'gram' ? null : initialData.unit,
+                measureId: unitCode,
+                measureCode: unitCode,
                 measure: initialData.measure || null
             });
             setNotes(initialData.notes || '');
@@ -48,7 +53,7 @@ const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName, initialData = n
         setSelectedFood(food);
         setShowFoodSelector(false);
         // Resetar porção ao trocar alimento
-        setPortion({ quantity: 100, measureId: null, measure: null });
+        setPortion({ quantity: 100, measureId: null, measureCode: 'gram', measure: null });
         setCalculatedNutrition(null);
     };
 
@@ -75,12 +80,13 @@ const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName, initialData = n
     const handleAdd = () => {
         if (!validate()) return;
 
+        const unitCode = portion.measureCode || portion.measureId || 'gram';
         const foodData = {
             food_id: selectedFood.id,
-            food: selectedFood, // Para exibição
+            food: selectedFood,
             quantity: portion.quantity,
-            unit: portion.measureId || 'gram', // ID da medida ou 'gram'
-            measure: portion.measure || null, // Objeto completo da medida
+            unit: unitCode,
+            measure: portion.measure || null,
             calories: calculatedNutrition?.calories || 0,
             protein: calculatedNutrition?.protein || 0,
             carbs: calculatedNutrition?.carbs || 0,
@@ -95,7 +101,7 @@ const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName, initialData = n
 
     const handleClose = () => {
         setSelectedFood(null);
-        setPortion({ quantity: 100, measureId: null, measure: null });
+        setPortion({ quantity: 100, measureId: null, measureCode: 'gram', measure: null });
         setNotes('');
         setPatientDescription('');
         setCalculatedNutrition(null);

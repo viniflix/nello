@@ -1,10 +1,21 @@
 /**
- * PortionSelector - Seletor inteligente de porção
- * Mostra TODAS as medidas genéricas (household_measures)
- * Marca com ★ as que têm conversão específica cadastrada
+ * PortionSelector — Seletor de Porção Redesenhado
+ *
+ * UX Simplificada:
+ * - Um único select flat com grupos separados por header
+ * - Primeiro grupo: "Gramas" (padrão, sempre visível)
+ * - Segundo grupo: "Minhas Medidas" (medidas personalizadas do nutricionista)
+ * - Terceiro+ grupos: medidas do sistema agrupadas por categoria
+ * - Medidas com conversão específica para o alimento marcadas com ★
+ *
+ * Compatibilidade:
+ * - Valor em 'gram' (string) = gramas direto
+ * - Valor em 'code' string (ex: 'custom_xyz_abc') = medida personalizada
+ * - Valor em 'code' string (ex: 'colher_sopa') = medida do sistema por code
+ * - Valor numérico (legado) = medida do sistema por ID
  */
 
-import React, { useMemo, useEffect } from 'react';
+import React, { useMemo, useEffect, useCallback } from 'react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import {
@@ -12,254 +23,270 @@ import {
     SelectContent,
     SelectItem,
     SelectTrigger,
-    SelectValue
+    SelectValue,
 } from '@/components/ui/select';
 import { useFoodMeasures } from '@/hooks/useFoodMeasures';
-import { useHouseholdMeasures } from '@/hooks/useHouseholdMeasures';
+import { useAllMeasures } from '@/hooks/useHouseholdMeasures';
+
+const CATEGORY_LABELS = {
+    volume: 'Volume',
+    weight: 'Peso',
+    unit: 'Unidade',
+    other: 'Outras',
+};
 
 /**
- * @param {object} props
- * @param {object} props.food - Alimento selecionado (da tabela foods)
- * @param {object} props.value - { quantity: number, measureId: number | null }
- * @param {function} props.onChange - Callback quando valor mudar
- * @param {boolean} props.showNutrition - Mostrar informações nutricionais (default: true)
- * @param {string} props.className - Classes CSS adicionais
+ * Resolve o código de unidade que será salvo.
+ * Aceita um objeto measure e retorna o `code` para armazenamento.
  */
+const getMeasureCode = (measure) => {
+    if (!measure) return 'gram';
+    return measure.code || String(measure.id);
+};
+
+/**
+ * Calcula gramas totais a partir da seleção.
+ */
+const calcTotalGrams = ({ measureCode, quantity, food, foodMeasures, systemMeasures, customMeasures }) => {
+    if (!food || !quantity) return 0;
+    const qty = parseFloat(quantity);
+    if (!qty || qty <= 0) return 0;
+
+    if (!measureCode || measureCode === 'gram') {
+        return qty; // quantidade já em gramas
+    }
+
+    // Medida personalizada (custom_*)
+    if (String(measureCode).startsWith('custom_')) {
+        const custom = customMeasures.find(m => m.code === measureCode);
+        if (custom) return qty * custom.grams_equivalent;
+        return 0;
+    }
+
+    // Buscar medida do sistema — conversão específica por alimento primeiro
+    const specificConversion = foodMeasures.find(fm => {
+        const sysM = systemMeasures.find(m => m.id === fm.measure_id);
+        return sysM && sysM.code === measureCode;
+    });
+    if (specificConversion) {
+        return (specificConversion.grams * qty) / specificConversion.quantity;
+    }
+
+    // Conversão padrão da medida do sistema
+    const sysM = systemMeasures.find(m =>
+        m.code === measureCode || String(m.id) === String(measureCode)
+    );
+    if (sysM?.grams_equivalent) return sysM.grams_equivalent * qty;
+
+    // Fallback: portion_size do alimento
+    return (food.portion_size || 100) * qty;
+};
+
 export function PortionSelector({
     food,
     value = { quantity: 100, measureId: null },
     onChange,
     showNutrition = true,
     className = '',
-    onNutritionChange = null  // NOVO: callback para passar nutrição calculada
+    onNutritionChange = null,
 }) {
-    // Buscar TODAS as medidas genéricas (34 medidas)
-    const { data: allMeasures = [], isLoading: loadingAll } = useHouseholdMeasures();
+    const { systemMeasures = [], customMeasures = [], isLoading } = useAllMeasures();
+    const { data: foodMeasures = [] } = useFoodMeasures(food?.id);
 
-    // Buscar medidas específicas para este alimento
-    const { data: foodMeasures = [], isLoading: loadingFood } = useFoodMeasures(food?.id);
+    // Determinar o code selecionado atualmente
+    // Suporta: value.measureId numérico (legado), string code, null = grams
+    const selectedCode = useMemo(() => {
+        const mid = value.measureId ?? value.measureCode;
+        if (!mid || mid === 'gram') return 'gram';
+        // Já é um code string
+        if (isNaN(Number(mid))) return String(mid);
+        // É um ID numérico (legado) → encontrar o code
+        const found = systemMeasures.find(m => m.id === Number(mid));
+        return found ? found.code : 'gram';
+    }, [value.measureId, value.measureCode, systemMeasures]);
 
-    const isLoading = loadingAll || loadingFood;
+    // Calcular gramas totais
+    const totalGrams = useMemo(() => calcTotalGrams({
+        measureCode: selectedCode,
+        quantity: value.quantity,
+        food,
+        foodMeasures,
+        systemMeasures,
+        customMeasures,
+    }), [selectedCode, value.quantity, food, foodMeasures, systemMeasures, customMeasures]);
 
-    // Combinar medidas genéricas com flag de conversão específica
-    const measuresWithFlags = useMemo(() => {
-        return allMeasures.map(measure => ({
-            ...measure,
-            hasSpecificConversion: foodMeasures.some(fm => fm.measure_id === measure.id)
-        }));
-    }, [allMeasures, foodMeasures]);
-
-    // Detectar se está usando fallback (portion_size)
-    const isUsingFallback = useMemo(() => {
-        if (!value.measureId || value.measureId === 'grams') return false;
-
-        const specificMeasure = foodMeasures.find(m => m.measure_id === value.measureId);
-        if (specificMeasure) return false;
-
-        const genericMeasure = allMeasures.find(m => m.id === value.measureId);
-        if (genericMeasure && genericMeasure.grams_equivalent) return false;
-
-        return !!genericMeasure; // Usando fallback se a medida existe mas não tem conversão
-    }, [value.measureId, foodMeasures, allMeasures]);
-
-    // Calcular peso total em gramas
-    const totalGrams = useMemo(() => {
-        if (!food || !value.quantity) return 0;
-
-        if (value.measureId === null || value.measureId === 'grams') {
-            // Quantidade já é em gramas
-            return value.quantity;
-        }
-
-        // 1. Buscar conversão específica em food_household_measures
-        const specificMeasure = foodMeasures.find(m => m.measure_id === value.measureId);
-        if (specificMeasure) {
-            // Usar conversão específica (mais preciso)
-            return (specificMeasure.grams * value.quantity) / specificMeasure.quantity;
-        }
-
-        // 2. Buscar conversão padrão em household_measures
-        const genericMeasure = allMeasures.find(m => m.id === value.measureId);
-        if (genericMeasure && genericMeasure.grams_equivalent) {
-            // Usar conversão padrão (ex: colher = 20g)
-            return genericMeasure.grams_equivalent * value.quantity;
-        }
-
-        // 3. Fallback para medidas sem grams_equivalent (unidade, fatia, porção)
-        // Usa portion_size do alimento (geralmente 100g)
-        // Isso permite funcionalidade básica mesmo sem conversão cadastrada
-        if (genericMeasure) {
-            console.warn(`Usando portion_size como fallback para medida "${genericMeasure.name}"`);
-            return (food.portion_size || 100) * value.quantity;
-        }
-
-        // 4. Medida não encontrada
-        console.error(`Medida ${value.measureId} não encontrada`);
-        return 0;
-    }, [food, value, foodMeasures, allMeasures]);
-
-    // Calcular todos os nutrientes (recalcula calorias baseado nos macros)
+    // Calcular nutrição
     const nutrition = useMemo(() => {
-        if (!food || totalGrams === 0) {
-            return {
-                grams: 0,
-                calories: 0,
-                protein: 0,
-                carbs: 0,
-                fat: 0,
-                fiber: 0,
-                sodium: 0
-            };
+        if (!food || totalGrams <= 0) {
+            return { grams: 0, calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, sodium: 0 };
         }
-
-        const multiplier = totalGrams / 100;
-        const protein = (food.protein || 0) * multiplier;
-        const carbs = (food.carbs || 0) * multiplier;
-        const fat = (food.fat || 0) * multiplier;
-        
-        // RECALCULAR calorias baseado nos macros (não usar food.calories diretamente)
-        // Fórmula: (Proteína × 4) + (Carboidratos × 4) + (Gorduras × 9)
-        const calories = (protein * 4) + (carbs * 4) + (fat * 9);
-
+        const m = totalGrams / 100;
+        const protein = (food.protein || 0) * m;
+        const carbs = (food.carbs || 0) * m;
+        const fat = (food.fat || 0) * m;
+        const calories = protein * 4 + carbs * 4 + fat * 9;
         return {
             grams: totalGrams,
             calories: parseFloat(calories.toFixed(2)),
             protein: parseFloat(protein.toFixed(2)),
             carbs: parseFloat(carbs.toFixed(2)),
             fat: parseFloat(fat.toFixed(2)),
-            fiber: food.fiber ? parseFloat((food.fiber * multiplier).toFixed(2)) : 0,
-            sodium: food.sodium ? parseFloat((food.sodium * multiplier).toFixed(2)) : 0
+            fiber: food.fiber ? parseFloat((food.fiber * m).toFixed(2)) : 0,
+            sodium: food.sodium ? parseFloat((food.sodium * m).toFixed(2)) : 0,
         };
     }, [food, totalGrams]);
 
-    // Notificar mudanças de nutrição (para o componente pai)
+    // Notificar mudança de nutrição
     useEffect(() => {
-        if (onNutritionChange) {
-            onNutritionChange(nutrition);
-        }
+        if (onNutritionChange) onNutritionChange(nutrition);
     }, [nutrition, onNutritionChange]);
 
-    const handleQuantityChange = (newQuantity) => {
+    // Medidas do sistema agrupadas, marcando as com conversão específica
+    const groupedSystem = useMemo(() => {
+        const specificIds = new Set(foodMeasures.map(fm => fm.measure_id));
+        const groups = {};
+        systemMeasures.forEach(m => {
+            const cat = m.category || 'other';
+            if (!groups[cat]) groups[cat] = [];
+            groups[cat].push({ ...m, hasSpecific: specificIds.has(m.id) });
+        });
+        return groups;
+    }, [systemMeasures, foodMeasures]);
+
+    const handleQuantityChange = useCallback((e) => {
+        onChange({ ...value, quantity: parseFloat(e.target.value) || 0 });
+    }, [onChange, value]);
+
+    const handleMeasureChange = useCallback((code) => {
+        if (code === 'gram') {
+            onChange({ ...value, measureId: null, measureCode: 'gram', measure: null });
+            return;
+        }
+        // Medida personalizada
+        if (String(code).startsWith('custom_')) {
+            const custom = customMeasures.find(m => m.code === code);
+            onChange({
+                ...value,
+                measureId: code,
+                measureCode: code,
+                measure: custom ? { ...custom, source: 'custom' } : null,
+            });
+            return;
+        }
+        // Medida do sistema
+        const sys = systemMeasures.find(m => m.code === code);
         onChange({
             ...value,
-            quantity: parseFloat(newQuantity) || 0
+            measureId: code,
+            measureCode: code,
+            measure: sys ? { ...sys, source: 'system' } : null,
         });
-    };
+    }, [onChange, value, customMeasures, systemMeasures]);
 
-    const handleMeasureChange = (newMeasureId) => {
-        const parsedId = newMeasureId === 'grams' ? null : parseInt(newMeasureId);
-        const selectedMeasure = parsedId ? allMeasures.find(m => m.id === parsedId) : null;
-        
-        onChange({
-            ...value,
-            measureId: parsedId,
-            measure: selectedMeasure
-        });
-    };
+    const hasSpecificConversions = foodMeasures.length > 0;
 
-    // Agrupar medidas por categoria
-    const groupedMeasures = useMemo(() => {
-        return measuresWithFlags.reduce((acc, measure) => {
-            const category = measure.category || 'other';
-            if (!acc[category]) acc[category] = [];
-            acc[category].push(measure);
-            return acc;
-        }, {});
-    }, [measuresWithFlags]);
-
-    const categoryLabels = {
-        volume: 'Medidas de Volume',
-        weight: 'Medidas de Peso',
-        unit: 'Unidades',
-        other: 'Outras'
-    };
+    // Label que aparece no trigger do select
+    const triggerLabel = useMemo(() => {
+        if (selectedCode === 'gram') return 'g (gramas)';
+        if (String(selectedCode).startsWith('custom_')) {
+            const c = customMeasures.find(m => m.code === selectedCode);
+            return c ? `${c.name} ✦` : selectedCode;
+        }
+        const s = systemMeasures.find(m => m.code === selectedCode);
+        return s ? s.name : selectedCode;
+    }, [selectedCode, customMeasures, systemMeasures]);
 
     return (
         <div className={`space-y-2 ${className}`}>
             <Label>Porção</Label>
 
             <div className="flex items-center gap-2">
-                {/* Input numérico */}
+                {/* Quantidade */}
                 <Input
                     type="number"
                     value={value.quantity}
-                    onChange={(e) => handleQuantityChange(e.target.value)}
+                    onChange={handleQuantityChange}
                     min={0}
                     step={0.5}
-                    className="w-24"
+                    className="w-24 shrink-0"
                     placeholder="0"
                     disabled={!food}
                 />
 
-                {/* Dropdown de medidas */}
+                {/* Seletor de Medida — flat, todos os grupos no mesmo select */}
                 <Select
-                    value={value.measureId?.toString() ?? 'grams'}
+                    value={selectedCode}
                     onValueChange={handleMeasureChange}
                     disabled={!food || isLoading}
                 >
-                    <SelectTrigger className="w-40">
-                        <SelectValue placeholder={isLoading ? "Carregando..." : "Selecione"} />
+                    <SelectTrigger className="flex-1 min-w-0">
+                        <SelectValue placeholder={isLoading ? 'Carregando...' : 'Selecione a medida'}>
+                            {triggerLabel}
+                        </SelectValue>
                     </SelectTrigger>
-                    <SelectContent className="max-h-[300px]">
-                        {/* Opção padrão: gramas */}
-                        <SelectItem value="grams">g</SelectItem>
+                    <SelectContent className="max-h-[320px]">
+                        <div className="overflow-y-auto max-h-[300px]">
 
-                        {/* TODAS as medidas genéricas, agrupadas por categoria */}
-                        <div className="overflow-y-auto max-h-[280px]">
-                            {Object.entries(groupedMeasures).map(([category, categoryMeasures]) => (
-                                <React.Fragment key={category}>
-                                    {/* Cabeçalho da categoria */}
-                                    <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground sticky top-0 bg-popover">
-                                        {categoryLabels[category] || category}
+                            {/* ── Opção padrão: gramas ── */}
+                            <SelectItem value="gram">
+                                <span className="font-medium">g — Gramas</span>
+                            </SelectItem>
+
+                            {/* ── Minhas Medidas (personalizadas) ── */}
+                            {customMeasures.length > 0 && (
+                                <>
+                                    <div className="px-2 pt-2 pb-1 text-xs font-bold text-emerald-700 uppercase tracking-wider sticky top-0 bg-popover border-t mt-1">
+                                        ✦ Minhas Medidas
                                     </div>
+                                    {customMeasures.map(m => (
+                                        <SelectItem key={m.code} value={m.code} className="pl-4">
+                                            <div className="flex flex-col">
+                                                <span className="font-medium">{m.name}</span>
+                                                <span className="text-xs text-emerald-600">
+                                                    1 unidade = {m.grams_equivalent}g
+                                                </span>
+                                            </div>
+                                        </SelectItem>
+                                    ))}
+                                </>
+                            )}
 
-                                    {/* Medidas da categoria */}
-                                    {categoryMeasures.map((measure) => (
-                                        <SelectItem
-                                            key={measure.id}
-                                            value={measure.id.toString()}
-                                            className="pl-6"
-                                        >
-                                            <div className="flex items-center justify-between w-full">
-                                                <span>{measure.name}</span>
-                                                {measure.hasSpecificConversion && (
-                                                    <span className="ml-2 text-xs text-primary">★</span>
+                            {/* ── Medidas do sistema, agrupadas por categoria ── */}
+                            {Object.entries(groupedSystem).map(([cat, measures]) => (
+                                <React.Fragment key={cat}>
+                                    <div className="px-2 pt-2 pb-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider sticky top-0 bg-popover border-t mt-1">
+                                        {CATEGORY_LABELS[cat] || cat}
+                                    </div>
+                                    {measures.map(m => (
+                                        <SelectItem key={m.code} value={m.code} className="pl-4">
+                                            <div className="flex items-center justify-between w-full gap-2">
+                                                <span>{m.name}</span>
+                                                {m.hasSpecific && (
+                                                    <span className="text-xs text-amber-600 font-bold shrink-0">★</span>
                                                 )}
                                             </div>
-                                            {measure.description && (
-                                                <div className="text-xs text-muted-foreground">
-                                                    {measure.description}
-                                                </div>
-                                            )}
                                         </SelectItem>
                                     ))}
                                 </React.Fragment>
                             ))}
+
                         </div>
                     </SelectContent>
                 </Select>
 
-                {/* Informação calculada */}
+                {/* Total em gramas + kcal */}
                 {showNutrition && food && totalGrams > 0 && (
-                    <span className="text-sm text-muted-foreground whitespace-nowrap">
+                    <span className="text-sm text-muted-foreground whitespace-nowrap shrink-0">
                         ≈ {nutrition.grams.toFixed(0)}g | {Math.round(nutrition.calories)} kcal
                     </span>
                 )}
             </div>
 
-            {/* Legenda para conversão específica */}
-            {food && !isLoading && foodMeasures.length > 0 && (
+            {/* Legenda */}
+            {food && !isLoading && hasSpecificConversions && (
                 <p className="text-xs text-muted-foreground">
-                    ★ = Conversão específica para este alimento
+                    ★ = Conversão cadastrada para este alimento
                 </p>
-            )}
-
-            {/* Aviso quando usando fallback */}
-            {isUsingFallback && (
-                <div className="text-xs text-amber-600 dark:text-amber-500 bg-amber-50 dark:bg-amber-950/30 p-2 rounded border border-amber-200 dark:border-amber-800">
-                    ⚠️ Estimativa aproximada ({food.portion_size || 100}g por unidade).
-                    Para maior precisão, cadastre a conversão específica.
-                </div>
             )}
         </div>
     );

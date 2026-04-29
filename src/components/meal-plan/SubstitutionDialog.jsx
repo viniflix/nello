@@ -170,9 +170,10 @@ const SubstitutionDialog = ({ isOpen, onClose, originalFood, initialSubstitutes 
                     <Label className="text-sm font-bold text-primary mb-3 block">1. Ajustar Porção da Substituição</Label>
                     <PortionSelector 
                         food={subFood}
-                        value={{ quantity: subFood.quantity || 100, measureId: subFood.unit || 'grams' }}
+                        value={{ quantity: subFood.quantity || 100, measureId: subFood.unit && subFood.unit !== 'grams' ? subFood.unit : null, measureCode: subFood.unit === 'grams' ? 'gram' : (subFood.unit || 'gram') }}
                         onChange={(val) => {
-                            setSubstitutes(prev => prev.map(s => s.id === subFood.id ? { ...s, quantity: val.quantity, unit: val.measureId } : s));
+                            const unitCode = val.measureCode || val.measureId || 'gram';
+                            setSubstitutes(prev => prev.map(s => s.id === subFood.id ? { ...s, quantity: val.quantity, unit: unitCode } : s));
                         }}
                         showNutrition={false}
                     />
