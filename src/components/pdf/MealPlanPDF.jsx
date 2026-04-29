@@ -253,6 +253,57 @@ const styles = StyleSheet.create({
   microValue: {
     fontWeight: 700,
   },
+  // Food Block Patient-Focused
+  foodBlock: {
+    marginBottom: 10,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+  },
+  foodPrimaryText: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  foodBullet: {
+    width: 4,
+    height: 4,
+    backgroundColor: colors.primary,
+    borderRadius: 2,
+    marginTop: 4,
+    marginRight: 6,
+  },
+  foodQtyHighlight: {
+    fontSize: 10,
+    fontWeight: 700,
+    color: colors.primary,
+  },
+  foodNameHighlight: {
+    fontSize: 10,
+    fontWeight: 700,
+    color: colors.text,
+  },
+  foodNameNormal: {
+    fontSize: 10,
+    color: colors.text,
+  },
+  foodMacrosRow: {
+    fontSize: 7,
+    color: colors.muted,
+    marginTop: 2,
+    marginLeft: 10,
+  },
+  foodNotesPatient: {
+    fontSize: 8,
+    color: colors.text,
+    backgroundColor: '#f8fafc',
+    padding: 4,
+    paddingLeft: 6,
+    borderRadius: 4,
+    borderLeftWidth: 2,
+    borderLeftColor: colors.primary,
+    marginTop: 4,
+    marginLeft: 10,
+  },
   // --- Novos estilos para a página de Relatório Nutricional ---
   reportTitle: {
     fontSize: 16,
@@ -471,49 +522,43 @@ const MealPlanPDF = ({
               </View>
 
               {foods.length > 0 ? (
-                <>
-                  <View style={styles.tableHeader}>
-                    <Text style={[styles.colFood, styles.thText]}>Alimento</Text>
-                    <Text style={[styles.colQty, styles.thText]}>Quantidade</Text>
-                    <Text style={[styles.colKcal, styles.thText]}>Kcal</Text>
-                    <Text style={[styles.colMacro, styles.thText]}>Proteína</Text>
-                    <Text style={[styles.colMacro, styles.thText]}>Carboidrato</Text>
-                    <Text style={[styles.colMacro, styles.thText]}>Gordura</Text>
-                  </View>
-
+                <View style={{ marginTop: 8 }}>
                   {foods.map((food, fIndex) => {
                     const foodName = food.patient_description || food.food?.name || 'Alimento';
                     const qty = formatQuantityWithUnit(food.quantity || 0, food.unit || '', food.measure);
+                    const isFree = String(food.quantity) === '0' || String(food.quantity).toLowerCase() === 'à vontade';
+                    const qtyDisplay = isFree ? 'À vontade' : qty;
                     
                     return (
-                      <View key={fIndex} style={styles.foodRowBlock} wrap={false}>
-                        <View style={styles.foodRow}>
-                          <View style={styles.colFood}>
-                            <Text style={styles.foodName}>{foodName}</Text>
-                            {food.patient_description && food.food?.name ? (
-                              <Text style={styles.foodOriginalName}>({food.food.name})</Text>
-                            ) : null}
-                          </View>
-                          <Text style={[styles.colQty, { fontSize: 9 }]}>{qty}</Text>
-                          <Text style={[styles.colKcal, { fontSize: 9 }]}>{Math.round(food.calories || 0)}</Text>
-                          <Text style={[styles.colMacro, { fontSize: 9 }]}>{Math.round(food.protein || 0)}g</Text>
-                          <Text style={[styles.colMacro, { fontSize: 9 }]}>{Math.round(food.carbs || 0)}g</Text>
-                          <Text style={[styles.colMacro, { fontSize: 9 }]}>{Math.round(food.fat || 0)}g</Text>
+                      <View key={fIndex} style={styles.foodBlock} wrap={false}>
+                        {/* Linha Primária: Quantidade e Nome */}
+                        <View style={styles.foodPrimaryText}>
+                          <View style={styles.foodBullet} />
+                          <Text style={styles.foodNameNormal}>
+                            <Text style={styles.foodQtyHighlight}>{qtyDisplay}</Text>
+                            {isFree ? ' ' : ' de '}
+                            <Text style={styles.foodNameHighlight}>{foodName}</Text>
+                            {food.patient_description && food.food?.name ? ` (${food.food.name})` : ''}
+                          </Text>
                         </View>
                         
-                        {/* Food Notes */}
+                        {/* Linha Secundária: Macros Discretos */}
+                        <Text style={styles.foodMacrosRow}>
+                          {Math.round(food.calories || 0)} kcal • Prot: {Math.round(food.protein || 0)}g • Carb: {Math.round(food.carbs || 0)}g • Gord: {Math.round(food.fat || 0)}g
+                        </Text>
+                        
+                        {/* Observações da Nutri para o Alimento */}
                         {food.notes ? (
-                          <Text style={styles.foodNotes}>- Obs: {food.notes}</Text>
+                          <Text style={styles.foodNotesPatient}>💡 Obs: {food.notes}</Text>
                         ) : null}
 
-                        {/* Substitutes */}
+                        {/* Opções de Substituição */}
                         {food.substitutes && food.substitutes.length > 0 ? (
-                          <View style={styles.substituteBlock}>
-                            <Text style={styles.substituteTitle}>Opções de Substituição:</Text>
+                          <View style={[styles.substituteBlock, { marginLeft: 10 }]}>
+                            <Text style={[styles.substituteTitle, { fontSize: 8 }]}>↳ Ou substitua por:</Text>
                             {food.substitutes.map((sub, sIndex) => (
-                              <View key={sIndex} style={styles.substituteItem}>
-                                <View style={styles.substituteBullet} />
-                                <Text style={styles.substituteText}>{sub.name}</Text>
+                              <View key={sIndex} style={[styles.substituteItem, { marginBottom: 2 }]}>
+                                <Text style={styles.substituteText}>• {sub.name}</Text>
                               </View>
                             ))}
                           </View>
@@ -521,7 +566,7 @@ const MealPlanPDF = ({
                       </View>
                     );
                   })}
-                </>
+                </View>
               ) : null}
 
               {/* Meal Notes */}
