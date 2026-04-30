@@ -1,127 +1,269 @@
 # HipoZero
 
-O HipoZero é uma plataforma SaaS (Software as a Service) de nutrição que conecta nutricionistas e pacientes, centralizando toda a jornada nutricional em um único ecossistema acessível.
+HipoZero e uma plataforma SaaS de acompanhamento nutricional que conecta nutricionistas, pacientes e administradores em um unico ecossistema. O projeto combina consultorio digital, prontuario nutricional, prescricao alimentar, acompanhamento do paciente, comunicacao em tempo real, agenda, financeiro, observabilidade e uma base crescente de automacoes.
 
-- **Para o Nutricionista:** É um consultório digital completo, focado em gestão clínica eficiente (pacientes, planos, avaliações, finanças).
-- **Para o Paciente:** É um aplicativo de acompanhamento motivacional, que simplifica o registro da rotina alimentar e de saúde, e fortalece a conexão com o profissional.
+A proposta central e reduzir o trabalho operacional do nutricionista e aumentar a adesao do paciente. O sistema nao e apenas um criador de dieta: ele tenta funcionar como a camada de operacao diaria da clinica, com dados clinicos, plano alimentar, diario alimentar, chat, check-ins, alertas e historico do paciente em um unico lugar.
 
-O MVP Beta será 100% gratuito para validação com nutricionistas reais e coleta de feedbacks antes do lançamento comercial.
+## Estado atual em uma frase
 
-![Dashboard do Nutricionista](https://afyoidxrshkmplxhcyeh.supabase.co/storage/v1/object/public/IDV/HipoZero%203%20-%20Controle%20Nutricional%20Inteligente_page-0001.jpg)
+O produto ja tem uma base ampla em React/Vite/Supabase, com rotas reais para nutricionista, paciente e admin; os modulos principais existem, mas algumas areas ainda estao em consolidacao, especialmente templates de nutricao, fundacao tecnica, performance do plano alimentar e a evolucao do motor de anamnese/check-ins.
 
-## 🎯 A Missão
+## Personas e experiencias
 
-O nome "HipoZero" é uma fusão de "Hipo" (de hipoglicemia) e "Zero". A ideia central é "zerar a hipoglicemia" e, por extensão, combater condições crônicas como a diabetes, que estão fortemente ligadas à alimentação.
+### Nutricionista
 
-A missão da plataforma é dar ao nutricionista as ferramentas para guiar o paciente rumo a um estado de saúde equilibrado.
+Usa o HipoZero como consultorio digital:
 
-## ✨ Funcionalidades Principais
+- Dashboard operacional.
+- Gestao de pacientes e hub central do paciente.
+- Anamnese e fichas clinicas.
+- Avaliacao antropometrica, fotos, exames e glicemia.
+- Calculos energeticos e metas.
+- Plano alimentar com refeicoes, alimentos, substituicoes, rascunhos e resumo.
+- Protocolos/templates de dietas, refeicoes e receitas.
+- Diario alimentar do paciente.
+- Chat, notificacoes e presenca online.
+- Check-ins, agenda, financeiro e banco de alimentos.
 
-A plataforma oferece um conjunto robusto de ferramentas para ambos os tipos de usuários, com comunicação em tempo real.
+### Paciente
 
-### Para o Nutricionista (Gestão Clínica)
+Usa o HipoZero como aplicativo de acompanhamento:
 
-* **Gestão de Pacientes:** Cadastro, lista de pacientes com busca, sistema de convite por e-mail e um "Hub do Paciente" centralizado que funciona como prontuário digital.
-* **Anamnese Personalizada:** Ferramenta para o nutricionista criar suas próprias fichas de anamnese.
-* **Avaliação Antropométrica:** Registro de medidas (peso, altura, circunferências) e acompanhamento da evolução do paciente.
-* **Prescrição de Dietas:** Criação de planos alimentares detalhados (calorias, macros, refeições).
-* **Cálculos Nutricionais:** Ferramentas para Controle de Gasto Energético (TMB, GET, protocolos, fator injúria).
-* **Análise de Diário Alimentar:** Visualização do "Recordatório Alimentar" registrado pelo paciente, incluindo histórico de edições.
-* **Banco de Alimentos:** Cadastro de alimentos personalizado e +3.000 dados prontos das tabelas TACO, TBCA, IBGE, USDA e Tucunduva.
-* **Agenda e Consultas:** Gerenciamento de consultas (CRUD completo).
-* **Módulo Financeiro:** Gestão de receitas e despesas por paciente.
-* **Gamificação:** Criação e gerenciamento de "Conquistas" personalizadas para os pacientes.
-* **Chat em Tempo Real:** Canal de comunicação direto com o paciente (suporta texto, áudio, vídeo, imagens e PDFs).
+- Home mobile com resumo do dia.
+- Diario alimentar.
+- Visualizacao do plano prescrito.
+- Check-ins pendentes e historico.
+- Progresso, conquistas, perfil e chat.
+- Fluxos de convite e atualizacao obrigatoria de senha.
 
-### Para o Paciente (Acompanhamento)
+### Admin
 
-* **Dashboard Resumo:** Visão geral do progresso diário e resumo do consumo.
-* **Diário Alimentar:** Registro prático de refeições (com busca de alimentos) e cálculo automático de macros e calorias.
-* **Meu Plano:** Visualização fácil da dieta prescrita pelo nutricionista.
-* **Registros de Saúde:** Módulos para registrar a evolução do peso e da glicemia (para pacientes diabéticos).
-* **Gamificação:** Desbloqueio automático de conquistas (achievements) para manter a motivação e a consistência.
-* **Chat com Nutricionista:** Acesso direto ao profissional para tirar dúvidas.
-* **Histórico e Gráficos:** Visualização do histórico de registros por dia/semana/mês e gráficos de consumo (via Recharts).
+Usa o HipoZero como painel de operacao do SaaS:
 
-## 🛠️ Stack de Tecnologia
+- Dashboard administrativo.
+- Usuarios/nutricionistas.
+- Financeiro admin.
+- Relatorios de bugs.
+- Area de estudos/gestao interna.
 
-Este projeto é construído com uma stack moderna focada em reatividade, produtividade e escalabilidade, baseada em React, Vite e Supabase.
-
-### Backend & Banco de Dados (Supabase)
-
-* **Banco de Dados:** PostgreSQL. O schema inclui 17 tabelas, Triggers, Funções (PL/pgSQL) e Índices de performance.
-* **Autenticação:** Gerenciamento de usuários completo (Login, Registro, Recuperação de Senha).
-* **Autorização:** Controle de acesso por tipo de usuário (`nutritionist`/`patient`) com RLS (Row Level Security) implementado.
-* **Realtime:** Subscrições em tempo real para chat e notificações.
-* **Storage:** Para upload de arquivos como avatares e mídias do chat.
-* **Cliente:** `@supabase/supabase-js`.
+## Stack
 
 ### Frontend
 
-* **Core:** React e Vite.
-* **Roteamento:** `react-router-dom`.
-* **Gerenciamento de Estado:** Zustand.
-* **Gráficos:** Recharts.
-* **Ícones:** `lucide-react`.
-* **Utilitários de Data:** `date-fns` e `react-day-picker`.
-* **Geração de PDF:** `jspdf` e `html2canvas`, usados para exportar relatórios.
+- React 18.
+- Vite.
+- React Router.
+- Tailwind CSS.
+- Radix UI/shadcn-style components.
+- Lucide React.
+- Framer Motion.
+- Recharts.
+- React Hook Form e Zod.
+- Zustand em partes do estado local/global.
+- TanStack React Query para cache e mutacoes em fluxos novos.
 
-### Estilização & UI
+### Backend e infraestrutura
 
-* **Estilização:** Tailwind CSS (com `postcss` e `autoprefixer`).
-* **Design System:** shadcn/ui.
-* **Componentes Headless:** Radix UI (ex: `@radix-ui/react-dialog`, `@radix-ui/react-select`, etc.).
-* **Utilitários CSS:** `clsx`, `tailwind-merge` e `class-variance-authority`.
-* **Animações:** `tailwindcss-animate` e `framer-motion`.
+- Supabase Auth.
+- Supabase PostgreSQL.
+- Row Level Security como pilar de seguranca.
+- Supabase Realtime para chat/presenca/notificacoes.
+- Supabase Storage para midias e arquivos.
+- Supabase Edge Functions:
+  - `create-patient`
+  - `generate-pdf`
+  - `openfoodfacts-proxy`
+  - `sentry-proxy`
 
-### Formulários
+### Observabilidade
 
-* **Gerenciamento:** `react-hook-form`.
-* **Validação:** Zod (com `@hookform/resolvers`).
+## Estrutura principal
 
-## 🚀 Como Executar Localmente
 
-Para rodar o projeto HipoZero na sua máquina local, siga estes passos:
+## Rotas principais
 
-1.  **Clone o repositório:**
-    ```bash
-    git clone [https://github.com/seu-usuario/hipozero.git](https://github.com/seu-usuario/hipozero.git)
-    cd hipozero
-    ```
+### Autenticacao
 
-2.  **Instale as dependências:**
-    O projeto usa `npm` (conforme `package.json`).
-    ```bash
-    npm install
-    ```
+- `/login`
+- `/register`
+- `/update-password`
+- `/convite`
+- `/auth/verify`
 
-3.  **Configure as Variáveis de Ambiente:**
-    Crie um arquivo `.env` na raiz do projeto, copiando o arquivo `.env.example`. Você precisará das suas próprias chaves do Supabase.
+### Nutricionista
 
-    ```.env
-    VITE_SUPABASE_URL="SUA_URL_AQUI"
-    VITE_SUPABASE_ANON_KEY="SUA_CHAVE_ANON_AQUI"
-    ```
-    *(**Nota:** Substitua os valores corretos fornecidos pelo seu projeto Supabase.)*
+- `/nutritionist`
+- `/nutritionist/patients`
+- `/nutritionist/patients/:patientId/hub`
+- `/nutritionist/patients/:patientId/anamnesis`
+- `/nutritionist/patients/:patientId/anthropometry`
+- `/nutritionist/patients/:patientId/meal-plan`
+- `/nutritionist/patients/:patientId/energy-expenditure`
+- `/nutritionist/patients/:patientId/lab-results`
+- `/nutritionist/patients/:patientId/goals`
+- `/nutritionist/patients/:patientId/food-diary`
+- `/nutritionist/patients/:patientId/achievements`
+- `/nutritionist/patients/:patientId/photos`
+- `/nutritionist/templates`
+- `/nutritionist/templates/new/:type`
+- `/nutritionist/templates/edit/:type/:id`
+- `/nutritionist/checkins`
+- `/nutritionist/agenda`
+- `/nutritionist/financial`
+- `/nutritionist/chat`
+- `/nutritionist/settings/anamnesis-templates`
 
-4.  **Execute o servidor de desenvolvimento:**
-    (Conforme script `dev` no `package.json`)
-    ```bash
-    npm run dev
-    ```
+### Paciente
 
-5.  Abra `http://localhost:5173` (ou a porta indicada pelo Vite) no seu navegador.
+- `/patient`
+- `/patient/invites`
+- `/patient/diario`
+- `/patient/progresso`
+- `/patient/chat`
+- `/patient/perfil`
+- `/patient/editar-perfil`
+- `/patient/conquistas`
+- `/patient/add-meal`
+- `/patient/add-food/:mealId?`
+- `/patient/checkin/:sessionId`
 
-## ⚠️ Copyright e Licença de Uso
+### Publico
 
-Este é um projeto proprietário desenvolvido como parte de uma avaliação acadêmica, com planos de se tornar um produto comercial (SaaS).
+- `/f/:token` para formularios/anamnese public-facing.
 
-**Copyright © 2025 HipoZero - Todos os Direitos Reservados.**
+### Admin
 
-O código-fonte contido neste repositório está protegido e **NÃO PODE** ser usado para fins comerciais.
+- `/admin/dashboard`
+- `/admin/bugs`
+- `/admin/users`
+- `/admin/users/:id`
+- `/admin/financial`
+- `/admin/study`
 
-A visualização deste repositório é permitida estritamente para fins de avaliação acadêmica e portfólio. É expressamente **proibida** a cópia, redistribuição, modificação (criação de obras derivadas) ou utilização comercial de qualquer parte deste software sem a permissão explícita e por escrito do autor.
+## Modulos de dominio
 
-Este projeto é licenciado sob a **Creative Commons Attribution-NonCommercial-NoDerivs 4.0 International (CC BY-NC-ND 4.0)**.
+### Autenticacao e permissoes
 
-Para ver os termos completos da licença, consulte o arquivo [LICENSE](LICENSE) neste repositório ou visite [http://creativecommons.org/licenses/by-nc-nd/4.0/](http://creativecommons.org/licenses/by-nc-nd/4.0/).
+`AuthContext` centraliza usuario, perfil, carregamento, cache/offline e redirecionamentos. `ProtectedRoute` separa acesso de nutricionista, paciente e admin. Pacientes com `needs_password_reset` sao interceptados por `ForcePasswordUpdate`.
+
+### Hub do paciente
+
+O hub do nutricionista usa `usePatientHub` e queries em `patient-queries` para montar resumo clinico, metricas, status de modulos e atividades. E o ponto natural para consolidar sinais importantes do paciente.
+
+### Plano alimentar
+
+Modulo mais denso do produto. Inclui:
+
+- Criacao/edicao de planos.
+- Rascunhos.
+- Refeicoes e alimentos.
+- Substituicoes.
+- Medidas caseiras.
+- Graficos de macros.
+- Valores de referencia.
+- Geracao de PDF/resumo.
+- Importacao de protocolo/template.
+
+Historicamente ja houve correcoes importantes em rascunho inativo e botao de nova refeicao. O proximo cuidado tecnico e reduzir flicker, fetch duplicado e re-render pesado.
+
+### Templates de nutricao
+
+O modulo de templates ja existe no codigo atual:
+
+- `useTemplates` le `diet_templates`, `meal_templates` e `recipes`.
+- `useTemplateBuilder` cria e edita dietas, refeicoes e receitas.
+- `template-queries` tem `getDietTemplateWithMeals`, `cloneDietTemplateToPatient` e `cloneMealTemplateToPlan`.
+- Rotas de criacao e edicao usam `/nutritionist/templates/new/:type` e `/nutritionist/templates/edit/:type/:id`.
+
+### Check-ins
+
+`useCheckins` ja usa React Query para templates, schedules, check-ins pendentes, submissao e historico. Ha pagina de manager para nutricionista e resposta para paciente.
+
+Ainda merece validacao ponta a ponta com as tabelas Supabase, crons/edge functions e regra de score/streak.
+
+### Anamnese e Nello Forms
+
+Existem duas linhas em convivencia:
+
+- Fluxo atual de anamnese por paciente (`PatientAnamnesisList`, `PatientAnamnesisForm`, `PatientAnamnesePage`).
+- Shell/configuracao global de templates em `/nutritionist/settings/anamnesis-templates`.
+- Rota publica `/f/:token` com `PatientFacingUi`.
+
+A direcao documentada e evoluir para motor dinamico com JSONB, versionamento, builder, data binding clinico e fluxo omnichannel.
+
+### Agenda e financeiro
+
+Ja existem paginas e componentes para agenda, servicos, transacoes, KPIs, graficos, pendencias e perfil do nutricionista. Estes modulos tornam o produto mais proximo de um ERP leve para consultorio.
+
+### Chat, presenca e notificacoes
+
+`ChatContext`, `PresenceGlobal`, `useOnlinePresence`, `NotificationsPanel` e paginas compartilhadas de chat sustentam comunicacao entre paciente e nutricionista.
+
+### Admin e observabilidade
+
+Admin tem painel proprio, relatorios de bugs, usuarios, detalhe de nutricionista e financeiro. O frontend inicializa Sentry e PostHog em `main.jsx`.
+
+## Como rodar localmente
+
+### Requisitos
+
+- Node.js compatível com o projeto.
+- npm.
+- Credenciais do Supabase.
+
+### Instalar dependencias
+
+```bash
+npm install
+```
+
+### Variaveis de ambiente
+
+Crie `.env` na raiz:
+
+```env
+VITE_SUPABASE_URL=...
+VITE_SUPABASE_ANON_KEY=...
+VITE_SENTRY_DSN=...
+VITE_PUBLIC_POSTHOG_KEY=...
+VITE_PUBLIC_POSTHOG_HOST=...
+```
+
+`VITE_SENTRY_DSN`, `VITE_PUBLIC_POSTHOG_KEY` e `VITE_PUBLIC_POSTHOG_HOST` podem variar conforme ambiente. O essencial para autenticar e ler dados e Supabase.
+
+### Desenvolvimento
+
+```bash
+npm run dev
+```
+
+### Build
+
+```bash
+npm run build
+```
+
+O build executa `npm run lint` antes de `vite build`.
+
+### Testes
+
+```bash
+npm run test
+npm run test:run
+npm run test:coverage
+```
+
+## Pontos de atencao para proximas implementacoes
+
+1. Validar o estado real dos templates de nutricao no banco antes de reimplementar o que o codigo ja aparenta conter.
+2. Remover ou aposentar `src/services/demoDataService.js` somente depois de confirmar zero imports ativos.
+3. Continuar migrando fetches criticos para React Query, principalmente hubs e paginas densas.
+4. Reduzir loading global e desmontagens no plano alimentar.
+5. Tratar performance de componentes grandes com memoizacao e separacao de responsabilidades.
+6. Validar RLS/cascade em templates, check-ins e rotas publicas.
+7. Manter o marketplace congelado ate definicao de modelo comercial.
+
+## Licenca
+
+Projeto proprietario. Consulte [LICENSE](LICENSE).
+
