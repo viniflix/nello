@@ -559,7 +559,11 @@ const SmartFoodForm = forwardRef(function SmartFoodForm({
 
     // Check if query is a barcode (only numbers, 8-13 digits)
     const isBarcode = (query) => {
-            // Unified search handler
+        const cleaned = query.trim().replace(/\s/g, '');
+        return /^\d{8,13}$/.test(cleaned);
+    };
+
+    // Unified search handler
     const handleSearch = async () => {
         if (!searchQuery.trim()) {
             toast({
