@@ -291,4 +291,4 @@ const MacrosChart = ({ protein, carbs, fat, calories, patientId, patientSlugOrId
     );
 };
 
-export default MacrosChart;
+export default React.memo(MacrosChart);

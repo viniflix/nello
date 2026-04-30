@@ -14,6 +14,7 @@ import {
     DropdownMenuTrigger,
     DropdownMenuSeparator
 } from '@/components/ui/dropdown-menu';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/components/ui/use-toast';
 import {
     AlertDialog,
@@ -73,6 +74,7 @@ import { getLatestEnergyCalculation } from '@/lib/supabase/energy-queries';
 import PlanTargetMonitor from '@/components/meal-plan/PlanTargetMonitor';
 import NotificationCenter from '@/components/meal-plan/NotificationCenter';
 import { getPatientModuleSyncFlags, clearPatientModuleSyncFlags } from '@/lib/supabase/anthropometry-queries';
+import { useMealPlan } from '@/hooks/useMealPlan';
 
 const MealPlanPage = () => {
     const { patientId, paramValue } = useResolvedPatientId();
@@ -80,10 +82,9 @@ const MealPlanPage = () => {
     const { toast } = useToast();
     const { user } = useAuth();
 
-    const [loading, setLoading] = useState(true);
+    const { plans, activePlan, pendingDrafts, loading, isFetching, loadPlans, invalidatePlans } = useMealPlan(patientId, nutritionistId);
+
     const [submitting, setSubmitting] = useState(false);
-    const [plans, setPlans] = useState([]);
-    const [activePlan, setActivePlan] = useState(null);
     const [patientName, setPatientName] = useState('');
     const [referenceValues, setReferenceValues] = useState(null);
     const [showForm, setShowForm] = useState(false);
@@ -104,7 +105,6 @@ const MealPlanPage = () => {
     const [restoringVersion, setRestoringVersion] = useState(false);
     const [energyCalculation, setEnergyCalculation] = useState(null);
     const [syncFlags, setSyncFlags] = useState(null);
-    const [pendingDrafts, setPendingDrafts] = useState([]); // lista de todos os rascunhos detectados
     const [pendingDraft, setPendingDraft] = useState(null); // rascunho específico sendo retomado no momento no form
     const [discardingDraft, setDiscardingDraft] = useState(false);
     const [draftToDelete, setDraftToDelete] = useState(null); // Para o modal de confirmação de descarte de rascunho
@@ -148,38 +148,8 @@ const MealPlanPage = () => {
         loadPatientName();
     }, [patientId]);
 
-    // Carregar planos + rascunhos em paralelo (single source of truth)
-    const loadPlans = useCallback(async () => {
-        if (!patientId) return;
-
-        setLoading(true);
-        try {
-            const [plansResult, activeResult, draftsResult] = await Promise.all([
-                getMealPlans(patientId),
-                getActiveMealPlan(patientId),
-                nutritionistId ? getDraftMealPlans(patientId, nutritionistId) : Promise.resolve({ data: [] })
-            ]);
-
-            if (plansResult.error) throw plansResult.error;
-
-            setPlans(plansResult.data || []);
-            setActivePlan(activeResult.data);
-            setPendingDrafts(draftsResult.data || []);
-        } catch (error) {
-            console.error('Erro ao carregar planos:', error);
-            toast({
-                title: 'Erro',
-                description: 'Não foi possível carregar os planos alimentares',
-                variant: 'destructive'
-            });
-        } finally {
-            setLoading(false);
-        }
-    }, [patientId, nutritionistId, toast]);
-
-    useEffect(() => {
-        loadPlans();
-    }, [loadPlans]);
+    // Carregar planos + rascunhos em paralelo agora é gerenciado pelo useMealPlan hook.
+    // As chamadas a loadPlans() nas dependências dos effects ainda existem, mas como um refetch.
 
     // Carregar valores de referência quando activePlan mudar
     useEffect(() => {
@@ -801,10 +771,7 @@ const MealPlanPage = () => {
 
     // Handler quando template é aplicado
     const handleTemplateApplied = async (newPlan) => {
-        await loadPlans();
-        if (newPlan) {
-            setActivePlan(newPlan);
-        }
+        invalidatePlans();
     };
 
     const getMetricsFromSnapshot = (snapshot) => {
@@ -865,8 +832,20 @@ const MealPlanPage = () => {
 
     if (loading) {
         return (
-            <div className="container mx-auto px-4 py-8">
-                <div className="text-center">Carregando...</div>
+            <div className="container mx-auto px-4 py-8 max-w-6xl space-y-6">
+                <div className="flex items-center justify-between">
+                    <Skeleton className="h-8 w-24" />
+                    <Skeleton className="h-10 w-32" />
+                </div>
+                <Skeleton className="h-12 w-64" />
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+                    <Skeleton className="h-[400px] w-full" />
+                    <div className="md:col-span-2 space-y-4">
+                        <Skeleton className="h-32 w-full" />
+                        <Skeleton className="h-32 w-full" />
+                        <Skeleton className="h-32 w-full" />
+                    </div>
+                </div>
             </div>
         );
     }
@@ -910,7 +889,7 @@ const MealPlanPage = () => {
     }
 
     return (
-        <div className="container mx-auto px-4 py-6 sm:py-8 max-w-6xl">
+        <div className={`container mx-auto px-4 py-6 sm:py-8 max-w-6xl transition-opacity duration-200 ${isFetching ? 'opacity-70 pointer-events-none' : 'opacity-100'}`}>
             {/* Header */}
             <div className="flex flex-col gap-4 mb-6">
                 <div className="flex items-center justify-between">

@@ -23,7 +23,7 @@ import { cn } from '@/lib/utils';
  * @param {string} patientId - ID do paciente (para navegação)
  * @param {object} energyCalculation - Dados do cálculo de energia (opcional, para tooltip)
  */
-export default function PlanTargetMonitor({ 
+const PlanTargetMonitor = ({ 
     targetCalories, 
     currentCalories = 0, 
     patientId,
@@ -254,3 +254,4 @@ export default function PlanTargetMonitor({
     );
 }
 
+export default React.memo(PlanTargetMonitor);
