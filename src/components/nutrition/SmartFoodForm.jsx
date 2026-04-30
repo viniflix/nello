@@ -559,11 +559,7 @@ const SmartFoodForm = forwardRef(function SmartFoodForm({
 
     // Check if query is a barcode (only numbers, 8-13 digits)
     const isBarcode = (query) => {
-        const cleaned = query.trim().replace(/\s/g, '');
-        return /^\d{8,13}$/.test(cleaned);
-    };
-
-    // Unified search handler
+        const cleaned = query.trim().replace(/\s/g, '');        // Unified search handler
     const handleSearch = async () => {
         if (!searchQuery.trim()) {
             toast({
@@ -584,25 +580,17 @@ const SmartFoodForm = forwardRef(function SmartFoodForm({
                     body: { action: 'product', productCode: query }
                 });
 
-                if (error || !data || data.status === 0 || !data.product) {
-                    const errorMsg = error?.message || '';
-                    if (errorMsg.includes('429') || errorMsg.includes('rate_limit')) {
-                        toast({
-                            title: 'Muitas requisições',
-                            description: 'O OpenFoodFacts está sobrecarregado no momento. Por favor, tente novamente em alguns minutos.',
-                            variant: 'destructive'
-                        });
-                    } else {
-                        toast({
-                            title: 'Produto não encontrado',
-                            description: 'Não foi possível encontrar este produto no OpenFoodFacts.',
-                            variant: 'default'
-                        });
-                    }
+                if (error || !data || !data.food) {
+                    toast({
+                        title: 'Produto não encontrado',
+                        description: 'Não foi possível encontrar este produto na base de dados.',
+                        variant: 'default'
+                    });
                     return;
                 }
 
-                fillFormWithProduct(data.product);
+                const mappedProduct = mapFatSecretToOFF(data.food);
+                fillFormWithProduct(mappedProduct);
                 setSearchQuery('');
 
                 toast({
@@ -637,43 +625,33 @@ const SmartFoodForm = forwardRef(function SmartFoodForm({
                 });
 
                 if (error) {
-                    const errorMsg = error.message || '';
-                    if (errorMsg.includes('429') || errorMsg.includes('rate_limit')) {
-                        toast({
-                            title: 'Serviço Temporariamente Indisponível',
-                            description: 'O OpenFoodFacts está limitando as buscas no momento devido ao alto tráfego. Tente novamente em instantes ou preencha manualmente.',
-                            variant: 'destructive'
-                        });
-                    } else {
-                        toast({
-                            title: 'Erro na busca',
-                            description: 'Não foi possível realizar a busca por nome.',
-                            variant: 'destructive'
-                        });
-                    }
+                    toast({
+                        title: 'Erro na busca',
+                        description: 'Não foi possível realizar a busca na base de dados.',
+                        variant: 'destructive'
+                    });
                     return;
                 }
 
-                if (!data.products || data.products.length === 0) {
+                const fsFoods = data.foods_search?.results?.food;
+                if (!fsFoods) {
                     toast({
                         title: 'Nenhum produto encontrado',
-                        description: 'Não foi possível encontrar produtos com este nome no OpenFoodFacts.',
+                        description: 'Não foi possível encontrar produtos com este nome.',
                         variant: 'default'
                     });
                     return;
                 }
 
-                // Filter products with valid names
-                const validProducts = data.products.filter(p => p.product_name && p.product_name.trim().length > 0);
-                
-                if (validProducts.length === 0) {
-                    toast({
-                        title: 'Nenhum produto válido encontrado',
-                        description: 'Os produtos encontrados não possuem informações suficientes.',
-                        variant: 'default'
-                    });
-                    return;
-                }
+                // Normalizar FatSecret para o formato esperado pela UI
+                const foods = Array.isArray(fsFoods) ? fsFoods : [fsFoods];
+                const validProducts = foods.map(f => ({
+                    code: f.food_id,
+                    product_name: f.food_name,
+                    brands: f.brand_name || 'Marca desconhecida',
+                    image_url: null, // FatSecret basic API doesn't provide images easily
+                    nutriments: {} // We get details in the next step
+                }));
 
                 setSearchResults(validProducts);
                 setShowResultsDialog(true);
@@ -690,7 +668,47 @@ const SmartFoodForm = forwardRef(function SmartFoodForm({
         }
     };
 
-        // Handle product selection from results
+    // Auxiliar para mapear FatSecret para o formato interno do SmartFoodForm
+    const mapFatSecretToOFF = (fsFood) => {
+        const servings = fsFood.servings?.serving;
+        const servingsArr = Array.isArray(servings) ? servings : [servings];
+        
+        // Tentar achar o de 100g ou 100ml
+        let serving = servingsArr.find(s => 
+            (s.metric_serving_amount === "100.000") && 
+            (s.metric_serving_unit === "g" || s.metric_serving_unit === "ml")
+        );
+        
+        // Se não achar, pegar o primeiro e calcular fator de 100g
+        if (!serving) {
+            serving = servingsArr[0];
+        }
+
+        const amount = parseFloat(serving.metric_serving_amount) || 100;
+        const factor = 100 / amount;
+
+        return {
+            product_name: fsFood.food_name,
+            brands: fsFood.brand_name || "",
+            nutriments: {
+                proteins_100g: parseFloat(serving.protein || 0) * factor,
+                carbohydrates_100g: parseFloat(serving.carbohydrate || 0) * factor,
+                fat_100g: parseFloat(serving.fat || 0) * factor,
+                energy_kcal_100g: parseFloat(serving.calories || 0) * factor,
+                fiber_100g: parseFloat(serving.fiber || 0) * factor,
+                sodium_100g: (parseFloat(serving.sodium || 0) / 1000) * factor,
+                sugars_100g: parseFloat(serving.sugar || 0) * factor,
+                saturated_fat_100g: parseFloat(serving.saturated_fat || 0) * factor,
+                trans_fat_100g: parseFloat(serving.trans_fat || 0) * factor,
+                cholesterol_100g: (parseFloat(serving.cholesterol || 0) / 1000) * factor,
+                calcium_100g: (parseFloat(serving.calcium || 0) / 100) * factor,
+                iron_100g: (parseFloat(serving.iron || 0) / 100) * factor,
+                potassium_100g: (parseFloat(serving.potassium || 0) / 1000) * factor,
+            }
+        };
+    };
+
+    // Handle product selection from results
     const handleSelectProduct = async (productCode) => {
         setSearchLoading(true);
         try {
@@ -698,25 +716,17 @@ const SmartFoodForm = forwardRef(function SmartFoodForm({
                 body: { action: 'product', productCode }
             });
 
-            if (error || !data || data.status === 0 || !data.product) {
-                const errorMsg = error?.message || '';
-                if (errorMsg.includes('429') || errorMsg.includes('rate_limit')) {
-                    toast({
-                        title: 'Muitas requisições',
-                        description: 'O OpenFoodFacts está sobrecarregado. Tente novamente em breve.',
-                        variant: 'destructive'
-                    });
-                } else {
-                    toast({
-                        title: 'Erro',
-                        description: 'Não foi possível carregar os dados do produto selecionado.',
-                        variant: 'destructive'
-                    });
-                }
+            if (error || !data || !data.food) {
+                toast({
+                    title: 'Erro',
+                    description: 'Não foi possível carregar os dados do produto selecionado.',
+                    variant: 'destructive'
+                });
                 return;
             }
 
-            fillFormWithProduct(data.product);
+            const mappedProduct = mapFatSecretToOFF(data.food);
+            fillFormWithProduct(mappedProduct);
             setSearchQuery('');
             setShowResultsDialog(false);
             setSearchResults([]);
