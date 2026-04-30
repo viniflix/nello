@@ -627,9 +627,13 @@ const SmartFoodForm = forwardRef(function SmartFoodForm({
 
             setSearchLoading(true);
             try {
+                console.log('%c[DEBUG API] Chamando Função...', 'color: blue; font-weight: bold;');
                 const { data, error } = await supabase.functions.invoke('openfoodfacts-proxy', {
                     body: { action: 'search', query }
                 });
+
+                console.log('%c[DEBUG API] Resposta Recebida:', 'color: green; font-weight: bold;', data);
+                if (error) console.error('[DEBUG API] Erro Supabase:', error);
 
                 if (error) {
                     toast({
