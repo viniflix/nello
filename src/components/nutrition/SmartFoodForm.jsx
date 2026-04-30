@@ -559,7 +559,7 @@ const SmartFoodForm = forwardRef(function SmartFoodForm({
 
     // Check if query is a barcode (only numbers, 8-13 digits)
     const isBarcode = (query) => {
-        const cleaned = query.trim().replace(/\s/g, '');        // Unified search handler
+            // Unified search handler
     const handleSearch = async () => {
         if (!searchQuery.trim()) {
             toast({
@@ -572,7 +572,7 @@ const SmartFoodForm = forwardRef(function SmartFoodForm({
 
         const query = searchQuery.trim();
 
-        // If it's a barcode, search directly
+        // If it's a barcode, search directly (Barcodes are usually OFF)
         if (isBarcode(query)) {
             setSearchLoading(true);
             try {
@@ -580,7 +580,7 @@ const SmartFoodForm = forwardRef(function SmartFoodForm({
                     body: { action: 'product', productCode: query }
                 });
 
-                if (error || !data || !data.food) {
+                if (error || !data || !data.data) {
                     toast({
                         title: 'Produto não encontrado',
                         description: 'Não foi possível encontrar este produto na base de dados.',
@@ -589,13 +589,16 @@ const SmartFoodForm = forwardRef(function SmartFoodForm({
                     return;
                 }
 
-                const mappedProduct = mapFatSecretToOFF(data.food);
+                const mappedProduct = data.source === 'fatsecret' 
+                    ? mapFatSecretToOFF(data.data) 
+                    : data.data; // OFF data matches internal structure mostly
+
                 fillFormWithProduct(mappedProduct);
                 setSearchQuery('');
 
                 toast({
                     title: 'Produto encontrado!',
-                    description: 'Campos preenchidos automaticamente.',
+                    description: `Encontrado via ${data.source === 'fatsecret' ? 'FatSecret' : 'OpenFoodFacts'}.`,
                 });
             } catch (error) {
                 console.error('Erro ao buscar produto:', error);
@@ -633,8 +636,7 @@ const SmartFoodForm = forwardRef(function SmartFoodForm({
                     return;
                 }
 
-                const fsFoods = data.foods_search?.results?.food;
-                if (!fsFoods) {
+                if (!data.results || data.results.length === 0) {
                     toast({
                         title: 'Nenhum produto encontrado',
                         description: 'Não foi possível encontrar produtos com este nome.',
@@ -643,14 +645,13 @@ const SmartFoodForm = forwardRef(function SmartFoodForm({
                     return;
                 }
 
-                // Normalizar FatSecret para o formato esperado pela UI
-                const foods = Array.isArray(fsFoods) ? fsFoods : [fsFoods];
-                const validProducts = foods.map(f => ({
-                    code: f.food_id,
-                    product_name: f.food_name,
-                    brands: f.brand_name || 'Marca desconhecida',
-                    image_url: null, // FatSecret basic API doesn't provide images easily
-                    nutriments: {} // We get details in the next step
+                // Map results for the UI
+                const validProducts = data.results.map(f => ({
+                    code: f.id,
+                    product_name: f.name,
+                    brands: f.brand || 'Marca desconhecida',
+                    image_url: f.image,
+                    source: f.source
                 }));
 
                 setSearchResults(validProducts);
@@ -670,6 +671,8 @@ const SmartFoodForm = forwardRef(function SmartFoodForm({
 
     // Auxiliar para mapear FatSecret para o formato interno do SmartFoodForm
     const mapFatSecretToOFF = (fsFood) => {
+        if (!fsFood || !fsFood.servings) return fsFood;
+
         const servings = fsFood.servings?.serving;
         const servingsArr = Array.isArray(servings) ? servings : [servings];
         
@@ -680,9 +683,7 @@ const SmartFoodForm = forwardRef(function SmartFoodForm({
         );
         
         // Se não achar, pegar o primeiro e calcular fator de 100g
-        if (!serving) {
-            serving = servingsArr[0];
-        }
+        if (!serving) serving = servingsArr[0];
 
         const amount = parseFloat(serving.metric_serving_amount) || 100;
         const factor = 100 / amount;
@@ -716,7 +717,7 @@ const SmartFoodForm = forwardRef(function SmartFoodForm({
                 body: { action: 'product', productCode }
             });
 
-            if (error || !data || !data.food) {
+            if (error || !data || !data.data) {
                 toast({
                     title: 'Erro',
                     description: 'Não foi possível carregar os dados do produto selecionado.',
@@ -725,7 +726,10 @@ const SmartFoodForm = forwardRef(function SmartFoodForm({
                 return;
             }
 
-            const mappedProduct = mapFatSecretToOFF(data.food);
+            const mappedProduct = data.source === 'fatsecret' 
+                ? mapFatSecretToOFF(data.data) 
+                : data.data;
+
             fillFormWithProduct(mappedProduct);
             setSearchQuery('');
             setShowResultsDialog(false);
@@ -733,7 +737,7 @@ const SmartFoodForm = forwardRef(function SmartFoodForm({
 
             toast({
                 title: 'Produto selecionado!',
-                description: 'Campos preenchidos automaticamente.',
+                description: `Carregado via ${data.source === 'fatsecret' ? 'FatSecret' : 'OpenFoodFacts'}.`,
             });
         } catch (error) {
             console.error('Erro ao carregar produto:', error);
