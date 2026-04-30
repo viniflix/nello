@@ -572,41 +572,47 @@ const SmartFoodForm = forwardRef(function SmartFoodForm({
                 variant: 'destructive'
             });
             return;
-        }
-
-        const query = searchQuery.trim();
-        
-        // If it's a barcode, search directly
+        }        // If it's a barcode, search directly
         if (isBarcode(query)) {
             setSearchLoading(true);
             try {
-                const response = await fetch(`https://world.openfoodfacts.org/api/v0/product/${query}.json`);
-            const data = await response.json();
-
-            if (data.status === 0 || !data.product) {
-                toast({
-                    title: 'Produto não encontrado',
-                    description: 'Não foi possível encontrar este produto no OpenFoodFacts.',
-                    variant: 'default'
+                const { data, error } = await supabase.functions.invoke('openfoodfacts-proxy', {
+                    body: { action: 'product', productCode: query }
                 });
-                return;
-            }
+
+                if (error || !data || data.status === 0 || !data.product) {
+                    const errorMsg = error?.message || '';
+                    if (errorMsg.includes('429') || errorMsg.includes('rate_limit')) {
+                        toast({
+                            title: 'Muitas requisições',
+                            description: 'O OpenFoodFacts está sobrecarregado no momento. Por favor, tente novamente em alguns minutos.',
+                            variant: 'destructive'
+                        });
+                    } else {
+                        toast({
+                            title: 'Produto não encontrado',
+                            description: 'Não foi possível encontrar este produto no OpenFoodFacts.',
+                            variant: 'default'
+                        });
+                    }
+                    return;
+                }
 
                 fillFormWithProduct(data.product);
                 setSearchQuery('');
 
-            toast({
-                title: 'Produto encontrado!',
-                description: 'Campos preenchidos automaticamente.',
-            });
-        } catch (error) {
-            console.error('Erro ao buscar produto:', error);
-            toast({
-                title: 'Erro',
-                description: 'Não foi possível buscar o produto. Verifique sua conexão.',
-                variant: 'destructive'
-            });
-        } finally {
+                toast({
+                    title: 'Produto encontrado!',
+                    description: 'Campos preenchidos automaticamente.',
+                });
+            } catch (error) {
+                console.error('Erro ao buscar produto:', error);
+                toast({
+                    title: 'Erro',
+                    description: 'Não foi possível buscar o produto. Verifique sua conexão.',
+                    variant: 'destructive'
+                });
+            } finally {
                 setSearchLoading(false);
             }
         } else {
@@ -622,10 +628,27 @@ const SmartFoodForm = forwardRef(function SmartFoodForm({
 
             setSearchLoading(true);
             try {
-                const response = await fetch(
-                    `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&json=1&page_size=20&fields=product_name,brands,code,image_url,nutriments`
-                );
-                const data = await response.json();
+                const { data, error } = await supabase.functions.invoke('openfoodfacts-proxy', {
+                    body: { action: 'search', query }
+                });
+
+                if (error) {
+                    const errorMsg = error.message || '';
+                    if (errorMsg.includes('429') || errorMsg.includes('rate_limit')) {
+                        toast({
+                            title: 'Serviço Temporariamente Indisponível',
+                            description: 'O OpenFoodFacts está limitando as buscas no momento devido ao alto tráfego. Tente novamente em instantes ou preencha manualmente.',
+                            variant: 'destructive'
+                        });
+                    } else {
+                        toast({
+                            title: 'Erro na busca',
+                            description: 'Não foi possível realizar a busca por nome.',
+                            variant: 'destructive'
+                        });
+                    }
+                    return;
+                }
 
                 if (!data.products || data.products.length === 0) {
                     toast({
@@ -640,44 +663,54 @@ const SmartFoodForm = forwardRef(function SmartFoodForm({
                 const validProducts = data.products.filter(p => p.product_name && p.product_name.trim().length > 0);
                 
                 if (validProducts.length === 0) {
-            toast({
+                    toast({
                         title: 'Nenhum produto válido encontrado',
                         description: 'Os produtos encontrados não possuem informações suficientes.',
                         variant: 'default'
-            });
+                    });
                     return;
                 }
 
                 setSearchResults(validProducts);
                 setShowResultsDialog(true);
-        } catch (error) {
+            } catch (error) {
                 console.error('Erro ao buscar produtos:', error);
-            toast({
-                title: 'Erro',
+                toast({
+                    title: 'Erro',
                     description: 'Não foi possível buscar produtos. Verifique sua conexão.',
-                variant: 'destructive'
-            });
-        } finally {
+                    variant: 'destructive'
+                });
+            } finally {
                 setSearchLoading(false);
             }
         }
     };
 
-    // Handle product selection from results
+        // Handle product selection from results
     const handleSelectProduct = async (productCode) => {
         setSearchLoading(true);
         try {
-            const response = await fetch(`https://world.openfoodfacts.org/api/v0/product/${productCode}.json`);
-            const data = await response.json();
-
-            if (data.status === 0 || !data.product) {
-            toast({
-                title: 'Erro',
-                    description: 'Não foi possível carregar os dados do produto selecionado.',
-                variant: 'destructive'
+            const { data, error } = await supabase.functions.invoke('openfoodfacts-proxy', {
+                body: { action: 'product', productCode }
             });
-            return;
-        }
+
+            if (error || !data || data.status === 0 || !data.product) {
+                const errorMsg = error?.message || '';
+                if (errorMsg.includes('429') || errorMsg.includes('rate_limit')) {
+                    toast({
+                        title: 'Muitas requisições',
+                        description: 'O OpenFoodFacts está sobrecarregado. Tente novamente em breve.',
+                        variant: 'destructive'
+                    });
+                } else {
+                    toast({
+                        title: 'Erro',
+                        description: 'Não foi possível carregar os dados do produto selecionado.',
+                        variant: 'destructive'
+                    });
+                }
+                return;
+            }
 
             fillFormWithProduct(data.product);
             setSearchQuery('');
