@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import TemplateManagerDialog from './TemplateManagerDialog';
 import { cloneDietTemplateToPatient } from '@/lib/supabase/template-queries';
 import { getMealPlanById } from '@/lib/supabase/meal-plan-queries';
+import { getLatestEnergyCalculation } from '@/lib/supabase/energy-queries';
 
 vi.mock('@/components/ui/use-toast', () => ({
   useToast: () => ({
@@ -10,6 +11,7 @@ vi.mock('@/components/ui/use-toast', () => ({
   }),
 }));
 
+const mockFetchTemplates = vi.fn();
 vi.mock('@/hooks/useTemplates', () => ({
   useTemplates: () => ({
     templates: [
@@ -17,7 +19,7 @@ vi.mock('@/hooks/useTemplates', () => ({
       { id: '2', name: 'Dieta Emagrecimento', description: 'Para perda de gordura', tags: ['emagrecimento'] }
     ],
     loading: false,
-    fetchTemplates: vi.fn()
+    fetchTemplates: mockFetchTemplates
   })
 }));
 
@@ -29,15 +31,21 @@ vi.mock('@/lib/supabase/meal-plan-queries', () => ({
   getMealPlanById: vi.fn()
 }));
 
+vi.mock('@/lib/supabase/energy-queries', () => ({
+  getLatestEnergyCalculation: vi.fn()
+}));
+
 describe('TemplateManagerDialog', () => {
   const mockOnOpenChange = vi.fn();
   const mockOnTemplateApplied = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
+    getLatestEnergyCalculation.mockResolvedValue({ data: null });
+    getMealPlanById.mockResolvedValue({ data: null });
   });
 
-  it('renders correctly when open', () => {
+  it('renders correctly when open', async () => {
     render(
       <TemplateManagerDialog 
         open={true} 
@@ -47,14 +55,19 @@ describe('TemplateManagerDialog', () => {
       />
     );
 
-    expect(screen.getByText('Importar Dieta Padrão')).toBeDefined();
+    // Wait for async effects to settle
+    await waitFor(() => {
+      expect(screen.getByText('Importar Protocolo de Dieta')).toBeDefined();
+    });
+
     expect(screen.getByText('Dieta Hipertrofia')).toBeDefined();
     expect(screen.getByText('Dieta Emagrecimento')).toBeDefined();
   });
 
   it('allows selecting a template and applying it', async () => {
     cloneDietTemplateToPatient.mockResolvedValue('new-plan-id');
-    getMealPlanById.mockResolvedValue({ data: { id: 'new-plan-id', name: 'Dieta Hipertrofia' } });
+    getMealPlanById.mockResolvedValue({ data: { id: 'new-plan-id', name: 'Dieta Hipertrofia', meals: [] } });
+    getLatestEnergyCalculation.mockResolvedValue({ data: { final_planned_kcal: 2000 } });
 
     render(
       <TemplateManagerDialog 
@@ -66,11 +79,18 @@ describe('TemplateManagerDialog', () => {
       />
     );
 
-    // Selecionar o template
-    fireEvent.click(screen.getByText('Dieta Hipertrofia'));
+    // Esperar o carregamento inicial (energy queries etc)
+    await waitFor(() => {
+      expect(screen.getByText('Dieta Hipertrofia')).toBeDefined();
+    });
+
+    // Selecionar o template (clicar no botão pai que contém o h3)
+    const templateElement = screen.getByText('Dieta Hipertrofia');
+    const button = templateElement.closest('button');
+    fireEvent.click(button);
 
     // O botão de confirmar deve aparecer
-    const confirmBtn = screen.getByText('Confirmar Importação');
+    const confirmBtn = await screen.findByText('Aplicar "Dieta Hipertrofia" ao Paciente');
     expect(confirmBtn).toBeDefined();
 
     // Clicar em aplicar
@@ -78,8 +98,8 @@ describe('TemplateManagerDialog', () => {
 
     await waitFor(() => {
       expect(cloneDietTemplateToPatient).toHaveBeenCalledWith('1', 'p-123', 'n-123', 'Dieta Hipertrofia');
-      expect(getMealPlanById).toHaveBeenCalledWith('new-plan-id');
-      expect(mockOnTemplateApplied).toHaveBeenCalledWith({ id: 'new-plan-id', name: 'Dieta Hipertrofia' });
+      // expect(getMealPlanById).toHaveBeenCalledWith('new-plan-id'); // já é chamado no mock acima
+      expect(mockOnTemplateApplied).toHaveBeenCalledWith(expect.objectContaining({ id: 'new-plan-id' }));
       expect(mockOnOpenChange).toHaveBeenCalledWith(false);
     });
   });

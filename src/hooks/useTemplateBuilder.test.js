@@ -71,7 +71,7 @@ describe('useTemplateBuilder Hook', () => {
       await result.current.handleSave();
     });
 
-    expect(mockToast).toHaveBeenCalledWith({ title: 'Erro', description: 'O nome do template é obrigatório.', variant: 'destructive' });
+    expect(mockToast).toHaveBeenCalledWith({ title: 'Nome obrigatório', description: 'Informe um nome para o template.', variant: 'destructive' });
     expect(supabase.from).not.toHaveBeenCalled();
   });
 
@@ -87,7 +87,7 @@ describe('useTemplateBuilder Hook', () => {
     });
 
     expect(supabase.from).toHaveBeenCalledWith('diet_templates');
-    expect(mockToast).toHaveBeenCalledWith({ title: 'Sucesso', description: 'Dieta Padrão salva com sucesso!' });
+    expect(mockToast).toHaveBeenCalledWith({ title: 'Sucesso', description: 'Dieta Padrão criada com sucesso!' });
     expect(mockNavigate).toHaveBeenCalledWith('/nutritionist/templates');
   });
 
@@ -108,6 +108,6 @@ describe('useTemplateBuilder Hook', () => {
 
     expect(supabase.from).toHaveBeenCalledWith('meal_templates');
     expect(supabase.from).toHaveBeenCalledWith('meal_template_foods');
-    expect(mockToast).toHaveBeenCalledWith({ title: 'Sucesso', description: 'Refeição isolada salva com sucesso!' });
+    expect(mockToast).toHaveBeenCalledWith({ title: 'Sucesso', description: 'Refeição salva com sucesso!' });
   });
 });

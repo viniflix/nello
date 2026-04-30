@@ -1549,75 +1549,79 @@ export const deleteReferenceValues = async (planId) => {
 // =====================================================
 
 /**
- * Salva um plano como template
- * @param {number} planId - ID do plano a salvar como template
+ * Salva um plano alimentar de paciente como template de dieta.
+ * Grava em `diet_templates` (fonte única), garantindo que o template
+ * apareça na listagem de Dietas Padrão e seja editável pelo TemplateBuilder.
+ * @param {number} planId - ID do plano de paciente a copiar
  * @param {string} templateName - Nome do template
- * @param {array} tags - Tags do template (array de strings)
- * @returns {Promise<{data: object, error: object}>}
+ * @param {string[]} tags - Tags do template
+ * @returns {Promise<{data: {id: string, name: string}, error: object|null}>}
  */
 export const savePlanAsTemplate = async (planId, templateName, tags = []) => {
     try {
-        // Buscar plano completo com todas as refeições e alimentos
+        const { data: authData } = await supabase.auth.getUser();
+        const userId = authData?.user?.id;
+        if (!userId) throw new Error('Usuário não autenticado.');
+
+        // 1. Buscar plano original com refeições e alimentos
         const { data: originalPlan, error: planError } = await getMealPlanById(planId);
         if (planError) throw planError;
 
-        // Criar novo plano como template (patient_id = null, is_template = true)
-        const { data: templatePlan, error: createError } = await supabase
-            .from('meal_plans')
-            .insert([{
-                patient_id: null,
-                nutritionist_id: originalPlan.nutritionist_id,
-                name: templateName,
+        // 2. Criar registro em diet_templates
+        const { data: template, error: templateError } = await supabase
+            .from('diet_templates')
+            .insert({
+                user_id: userId,
+                name: templateName.trim(),
                 description: originalPlan.description || null,
-                active_days: originalPlan.active_days,
-                start_date: null, // Templates não têm data de início
-                end_date: null,
-                is_active: false, // Templates não são "ativos" no sentido de plano de paciente
-                is_template: true,
-                template_tags: tags.length > 0 ? tags : null
-            }])
-            .select()
+                tags: tags.length > 0 ? tags : [],
+            })
+            .select('id, name')
             .single();
 
-        if (createError) throw createError;
+        if (templateError) throw templateError;
 
-        // Copiar refeições e alimentos
-        for (const meal of originalPlan.meals || []) {
-            const { data: newMeal, error: mealError } = await addMealToPlan({
-                meal_plan_id: templatePlan.id,
-                name: meal.name,
-                meal_type: meal.meal_type,
-                meal_time: meal.meal_time,
-                notes: meal.notes,
-                order_index: meal.order_index
-            });
+        // 3. Inserir refeições e alimentos em diet_template_meals / diet_template_foods
+        for (let mealIdx = 0; mealIdx < (originalPlan.meals || []).length; mealIdx++) {
+            const meal = originalPlan.meals[mealIdx];
+
+            const { data: savedMeal, error: mealError } = await supabase
+                .from('diet_template_meals')
+                .insert({
+                    template_id: template.id,
+                    name: meal.name,
+                    time: meal.meal_time || null,
+                    order_index: meal.order_index ?? mealIdx,
+                })
+                .select('id')
+                .single();
 
             if (mealError) throw mealError;
 
-            // Copiar alimentos
-            for (const food of meal.foods || []) {
-                await addFoodToMeal({
-                    meal_plan_meal_id: newMeal.id,
-                    food_id: food.food_id,
-                    quantity: food.quantity,
-                    unit: food.unit,
-                    calories: food.calories,
-                    protein: food.protein,
-                    carbs: food.carbs,
-                    fat: food.fat,
-                    notes: food.notes,
-                    order_index: food.order_index
-                });
+            const foods = meal.foods || [];
+            if (foods.length > 0) {
+                const { error: foodsError } = await supabase
+                    .from('diet_template_foods')
+                    .insert(foods.map((food, fIdx) => ({
+                        meal_id: savedMeal.id,
+                        food_id: food.food_id,
+                        quantity: food.quantity,
+                        unit: food.unit,
+                        observation: food.notes || food.observation || '',
+                        order_index: food.order_index ?? fIdx,
+                    })));
+
+                if (foodsError) throw foodsError;
             }
         }
 
-        // Buscar template completo criado
-        return getMealPlanById(templatePlan.id);
+        return { data: template, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao salvar plano como template', error);
+        logSupabaseError('Erro ao salvar plano como template de dieta', error);
         return { data: null, error };
     }
 };
+
 
 /**
  * Busca todos os templates de um nutricionista

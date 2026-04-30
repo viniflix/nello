@@ -27,6 +27,7 @@ vi.mock('@/lib/supabase/meal-plan-queries', () => ({
     addFoodToMeal: vi.fn(),
     addFoodsToMeal: mockAddFoodsToMeal,
     getMealPlanById: mockGetMealPlanById,
+    recalculateMealNutrition: vi.fn().mockResolvedValue({ data: null, error: null }),
 }));
 
 const { useMealPlanDraft } = await import('@/hooks/useMealPlanDraft');

@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -11,22 +11,19 @@ import { useAuth } from '@/contexts/AuthContext';
  */
 export function useTemplates(type = 'diet') {
   const { user } = useAuth();
-  const [templates, setTemplates] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const lastFetched = useRef(null);
-  const CACHE_TTL = 30_000; // 30 segundos
+  const queryClient = useQueryClient();
 
-  const fetchTemplates = useCallback(async (force = false) => {
-    if (!user) return;
+  // Buscar os templates
+  const {
+    data: templates = [],
+    isLoading: loading,
+    error,
+    refetch: fetchTemplates,
+  } = useQuery({
+    queryKey: ['templates', type, user?.id],
+    queryFn: async () => {
+      if (!user) return [];
 
-    // Cache simples: evitar refetch desnecessário
-    const now = Date.now();
-    if (!force && lastFetched.current && now - lastFetched.current < CACHE_TTL) return;
-
-    setLoading(true);
-    setError(null);
-    try {
       let data, fetchError;
 
       if (type === 'diet') {
@@ -90,24 +87,17 @@ export function useTemplates(type = 'diet') {
       }
 
       if (fetchError) throw fetchError;
-      setTemplates(data || []);
-      lastFetched.current = Date.now();
-    } catch (err) {
-      console.error(`[useTemplates] Error fetching ${type} templates:`, err.message);
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  }, [user, type]);
+      return data || [];
+    },
+    enabled: !!user,
+    staleTime: 30000, // 30 segundos
+  });
 
-  useEffect(() => {
-    fetchTemplates(true); // force no mount ou mudança de tipo
-  }, [fetchTemplates]);
+  // Mutação para deletar template
+  const deleteMutation = useMutation({
+    mutationFn: async (templateId) => {
+      if (!user) throw new Error('User not authenticated');
 
-  const deleteTemplate = async (templateId) => {
-    if (!user) return false;
-
-    try {
       let deleteError;
 
       if (type === 'diet') {
@@ -132,12 +122,28 @@ export function useTemplates(type = 'diet') {
       }
 
       if (deleteError) throw deleteError;
-
-      setTemplates(prev => prev.filter(t => t.id !== templateId));
-      lastFetched.current = null; // invalidar cache após delete
-      return true;
-    } catch (err) {
+      return templateId;
+    },
+    onSuccess: (deletedId) => {
+      // Atualiza o cache manualmente para UX instantânea
+      queryClient.setQueryData(['templates', type, user?.id], (old) => {
+        if (!old) return old;
+        return old.filter(t => t.id !== deletedId);
+      });
+      // Invalida para garantir sincronia no background
+      queryClient.invalidateQueries({ queryKey: ['templates', type, user?.id] });
+    },
+    onError: (err) => {
       console.error(`[useTemplates] Error deleting ${type} template:`, err.message);
+    }
+  });
+
+  // Wrapper para manter a compatibilidade da API (retorna boolean)
+  const deleteTemplate = async (templateId) => {
+    try {
+      await deleteMutation.mutateAsync(templateId);
+      return true;
+    } catch {
       return false;
     }
   };
@@ -145,7 +151,7 @@ export function useTemplates(type = 'diet') {
   return {
     templates,
     loading,
-    error,
+    error: error?.message || null,
     fetchTemplates,
     deleteTemplate,
   };
