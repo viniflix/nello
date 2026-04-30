@@ -572,7 +572,11 @@ const SmartFoodForm = forwardRef(function SmartFoodForm({
                 variant: 'destructive'
             });
             return;
-        }        // If it's a barcode, search directly
+        }
+
+        const query = searchQuery.trim();
+
+        // If it's a barcode, search directly
         if (isBarcode(query)) {
             setSearchLoading(true);
             try {
