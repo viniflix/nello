@@ -21,8 +21,8 @@ const FormCard = ({ template, onEdit, onDelete, isGlobal }) => (
                     : 'bg-emerald-100 text-emerald-700'
             }`}>
                 {isGlobal
-                    ? <><Globe className="w-3 h-3" /> Plataforma</>
-                    : <><User className="w-3 h-3" /> Meu formulário</>
+                    ? <><Globe className="w-3 h-3" /> Nello</>
+                    : <><User className="w-3 h-3" /> Personalizado</>
                 }
             </span>
         </div>

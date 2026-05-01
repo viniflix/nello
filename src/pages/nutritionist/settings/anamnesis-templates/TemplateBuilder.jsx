@@ -33,6 +33,7 @@ export default function TemplateBuilder() {
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [sections, setSections] = useState([]);
+    const [isSystemDefault, setIsSystemDefault] = useState(false);
 
     // Field Editor State
     const [activeSectionId, setActiveSectionId] = useState(null);
@@ -41,11 +42,21 @@ export default function TemplateBuilder() {
     useEffect(() => {
         if (templateId) {
             getTemplate(templateId).then(data => {
-                setTitle(data.title);
+                const isDefault = data.is_system_default;
+                setIsSystemDefault(isDefault);
+                setTitle(isDefault ? `${data.title} (Cópia)` : data.title);
                 setDescription(data.description || '');
-                setSections(data.sections || []);
+                // Para clones, removemos os IDs antigos para forçar criação de novos no DB
+                const loadedSections = data.sections || [];
+                const processSections = isDefault ? loadedSections.map(s => ({
+                    ...s,
+                    id: crypto.randomUUID(),
+                    fields: s.fields.map(f => ({ ...f, id: crypto.randomUUID() }))
+                })) : loadedSections;
+                
+                setSections(processSections);
                 setIsLoading(false);
-                if (data.sections?.length > 0) setActiveSectionId(data.sections[0].id);
+                if (processSections.length > 0) setActiveSectionId(processSections[0].id);
             }).catch(err => {
                 toast({ title: 'Erro', description: 'Template não encontrado', variant: 'destructive' });
                 navigate('/nutritionist/templates?group=forms&ftab=forms');
@@ -65,10 +76,12 @@ export default function TemplateBuilder() {
         }
         setIsSaving(true);
         try {
-            if (templateId) {
+            if (templateId && !isSystemDefault) {
                 await updateTemplate.mutateAsync({ id: templateId, title, description, sections });
+                toast({ title: 'Sucesso', description: 'Formulário atualizado.' });
             } else {
                 await createTemplate.mutateAsync({ title, description, sections });
+                toast({ title: 'Sucesso', description: 'Novo formulário criado.' });
                 navigate('/nutritionist/templates?group=forms&ftab=forms');
             }
         } finally {
@@ -164,7 +177,7 @@ export default function TemplateBuilder() {
                         Voltar
                     </Button>
                     <div>
-                        <h1 className="text-xl font-bold text-slate-800">{templateId ? 'Editar' : 'Novo'} Formulário</h1>
+                        <h1 className="text-xl font-bold text-slate-800">{templateId && !isSystemDefault ? 'Editar Formulário' : isSystemDefault ? 'Usar como base' : 'Novo Formulário'}</h1>
                     </div>
                 </div>
                 <Button className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto" onClick={handleSave} disabled={isSaving}>

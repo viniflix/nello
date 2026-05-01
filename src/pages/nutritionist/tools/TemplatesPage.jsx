@@ -525,7 +525,7 @@ export default function TemplatesPage() {
           {/* Grid de Cards */}
           {loading ? (
             <div className="flex flex-col items-center justify-center py-20">
-              <Loader2 className="w-8 h-8 text-blue-500 animate-spin mb-4" />
+              <Loader2 className="w-8 h-8 text-emerald-500 animate-spin mb-4" />
               <p className="text-slate-500">Carregando templates...</p>
             </div>
           ) : filteredTemplates.length === 0 ? (
@@ -587,7 +587,7 @@ export default function TemplatesPage() {
           </div>
 
           {/* Sub-abas — mesmo padrão de Nutrição */}
-          <div className="flex space-x-1 bg-slate-100 p-1 rounded-xl w-full md:w-auto mb-6">
+          <div className="inline-flex space-x-1 bg-slate-100 p-1 rounded-xl w-full md:w-auto mb-6">
             {FORMS_TABS.map(tab => {
               const Icon = tab.icon;
               const isActive = activeFormsTab === tab.id;
