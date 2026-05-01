@@ -1,8 +1,77 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, ClipboardList, Edit2, Trash2, Loader2, Play, Search } from 'lucide-react';
+import { Plus, ClipboardList, Edit2, Trash2, Loader2, Play, Search, Globe, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAnamnesisTemplates } from '@/hooks/useAnamnesisTemplates';
+
+// ─── Card de Formulário ─────────────────────────────────────────────────────────
+const FormCard = ({ template, onEdit, onDelete, isGlobal }) => (
+    <div className={`rounded-2xl border shadow-sm hover:shadow-md transition-all flex flex-col h-full p-5 gap-3 ${
+        isGlobal
+            ? 'bg-slate-50 border-slate-200 hover:border-slate-300'
+            : 'bg-white border-slate-200 hover:border-emerald-200'
+    }`}>
+        <div className="flex justify-between items-start">
+            <div className={`p-2 rounded-lg ${isGlobal ? 'bg-slate-100 text-slate-500' : 'bg-emerald-50 text-emerald-600'}`}>
+                <ClipboardList className="w-5 h-5" />
+            </div>
+            <span className={`text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1.5 ${
+                isGlobal
+                    ? 'bg-slate-200 text-slate-600'
+                    : 'bg-emerald-100 text-emerald-700'
+            }`}>
+                {isGlobal
+                    ? <><Globe className="w-3 h-3" /> Plataforma</>
+                    : <><User className="w-3 h-3" /> Meu formulário</>
+                }
+            </span>
+        </div>
+        <div className="flex-1">
+            <h3 className="text-base font-bold text-slate-800 line-clamp-1">{template.title}</h3>
+            <p className="text-xs text-slate-500 mt-1 line-clamp-2">{template.description || 'Sem descrição'}</p>
+        </div>
+        <div className="pt-4 mt-auto border-t border-slate-100 flex items-center justify-between">
+            <span className="text-xs text-slate-400">
+                {template.sections?.length || 0} seções
+            </span>
+            <div className="flex items-center gap-1">
+                <button
+                    onClick={() => onEdit(template.id)}
+                    className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
+                    title={isGlobal ? 'Usar como base' : 'Editar'}
+                >
+                    <Edit2 className="w-4 h-4" />
+                </button>
+                {!isGlobal && (
+                    <button
+                        onClick={() => onDelete(template.id)}
+                        className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                        title="Excluir"
+                    >
+                        <Trash2 className="w-4 h-4" />
+                    </button>
+                )}
+            </div>
+        </div>
+    </div>
+);
+
+// ─── Seção de Grupo ─────────────────────────────────────────────────────────────
+const GroupSection = ({ title, subtitle, icon: Icon, iconClass, children, count }) => (
+    <div>
+        <div className="flex items-center gap-3 mb-4">
+            <div className={`p-1.5 rounded-lg ${iconClass}`}>
+                <Icon className="w-4 h-4" />
+            </div>
+            <div>
+                <h3 className="text-sm font-semibold text-slate-700">{title}</h3>
+                <p className="text-xs text-slate-400">{subtitle}</p>
+            </div>
+            <span className="ml-auto text-xs font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">{count}</span>
+        </div>
+        {children}
+    </div>
+);
 
 export default function TemplatesList() {
     const navigate = useNavigate();
@@ -10,22 +79,26 @@ export default function TemplatesList() {
     const { data: templates, isLoading } = useTemplates();
     const [searchTerm, setSearchTerm] = React.useState('');
 
-    const filteredTemplates = React.useMemo(() => {
+    const filtered = React.useMemo(() => {
         if (!templates) return [];
-        return templates.filter(t => 
-            t.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        return templates.filter(t =>
+            t.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
             (t.description && t.description.toLowerCase().includes(searchTerm.toLowerCase()))
         );
     }, [templates, searchTerm]);
 
+    const globalTemplates = filtered.filter(t => t.is_system_default);
+    const myTemplates    = filtered.filter(t => !t.is_system_default);
+
     const handleDelete = async (id) => {
-        if(window.confirm("Deseja realmente excluir este formulário? Essa ação não afeta pacientes que já responderam, mas o molde será perdido.")) {
+        if (window.confirm('Deseja realmente excluir este formulário? Essa ação não afeta pacientes que já responderam, mas o molde será perdido.')) {
             await deleteTemplate.mutateAsync(id);
         }
     };
 
     return (
-        <div className="space-y-6 sm:space-y-8">
+        <div className="space-y-8">
+            {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-xl sm:text-2xl font-bold text-slate-800 flex items-center gap-2">
@@ -36,71 +109,83 @@ export default function TemplatesList() {
                         Gerencie seus moldes e templates personalizados de anamnese.
                     </p>
                 </div>
-                <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
-                    <div className="relative flex-1 w-full sm:w-64">
+                <div className="flex gap-3 w-full sm:w-auto">
+                    <div className="relative flex-1 sm:w-64">
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                             <Search className="h-4 w-4 text-slate-400" />
                         </div>
                         <input
                             type="text"
                             placeholder="Buscar formulário..."
-                            className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                            className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
-                    <Button className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white w-full sm:w-auto shrink-0" onClick={() => navigate('/nutritionist/settings/anamnesis-templates/new')}>
+                    <Button className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white shrink-0" onClick={() => navigate('/nutritionist/settings/anamnesis-templates/new')}>
                         <Plus className="w-4 h-4" />
                         Novo Formulário
                     </Button>
                 </div>
             </div>
 
+            {/* Content */}
             {isLoading ? (
                 <div className="flex justify-center py-20">
-                <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
+                    <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
                 </div>
-            ) : filteredTemplates && filteredTemplates.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {filteredTemplates.map(template => (
-                        <div key={template.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-emerald-200 transition-all flex flex-col h-full p-5 gap-3">
-                            <div className="flex justify-between items-start">
-                                <div className="p-2 bg-emerald-50 rounded-lg text-emerald-600">
-                                    <ClipboardList className="w-5 h-5" />
-                                </div>
-                                {template.is_system_default && (
-                                    <span className="text-xs font-semibold px-2 py-1 bg-slate-100 text-slate-600 rounded-full">Global</span>
-                                )}
+            ) : filtered.length > 0 ? (
+                <div className="space-y-8">
+                    {/* Meus Formulários */}
+                    {myTemplates.length > 0 && (
+                        <GroupSection
+                            title="Meus Formulários"
+                            subtitle="Criados e personalizados por você"
+                            icon={User}
+                            iconClass="bg-emerald-100 text-emerald-600"
+                            count={myTemplates.length}
+                        >
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                                {myTemplates.map(t => (
+                                    <FormCard
+                                        key={t.id}
+                                        template={t}
+                                        isGlobal={false}
+                                        onEdit={(id) => navigate(`/nutritionist/settings/anamnesis-templates/${id}/edit`)}
+                                        onDelete={handleDelete}
+                                    />
+                                ))}
                             </div>
-                            <div className="flex-1">
-                                <h3 className="text-base font-bold text-slate-800 line-clamp-1">{template.title}</h3>
-                                <p className="text-xs text-slate-500 mt-1 line-clamp-2">{template.description || "Sem descrição"}</p>
+                        </GroupSection>
+                    )}
+
+                    {/* Divisor */}
+                    {myTemplates.length > 0 && globalTemplates.length > 0 && (
+                        <hr className="border-slate-200" />
+                    )}
+
+                    {/* Formulários da Plataforma */}
+                    {globalTemplates.length > 0 && (
+                        <GroupSection
+                            title="Formulários da Plataforma"
+                            subtitle="Templates base disponíveis para todos os nutricionistas"
+                            icon={Globe}
+                            iconClass="bg-slate-200 text-slate-600"
+                            count={globalTemplates.length}
+                        >
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                                {globalTemplates.map(t => (
+                                    <FormCard
+                                        key={t.id}
+                                        template={t}
+                                        isGlobal={true}
+                                        onEdit={(id) => navigate(`/nutritionist/settings/anamnesis-templates/${id}/edit`)}
+                                        onDelete={handleDelete}
+                                    />
+                                ))}
                             </div>
-                            <div className="pt-4 mt-auto border-t border-slate-100 flex items-center justify-between">
-                                <span className="text-xs text-slate-400">
-                                    {template.sections?.length || 0} seções
-                                </span>
-                                <div className="flex items-center gap-1">
-                                    <button
-                                        onClick={() => navigate(`/nutritionist/settings/anamnesis-templates/${template.id}/edit`)}
-                                        className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
-                                        title="Editar"
-                                    >
-                                        <Edit2 className="w-4 h-4" />
-                                    </button>
-                                    {!template.is_system_default && (
-                                        <button
-                                            onClick={() => handleDelete(template.id)}
-                                            className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
-                                            title="Excluir"
-                                        >
-                                            <Trash2 className="w-4 h-4" />
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    ))}
+                        </GroupSection>
+                    )}
                 </div>
             ) : (
                 <div className="bg-white border border-dashed border-slate-300 rounded-2xl p-6 sm:p-12 text-center flex flex-col items-center mx-auto max-w-2xl">
@@ -109,25 +194,25 @@ export default function TemplatesList() {
                         {searchTerm ? 'Nenhum formulário encontrado' : 'Sua biblioteca está vazia'}
                     </h3>
                     <p className="text-xs sm:text-sm text-slate-500 max-w-md mb-6">
-                        {searchTerm 
+                        {searchTerm
                             ? `Nenhum resultado para "${searchTerm}".`
-                            : 'Você pode criar formulários do zero ou iniciar rapidamente adicionando nossos templates base ao seu consultório.'}
+                            : 'Crie formulários do zero ou adicione os templates base da plataforma ao seu consultório.'}
                     </p>
                     {!searchTerm && (
-                        <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
-                        <Button variant="outline" className="gap-2 w-full sm:w-auto" onClick={() => navigate('/nutritionist/settings/anamnesis-templates/new')}>
-                            <Plus className="w-4 h-4" />
-                            Criar do zero
-                        </Button>
-                        <Button 
-                            className="gap-2 bg-slate-800 hover:bg-slate-900 text-white w-full sm:w-auto" 
-                            onClick={() => seedBaseTemplates.mutate()}
-                            disabled={seedBaseTemplates.isPending}
-                        >
-                            {seedBaseTemplates.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
-                            Adicionar Templates Base
-                        </Button>
-                    </div>
+                        <div className="flex flex-col sm:flex-row items-center gap-3">
+                            <Button variant="outline" className="gap-2 w-full sm:w-auto" onClick={() => navigate('/nutritionist/settings/anamnesis-templates/new')}>
+                                <Plus className="w-4 h-4" />
+                                Criar do zero
+                            </Button>
+                            <Button
+                                className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white w-full sm:w-auto"
+                                onClick={() => seedBaseTemplates.mutate()}
+                                disabled={seedBaseTemplates.isPending}
+                            >
+                                {seedBaseTemplates.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
+                                Adicionar Templates Base
+                            </Button>
+                        </div>
                     )}
                 </div>
             )}

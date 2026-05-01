@@ -193,7 +193,8 @@ const CheckinsSection = () => {
 
   return (
     <>
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+      {/* Header: Título + Busca + Botão tudo na mesma linha */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
               <h2 className="text-xl sm:text-2xl font-bold text-slate-800 flex items-center gap-2">
                   <CheckSquare className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-600" />
@@ -203,24 +204,22 @@ const CheckinsSection = () => {
                   Crie e gerencie formulários automáticos de acompanhamento.
               </p>
           </div>
-          <Button onClick={() => setIsCreateModalOpen(true)} className="bg-emerald-600 hover:bg-emerald-700 w-full sm:w-auto shrink-0">
-              <Plus className="w-4 h-4 mr-2" /> Novo Check-in
-          </Button>
-      </div>
-
-      {/* Search bar — linha 2 (sem sub-abas aqui, mas mantém o padrão visual) */}
-      <div className="mb-6">
-          <div className="relative w-full md:w-80">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Search className="h-4 w-4 text-slate-400" />
-            </div>
-            <input
-              type="text"
-              placeholder="Buscar check-ins..."
-              className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+          <div className="flex gap-3 w-full sm:w-auto">
+              <div className="relative flex-1 sm:w-64">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Search className="h-4 w-4 text-slate-400" />
+                </div>
+                <input
+                  type="text"
+                  placeholder="Buscar check-ins..."
+                  className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              <Button onClick={() => setIsCreateModalOpen(true)} className="bg-emerald-600 hover:bg-emerald-700 shrink-0">
+                  <Plus className="w-4 h-4 mr-2" /> Novo Check-in
+              </Button>
           </div>
       </div>
 
@@ -485,7 +484,7 @@ export default function TemplatesPage() {
                     key={tab.id}
                     onClick={() => { setActiveNutritionTab(tab.id); setSearchTerm(''); }}
                     className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all ${
-                      isActive ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-800 hover:bg-slate-200/50'
+                      isActive ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-600 hover:text-slate-800 hover:bg-slate-200/50'
                     }`}
                   >
                     <Icon className="w-4 h-4" />

@@ -238,18 +238,22 @@ export default function MessageTemplatesSection() {
 
       {/* Como funciona */}
       <Collapsible open={howItWorksOpen} onOpenChange={setHowItWorksOpen} className="mb-5">
-        <div className="border border-slate-200 rounded-xl overflow-hidden">
+        <div className={`rounded-xl overflow-hidden border-2 transition-all ${
+          howItWorksOpen ? 'border-emerald-300 bg-emerald-50' : 'border-emerald-200 bg-emerald-50/50 hover:border-emerald-300 hover:bg-emerald-50'
+        }`}>
           <CollapsibleTrigger asChild>
-            <button className="w-full flex items-center justify-between gap-2 text-slate-600 hover:text-slate-800 hover:bg-slate-50 p-4 transition-colors">
-              <div className="flex items-center gap-2">
-                <HelpCircle className="w-4 h-4 shrink-0 text-emerald-600" />
-                <span className="text-sm font-medium">Como funcionam os modelos de mensagem?</span>
+            <button className="w-full flex items-center justify-between gap-3 p-4 transition-colors cursor-pointer">
+              <div className="flex items-center gap-3">
+                <div className="p-1.5 bg-emerald-100 rounded-lg shrink-0">
+                  <HelpCircle className="w-4 h-4 text-emerald-600" />
+                </div>
+                <span className="text-sm font-semibold text-emerald-800">Como funcionam os modelos de mensagem?</span>
               </div>
-              <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${howItWorksOpen ? 'rotate-180' : ''}`} />
+              <ChevronDown className={`w-4 h-4 text-emerald-500 transition-transform duration-200 shrink-0 ${howItWorksOpen ? 'rotate-180' : ''}`} />
             </button>
           </CollapsibleTrigger>
           <CollapsibleContent>
-            <div className="px-4 pb-4 pt-1 space-y-2 text-sm text-slate-500 border-t border-slate-100 bg-slate-50">
+            <div className="px-4 pb-4 pt-3 space-y-2 text-sm text-slate-600 border-t border-emerald-200">
               <p>Crie textos prontos para enviar aos pacientes sem precisar digitar tudo toda vez. Use <strong>variáveis dinâmicas</strong> como <code className="bg-white border border-slate-200 px-1.5 py-0.5 rounded text-xs font-mono text-emerald-700">{'{{'+'nome_paciente'+'}}'}</code> que são substituídas automaticamente no envio.</p>
               <p>No <strong>hub do paciente</strong>, aba Adesão, escolha o modelo e clique em enviar. Os modelos com badge “Padrão” foram criados pelo sistema — duplique-os para personalizar.</p>
             </div>
