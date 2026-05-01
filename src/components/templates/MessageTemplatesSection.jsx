@@ -1,13 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Plus, Edit2, Trash2, Eye, Send, ToggleLeft, ToggleRight,
-  MessageSquare, Loader2, Search, Copy, CheckCircle2, Clock, HelpCircle
+  MessageSquare, Loader2, Search, Copy, CheckCircle2, Clock, HelpCircle, ChevronDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
@@ -194,51 +193,67 @@ export default function MessageTemplatesSection() {
 
   return (
     <>
-      {/* Toolbar */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">
-        <div className="flex gap-2 flex-wrap flex-1">
-          <div className="relative flex-1 min-w-[200px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-            <Input
-              placeholder="Buscar modelos..."
-              className="pl-9"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-            />
-          </div>
-          <Select value={filterContext} onValueChange={setFilterContext}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Contexto" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos os contextos</SelectItem>
-              {TEMPLATE_CONTEXTS.map(c => (
-                <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+      {/* Linha 1: Título + Descrição + Botão */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div>
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-800 flex items-center gap-2">
+            <MessageSquare className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-600" />
+            Modelos de Mensagem
+          </h2>
+          <p className="text-xs sm:text-sm text-slate-500 mt-1">
+            Crie textos prontos com variáveis dinâmicas para agilizar a comunicação com seus pacientes.
+          </p>
         </div>
         <Button onClick={openCreate} className="bg-emerald-600 hover:bg-emerald-700 whitespace-nowrap shrink-0">
           <Plus className="w-4 h-4 mr-2" /> Novo modelo
         </Button>
       </div>
 
+      {/* Linha 2: Busca + Filtro — padrão nativo */}
+      <div className="flex flex-col sm:flex-row gap-2 mb-5">
+        <div className="relative flex-1">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <Search className="h-4 w-4 text-slate-400" />
+          </div>
+          <input
+            type="text"
+            placeholder="Buscar modelos..."
+            className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+        </div>
+        <select
+          className="px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all cursor-pointer"
+          value={filterContext}
+          onChange={e => setFilterContext(e.target.value)}
+        >
+          <option value="all">Todos os contextos</option>
+          {TEMPLATE_CONTEXTS.map(c => (
+            <option key={c.value} value={c.value}>{c.label}</option>
+          ))}
+        </select>
+      </div>
+
       {/* Como funciona */}
       <Collapsible open={howItWorksOpen} onOpenChange={setHowItWorksOpen} className="mb-5">
-        <Card className="border-slate-200">
+        <div className="border border-slate-200 rounded-xl overflow-hidden">
           <CollapsibleTrigger asChild>
-            <Button variant="ghost" className="w-full justify-start gap-2 text-slate-500 hover:text-slate-800 p-4 h-auto">
-              <HelpCircle className="w-4 h-4 shrink-0 text-emerald-600" />
-              <span className="text-sm font-medium">Como funcionam os modelos de mensagem?</span>
-            </Button>
+            <button className="w-full flex items-center justify-between gap-2 text-slate-600 hover:text-slate-800 hover:bg-slate-50 p-4 transition-colors">
+              <div className="flex items-center gap-2">
+                <HelpCircle className="w-4 h-4 shrink-0 text-emerald-600" />
+                <span className="text-sm font-medium">Como funcionam os modelos de mensagem?</span>
+              </div>
+              <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${howItWorksOpen ? 'rotate-180' : ''}`} />
+            </button>
           </CollapsibleTrigger>
           <CollapsibleContent>
-            <div className="px-4 pb-4 space-y-3 text-sm text-slate-500">
-              <p>Crie textos prontos para enviar aos pacientes sem precisar digitar tudo toda vez. Use <strong>variáveis dinâmicas</strong> como <code className="bg-slate-100 px-1 rounded">{'{{nome_paciente}}'}</code> que são substituídas automaticamente no envio.</p>
-              <p>No <strong>hub do paciente</strong>, aba Adesão, escolha o modelo e clique em enviar. Os modelos com badge "Padrão" foram criados pelo sistema — duplique-os para personalizar.</p>
+            <div className="px-4 pb-4 pt-1 space-y-2 text-sm text-slate-500 border-t border-slate-100 bg-slate-50">
+              <p>Crie textos prontos para enviar aos pacientes sem precisar digitar tudo toda vez. Use <strong>variáveis dinâmicas</strong> como <code className="bg-white border border-slate-200 px-1.5 py-0.5 rounded text-xs font-mono text-emerald-700">{'{{'+'nome_paciente'+'}}'}</code> que são substituídas automaticamente no envio.</p>
+              <p>No <strong>hub do paciente</strong>, aba Adesão, escolha o modelo e clique em enviar. Os modelos com badge “Padrão” foram criados pelo sistema — duplique-os para personalizar.</p>
             </div>
           </CollapsibleContent>
-        </Card>
+        </div>
       </Collapsible>
 
       {/* Loading */}

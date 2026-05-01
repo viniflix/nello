@@ -29,7 +29,7 @@ export default function TemplatesList() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-xl sm:text-2xl font-bold text-slate-800 flex items-center gap-2">
-                        <ClipboardList className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
+                        <ClipboardList className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-600" />
                         Biblioteca de Formulários
                     </h1>
                     <p className="text-xs sm:text-sm text-slate-500 mt-1">
@@ -58,14 +58,14 @@ export default function TemplatesList() {
 
             {isLoading ? (
                 <div className="flex justify-center py-20">
-                    <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+                <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
                 </div>
             ) : filteredTemplates && filteredTemplates.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {filteredTemplates.map(template => (
-                        <div key={template.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-200 transition-all flex flex-col h-full p-5 gap-3">
+                        <div key={template.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-emerald-200 transition-all flex flex-col h-full p-5 gap-3">
                             <div className="flex justify-between items-start">
-                                <div className="p-2 bg-blue-50 rounded-lg text-blue-600">
+                                <div className="p-2 bg-emerald-50 rounded-lg text-emerald-600">
                                     <ClipboardList className="w-5 h-5" />
                                 </div>
                                 {template.is_system_default && (
@@ -83,7 +83,7 @@ export default function TemplatesList() {
                                 <div className="flex items-center gap-1">
                                     <button
                                         onClick={() => navigate(`/nutritionist/settings/anamnesis-templates/${template.id}/edit`)}
-                                        className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                                        className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
                                         title="Editar"
                                     >
                                         <Edit2 className="w-4 h-4" />

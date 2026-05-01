@@ -209,7 +209,7 @@ export default function FoodBankSection() {
     <>
       <div className="mb-6">
         <h2 className="text-xl sm:text-2xl font-bold text-slate-800 flex items-center gap-2">
-            <Database className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
+            <Database className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-600" />
             Banco de Alimentos
         </h2>
         <p className="text-xs sm:text-sm text-slate-500 mt-1">
