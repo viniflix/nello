@@ -65,11 +65,11 @@ const SystemMeasureCard = ({ measure }) => (
 
 // ── Card: Medida Personalizada (editável) ─────────────────────
 const CustomMeasureCard = ({ measure, onEdit, onDelete, isDeleting }) => (
-  <div className="bg-white rounded-xl border border-emerald-100 p-4 flex items-start justify-between gap-3 hover:border-emerald-300 transition-colors group">
+  <div className="bg-white rounded-xl border border-blue-100 p-4 flex items-start justify-between gap-3 hover:border-blue-300 transition-colors group">
     <div className="flex-1 min-w-0">
       <div className="flex items-center gap-2 mb-1">
         <span className="font-medium text-slate-800 truncate">{measure.name}</span>
-        <span className="text-xs px-2 py-0.5 rounded-full border bg-emerald-50 text-emerald-700 border-emerald-200">
+        <span className="text-xs px-2 py-0.5 rounded-full border bg-blue-50 text-blue-700 border-blue-200">
           Pessoal
         </span>
         <span className={`text-xs px-2 py-0.5 rounded-full border ${CATEGORY_COLORS[measure.category] || CATEGORY_COLORS.other}`}>
@@ -80,7 +80,7 @@ const CustomMeasureCard = ({ measure, onEdit, onDelete, isDeleting }) => (
         <p className="text-xs text-slate-500 truncate">{measure.description}</p>
       )}
       <p className="text-xs text-slate-400 mt-1">
-        1 unidade = <span className="font-semibold text-emerald-700">{measure.grams_equivalent}g</span>
+        1 unidade = <span className="font-semibold text-blue-700">{measure.grams_equivalent}g</span>
       </p>
     </div>
     <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -186,6 +186,16 @@ const CustomMeasuresSection = () => {
 
   return (
     <div>
+      <div className="mb-6">
+        <h2 className="text-xl sm:text-2xl font-bold text-slate-800 flex items-center gap-2">
+            <Scale className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
+            Medidas Caseiras
+        </h2>
+        <p className="text-xs sm:text-sm text-slate-500 mt-1">
+            Gerencie e crie medidas caseiras com equivalência em gramas para usar nos seus planos.
+        </p>
+      </div>
+
       {/* Sub-abas */}
       <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl w-fit mb-6">
         {tabs.map((tab) => (
@@ -194,13 +204,13 @@ const CustomMeasuresSection = () => {
             onClick={() => setActiveTab(tab.id)}
             className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all ${
               activeTab === tab.id
-                ? 'bg-white text-emerald-600 shadow-sm'
+                ? 'bg-white text-blue-600 shadow-sm'
                 : 'text-slate-600 hover:text-slate-800'
             }`}
           >
             {tab.label}
             <span className={`text-xs px-1.5 py-0.5 rounded-full font-semibold ${
-              activeTab === tab.id ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-500'
+              activeTab === tab.id ? 'bg-blue-100 text-blue-700' : 'bg-slate-200 text-slate-500'
             }`}>
               {tab.count}
             </span>
@@ -227,7 +237,7 @@ const CustomMeasuresSection = () => {
             <Button
               onClick={handleOpenCreate}
               disabled={hasReachedLimit}
-              className="bg-emerald-600 hover:bg-emerald-700"
+              className="bg-blue-600 hover:bg-blue-700"
             >
               <Plus className="w-4 h-4 mr-2" />
               Nova Medida
@@ -237,15 +247,15 @@ const CustomMeasuresSection = () => {
           {/* Loading */}
           {loadingCustom && (
             <div className="flex items-center justify-center py-16">
-              <Loader2 className="w-6 h-6 animate-spin text-emerald-500" />
+              <Loader2 className="w-6 h-6 animate-spin text-blue-500" />
             </div>
           )}
 
           {/* Empty State */}
           {!loadingCustom && customMeasures.length === 0 && (
             <div className="bg-white rounded-xl border border-dashed border-slate-300 p-12 text-center flex flex-col items-center">
-              <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center mb-4">
-                <Scale className="w-8 h-8 text-emerald-400" />
+              <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mb-4">
+                <Scale className="w-8 h-8 text-blue-400" />
               </div>
               <h3 className="text-base font-semibold text-slate-700 mb-1">
                 Nenhuma medida personalizada
@@ -253,7 +263,7 @@ const CustomMeasuresSection = () => {
               <p className="text-sm text-slate-500 max-w-xs mb-5">
                 Crie medidas caseiras com equivalência em gramas para usar nos seus planos alimentares.
               </p>
-              <Button onClick={handleOpenCreate} className="bg-emerald-600 hover:bg-emerald-700">
+              <Button onClick={handleOpenCreate} className="bg-blue-600 hover:bg-blue-700">
                 <Plus className="w-4 h-4 mr-2" />
                 Criar Primeira Medida
               </Button>
@@ -290,7 +300,7 @@ const CustomMeasuresSection = () => {
 
           {loadingSystem ? (
             <div className="flex items-center justify-center py-16">
-              <Loader2 className="w-6 h-6 animate-spin text-emerald-500" />
+              <Loader2 className="w-6 h-6 animate-spin text-blue-500" />
             </div>
           ) : (
             <div className="space-y-6">

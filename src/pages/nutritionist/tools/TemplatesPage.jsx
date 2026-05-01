@@ -43,7 +43,7 @@ const NutritionCard = React.memo(({ template, type, onDelete, toast }) => {
 
   const typeLabel = { diet: 'Dieta', meal: 'Refeição', recipe: 'Receita' }[type];
   const typeBadgeClass = {
-    diet: 'bg-emerald-100 text-emerald-800',
+    diet: 'bg-blue-100 text-blue-800',
     meal: 'bg-blue-100 text-blue-800',
     recipe: 'bg-amber-100 text-amber-800',
   }[type];
@@ -68,10 +68,10 @@ const NutritionCard = React.memo(({ template, type, onDelete, toast }) => {
   });
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-emerald-200 transition-all flex flex-col h-full p-5 gap-3 group">
+    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-200 transition-all flex flex-col h-full p-5 gap-3 group">
       {/* Header */}
       <div className="flex items-start justify-between gap-2">
-        <div className="p-2 bg-emerald-50 rounded-lg text-emerald-600 shrink-0">
+        <div className="p-2 bg-blue-50 rounded-lg text-blue-600 shrink-0">
           {type === 'diet' && <FileText className="w-5 h-5" />}
           {type === 'meal' && <Coffee className="w-5 h-5" />}
           {type === 'recipe' && <UtensilsCrossed className="w-5 h-5" />}
@@ -115,7 +115,7 @@ const NutritionCard = React.memo(({ template, type, onDelete, toast }) => {
           {template.tags.slice(0, 4).map((tag, idx) => (
             <span
               key={idx}
-              className="px-2.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-100 text-xs rounded-full font-medium"
+              className="px-2.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-100 text-xs rounded-full font-medium"
             >
               {tag}
             </span>
@@ -134,7 +134,7 @@ const NutritionCard = React.memo(({ template, type, onDelete, toast }) => {
         <div className="flex items-center gap-1">
           <button
             onClick={() => navigate(`/nutritionist/templates/edit/${type}/${template.id}`)}
-            className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
+            className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
             title="Editar"
           >
             <Edit2 className="w-4 h-4" />
@@ -167,6 +167,16 @@ const CheckinsSection = () => {
     { label: 'Como você avalia sua adesão à dieta nesta semana?', field_type: 'scale_1_10', options: [], score_weight: 1.0, is_required: true }
   ]);
 
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const filteredTemplates = useMemo(() => {
+    if (!templates) return [];
+    return templates.filter(t => 
+      t.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      (t.description && t.description.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+  }, [templates, searchTerm]);
+
   const handleCreate = async (e) => {
     e.preventDefault();
     if (!name) return;
@@ -181,10 +191,33 @@ const CheckinsSection = () => {
 
   return (
     <>
-      <div className="flex justify-end mb-6">
-        <Button onClick={() => setIsCreateModalOpen(true)} className="bg-emerald-600 hover:bg-emerald-700">
-          <Plus className="w-4 h-4 mr-2" /> Novo Template de Check-in
-        </Button>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+          <div>
+              <h2 className="text-xl sm:text-2xl font-bold text-slate-800 flex items-center gap-2">
+                  <CheckSquare className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
+                  Templates de Check-ins
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-500 mt-1">
+                  Crie e gerencie formulários automáticos de acompanhamento.
+              </p>
+          </div>
+          <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+              <div className="relative flex-1 w-full sm:w-64">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Search className="h-4 w-4 text-slate-400" />
+                </div>
+                <input
+                  type="text"
+                  placeholder="Buscar check-ins..."
+                  className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              <Button onClick={() => setIsCreateModalOpen(true)} className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto">
+                  <Plus className="w-4 h-4 mr-2" /> Novo Check-in
+              </Button>
+          </div>
       </div>
 
       {isLoading && (
@@ -193,22 +226,28 @@ const CheckinsSection = () => {
         </div>
       )}
 
-      {!isLoading && (!templates || templates.length === 0) && (
+      {!isLoading && (!filteredTemplates || filteredTemplates.length === 0) && (
         <div className="bg-white rounded-xl border border-dashed border-slate-300 p-12 text-center flex flex-col items-center">
           <CheckSquare className="w-12 h-12 text-slate-300 mb-4" />
-          <h3 className="text-lg font-medium text-slate-700 mb-1">Nenhum check-in criado</h3>
+          <h3 className="text-lg font-medium text-slate-700 mb-1">
+            {searchTerm ? 'Nenhum check-in encontrado' : 'Nenhum check-in criado'}
+          </h3>
           <p className="text-sm text-slate-500 max-w-sm mb-6">
-            Crie formulários automáticos de check-in para acompanhar a adesão dos seus pacientes.
+            {searchTerm 
+              ? `Nenhum resultado para "${searchTerm}".`
+              : 'Crie formulários automáticos de check-in para acompanhar a adesão dos seus pacientes.'}
           </p>
-          <Button onClick={() => setIsCreateModalOpen(true)} className="bg-emerald-600 hover:bg-emerald-700">
-            <Plus className="w-4 h-4 mr-2" /> Começar agora
-          </Button>
+          {!searchTerm && (
+            <Button onClick={() => setIsCreateModalOpen(true)} className="bg-blue-600 hover:bg-blue-700">
+              <Plus className="w-4 h-4 mr-2" /> Começar agora
+            </Button>
+          )}
         </div>
       )}
 
-      {!isLoading && templates && templates.length > 0 && (
+      {!isLoading && filteredTemplates && filteredTemplates.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {templates.map((template) => (
+          {filteredTemplates.map((template) => (
             <Card key={template.id} className="flex flex-col border-slate-200 shadow-sm hover:shadow-md hover:border-emerald-200 transition-all duration-200">
               <CardHeader className="pb-3 bg-slate-50/60 border-b border-slate-100">
                 <div className="flex justify-between items-start">
@@ -388,8 +427,8 @@ export default function TemplatesPage() {
               onClick={() => { setActiveGroup(group.id); setSearchTerm(''); }}
               className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all border ${
                 isActive
-                  ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
-                  : 'bg-white text-slate-600 border-slate-200 hover:border-emerald-300 hover:text-emerald-700'
+                  ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                  : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300 hover:text-blue-700'
               }`}
             >
               <Icon className="w-4 h-4" />
@@ -402,6 +441,15 @@ export default function TemplatesPage() {
       {/* ── Grupo: Nutrição ── */}
       {activeGroup === 'nutrition' && (
         <>
+          <div className="mb-6">
+            <h2 className="text-xl sm:text-2xl font-bold text-slate-800 flex items-center gap-2">
+                <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
+                Templates de Nutrição
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-500 mt-1">
+                Gerencie seus protocolos de dietas, refeições e receitas.
+            </p>
+          </div>
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
             {/* Sub-abas */}
             <div className="flex space-x-1 bg-slate-100 p-1 rounded-xl w-full md:w-auto">
@@ -413,7 +461,7 @@ export default function TemplatesPage() {
                     key={tab.id}
                     onClick={() => { setActiveNutritionTab(tab.id); setSearchTerm(''); }}
                     className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all ${
-                      isActive ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-600 hover:text-slate-800 hover:bg-slate-200/50'
+                      isActive ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-800 hover:bg-slate-200/50'
                     }`}
                   >
                     <Icon className="w-4 h-4" />
@@ -434,13 +482,12 @@ export default function TemplatesPage() {
                   placeholder="Buscar templates..."
                   value={searchTerm}
                   onChange={e => setSearchTerm(e.target.value)}
-                  className="block w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  className="block w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
-              {/* Botão Novo */}
               <button
                 onClick={() => navigate(`/nutritionist/templates/new/${activeNutritionTab}`)}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg shadow-sm flex items-center gap-2 transition-colors font-medium text-sm whitespace-nowrap"
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow-sm flex items-center gap-2 transition-colors font-medium text-sm whitespace-nowrap"
               >
                 <Plus className="w-4 h-4" />
                 Novo Template
@@ -451,7 +498,7 @@ export default function TemplatesPage() {
           {/* Grid de Cards */}
           {loading ? (
             <div className="flex flex-col items-center justify-center py-20">
-              <Loader2 className="w-8 h-8 text-emerald-500 animate-spin mb-4" />
+              <Loader2 className="w-8 h-8 text-blue-500 animate-spin mb-4" />
               <p className="text-slate-500">Carregando templates...</p>
             </div>
           ) : filteredTemplates.length === 0 ? (
@@ -470,7 +517,7 @@ export default function TemplatesPage() {
               {!searchTerm && (
                 <button
                   onClick={() => navigate(`/nutritionist/templates/new/${activeNutritionTab}`)}
-                  className="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 text-sm"
+                  className="bg-blue-50 text-blue-700 hover:bg-blue-100 px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 text-sm"
                 >
                   <Plus className="w-4 h-4" /> Criar Novo Template
                 </button>
@@ -512,7 +559,7 @@ export default function TemplatesPage() {
                     key={tab.id}
                     onClick={() => setActiveFormsTab(tab.id)}
                     className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-2 text-sm font-medium rounded-lg transition-all ${
-                      isActive ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-600 hover:text-slate-800 hover:bg-slate-200/50'
+                      isActive ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-800 hover:bg-slate-200/50'
                     }`}
                   >
                     <Icon className="w-4 h-4" />

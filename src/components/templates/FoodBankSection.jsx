@@ -207,6 +207,16 @@ export default function FoodBankSection() {
 
   return (
     <>
+      <div className="mb-6">
+        <h2 className="text-xl sm:text-2xl font-bold text-slate-800 flex items-center gap-2">
+            <Database className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
+            Banco de Alimentos
+        </h2>
+        <p className="text-xs sm:text-sm text-slate-500 mt-1">
+            Pesquise alimentos nas principais tabelas e crie seus próprios itens.
+        </p>
+      </div>
+
       {/* ── Stats Cards (3) ─────────────────────────────────────────────── */}
       <div className="grid grid-cols-3 gap-3 mb-6">
         <Card className="border-slate-200 hover:border-slate-300 transition-colors">
@@ -271,11 +281,11 @@ export default function FoodBankSection() {
         {/* Botão de filtros combinados */}
         <Popover open={filterOpen} onOpenChange={setFilterOpen}>
           <PopoverTrigger asChild>
-            <Button variant="outline" className={`gap-2 border-slate-200 bg-white ${activeFilterCount > 0 ? 'border-emerald-400 text-emerald-700' : ''}`}>
+            <Button variant="outline" className={`gap-2 border-slate-200 bg-white ${activeFilterCount > 0 ? 'border-blue-400 text-blue-700' : ''}`}>
               <SlidersHorizontal className="w-4 h-4" />
               Filtros
               {activeFilterCount > 0 && (
-                <Badge className="bg-emerald-600 text-white text-xs px-1.5 py-0 h-4 min-w-4 rounded-full">
+                <Badge className="bg-blue-600 text-white text-xs px-1.5 py-0 h-4 min-w-4 rounded-full">
                   {activeFilterCount}
                 </Badge>
               )}
@@ -286,7 +296,7 @@ export default function FoodBankSection() {
             <div className="p-3 border-b border-slate-100 flex items-center justify-between">
               <span className="text-sm font-semibold text-slate-700">Filtros avançados</span>
               {activeFilterCount > 0 && (
-                <button onClick={clearFilters} className="text-xs text-emerald-600 hover:text-emerald-800 font-medium">
+                <button onClick={clearFilters} className="text-xs text-blue-600 hover:text-blue-800 font-medium">
                   Limpar tudo
                 </button>
               )}
@@ -302,8 +312,8 @@ export default function FoodBankSection() {
                     onClick={() => setCalFilter(prev => prev === r.id ? null : r.id)}
                     className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors ${
                       calFilter === r.id
-                        ? 'bg-emerald-600 text-white border-emerald-600'
-                        : 'bg-white text-slate-600 border-slate-200 hover:border-emerald-300'
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300'
                     }`}
                     title={r.desc}
                   >
@@ -323,8 +333,8 @@ export default function FoodBankSection() {
                     onClick={() => setMacroFilter(prev => prev === m.id ? null : m.id)}
                     className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors ${
                       macroFilter === m.id
-                        ? 'bg-emerald-600 text-white border-emerald-600'
-                        : 'bg-white text-slate-600 border-slate-200 hover:border-emerald-300'
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300'
                     }`}
                     title={m.desc}
                   >
@@ -346,8 +356,8 @@ export default function FoodBankSection() {
                     onClick={() => toggleGroup(g)}
                     className={`px-2 py-1 rounded-lg text-xs font-medium border transition-colors ${
                       groupFilters.includes(g)
-                        ? 'bg-emerald-600 text-white border-emerald-600'
-                        : 'bg-white text-slate-600 border-slate-200 hover:border-emerald-300'
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300'
                     }`}
                   >
                     {g}
@@ -358,7 +368,7 @@ export default function FoodBankSection() {
           </PopoverContent>
         </Popover>
 
-        <Button onClick={() => setCreateOpen(true)} className="bg-emerald-600 hover:bg-emerald-700 shrink-0">
+        <Button onClick={() => setCreateOpen(true)} className="bg-blue-600 hover:bg-blue-700 shrink-0">
           <Plus className="w-4 h-4 mr-1.5" /> Novo Alimento
         </Button>
       </div>
@@ -369,19 +379,19 @@ export default function FoodBankSection() {
           <span className="text-xs text-slate-500">{total.toLocaleString('pt-BR')} resultado{total !== 1 ? 's' : ''}:</span>
           {calFilter && (
             <button onClick={() => setCalFilter(null)}
-              className="flex items-center gap-1 text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full hover:bg-emerald-100">
+              className="flex items-center gap-1 text-xs bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-full hover:bg-blue-100">
               {CAL_RANGES.find(r => r.id === calFilter)?.label} <X className="w-3 h-3" />
             </button>
           )}
           {macroFilter && (
             <button onClick={() => setMacroFilter(null)}
-              className="flex items-center gap-1 text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full hover:bg-emerald-100">
+              className="flex items-center gap-1 text-xs bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-full hover:bg-blue-100">
               {MACRO_FILTERS.find(m => m.id === macroFilter)?.label} <X className="w-3 h-3" />
             </button>
           )}
           {groupFilters.map(g => (
             <button key={g} onClick={() => toggleGroup(g)}
-              className="flex items-center gap-1 text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full hover:bg-emerald-100">
+              className="flex items-center gap-1 text-xs bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-full hover:bg-blue-100">
               {g} <X className="w-3 h-3" />
             </button>
           ))}
@@ -411,14 +421,14 @@ export default function FoodBankSection() {
               onClick={() => { setActiveSource(tab.id); setPage(0); }}
               className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg transition-all ${
                 activeSource === tab.id
-                  ? 'bg-white text-emerald-700 shadow-sm'
+                  ? 'bg-white text-blue-700 shadow-sm'
                   : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200/50'
               }`}
             >
               {tab.label}
               {!statsLoading && count != null && (
                 <span className={`text-xs ${
-                  activeSource === tab.id ? 'text-emerald-500' : 'text-slate-400'
+                  activeSource === tab.id ? 'text-blue-500' : 'text-slate-400'
                 }`}>
                   ({count.toLocaleString('pt-BR')})
                 </span>
@@ -431,7 +441,7 @@ export default function FoodBankSection() {
       {/* ── Resultados ───────────────────────────────────────────────────── */}
       {loading ? (
         <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-7 h-7 animate-spin text-emerald-500" />
+          <Loader2 className="w-7 h-7 animate-spin text-blue-500" />
         </div>
       ) : foods.length === 0 ? (
         <div className="bg-white rounded-xl border border-dashed border-slate-300 p-12 text-center flex flex-col items-center">
@@ -441,7 +451,7 @@ export default function FoodBankSection() {
             {searchTerm ? `Nenhum resultado para "${searchTerm}".` : 'Tente ajustar os filtros ou a tabela selecionada.'}
           </p>
           {isCustom && (
-            <Button onClick={() => setCreateOpen(true)} className="bg-emerald-600 hover:bg-emerald-700">
+            <Button onClick={() => setCreateOpen(true)} className="bg-blue-600 hover:bg-blue-700">
               <Plus className="w-4 h-4 mr-2" /> Criar meu primeiro alimento
             </Button>
           )}
