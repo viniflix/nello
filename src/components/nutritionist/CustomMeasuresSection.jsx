@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import CustomMeasureFormDialog from '@/components/nutritionist/CustomMeasureFormDialog';
 import {
   Scale,
+  Search,
   Plus,
   Edit2,
   Trash2,
