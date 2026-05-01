@@ -14,6 +14,7 @@ import CheckinTemplateBuilder from '@/components/nutritionist/CheckinTemplateBui
 import MessageTemplatesSection from '@/components/templates/MessageTemplatesSection';
 import FoodBankSection from '@/components/templates/FoodBankSection';
 import CustomMeasuresSection from '@/components/nutritionist/CustomMeasuresSection';
+import TemplatesList from '@/pages/nutritionist/settings/anamnesis-templates/TemplatesList';
 import {
   FileText,
   Coffee,
@@ -319,72 +320,7 @@ const CheckinsSection = () => {
   );
 };
 
-// ─── Formulários: Seção "Em breve" ────────────────────────────────────────────
-const FormsSection = ({ navigate }) => (
-  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-    {/* Anamnese */}
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 flex flex-col">
-      <div className="flex items-center gap-3 mb-4">
-        <div className="p-2 bg-blue-50 rounded-lg">
-          <ClipboardList className="w-5 h-5 text-blue-600" />
-        </div>
-        <div>
-          <h3 className="font-semibold text-slate-800">Formulários de Anamnese</h3>
-          <span className="text-xs text-amber-600 font-medium bg-amber-50 px-2 py-0.5 rounded-full">Em Construção</span>
-        </div>
-      </div>
-      <p className="text-sm text-slate-500 flex-grow mb-5">
-        Crie e gerencie moldes personalizados de anamnese para aplicar nos primeiros atendimentos dos seus pacientes.
-      </p>
-      <Button
-        variant="outline"
-        className="w-full border-blue-200 text-blue-700 hover:bg-blue-50"
-        onClick={() => navigate('/nutritionist/settings/anamnesis-templates')}
-      >
-        <ExternalLink className="w-4 h-4 mr-2" />
-        Acessar Biblioteca de Formulários
-      </Button>
-    </div>
 
-    {/* Pré Consulta */}
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 flex flex-col opacity-60">
-      <div className="flex items-center gap-3 mb-4">
-        <div className="p-2 bg-slate-100 rounded-lg">
-          <Construction className="w-5 h-5 text-slate-400" />
-        </div>
-        <div>
-          <h3 className="font-semibold text-slate-700">Pré-Consulta</h3>
-          <span className="text-xs text-slate-500 font-medium bg-slate-100 px-2 py-0.5 rounded-full">Em breve</span>
-        </div>
-      </div>
-      <p className="text-sm text-slate-400 flex-grow mb-5">
-        Formulários enviados ao paciente antes da consulta para coleta antecipada de dados.
-      </p>
-      <Button variant="outline" className="w-full" disabled>
-        Em breve
-      </Button>
-    </div>
-
-    {/* Pós Consulta */}
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 flex flex-col opacity-60">
-      <div className="flex items-center gap-3 mb-4">
-        <div className="p-2 bg-slate-100 rounded-lg">
-          <Construction className="w-5 h-5 text-slate-400" />
-        </div>
-        <div>
-          <h3 className="font-semibold text-slate-700">Pós-Consulta</h3>
-          <span className="text-xs text-slate-500 font-medium bg-slate-100 px-2 py-0.5 rounded-full">Em breve</span>
-        </div>
-      </div>
-      <p className="text-sm text-slate-400 flex-grow mb-5">
-        Formulários de acompanhamento enviados após a consulta para monitorar a evolução.
-      </p>
-      <Button variant="outline" className="w-full" disabled>
-        Em breve
-      </Button>
-    </div>
-  </div>
-);
 
 // ─── Página Principal ──────────────────────────────────────────────────────────
 const GROUPS = [
@@ -401,15 +337,15 @@ const NUTRITION_TABS = [
 ];
 
 const FORMS_TABS = [
+  { id: 'forms', label: 'Formulários', icon: ClipboardList },
   { id: 'checkins', label: 'Check-ins', icon: CheckSquare },
   { id: 'messages', label: 'Modelos de Mensagem', icon: MessageSquare },
-  { id: 'forms', label: 'Formulários', icon: ClipboardList },
 ];
 
 export default function TemplatesPage() {
   const [activeGroup, setActiveGroup] = useState('nutrition');
   const [activeNutritionTab, setActiveNutritionTab] = useState('diet');
-  const [activeFormsTab, setActiveFormsTab] = useState('checkins');
+  const [activeFormsTab, setActiveFormsTab] = useState('forms');
   const [searchTerm, setSearchTerm] = useState('');
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -566,29 +502,31 @@ export default function TemplatesPage() {
       {activeGroup === 'forms' && (
         <>
           {/* Sub-abas */}
-          <div className="flex space-x-1 bg-slate-100 p-1 rounded-xl w-full md:w-auto mb-6">
-            {FORMS_TABS.map(tab => {
-              const Icon = tab.icon;
-              const isActive = activeFormsTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveFormsTab(tab.id)}
-                  className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-2 text-sm font-medium rounded-lg transition-all ${
-                    isActive ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-600 hover:text-slate-800 hover:bg-slate-200/50'
-                  }`}
-                >
-                  <Icon className="w-4 h-4" />
-                  {tab.label}
-                </button>
-              );
-            })}
+          <div className="flex flex-col md:flex-row justify-start items-start md:items-center gap-4 mb-6">
+            <div className="inline-flex flex-wrap space-x-1 bg-slate-100 p-1 rounded-xl w-full md:w-auto">
+              {FORMS_TABS.map(tab => {
+                const Icon = tab.icon;
+                const isActive = activeFormsTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveFormsTab(tab.id)}
+                    className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-2 text-sm font-medium rounded-lg transition-all ${
+                      isActive ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-600 hover:text-slate-800 hover:bg-slate-200/50'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4" />
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {/* Conteúdo dinâmico */}
           {activeFormsTab === 'checkins' && <CheckinsSection />}
           {activeFormsTab === 'messages' && <MessageTemplatesSection />}
-          {activeFormsTab === 'forms' && <FormsSection navigate={navigate} />}
+          {activeFormsTab === 'forms' && <TemplatesList />}
         </>
       )}
     </div>

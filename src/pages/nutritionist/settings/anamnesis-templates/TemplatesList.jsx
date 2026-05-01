@@ -16,7 +16,7 @@ export default function TemplatesList() {
     };
 
     return (
-        <div className="container mx-auto p-4 sm:p-6 max-w-7xl space-y-6 sm:space-y-8">
+        <div className="space-y-6 sm:space-y-8">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-xl sm:text-2xl font-bold text-slate-800 flex items-center gap-2">
@@ -27,7 +27,7 @@ export default function TemplatesList() {
                         Gerencie seus moldes e templates personalizados de anamnese.
                     </p>
                 </div>
-                <Button className="gap-2 bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto" onClick={() => navigate('new')}>
+                <Button className="gap-2 bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto" onClick={() => navigate('/nutritionist/settings/anamnesis-templates/new')}>
                     <Plus className="w-4 h-4" />
                     Novo Formulário
                 </Button>
@@ -59,7 +59,7 @@ export default function TemplatesList() {
                                 </span>
                                 <div className="flex items-center gap-1">
                                     <button
-                                        onClick={() => navigate(`${template.id}/edit`)}
+                                        onClick={() => navigate(`/nutritionist/settings/anamnesis-templates/${template.id}/edit`)}
                                         className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
                                         title="Editar"
                                     >
@@ -87,7 +87,7 @@ export default function TemplatesList() {
                         Você pode criar formulários do zero ou iniciar rapidamente adicionando nossos templates base ao seu consultório.
                     </p>
                     <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
-                        <Button variant="outline" className="gap-2 w-full sm:w-auto" onClick={() => navigate('new')}>
+                        <Button variant="outline" className="gap-2 w-full sm:w-auto" onClick={() => navigate('/nutritionist/settings/anamnesis-templates/new')}>
                             <Plus className="w-4 h-4" />
                             Criar do zero
                         </Button>
