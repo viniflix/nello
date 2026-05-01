@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useResolvedPatientId } from '@/hooks/useResolvedPatientId';
-import { ArrowLeft, ClipboardList, Plus, Calendar, FileText, ChevronRight, Loader2, AlertCircle, Trash2, MoreVertical } from 'lucide-react';
+import { ArrowLeft, ClipboardList, Plus, Calendar, FileText, ChevronRight, Loader2, AlertCircle, Trash2, MoreVertical, TrendingUp, List, Send } from 'lucide-react';
+import { AnamnesisEvolutionChart } from '@/components/anamnesis/AnamnesisEvolutionChart';
+import { AnamnesisLinkModal } from '@/components/anamnesis/AnamnesisLinkModal';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -62,6 +64,10 @@ const PatientAnamnesisList = () => {
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [anamnesisToDelete, setAnamnesisToDelete] = useState(null);
     const [deleting, setDeleting] = useState(false);
+    // Sprint H: toggle entre lista e evolução
+    const [viewMode, setViewMode] = useState('list');
+    // Sprint J: Modal de envio de link
+    const [linkModalOpen, setLinkModalOpen] = useState(false);
 
     // Substituir URL por slug quando carregado com UUID (para URLs legíveis)
     useEffect(() => {
@@ -214,6 +220,10 @@ const PatientAnamnesisList = () => {
             completed: {
                 label: 'Completa',
                 color: 'bg-green-100 text-green-800 border-green-300'
+            },
+            awaiting_patient: {
+                label: 'Aguardando Paciente',
+                color: 'bg-amber-100 text-amber-800 border-amber-300'
             }
         };
 
@@ -409,18 +419,52 @@ const PatientAnamnesisList = () => {
                         )}
                     </div>
 
-                    {/* Botão Criar Nova (só aparece se já houver anamneses) */}
+                    {/* Botão Criar Nova + toggle de visualização */}
                     {anamnesisList.length > 0 && (
-                        <Button
-                            onClick={handleCreateNew}
-                            size="lg"
-                            className="gap-2"
-                        >
-                            <Plus className="w-5 h-5" />
-                            Nova Anamnese
-                        </Button>
+                        <div className="flex items-center gap-2">
+                            {/* Toggle Lista / Evolução */}
+                            <div className="flex rounded-lg border border-slate-200 overflow-hidden">
+                                <button
+                                    onClick={() => setViewMode('list')}
+                                    className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold transition-colors ${
+                                        viewMode === 'list' ? 'bg-slate-800 text-white' : 'bg-white text-slate-500 hover:bg-slate-50'
+                                    }`}
+                                >
+                                    <List className="w-3.5 h-3.5" /> Lista
+                                </button>
+                                <button
+                                    onClick={() => setViewMode('evolution')}
+                                    className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold transition-colors ${
+                                        viewMode === 'evolution' ? 'bg-slate-800 text-white' : 'bg-white text-slate-500 hover:bg-slate-50'
+                                    }`}
+                                >
+                                    <TrendingUp className="w-3.5 h-3.5" /> Evolução
+                                </button>
+                            </div>
+
+                            <Button variant="outline" onClick={() => setLinkModalOpen(true)} className="gap-2 bg-white hidden sm:flex">
+                                <Send className="w-4 h-4" />
+                                Solicitar
+                            </Button>
+
+                            <Button onClick={handleCreateNew} size="lg" className="gap-2">
+                                <Plus className="w-5 h-5" />
+                                <span className="hidden sm:inline">Nova Anamnese</span>
+                                <span className="sm:hidden">Nova</span>
+                            </Button>
+                        </div>
                     )}
                 </div>
+
+                {/* Botão solicitar mobile */}
+                {anamnesisList.length > 0 && (
+                    <div className="sm:hidden w-full">
+                        <Button variant="outline" onClick={() => setLinkModalOpen(true)} className="gap-2 bg-white w-full">
+                            <Send className="w-4 h-4" />
+                            Solicitar Preenchimento ao Paciente
+                        </Button>
+                    </div>
+                )}
 
                 {/* Erro */}
                 {error && (
@@ -430,8 +474,20 @@ const PatientAnamnesisList = () => {
                     </Alert>
                 )}
 
-                {/* Lista de Anamneses */}
-                {anamnesisList.length === 0 ? (
+                {/* Lista de Anamneses ou Evolução */}
+                {viewMode === 'evolution' ? (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2 text-base">
+                                <TrendingUp className="w-5 h-5 text-[#5f6f52]" />
+                                Evolução dos Indicadores
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <AnamnesisEvolutionChart patientId={patientId} />
+                        </CardContent>
+                    </Card>
+                ) : anamnesisList.length === 0 ? (
                     <EmptyState />
                 ) : (
                     <div className="space-y-4">
@@ -483,6 +539,14 @@ const PatientAnamnesisList = () => {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            {/* Sprint J: Modal para link de envio externo */}
+            <AnamnesisLinkModal 
+                open={linkModalOpen}
+                onOpenChange={setLinkModalOpen}
+                patientId={patientId}
+                patientName={patient?.full_name}
+            />
         </div>
     );
 };

@@ -75,6 +75,7 @@ import PlanTargetMonitor from '@/components/meal-plan/PlanTargetMonitor';
 import NotificationCenter from '@/components/meal-plan/NotificationCenter';
 import { getPatientModuleSyncFlags, clearPatientModuleSyncFlags } from '@/lib/supabase/anthropometry-queries';
 import { useMealPlan } from '@/hooks/useMealPlan';
+import { MealPlanAlertsBar } from '@/components/anamnesis/MealPlanAlertsBar';
 
 const MealPlanPage = () => {
     const { patientId, paramValue } = useResolvedPatientId();
@@ -890,6 +891,9 @@ const MealPlanPage = () => {
 
     return (
         <div className={`container mx-auto px-4 py-6 sm:py-8 max-w-6xl transition-opacity duration-200 ${isFetching ? 'opacity-70 pointer-events-none' : 'opacity-100'}`}>
+            {/* Sprint D: Barra de alertas clínicos da anamnese */}
+            <MealPlanAlertsBar patientId={patientId} />
+
             {/* Header */}
             <div className="flex flex-col gap-4 mb-6">
                 <div className="flex items-center justify-between">

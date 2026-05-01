@@ -73,7 +73,7 @@ const TabContentClinical = ({ patientId, patientData, modulesStatus = {} }) => {
             return (
                 <Card
                     className="border-l-4 border-l-[#c4661f] bg-[#fefae0]/30 hover:shadow-md transition-all cursor-pointer h-full"
-                    onClick={() => navigate(patientRoute(patient, 'anamnese'))}
+                    onClick={() => navigate(patientRoute(patient, 'anamnesis'))}
                 >
                     <CardContent className="py-8">
                         <div className="flex items-start gap-4">
@@ -112,7 +112,7 @@ const TabContentClinical = ({ patientId, patientData, modulesStatus = {} }) => {
         return (
             <Card
                 className="border-l-4 border-l-[#5f6f52] dark:border-l-[#a9b388] hover:shadow-xl transition-all cursor-pointer h-full"
-                onClick={() => navigate(patientRoute(patient, 'anamnese'))}
+                onClick={() => navigate(patientRoute(patient, 'anamnesis'))}
             >
                 <CardHeader className="pb-3">
                     <div className="flex items-center gap-2">

@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import PatientUpdatesWidget from '@/components/nutritionist/PatientUpdatesWidget';
 import NutritionistActivityFeed from '@/components/nutritionist/NutritionistActivityFeed';
+import { PendingAnamnesisWidget } from '@/components/anamnesis/PendingAnamnesisWidget';
 import { toPortugueseError } from '@/lib/utils/errorMessages';
 import { format, parseISO, isToday, isTomorrow, isThisWeek } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -613,6 +614,8 @@ export default function NutritionistDashboard() {
               />
             </div>
             <PatientUpdatesWidget />
+            {/* Sprint G: Anamneses aguardando resposta */}
+            <PendingAnamnesisWidget />
           </div>
 
           {/* Coluna Principal - Desktop à esquerda, Mobile no início */}

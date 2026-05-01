@@ -4,7 +4,7 @@ import { supabase } from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Bell, Check, Award } from 'lucide-react';
+import { Bell, Check, Award, ClipboardCheck } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
@@ -65,6 +65,14 @@ const NotificationCard = ({ notification, onMarkAsRead, user }) => {
                     title: `Conquista: ${content.name}`,
                     description: content.description,
                     action: () => navigate('/patient/profile', { state: { tab: 'achievements' } }),
+                };
+                break;
+            case 'anamnesis_completed':
+                icon = <ClipboardCheck className="w-5 h-5 text-green-600" />;
+                details = {
+                    title: notification.title || 'Anamnese Respondida',
+                    description: notification.message || 'Um paciente respondeu um questionário via link externo.',
+                    action: () => notification.link_url ? navigate(notification.link_url) : null,
                 };
                 break;
             default:

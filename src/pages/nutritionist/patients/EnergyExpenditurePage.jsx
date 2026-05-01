@@ -26,6 +26,7 @@ import {
   logActivityEvent
 } from '@/lib/supabase/patient-queries';
 import { getPatientModuleSyncFlags, clearPatientModuleSyncFlags } from '@/lib/supabase/anthropometry-queries';
+import { useClinicalFlags } from '@/hooks/useClinicalFlags';
 import {
   getInitialBiometryForEnergy,
   getLatestEnergyCalculation,
@@ -87,6 +88,8 @@ export default function EnergyExpenditurePage() {
   const [suggestedGoal, setSuggestedGoal] = useState(null);
   const [goalSuggestionSource, setGoalSuggestionSource] = useState(null);
   const [syncFlags, setSyncFlags] = useState(null);
+  // Sprint E: Clinical flags hook (source of truth para level de atividade)
+  const { flags: clinicalFlags } = useClinicalFlags(patientId);
 
   const [protocols, setProtocols] = useState([]);
   const [selectedProtocolData, setSelectedProtocolData] = useState(null);
@@ -218,7 +221,23 @@ export default function EnergyExpenditurePage() {
         getActiveGoalForEnergy(patientId)
       ]);
 
-      if (anamnesisResult?.data?.exerciseFrequency) {
+      // Sprint E: Prioridade 1 — clinical_flags.activity_level (dado limpo e tipado)
+      const activityFromFlags = clinicalFlags?.activity_level?.value;
+      if (activityFromFlags) {
+        const levelMap = {
+          sedentary:    { factor: 1.2,   label: 'Sedentário (flags clínicas)' },
+          light:        { factor: 1.375, label: 'Levemente Ativo (flags clínicas)' },
+          moderate:     { factor: 1.55,  label: 'Moderadamente Ativo (flags clínicas)' },
+          active:       { factor: 1.725, label: 'Muito Ativo (flags clínicas)' },
+          very_active:  { factor: 1.9,   label: 'Extremamente Ativo (flags clínicas)' },
+        };
+        const mapped = levelMap[String(activityFromFlags).toLowerCase()];
+        if (mapped) {
+          setActivityFactor(mapped.factor);
+          setSuggestedActivity(mapped.label);
+        }
+      // Prioridade 2 — texto livre da anamnese (legado)
+      } else if (anamnesisResult?.data?.exerciseFrequency) {
         const freq = String(anamnesisResult.data.exerciseFrequency).toLowerCase();
         if (freq.includes('sedent') || freq.includes('não') || freq.includes('nao') || freq === '0') {
           setActivityFactor(1.2);
@@ -544,7 +563,12 @@ export default function EnergyExpenditurePage() {
               </CardHeader>
               <CardContent>
                 <ActivityLevelSelector value={activityFactor} onChange={setActivityFactor} />
-                {suggestedActivity && <Badge variant="outline" className="mt-2 text-xs">Sugestão: {suggestedActivity}</Badge>}
+                {suggestedActivity && (
+                  <div className="mt-3 flex items-center gap-2 p-2.5 rounded-lg bg-blue-50 border border-blue-100">
+                    <span className="text-xs text-blue-600 font-medium">💡 Sugestão automática:</span>
+                    <Badge variant="outline" className="text-xs bg-white border-blue-200 text-blue-700">{suggestedActivity}</Badge>
+                  </div>
+                )}
               </CardContent>
             </Card>
 

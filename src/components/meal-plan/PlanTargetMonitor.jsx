@@ -29,7 +29,7 @@ const PlanTargetMonitor = ({
     patientId,
     patientSlugOrId,
     energyCalculation = null 
-}) {
+}) => {
     const navigate = useNavigate();
     const patientSegment = patientSlugOrId ?? patientId;
 

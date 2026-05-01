@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Calendar as CalendarIcon, Plus, Clock, User, Edit, Trash2, Filter, CalendarDays, Eye, X, Search, ChevronLeft, ChevronRight, FileDown } from 'lucide-react';
+import { Calendar as CalendarIcon, Plus, Clock, User, Edit, Trash2, Filter, CalendarDays, Eye, X, Search, ChevronLeft, ChevronRight, FileDown, ClipboardList } from 'lucide-react';
+import { AnamnesisLinkModal } from '@/components/anamnesis/AnamnesisLinkModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/customSupabaseClient';
 import { Button } from '@/components/ui/button';
@@ -43,6 +44,8 @@ export default function AgendaPage() {
     const [exportWeekStart, setExportWeekStart] = useState(startOfWeek(new Date(), { locale: ptBR }));
     const [exportMonth, setExportMonth] = useState(new Date());
     const [askToRegisterPatient, setAskToRegisterPatient] = useState({ isOpen: false, name: '' });
+    // Sprint F: Modal de envio de anamnese
+    const [anamnesisModal, setAnamnesisModal] = useState({ open: false, patientId: null, patientName: '' });
 
     const normalizeAppointment = useCallback((appointment) => {
         const startValue = appointment?.start_time || appointment?.appointment_time || null;
@@ -808,15 +811,30 @@ export default function AgendaPage() {
                                                                 {/* Ações - Compactas */}
                                                                 <div className="flex gap-1 lg:gap-2 flex-shrink-0">
                                                                     {appt.patient_id ? (
-                                                                        <Button
-                                                                            variant="ghost"
-                                                                            size="icon"
-                                                                            onClick={() => navigate(`/nutritionist/patients/${appt.patient_id}/hub`)}
-                                                                            className="h-8 w-8 lg:h-9 lg:w-9 hover:bg-blue-50 hover:text-blue-600"
-                                                                            title="Ver detalhes do paciente"
-                                                                        >
-                                                                            <Eye className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
-                                                                        </Button>
+                                                                        <>
+                                                                            <Button
+                                                                                variant="ghost"
+                                                                                size="icon"
+                                                                                onClick={() => navigate(`/nutritionist/patients/${appt.patient_id}/hub`)}
+                                                                                className="h-8 w-8 lg:h-9 lg:w-9 hover:bg-blue-50 hover:text-blue-600"
+                                                                                title="Ver detalhes do paciente"
+                                                                            >
+                                                                                <Eye className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+                                                                            </Button>
+                                                                            <Button
+                                                                                variant="ghost"
+                                                                                size="icon"
+                                                                                onClick={() => setAnamnesisModal({
+                                                                                    open: true,
+                                                                                    patientId: appt.patient_id,
+                                                                                    patientName: appt.patient?.name || 'Paciente',
+                                                                                })}
+                                                                                className="h-8 w-8 lg:h-9 lg:w-9 hover:bg-green-50 hover:text-green-600"
+                                                                                title="Enviar formulário de anamnese"
+                                                                            >
+                                                                                <ClipboardList className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+                                                                            </Button>
+                                                                        </>
                                                                     ) : (
                                                                         <Button
                                                                             variant="ghost"
@@ -1151,6 +1169,14 @@ export default function AgendaPage() {
                         </AlertDialogFooter>
                     </AlertDialogContent>
                 </AlertDialog>
+
+                {/* Sprint F: Modal de envio de anamnese */}
+                <AnamnesisLinkModal
+                    open={anamnesisModal.open}
+                    onOpenChange={(val) => setAnamnesisModal(prev => ({ ...prev, open: val }))}
+                    patientId={anamnesisModal.patientId}
+                    patientName={anamnesisModal.patientName}
+                />
             </motion.div>
         </div>
     );
