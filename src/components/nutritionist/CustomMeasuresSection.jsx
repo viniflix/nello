@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   useCustomMeasures,
   useCreateCustomMeasure,
@@ -113,6 +113,7 @@ const CustomMeasuresSection = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingMeasure, setEditingMeasure] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
   const {
     data: customMeasures,
@@ -128,10 +129,26 @@ const CustomMeasuresSection = () => {
   const { mutateAsync: updateMeasure, isPending: isUpdating } = useUpdateCustomMeasure();
   const { mutateAsync: deleteMeasure } = useDeleteCustomMeasure();
 
+  const filteredCustomMeasures = useMemo(() => {
+    if (!customMeasures) return [];
+    return customMeasures.filter(m => 
+      m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (m.description && m.description.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+  }, [customMeasures, searchTerm]);
+
+  const filteredSystemMeasures = useMemo(() => {
+    if (!systemMeasures) return [];
+    return systemMeasures.filter(m => 
+      m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (m.description && m.description.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+  }, [systemMeasures, searchTerm]);
+
   const isSaving = isCreating || isUpdating;
 
-  // Agrupar medidas do sistema por categoria
-  const groupedSystem = systemMeasures.reduce((acc, m) => {
+  // Agrupar medidas filtradas por categoria
+  const groupedSystem = filteredSystemMeasures.reduce((acc, m) => {
     const cat = m.category || 'other';
     if (!acc[cat]) acc[cat] = [];
     acc[cat].push(m);
@@ -180,8 +197,8 @@ const CustomMeasuresSection = () => {
   };
 
   const tabs = [
-    { id: 'custom', label: 'Minhas Medidas', count },
-    { id: 'system', label: 'Medidas do Sistema', count: systemMeasures.length },
+    { id: 'custom', label: 'Minhas Medidas', count: filteredCustomMeasures.length },
+    { id: 'system', label: 'Medidas do Sistema', count: filteredSystemMeasures.length },
   ];
 
   return (
@@ -196,26 +213,42 @@ const CustomMeasuresSection = () => {
         </p>
       </div>
 
-      {/* Sub-abas */}
-      <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl w-fit mb-6">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all ${
-              activeTab === tab.id
-                ? 'bg-white text-blue-600 shadow-sm'
-                : 'text-slate-600 hover:text-slate-800'
-            }`}
-          >
-            {tab.label}
-            <span className={`text-xs px-1.5 py-0.5 rounded-full font-semibold ${
-              activeTab === tab.id ? 'bg-blue-100 text-blue-700' : 'bg-slate-200 text-slate-500'
-            }`}>
-              {tab.count}
-            </span>
-          </button>
-        ))}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
+        {/* Sub-abas */}
+        <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl w-full sm:w-fit">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all ${
+                activeTab === tab.id
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-slate-600 hover:text-slate-800'
+              }`}
+            >
+              {tab.label}
+              <span className={`text-xs px-1.5 py-0.5 rounded-full font-semibold ${
+                activeTab === tab.id ? 'bg-blue-100 text-blue-700' : 'bg-slate-200 text-slate-500'
+              }`}>
+                {tab.count}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {/* Busca */}
+        <div className="relative flex-1 w-full sm:w-64">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <Search className="h-4 w-4 text-slate-400" />
+          </div>
+          <input
+            type="text"
+            placeholder="Buscar medida..."
+            className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
       </div>
 
       {/* ── Tab: Minhas Medidas ── */}
@@ -237,7 +270,7 @@ const CustomMeasuresSection = () => {
             <Button
               onClick={handleOpenCreate}
               disabled={hasReachedLimit}
-              className="bg-blue-600 hover:bg-blue-700"
+              className="bg-emerald-600 hover:bg-emerald-700"
             >
               <Plus className="w-4 h-4 mr-2" />
               Nova Medida
@@ -252,28 +285,32 @@ const CustomMeasuresSection = () => {
           )}
 
           {/* Empty State */}
-          {!loadingCustom && customMeasures.length === 0 && (
+          {!loadingCustom && filteredCustomMeasures.length === 0 && (
             <div className="bg-white rounded-xl border border-dashed border-slate-300 p-12 text-center flex flex-col items-center">
               <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mb-4">
                 <Scale className="w-8 h-8 text-blue-400" />
               </div>
               <h3 className="text-base font-semibold text-slate-700 mb-1">
-                Nenhuma medida personalizada
+                {searchTerm ? 'Nenhuma medida encontrada' : 'Nenhuma medida personalizada'}
               </h3>
               <p className="text-sm text-slate-500 max-w-xs mb-5">
-                Crie medidas caseiras com equivalência em gramas para usar nos seus planos alimentares.
+                {searchTerm 
+                  ? `Nenhum resultado para "${searchTerm}".`
+                  : 'Crie medidas caseiras com equivalência em gramas para usar nos seus planos alimentares.'}
               </p>
-              <Button onClick={handleOpenCreate} className="bg-blue-600 hover:bg-blue-700">
-                <Plus className="w-4 h-4 mr-2" />
-                Criar Primeira Medida
-              </Button>
+              {!searchTerm && (
+                <Button onClick={handleOpenCreate} className="bg-emerald-600 hover:bg-emerald-700">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Criar Primeira Medida
+                </Button>
+              )}
             </div>
           )}
 
           {/* Grid de cards */}
-          {!loadingCustom && customMeasures.length > 0 && (
+          {!loadingCustom && filteredCustomMeasures.length > 0 && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {customMeasures.map((m) => (
+              {filteredCustomMeasures.map((m) => (
                 <CustomMeasureCard
                   key={m.id}
                   measure={m}

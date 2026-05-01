@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, ClipboardList, Edit2, Trash2, Loader2, Play } from 'lucide-react';
+import { Plus, ClipboardList, Edit2, Trash2, Loader2, Play, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAnamnesisTemplates } from '@/hooks/useAnamnesisTemplates';
 
@@ -8,6 +8,15 @@ export default function TemplatesList() {
     const navigate = useNavigate();
     const { useTemplates, deleteTemplate, seedBaseTemplates } = useAnamnesisTemplates();
     const { data: templates, isLoading } = useTemplates();
+    const [searchTerm, setSearchTerm] = React.useState('');
+
+    const filteredTemplates = React.useMemo(() => {
+        if (!templates) return [];
+        return templates.filter(t => 
+            t.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+            (t.description && t.description.toLowerCase().includes(searchTerm.toLowerCase()))
+        );
+    }, [templates, searchTerm]);
 
     const handleDelete = async (id) => {
         if(window.confirm("Deseja realmente excluir este formulário? Essa ação não afeta pacientes que já responderam, mas o molde será perdido.")) {
@@ -27,19 +36,33 @@ export default function TemplatesList() {
                         Gerencie seus moldes e templates personalizados de anamnese.
                     </p>
                 </div>
-                <Button className="gap-2 bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto" onClick={() => navigate('/nutritionist/settings/anamnesis-templates/new')}>
-                    <Plus className="w-4 h-4" />
-                    Novo Formulário
-                </Button>
+                <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+                    <div className="relative flex-1 w-full sm:w-64">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <Search className="h-4 w-4 text-slate-400" />
+                        </div>
+                        <input
+                            type="text"
+                            placeholder="Buscar formulário..."
+                            className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+                    <Button className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white w-full sm:w-auto shrink-0" onClick={() => navigate('/nutritionist/settings/anamnesis-templates/new')}>
+                        <Plus className="w-4 h-4" />
+                        Novo Formulário
+                    </Button>
+                </div>
             </div>
 
             {isLoading ? (
                 <div className="flex justify-center py-20">
                     <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
                 </div>
-            ) : templates && templates.length > 0 ? (
+            ) : filteredTemplates && filteredTemplates.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {templates.map(template => (
+                    {filteredTemplates.map(template => (
                         <div key={template.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-200 transition-all flex flex-col h-full p-5 gap-3">
                             <div className="flex justify-between items-start">
                                 <div className="p-2 bg-blue-50 rounded-lg text-blue-600">
@@ -82,11 +105,16 @@ export default function TemplatesList() {
             ) : (
                 <div className="bg-white border border-dashed border-slate-300 rounded-2xl p-6 sm:p-12 text-center flex flex-col items-center mx-auto max-w-2xl">
                     <ClipboardList className="w-10 h-10 sm:w-12 sm:h-12 text-slate-300 mb-4" />
-                    <h3 className="text-base sm:text-lg font-medium text-slate-700 mb-2">Sua biblioteca está vazia</h3>
+                    <h3 className="text-base sm:text-lg font-medium text-slate-700 mb-2">
+                        {searchTerm ? 'Nenhum formulário encontrado' : 'Sua biblioteca está vazia'}
+                    </h3>
                     <p className="text-xs sm:text-sm text-slate-500 max-w-md mb-6">
-                        Você pode criar formulários do zero ou iniciar rapidamente adicionando nossos templates base ao seu consultório.
+                        {searchTerm 
+                            ? `Nenhum resultado para "${searchTerm}".`
+                            : 'Você pode criar formulários do zero ou iniciar rapidamente adicionando nossos templates base ao seu consultório.'}
                     </p>
-                    <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+                    {!searchTerm && (
+                        <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
                         <Button variant="outline" className="gap-2 w-full sm:w-auto" onClick={() => navigate('/nutritionist/settings/anamnesis-templates/new')}>
                             <Plus className="w-4 h-4" />
                             Criar do zero
@@ -100,6 +128,7 @@ export default function TemplatesList() {
                             Adicionar Templates Base
                         </Button>
                     </div>
+                    )}
                 </div>
             )}
         </div>

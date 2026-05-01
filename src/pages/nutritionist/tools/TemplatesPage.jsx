@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { useTemplates } from '@/hooks/useTemplates';
 import { useCheckins } from '@/hooks/useCheckins';
@@ -214,7 +214,7 @@ const CheckinsSection = () => {
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
-              <Button onClick={() => setIsCreateModalOpen(true)} className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto">
+              <Button onClick={() => setIsCreateModalOpen(true)} className="bg-emerald-600 hover:bg-emerald-700 w-full sm:w-auto">
                   <Plus className="w-4 h-4 mr-2" /> Novo Check-in
               </Button>
           </div>
@@ -238,7 +238,7 @@ const CheckinsSection = () => {
               : 'Crie formulários automáticos de check-in para acompanhar a adesão dos seus pacientes.'}
           </p>
           {!searchTerm && (
-            <Button onClick={() => setIsCreateModalOpen(true)} className="bg-blue-600 hover:bg-blue-700">
+            <Button onClick={() => setIsCreateModalOpen(true)} className="bg-emerald-600 hover:bg-emerald-700">
               <Plus className="w-4 h-4 mr-2" /> Começar agora
             </Button>
           )}
@@ -382,9 +382,29 @@ const FORMS_TABS = [
 ];
 
 export default function TemplatesPage() {
-  const [activeGroup, setActiveGroup] = useState('nutrition');
-  const [activeNutritionTab, setActiveNutritionTab] = useState('diet');
-  const [activeFormsTab, setActiveFormsTab] = useState('forms');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeGroup = searchParams.get('group') || 'nutrition';
+  const activeNutritionTab = searchParams.get('ntab') || 'diet';
+  const activeFormsTab = searchParams.get('ftab') || 'forms';
+  
+  const setActiveGroup = (group) => {
+    const params = new URLSearchParams(searchParams);
+    params.set('group', group);
+    setSearchParams(params, { replace: true });
+  };
+  
+  const setActiveNutritionTab = (tab) => {
+    const params = new URLSearchParams(searchParams);
+    params.set('ntab', tab);
+    setSearchParams(params, { replace: true });
+  };
+  
+  const setActiveFormsTab = (tab) => {
+    const params = new URLSearchParams(searchParams);
+    params.set('ftab', tab);
+    setSearchParams(params, { replace: true });
+  };
+
   const [searchTerm, setSearchTerm] = useState('');
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -427,8 +447,8 @@ export default function TemplatesPage() {
               onClick={() => { setActiveGroup(group.id); setSearchTerm(''); }}
               className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all border ${
                 isActive
-                  ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                  : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300 hover:text-blue-700'
+                  ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                  : 'bg-white text-slate-600 border-slate-200 hover:border-emerald-300 hover:text-emerald-700'
               }`}
             >
               <Icon className="w-4 h-4" />
@@ -479,15 +499,19 @@ export default function TemplatesPage() {
                 </div>
                 <input
                   type="text"
-                  placeholder="Buscar templates..."
+                  placeholder={
+                    activeNutritionTab === 'diet' ? 'Buscar dieta...' :
+                    activeNutritionTab === 'meal' ? 'Buscar refeição...' :
+                    'Buscar receita...'
+                  }
                   value={searchTerm}
                   onChange={e => setSearchTerm(e.target.value)}
-                  className="block w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="block w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                 />
               </div>
               <button
                 onClick={() => navigate(`/nutritionist/templates/new/${activeNutritionTab}`)}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow-sm flex items-center gap-2 transition-colors font-medium text-sm whitespace-nowrap"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg shadow-sm flex items-center gap-2 transition-colors font-medium text-sm whitespace-nowrap"
               >
                 <Plus className="w-4 h-4" />
                 Novo Template
@@ -517,7 +541,7 @@ export default function TemplatesPage() {
               {!searchTerm && (
                 <button
                   onClick={() => navigate(`/nutritionist/templates/new/${activeNutritionTab}`)}
-                  className="bg-blue-50 text-blue-700 hover:bg-blue-100 px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 text-sm"
+                  className="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 text-sm"
                 >
                   <Plus className="w-4 h-4" /> Criar Novo Template
                 </button>

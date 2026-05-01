@@ -268,13 +268,16 @@ export default function FoodBankSection() {
       {/* ── Toolbar ──────────────────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row gap-2 mb-3">
         {/* Busca */}
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-          <Input
+        <div className="relative flex-1 w-full sm:w-auto">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <Search className="h-4 w-4 text-slate-400" />
+          </div>
+          <input
+            type="text"
             placeholder="Buscar por nome, grupo ou descrição..."
+            className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
             value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            className="pl-9 bg-white border-slate-200"
+            onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
 
@@ -368,7 +371,7 @@ export default function FoodBankSection() {
           </PopoverContent>
         </Popover>
 
-        <Button onClick={() => setCreateOpen(true)} className="bg-blue-600 hover:bg-blue-700 shrink-0">
+        <Button onClick={() => setCreateOpen(true)} className="bg-emerald-600 hover:bg-emerald-700 shrink-0">
           <Plus className="w-4 h-4 mr-1.5" /> Novo Alimento
         </Button>
       </div>
@@ -451,7 +454,7 @@ export default function FoodBankSection() {
             {searchTerm ? `Nenhum resultado para "${searchTerm}".` : 'Tente ajustar os filtros ou a tabela selecionada.'}
           </p>
           {isCustom && (
-            <Button onClick={() => setCreateOpen(true)} className="bg-blue-600 hover:bg-blue-700">
+            <Button onClick={() => setCreateOpen(true)} className="bg-emerald-600 hover:bg-emerald-700">
               <Plus className="w-4 h-4 mr-2" /> Criar meu primeiro alimento
             </Button>
           )}

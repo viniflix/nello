@@ -48,7 +48,7 @@ export default function TemplateBuilder() {
                 if (data.sections?.length > 0) setActiveSectionId(data.sections[0].id);
             }).catch(err => {
                 toast({ title: 'Erro', description: 'Template não encontrado', variant: 'destructive' });
-                navigate('/nutritionist/settings/anamnesis-templates');
+                navigate('/nutritionist/tools/protocols?group=forms&ftab=forms');
             });
         } else {
             // New Template defaults
@@ -69,7 +69,7 @@ export default function TemplateBuilder() {
                 await updateTemplate.mutateAsync({ id: templateId, title, description, sections });
             } else {
                 await createTemplate.mutateAsync({ title, description, sections });
-                navigate('/nutritionist/settings/anamnesis-templates');
+                navigate('/nutritionist/tools/protocols?group=forms&ftab=forms');
             }
         } finally {
             setIsSaving(false);
