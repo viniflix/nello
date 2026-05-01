@@ -48,7 +48,7 @@ export default function TemplateBuilder() {
                 if (data.sections?.length > 0) setActiveSectionId(data.sections[0].id);
             }).catch(err => {
                 toast({ title: 'Erro', description: 'Template não encontrado', variant: 'destructive' });
-                navigate('/nutritionist/tools/protocols?group=forms&ftab=forms');
+                navigate('/nutritionist/templates?group=forms&ftab=forms');
             });
         } else {
             // New Template defaults
@@ -69,7 +69,7 @@ export default function TemplateBuilder() {
                 await updateTemplate.mutateAsync({ id: templateId, title, description, sections });
             } else {
                 await createTemplate.mutateAsync({ title, description, sections });
-                navigate('/nutritionist/tools/protocols?group=forms&ftab=forms');
+                navigate('/nutritionist/templates?group=forms&ftab=forms');
             }
         } finally {
             setIsSaving(false);
@@ -159,7 +159,7 @@ export default function TemplateBuilder() {
         <div className="container mx-auto p-4 sm:p-6 max-w-[1400px] min-h-[calc(100vh-80px)] lg:h-[calc(100vh-80px)] flex flex-col">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 shrink-0">
                 <div className="flex items-center gap-4">
-                    <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
+                    <Button variant="ghost" size="sm" onClick={() => navigate('/nutritionist/templates?group=forms&ftab=forms')}>
                         <ArrowLeft className="w-4 h-4 mr-2" />
                         Voltar
                     </Button>
