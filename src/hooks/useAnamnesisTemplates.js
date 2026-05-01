@@ -1,3 +1,4 @@
+import { useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
@@ -24,7 +25,7 @@ export function useAnamnesisTemplates() {
     enabled: !!user?.id,
   });
 
-  const getTemplate = async (templateId) => {
+  const getTemplate = useCallback(async (templateId) => {
     const { data, error } = await supabase
       .from('anamnesis_templates')
       .select('*')
@@ -32,7 +33,7 @@ export function useAnamnesisTemplates() {
       .single();
     if (error) throw error;
     return data;
-  };
+  }, []);
 
   const createTemplate = useMutation({
     mutationFn: async ({ title, description, sections }) => {
