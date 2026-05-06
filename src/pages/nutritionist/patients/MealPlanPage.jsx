@@ -83,6 +83,7 @@ const MealPlanPage = () => {
     const { toast } = useToast();
     const { user } = useAuth();
 
+    const [nutritionistId, setNutritionistId] = useState(null);
     const { plans, activePlan, pendingDrafts, loading, isFetching, loadPlans, invalidatePlans } = useMealPlan(patientId, nutritionistId);
 
     const [submitting, setSubmitting] = useState(false);
@@ -90,7 +91,6 @@ const MealPlanPage = () => {
     const [referenceValues, setReferenceValues] = useState(null);
     const [showForm, setShowForm] = useState(false);
     const [editingPlan, setEditingPlan] = useState(null);
-    const [nutritionistId, setNutritionistId] = useState(null);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [planToDelete, setPlanToDelete] = useState(null);
     const [copyModelDialogOpen, setCopyModelDialogOpen] = useState(false);
