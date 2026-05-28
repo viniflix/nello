@@ -21,6 +21,8 @@ export function useMealPlan(patientId, nutritionistId) {
             ]);
 
             if (plansResult.error) throw plansResult.error;
+            if (activeResult.error) throw activeResult.error;
+            if (draftsResult.error) throw draftsResult.error;
 
             return {
                 plans: plansResult.data || [],

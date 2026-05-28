@@ -267,136 +267,142 @@ export const getMealPlanById = async (planId) => {
 
         if (mealsError) throw mealsError;
 
-        // Buscar alimentos de cada refeição
-        const mealsWithFoods = await Promise.all(
-            (meals || []).map(async (meal) => {
-                const { data: foods, error: foodsError } = await supabase
-                    .from('meal_plan_foods')
-                    .select('*')
-                    .eq('meal_plan_meal_id', meal.id)
-                    .order('order_index', { ascending: true });
+        if (!meals || meals.length === 0) {
+            return {
+                data: { ...plan, meals: [] },
+                error: null
+            };
+        }
 
-                if (foodsError) {
-                    logSupabaseError('Erro ao buscar alimentos da refeição', foodsError);
-                    return {
-                        ...meal,
-                        // Transformar nomes dos campos para compatibilidade com o form
-                        calories: meal.total_calories || 0,
-                        protein: meal.total_protein || 0,
-                        carbs: meal.total_carbs || 0,
-                        fat: meal.total_fat || 0,
-                        foods: []
-                    };
-                }
+        const mealIds = meals.map(m => m.id);
 
-                // Resolver medidas para os alimentos:
-                // - unit numérico (legacy) → busca em household_measures por id
-                // - unit 'code' string → busca em household_measures por code
-                // - unit 'custom_*' → busca em nutritionist_custom_measures por code
-                const allUnits = (foods || []).map(f => f.unit).filter(Boolean);
+        // 1. Batch Fetch: Todos os alimentos de todas as refeições do plano
+        const { data: allFoods, error: allFoodsError } = await supabase
+            .from('meal_plan_foods')
+            .select('*')
+            .in('meal_plan_meal_id', mealIds)
+            .order('order_index', { ascending: true });
 
-                let measuresMap = {}; // key: unit value → measure object
+        if (allFoodsError) {
+            logSupabaseError('Erro ao buscar alimentos do plano', allFoodsError);
+            const mealsEmptyFoods = meals.map(m => ({
+                ...m,
+                calories: m.total_calories || 0,
+                protein: m.total_protein || 0,
+                carbs: m.total_carbs || 0,
+                fat: m.total_fat || 0,
+                foods: []
+            }));
+            return { data: { ...plan, meals: mealsEmptyFoods }, error: null };
+        }
 
-                // IDs numéricos (legado)
-                const numericIds = allUnits
-                    .filter(u => /^\d+$/.test(String(u)))
-                    .map(u => Number(u));
+        // Agrupar alimentos por meal_plan_meal_id
+        const foodsByMealId = (allFoods || []).reduce((acc, food) => {
+            if (!acc[food.meal_plan_meal_id]) acc[food.meal_plan_meal_id] = [];
+            acc[food.meal_plan_meal_id].push(food);
+            return acc;
+        }, {});
 
-                if (numericIds.length > 0) {
-                    const { data: measures } = await supabase
-                        .from('household_measures')
-                        .select('id, name, code, grams_equivalent')
-                        .in('id', numericIds);
-                    (measures || []).forEach(m => {
-                        measuresMap[m.id] = { ...m, source: 'system' };
-                    });
-                }
+        // 2. Batch Fetch: Resolver todas as unidades/medidas de uma vez
+        const allUnits = [...new Set((allFoods || []).map(f => f.unit).filter(Boolean))];
+        let measuresMap = {};
 
-                // Codes de medidas do sistema (string não numérica, sem prefixo custom_)
-                const systemCodes = allUnits
-                    .filter(u => u && !/^\d+$/.test(String(u)) && !String(u).startsWith('custom_') && u !== 'gram');
+        const numericIds = allUnits.filter(u => /^\d+$/.test(String(u))).map(u => Number(u));
+        if (numericIds.length > 0) {
+            const { data: measures } = await supabase
+                .from('household_measures')
+                .select('id, name, code, grams_equivalent')
+                .in('id', numericIds);
+            (measures || []).forEach(m => { measuresMap[m.id] = { ...m, source: 'system' }; });
+        }
 
-                if (systemCodes.length > 0) {
-                    const { data: measures } = await supabase
-                        .from('household_measures')
-                        .select('id, name, code, grams_equivalent')
-                        .in('code', systemCodes);
-                    (measures || []).forEach(m => {
-                        measuresMap[m.code] = { ...m, source: 'system' };
-                    });
-                }
+        const systemCodes = allUnits.filter(u => u && !/^\d+$/.test(String(u)) && !String(u).startsWith('custom_') && u !== 'gram');
+        if (systemCodes.length > 0) {
+            const { data: measures } = await supabase
+                .from('household_measures')
+                .select('id, name, code, grams_equivalent')
+                .in('code', systemCodes);
+            (measures || []).forEach(m => { measuresMap[m.code] = { ...m, source: 'system' }; });
+        }
 
-                // Codes de medidas personalizadas (prefixo custom_)
-                const customCodes = allUnits
-                    .filter(u => u && String(u).startsWith('custom_'));
+        const customCodes = allUnits.filter(u => u && String(u).startsWith('custom_'));
+        if (customCodes.length > 0) {
+            const { data: customMeasures } = await supabase
+                .from('nutritionist_custom_measures')
+                .select('id, name, code, grams_equivalent, category, description')
+                .in('code', customCodes);
+            (customMeasures || []).forEach(m => { measuresMap[m.code] = { ...m, source: 'custom' }; });
+        }
 
-                if (customCodes.length > 0) {
-                    const { data: customMeasures } = await supabase
-                        .from('nutritionist_custom_measures')
-                        .select('id, name, code, grams_equivalent, category, description')
-                        .in('code', customCodes);
-                    (customMeasures || []).forEach(m => {
-                        measuresMap[m.code] = { ...m, source: 'custom' };
-                    });
-                }
+        const resolveMeasure = (unit) => {
+            if (!unit) return null;
+            if (/^\d+$/.test(String(unit))) return measuresMap[Number(unit)] || null;
+            return measuresMap[unit] || null;
+        };
 
-                const resolveMeasure = (unit) => {
-                    if (!unit) return null;
-                    if (/^\d+$/.test(String(unit))) return measuresMap[Number(unit)] || null;
-                    return measuresMap[unit] || null;
-                };
+        // 3. Batch Fetch: Buscar todas as substituições para todos os alimentos
+        const allMealPlanFoodIds = (allFoods || []).map(f => f.id);
+        let substitutionsMap = {};
+        let subFoodIds = [];
 
-                // Buscar substituições para todos os alimentos da refeição de uma vez
-                const mealPlanFoodIds = (foods || []).map(f => f.id);
-                let substitutionsMap = {};
-                if (mealPlanFoodIds.length > 0) {
-                    const { data: subs } = await supabase
-                        .from('meal_plan_food_substitutions')
-                        .select('meal_plan_food_id, substitute_food_id, quantity, unit')
-                        .in('meal_plan_food_id', mealPlanFoodIds);
-                    
-                    if (subs && subs.length > 0) {
-                        // Buscar detalhes dos alimentos substitutos
-                        const subFoodIds = subs.map(s => s.substitute_food_id);
-                        const subFoodsMap = await getFoodsMapByIds(subFoodIds);
+        if (allMealPlanFoodIds.length > 0) {
+            const { data: subs } = await supabase
+                .from('meal_plan_food_substitutions')
+                .select('meal_plan_food_id, substitute_food_id, quantity, unit')
+                .in('meal_plan_food_id', allMealPlanFoodIds);
+            
+            if (subs && subs.length > 0) {
+                subFoodIds = subs.map(s => s.substitute_food_id);
+                substitutionsMap = subs.reduce((acc, s) => {
+                    if (!acc[s.meal_plan_food_id]) acc[s.meal_plan_food_id] = [];
+                    acc[s.meal_plan_food_id].push(s);
+                    return acc;
+                }, {});
+            }
+        }
 
-                        substitutionsMap = subs.reduce((acc, s) => {
-                            if (!acc[s.meal_plan_food_id]) acc[s.meal_plan_food_id] = [];
-                            const subFood = subFoodsMap[String(s.substitute_food_id)];
-                            if (subFood) {
-                                acc[s.meal_plan_food_id].push({
-                                    ...subFood,
-                                    quantity: s.quantity,
-                                    unit: s.unit,
-                                    measure: resolveMeasure(s.unit)
-                                });
-                            }
-                            return acc;
-                        }, {});
+        // 4. Batch Fetch: Buscar os dados originais da tabela `foods`
+        const primaryFoodIds = (allFoods || []).map(f => f.food_id);
+        const allFoodIdsToFetch = [...new Set([...primaryFoodIds, ...subFoodIds])];
+        const globalFoodsMap = await getFoodsMapByIds(allFoodIdsToFetch);
+
+        // 5. Construir a estrutura final
+        const mealsWithFoods = meals.map(meal => {
+            const mealFoods = foodsByMealId[meal.id] || [];
+
+            const transformedFoods = mealFoods.map(f => {
+                const subsForThisFood = substitutionsMap[f.id] || [];
+                const populatedSubs = subsForThisFood.map(s => {
+                    const subFood = globalFoodsMap[String(s.substitute_food_id)];
+                    if (subFood) {
+                        return {
+                            ...subFood,
+                            quantity: s.quantity,
+                            unit: s.unit,
+                            measure: resolveMeasure(s.unit)
+                        };
                     }
-                }
-
-                // Transformar estrutura dos alimentos: foods (plural) -> food (singular)
-                const foodsMap = await getFoodsMapByIds((foods || []).map((f) => f.food_id));
-                const transformedFoods = (foods || []).map(f => ({
-                    ...f,
-                    food: foodsMap[String(f.food_id)] || null,
-                    foods: foodsMap[String(f.food_id)] || null,
-                    measure: resolveMeasure(f.unit),
-                    substitutes: substitutionsMap[f.id] || []
-                }));
+                    return null;
+                }).filter(Boolean);
 
                 return {
-                    ...meal,
-                    // Transformar nomes dos campos para compatibilidade com o form
-                    calories: meal.total_calories || 0,
-                    protein: meal.total_protein || 0,
-                    carbs: meal.total_carbs || 0,
-                    fat: meal.total_fat || 0,
-                    foods: transformedFoods
+                    ...f,
+                    food: globalFoodsMap[String(f.food_id)] || null,
+                    foods: globalFoodsMap[String(f.food_id)] || null, // legacy compat
+                    measure: resolveMeasure(f.unit),
+                    substitutes: populatedSubs
                 };
-            })
-        );
+            });
+
+            return {
+                ...meal,
+                calories: meal.total_calories || 0,
+                protein: meal.total_protein || 0,
+                carbs: meal.total_carbs || 0,
+                fat: meal.total_fat || 0,
+                foods: transformedFoods
+            };
+        });
 
         return {
             data: {

@@ -113,7 +113,6 @@ const MealPlanPage = () => {
     const [plansModalOpen, setPlansModalOpen] = useState(false);
     const [plansSearchTerm, setPlansSearchTerm] = useState('');
     const [versionsExpanded, setVersionsExpanded] = useState(false);
-    const [fullActivePlan, setFullActivePlan] = useState(null);
     const [newPlanChoiceOpen, setNewPlanChoiceOpen] = useState(false);
 
     // Obter ID do nutricionista
@@ -193,20 +192,6 @@ const MealPlanPage = () => {
         loadVersions();
     }, [activePlan?.id]);
 
-    // Lazy load full plan data for micros tab
-    useEffect(() => {
-        const loadFullPlan = async () => {
-            if (!activePlan?.id) { setFullActivePlan(null); return; }
-            try {
-                const { data } = await getMealPlanById(activePlan.id);
-                setFullActivePlan(data);
-            } catch (e) {
-                console.error('Erro ao carregar plano completo:', e);
-            }
-        };
-        loadFullPlan();
-    }, [activePlan?.id]);
-
     // Carregar cálculo de energia
     useEffect(() => {
         const loadEnergyCalculation = async () => {
@@ -231,13 +216,6 @@ const MealPlanPage = () => {
         };
         loadSyncFlags();
     }, [patientId]);
-
-    // O checkPendingDraft foi incorporado ao loadPlans acima para garantir sincronia
-    // Mantemos apenas o trigger quando nutritionistId muda (resolvido antes dos planos)
-    useEffect(() => {
-        if (patientId && nutritionistId) loadPlans();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [patientId, nutritionistId]);
 
     const handleDiscardPendingDraft = async (targetDraftId = null) => {
         const idToDelete = targetDraftId || (pendingDrafts.length > 0 ? pendingDrafts[0].id : null);
