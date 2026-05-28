@@ -58,7 +58,6 @@ import {
     promoteDraftToActive,
     saveDraftAsPlan,
     getDraftMealPlan,
-    getDraftMealPlans,
     deleteDraftMealPlan,
     deleteAllDraftMealPlans,
     createDraftMealPlan
@@ -234,9 +233,8 @@ const MealPlanPage = () => {
             return;
         }
 
-        // Re-carregar a lista completa para garantir sincronia e contador correto
-        const { data: updatedDrafts } = await getDraftMealPlans(patientId, nutritionistId);
-        setPendingDrafts(updatedDrafts || []);
+        // Invalidar cache do React Query para refletir a remoção imediatamente
+        invalidatePlans();
 
         // Se estiver descartando o que está aberto no momento no form
         if (pendingDraft && (pendingDraft.id === idToDelete || !targetDraftId)) {
@@ -259,7 +257,7 @@ const MealPlanPage = () => {
                 variant: 'destructive'
             });
         } else {
-            setPendingDrafts([]);
+            invalidatePlans();
             setPendingDraft(null); // Limpa o rascunho ativo no form se houver
             setDiscardAllDraftsDialogOpen(false);
             toast({ title: 'Todos os rascunhos foram descartados', variant: 'default' });
@@ -1160,7 +1158,7 @@ const MealPlanPage = () => {
                                     referenceValues={referenceValues}
                                     onReferenceUpdate={null}
                                     readOnly={true}
-                                    plan={fullActivePlan}
+                                    plan={activePlan}
                                     activePlanId={activePlan.id}
                                 />
                             </div>
