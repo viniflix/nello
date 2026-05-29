@@ -4,7 +4,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
 import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -97,7 +96,7 @@ export default function FoodBankSection() {
       setStats({
         public: data.public || 0, 
         custom: data.custom || 0, 
-        totalAll: data.totalAll || 0,
+        totalAll: data.total || 0,
         taco: data.taco || 0,
         tbca: data.tbca || 0,
         tucunduva: data.tucunduva || 0,
@@ -170,7 +169,7 @@ export default function FoodBankSection() {
   }, [user?.id, activeSource, isCustom, debouncedSearch, groupFilters, calFilter, macroFilter, toast]);
 
   useEffect(() => { fetchStats(); }, [fetchStats]);
-  useEffect(() => { setPage(0); fetchFoods(0); }, [activeSource, debouncedSearch, groupFilters, calFilter, macroFilter]);
+  useEffect(() => { setPage(0); fetchFoods(0); }, [fetchFoods, activeSource, debouncedSearch, groupFilters, calFilter, macroFilter]);
 
   const handlePageChange = (p) => { setPage(p); fetchFoods(p); };
 

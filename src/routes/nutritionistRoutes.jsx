@@ -23,19 +23,15 @@ const FoodDiaryPage = lazy(() => import('@/pages/nutritionist/patients/FoodDiary
 const NutritionistPatientAchievementsPage = lazy(() => import('@/pages/nutritionist/patients/NutritionistPatientAchievementsPage.jsx'));
 const ProgressPhotosPage = lazy(() => import('@/pages/nutritionist/patients/ProgressPhotosPage.jsx'));
 const AlertsPage = lazy(() => import('@/pages/nutritionist/alerts/AlertsPage.jsx'));
-const FoodBankPage = lazy(() => import('@/pages/nutritionist/tools/FoodBankPage.jsx'));
 const FinancialPage = lazy(() => import('@/pages/nutritionist/tools/FinancialPage.jsx'));
 const AgendaPage = lazy(() => import('@/pages/nutritionist/tools/AgendaPage.jsx'));
 const NutritionistFoodsPage = lazy(() => import('@/pages/nutritionist/tools/NutritionistFoodsPage.jsx'));
-const MessageTemplatesPage = lazy(() => import('@/pages/nutritionist/tools/MessageTemplatesPage.jsx'));
-const ChatPage = lazy(() => import('@/pages/shared/ChatPage.jsx'));
 const ChatDashboardPage = lazy(() => import('@/pages/shared/ChatDashboardPage.jsx'));
 // Removed CheckinManagerPage as it's now part of TemplatesPage
 const TemplatesPage = lazy(() => import('@/pages/nutritionist/tools/TemplatesPage.jsx'));
 const TemplateBuilder = lazy(() => import('@/pages/nutritionist/tools/TemplateBuilder.jsx'));
 
 // Sprint 1 UX Shell - Formbuilder e Configs de Anamnese
-const AnamnesisTemplatesList = lazy(() => import('@/pages/nutritionist/settings/anamnesis-templates/TemplatesList.jsx'));
 const AnamnesisTemplateBuilder = lazy(() => import('@/pages/nutritionist/settings/anamnesis-templates/TemplateBuilder.jsx'));
 
 export const nutritionistRoutes = (
@@ -76,11 +72,10 @@ export const nutritionistRoutes = (
         <Route path="/nutritionist/templates" element={<TemplatesPage />} />
         <Route path="/nutritionist/templates/new/:type" element={<TemplateBuilder />} />
         <Route path="/nutritionist/templates/edit/:type/:id" element={<TemplateBuilder />} />
+        {/* Formulários de Anamnese */}
+        <Route path="/nutritionist/templates/forms/new" element={<AnamnesisTemplateBuilder />} />
+        <Route path="/nutritionist/templates/forms/:templateId/edit" element={<AnamnesisTemplateBuilder />} />
         
-        {/* Settings Globais da Clinica - Módulo Anamnese */}
-        <Route path="/nutritionist/settings/anamnesis-templates" element={<Navigate to="/nutritionist/templates?group=forms&ftab=forms" replace />} />
-        <Route path="/nutritionist/settings/anamnesis-templates/new" element={<AnamnesisTemplateBuilder />} />
-        <Route path="/nutritionist/settings/anamnesis-templates/:templateId/edit" element={<AnamnesisTemplateBuilder />} />
         {/* Admin-only routes (nutritionist layout) */}
         <Route 
             path="/nutritionist/foods" 

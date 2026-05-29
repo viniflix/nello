@@ -122,7 +122,7 @@ export default function TemplatesList() {
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
-                    <Button className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white shrink-0" onClick={() => navigate('/nutritionist/settings/anamnesis-templates/new')}>
+                    <Button className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white shrink-0" onClick={() => navigate('/nutritionist/templates/forms/new')}>
                         <Plus className="w-4 h-4" />
                         Novo Formulário
                     </Button>
@@ -151,7 +151,7 @@ export default function TemplatesList() {
                                         key={t.id}
                                         template={t}
                                         isGlobal={false}
-                                        onEdit={(id) => navigate(`/nutritionist/settings/anamnesis-templates/${id}/edit`)}
+                                        onEdit={(id) => navigate(`/nutritionist/templates/forms/${id}/edit`)}
                                         onDelete={handleDelete}
                                     />
                                 ))}
@@ -179,7 +179,7 @@ export default function TemplatesList() {
                                         key={t.id}
                                         template={t}
                                         isGlobal={true}
-                                        onEdit={(id) => navigate(`/nutritionist/settings/anamnesis-templates/${id}/edit`)}
+                                        onEdit={(id) => navigate(`/nutritionist/templates/forms/${id}/edit`)}
                                         onDelete={handleDelete}
                                     />
                                 ))}
@@ -200,7 +200,7 @@ export default function TemplatesList() {
                     </p>
                     {!searchTerm && (
                         <div className="flex flex-col sm:flex-row items-center gap-3">
-                            <Button variant="outline" className="gap-2 w-full sm:w-auto" onClick={() => navigate('/nutritionist/settings/anamnesis-templates/new')}>
+                            <Button variant="outline" className="gap-2 w-full sm:w-auto" onClick={() => navigate('/nutritionist/templates/forms/new')}>
                                 <Plus className="w-4 h-4" />
                                 Criar do zero
                             </Button>
