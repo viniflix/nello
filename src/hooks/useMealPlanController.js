@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/lib/supabase/client';
+import { supabase } from '@/lib/customSupabaseClient';
 import {
     getMealPlanVersions,
     deleteDraftMealPlan,
@@ -21,8 +21,8 @@ import {
 } from '@/lib/supabase/meal-plan-queries';
 import { getLatestEnergyCalculation } from '@/lib/supabase/energy-queries';
 import { getPatientModuleSyncFlags, clearPatientModuleSyncFlags } from '@/lib/supabase/anthropometry-queries';
-import { generateShoppingList } from '@/lib/utils/shoppingListGenerator';
-import { exportMealPlanToPdf } from '@/lib/utils/pdfGenerator';
+import { generateShoppingList } from '@/lib/pdf/shoppingListGenerator';
+import { exportMealPlanToPdf } from '@/lib/pdfUtils';
 import { translateMealType } from '@/utils/mealTranslations';
 import { formatQuantityWithUnit } from '@/lib/utils/measureTranslations';
 
