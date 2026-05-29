@@ -64,12 +64,28 @@ export default function ImportMealFromProtocolDialog({ open, onOpenChange, nutri
         setImporting(true);
         try {
             const mealsToImport = templateMeals.filter(m => selectedMealIds.has(m.id ?? m.tempId));
+            
+            const hasGhostFoods = mealsToImport.some(m => 
+                (m.foods || []).some(f => !f.food || f.food.is_active === false)
+            );
+
+            if (hasGhostFoods) {
+                toast({ 
+                    title: 'Atenção: Alimento(s) indisponível(is)', 
+                    description: 'Uma ou mais refeições contêm alimentos que não existem mais ou foram desativados. Eles serão importados, mas você deverá substituí-los.', 
+                    variant: 'destructive',
+                    duration: 8000
+                });
+            } else {
+                toast({ title: 'Refeições importadas!', description: `${mealsToImport.length} refeição(ões) adicionada(s) ao plano.` });
+            }
+
             await onImport(mealsToImport);
-            toast({ title: 'Refeições importadas!', description: `${mealsToImport.length} refeição(ões) adicionada(s) ao plano.` });
         } catch (err) {
             toast({ title: 'Erro ao importar', description: err.message, variant: 'destructive' });
         } finally {
             setImporting(false);
+            onOpenChange(false);
         }
     };
 
@@ -200,6 +216,11 @@ export default function ImportMealFromProtocolDialog({ open, onOpenChange, nutri
                                                             )}
                                                             {meal.calories > 0 && (
                                                                 <span className="text-xs text-slate-500 font-medium">{Math.round(meal.calories)} kcal</span>
+                                                            )}
+                                                            {(meal.foods || []).some(f => !f.food || f.food.is_active === false) && (
+                                                                <Badge variant="destructive" className="text-[10px] py-0 bg-red-100 text-red-700 border-red-200">
+                                                                    ⚠ Alimento desativado
+                                                                </Badge>
                                                             )}
                                                         </div>
                                                     </div>

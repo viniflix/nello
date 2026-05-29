@@ -166,43 +166,29 @@ export function useTemplateBuilder(type, templateId = null) {
   // ─── CREATE ────────────────────────────────────────────────────────────────
 
   const saveDietTemplate = async () => {
-    const { data: template, error: templateError } = await supabase
-      .from('diet_templates')
-      .insert({
-        user_id: user.id,
-        name: formData.name.trim(),
-        description: formData.description.trim() || null,
-        tags: formData.tags,
-      })
-      .select()
-      .single();
+    // Preparar os dados de refeições para enviar à RPC
+    const mealsForRpc = formData.meals.map((m, mIdx) => ({
+      name: m.name,
+      time: m.time,
+      order_index: mIdx,
+      foods: (m.foods || []).map((f, fIdx) => ({
+        food_id: f.food_id,
+        quantity: f.quantity,
+        unit: f.unit,
+        observation: f.observation || '',
+        order_index: fIdx
+      }))
+    }));
+
+    const { error: templateError } = await supabase.rpc('create_diet_template', {
+      p_user_id: user.id,
+      p_name: formData.name.trim(),
+      p_description: formData.description.trim() || null,
+      p_tags: formData.tags || [],
+      p_meals: mealsForRpc
+    });
 
     if (templateError) throw templateError;
-
-    for (let i = 0; i < formData.meals.length; i++) {
-      const meal = formData.meals[i];
-      const { data: savedMeal, error: mealError } = await supabase
-        .from('diet_template_meals')
-        .insert({ template_id: template.id, name: meal.name, time: meal.time, order_index: i })
-        .select()
-        .single();
-
-      if (mealError) throw mealError;
-
-      if (meal.foods?.length > 0) {
-        const { error: foodsError } = await supabase
-          .from('diet_template_foods')
-          .insert(meal.foods.map((food, fIdx) => ({
-            meal_id: savedMeal.id,
-            food_id: food.food_id,
-            quantity: food.quantity,
-            unit: food.unit,
-            observation: food.observation || '',
-            order_index: fIdx,
-          })));
-        if (foodsError) throw foodsError;
-      }
-    }
 
     toast({ title: 'Sucesso', description: 'Dieta Padrão criada com sucesso!' });
     navigate('/nutritionist/templates');
@@ -275,86 +261,30 @@ export function useTemplateBuilder(type, templateId = null) {
   // ─── UPDATE ────────────────────────────────────────────────────────────────
 
   const updateDietTemplate = async () => {
-    // 1. UPDATE template principal
-    const { error: updateError } = await supabase
-      .from('diet_templates')
-      .update({
-        name: formData.name.trim(),
-        description: formData.description.trim() || null,
-        tags: formData.tags,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', templateId)
-      .eq('user_id', user.id);
+    // Preparar os dados de refeições para enviar à RPC
+    const mealsForRpc = formData.meals.map((m, mIdx) => ({
+      name: m.name,
+      time: m.time,
+      order_index: mIdx,
+      foods: (m.foods || []).map((f, fIdx) => ({
+        food_id: f.food_id,
+        quantity: f.quantity,
+        unit: f.unit,
+        observation: f.observation || '',
+        order_index: fIdx
+      }))
+    }));
+
+    const { error: updateError } = await supabase.rpc('update_diet_template', {
+      p_template_id: templateId,
+      p_user_id: user.id,
+      p_name: formData.name.trim(),
+      p_description: formData.description.trim() || null,
+      p_tags: formData.tags || [],
+      p_meals: mealsForRpc
+    });
 
     if (updateError) throw updateError;
-
-    // 2. Refeições: obter IDs existentes no banco
-    const { data: existingMeals } = await supabase
-      .from('diet_template_meals')
-      .select('id')
-      .eq('template_id', templateId);
-
-    const existingMealIds = new Set((existingMeals || []).map(m => m.id));
-    const currentMealIds = new Set(formData.meals.filter(m => m._id).map(m => m._id));
-
-    // Deletar refeições removidas
-    const mealsToDelete = [...existingMealIds].filter(id => !currentMealIds.has(id));
-    if (mealsToDelete.length > 0) {
-      await supabase.from('diet_template_meals').delete().in('id', mealsToDelete);
-    }
-
-    // Upsert refeições e alimentos
-    for (let i = 0; i < formData.meals.length; i++) {
-      const meal = formData.meals[i];
-      let mealId = meal._id;
-
-      if (mealId) {
-        // UPDATE refeição existente
-        await supabase
-          .from('diet_template_meals')
-          .update({ name: meal.name, time: meal.time, order_index: i })
-          .eq('id', mealId);
-      } else {
-        // INSERT nova refeição
-        const { data: newMeal } = await supabase
-          .from('diet_template_meals')
-          .insert({ template_id: templateId, name: meal.name, time: meal.time, order_index: i })
-          .select()
-          .single();
-        mealId = newMeal.id;
-      }
-
-      // Alimentos da refeição: obter IDs existentes
-      const { data: existingFoods } = await supabase
-        .from('diet_template_foods')
-        .select('id')
-        .eq('meal_id', mealId);
-
-      const existingFoodIds = new Set((existingFoods || []).map(f => f.id));
-      const currentFoodIds = new Set(meal.foods.filter(f => f._id).map(f => f._id));
-
-      // Deletar alimentos removidos
-      const foodsToDelete = [...existingFoodIds].filter(id => !currentFoodIds.has(id));
-      if (foodsToDelete.length > 0) {
-        await supabase.from('diet_template_foods').delete().in('id', foodsToDelete);
-      }
-
-      // Upsert alimentos
-      for (let fIdx = 0; fIdx < meal.foods.length; fIdx++) {
-        const food = meal.foods[fIdx];
-        if (food._id) {
-          await supabase
-            .from('diet_template_foods')
-            .update({ food_id: food.food_id, quantity: food.quantity, unit: food.unit, observation: food.observation || '', order_index: fIdx })
-            .eq('id', food._id);
-        } else {
-          await supabase
-            .from('diet_template_foods')
-            .insert({ meal_id: mealId, food_id: food.food_id, quantity: food.quantity, unit: food.unit, observation: food.observation || '', order_index: fIdx });
-        }
-      }
-    }
 
     toast({ title: 'Sucesso', description: 'Dieta Padrão atualizada com sucesso!' });
     navigate('/nutritionist/templates');

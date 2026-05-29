@@ -32,8 +32,7 @@ const CheckinResponsePage = () => {
             *,
             checkin_templates (
               name,
-              description,
-              nutritionist_branding (*)
+              description
             )
           `)
           .eq('id', sessionId)

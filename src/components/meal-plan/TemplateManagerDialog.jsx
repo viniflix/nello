@@ -126,13 +126,30 @@ export default function TemplateManagerDialog({
         if (!selectedTemplate || !patientId || !nutritionistId) return;
         setApplying(true);
         try {
+            const hasGhostFoods = (templateDetail?.meals || []).some(m => 
+                (m.foods || []).some(f => !f.food || f.food.is_active === false)
+            );
+
+            if (hasGhostFoods) {
+                toast({ 
+                    title: 'Atenção: Alimento(s) indisponível(is)', 
+                    description: 'Uma ou mais refeições contêm alimentos que não existem mais ou foram desativados. Eles serão importados, mas você deverá substituí-los no plano do paciente.', 
+                    variant: 'destructive',
+                    duration: 8000
+                });
+            }
+
             const newPlanId = await cloneDietTemplateToPatient(
                 selectedTemplate.id,
                 patientId,
                 nutritionistId,
                 selectedTemplate.name
             );
-            toast({ title: 'Protocolo Aplicado!', description: `"${selectedTemplate.name}" importado com sucesso.` });
+            
+            if (!hasGhostFoods) {
+                toast({ title: 'Protocolo Aplicado!', description: `"${selectedTemplate.name}" importado com sucesso.` });
+            }
+            
             if (onTemplateApplied) {
                 const { data: newPlan } = await getMealPlanById(newPlanId);
                 onTemplateApplied(newPlan || { id: newPlanId });
@@ -364,6 +381,11 @@ export default function TemplateManagerDialog({
                                                         <div className="flex items-center gap-2 flex-shrink-0 ml-2">
                                                             <span className="text-xs text-slate-400">{meal.foods?.length || 0} alim.</span>
                                                             <span className="text-xs font-semibold text-emerald-700">{Math.round(meal.calories || 0)} kcal</span>
+                                                            {(meal.foods || []).some(f => !f.food || f.food.is_active === false) && (
+                                                                <Badge variant="destructive" className="text-[10px] py-0 px-1 bg-red-100 text-red-700 border-red-200">
+                                                                    ⚠ Aviso
+                                                                </Badge>
+                                                            )}
                                                         </div>
                                                     </div>
                                                 ))}

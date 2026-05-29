@@ -30,7 +30,7 @@ const NutritionistFoodsPage = lazy(() => import('@/pages/nutritionist/tools/Nutr
 const MessageTemplatesPage = lazy(() => import('@/pages/nutritionist/tools/MessageTemplatesPage.jsx'));
 const ChatPage = lazy(() => import('@/pages/shared/ChatPage.jsx'));
 const ChatDashboardPage = lazy(() => import('@/pages/shared/ChatDashboardPage.jsx'));
-const CheckinManagerPage = lazy(() => import('@/pages/nutritionist/tools/CheckinManagerPage.jsx'));
+// Removed CheckinManagerPage as it's now part of TemplatesPage
 const TemplatesPage = lazy(() => import('@/pages/nutritionist/tools/TemplatesPage.jsx'));
 const TemplateBuilder = lazy(() => import('@/pages/nutritionist/tools/TemplateBuilder.jsx'));
 
@@ -72,13 +72,13 @@ export const nutritionistRoutes = (
         <Route path="/nutritionist/financial" element={<FinancialPage />} />
         <Route path="/nutritionist/agenda" element={<AgendaPage />} />
         <Route path="/nutritionist/message-templates" element={<Navigate to="/nutritionist/templates" replace />} />
-        <Route path="/nutritionist/checkins" element={<CheckinManagerPage />} />
+        <Route path="/nutritionist/checkins" element={<Navigate to="/nutritionist/templates?group=forms&ftab=checkins" replace />} />
         <Route path="/nutritionist/templates" element={<TemplatesPage />} />
         <Route path="/nutritionist/templates/new/:type" element={<TemplateBuilder />} />
         <Route path="/nutritionist/templates/edit/:type/:id" element={<TemplateBuilder />} />
         
         {/* Settings Globais da Clinica - Módulo Anamnese */}
-        <Route path="/nutritionist/settings/anamnesis-templates" element={<AnamnesisTemplatesList />} />
+        <Route path="/nutritionist/settings/anamnesis-templates" element={<Navigate to="/nutritionist/templates?group=forms&ftab=forms" replace />} />
         <Route path="/nutritionist/settings/anamnesis-templates/new" element={<AnamnesisTemplateBuilder />} />
         <Route path="/nutritionist/settings/anamnesis-templates/:templateId/edit" element={<AnamnesisTemplateBuilder />} />
         {/* Admin-only routes (nutritionist layout) */}

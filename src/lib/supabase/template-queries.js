@@ -57,7 +57,7 @@ export async function getFoodsMapByIds(foodIds) {
 
   const { data, error } = await supabase
     .from('foods')
-    .select('id, name, calories, protein, carbs, fat, fiber, group')
+    .select('id, name, calories, protein, carbs, fat, fiber, group, is_active')
     .in('id', uniqueIds);
 
   if (error) {

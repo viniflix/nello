@@ -91,32 +91,21 @@ export default function FoodBankSection() {
     if (!user?.id) return;
     setStatsLoading(true);
     try {
-      const [customRes, publicRes, tacoRes, tbcaRes, tucRes, usdaRes, nelloRes] = await Promise.all([
-        supabase.from('foods').select('id', { count: 'exact', head: true })
-          .eq('is_active', true).or(`source.eq.custom,nutritionist_id.eq.${user.id}`),
-        supabase.from('foods').select('id', { count: 'exact', head: true })
-          .eq('is_active', true).neq('source', 'custom').is('nutritionist_id', null),
-        supabase.from('foods').select('id', { count: 'exact', head: true })
-          .eq('is_active', true).eq('source', 'TACO').is('nutritionist_id', null),
-        supabase.from('foods').select('id', { count: 'exact', head: true })
-          .eq('is_active', true).eq('source', 'TBCA').is('nutritionist_id', null),
-        supabase.from('foods').select('id', { count: 'exact', head: true })
-          .eq('is_active', true).eq('source', 'TUCUNDUVA').is('nutritionist_id', null),
-        supabase.from('foods').select('id', { count: 'exact', head: true })
-          .eq('is_active', true).eq('source', 'USDA').is('nutritionist_id', null),
-        supabase.from('foods').select('id', { count: 'exact', head: true })
-          .eq('is_active', true).eq('source', 'Nello').is('nutritionist_id', null),
-      ]);
-      const pub  = publicRes.count  || 0;
-      const cust = customRes.count  || 0;
+      const { data, error } = await supabase.rpc('get_food_stats', { p_nutritionist_id: user.id });
+      if (error) throw error;
+      
       setStats({
-        public: pub, custom: cust, totalAll: pub + cust,
-        taco: tacoRes.count  || 0,
-        tbca: tbcaRes.count  || 0,
-        tucunduva: tucRes.count   || 0,
-        usda: usdaRes.count  || 0,
-        nello: nelloRes.count || 0,
+        public: data.public || 0, 
+        custom: data.custom || 0, 
+        totalAll: data.totalAll || 0,
+        taco: data.taco || 0,
+        tbca: data.tbca || 0,
+        tucunduva: data.tucunduva || 0,
+        usda: data.usda || 0,
+        nello: data.nello || 0,
       });
+    } catch (err) {
+      console.error('Error fetching food stats:', err);
     } finally {
       setStatsLoading(false);
     }
