@@ -79,6 +79,7 @@ export default function TemplateBuilder() {
             if (templateId && !isSystemDefault) {
                 await updateTemplate.mutateAsync({ id: templateId, title, description, sections });
                 toast({ title: 'Sucesso', description: 'Formulário atualizado.' });
+                navigate('/nutritionist/templates?group=forms&ftab=forms');
             } else {
                 await createTemplate.mutateAsync({ title, description, sections });
                 toast({ title: 'Sucesso', description: 'Novo formulário criado.' });

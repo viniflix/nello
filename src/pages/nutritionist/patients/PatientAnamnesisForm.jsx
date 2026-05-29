@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useResolvedPatientId } from '@/hooks/useResolvedPatientId';
 import { useAnamnesisRunner } from '@/hooks/useAnamnesisRunner';
 import { useAnamnesisAttachments } from '@/hooks/useAnamnesisAttachments';
@@ -17,7 +17,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
-import { patientAnamnesisListRoute } from '@/lib/utils/patientRoutes';
+import { patientAnamnesisListRoute, patientAnamnesisEditRoute } from '@/lib/utils/patientRoutes';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function PatientAnamnesisForm() {
@@ -26,8 +26,10 @@ export default function PatientAnamnesisForm() {
     const { user } = useAuth();
     const { paramValue, patientId } = useResolvedPatientId();
     const { anamnesisId } = useParams();
+    const [searchParams] = useSearchParams();
+    const templateId = searchParams.get('templateId');
 
-    const { useRecord, updateRecord, usePreviousProfile, generateLink } = useAnamnesisRunner(patientId);
+    const { useRecord, updateRecord, createRecord, usePreviousProfile, generateLink } = useAnamnesisRunner(patientId);
     const { data: record, isLoading: loadingRecord } = useRecord(anamnesisId);
     const { data: previousProfile, isLoading: loadingPrev } = usePreviousProfile();
     const { uploadAttachment, deleteAttachment, getSignedUrl } = useAnamnesisAttachments(anamnesisId, patientId);
@@ -36,6 +38,21 @@ export default function PatientAnamnesisForm() {
     const [isSaving, setIsSaving] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isExporting, setIsExporting] = useState(false);
+    const [isCreating, setIsCreating] = useState(false);
+
+    // Auto-create draft if accessing /new with a templateId
+    useEffect(() => {
+        if (!anamnesisId && templateId && !isCreating) {
+            setIsCreating(true);
+            createRecord.mutateAsync({ templateId })
+                .then(newRecord => {
+                    navigate(patientAnamnesisEditRoute({ id: patientId, slug: paramValue }, newRecord.id), { replace: true });
+                })
+                .catch(err => {
+                    navigate(patientAnamnesisListRoute({ slug: paramValue }));
+                });
+        }
+    }, [anamnesisId, templateId, isCreating, createRecord, navigate, paramValue, patientId]);
 
     useEffect(() => {
         if (record?.content) setContent(record.content);
@@ -232,10 +249,11 @@ export default function PatientAnamnesisForm() {
         );
     };
 
-    if (loadingRecord || loadingPrev) {
+    if (loadingRecord || loadingPrev || isCreating || (!anamnesisId && templateId)) {
         return (
             <div className="flex h-[80vh] items-center justify-center">
                 <Loader2 className="w-8 h-8 animate-spin text-[#5f6f52]" />
+                <span className="ml-3 text-slate-500 font-medium">{isCreating || (!anamnesisId && templateId) ? "Criando rascunho..." : "Carregando..."}</span>
             </div>
         );
     }
