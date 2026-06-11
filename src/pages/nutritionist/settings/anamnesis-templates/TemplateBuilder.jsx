@@ -47,7 +47,10 @@ export default function TemplateBuilder() {
                 setTitle(isDefault ? `${data.title} (Cópia)` : data.title);
                 setDescription(data.description || '');
                 // Para clones, removemos os IDs antigos para forçar criação de novos no DB
-                const loadedSections = data.sections || [];
+                let loadedSections = [];
+                if (Array.isArray(data.sections)) loadedSections = data.sections;
+                else if (data.sections?.sections) loadedSections = data.sections.sections;
+
                 const processSections = isDefault ? loadedSections.map(s => ({
                     ...s,
                     id: crypto.randomUUID(),

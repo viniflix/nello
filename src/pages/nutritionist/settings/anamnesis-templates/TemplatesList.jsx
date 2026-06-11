@@ -1,11 +1,11 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, ClipboardList, Edit2, Trash2, Loader2, Play, Search, Globe, User } from 'lucide-react';
+import { Plus, ClipboardList, Edit2, Trash2, Loader2, Play, Search, Globe, User, Eye, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAnamnesisTemplates } from '@/hooks/useAnamnesisTemplates';
 
 // ─── Card de Formulário ─────────────────────────────────────────────────────────
-const FormCard = ({ template, onEdit, onDelete, isGlobal }) => (
+const FormCard = ({ template, onEdit, onDelete, onView, isGlobal }) => (
     <div className={`rounded-2xl border shadow-sm hover:shadow-md transition-all flex flex-col h-full p-5 gap-3 ${
         isGlobal
             ? 'bg-slate-50 border-slate-200 hover:border-slate-300'
@@ -32,13 +32,20 @@ const FormCard = ({ template, onEdit, onDelete, isGlobal }) => (
         </div>
         <div className="pt-4 mt-auto border-t border-slate-100 flex items-center justify-between">
             <span className="text-xs text-slate-400">
-                {template.sections?.length || 0} seções
+                {(Array.isArray(template.sections) ? template.sections : template.sections?.sections)?.length || 0} seções
             </span>
             <div className="flex items-center gap-1">
                 <button
+                    onClick={() => onView(template)}
+                    className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
+                    title="Visualizar"
+                >
+                    <Eye className="w-4 h-4" />
+                </button>
+                <button
                     onClick={() => onEdit(template.id)}
                     className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
-                    title={isGlobal ? 'Usar como base' : 'Editar'}
+                    title={isGlobal ? 'Usar como modelo' : 'Editar'}
                 >
                     <Edit2 className="w-4 h-4" />
                 </button>
@@ -78,6 +85,7 @@ export default function TemplatesList() {
     const { useTemplates, deleteTemplate, seedBaseTemplates } = useAnamnesisTemplates();
     const { data: templates, isLoading } = useTemplates();
     const [searchTerm, setSearchTerm] = React.useState('');
+    const [previewTemplate, setPreviewTemplate] = React.useState(null);
 
     const filtered = React.useMemo(() => {
         if (!templates) return [];
@@ -151,6 +159,7 @@ export default function TemplatesList() {
                                         key={t.id}
                                         template={t}
                                         isGlobal={false}
+                                        onView={setPreviewTemplate}
                                         onEdit={(id) => navigate(`/nutritionist/templates/forms/${id}/edit`)}
                                         onDelete={handleDelete}
                                     />
@@ -179,6 +188,7 @@ export default function TemplatesList() {
                                         key={t.id}
                                         template={t}
                                         isGlobal={true}
+                                        onView={setPreviewTemplate}
                                         onEdit={(id) => navigate(`/nutritionist/templates/forms/${id}/edit`)}
                                         onDelete={handleDelete}
                                     />
@@ -214,6 +224,80 @@ export default function TemplatesList() {
                             </Button>
                         </div>
                     )}
+                </div>
+            )}
+
+            {/* Modal de Preview */}
+            {previewTemplate && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col animate-in zoom-in-95 duration-200">
+                        <div className="p-5 border-b border-slate-100 flex items-center justify-between shrink-0">
+                            <div>
+                                <h2 className="text-lg font-bold text-slate-800">{previewTemplate.title}</h2>
+                                <p className="text-xs text-slate-500 mt-0.5">{previewTemplate.description}</p>
+                            </div>
+                            <button
+                                onClick={() => setPreviewTemplate(null)}
+                                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-lg transition-colors"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        
+                        <div className="flex-1 overflow-y-auto p-5 bg-slate-50">
+                            <div className="space-y-6">
+                                {((Array.isArray(previewTemplate.sections) ? previewTemplate.sections : previewTemplate.sections?.sections) || []).map((section, idx) => (
+                                    <div key={section.id || idx} className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                                        <h3 className="font-semibold text-slate-800 mb-4 pb-2 border-b border-slate-100 flex items-center gap-2">
+                                            <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-xs">
+                                                {idx + 1}
+                                            </span>
+                                            {section.title}
+                                        </h3>
+                                        <div className="space-y-4">
+                                            {(section.fields || []).map((field, fIdx) => (
+                                                <div key={field.id || fIdx} className="text-sm">
+                                                    <p className="font-medium text-slate-700">{field.label}</p>
+                                                    {field.placeholder && (
+                                                        <p className="text-slate-400 mt-0.5 text-xs italic">{field.placeholder}</p>
+                                                    )}
+                                                    {field.options && field.options.length > 0 && (
+                                                        <ul className="mt-2 space-y-1">
+                                                            {field.options.map((opt, oIdx) => (
+                                                                <li key={oIdx} className="flex items-center gap-2 text-slate-600 text-xs">
+                                                                    <div className="w-1.5 h-1.5 rounded-full bg-slate-300" />
+                                                                    {opt}
+                                                                </li>
+                                                            ))}
+                                                        </ul>
+                                                    )}
+                                                </div>
+                                            ))}
+                                            {(!section.fields || section.fields.length === 0) && (
+                                                <p className="text-xs text-slate-400 italic">Nenhuma pergunta nesta seção.</p>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="p-5 border-t border-slate-100 shrink-0 flex justify-end gap-3 bg-white rounded-b-2xl">
+                            <Button variant="outline" onClick={() => setPreviewTemplate(null)}>
+                                Fechar
+                            </Button>
+                            <Button 
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md hover:shadow-lg transition-all"
+                                onClick={() => {
+                                    navigate(`/nutritionist/templates/forms/${previewTemplate.id}/edit`);
+                                    setPreviewTemplate(null);
+                                }}
+                            >
+                                <Edit2 className="w-4 h-4 mr-2" />
+                                {previewTemplate.is_system_default ? 'Usar como modelo' : 'Editar formulário'}
+                            </Button>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>
