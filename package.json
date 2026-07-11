@@ -50,7 +50,7 @@
     "date-fns": "^3.6.0",
     "framer-motion": "^10.18.0",
     "html2canvas": "^1.4.1",
-    "jspdf": "^3.0.3",
+    "jspdf": "4.2.1",
     "jspdf-autotable": "5.0.8",
     "lucide-react": "^0.292.0",
     "papaparse": "^5.4.1",
