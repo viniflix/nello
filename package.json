@@ -10,7 +10,9 @@
     "preview": "vite preview",
     "test": "vitest",
     "test:run": "vitest run",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "check:structure": "node scripts/qa/check-project-structure.mjs",
+    "verify": "npm run check:structure && npm run lint && npm run test:run && vite build"
   },
   "dependencies": {
     "@emotion/is-prop-valid": "^1.2.1",
