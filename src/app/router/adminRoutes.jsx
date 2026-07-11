@@ -1,7 +1,7 @@
 import React, { lazy, Suspense } from 'react';
 import { Route, Navigate } from 'react-router-dom';
 import { ProtectedRoute } from './routeGuards';
-import AdminLayout from '@/components/admin/AdminLayout.jsx';
+import AdminLayout from '@/portals/admin/layouts/AdminLayout.jsx';
 
 const AdminDashboard = lazy(() => import('@/pages/admin/AdminDashboard.jsx'));
 const AdminBugReportsPage = lazy(() => import('@/pages/admin/AdminBugReportsPage.jsx'));

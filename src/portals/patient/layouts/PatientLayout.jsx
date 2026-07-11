@@ -9,12 +9,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useOnlinePresence } from '@/hooks/useOnlinePresence';
 
 /**
- * PatientMobileLayout - Layout responsivo para Área do Paciente
+ * PatientLayout - Layout responsivo para Área do Paciente
  *
  * Desktop (md+): Sidebar fixa à esquerda
  * Mobile: BottomNav fixo inferior
  */
-export default function PatientMobileLayout() {
+export default function PatientLayout() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const { unreadSenders } = useChat();

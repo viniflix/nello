@@ -1,7 +1,7 @@
 import React, { lazy } from 'react';
 import { Route, Navigate } from 'react-router-dom';
 import { ProtectedRoute } from './routeGuards';
-import MainLayout from '@/components/MainLayout.jsx';
+import NutritionistLayout from '@/portals/nutritionist/layouts/NutritionistLayout.jsx';
 
 // Lazy load das páginas do nutricionista
 const NutritionistDashboard = lazy(() => import('@/pages/nutritionist/dashboard/NutritionistDashboard.jsx'));
@@ -38,7 +38,7 @@ export const nutritionistRoutes = (
     <Route 
         element={
             <ProtectedRoute userType="nutritionist">
-                <MainLayout />
+                <NutritionistLayout />
             </ProtectedRoute>
         }
     >
@@ -87,4 +87,3 @@ export const nutritionistRoutes = (
         />
     </Route>
 );
-

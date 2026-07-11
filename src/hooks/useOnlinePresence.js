@@ -7,7 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
  *
  * Works on both sides:
  * - Nutritionist: calls this hook to subscribe and read online state of all users.
- * - Patient: calls this hook (from PatientMobileLayout) to register their own presence.
+ * - Patient: calls this hook (from PatientLayout) to register their own presence.
  *
  * How Supabase Realtime Presence works:
  * - presenceState() returns an object keyed by the channel "key" (which we set to user.id).

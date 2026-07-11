@@ -3,7 +3,7 @@ import { Outlet } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import DashboardHeader from '@/components/DashboardHeader';
 
-const MainLayout = () => {
+const NutritionistLayout = () => {
   const { user, signOut } = useAuth();
 
   if (!user || !user?.profile) {
@@ -23,5 +23,5 @@ const MainLayout = () => {
   );
 };
 
-export default MainLayout;
+export default NutritionistLayout;
 

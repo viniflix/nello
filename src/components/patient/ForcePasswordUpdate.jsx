@@ -78,7 +78,7 @@ export default function ForcePasswordUpdate() {
         description: "Sua senha foi redefinida. Bem-vindo(a) ao HipoZero!",
         variant: "success"
       });
-      // Atualizar o contexto para que PatientMobileLayout esconda esta tela
+      // Atualizar o contexto para que PatientLayout esconda esta tela
       updateUserProfile({ needs_password_reset: false });
     }
   };

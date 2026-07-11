@@ -1,7 +1,7 @@
 import React, { lazy } from 'react';
 import { Route } from 'react-router-dom';
 import { ProtectedRoute } from './routeGuards';
-import PatientMobileLayout from '@/components/patient/PatientMobileLayout.jsx';
+import PatientLayout from '@/portals/patient/layouts/PatientLayout.jsx';
 
 // Lazy load das páginas do paciente
 const PatientHomePage = lazy(() => import('@/pages/patient/PatientHomePage.jsx'));
@@ -19,7 +19,7 @@ const CheckinResponsePage = lazy(() => import('@/pages/patient/CheckinResponsePa
 export const patientRoutes = (
     <>
         {/* Rotas dentro do layout mobile */}
-        <Route element={<ProtectedRoute userType="patient"><PatientMobileLayout /></ProtectedRoute>}>
+        <Route element={<ProtectedRoute userType="patient"><PatientLayout /></ProtectedRoute>}>
             <Route path="/patient" element={<PatientHomePage />} />
             <Route path="/patient/invites" element={<PatientInvitesPage />} />
             <Route path="/patient/diario" element={<PatientDiaryPage />} />
@@ -36,4 +36,3 @@ export const patientRoutes = (
         <Route path="/patient/checkin/:sessionId" element={<ProtectedRoute userType="patient"><CheckinResponsePage /></ProtectedRoute>} />
     </>
 );
-
