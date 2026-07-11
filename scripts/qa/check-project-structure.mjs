@@ -17,12 +17,17 @@ export function checkProjectStructure(rootDir, trackedFiles, sourceFiles = []) {
   }
 
   for (const file of trackedFiles.map((value) => value.replaceAll('\\', '/'))) {
+    const isSqlMigration = file.endsWith('.sql')
+      && (file.includes('/migrations/') || /(^|\/)\w*migration\w*\.sql$/i.test(file));
+
     if (file.startsWith('dist/')) {
       errors.push(`Generated build output must not be tracked: ${file}`);
     } else if (!file.includes('/') && TEMPORARY_ROOT_FILE.test(file)) {
       errors.push(`Temporary root file must not be tracked: ${file}`);
     } else if (file.startsWith('src/services/') && !LEGACY_SERVICE_ALLOWLIST.has(file)) {
       errors.push(`Generic service has no domain owner: ${file}`);
+    } else if (isSqlMigration && !file.startsWith('supabase/migrations/')) {
+      errors.push(`SQL migration must live in supabase/migrations: ${file}`);
     }
   }
 

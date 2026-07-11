@@ -67,4 +67,18 @@ describe('checkProjectStructure', () => {
       'Generic service has no domain owner: src/services/adminService.js',
     );
   });
+
+  it('rejects SQL migrations outside the official Supabase directory', () => {
+    const root = createRoot();
+    const result = checkProjectStructure(root, [
+      'supabase/migrations/20260711000000_valid.sql',
+      'src/lib/supabase/migrations/unsafe.sql',
+      'scripts/legacy_migration.sql',
+    ]);
+
+    expect(result.errors).toEqual([
+      'SQL migration must live in supabase/migrations: src/lib/supabase/migrations/unsafe.sql',
+      'SQL migration must live in supabase/migrations: scripts/legacy_migration.sql',
+    ]);
+  });
 });
