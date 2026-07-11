@@ -9,6 +9,7 @@ import { useNavigate } from 'react-router-dom';
 vi.mock('@/lib/customSupabaseClient', () => ({
   supabase: {
     from: vi.fn(),
+    rpc: vi.fn(),
   },
 }));
 
@@ -33,6 +34,7 @@ describe('useTemplateBuilder Hook', () => {
     vi.clearAllMocks();
     useAuth.mockReturnValue({ user: mockUser });
     useNavigate.mockReturnValue(mockNavigate);
+    supabase.rpc.mockResolvedValue({ data: { id: 'mocked-uuid' }, error: null });
     
     // Setup supabase mocks
     const singleMock = vi.fn().mockResolvedValue({ data: { id: 'mocked-uuid' }, error: null });
@@ -86,7 +88,13 @@ describe('useTemplateBuilder Hook', () => {
       await result.current.handleSave();
     });
 
-    expect(supabase.from).toHaveBeenCalledWith('diet_templates');
+    expect(supabase.rpc).toHaveBeenCalledWith('create_diet_template', {
+      p_user_id: 'user-123',
+      p_name: 'Dieta Teste',
+      p_description: null,
+      p_tags: [],
+      p_meals: [],
+    });
     expect(mockToast).toHaveBeenCalledWith({ title: 'Sucesso', description: 'Dieta Padrão criada com sucesso!' });
     expect(mockNavigate).toHaveBeenCalledWith('/nutritionist/templates');
   });
