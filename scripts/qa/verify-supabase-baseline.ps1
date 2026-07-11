@@ -15,11 +15,17 @@ try {
     docker run -d --name $container -e POSTGRES_USER=supabase_admin -e POSTGRES_PASSWORD=postgres $image | Out-Null
 
     $ready = $false
+    $stableReadyChecks = 0
     $strictErrorPreference = $ErrorActionPreference
     $ErrorActionPreference = 'SilentlyContinue'
-    foreach ($attempt in 1..45) {
-        $count = docker exec -e PGPASSWORD=postgres $container psql -U supabase_admin -d postgres -Atc "select count(*) from pg_event_trigger where evtname='graphql_watch_ddl'" 2>$null
-        if ($count -eq '1') { $ready = $true; break }
+    foreach ($attempt in 1..60) {
+        docker exec -e PGPASSWORD=postgres $container pg_isready -U supabase_admin -d postgres 2>$null | Out-Null
+        if ($LASTEXITCODE -eq 0) {
+            $stableReadyChecks += 1
+            if ($stableReadyChecks -ge 3) { $ready = $true; break }
+        } else {
+            $stableReadyChecks = 0
+        }
         Start-Sleep -Seconds 2
     }
     $ErrorActionPreference = $strictErrorPreference
