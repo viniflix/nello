@@ -1,24 +1,2 @@
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn("⚠️ Missing Supabase environment variables. Please check your .env file.");
-}
-
-// Supabase Client — HipoZero
-// A chave 'anon' é pública por design e segura para uso no front-end.
-// A segurança real é garantida pelas Políticas de Segurança (RLS) no banco de dados.
-export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '', {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: true
-  },
-  realtime: {
-    params: {
-      eventsPerSecond: 10
-    }
-  }
-});
+// Compatibility adapter. New code must import from '@/infrastructure/supabase/client'.
+export { supabase } from '@/infrastructure/supabase/client';
