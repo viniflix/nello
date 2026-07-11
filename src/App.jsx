@@ -4,7 +4,7 @@ import { HelmetProvider, Helmet } from 'react-helmet-async';
 import SmartToaster from '@/components/SmartToaster';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
-import AppLayout from '@/routes';
+import AppRouter from '@/app/router';
 import ClientErrorBoundary from '@/components/ClientErrorBoundary';
 
 const App = () => {
@@ -18,7 +18,7 @@ const App = () => {
               <meta name="description" content="Plataforma moderna para nutricionistas e pacientes com controle alimentar, prescrição de dietas e acompanhamento nutricional baseado na Tabela TACO." />
             </Helmet>
             <ClientErrorBoundary>
-              <AppLayout />
+              <AppRouter />
             </ClientErrorBoundary>
             <SmartToaster />
           </AuthProvider>

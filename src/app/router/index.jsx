@@ -8,21 +8,17 @@ import { nutritionistRoutes } from './nutritionistRoutes';
 import { patientRoutes } from './patientRoutes';
 import { adminRoutes } from './adminRoutes';
 import PresenceGlobal from '@/components/PresenceGlobal';
+import { getHomePath } from './homePath';
 
 // Rota Omnichannel Public Facing (Sem Auth Block)
 const PatientFacingAnamnesis = React.lazy(() => import('@/pages/public/anamnesis/PatientFacingUi.jsx'));
 
-const AppLayout = () => {
+const AppRouter = () => {
   const { user, loading } = useAuth();
 
   if (loading) {
     return <PageLoadingFallback />;
   }
-
-  const getHomePath = () => {
-    if (!user || !user?.profile) return "/login";
-    return user?.profile?.user_type === 'nutritionist' ? '/nutritionist' : '/patient';
-  };
 
   return (
     <ChatProvider>
@@ -39,7 +35,7 @@ const AppLayout = () => {
               <Route path="/f/:token" element={<PatientFacingAnamnesis />} />
               
               {/* Rotas de redirecionamento */}
-              <Route path="/" element={<Navigate to={getHomePath()} replace />} />
+              <Route path="/" element={<Navigate to={getHomePath(user)} replace />} />
               {/* Removido o catch-all Navigate para evitar redirecionamento indevido no F5 */}
             </Routes>
           </Suspense>
@@ -48,5 +44,5 @@ const AppLayout = () => {
   );
 };
 
-export default AppLayout;
+export default AppRouter;
 
