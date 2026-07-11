@@ -2,6 +2,7 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { Loader2, WifiOff } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import ForcePasswordUpdate from '@/components/patient/ForcePasswordUpdate';
+import { getHomePath, hasRequiredUserType, resolveAuthenticatedPath } from './homePath';
 
 // Fallback de carregamento para Suspense
 export const PageLoadingFallback = () => (
@@ -43,10 +44,13 @@ export const AuthWrapper = ({ children }) => {
         return <PageLoadingFallback />;
     }
 
-    const from = location.state?.from?.pathname || (user?.profile?.user_type === 'nutritionist' ? '/nutritionist' : '/patient');
+    if (user && !user.profile) {
+        return <PageLoadingFallback />;
+    }
 
-    if (user) {
-        return <Navigate to={from} replace />;
+    if (user?.profile) {
+        const destination = resolveAuthenticatedPath(user, location.state?.from?.pathname);
+        return <Navigate to={destination} replace />;
     }
 
     return children;
@@ -85,21 +89,14 @@ export const ProtectedRoute = ({ children, userType, requireAdmin = false, allow
   const userRole = user?.profile?.user_type;
   const isAdmin = user?.profile?.is_admin === true;
 
-  // Admin tem acesso a qualquer rota
-  if (isAdmin) {
-    return children;
-  }
-
   // Admin-only routes: require admin flag
-  if (requireAdmin) {
-    const correctDashboard = user?.profile?.user_type === 'nutritionist' ? '/nutritionist' : '/patient';
-    return <Navigate to={correctDashboard} replace />;
+  if (requireAdmin && !isAdmin) {
+    return <Navigate to={getHomePath(user)} replace />;
   }
 
   // Regular routes: check user_type
-  if (userType && user?.profile?.user_type !== userType) {
-    const correctDashboard = user?.profile?.user_type === 'nutritionist' ? '/nutritionist' : '/patient';
-    return <Navigate to={correctDashboard} replace />;
+  if (!hasRequiredUserType(user.profile, userType, allowAnyUserType)) {
+    return <Navigate to={getHomePath(user)} replace />;
   }
 
   // Interceptador para paciente que não atualizou a senha ainda
