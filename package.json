@@ -12,7 +12,8 @@
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
     "check:structure": "node scripts/qa/check-project-structure.mjs",
-    "verify": "npm run check:structure && npm run lint && npm run test:run && vite build"
+    "check:bundle": "node scripts/qa/check-bundle-budget.mjs",
+    "verify": "npm run check:structure && npm run lint && npm run test:run && vite build && npm run check:bundle"
   },
   "dependencies": {
     "@emotion/is-prop-valid": "^1.2.1",
