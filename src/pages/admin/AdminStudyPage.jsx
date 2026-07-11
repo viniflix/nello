@@ -21,7 +21,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { getTCCStudyMetrics } from '@/services/adminService';
-import { track, Events } from '@/analytics/posthog';
+import { track, Events } from '@/infrastructure/analytics/posthog';
 
 // ── constants ──────────────────────────────────────────────────────────────
 const CHART_COLORS = ['#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#0ea5e9'];
