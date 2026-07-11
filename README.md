@@ -253,6 +253,13 @@ npm run test:run
 npm run test:coverage
 ```
 
+### Manutenção e verificação
+
+- `npm run check:structure`: valida a organização mínima e impede artefatos gerados ou temporários no Git.
+- `npm run verify`: executa estrutura, lint, testes e build.
+
+Verificações automatizadas do repositório ficam em `scripts/qa`.
+
 ## Pontos de atencao para proximas implementacoes
 
 1. Validar o estado real dos templates de nutricao no banco antes de reimplementar o que o codigo ja aparenta conter.
@@ -266,4 +273,3 @@ npm run test:coverage
 ## Licenca
 
 Projeto proprietario. Consulte [LICENSE](LICENSE).
-
