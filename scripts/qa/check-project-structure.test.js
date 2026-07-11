@@ -42,4 +42,29 @@ describe('checkProjectStructure', () => {
     rmSync(join(root, 'public'), { recursive: true });
     expect(checkProjectStructure(root, []).errors).toContain('Required path is missing: public');
   });
+
+  it('rejects new legacy analytics imports', () => {
+    const root = createRoot();
+    const result = checkProjectStructure(root, ['src/pages/example.jsx'], [{
+      path: 'src/pages/example.jsx',
+      content: "import { track } from '@/analytics/posthog';",
+    }]);
+    expect(result.errors).toContain(
+      'Legacy analytics import is not allowed in src/pages/example.jsx; use @/infrastructure/analytics/posthog',
+    );
+  });
+
+  it('rejects unowned generic services but allows the legacy admin service', () => {
+    const root = createRoot();
+    const result = checkProjectStructure(root, [
+      'src/services/adminService.js',
+      'src/services/newService.js',
+    ]);
+    expect(result.errors).toContain(
+      'Generic service has no domain owner: src/services/newService.js',
+    );
+    expect(result.errors).not.toContain(
+      'Generic service has no domain owner: src/services/adminService.js',
+    );
+  });
 });
