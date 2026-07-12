@@ -8,9 +8,9 @@ import ProgressivePatientProfile from '@/features/clinical-records/components/Pr
 import LegalGuardianCard from '@/features/clinical-records/components/LegalGuardianCard';
 import { revokePatientLegalGuardian, savePatientLegalGuardian, updatePatientProgressiveProfile } from '@/features/clinical-records/api/record-foundation-queries';
 
-export default function PatientEditProfileModal({ isOpen, onClose, patientData, foundation, profileRequirements = [], legalGuardians = [], onSaveSuccess }) {
+export default function PatientEditProfileModal({ isOpen, onClose, patientData, activeEpisodeId = null, profileRequirements = [], legalGuardians = [], onSaveSuccess }) {
   const { toast } = useToast(); const fileInputRef = useRef(null); const [uploading, setUploading] = useState(false); const [previewUrl, setPreviewUrl] = useState(null);
-  const episodeId = foundation?.active_episode?.id || foundation?.active_episode_id || null;
+  const episodeId = activeEpisodeId;
   const isMinor = profileRequirements.includes('legal_guardian');
   const refreshAfter = async (operation) => { const result = await operation; if (!result?.error) await onSaveSuccess?.(); return result; };
   const changePhoto = async (event) => {

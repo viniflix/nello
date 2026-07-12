@@ -21,9 +21,7 @@ const isPatientMinor = (birthDate) => {
     return age < 18;
 };
 
-const getFoundationEpisodeId = (foundation, summaryProfile) => foundation?.active_episode?.id
-    || foundation?.active_episode_id
-    || foundation?.records?.[0]?.care_episode_id
+const getFoundationEpisodeId = (foundation, summaryProfile) => foundation?.active_episode_id
     || summaryProfile?.care_episode_id
     || null;
 
@@ -43,6 +41,7 @@ export const usePatientHub = (patientId) => {
     const [activities, setActivities] = useState([]);
     const [activitiesLoading, setActivitiesLoading] = useState(false);
     const [foundation, setFoundation] = useState(null);
+    const [activeEpisodeId, setActiveEpisodeId] = useState(null);
     const [legalGuardians, setLegalGuardians] = useState([]);
     const [profileRequirements, setProfileRequirements] = useState([]);
     const requestGeneration = useRef(0);
@@ -81,6 +80,7 @@ export const usePatientHub = (patientId) => {
                 const loadedFoundation = foundationResult.error ? null : foundationResult.data;
                 setFoundation(loadedFoundation);
                 const episodeId = getFoundationEpisodeId(loadedFoundation, data.profile);
+                setActiveEpisodeId(episodeId);
                 let guardians = [];
                 if (episodeId) {
                     const guardiansResult = await listPatientLegalGuardians(patientId, episodeId);
@@ -104,6 +104,7 @@ export const usePatientHub = (patientId) => {
             setPatientData(null);
             setLoadedPatientId(null);
             setFoundation(null);
+            setActiveEpisodeId(null);
             setLegalGuardians([]);
             setProfileRequirements([]);
         } finally {
@@ -164,6 +165,7 @@ export const usePatientHub = (patientId) => {
         setLatestMetrics(null);
         setModulesStatus({});
         setFoundation(null);
+        setActiveEpisodeId(null);
         setLegalGuardians([]);
         setProfileRequirements([]);
         setActivities([]);
@@ -203,6 +205,7 @@ export const usePatientHub = (patientId) => {
         activities,
         activitiesLoading,
         foundation,
+        activeEpisodeId,
         profileRequirements,
         legalGuardians,
 

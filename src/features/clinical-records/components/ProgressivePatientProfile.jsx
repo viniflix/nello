@@ -9,13 +9,18 @@ const fields = [
   ['name', 'Nome completo', true], ['email', 'E-mail'], ['phone', 'Telefone'],
   ['birth_date', 'Data de nascimento'], ['occupation', 'Ocupação'], ['civil_status', 'Estado civil'],
 ];
+const addressFields = [['street', 'Logradouro'], ['city', 'Cidade'], ['state', 'Estado'], ['postal_code', 'CEP']];
 
 export default function ProgressivePatientProfile({ patient = {}, requirements = [], onSave }) {
   const [form, setForm] = useState({});
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState('');
-  useEffect(() => setForm(Object.fromEntries(fields.map(([key]) => [key, patient[key] || '']))), [patient]);
+  useEffect(() => setForm({
+    ...Object.fromEntries(fields.map(([key]) => [key, patient[key] || ''])),
+    gender: patient.gender || '',
+    address: Object.fromEntries(addressFields.map(([key]) => [key, patient.address?.[key] || ''])),
+  }), [patient]);
 
   const submit = async (event) => {
     event.preventDefault(); setError(''); setSuccess('');
@@ -36,6 +41,10 @@ export default function ProgressivePatientProfile({ patient = {}, requirements =
       </fieldset>
       <fieldset className="grid gap-4 sm:grid-cols-2"><legend className="mb-3 font-semibold">Contato</legend>{fields.slice(2, 3).map(([key, label]) => <div key={key} className="space-y-2"><Label htmlFor={`profile-${key}`}>{label}</Label><Input id={`profile-${key}`} value={form[key] || ''} onChange={(e) => setForm({ ...form, [key]: e.target.value })} /></div>)}</fieldset>
       <fieldset className="grid gap-4 sm:grid-cols-2"><legend className="mb-3 font-semibold">Contextual</legend>{fields.slice(3).map(([key, label]) => <div key={key} className="space-y-2"><Label htmlFor={`profile-${key}`}>{label}</Label><Input id={`profile-${key}`} type={key === 'birth_date' ? 'date' : 'text'} value={form[key] || ''} onChange={(e) => setForm({ ...form, [key]: e.target.value })} /></div>)}</fieldset>
+      <fieldset className="grid gap-4 sm:grid-cols-2"><legend className="mb-3 font-semibold">Gênero e endereço</legend>
+        <div className="space-y-2"><Label htmlFor="profile-gender">Gênero</Label><select id="profile-gender" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={form.gender || ''} onChange={(e) => setForm({ ...form, gender: e.target.value })}><option value="">Não informado</option><option value="female">Feminino</option><option value="male">Masculino</option><option value="other">Outro</option><option value="not_informed">Prefere não informar</option></select></div>
+        {addressFields.map(([key, label]) => <div key={key} className="space-y-2"><Label htmlFor={`profile-address-${key}`}>{label}</Label><Input id={`profile-address-${key}`} value={form.address?.[key] || ''} onChange={(e) => setForm({ ...form, address: { ...form.address, [key]: e.target.value } })} /></div>)}
+      </fieldset>
       <div className="rounded-md bg-muted p-3 text-sm text-muted-foreground"><p>Medidas corporais ficam na Antropometria.</p><p>Notas clínicas serão registradas no prontuário.</p></div>
       {error && <p role="alert" className="text-sm text-destructive">{error}</p>}{success && <p role="status" className="text-sm text-green-700">{success}</p>}
       <Button disabled={saving}>{saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Salvar perfil</Button>

@@ -13,6 +13,9 @@ describe('LegalGuardianCard', () => {
     fireEvent.change(screen.getByLabelText(/nome do responsável/i), { target: { value: 'Beatriz Lima' } });
     fireEvent.change(screen.getByLabelText(/relação/i), { target: { value: 'Mãe' } });
     fireEvent.click(screen.getByLabelText(/consentimento registrado/i));
+    fireEvent.change(screen.getByLabelText(/versão do consentimento/i), { target: { value: 'v1' } });
+    fireEvent.change(screen.getByLabelText(/data do consentimento/i), { target: { value: '2026-07-12T10:00' } });
+    fireEvent.change(screen.getByLabelText(/evidência do consentimento/i), { target: { value: 'Termo arquivado' } });
     fireEvent.submit(screen.getByRole('button', { name: /^salvar$/i }).closest('form'));
     await waitFor(() => expect(onSave).toHaveBeenCalledWith('p1', 'episode-current', expect.objectContaining({ name: 'Beatriz Lima', relationship: 'Mãe' })));
   });
@@ -45,12 +48,15 @@ describe('LegalGuardianCard', () => {
     fireEvent.change(screen.getByLabelText(/início do período/i), { target: { value: '2026-07-12' } });
     fireEvent.change(screen.getByLabelText(/fim do período/i), { target: { value: '2027-07-12' } });
     fireEvent.click(screen.getByLabelText(/consentimento registrado/i));
+    fireEvent.change(screen.getByLabelText(/versão do consentimento/i), { target: { value: 'v1' } });
+    fireEvent.change(screen.getByLabelText(/data do consentimento/i), { target: { value: '2026-07-12T10:00' } });
+    fireEvent.change(screen.getByLabelText(/evidência do consentimento/i), { target: { value: 'Termo arquivado' } });
     fireEvent.submit(screen.getByRole('button', { name: /^salvar$/i }).closest('form'));
     expect(screen.getByText(/motivo da substituição é obrigatório/i)).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText(/motivo da substituição/i), { target: { value: 'Mudança familiar' } });
     fireEvent.click(screen.getByRole('button', { name: /^salvar$/i }));
     await waitFor(() => expect(onSave).toHaveBeenCalledWith('p1', 'e1', expect.objectContaining({
-      valid_from: '2026-07-12', valid_until: '2027-07-12', consent: { recorded: true }, reason: 'Mudança familiar'
+      valid_from: '2026-07-12', valid_until: '2027-07-12', consent: expect.objectContaining({ recorded: true, version: 'v1' }), reason: 'Mudança familiar'
     })));
   });
 
@@ -69,6 +75,26 @@ describe('LegalGuardianCard', () => {
     fireEvent.keyDown(document.activeElement, { key: 'Escape' });
     await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());
     expect(trigger).toHaveFocus();
+  });
+
+  it('persists guardian contact and complete consent evidence without collecting CPF', async () => {
+    const onSave = vi.fn().mockResolvedValue({ error: null });
+    render(<LegalGuardianCard patientId="p1" episodeId="e1" guardians={[]} onSave={onSave} />);
+    fireEvent.click(screen.getByRole('button', { name: /adicionar responsável/i }));
+    fireEvent.change(screen.getByLabelText(/nome do responsável/i), { target: { value: 'Bia' } });
+    fireEvent.change(screen.getByLabelText(/^relação$/i), { target: { value: 'Mãe' } });
+    fireEvent.change(screen.getByLabelText(/telefone do responsável/i), { target: { value: '85999999999' } });
+    fireEvent.change(screen.getByLabelText(/e-mail do responsável/i), { target: { value: 'bia@example.com' } });
+    fireEvent.click(screen.getByLabelText(/consentimento registrado/i));
+    fireEvent.change(screen.getByLabelText(/versão do consentimento/i), { target: { value: 'v1' } });
+    fireEvent.change(screen.getByLabelText(/data do consentimento/i), { target: { value: '2026-07-12T10:00' } });
+    fireEvent.change(screen.getByLabelText(/evidência do consentimento/i), { target: { value: 'Termo físico arquivado' } });
+    fireEvent.click(screen.getByRole('button', { name: /^salvar$/i }));
+    await waitFor(() => expect(onSave).toHaveBeenCalledWith('p1', 'e1', expect.objectContaining({
+      contact: { phone: '85999999999', email: 'bia@example.com' },
+      consent: expect.objectContaining({ recorded: true, version: 'v1', recorded_at: '2026-07-12T10:00', evidence: 'Termo físico arquivado' }),
+    })));
+    expect(screen.queryByLabelText(/cpf/i)).not.toBeInTheDocument();
   });
 
   it('clears guardian fields after cancel and after a successful replacement', async () => {

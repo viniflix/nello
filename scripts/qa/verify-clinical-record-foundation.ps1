@@ -19,6 +19,7 @@ $migrations = @(
     (Join-Path $root 'supabase\migrations\20260712130000_add_student_supervision_workflow.sql')
 )
 $c1Migration = Join-Path $root 'supabase\migrations\20260712140000_create_clinical_record_foundation.sql'
+$c1HardeningMigration = Join-Path $root 'supabase\migrations\20260712150000_harden_clinical_record_foundation.sql'
 $matrix = Join-Path $root 'supabase\tests\clinical_record_foundation_matrix.sql'
 
 foreach ($file in @($baseline, $matrix) + $migrations) {
@@ -49,6 +50,9 @@ try {
     if (Test-Path -LiteralPath $c1Migration) {
         docker cp $c1Migration "${container}:/tmp/c1.sql" | Out-Null
     }
+    if (Test-Path -LiteralPath $c1HardeningMigration) {
+        docker cp $c1HardeningMigration "${container}:/tmp/c1-hardening.sql" | Out-Null
+    }
 
     $commands = @(
         @{ Label = 'database preparation'; Sql = 'CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA extensions; ALTER EVENT TRIGGER graphql_watch_ddl DISABLE; ALTER EVENT TRIGGER graphql_watch_drop DISABLE; ALTER EVENT TRIGGER pgrst_ddl_watch DISABLE; ALTER EVENT TRIGGER pgrst_drop_watch DISABLE;' },
@@ -68,6 +72,7 @@ insert into public.user_profiles(id,name,user_type,is_admin,is_active) values
         $commands += @{ Label = "B1-B4 migration $($index + 1)"; Sql = "\i /tmp/b-migration-$index.sql" }
     }
     if (Test-Path -LiteralPath $c1Migration) { $commands += @{ Label = 'C1 migration'; Sql = '\i /tmp/c1.sql' } }
+    if (Test-Path -LiteralPath $c1HardeningMigration) { $commands += @{ Label = 'C1 hardening migration'; Sql = '\i /tmp/c1-hardening.sql' } }
     $commands += @{ Label = 'clinical record foundation matrix'; Sql = '\i /tmp/clinical-record-foundation-matrix.sql'; ShowOutput = $true }
 
     foreach ($command in $commands) {

@@ -37,7 +37,7 @@ describe('usePatientHub clinical record foundation', () => {
     });
     mocks.getPatientActivities.mockResolvedValue({ data: [], error: null });
     mocks.getPatientRecordFoundation.mockResolvedValue({
-      data: { patient: { name: 'Ana', birth_date: '2012-01-01' }, records: [] },
+      data: { active_episode_id: 'episode-1', patient: { name: 'Ana', birth_date: '2012-01-01' }, records: [] },
       error: null,
     });
     mocks.listPatientLegalGuardians.mockResolvedValue({ data: [{ id: 'guardian-1', status: 'active' }], error: null });
@@ -48,11 +48,22 @@ describe('usePatientHub clinical record foundation', () => {
 
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.foundation.patient.name).toBe('Ana');
+    expect(result.current.activeEpisodeId).toBe('episode-1');
     expect(result.current.legalGuardians).toEqual([{ id: 'guardian-1', status: 'active' }]);
     expect(result.current.profileRequirements).toEqual([]);
     expect(mocks.getPatientSummary).toHaveBeenCalledWith('patient-1', 'nutritionist-1');
     expect(mocks.getPatientRecordFoundation).toHaveBeenCalledWith('patient-1');
     expect(mocks.listPatientLegalGuardians).toHaveBeenCalledWith('patient-1', 'episode-1');
+  });
+
+  it('publishes the summary episode as the canonical activeEpisodeId without inventing a foundation shape', async () => {
+    mocks.getPatientRecordFoundation.mockResolvedValue({
+      data: { active_episode_id: 'episode-1', patient: { name: 'Ana' }, records: [] },
+      error: null,
+    });
+    const { result } = renderHook(() => usePatientHub('patient-1'));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.activeEpisodeId).toBe('episode-1');
   });
 
   it('preserves summary fallbacks and empty states when foundation fails', async () => {

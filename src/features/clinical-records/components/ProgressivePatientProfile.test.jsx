@@ -27,4 +27,19 @@ describe('ProgressivePatientProfile', () => {
     expect(screen.getByText(/medidas corporais ficam na antropometria/i)).toBeInTheDocument();
     expect(screen.getByText(/notas clínicas serão registradas no prontuário/i)).toBeInTheDocument();
   });
+
+  it('collects gender and structured address in the progressive profile', async () => {
+    const onSave = vi.fn().mockResolvedValue({ error: null });
+    render(<ProgressivePatientProfile patient={{ name: 'Ana', address: {} }} onSave={onSave} />);
+    fireEvent.change(screen.getByLabelText(/gênero/i), { target: { value: 'female' } });
+    fireEvent.change(screen.getByLabelText(/logradouro/i), { target: { value: 'Rua das Flores' } });
+    fireEvent.change(screen.getByLabelText(/cidade/i), { target: { value: 'Fortaleza' } });
+    fireEvent.change(screen.getByLabelText(/^estado$/i), { target: { value: 'CE' } });
+    fireEvent.change(screen.getByLabelText(/cep/i), { target: { value: '60000-000' } });
+    fireEvent.click(screen.getByRole('button', { name: /salvar perfil/i }));
+    await waitFor(() => expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
+      gender: 'female',
+      address: { street: 'Rua das Flores', city: 'Fortaleza', state: 'CE', postal_code: '60000-000' },
+    })));
+  });
 });
