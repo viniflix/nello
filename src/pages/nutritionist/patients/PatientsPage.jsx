@@ -98,7 +98,7 @@ const ListActionsMenu = ({ patient, onArchive, onDelete }) => {
                                 <DropdownMenuItem onClick={() => navigate(patientRoute(patient, 'hub'))} className="cursor-pointer"><FileText className="mr-2 h-4 w-4" /> Prontuário</DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => navigate(`/nutritionist/chat?patient=${patient.id}`)} className="cursor-pointer"><MessageCircle className="mr-2 h-4 w-4" /> Chat</DropdownMenuItem>
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem onClick={() => setShowArchive(true)} className="cursor-pointer"><Archive className="mr-2 h-4 w-4" /> Arquivar</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setShowArchive(true)} className="cursor-pointer"><Archive className="mr-2 h-4 w-4" /> Encerrar acompanhamento</DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem onClick={() => setShowDelete(true)} disabled={isCheckingData || !canDeleteRef.current} className={`cursor-pointer ${canDeleteRef.current ? 'text-destructive focus:text-destructive' : 'text-muted-foreground'}`}>
                                     <Trash2 className="mr-2 h-4 w-4" /> Excluir
@@ -112,8 +112,8 @@ const ListActionsMenu = ({ patient, onArchive, onDelete }) => {
             {/* Modals */}
             <Dialog open={showArchive} onOpenChange={setShowArchive}>
                 <DialogContent>
-                    <DialogHeader><DialogTitle>Arquivar Paciente</DialogTitle><DialogDescription>O vínculo será encerrado. Este paciente ficará livre para outro convite, e os dados atuais ficarão salvos como Read-Only no seu histórico.</DialogDescription></DialogHeader>
-                    <DialogFooter><Button variant="outline" onClick={() => setShowArchive(false)}>Cancelar</Button><Button variant="destructive" onClick={() => { setShowArchive(false); onArchive(patient); }}>Sim, Arquivar</Button></DialogFooter>
+                    <DialogHeader><DialogTitle>Encerrar acompanhamento</DialogTitle><DialogDescription>O vínculo será encerrado imediatamente. O paciente ficará livre para outro convite e o histórico permanecerá preservado somente para os participantes deste episódio.</DialogDescription></DialogHeader>
+                    <DialogFooter><Button variant="outline" onClick={() => setShowArchive(false)}>Cancelar</Button><Button variant="destructive" onClick={() => { setShowArchive(false); onArchive(patient); }}>Confirmar encerramento</Button></DialogFooter>
                 </DialogContent>
             </Dialog>
 
@@ -184,8 +184,8 @@ const PatientsPage = () => {
     // ── Actions ──────────────────────────────────────────────────────────────
     const handleArchive = async (patient) => {
         const { success } = await archivePatient(patient.id, user.id);
-        if (success) { toast({ title: "Paciente Arquivado", variant: "success" }); fetchPatients(); }
-        else toast({ title: "Erro ao arquivar", variant: "destructive" });
+        if (success) { toast({ title: "Acompanhamento encerrado", description: "O paciente foi avisado e o histórico foi preservado.", variant: "success" }); fetchPatients(); }
+        else toast({ title: "Erro ao encerrar acompanhamento", variant: "destructive" });
     };
 
     const handleDelete = async (patient) => {

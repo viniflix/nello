@@ -18,7 +18,8 @@ import {
   Ruler,
   Weight,
   MapPin,
-  BookOpen
+  BookOpen,
+  UserMinus
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -42,6 +43,7 @@ import AvatarUpload from '@/components/patient/AvatarUpload';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { ThemeToggle } from '@/components/shared/ThemeToggle';
+import { endMyCareRelationship, getMyCareRelationship } from '@/lib/supabase/patient-queries';
 
 /**
  * PatientProfilePage - Aba 5: Perfil
@@ -60,6 +62,8 @@ export default function PatientProfilePage() {
   const [loading, setLoading] = useState(true);
   const [deleteEmailConfirm, setDeleteEmailConfirm] = useState('');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [careRelationship, setCareRelationship] = useState(null);
+  const [endingCare, setEndingCare] = useState(false);
 
   const loadUserAchievements = useCallback(async () => {
     if (!user) return;
@@ -83,6 +87,29 @@ export default function PatientProfilePage() {
   useEffect(() => {
     loadUserAchievements();
   }, [loadUserAchievements]);
+
+  useEffect(() => {
+    getMyCareRelationship().then(({ data }) => setCareRelationship(data));
+  }, []);
+
+  const handleEndCare = async () => {
+    setEndingCare(true);
+    const { success, error } = await endMyCareRelationship(user.id);
+    setEndingCare(false);
+    if (!success) {
+      toast({
+        title: 'Não foi possível encerrar o acompanhamento',
+        description: error?.message || 'Tente novamente.',
+        variant: 'destructive'
+      });
+      return;
+    }
+    setCareRelationship(previous => ({ ...previous, status: 'ended', ended_at: new Date().toISOString() }));
+    toast({
+      title: 'Acompanhamento encerrado',
+      description: 'O nutricionista foi avisado e seu histórico continua preservado.'
+    });
+  };
 
   const handleExportData = async () => {
     try {
@@ -468,6 +495,46 @@ export default function PatientProfilePage() {
               <CardDescription>Gerencie seus dados pessoais</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
+              {careRelationship?.status === 'active' && (
+                <>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        className="w-full justify-between h-auto py-3 text-destructive hover:text-destructive"
+                      >
+                        <span className="flex items-center gap-3">
+                          <UserMinus className="w-5 h-5" />
+                          <div className="text-left">
+                            <p className="text-sm font-medium">Encerrar acompanhamento</p>
+                            <p className="text-xs text-muted-foreground">
+                              Desvincular de {careRelationship.nutritionist_name || 'seu nutricionista'}
+                            </p>
+                          </div>
+                        </span>
+                        <ChevronRight className="w-4 h-4" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Encerrar acompanhamento?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          A decisão é imediata e não depende de aprovação. O nutricionista será avisado,
+                          o histórico será preservado e você poderá aceitar um novo convite depois.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleEndCare} disabled={endingCare}>
+                          {endingCare ? 'Encerrando...' : 'Confirmar encerramento'}
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                  <hr className="border-t" />
+                </>
+              )}
+
               {/* Exportar Dados */}
               <Button
                 variant="ghost"

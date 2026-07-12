@@ -9,7 +9,9 @@ $files = [ordered]@{
     'care-episodes.sql' = Join-Path $root 'supabase\migrations\20260711113000_create_care_episodes_foundation.sql'
     'clinical-isolation.sql' = Join-Path $root 'supabase\migrations\20260711130000_add_clinical_episode_isolation.sql'
     'patient-owned-isolation.sql' = Join-Path $root 'supabase\migrations\20260711133000_add_patient_owned_episode_isolation.sql'
+    'care-journeys.sql' = Join-Path $root 'supabase\migrations\20260711140000_enable_care_journeys.sql'
     'matrix.sql' = Join-Path $root 'supabase\tests\clinical_episode_isolation_matrix.sql'
+    'journeys-matrix.sql' = Join-Path $root 'supabase\tests\care_journeys_matrix.sql'
 }
 
 foreach ($file in $files.Values) {
@@ -43,7 +45,9 @@ try {
         @{ Label = 'care-episodes migration'; Sql = '\i /tmp/care-episodes.sql'; ShowOutput = $false },
         @{ Label = 'clinical-isolation migration'; Sql = '\i /tmp/clinical-isolation.sql'; ShowOutput = $false },
         @{ Label = 'patient-owned isolation migration'; Sql = '\i /tmp/patient-owned-isolation.sql'; ShowOutput = $false },
-        @{ Label = 'clinical-isolation matrix'; Sql = '\i /tmp/matrix.sql'; ShowOutput = $true }
+        @{ Label = 'care journeys migration'; Sql = '\i /tmp/care-journeys.sql'; ShowOutput = $false },
+        @{ Label = 'clinical-isolation matrix'; Sql = '\i /tmp/matrix.sql'; ShowOutput = $true },
+        @{ Label = 'care journeys matrix'; Sql = '\i /tmp/journeys-matrix.sql'; ShowOutput = $true }
     )
 
     foreach ($command in $commands) {

@@ -181,7 +181,7 @@ const PatientCard = ({ patient, isOnline, onArchive, onDelete }) => {
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem onClick={() => setShowArchiveModal(true)} className="cursor-pointer">
                                         <Archive className="mr-2 h-4 w-4" />
-                                        Arquivar Paciente
+                                        Encerrar acompanhamento
                                     </DropdownMenuItem>
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem
@@ -203,9 +203,9 @@ const PatientCard = ({ patient, isOnline, onArchive, onDelete }) => {
             <Dialog open={showArchiveModal} onOpenChange={setShowArchiveModal}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Arquivar Paciente</DialogTitle>
+                        <DialogTitle>Encerrar acompanhamento</DialogTitle>
                         <DialogDescription>
-                            Tem certeza que deseja arquivar <strong>{patient.name}</strong>?
+                            Tem certeza que deseja encerrar o acompanhamento de <strong>{patient.name}</strong>?
                             <br /><br />
                             O vínculo será encerrado. Seus dados clínicos registrados por você ficam salvos como read-only para fins legais (LGPD / CFN). O paciente ficará livre para ser vinculado a outro nutricionista via novo convite.
                             <br /><br />
@@ -215,7 +215,7 @@ const PatientCard = ({ patient, isOnline, onArchive, onDelete }) => {
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setShowArchiveModal(false)}>Cancelar</Button>
                         <Button variant="destructive" onClick={() => { setShowArchiveModal(false); onArchive(patient); }}>
-                            Sim, Arquivar
+                            Confirmar encerramento
                         </Button>
                     </DialogFooter>
                 </DialogContent>

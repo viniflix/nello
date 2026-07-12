@@ -16,6 +16,7 @@ import NotificationsPanel from '@/components/NotificationsPanel';
 import PatientPendingCheckinsWidget from '@/components/patient/PatientPendingCheckinsWidget';
 import { getActiveMealPlan } from '@/lib/supabase/meal-plan-queries';
 import { useNotifications } from '@/hooks/useNotifications';
+import { getMyCareRelationship } from '@/lib/supabase/patient-queries';
 
 /**
  * PatientHomePage - Aba 1: Início
@@ -42,7 +43,10 @@ export default function PatientHomePage() {
     const today = new Date();
     const todayStr = format(today, 'yyyy-MM-dd');
 
-    // 0. Verificar status do vínculo se houver um nutricionista
+    // 0. O episódio é a fonte de verdade do vínculo; pending ainda vive na solicitação.
+    const { data: careRelationship } = await getMyCareRelationship();
+    let resolvedLinkStatus = careRelationship?.status || 'unlinked';
+
     if (user?.profile?.nutritionist_id) {
         const { data: linkData } = await supabase
             .from('nutritionist_patients')
@@ -51,15 +55,18 @@ export default function PatientHomePage() {
             .eq('patient_id', user?.id)
             .maybeSingle();
         
-        setIsArchived(linkData?.status === 'archived');
-        setLinkStatus(linkData?.status || 'active');
+        if (linkData?.status === 'pending') resolvedLinkStatus = 'pending';
 
         // Se estiver pendente, não precisa carregar o resto
-        if (linkData?.status === 'pending') {
+        if (resolvedLinkStatus === 'pending') {
+            setLinkStatus('pending');
             setLoading(false);
             return;
         }
     }
+
+    setIsArchived(resolvedLinkStatus === 'ended');
+    setLinkStatus(resolvedLinkStatus);
 
     // 1. Buscar plano alimentar ativo do paciente usando o helper padrão
     // Isso resolve o erro 400 de join inválido com a view 'foods'
@@ -176,6 +183,25 @@ export default function PatientHomePage() {
                     <Clock className="w-4 h-4 mr-2" /> Verificar novamente
                 </Button>
             </motion.div>
+        )}
+
+        {(linkStatus === 'ended' || linkStatus === 'unlinked') && (
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="rounded-2xl border bg-card p-6 text-center shadow-sm"
+          >
+            <Info className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />
+            <h2 className="text-xl font-semibold">Sem acompanhamento ativo</h2>
+            <p className="mx-auto mt-2 max-w-lg text-sm text-muted-foreground">
+              {linkStatus === 'ended'
+                ? 'Seu acompanhamento anterior foi encerrado. Seu histórico continua disponível para você, e um novo vínculo poderá ser criado por convite.'
+                : 'Use o código de convite de um nutricionista para iniciar um acompanhamento.'}
+            </p>
+            <Button className="mt-5" onClick={() => navigate('/patient/invites')}>
+              Vincular a um nutricionista
+            </Button>
+          </motion.div>
         )}
 
         {linkStatus === 'active' && (

@@ -74,14 +74,12 @@ export const resolvePatientId = async (slugOrId, nutritionistId) => {
  */
 export const getPatientProfile = async (patientId, nutritionistId) => {
     try {
-        const { data, error } = await supabase
-            .from('user_profiles')
-            .select('*')
-            .eq('id', patientId)
-            .eq('nutritionist_id', nutritionistId)
-            .single();
+        const { data, error } = await supabase.rpc('get_care_patient_profile', {
+            p_patient_id: patientId
+        });
 
         if (error) throw error;
+        if (!data) throw new Error('Perfil de atendimento não encontrado.');
         return { data, error: null };
     } catch (error) {
         logSupabaseError('Erro ao buscar perfil do paciente', error);
@@ -1474,64 +1472,32 @@ export const getActiveGoalForEnergy = async (patientId) => {
  */
 export const fetchAllNutritionistPatients = async (nutritionistId) => {
     try {
-        // Busca pacientes que ainda possuem vínculo direto na tabela user_profiles (is_active pode ser true ou false)
-        const { data: profiles, error: profileError } = await supabase
-            .from('user_profiles')
-            .select('*')
-            .eq('nutritionist_id', nutritionistId);
+        const [{ data: carePatients, error: careError }, { data: pendingLinks, error: pendingError }] = await Promise.all([
+            supabase.rpc('list_nutritionist_care_patients'),
+            supabase
+                .from('nutritionist_patients')
+                .select('patient_id, status')
+                .eq('nutritionist_id', nutritionistId)
+                .eq('status', 'pending')
+        ]);
 
-        if (profileError) throw profileError;
+        if (careError) throw careError;
+        if (pendingError) throw pendingError;
 
-        // Busca registros da tabela de arquivados (onde o paciente pode ou não estar vinculado atualmente)
-        const { data: archivedLinks, error: linkError } = await supabase
-            .from('archived_patient_links')
-            .select('*')
-            .eq('nutritionist_id', nutritionistId);
+        const pendingIds = (pendingLinks || []).map(link => link.patient_id);
+        let pending = [];
+        if (pendingIds.length > 0) {
+            const { data: pendingProfiles, error: profileError } = await supabase
+                .from('user_profiles')
+                .select('*')
+                .in('id', pendingIds);
+            if (profileError) throw profileError;
+            pending = (pendingProfiles || []).map(profile => ({ ...profile, link_status: 'pending' }));
+        }
 
-        if (linkError) throw linkError;
-
-        // 3. Busca os status na tabela nutritionist_patients para diferenciar pendentes
-        const { data: linkStatuses, error: statusError } = await supabase
-            .from('nutritionist_patients')
-            .select('patient_id, status')
-            .eq('nutritionist_id', nutritionistId);
-
-        if (statusError) throw statusError;
-
-        const statusMap = new Map((linkStatuses || []).map(ls => [ls.patient_id, ls.status]));
-
-        const active = [];
-        const archived = [];
-        const pending = [];
-        const seenArchivedIds = new Set();
-
-        // Processa os links de arquivados
-        (archivedLinks || []).forEach(link => {
-            seenArchivedIds.add(link.patient_id);
-            archived.push({
-                ...link.patient_snapshot,
-                id: link.patient_id,
-                arquivadoHistorico: true,
-                is_active: false,
-                archived_at: link.archived_at
-            });
-        });
-
-        // Processa os perfis atuais
-        (profiles || []).forEach(p => {
-            const status = statusMap.get(p.id) || 'active'; // Default active se não tiver link (caso antigo)
-
-            if (p.is_active === false || seenArchivedIds.has(p.id)) {
-                if (!seenArchivedIds.has(p.id)) {
-                    archived.push({ ...p, link_status: status });
-                    seenArchivedIds.add(p.id);
-                }
-            } else if (status === 'pending') {
-                pending.push({ ...p, link_status: 'pending' });
-            } else {
-                active.push({ ...p, link_status: status });
-            }
-        });
+        const normalized = carePatients || [];
+        const active = normalized.filter(patient => patient.care_status === 'active');
+        const archived = normalized.filter(patient => patient.care_status === 'ended');
 
         return { active, archived, pending, error: null };
     } catch (error) {
@@ -1545,40 +1511,40 @@ export const fetchAllNutritionistPatients = async (nutritionistId) => {
  */
 export const archivePatient = async (patientId, nutritionistId) => {
     try {
-        // 1. Pega os dados atuais para o snapshot
-        const { data: profile } = await supabase
-            .from('user_profiles')
-            .select('name, email, cpf, avatar_url, phone')
-            .eq('id', patientId)
-            .single();
-
-        if (!profile) throw new Error("Perfil do paciente não encontrado.");
-
-        // 2. Insere na tabela archived_patient_links
-        const { error: insertError } = await supabase
-            .from('archived_patient_links')
-            .upsert({
-                nutritionist_id: nutritionistId,
-                patient_id: patientId,
-                patient_snapshot: profile,
-                archived_at: new Date().toISOString()
-            }, { onConflict: 'nutritionist_id,patient_id' });
-
-        if (insertError) throw insertError;
-
-        // 3. Atualiza is_active para false
-        const { error: updateError } = await supabase
-            .from('user_profiles')
-            .update({ is_active: false })
-            .eq('id', patientId)
-            .eq('nutritionist_id', nutritionistId);
-
-        if (updateError) throw updateError;
-
-        return { success: true, error: null };
+        const { data, error } = await supabase.rpc('end_care_episode', {
+            p_patient_id: patientId,
+            p_end_reason: 'ended_by_nutritionist'
+        });
+        if (error) throw error;
+        return { success: data?.success === true, error: null, data };
     } catch (error) {
         logSupabaseError('Erro ao arquivar paciente', error);
         return { success: false, error };
+    }
+};
+
+export const getMyCareRelationship = async () => {
+    try {
+        const { data, error } = await supabase.rpc('get_my_care_relationship');
+        if (error) throw error;
+        return { data, error: null };
+    } catch (error) {
+        logSupabaseError('Erro ao buscar vínculo de atendimento', error);
+        return { data: null, error };
+    }
+};
+
+export const endMyCareRelationship = async (patientId, reason = 'ended_by_patient') => {
+    try {
+        const { data, error } = await supabase.rpc('end_care_episode', {
+            p_patient_id: patientId,
+            p_end_reason: reason
+        });
+        if (error) throw error;
+        return { success: data?.success === true, data, error: null };
+    } catch (error) {
+        logSupabaseError('Erro ao encerrar vínculo de atendimento', error);
+        return { success: false, data: null, error };
     }
 };
 
