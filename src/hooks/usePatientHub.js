@@ -37,6 +37,7 @@ export const usePatientHub = (patientId) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [patientData, setPatientData] = useState(null);
+    const [loadedPatientId, setLoadedPatientId] = useState(null);
     const [latestMetrics, setLatestMetrics] = useState(null);
     const [modulesStatus, setModulesStatus] = useState({});
     const [activities, setActivities] = useState([]);
@@ -45,16 +46,16 @@ export const usePatientHub = (patientId) => {
     const [legalGuardians, setLegalGuardians] = useState([]);
     const [profileRequirements, setProfileRequirements] = useState([]);
     const requestGeneration = useRef(0);
-    const mounted = useRef(true);
+    const activitiesGeneration = useRef(0);
 
     /**
      * Carrega o resumo completo do paciente
      */
-    const loadPatientSummary = useCallback(async () => {
+    const loadPatientSummary = useCallback(async (isCancelled = () => false) => {
         if (!patientId || !user?.id) return;
 
         const generation = ++requestGeneration.current;
-        const isLatestRequest = () => mounted.current && requestGeneration.current === generation;
+        const isLatestRequest = () => !isCancelled() && requestGeneration.current === generation;
 
         setLoading(true);
         setError(null);
@@ -73,6 +74,7 @@ export const usePatientHub = (patientId) => {
 
             if (data) {
                 setPatientData(data.profile);
+                setLoadedPatientId(patientId);
                 setLatestMetrics(data.metrics);
                 setModulesStatus(data.modulesStatus);
 
@@ -100,6 +102,7 @@ export const usePatientHub = (patientId) => {
             console.error('Erro ao carregar resumo do paciente:', err);
             setError(err);
             setPatientData(null);
+            setLoadedPatientId(null);
             setFoundation(null);
             setLegalGuardians([]);
             setProfileRequirements([]);
@@ -108,17 +111,15 @@ export const usePatientHub = (patientId) => {
         }
     }, [patientId, user?.id]);
 
-    useEffect(() => () => {
-        mounted.current = false;
-        requestGeneration.current += 1;
-    }, []);
-
     /**
      * Carrega as atividades do paciente
      * Busca TODAS as atividades disponíveis para permitir filtros client-side
      */
-    const loadActivities = useCallback(async () => {
+    const loadActivities = useCallback(async (isCancelled = () => false) => {
         if (!patientId) return;
+
+        const generation = ++activitiesGeneration.current;
+        const isLatestRequest = () => !isCancelled() && activitiesGeneration.current === generation;
 
         setActivitiesLoading(true);
 
@@ -133,12 +134,13 @@ export const usePatientHub = (patientId) => {
                 throw activitiesError;
             }
 
-            setActivities(data || []);
+            if (isLatestRequest()) setActivities(data || []);
         } catch (err) {
+            if (!isLatestRequest()) return;
             console.error('Erro ao carregar atividades:', err);
             setActivities([]);
         } finally {
-            setActivitiesLoading(false);
+            if (isLatestRequest()) setActivitiesLoading(false);
         }
     }, [patientId]);
 
@@ -154,22 +156,42 @@ export const usePatientHub = (patientId) => {
 
     // Carrega os dados iniciais (ou define loading=false quando não há patientId)
     useEffect(() => {
+        let cancelled = false;
+        requestGeneration.current += 1;
+        activitiesGeneration.current += 1;
+        setPatientData(null);
+        setLoadedPatientId(null);
+        setLatestMetrics(null);
+        setModulesStatus({});
+        setFoundation(null);
+        setLegalGuardians([]);
+        setProfileRequirements([]);
+        setActivities([]);
+        setActivitiesLoading(false);
         if (!patientId || !user?.id) {
             setLoading(false);
-            return;
+            return () => { cancelled = true; };
         }
-        loadPatientSummary();
+        setLoading(true);
+        loadPatientSummary(() => cancelled);
         return () => {
+            cancelled = true;
             requestGeneration.current += 1;
+            activitiesGeneration.current += 1;
         };
     }, [loadPatientSummary, patientId, user?.id]);
 
     // Carrega atividades (opcionalmente, pode ser lazy)
     useEffect(() => {
-        if (patientData) {
-            loadActivities();
+        let cancelled = false;
+        if (patientData && loadedPatientId === patientId) {
+            loadActivities(() => cancelled);
         }
-    }, [patientData, loadActivities]);
+        return () => {
+            cancelled = true;
+            activitiesGeneration.current += 1;
+        };
+    }, [loadedPatientId, patientData, patientId, loadActivities]);
 
     return {
         // Estados

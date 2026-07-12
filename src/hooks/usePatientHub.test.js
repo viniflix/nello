@@ -1,6 +1,7 @@
 /* eslint-disable import/first */
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { createElement, StrictMode } from 'react';
 
 const mocks = vi.hoisted(() => ({
   getPatientSummary: vi.fn(),
@@ -178,5 +179,57 @@ describe('usePatientHub clinical record foundation', () => {
     const { result } = renderHook(() => usePatientHub('patient-1'));
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.profileRequirements).toEqual(['legal_guardian']);
+  });
+
+  it('clears the previous patient snapshot immediately when patientId changes', async () => {
+    const summaryB = deferred();
+    const foundationB = deferred();
+    mocks.getPatientSummary
+      .mockResolvedValueOnce({ data: { profile: { name: 'A' }, metrics: { weight: 70 }, modulesStatus: { plan: true } }, error: null })
+      .mockReturnValueOnce(summaryB.promise);
+    mocks.getPatientRecordFoundation
+      .mockResolvedValueOnce({ data: { patient: { name: 'A' }, records: [] }, error: null })
+      .mockReturnValueOnce(foundationB.promise);
+    mocks.getPatientActivities.mockResolvedValueOnce({ data: [{ id: 'activity-a' }], error: null });
+    const { result, rerender } = renderHook(({ patientId }) => usePatientHub(patientId), { initialProps: { patientId: 'a' } });
+    await waitFor(() => expect(result.current.patientData?.name).toBe('A'));
+    await waitFor(() => expect(result.current.activities).toEqual([{ id: 'activity-a' }]));
+    rerender({ patientId: 'b' });
+    expect(result.current.loading).toBe(true);
+    expect(result.current.patientData).toBeNull();
+    expect(result.current.foundation).toBeNull();
+    expect(result.current.legalGuardians).toEqual([]);
+    expect(result.current.profileRequirements).toEqual([]);
+    expect(result.current.activities).toEqual([]);
+  });
+
+  it('ignores activities from an older patient that resolve after the latest patient', async () => {
+    const activitiesA = deferred();
+    mocks.getPatientSummary
+      .mockResolvedValueOnce({ data: { profile: { name: 'A' }, metrics: {}, modulesStatus: {} }, error: null })
+      .mockResolvedValueOnce({ data: { profile: { name: 'B' }, metrics: {}, modulesStatus: {} }, error: null });
+    mocks.getPatientRecordFoundation
+      .mockResolvedValueOnce({ data: { patient: { name: 'A' }, records: [] }, error: null })
+      .mockResolvedValueOnce({ data: { patient: { name: 'B' }, records: [] }, error: null });
+    mocks.getPatientActivities
+      .mockReturnValueOnce(activitiesA.promise)
+      .mockResolvedValueOnce({ data: [{ id: 'activity-b' }], error: null });
+    const { result, rerender } = renderHook(({ patientId }) => usePatientHub(patientId), { initialProps: { patientId: 'a' } });
+    await waitFor(() => expect(mocks.getPatientActivities).toHaveBeenCalledWith('a', 100));
+    rerender({ patientId: 'b' });
+    await waitFor(() => expect(result.current.activities).toEqual([{ id: 'activity-b' }]));
+    await act(async () => {
+      activitiesA.resolve({ data: [{ id: 'activity-a' }], error: null });
+      await activitiesA.promise;
+    });
+    expect(result.current.activities).toEqual([{ id: 'activity-b' }]);
+    expect(result.current.activitiesLoading).toBe(false);
+  });
+
+  it('completes loading during StrictMode effect replay', async () => {
+    const wrapper = ({ children }) => createElement(StrictMode, null, children);
+    const { result } = renderHook(() => usePatientHub('patient-1'), { wrapper });
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.patientData?.name).toBe('Ana');
   });
 });

@@ -49,6 +49,9 @@ export const normalizeProgressiveProfilePayload = (profile) => {
       normalized[key] = normalizeString(value);
     }
   }
+  if (Object.keys(normalized).length === 0) {
+    throw new Error('profile_changes_required');
+  }
   return normalized;
 };
 

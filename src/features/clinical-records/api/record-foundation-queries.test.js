@@ -76,4 +76,11 @@ describe('record foundation RPC wrappers', () => {
       p_changes: { email: null, phone: '8599', address: { city: 'Fortaleza' } },
     });
   });
+
+  it.each([{}, { extra: true }, { phone: undefined }])('rejects an effectively empty update %#', async (changes) => {
+    const result = await updatePatientProgressiveProfile('patient-1', changes, 'nutritionist');
+    expect(result.data).toBeNull();
+    expect(result.error).toBeInstanceOf(Error);
+    expect(rpc).not.toHaveBeenCalled();
+  });
 });
