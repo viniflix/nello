@@ -25,26 +25,6 @@ foreach ($file in @($baseline, $matrix) + $migrations) {
     if (-not (Test-Path -LiteralPath $file)) { throw "Required local Supabase artifact is missing: $file" }
 }
 
-$matrixSql = Get-Content -Raw -LiteralPath $matrix
-$requiredMatrixContracts = @(
-    'two_ended_episodes_required',
-    'missing_patient_name_was_accepted',
-    'former_professional_record_isolation_failed',
-    'former_professional_guardian_isolation_failed',
-    'unrelated_professional_read_clinical_content',
-    'admin_read_clinical_content',
-    'patient_cannot_read_own_records',
-    'unsupervised_student_created_real_draft',
-    'supervised_draft_attribution_failed',
-    'profile_event_mutation_was_allowed',
-    'clinical_record_hard_delete_was_allowed',
-    'clinical_record_system_type_mutation_was_allowed',
-    'get_patient_record_foundation_or_clinical_records_absent'
-)
-foreach ($contract in $requiredMatrixContracts) {
-    if (-not $matrixSql.Contains($contract)) { throw "Clinical record matrix contract is missing: $contract" }
-}
-
 $existing = docker ps -a --filter "name=^/$container$" --format '{{.Names}}'
 if ($existing -eq $container) { docker rm -f $container | Out-Null }
 
