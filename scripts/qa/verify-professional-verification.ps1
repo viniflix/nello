@@ -6,6 +6,7 @@ $root = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
 $baseline = Join-Path $root 'supabase\baseline\remote_schema_20260711.sql'
 $migration = Join-Path $root 'supabase\migrations\20260712100000_create_professional_verification_foundation.sql'
 $workflowMigration = Join-Path $root 'supabase\migrations\20260712110000_add_professional_verification_workflow.sql'
+$supervisionMigration = Join-Path $root 'supabase\migrations\20260712130000_add_student_supervision_workflow.sql'
 $matrix = Join-Path $root 'supabase\tests\professional_verification_foundation_matrix.sql'
 
 foreach ($file in @($baseline, $matrix)) {
@@ -37,6 +38,9 @@ try {
     if (Test-Path -LiteralPath $workflowMigration) {
         docker cp $workflowMigration "${container}:/tmp/professional-verification-workflow.sql" | Out-Null
     }
+    if (Test-Path -LiteralPath $supervisionMigration) {
+        docker cp $supervisionMigration "${container}:/tmp/student-supervision-workflow.sql" | Out-Null
+    }
 
     $commands = @(
         @{ Label = 'database preparation'; Sql = 'CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA extensions; ALTER EVENT TRIGGER graphql_watch_ddl DISABLE; ALTER EVENT TRIGGER graphql_watch_drop DISABLE; ALTER EVENT TRIGGER pgrst_ddl_watch DISABLE; ALTER EVENT TRIGGER pgrst_drop_watch DISABLE;'; ShowOutput = $false },
@@ -58,6 +62,9 @@ insert into public.user_profiles (id,name,user_type,is_admin,is_active) values
     }
     if (Test-Path -LiteralPath $workflowMigration) {
         $commands += @{ Label = 'professional verification workflow'; Sql = '\i /tmp/professional-verification-workflow.sql'; ShowOutput = $false }
+    }
+    if (Test-Path -LiteralPath $supervisionMigration) {
+        $commands += @{ Label = 'student supervision workflow'; Sql = '\i /tmp/student-supervision-workflow.sql'; ShowOutput = $false }
     }
 
     $commands += @(

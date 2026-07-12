@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   listProfessionalVerifications,
   reviewProfessionalVerification
-} from './adminService';
+} from '@/services/adminService';
 
 const { rpc } = vi.hoisted(() => ({ rpc: vi.fn() }));
 vi.mock('@/lib/customSupabaseClient', () => ({ supabase: { rpc } }));
