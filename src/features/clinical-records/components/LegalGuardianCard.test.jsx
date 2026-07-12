@@ -18,6 +18,8 @@ describe('LegalGuardianCard', () => {
     fireEvent.change(screen.getByLabelText(/evidência do consentimento/i), { target: { value: 'Termo arquivado' } });
     fireEvent.submit(screen.getByRole('button', { name: /^salvar$/i }).closest('form'));
     await waitFor(() => expect(onSave).toHaveBeenCalledWith('p1', 'episode-current', expect.objectContaining({ name: 'Beatriz Lima', relationship: 'Mãe' })));
+    expect(onSave.mock.calls[0][2]).not.toHaveProperty('valid_from');
+    expect(onSave.mock.calls[0][2]).not.toHaveProperty('valid_until');
   });
 
   it('requires a reason before confirming revocation', async () => {
@@ -37,6 +39,12 @@ describe('LegalGuardianCard', () => {
     render(<LegalGuardianCard patientId="p1" episodeId={null} guardians={[]} onSave={vi.fn()} />);
     expect(screen.getByText(/inicie um episódio de cuidado/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /adicionar responsável/i })).toBeDisabled();
+  });
+
+  it('describes a viewed historical episode as read-only instead of asking to start one', () => {
+    render(<LegalGuardianCard patientId="p1" episodeId={null} viewedEpisodeId="ended-1" guardians={[]} onSave={vi.fn()} />);
+    expect(screen.getByText(/somente.*leitura/i)).toBeInTheDocument();
+    expect(screen.queryByText(/inicie um episódio/i)).not.toBeInTheDocument();
   });
 
   it('requires replacement reason and sends period and consent in the supported payload', async () => {

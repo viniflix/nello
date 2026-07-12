@@ -58,6 +58,7 @@ const PatientHubPage = () => {
         modulesStatus,
         activities,
         activitiesLoading,
+        viewedEpisodeId,
         writableEpisodeId,
         profileRequirements,
         legalGuardians,
@@ -465,6 +466,7 @@ const PatientHubPage = () => {
                     isOpen={isEditProfileModalOpen} 
                     onClose={() => setIsEditProfileModalOpen(false)} 
                     patientData={patientData}
+                    viewedEpisodeId={viewedEpisodeId}
                     writableEpisodeId={writableEpisodeId}
                     profileRequirements={profileRequirements}
                     legalGuardians={legalGuardians}

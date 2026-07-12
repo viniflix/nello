@@ -42,4 +42,12 @@ describe('ProgressivePatientProfile', () => {
       address: { street: 'Rua das Flores', city: 'Fortaleza', state: 'CE', postal_code: '60000-000' },
     })));
   });
+
+  it('disables every progressive-profile control in read-only mode', () => {
+    render(<ProgressivePatientProfile patient={{ name: 'Ana', address: {} }} readOnly onSave={vi.fn()} />);
+    for (const control of screen.getAllByRole('textbox')) expect(control).toBeDisabled();
+    expect(screen.getByLabelText(/data de nascimento/i)).toBeDisabled();
+    expect(screen.getByLabelText(/gênero/i)).toBeDisabled();
+    expect(screen.getByRole('button', { name: /salvar perfil/i })).toBeDisabled();
+  });
 });

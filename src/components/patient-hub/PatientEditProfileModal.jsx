@@ -22,6 +22,7 @@ export default function PatientEditProfileModal({
   isOpen,
   onClose,
   patientData,
+  viewedEpisodeId = null,
   writableEpisodeId = null,
   profileRequirements = [],
   legalGuardians = [],
@@ -137,6 +138,7 @@ export default function PatientEditProfileModal({
         <LegalGuardianCard
           patientId={patientData.id}
           episodeId={episodeId}
+          viewedEpisodeId={viewedEpisodeId}
           isMinor={isMinor}
           guardians={legalGuardians}
           onSave={(patientId, currentEpisodeId, payload) =>

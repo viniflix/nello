@@ -44,6 +44,7 @@ const emptyGuardianForm = () => ({
 export default function LegalGuardianCard({
   patientId,
   episodeId,
+  viewedEpisodeId = null,
   isMinor = false,
   guardians = [],
   onSave,
@@ -87,8 +88,8 @@ export default function LegalGuardianCard({
       name: form.name,
       relationship: form.relationship,
       contact: { phone: form.phone.trim(), email: form.email.trim() },
-      valid_from: form.valid_from || null,
-      valid_until: form.valid_until || null,
+      ...(form.valid_from ? { valid_from: form.valid_from } : {}),
+      ...(form.valid_until ? { valid_until: form.valid_until } : {}),
       consent: {
         recorded: form.consent_recorded,
         ...(form.consent_recorded
@@ -144,7 +145,9 @@ export default function LegalGuardianCard({
             role="status"
             className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900"
           >
-            Inicie um episódio de cuidado para registrar um responsável legal.
+            {viewedEpisodeId
+              ? "Este episódio está encerrado e disponível somente para leitura."
+              : "Inicie um episódio de cuidado para registrar um responsável legal."}
           </p>
         )}
         {isMinor && !active && (

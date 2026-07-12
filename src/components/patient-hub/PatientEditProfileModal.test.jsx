@@ -24,8 +24,8 @@ describe('PatientEditProfileModal integration', () => {
   });
 
   it('passes only the active episode to guardian UI and prevents a null RPC', () => {
-    render(<PatientEditProfileModal isOpen onClose={vi.fn()} patientData={{ id: 'p1', name: 'Ana' }} writableEpisodeId={null} />);
-    expect(screen.getByText(/inicie um episódio de cuidado/i)).toBeInTheDocument();
+    render(<PatientEditProfileModal isOpen onClose={vi.fn()} patientData={{ id: 'p1', name: 'Ana' }} viewedEpisodeId="ended-1" writableEpisodeId={null} />);
+    expect(screen.getByText(/somente.*leitura/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /adicionar responsável/i })).toBeDisabled();
     expect(screen.getByRole('button', { name: /salvar perfil/i })).toBeDisabled();
     expect(saveGuardian).not.toHaveBeenCalled();
