@@ -10,6 +10,9 @@ $files = [ordered]@{
     'clinical-isolation.sql' = Join-Path $root 'supabase\migrations\20260711130000_add_clinical_episode_isolation.sql'
     'patient-owned-isolation.sql' = Join-Path $root 'supabase\migrations\20260711133000_add_patient_owned_episode_isolation.sql'
     'care-journeys.sql' = Join-Path $root 'supabase\migrations\20260711140000_enable_care_journeys.sql'
+    'professional-verification.sql' = Join-Path $root 'supabase\migrations\20260712100000_create_professional_verification_foundation.sql'
+    'professional-workflow.sql' = Join-Path $root 'supabase\migrations\20260712110000_add_professional_verification_workflow.sql'
+    'verified-clinical-capacity.sql' = Join-Path $root 'supabase\migrations\20260712120000_enforce_verified_clinical_capacity.sql'
     'matrix.sql' = Join-Path $root 'supabase\tests\clinical_episode_isolation_matrix.sql'
     'journeys-matrix.sql' = Join-Path $root 'supabase\tests\care_journeys_matrix.sql'
 }
@@ -46,7 +49,10 @@ try {
         @{ Label = 'clinical-isolation migration'; Sql = '\i /tmp/clinical-isolation.sql'; ShowOutput = $false },
         @{ Label = 'patient-owned isolation migration'; Sql = '\i /tmp/patient-owned-isolation.sql'; ShowOutput = $false },
         @{ Label = 'care journeys migration'; Sql = '\i /tmp/care-journeys.sql'; ShowOutput = $false },
+        @{ Label = 'professional verification migration'; Sql = '\i /tmp/professional-verification.sql'; ShowOutput = $false },
+        @{ Label = 'professional workflow migration'; Sql = '\i /tmp/professional-workflow.sql'; ShowOutput = $false },
         @{ Label = 'clinical-isolation matrix'; Sql = '\i /tmp/matrix.sql'; ShowOutput = $true },
+        @{ Label = 'verified clinical capacity migration'; Sql = '\i /tmp/verified-clinical-capacity.sql'; ShowOutput = $false },
         @{ Label = 'care journeys matrix'; Sql = '\i /tmp/journeys-matrix.sql'; ShowOutput = $true }
     )
 
