@@ -10,7 +10,7 @@ import { revokePatientLegalGuardian, savePatientLegalGuardian, updatePatientProg
 
 export default function PatientEditProfileModal({ isOpen, onClose, patientData, foundation, profileRequirements = [], legalGuardians = [], onSaveSuccess }) {
   const { toast } = useToast(); const fileInputRef = useRef(null); const [uploading, setUploading] = useState(false); const [previewUrl, setPreviewUrl] = useState(null);
-  const episodeId = foundation?.active_episode?.id || foundation?.active_episode_id || foundation?.records?.[0]?.care_episode_id || patientData?.care_episode_id || null;
+  const episodeId = foundation?.active_episode?.id || foundation?.active_episode_id || null;
   const isMinor = profileRequirements.includes('legal_guardian');
   const refreshAfter = async (operation) => { const result = await operation; if (!result?.error) await onSaveSuccess?.(); return result; };
   const changePhoto = async (event) => {

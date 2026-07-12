@@ -13,7 +13,7 @@ describe('LegalGuardianCard', () => {
     fireEvent.change(screen.getByLabelText(/nome do responsável/i), { target: { value: 'Beatriz Lima' } });
     fireEvent.change(screen.getByLabelText(/relação/i), { target: { value: 'Mãe' } });
     fireEvent.click(screen.getByLabelText(/consentimento registrado/i));
-    fireEvent.click(screen.getByRole('button', { name: /^salvar$/i }));
+    fireEvent.submit(screen.getByRole('button', { name: /^salvar$/i }).closest('form'));
     await waitFor(() => expect(onSave).toHaveBeenCalledWith('p1', 'episode-current', expect.objectContaining({ name: 'Beatriz Lima', relationship: 'Mãe' })));
   });
 
@@ -28,5 +28,46 @@ describe('LegalGuardianCard', () => {
     fireEvent.change(screen.getByLabelText(/motivo da revogação/i), { target: { value: 'Responsável substituído' } });
     fireEvent.click(confirm);
     await waitFor(() => expect(onRevoke).toHaveBeenCalledWith('g1', 'Responsável substituído'));
+  });
+
+  it('disables creation without an active episode', () => {
+    render(<LegalGuardianCard patientId="p1" episodeId={null} guardians={[]} onSave={vi.fn()} />);
+    expect(screen.getByText(/inicie um episódio de cuidado/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /adicionar responsável/i })).toBeDisabled();
+  });
+
+  it('requires replacement reason and sends period and consent in the supported payload', async () => {
+    const onSave = vi.fn().mockResolvedValue({ error: null });
+    render(<LegalGuardianCard patientId="p1" episodeId="e1" guardians={[{ id: 'g1', name: 'Atual', status: 'active' }]} onSave={onSave} />);
+    fireEvent.click(screen.getByRole('button', { name: /substituir responsável/i }));
+    fireEvent.change(screen.getByLabelText(/nome do responsável/i), { target: { value: 'Nova' } });
+    fireEvent.change(screen.getByLabelText(/relação/i), { target: { value: 'Mãe' } });
+    fireEvent.change(screen.getByLabelText(/início do período/i), { target: { value: '2026-07-12' } });
+    fireEvent.change(screen.getByLabelText(/fim do período/i), { target: { value: '2027-07-12' } });
+    fireEvent.click(screen.getByLabelText(/consentimento registrado/i));
+    fireEvent.submit(screen.getByRole('button', { name: /^salvar$/i }).closest('form'));
+    expect(screen.getByText(/motivo da substituição é obrigatório/i)).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText(/motivo da substituição/i), { target: { value: 'Mudança familiar' } });
+    fireEvent.click(screen.getByRole('button', { name: /^salvar$/i }));
+    await waitFor(() => expect(onSave).toHaveBeenCalledWith('p1', 'e1', expect.objectContaining({
+      valid_from: '2026-07-12', valid_until: '2027-07-12', consent: { recorded: true }, reason: 'Mudança familiar'
+    })));
+  });
+
+  it('renders replaced, period and consent distinctly', () => {
+    render(<LegalGuardianCard episodeId="e1" guardians={[{ id: 'g1', name: 'Anterior', relationship: 'Pai', status: 'replaced', valid_from: '2025-01-01', valid_until: '2026-01-01', consent: { recorded: true } }]} />);
+    expect(screen.getByText(/substituído/i)).toBeInTheDocument();
+    expect(screen.getByText(/01\/01\/2025.*01\/01\/2026/i)).toBeInTheDocument();
+    expect(screen.getByText(/consentimento registrado/i)).toBeInTheDocument();
+  });
+
+  it('uses an accessible alert dialog that closes on Escape and restores focus', async () => {
+    render(<LegalGuardianCard episodeId="e1" guardians={[{ id: 'g1', name: 'Bia', status: 'active' }]} onRevoke={vi.fn()} />);
+    const trigger = screen.getByRole('button', { name: /revogar bia/i }); trigger.focus(); fireEvent.click(trigger);
+    const dialog = await screen.findByRole('alertdialog');
+    expect(dialog).toBeInTheDocument();
+    fireEvent.keyDown(document.activeElement, { key: 'Escape' });
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());
+    expect(trigger).toHaveFocus();
   });
 });
