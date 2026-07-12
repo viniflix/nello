@@ -20,6 +20,11 @@ export const progressiveProfileSchema = z.object({
   address: addressSchema,
 });
 
+export const progressiveProfileCommandSchema = progressiveProfileSchema.partial();
+
+const PROFILE_FIELDS = ['name', 'email', 'phone', 'birth_date', 'occupation', 'civil_status', 'gender', 'address'];
+const ADDRESS_FIELDS = ['street', 'city', 'state', 'postal_code'];
+
 const normalizeString = (value) => {
   if (typeof value !== 'string') return value;
   const trimmed = value.trim();
@@ -27,12 +32,19 @@ const normalizeString = (value) => {
 };
 
 export const normalizeProgressiveProfilePayload = (profile) => {
+  const parsed = progressiveProfileCommandSchema.parse(profile);
   const normalized = {};
-  for (const [key, value] of Object.entries(profile)) {
-    if (key === 'address' && value && typeof value === 'object') {
-      normalized.address = Object.fromEntries(
-        Object.entries(value).map(([addressKey, addressValue]) => [addressKey, normalizeString(addressValue)]),
-      );
+  for (const key of PROFILE_FIELDS) {
+    if (!Object.prototype.hasOwnProperty.call(parsed, key)) continue;
+    const value = parsed[key];
+    if (value === undefined) continue;
+    if (key === 'address') {
+      normalized.address = {};
+      for (const addressKey of ADDRESS_FIELDS) {
+        if (Object.prototype.hasOwnProperty.call(value, addressKey)) {
+          normalized.address[addressKey] = normalizeString(value[addressKey]);
+        }
+      }
     } else {
       normalized[key] = normalizeString(value);
     }

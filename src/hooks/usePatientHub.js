@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import {
     getPatientSummary,
@@ -44,12 +44,17 @@ export const usePatientHub = (patientId) => {
     const [foundation, setFoundation] = useState(null);
     const [legalGuardians, setLegalGuardians] = useState([]);
     const [profileRequirements, setProfileRequirements] = useState([]);
+    const requestGeneration = useRef(0);
+    const mounted = useRef(true);
 
     /**
      * Carrega o resumo completo do paciente
      */
     const loadPatientSummary = useCallback(async () => {
         if (!patientId || !user?.id) return;
+
+        const generation = ++requestGeneration.current;
+        const isLatestRequest = () => mounted.current && requestGeneration.current === generation;
 
         setLoading(true);
         setError(null);
@@ -59,6 +64,7 @@ export const usePatientHub = (patientId) => {
                 getPatientSummary(patientId, user.id),
                 getPatientRecordFoundation(patientId)
             ]);
+            if (!isLatestRequest()) return;
             const { data, error: summaryError } = summaryResult;
 
             if (summaryError) {
@@ -76,6 +82,7 @@ export const usePatientHub = (patientId) => {
                 let guardians = [];
                 if (episodeId) {
                     const guardiansResult = await listPatientLegalGuardians(patientId, episodeId);
+                    if (!isLatestRequest()) return;
                     if (!guardiansResult.error) guardians = guardiansResult.data || [];
                 }
                 setLegalGuardians(guardians);
@@ -89,6 +96,7 @@ export const usePatientHub = (patientId) => {
                 setError(new Error('Paciente não encontrado'));
             }
         } catch (err) {
+            if (!isLatestRequest()) return;
             console.error('Erro ao carregar resumo do paciente:', err);
             setError(err);
             setPatientData(null);
@@ -96,9 +104,14 @@ export const usePatientHub = (patientId) => {
             setLegalGuardians([]);
             setProfileRequirements([]);
         } finally {
-            setLoading(false);
+            if (isLatestRequest()) setLoading(false);
         }
     }, [patientId, user?.id]);
+
+    useEffect(() => () => {
+        mounted.current = false;
+        requestGeneration.current += 1;
+    }, []);
 
     /**
      * Carrega as atividades do paciente
@@ -146,6 +159,9 @@ export const usePatientHub = (patientId) => {
             return;
         }
         loadPatientSummary();
+        return () => {
+            requestGeneration.current += 1;
+        };
     }, [loadPatientSummary, patientId, user?.id]);
 
     // Carrega atividades (opcionalmente, pode ser lazy)

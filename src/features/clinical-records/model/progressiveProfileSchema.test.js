@@ -29,6 +29,25 @@ describe('progressiveProfileSchema', () => {
   it('does not add optional keys that were not sent', () => {
     expect(normalizeProgressiveProfilePayload({ name: 'Ana' })).toEqual({ name: 'Ana' });
   });
+
+  it('keeps only allowed profile and address keys', () => {
+    expect(normalizeProgressiveProfilePayload({
+      name: 'Ana', admin: true, address: { city: 'Fortaleza', country: 'BR' },
+    })).toEqual({ name: 'Ana', address: { city: 'Fortaleza' } });
+  });
+
+  it.each([null, undefined, 'profile', 42])('rejects invalid profile input %s', (input) => {
+    expect(() => normalizeProgressiveProfilePayload(input)).toThrow();
+  });
+
+  it.each([[], 'Fortaleza', { city: 123 }])('rejects invalid address input %#', (address) => {
+    expect(() => normalizeProgressiveProfilePayload({ name: 'Ana', address })).toThrow();
+  });
+
+  it('omits explicitly undefined optional fields and rejects null field values', () => {
+    expect(normalizeProgressiveProfilePayload({ name: 'Ana', phone: undefined })).toEqual({ name: 'Ana' });
+    expect(() => normalizeProgressiveProfilePayload({ name: 'Ana', phone: null })).toThrow();
+  });
 });
 
 describe('getContextualProfileRequirements', () => {

@@ -45,4 +45,35 @@ describe('record foundation RPC wrappers', () => {
     expect(logSupabaseError).toHaveBeenCalledOnce();
     expect(logSupabaseError).toHaveBeenCalledWith('Erro ao buscar fundação do prontuário', error);
   });
+
+  it('captures and logs exceptions thrown by the Supabase boundary', async () => {
+    const error = new Error('network');
+    rpc.mockRejectedValueOnce(error);
+    await expect(getPatientRecordFoundation('patient-1')).resolves.toEqual({ data: null, error });
+    expect(logSupabaseError).toHaveBeenCalledWith('Erro ao buscar fundação do prontuário', error);
+  });
+
+  it.each([
+    [{ name: 'A' }],
+    [{ email: 'invalid' }],
+    [{ gender: 'unknown' }],
+    [{ phone: 123 }],
+    [null],
+    [{ address: [] }],
+  ])('rejects invalid progressive update %# without calling RPC', async (changes) => {
+    const result = await updatePatientProgressiveProfile('patient-1', changes, 'nutritionist');
+    expect(result.data).toBeNull();
+    expect(result.error).toBeInstanceOf(Error);
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it('validates partial updates, strips extras and sends normalized values', async () => {
+    await updatePatientProgressiveProfile('patient-1', {
+      email: '', phone: ' 8599 ', extra: 'discard', address: { city: ' Fortaleza ', extra: 'discard' },
+    }, 'nutritionist');
+    expect(rpc).toHaveBeenCalledWith('update_patient_progressive_profile', {
+      p_patient_id: 'patient-1', p_source: 'nutritionist',
+      p_changes: { email: null, phone: '8599', address: { city: 'Fortaleza' } },
+    });
+  });
 });

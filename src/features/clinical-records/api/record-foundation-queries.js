@@ -19,11 +19,18 @@ export const getPatientRecordFoundation = (patientId) => callRpc(
   'Erro ao buscar fundação do prontuário',
 );
 
-export const updatePatientProgressiveProfile = (patientId, changes, source) => callRpc(
-  'update_patient_progressive_profile',
-  { p_patient_id: patientId, p_changes: normalizeProgressiveProfilePayload(changes), p_source: source },
-  'Erro ao atualizar perfil progressivo',
-);
+export const updatePatientProgressiveProfile = (patientId, changes, source) => {
+  try {
+    const normalizedChanges = normalizeProgressiveProfilePayload(changes);
+    return callRpc(
+      'update_patient_progressive_profile',
+      { p_patient_id: patientId, p_changes: normalizedChanges, p_source: source },
+      'Erro ao atualizar perfil progressivo',
+    );
+  } catch (error) {
+    return Promise.resolve({ data: null, error });
+  }
+};
 
 export const listPatientLegalGuardians = (patientId, episodeId) => callRpc(
   'list_patient_legal_guardians',

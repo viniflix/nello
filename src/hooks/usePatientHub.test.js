@@ -1,5 +1,5 @@
 /* eslint-disable import/first */
-import { renderHook, waitFor } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
@@ -20,6 +20,12 @@ vi.mock('@/features/clinical-records/api/record-foundation-queries', () => ({
 }));
 
 import { usePatientHub } from './usePatientHub';
+
+const deferred = () => {
+  let resolve;
+  const promise = new Promise((done) => { resolve = done; });
+  return { promise, resolve };
+};
 
 describe('usePatientHub clinical record foundation', () => {
   beforeEach(() => {
@@ -58,5 +64,119 @@ describe('usePatientHub clinical record foundation', () => {
     expect(result.current.foundation).toBeNull();
     expect(result.current.legalGuardians).toEqual([{ id: 'guardian-1', status: 'active' }]);
     expect(mocks.listPatientLegalGuardians).toHaveBeenCalledWith('patient-1', 'episode-1');
+  });
+
+  it('surfaces summary errors and clears clinical state', async () => {
+    const error = new Error('summary denied');
+    mocks.getPatientSummary.mockResolvedValue({ data: null, error });
+    const { result } = renderHook(() => usePatientHub('patient-1'));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.error).toBe(error);
+    expect(result.current.patientData).toBeNull();
+    expect(result.current.foundation).toBeNull();
+  });
+
+  it('reports a not-found summary', async () => {
+    mocks.getPatientSummary.mockResolvedValue({ data: null, error: null });
+    const { result } = renderHook(() => usePatientHub('patient-1'));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.error?.message).toContain('Paciente');
+  });
+
+  it('keeps guardians empty on guardian error and when no episode exists', async () => {
+    mocks.listPatientLegalGuardians.mockResolvedValue({ data: null, error: new Error('denied') });
+    const first = renderHook(() => usePatientHub('patient-1'));
+    await waitFor(() => expect(first.result.current.loading).toBe(false));
+    expect(first.result.current.legalGuardians).toEqual([]);
+    first.unmount();
+
+    mocks.getPatientSummary.mockResolvedValue({ data: { profile: { name: 'Ana' }, metrics: {}, modulesStatus: {} }, error: null });
+    mocks.getPatientRecordFoundation.mockResolvedValue({ data: { patient: { name: 'Ana' }, records: [] }, error: null });
+    mocks.listPatientLegalGuardians.mockClear();
+    const second = renderHook(() => usePatientHub('patient-2'));
+    await waitFor(() => expect(second.result.current.loading).toBe(false));
+    expect(mocks.listPatientLegalGuardians).not.toHaveBeenCalled();
+    expect(second.result.current.legalGuardians).toEqual([]);
+  });
+
+  it('refreshes summary, foundation and activities', async () => {
+    const { result } = renderHook(() => usePatientHub('patient-1'));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    await act(() => result.current.refresh());
+    expect(mocks.getPatientSummary).toHaveBeenCalledTimes(2);
+    expect(mocks.getPatientRecordFoundation).toHaveBeenCalledTimes(2);
+    expect(mocks.getPatientActivities).toHaveBeenCalled();
+  });
+
+  it('prevents an older patient request from overwriting the latest patient', async () => {
+    const summaryA = deferred();
+    const foundationA = deferred();
+    mocks.getPatientSummary
+      .mockReturnValueOnce(summaryA.promise)
+      .mockResolvedValueOnce({ data: { profile: { name: 'B' }, metrics: {}, modulesStatus: {} }, error: null });
+    mocks.getPatientRecordFoundation
+      .mockReturnValueOnce(foundationA.promise)
+      .mockResolvedValueOnce({ data: { patient: { name: 'B' }, records: [] }, error: null });
+
+    const { result, rerender } = renderHook(({ patientId }) => usePatientHub(patientId), {
+      initialProps: { patientId: 'patient-a' },
+    });
+    rerender({ patientId: 'patient-b' });
+    await waitFor(() => expect(result.current.patientData?.name).toBe('B'));
+    await act(async () => {
+      summaryA.resolve({ data: { profile: { name: 'A' }, metrics: {}, modulesStatus: {} }, error: null });
+      foundationA.resolve({ data: { patient: { name: 'A' }, records: [] }, error: null });
+      await Promise.all([summaryA.promise, foundationA.promise]);
+    });
+    expect(result.current.patientData.name).toBe('B');
+    expect(result.current.foundation.patient.name).toBe('B');
+  });
+
+  it('does not continue the request chain after unmount', async () => {
+    const summary = deferred();
+    const foundation = deferred();
+    mocks.getPatientSummary.mockReturnValue(summary.promise);
+    mocks.getPatientRecordFoundation.mockReturnValue(foundation.promise);
+    const { unmount } = renderHook(() => usePatientHub('patient-1'));
+    unmount();
+    await act(async () => {
+      summary.resolve({ data: { profile: { care_episode_id: 'episode-1' }, metrics: {}, modulesStatus: {} }, error: null });
+      foundation.resolve({ data: { patient: {}, records: [] }, error: null });
+      await Promise.all([summary.promise, foundation.promise]);
+    });
+    expect(mocks.listPatientLegalGuardians).not.toHaveBeenCalled();
+  });
+
+  it('ignores guardians from an older patient after the latest patient finishes', async () => {
+    const guardiansA = deferred();
+    mocks.getPatientSummary
+      .mockResolvedValueOnce({ data: { profile: { name: 'A', care_episode_id: 'episode-a' }, metrics: {}, modulesStatus: {} }, error: null })
+      .mockResolvedValueOnce({ data: { profile: { name: 'B', care_episode_id: 'episode-b' }, metrics: {}, modulesStatus: {} }, error: null });
+    mocks.getPatientRecordFoundation
+      .mockResolvedValueOnce({ data: { patient: { name: 'A' }, records: [] }, error: null })
+      .mockResolvedValueOnce({ data: { patient: { name: 'B' }, records: [] }, error: null });
+    mocks.listPatientLegalGuardians
+      .mockReturnValueOnce(guardiansA.promise)
+      .mockResolvedValueOnce({ data: [{ id: 'guardian-b', status: 'active' }], error: null });
+    const { result, rerender } = renderHook(({ patientId }) => usePatientHub(patientId), {
+      initialProps: { patientId: 'patient-a' },
+    });
+    await waitFor(() => expect(mocks.listPatientLegalGuardians).toHaveBeenCalledWith('patient-a', 'episode-a'));
+    rerender({ patientId: 'patient-b' });
+    await waitFor(() => expect(result.current.legalGuardians).toEqual([{ id: 'guardian-b', status: 'active' }]));
+    await act(async () => {
+      guardiansA.resolve({ data: [{ id: 'guardian-a', status: 'active' }], error: null });
+      await guardiansA.promise;
+    });
+    expect(result.current.patientData.name).toBe('B');
+    expect(result.current.legalGuardians).toEqual([{ id: 'guardian-b', status: 'active' }]);
+    expect(result.current.loading).toBe(false);
+  });
+
+  it('reports a legal guardian requirement for a minor without an active guardian', async () => {
+    mocks.listPatientLegalGuardians.mockResolvedValue({ data: [], error: null });
+    const { result } = renderHook(() => usePatientHub('patient-1'));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.profileRequirements).toEqual(['legal_guardian']);
   });
 });
