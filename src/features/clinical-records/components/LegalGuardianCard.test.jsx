@@ -70,4 +70,26 @@ describe('LegalGuardianCard', () => {
     await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());
     expect(trigger).toHaveFocus();
   });
+
+  it('clears guardian fields after cancel and after a successful replacement', async () => {
+    const onSave = vi.fn().mockResolvedValue({ error: null });
+    render(<LegalGuardianCard patientId="p1" episodeId="e1" guardians={[{ id: 'g1', name: 'Atual', status: 'active' }]} onSave={onSave} />);
+    fireEvent.click(screen.getByRole('button', { name: /substituir responsável/i }));
+    fireEvent.change(screen.getByLabelText(/nome do responsável/i), { target: { value: 'Não herdar' } });
+    fireEvent.change(screen.getByLabelText(/motivo da substituição/i), { target: { value: 'Motivo antigo' } });
+    fireEvent.click(screen.getByLabelText(/consentimento registrado/i));
+    fireEvent.click(screen.getByRole('button', { name: /cancelar/i }));
+    fireEvent.click(screen.getByRole('button', { name: /substituir responsável/i }));
+    expect(screen.getByLabelText(/nome do responsável/i)).toHaveValue('');
+    expect(screen.getByLabelText(/motivo da substituição/i)).toHaveValue('');
+    expect(screen.getByLabelText(/consentimento registrado/i)).not.toBeChecked();
+    fireEvent.change(screen.getByLabelText(/nome do responsável/i), { target: { value: 'Nova' } });
+    fireEvent.change(screen.getByLabelText(/relação/i), { target: { value: 'Mãe' } });
+    fireEvent.change(screen.getByLabelText(/motivo da substituição/i), { target: { value: 'Mudança' } });
+    fireEvent.click(screen.getByRole('button', { name: /^salvar$/i }));
+    await waitFor(() => expect(onSave).toHaveBeenCalled());
+    fireEvent.click(screen.getByRole('button', { name: /substituir responsável/i }));
+    expect(screen.getByLabelText(/nome do responsável/i)).toHaveValue('');
+    expect(screen.getByLabelText(/motivo da substituição/i)).toHaveValue('');
+  });
 });

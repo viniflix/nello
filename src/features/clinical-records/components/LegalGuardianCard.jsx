@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,13 +8,16 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 
 const statusLabels = { active: 'Ativo', replaced: 'Substituído', revoked: 'Revogado' };
 const formatDate = (value) => value ? new Intl.DateTimeFormat('pt-BR', { timeZone: 'UTC' }).format(new Date(value)) : 'sem término';
+const emptyGuardianForm = () => ({ name: '', relationship: '', valid_from: '', valid_until: '', consent_recorded: false, replacement_reason: '' });
 
 export default function LegalGuardianCard({ patientId, episodeId, isMinor = false, guardians = [], onSave, onRevoke }) {
   const [adding, setAdding] = useState(false); const [busy, setBusy] = useState(false);
-  const [form, setForm] = useState({ name: '', relationship: '', valid_from: '', valid_until: '', consent_recorded: false, replacement_reason: '' });
+  const [form, setForm] = useState(emptyGuardianForm);
   const [revoking, setRevoking] = useState(null); const [reason, setReason] = useState(''); const [error, setError] = useState(''); const [success, setSuccess] = useState('');
   const active = guardians.find((guardian) => guardian.status === 'active');
-  const save = async (event) => { event.preventDefault(); setError(''); if (active && !form.replacement_reason.trim()) { setError('Motivo da substituição é obrigatório.'); return; } const payload = { name: form.name, relationship: form.relationship, valid_from: form.valid_from || null, valid_until: form.valid_until || null, consent: { recorded: form.consent_recorded }, ...(active ? { reason: form.replacement_reason.trim() } : {}) }; setBusy(true); const result = await onSave?.(patientId, episodeId, payload); setBusy(false); if (result?.error) setError('Não foi possível salvar o responsável.'); else { setAdding(false); setSuccess(active ? 'Responsável substituído com sucesso.' : 'Responsável salvo com sucesso.'); } };
+  const resetForm = () => { setForm(emptyGuardianForm()); setError(''); };
+  useEffect(() => { if (!adding) { setForm(emptyGuardianForm()); setError(''); } }, [adding]);
+  const save = async (event) => { event.preventDefault(); setError(''); if (active && !form.replacement_reason.trim()) { setError('Motivo da substituição é obrigatório.'); return; } const payload = { name: form.name, relationship: form.relationship, valid_from: form.valid_from || null, valid_until: form.valid_until || null, consent: { recorded: form.consent_recorded }, ...(active ? { reason: form.replacement_reason.trim() } : {}) }; setBusy(true); const result = await onSave?.(patientId, episodeId, payload); setBusy(false); if (result?.error) setError('Não foi possível salvar o responsável.'); else { setAdding(false); resetForm(); setSuccess(active ? 'Responsável substituído com sucesso.' : 'Responsável salvo com sucesso.'); } };
   const revoke = async () => { if (!reason.trim()) { setError('Informe o motivo da revogação.'); return; } setBusy(true); const result = await onRevoke?.(revoking.id, reason.trim()); setBusy(false); if (result?.error) setError('Não foi possível revogar o responsável.'); else { setRevoking(null); setReason(''); setSuccess('Responsável revogado com sucesso.'); } };
   return <Card><CardHeader><CardTitle>Responsável legal</CardTitle><p className="text-sm text-muted-foreground">Vínculo válido somente para o episódio de cuidado atual.</p></CardHeader><CardContent className="space-y-4">
     {!episodeId && <p role="status" className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">Inicie um episódio de cuidado para registrar um responsável legal.</p>}
