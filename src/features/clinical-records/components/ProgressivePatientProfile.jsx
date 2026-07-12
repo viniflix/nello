@@ -11,7 +11,7 @@ const fields = [
 ];
 const addressFields = [['street', 'Logradouro'], ['city', 'Cidade'], ['state', 'Estado'], ['postal_code', 'CEP']];
 
-export default function ProgressivePatientProfile({ patient = {}, requirements = [], onSave }) {
+export default function ProgressivePatientProfile({ patient = {}, requirements = [], onSave, readOnly = false }) {
   const [form, setForm] = useState({});
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
@@ -47,7 +47,7 @@ export default function ProgressivePatientProfile({ patient = {}, requirements =
       </fieldset>
       <div className="rounded-md bg-muted p-3 text-sm text-muted-foreground"><p>Medidas corporais ficam na Antropometria.</p><p>Notas clínicas serão registradas no prontuário.</p></div>
       {error && <p role="alert" className="text-sm text-destructive">{error}</p>}{success && <p role="status" className="text-sm text-green-700">{success}</p>}
-      <Button disabled={saving}>{saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Salvar perfil</Button>
+      <Button disabled={saving || readOnly}>{saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Salvar perfil</Button>
     </form></CardContent>
   </Card>;
 }

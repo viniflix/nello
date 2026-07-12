@@ -37,7 +37,7 @@ describe('usePatientHub clinical record foundation', () => {
     });
     mocks.getPatientActivities.mockResolvedValue({ data: [], error: null });
     mocks.getPatientRecordFoundation.mockResolvedValue({
-      data: { active_episode_id: 'episode-1', patient: { name: 'Ana', birth_date: '2012-01-01' }, records: [] },
+      data: { viewed_episode_id: 'episode-1', viewed_episode_status: 'active', writable_episode_id: 'episode-1', can_write: true, patient: { name: 'Ana', birth_date: '2012-01-01' }, records: [] },
       error: null,
     });
     mocks.listPatientLegalGuardians.mockResolvedValue({ data: [{ id: 'guardian-1', status: 'active' }], error: null });
@@ -48,7 +48,9 @@ describe('usePatientHub clinical record foundation', () => {
 
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.foundation.patient.name).toBe('Ana');
-    expect(result.current.activeEpisodeId).toBe('episode-1');
+    expect(result.current.viewedEpisodeId).toBe('episode-1');
+    expect(result.current.writableEpisodeId).toBe('episode-1');
+    expect(result.current.canWriteEpisode).toBe(true);
     expect(result.current.legalGuardians).toEqual([{ id: 'guardian-1', status: 'active' }]);
     expect(result.current.profileRequirements).toEqual([]);
     expect(mocks.getPatientSummary).toHaveBeenCalledWith('patient-1', 'nutritionist-1');
@@ -56,14 +58,17 @@ describe('usePatientHub clinical record foundation', () => {
     expect(mocks.listPatientLegalGuardians).toHaveBeenCalledWith('patient-1', 'episode-1');
   });
 
-  it('publishes the summary episode as the canonical activeEpisodeId without inventing a foundation shape', async () => {
+  it('publishes separate viewed and writable episode contracts without inventing a foundation shape', async () => {
     mocks.getPatientRecordFoundation.mockResolvedValue({
-      data: { active_episode_id: 'episode-1', patient: { name: 'Ana' }, records: [] },
+      data: { viewed_episode_id: 'episode-ended', viewed_episode_status: 'ended', writable_episode_id: null, can_write: false, patient: { name: 'Ana' }, records: [] },
       error: null,
     });
     const { result } = renderHook(() => usePatientHub('patient-1'));
     await waitFor(() => expect(result.current.loading).toBe(false));
-    expect(result.current.activeEpisodeId).toBe('episode-1');
+    expect(result.current.viewedEpisodeId).toBe('episode-ended');
+    expect(result.current.writableEpisodeId).toBeNull();
+    expect(result.current.canWriteEpisode).toBe(false);
+    expect(mocks.listPatientLegalGuardians).toHaveBeenCalledWith('patient-1', 'episode-ended');
   });
 
   it('preserves summary fallbacks and empty states when foundation fails', async () => {
@@ -165,8 +170,8 @@ describe('usePatientHub clinical record foundation', () => {
       .mockResolvedValueOnce({ data: { profile: { name: 'A', care_episode_id: 'episode-a' }, metrics: {}, modulesStatus: {} }, error: null })
       .mockResolvedValueOnce({ data: { profile: { name: 'B', care_episode_id: 'episode-b' }, metrics: {}, modulesStatus: {} }, error: null });
     mocks.getPatientRecordFoundation
-      .mockResolvedValueOnce({ data: { patient: { name: 'A' }, records: [] }, error: null })
-      .mockResolvedValueOnce({ data: { patient: { name: 'B' }, records: [] }, error: null });
+      .mockResolvedValueOnce({ data: { viewed_episode_id: 'episode-a', viewed_episode_status: 'active', writable_episode_id: 'episode-a', can_write: true, patient: { name: 'A' }, records: [] }, error: null })
+      .mockResolvedValueOnce({ data: { viewed_episode_id: 'episode-b', viewed_episode_status: 'active', writable_episode_id: 'episode-b', can_write: true, patient: { name: 'B' }, records: [] }, error: null });
     mocks.listPatientLegalGuardians
       .mockReturnValueOnce(guardiansA.promise)
       .mockResolvedValueOnce({ data: [{ id: 'guardian-b', status: 'active' }], error: null });

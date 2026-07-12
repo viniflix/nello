@@ -16,7 +16,7 @@ describe('PatientEditProfileModal integration', () => {
   beforeEach(() => { updateProfile.mockReset().mockResolvedValue({ error: null }); saveGuardian.mockReset().mockResolvedValue({ error: null }); });
   it('preserves the avatar and refreshes after profile RPC success', async () => {
     const refresh = vi.fn();
-    render(<PatientEditProfileModal isOpen onClose={vi.fn()} patientData={{ id: 'p1', name: 'Ana', avatar_url: '/ana.png' }} activeEpisodeId="e1" onSaveSuccess={refresh} />);
+    render(<PatientEditProfileModal isOpen onClose={vi.fn()} patientData={{ id: 'p1', name: 'Ana', avatar_url: '/ana.png' }} writableEpisodeId="e1" onSaveSuccess={refresh} />);
     expect(screen.getByRole('img', { name: /avatar do paciente/i })).toHaveAttribute('src', '/ana.png');
     fireEvent.click(screen.getByRole('button', { name: /salvar perfil/i }));
     await waitFor(() => expect(updateProfile).toHaveBeenCalledWith('p1', expect.objectContaining({ name: 'Ana' }), 'nutritionist'));
@@ -24,9 +24,10 @@ describe('PatientEditProfileModal integration', () => {
   });
 
   it('passes only the active episode to guardian UI and prevents a null RPC', () => {
-    render(<PatientEditProfileModal isOpen onClose={vi.fn()} patientData={{ id: 'p1', name: 'Ana' }} activeEpisodeId={null} />);
+    render(<PatientEditProfileModal isOpen onClose={vi.fn()} patientData={{ id: 'p1', name: 'Ana' }} writableEpisodeId={null} />);
     expect(screen.getByText(/inicie um episódio de cuidado/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /adicionar responsável/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /salvar perfil/i })).toBeDisabled();
     expect(saveGuardian).not.toHaveBeenCalled();
   });
 });

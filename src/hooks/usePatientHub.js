@@ -21,9 +21,11 @@ const isPatientMinor = (birthDate) => {
     return age < 18;
 };
 
-const getFoundationEpisodeId = (foundation, summaryProfile) => foundation?.active_episode_id
-    || summaryProfile?.care_episode_id
-    || null;
+const getEpisodeContract = (foundation, summaryProfile) => ({
+    viewedEpisodeId: foundation?.viewed_episode_id || (!foundation ? summaryProfile?.care_episode_id : null) || null,
+    writableEpisodeId: foundation?.can_write ? foundation?.writable_episode_id || null : null,
+    canWriteEpisode: Boolean(foundation?.can_write && foundation?.writable_episode_id),
+});
 
 /**
  * Hook customizado para gerenciar dados do Hub do Paciente
@@ -41,7 +43,9 @@ export const usePatientHub = (patientId) => {
     const [activities, setActivities] = useState([]);
     const [activitiesLoading, setActivitiesLoading] = useState(false);
     const [foundation, setFoundation] = useState(null);
-    const [activeEpisodeId, setActiveEpisodeId] = useState(null);
+    const [viewedEpisodeId, setViewedEpisodeId] = useState(null);
+    const [writableEpisodeId, setWritableEpisodeId] = useState(null);
+    const [canWriteEpisode, setCanWriteEpisode] = useState(false);
     const [legalGuardians, setLegalGuardians] = useState([]);
     const [profileRequirements, setProfileRequirements] = useState([]);
     const requestGeneration = useRef(0);
@@ -79,11 +83,13 @@ export const usePatientHub = (patientId) => {
 
                 const loadedFoundation = foundationResult.error ? null : foundationResult.data;
                 setFoundation(loadedFoundation);
-                const episodeId = getFoundationEpisodeId(loadedFoundation, data.profile);
-                setActiveEpisodeId(episodeId);
+                const episodeContract = getEpisodeContract(loadedFoundation, data.profile);
+                setViewedEpisodeId(episodeContract.viewedEpisodeId);
+                setWritableEpisodeId(episodeContract.writableEpisodeId);
+                setCanWriteEpisode(episodeContract.canWriteEpisode);
                 let guardians = [];
-                if (episodeId) {
-                    const guardiansResult = await listPatientLegalGuardians(patientId, episodeId);
+                if (episodeContract.viewedEpisodeId) {
+                    const guardiansResult = await listPatientLegalGuardians(patientId, episodeContract.viewedEpisodeId);
                     if (!isLatestRequest()) return;
                     if (!guardiansResult.error) guardians = guardiansResult.data || [];
                 }
@@ -104,7 +110,9 @@ export const usePatientHub = (patientId) => {
             setPatientData(null);
             setLoadedPatientId(null);
             setFoundation(null);
-            setActiveEpisodeId(null);
+            setViewedEpisodeId(null);
+            setWritableEpisodeId(null);
+            setCanWriteEpisode(false);
             setLegalGuardians([]);
             setProfileRequirements([]);
         } finally {
@@ -165,7 +173,9 @@ export const usePatientHub = (patientId) => {
         setLatestMetrics(null);
         setModulesStatus({});
         setFoundation(null);
-        setActiveEpisodeId(null);
+        setViewedEpisodeId(null);
+        setWritableEpisodeId(null);
+        setCanWriteEpisode(false);
         setLegalGuardians([]);
         setProfileRequirements([]);
         setActivities([]);
@@ -205,7 +215,9 @@ export const usePatientHub = (patientId) => {
         activities,
         activitiesLoading,
         foundation,
-        activeEpisodeId,
+        viewedEpisodeId,
+        writableEpisodeId,
+        canWriteEpisode,
         profileRequirements,
         legalGuardians,
 
