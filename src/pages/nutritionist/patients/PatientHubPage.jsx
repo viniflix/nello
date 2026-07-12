@@ -58,6 +58,9 @@ const PatientHubPage = () => {
         modulesStatus,
         activities,
         activitiesLoading,
+        foundation,
+        profileRequirements,
+        legalGuardians,
         refresh,
         loadActivities
     } = usePatientHub(patientId);
@@ -341,6 +344,7 @@ const PatientHubPage = () => {
                         onEditProfile={handleEditProfile}
                         onOpenChat={handleOpenChat}
                         onScheduleAppointment={handleScheduleAppointment}
+                        profileRequirements={profileRequirements}
                     />
                 </section>
 
@@ -461,6 +465,9 @@ const PatientHubPage = () => {
                     isOpen={isEditProfileModalOpen} 
                     onClose={() => setIsEditProfileModalOpen(false)} 
                     patientData={patientData}
+                    foundation={foundation}
+                    profileRequirements={profileRequirements}
+                    legalGuardians={legalGuardians}
                     onSaveSuccess={refresh}
                 />
             )}

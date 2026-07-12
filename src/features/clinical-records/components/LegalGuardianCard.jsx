@@ -1,0 +1,24 @@
+import React, { useState } from 'react';
+import { AlertTriangle, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+
+export default function LegalGuardianCard({ patientId, episodeId, isMinor = false, guardians = [], onSave, onRevoke }) {
+  const [adding, setAdding] = useState(false); const [busy, setBusy] = useState(false);
+  const [form, setForm] = useState({ name: '', relationship: '', valid_from: '', valid_until: '', consent_recorded: false });
+  const [revoking, setRevoking] = useState(null); const [reason, setReason] = useState(''); const [error, setError] = useState(''); const [success, setSuccess] = useState('');
+  const active = guardians.filter((guardian) => guardian.status === 'active');
+  const save = async (event) => { event.preventDefault(); setError(''); setBusy(true); const result = await onSave?.(patientId, episodeId, form); setBusy(false); if (result?.error) setError('Não foi possível salvar o responsável.'); else { setAdding(false); setSuccess('Responsável salvo com sucesso.'); } };
+  const revoke = async () => { if (!reason.trim()) { setError('Informe o motivo da revogação.'); return; } setBusy(true); const result = await onRevoke?.(revoking.id, reason.trim()); setBusy(false); if (result?.error) setError('Não foi possível revogar o responsável.'); else { setRevoking(null); setReason(''); setSuccess('Responsável revogado com sucesso.'); } };
+  return <Card><CardHeader><CardTitle>Responsável legal</CardTitle><p className="text-sm text-muted-foreground">Vínculo válido somente para o episódio de cuidado atual.</p></CardHeader><CardContent className="space-y-4">
+    {isMinor && active.length === 0 && <p role="alert" className="flex gap-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900"><AlertTriangle className="h-4 w-4" />Menor sem responsável legal ativo.</p>}
+    {guardians.length === 0 && <p className="text-sm text-muted-foreground">Nenhum responsável legal registrado neste episódio.</p>}
+    {guardians.map((g) => <div key={g.id} className="flex items-center justify-between rounded-md border p-3"><div><p className="font-medium">{g.name}</p><p className="text-xs text-muted-foreground">{g.relationship || 'Relação não informada'} · {g.status === 'active' ? 'Ativo' : 'Revogado'}</p></div>{g.status === 'active' && <Button type="button" variant="outline" onClick={() => { setRevoking(g); setError(''); }}>Revogar</Button>}</div>)}
+    {!adding && <Button type="button" onClick={() => setAdding(true)}>Adicionar responsável</Button>}
+    {adding && <form onSubmit={save} className="grid gap-4 sm:grid-cols-2"><div><Label htmlFor="guardian-name">Nome do responsável</Label><Input id="guardian-name" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div><div><Label htmlFor="guardian-relation">Relação</Label><Input id="guardian-relation" required value={form.relationship} onChange={(e) => setForm({ ...form, relationship: e.target.value })} /></div><div><Label htmlFor="guardian-from">Início do período</Label><Input id="guardian-from" type="date" value={form.valid_from} onChange={(e) => setForm({ ...form, valid_from: e.target.value })} /></div><div><Label htmlFor="guardian-until">Fim do período</Label><Input id="guardian-until" type="date" value={form.valid_until} onChange={(e) => setForm({ ...form, valid_until: e.target.value })} /></div><label className="flex items-center gap-2 sm:col-span-2"><input type="checkbox" checked={form.consent_recorded} onChange={(e) => setForm({ ...form, consent_recorded: e.target.checked })} />Consentimento registrado</label><div className="flex gap-2"><Button disabled={busy}>{busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Salvar</Button><Button type="button" variant="ghost" onClick={() => setAdding(false)}>Cancelar</Button></div></form>}
+    {revoking && <div role="dialog" aria-modal="true" aria-labelledby="revoke-title" className="rounded-md border p-4"><h3 id="revoke-title" className="font-semibold">Revogar responsável</h3><p className="mb-3 text-sm text-muted-foreground">Esta ação mantém o histórico do episódio.</p><Label htmlFor="revoke-reason">Motivo da revogação</Label><Input id="revoke-reason" autoFocus value={reason} onChange={(e) => setReason(e.target.value)} /><div className="mt-3 flex gap-2"><Button type="button" variant="destructive" disabled={busy} onClick={revoke}>Confirmar revogação</Button><Button type="button" variant="outline" onClick={() => setRevoking(null)}>Cancelar</Button></div></div>}
+    {error && <p role="alert" className="text-sm text-destructive">{error}</p>}{success && <p role="status" className="text-sm text-green-700">{success}</p>}
+  </CardContent></Card>;
+}

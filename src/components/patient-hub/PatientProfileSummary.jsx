@@ -11,7 +11,8 @@ const PatientProfileSummary = ({
     latestMetrics,
     onEditProfile,
     onOpenChat,
-    onScheduleAppointment
+    onScheduleAppointment,
+    profileRequirements = []
 }) => {
     const getPatientAge = (birthDate) => {
         if (!birthDate) return null;
@@ -261,6 +262,9 @@ const PatientProfileSummary = ({
                         </p>
                     </div>
                 </div>
+                {profileRequirements.length > 0 && <div role="status" className="mb-4 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+                    Perfil pendente: {profileRequirements.includes('birth_date') && 'informe a data de nascimento'}{profileRequirements.length > 1 && ' e '}{profileRequirements.includes('legal_guardian') && 'registre um responsável legal ativo'}.
+                </div>}
 
                 {/* Botões de Ação - Mobile (apenas Chat e Agendar lado a lado) */}
                 <div className="flex md:hidden flex-row gap-2">
