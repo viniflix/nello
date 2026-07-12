@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { identifyUser, resetUser } from '@/infrastructure/analytics/posthog';
 import { useQueryClient } from '@tanstack/react-query';
 import { useProfile } from '@/hooks/useProfile';
+import { getMyProfessionalVerification } from '@/lib/supabase/verification-queries';
 
 const AuthLoadingFallback = () => (
   <div className="flex min-h-screen items-center justify-center bg-background">
@@ -36,6 +37,20 @@ export function AuthProvider({ children }) {
 
   // Busca o perfil via React Query
   const { data: profile, isLoading: isProfileLoading, isError: isProfileError } = useProfile(user?.id);
+
+  useEffect(() => {
+    let active = true;
+    if (!user?.id || profile?.user_type !== 'nutritionist') return undefined;
+
+    getMyProfessionalVerification().then(({ data, error }) => {
+      if (!active || error || !data) return;
+      setUser(previous => previous?.id === user.id
+        ? { ...previous, verification: data }
+        : previous);
+    });
+
+    return () => { active = false; };
+  }, [user?.id, profile?.user_type]);
 
   // Sincronização em tempo real (Realtime)
   useEffect(() => {
@@ -126,7 +141,8 @@ export function AuthProvider({ children }) {
         // Se já temos um perfil cacheado, mantemos para evitar UI flickering
         setUser(prev => ({ 
           ...nextSession.user, 
-          profile: prev?.id === nextSession.user.id ? prev.profile : null 
+          profile: prev?.id === nextSession.user.id ? prev.profile : null,
+          verification: prev?.id === nextSession.user.id ? prev.verification : null
         }));
       } catch (error) {
         console.error('[AuthContext] Erro no processSession:', error);
@@ -226,7 +242,7 @@ export function AuthProvider({ children }) {
       // NOVO: Refresh silencioso - atualiza o token sem disparar o loader ou re-buscar o perfil
       if (event === 'TOKEN_REFRESHED') {
         if (session?.user) {
-          setUser(prev => prev ? { ...session.user, profile: prev.profile } : null);
+          setUser(prev => prev ? { ...session.user, profile: prev.profile, verification: prev.verification } : null);
         }
         return;
       }
