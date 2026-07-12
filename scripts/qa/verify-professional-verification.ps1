@@ -5,6 +5,7 @@ $image = 'public.ecr.aws/supabase/postgres:17.6.1.063'
 $root = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
 $baseline = Join-Path $root 'supabase\baseline\remote_schema_20260711.sql'
 $migration = Join-Path $root 'supabase\migrations\20260712100000_create_professional_verification_foundation.sql'
+$workflowMigration = Join-Path $root 'supabase\migrations\20260712110000_add_professional_verification_workflow.sql'
 $matrix = Join-Path $root 'supabase\tests\professional_verification_foundation_matrix.sql'
 
 foreach ($file in @($baseline, $matrix)) {
@@ -33,6 +34,9 @@ try {
     if (Test-Path -LiteralPath $migration) {
         docker cp $migration "${container}:/tmp/professional-verification.sql" | Out-Null
     }
+    if (Test-Path -LiteralPath $workflowMigration) {
+        docker cp $workflowMigration "${container}:/tmp/professional-verification-workflow.sql" | Out-Null
+    }
 
     $commands = @(
         @{ Label = 'database preparation'; Sql = 'CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA extensions; ALTER EVENT TRIGGER graphql_watch_ddl DISABLE; ALTER EVENT TRIGGER graphql_watch_drop DISABLE; ALTER EVENT TRIGGER pgrst_ddl_watch DISABLE; ALTER EVENT TRIGGER pgrst_drop_watch DISABLE;'; ShowOutput = $false },
@@ -51,6 +55,9 @@ insert into public.user_profiles (id,name,user_type,is_admin,is_active) values
 
     if (Test-Path -LiteralPath $migration) {
         $commands += @{ Label = 'professional verification migration'; Sql = '\i /tmp/professional-verification.sql'; ShowOutput = $false }
+    }
+    if (Test-Path -LiteralPath $workflowMigration) {
+        $commands += @{ Label = 'professional verification workflow'; Sql = '\i /tmp/professional-verification-workflow.sql'; ShowOutput = $false }
     }
 
     $commands += @(
