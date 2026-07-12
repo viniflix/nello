@@ -9,6 +9,7 @@ import ProfilePersonalTab from '@/components/profile/ProfilePersonalTab';
 import ProfileAgendaTab from '@/components/profile/ProfileAgendaTab';
 import ProfileFinancialTab from '@/components/profile/ProfileFinancialTab';
 import { ThemeToggle } from '@/components/shared/ThemeToggle';
+import ProfessionalVerificationSection from './ProfessionalVerificationSection';
 
 const NutritionistProfilePage = () => {
     const { user, updateUserProfile } = useAuth();
@@ -127,6 +128,8 @@ const NutritionistProfilePage = () => {
                                     </TabsContent>
 
                                     <TabsContent value="account" className="mt-0">
+                                        <div className="flex flex-col gap-6">
+                                        <ProfessionalVerificationSection initialVerification={user.verification} />
                                         <Card>
                                             <CardHeader>
                                                 <CardTitle>Configurações da Conta</CardTitle>
@@ -146,6 +149,7 @@ const NutritionistProfilePage = () => {
                                                 </div>
                                             </CardContent>
                                         </Card>
+                                        </div>
                                     </TabsContent>
                                 </div>
                             </Tabs>

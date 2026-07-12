@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
-import { LogOut, Bell, Check, Trash2, Shield, ArrowLeft, Menu, LayoutDashboard, Settings, Users, Bug, Activity } from 'lucide-react';
+import { LogOut, Bell, Check, Trash2, Shield, ArrowLeft, Menu, LayoutDashboard, Settings, Users, Bug, Activity, BadgeCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -15,6 +15,7 @@ const NAV_ITEMS = [
   ]},
   { section: 'Gestão', items: [
     { name: 'Usuários', path: '/admin/users', icon: Users },
+    { name: 'Verificações', path: '/admin/verifications', icon: BadgeCheck },
     { name: 'Financeiro', path: '/admin/financial', icon: Settings },
   ]},
 ];

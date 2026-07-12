@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import {
     Plus, Search, Loader2, ListFilter, Users, ArchiveRestore, Clock,
     LayoutGrid, List, Flame, MoreVertical, Archive, FileText, MessageCircle, AlertCircle, Trash2,
-    Copy, Check
+    Copy, Check, ShieldAlert
 } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import {
@@ -33,6 +33,8 @@ import {
 import { useOnlinePresence } from '@/hooks/useOnlinePresence';
 import { useToast } from '@/components/ui/use-toast';
 import { patientRoute } from '@/lib/utils/patientRoutes';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { getVerificationCapabilities } from '@/lib/verification/verificationState';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 const SESSION_KEY = 'patients_page_state';
@@ -136,6 +138,7 @@ const PatientsPage = () => {
     const { updateField } = usePatientFormStore();
     const { toast } = useToast();
     const { isUserOnline } = useOnlinePresence();
+    const verificationCapabilities = getVerificationCapabilities(user?.verification);
 
     // ── State (with sessionStorage persistence) ──
     const persisted = useMemo(loadPersistedState, []);
@@ -323,10 +326,21 @@ const PatientsPage = () => {
                                 Ver Arquivados ({archivedPatients.length})
                             </Button>
                         )}
-                        <Button onClick={() => setShowAddPatientModal(true)} className="w-full sm:w-auto bg-primary text-primary-foreground font-semibold hover:bg-primary/90">
+                        <Button onClick={() => setShowAddPatientModal(true)} disabled={!verificationCapabilities.canUseRealPatients} className="w-full sm:w-auto bg-primary text-primary-foreground font-semibold hover:bg-primary/90">
                             <Plus className="w-4 h-4 mr-2" /> Adicionar Paciente
                         </Button>
                     </div>
+
+                    {!verificationCapabilities.canUseRealPatients ? (
+                      <Alert>
+                        <ShieldAlert />
+                        <AlertTitle>Verificação necessária para pacientes reais</AlertTitle>
+                        <AlertDescription className="flex flex-col gap-3">
+                          <p>Você pode explorar as ferramentas do Nello, mas convites e novos atendimentos reais ficam disponíveis após a validação profissional.</p>
+                          <div><Button variant="outline" size="sm" onClick={() => navigate('/nutritionist/profile')}>Abrir verificação profissional</Button></div>
+                        </AlertDescription>
+                      </Alert>
+                    ) : null}
                 </div>
 
                 {/* ── Pending Requests Section ── */}
@@ -546,7 +560,7 @@ const PatientsPage = () => {
                                 <h3 className="text-lg font-bold text-foreground mb-1">{emptyMessage.title}</h3>
                                 {emptyMessage.sub && <p className="text-muted-foreground text-sm max-w-[300px]">{emptyMessage.sub}</p>}
                                 {filterStatus === 'all' && !searchTerm && !activeChip && (
-                                    <Button onClick={() => setShowAddPatientModal(true)} className="mt-6">
+                                    <Button onClick={() => setShowAddPatientModal(true)} disabled={!verificationCapabilities.canUseRealPatients} className="mt-6">
                                         <Plus className="w-4 h-4 mr-2" /> Cadastrar Primeiro Paciente
                                     </Button>
                                 )}
