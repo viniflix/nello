@@ -4,6 +4,28 @@ import {
     getPatientSummary,
     getPatientActivities
 } from '@/lib/supabase/patient-queries';
+import {
+    getPatientRecordFoundation,
+    listPatientLegalGuardians
+} from '@/features/clinical-records/api/record-foundation-queries';
+import { getContextualProfileRequirements } from '@/features/clinical-records/model/progressiveProfileSchema';
+
+const isPatientMinor = (birthDate) => {
+    if (!birthDate) return false;
+    const birth = new Date(`${birthDate}T00:00:00`);
+    if (Number.isNaN(birth.getTime())) return false;
+    const today = new Date();
+    let age = today.getFullYear() - birth.getFullYear();
+    if (today.getMonth() < birth.getMonth()
+        || (today.getMonth() === birth.getMonth() && today.getDate() < birth.getDate())) age -= 1;
+    return age < 18;
+};
+
+const getFoundationEpisodeId = (foundation, summaryProfile) => foundation?.active_episode?.id
+    || foundation?.active_episode_id
+    || foundation?.records?.[0]?.care_episode_id
+    || summaryProfile?.care_episode_id
+    || null;
 
 /**
  * Hook customizado para gerenciar dados do Hub do Paciente
@@ -19,6 +41,9 @@ export const usePatientHub = (patientId) => {
     const [modulesStatus, setModulesStatus] = useState({});
     const [activities, setActivities] = useState([]);
     const [activitiesLoading, setActivitiesLoading] = useState(false);
+    const [foundation, setFoundation] = useState(null);
+    const [legalGuardians, setLegalGuardians] = useState([]);
+    const [profileRequirements, setProfileRequirements] = useState([]);
 
     /**
      * Carrega o resumo completo do paciente
@@ -30,10 +55,11 @@ export const usePatientHub = (patientId) => {
         setError(null);
 
         try {
-            const { data, error: summaryError } = await getPatientSummary(
-                patientId,
-                user.id
-            );
+            const [summaryResult, foundationResult] = await Promise.all([
+                getPatientSummary(patientId, user.id),
+                getPatientRecordFoundation(patientId)
+            ]);
+            const { data, error: summaryError } = summaryResult;
 
             if (summaryError) {
                 throw summaryError;
@@ -43,6 +69,22 @@ export const usePatientHub = (patientId) => {
                 setPatientData(data.profile);
                 setLatestMetrics(data.metrics);
                 setModulesStatus(data.modulesStatus);
+
+                const loadedFoundation = foundationResult.error ? null : foundationResult.data;
+                setFoundation(loadedFoundation);
+                const episodeId = getFoundationEpisodeId(loadedFoundation, data.profile);
+                let guardians = [];
+                if (episodeId) {
+                    const guardiansResult = await listPatientLegalGuardians(patientId, episodeId);
+                    if (!guardiansResult.error) guardians = guardiansResult.data || [];
+                }
+                setLegalGuardians(guardians);
+
+                const profile = loadedFoundation?.patient || data.profile || {};
+                setProfileRequirements(getContextualProfileRequirements(profile, {
+                    isMinor: isPatientMinor(profile.birth_date),
+                    legalGuardians: guardians
+                }));
             } else {
                 setError(new Error('Paciente não encontrado'));
             }
@@ -50,6 +92,9 @@ export const usePatientHub = (patientId) => {
             console.error('Erro ao carregar resumo do paciente:', err);
             setError(err);
             setPatientData(null);
+            setFoundation(null);
+            setLegalGuardians([]);
+            setProfileRequirements([]);
         } finally {
             setLoading(false);
         }
@@ -119,6 +164,9 @@ export const usePatientHub = (patientId) => {
         modulesStatus,
         activities,
         activitiesLoading,
+        foundation,
+        profileRequirements,
+        legalGuardians,
 
         // Funções
         refresh,
