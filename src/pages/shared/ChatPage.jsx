@@ -13,6 +13,7 @@ import { ptBR } from 'date-fns/locale';
 import ImageModal from '@/components/ImageModal';
 import { toPortugueseError } from '@/lib/utils/errorMessages';
 import { useOnlinePresence } from '@/hooks/useOnlinePresence';
+import { ChatAreaSkeleton } from '@/components/ui/custom-skeletons';
 
 const DateSeparator = ({ date }) => {
   const parsedDate = parseISO(date);
@@ -440,8 +441,15 @@ const ChatPage = ({ propRecipientId, isEmbedded = false }) => {
   }, {});
 
   if (messagesLoading || recipientLoading) return (
-    <div className={`flex items-center justify-center ${isEmbedded ? 'h-full' : 'h-screen'}`}>
-      <Loader2 className="animate-spin w-8 h-8 text-primary" />
+    <div className={`flex flex-col bg-slate-50 ${isEmbedded ? 'h-full' : 'h-screen'}`}>
+      <header className="shrink-0 bg-white border-b p-4 flex items-center shadow-md z-30 opacity-50">
+        <div className="w-10 h-10 bg-primary/10 rounded-full mr-3" />
+        <div className="space-y-2">
+            <div className="h-4 w-32 bg-muted rounded" />
+            <div className="h-3 w-20 bg-muted rounded" />
+        </div>
+      </header>
+      <ChatAreaSkeleton messages={8} />
     </div>
   );
 

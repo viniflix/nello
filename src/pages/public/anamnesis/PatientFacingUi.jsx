@@ -2,13 +2,15 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '@/lib/customSupabaseClient';
 import {
-    CheckCircle, Loader2, Save, Send, AlertTriangle, Clock, Lock
+    CheckCircle, Save, Send, AlertTriangle, Clock, Lock
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { FormSkeleton } from '@/components/ui/custom-skeletons';
 import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/components/ui/use-toast';
@@ -384,10 +386,9 @@ export default function PatientFacingUi() {
     // ── Estados de carregamento/erro ────────────────────────────
     if (loading) {
         return (
-            <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-                <div className="flex flex-col items-center gap-3 text-slate-400">
-                    <Loader2 className="w-10 h-10 animate-spin text-blue-500" />
-                    <p className="text-sm font-medium animate-pulse">Carregando questionário...</p>
+            <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+                <div className="w-full max-w-3xl">
+                    <FormSkeleton />
                 </div>
             </div>
         );

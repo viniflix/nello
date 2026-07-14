@@ -33,6 +33,8 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { getPatientAnamnesisList, getAnamnesisTemplates, deleteAnamnesis } from '@/lib/supabase/anamnesis-queries';
+import { formatDistanceToNow, format } from 'date-fns';
+import { SimpleListSkeleton } from '@/components/ui/custom-skeletons';
 import { getPatientProfile } from '@/lib/supabase/patient-queries';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -172,11 +174,8 @@ const PatientAnamnesisList = () => {
     // Renderizar loading
     if (loading) {
         return (
-            <div className="flex items-center justify-center min-h-screen bg-background">
-                <div className="text-center">
-                    <Loader2 className="w-8 h-8 animate-spin text-[#5f6f52] mx-auto mb-4" />
-                    <p className="text-sm text-muted-foreground">Carregando anamneses...</p>
-                </div>
+            <div className="container max-w-[1400px] py-8 space-y-6">
+                <SimpleListSkeleton />
             </div>
         );
     }

@@ -4,6 +4,7 @@ import { useCheckins } from '@/hooks/useCheckins';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { CheckSquare, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
+import { CardSkeleton } from '@/components/ui/custom-skeletons';
 
 const PatientPendingCheckinsWidget = () => {
   const { usePendingCheckins } = useCheckins();
@@ -12,8 +13,8 @@ const PatientPendingCheckinsWidget = () => {
 
   if (isLoading) {
     return (
-      <div className="flex justify-center mb-6">
-        <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+      <div className="mb-6">
+        <CardSkeleton />
       </div>
     );
   }

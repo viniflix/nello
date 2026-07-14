@@ -21,6 +21,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import FoodMeasureManager from '@/components/nutritionist/FoodMeasureManager';
 import SmartFoodForm from '@/components/nutrition/SmartFoodForm';
 import { supabase } from '@/lib/customSupabaseClient';
+import { SimpleListSkeleton } from '@/components/ui/custom-skeletons';
 
 /**
  * NutritionistFoodsPage - Gerenciar Alimentos e Medidas Caseiras
@@ -322,14 +323,9 @@ export default function NutritionistFoodsPage() {
             animate={{ opacity: 1, y: 0 }}
           >
             {loading && foods.length === 0 ? (
-              <Card>
-                <CardContent className="py-12">
-                  <div className="flex flex-col items-center gap-3">
-                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                    <p className="text-sm text-muted-foreground">Buscando alimentos...</p>
-                  </div>
-                </CardContent>
-              </Card>
+              <div className="space-y-4">
+                <SimpleListSkeleton />
+              </div>
             ) : foods.length === 0 ? (
               <Card>
                 <CardContent className="py-12 text-center">

@@ -7,6 +7,7 @@ import { ArrowLeft, CheckCircle2, ChevronRight, ChevronLeft, Loader2, Upload, Al
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Slider } from '@/components/ui/slider';
+import { FormSkeleton } from '@/components/ui/custom-skeletons';
 
 const CheckinResponsePage = () => {
   const { sessionId } = useParams();
@@ -128,7 +129,7 @@ const CheckinResponsePage = () => {
   };
 
   if (loading) {
-    return <div className="h-screen flex items-center justify-center bg-background"><Loader2 className="w-10 h-10 animate-spin text-primary" /></div>;
+    return <div className="max-w-2xl mx-auto p-6"><FormSkeleton /></div>;
   }
 
   if (error) {

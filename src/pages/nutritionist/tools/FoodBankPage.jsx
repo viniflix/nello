@@ -21,6 +21,7 @@ import FoodCardHorizontal from '@/components/nutrition/FoodCardHorizontal';
 import FoodDetailsDialog from '@/components/nutrition/FoodDetailsDialog';
 import SmartFoodForm from '@/components/nutrition/SmartFoodForm';
 import { useDebounce } from '@/hooks/useDebounce';
+import { SimpleListSkeleton } from '@/components/ui/custom-skeletons';
 
 const ITEMS_PER_PAGE = 20;
 
@@ -428,14 +429,9 @@ const FoodBankPage = () => {
 
                 {/* Results */}
                 {loading ? (
-                    <Card>
-                        <CardContent className="py-12">
-                            <div className="flex flex-col items-center gap-3">
-                                <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                                <p className="text-sm text-muted-foreground">Carregando alimentos...</p>
-                            </div>
-                        </CardContent>
-                    </Card>
+                    <div className="space-y-4 mt-6">
+                        <SimpleListSkeleton />
+                    </div>
                 ) : (
                     <Tabs defaultValue="all" className="w-full">
                         <TabsList className="grid w-full grid-cols-2 h-auto p-1 gap-1">
@@ -469,8 +465,8 @@ const FoodBankPage = () => {
                                     </div>
                                     
                                     {loadingCustom ? (
-                                        <div className="flex justify-center py-8">
-                                            <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                                        <div className="py-4">
+                                            <SimpleListSkeleton />
                                         </div>
                                     ) : customFoods.length === 0 ? (
                                         <Card>
@@ -559,8 +555,8 @@ const FoodBankPage = () => {
                                     </div>
                                     
                                     {loadingPublic ? (
-                                        <div className="flex justify-center py-8">
-                                            <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                                        <div className="py-4">
+                                            <SimpleListSkeleton />
                                         </div>
                                     ) : publicFoods.length === 0 ? (
                                         <Card>
@@ -635,9 +631,9 @@ const FoodBankPage = () => {
                         {/* Tab: Custom Foods Only */}
                         <TabsContent value="custom" className="space-y-6 mt-6">
                             {loadingCustom ? (
-                                <div className="flex justify-center py-12">
-                                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                                </div>
+                                        <div className="py-4">
+                                            <SimpleListSkeleton />
+                                        </div>
                             ) : customFoods.length === 0 ? (
                                 <Card>
                                     <CardContent className="py-12 text-center">

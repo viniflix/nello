@@ -29,6 +29,7 @@ import {
 } from '@/lib/supabase/lab-results-queries';
 import ConductSuggestionsCard from '@/components/lab-results/ConductSuggestionsCard';
 import { patientHubRoute } from '@/lib/utils/patientRoutes';
+import { PageHeaderSkeleton, CardSkeleton } from '@/components/ui/custom-skeletons';
 
 const LabResultsPage = () => {
     const { patientId, paramValue, loading: resolveLoading, error: resolveError } = useResolvedPatientId();
@@ -417,9 +418,10 @@ const LabResultsPage = () => {
 
     if (resolveLoading || !patientId) {
         return (
-            <div className="flex flex-col min-h-screen bg-background items-center justify-center p-8">
-                <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-                <p className="mt-4 text-sm text-muted-foreground">Carregando...</p>
+            <div className="max-w-7xl mx-auto w-full px-4 md:px-8 py-8 space-y-6">
+                <PageHeaderSkeleton />
+                <CardSkeleton />
+                <CardSkeleton />
             </div>
         );
     }
@@ -437,9 +439,10 @@ const LabResultsPage = () => {
     }
 
     return loading ? (
-        <div className="flex flex-col min-h-screen bg-background items-center justify-center p-8">
-            <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-            <p className="mt-4 text-sm text-muted-foreground">Carregando exames...</p>
+        <div className="max-w-7xl mx-auto w-full px-4 md:px-8 py-8 space-y-6">
+            <PageHeaderSkeleton />
+            <CardSkeleton />
+            <CardSkeleton />
         </div>
     ) : (
         <div className="flex flex-col min-h-screen bg-background overflow-x-hidden">

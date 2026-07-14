@@ -35,6 +35,7 @@ import {
   Database,
   Scale,
 } from 'lucide-react';
+import { CardSkeleton } from '@/components/ui/custom-skeletons';
 
 // ─── Nutrição: Card de Template ───────────────────────────────────────────────
 const NutritionCard = React.memo(({ template, type, onDelete, toast }) => {
@@ -224,8 +225,10 @@ const CheckinsSection = () => {
       </div>
 
       {isLoading && (
-        <div className="flex items-center justify-center py-16">
-          <Loader2 className="w-6 h-6 animate-spin text-emerald-500" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <CardSkeleton />
+          <CardSkeleton />
+          <CardSkeleton />
         </div>
       )}
 
@@ -524,9 +527,11 @@ export default function TemplatesPage() {
 
           {/* Grid de Cards */}
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-20">
-              <Loader2 className="w-8 h-8 text-emerald-500 animate-spin mb-4" />
-              <p className="text-slate-500">Carregando templates...</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              <CardSkeleton />
+              <CardSkeleton />
+              <CardSkeleton />
+              <CardSkeleton />
             </div>
           ) : filteredTemplates.length === 0 ? (
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-12 text-center flex flex-col items-center">

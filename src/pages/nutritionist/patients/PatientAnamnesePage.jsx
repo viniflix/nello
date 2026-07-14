@@ -4,7 +4,8 @@ import { useResolvedPatientId } from '@/hooks/useResolvedPatientId';
 import { useAnamnesisRunner } from '@/hooks/useAnamnesisRunner';
 import { useAnamnesisTemplates } from '@/hooks/useAnamnesisTemplates';
 import { useToast } from '@/components/ui/use-toast';
-import { ClipboardList, Plus, Calendar, FileText, ChevronRight, Loader2, ArrowLeft, Link2, Copy, Check } from 'lucide-react';
+import { ClipboardList, Plus, Calendar, FileText, ChevronRight, ArrowLeft, Link2, Copy, Check } from 'lucide-react';
+import { FormSkeleton, SimpleListSkeleton } from '@/components/ui/custom-skeletons';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -45,11 +46,7 @@ export default function PatientAnamnesePage() {
     };
 
     if (loadingRecords) {
-        return (
-            <div className="flex h-64 items-center justify-center">
-                <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-            </div>
-        );
+        return <div className="max-w-5xl mx-auto p-4 md:p-6"><SimpleListSkeleton /></div>;
     }
 
     return (
@@ -141,7 +138,7 @@ export default function PatientAnamnesePage() {
                         </DialogDescription>
                     </DialogHeader>
                     {loadingTemplates ? (
-                        <div className="py-8 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-blue-600" /></div>
+                        <div className="py-8"><SimpleListSkeleton /></div>
                     ) : (
                         <div className="space-y-3 mt-4 max-h-[60vh] overflow-y-auto pr-2">
                             {templates?.map(t => (

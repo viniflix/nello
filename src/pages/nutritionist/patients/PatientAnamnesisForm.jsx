@@ -19,6 +19,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
 import { patientAnamnesisListRoute, patientAnamnesisEditRoute } from '@/lib/utils/patientRoutes';
 import { useAuth } from '@/contexts/AuthContext';
+import { FormSkeleton } from '@/components/ui/custom-skeletons';
 
 export default function PatientAnamnesisForm() {
     const navigate = useNavigate();
@@ -251,9 +252,11 @@ export default function PatientAnamnesisForm() {
 
     if (loadingRecord || loadingPrev || isCreating || (!anamnesisId && templateId)) {
         return (
-            <div className="flex h-[80vh] items-center justify-center">
-                <Loader2 className="w-8 h-8 animate-spin text-[#5f6f52]" />
-                <span className="ml-3 text-slate-500 font-medium">{isCreating || (!anamnesisId && templateId) ? "Criando rascunho..." : "Carregando..."}</span>
+            <div className="max-w-4xl mx-auto p-4 md:p-6">
+                <div className="mb-4 text-slate-500 font-medium">
+                    {isCreating || (!anamnesisId && templateId) ? "Criando rascunho..." : "Carregando..."}
+                </div>
+                <FormSkeleton />
             </div>
         );
     }

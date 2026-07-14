@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { PageHeaderSkeleton, CardSkeleton } from '@/components/ui/custom-skeletons';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -398,8 +399,12 @@ export default function EnergyExpenditurePage() {
 
   if (resolveLoading || loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+      <div className="container max-w-[1400px] py-8 space-y-6">
+        <PageHeaderSkeleton />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <CardSkeleton className="lg:col-span-1" />
+            <CardSkeleton className="lg:col-span-2" />
+        </div>
       </div>
     );
   }

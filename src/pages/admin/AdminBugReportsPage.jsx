@@ -49,6 +49,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { getSystemLiveLogs } from '@/services/adminService';
 import { supabase } from '@/lib/customSupabaseClient';
+import { SimpleListSkeleton } from '@/components/ui/custom-skeletons';
 
 /**
  * AdminBugReportsPage - Sistema completo de relatório de bugs e audit log
@@ -668,8 +669,8 @@ FIM DO RELATÓRIO
             </CardHeader>
             <CardContent>
               {isLoading ? (
-                <div className="flex items-center justify-center py-12">
-                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                <div className="py-4">
+                  <SimpleListSkeleton />
                 </div>
               ) : filteredBugs.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
@@ -778,8 +779,8 @@ FIM DO RELATÓRIO
                 className="bg-slate-950 rounded-lg p-4 h-[600px] overflow-y-auto"
               >
                 {auditLogLoading && liveLogs.length === 0 ? (
-                  <div className="flex items-center justify-center h-full">
-                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                  <div className="py-4">
+                    <SimpleListSkeleton />
                   </div>
                 ) : liveLogs.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-full text-slate-400">

@@ -43,6 +43,7 @@ import {
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { SimpleListSkeleton } from '@/components/ui/custom-skeletons';
 
 const EMPTY_FORM = {
     name: '',
@@ -363,8 +364,8 @@ const MessageTemplatesPage = () => {
 
                 {/* Loading */}
                 {loading && (
-                    <div className="flex items-center justify-center py-16">
-                        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    <div className="py-6">
+                        <SimpleListSkeleton />
                     </div>
                 )}
 

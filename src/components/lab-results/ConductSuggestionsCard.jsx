@@ -15,6 +15,7 @@ import {
 } from '@/lib/supabase/conduct-queries';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { SimpleListSkeleton } from '@/components/ui/custom-skeletons';
 
 const ConductSuggestionsCard = ({ patientId }) => {
     const { user } = useAuth();
@@ -165,8 +166,8 @@ const ConductSuggestionsCard = ({ patientId }) => {
             </CardHeader>
             <CardContent>
                 {loading ? (
-                    <div className="flex justify-center py-4">
-                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    <div className="py-2">
+                        <SimpleListSkeleton count={1} />
                     </div>
                 ) : suggestions.length === 0 ? (
                     <p className="text-sm text-muted-foreground py-3">

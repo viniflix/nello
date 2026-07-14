@@ -19,6 +19,7 @@ import {
 } from '@/lib/supabase/message-templates-queries';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { CardSkeleton, SimpleListSkeleton } from '@/components/ui/custom-skeletons';
 
 const ICON_MAP = {
     trophy: Trophy,
@@ -161,9 +162,9 @@ const TabContentAdherence = ({ patientId, patientData, modulesStatus = {} }) => 
     const GoalsCard = () => {
         if (loading) {
             return (
-                <Card className="border-l-4 border-l-[#a9b388] h-full">
-                    <CardContent className="py-8 text-center">
-                        <p className="text-sm text-muted-foreground">Carregando meta...</p>
+                <Card className="h-full">
+                    <CardContent className="p-0 h-full">
+                        <CardSkeleton />
                     </CardContent>
                 </Card>
             );
@@ -302,9 +303,9 @@ const TabContentAdherence = ({ patientId, patientData, modulesStatus = {} }) => 
 
         if (achievementsLoading) {
             return (
-                <Card className="border-dashed border-2 border-amber-300/50 bg-muted/20 h-full">
-                    <CardContent className="py-8 text-center">
-                        <p className="text-sm text-muted-foreground">Carregando conquistas...</p>
+                <Card className="h-full">
+                    <CardContent className="p-0 h-full">
+                        <CardSkeleton />
                     </CardContent>
                 </Card>
             );
@@ -433,7 +434,9 @@ const TabContentAdherence = ({ patientId, patientData, modulesStatus = {} }) => 
                 </CardHeader>
                 <CardContent className="space-y-4">
                     {templatesLoading ? (
-                        <p className="text-sm text-muted-foreground py-2">Carregando modelos...</p>
+                        <div className="py-2">
+                            <SimpleListSkeleton count={1} />
+                        </div>
                     ) : templates.length === 0 ? (
                         <div className="text-center py-4 rounded-lg border border-dashed bg-muted/20">
                             <p className="text-sm text-muted-foreground mb-2">

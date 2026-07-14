@@ -10,8 +10,8 @@ import { DateInputWithCalendar } from '@/components/ui/date-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { FormSkeleton } from '@/components/ui/custom-skeletons';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -428,9 +428,11 @@ const MealPlanForm = ({
     // Show loading state while resuming
     if (isResuming) {
         return (
-            <div className="flex flex-col items-center justify-center p-12 space-y-4">
-                <RefreshCw className="h-8 w-8 text-primary animate-spin" />
-                <p className="text-muted-foreground">Restaurando rascunho...</p>
+            <div className="space-y-4">
+                <div className="mb-4 text-muted-foreground font-medium text-center">
+                    Restaurando rascunho...
+                </div>
+                <FormSkeleton />
             </div>
         );
     }

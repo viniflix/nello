@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Plus, ClipboardList, Edit2, Trash2, Loader2, Play, Search, Globe, User, Eye, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAnamnesisTemplates } from '@/hooks/useAnamnesisTemplates';
+import { CardSkeleton } from '@/components/ui/custom-skeletons';
 
 // ─── Card de Formulário ─────────────────────────────────────────────────────────
 const FormCard = ({ template, onEdit, onDelete, onView, isGlobal }) => (
@@ -139,8 +140,10 @@ export default function TemplatesList() {
 
             {/* Content */}
             {isLoading ? (
-                <div className="flex justify-center py-20">
-                    <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                    <CardSkeleton />
+                    <CardSkeleton />
+                    <CardSkeleton />
                 </div>
             ) : filtered.length > 0 ? (
                 <div className="space-y-8">

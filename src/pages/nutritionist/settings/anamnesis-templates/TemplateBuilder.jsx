@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { useAnamnesisTemplates } from '@/hooks/useAnamnesisTemplates';
 import { useToast } from '@/components/ui/use-toast';
+import { FormSkeleton } from '@/components/ui/custom-skeletons';
 
 const FIELD_TYPES = [
   { value: 'text', label: 'Texto Curto' },
@@ -158,8 +159,8 @@ export default function TemplateBuilder() {
 
     if (isLoading) {
         return (
-            <div className="flex h-screen items-center justify-center">
-                <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+            <div className="container mx-auto p-4 sm:p-6 max-w-[1400px]">
+                <FormSkeleton />
             </div>
         );
     }

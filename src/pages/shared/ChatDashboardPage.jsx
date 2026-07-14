@@ -13,6 +13,7 @@ import NewChatModal from '@/components/nutritionist/NewChatModal';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { SimpleListSkeleton } from '@/components/ui/custom-skeletons';
 
 const formatMessageTime = (dateStr) => {
   if (!dateStr) return '';
@@ -176,11 +177,9 @@ const ChatDashboardPage = () => {
             }}
         />
 
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto p-2">
           {loading && conversations.length === 0 ? (
-            <div className="flex items-center justify-center p-8">
-              <Loader2 className="w-6 h-6 animate-spin text-primary" />
-            </div>
+            <SimpleListSkeleton count={8} />
           ) : filteredConversations.length > 0 ? (
             filteredConversations.map(conv => (
               <ConversationItem

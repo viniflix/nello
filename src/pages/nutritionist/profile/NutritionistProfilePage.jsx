@@ -11,6 +11,7 @@ import ProfileFinancialTab from '@/components/profile/ProfileFinancialTab';
 import { ThemeToggle } from '@/components/shared/ThemeToggle';
 import ProfessionalVerificationSection from './ProfessionalVerificationSection';
 import StudentSupervisionCard from '@/components/verification/StudentSupervisionCard';
+import { PageHeaderSkeleton, FormSkeleton } from '@/components/ui/custom-skeletons';
 
 const NutritionistProfilePage = () => {
     const { user, updateUserProfile } = useAuth();
@@ -39,8 +40,11 @@ const NutritionistProfilePage = () => {
 
     if (loading || !user) {
         return (
-            <div className="flex items-center justify-center h-screen">
-                <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+            <div className="min-h-screen bg-background overflow-x-hidden">
+                <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 md:py-8 min-w-0 space-y-6">
+                    <PageHeaderSkeleton />
+                    <FormSkeleton fields={4} />
+                </main>
             </div>
         );
     }

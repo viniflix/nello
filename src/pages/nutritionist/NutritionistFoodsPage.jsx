@@ -5,6 +5,7 @@ import { Search, Edit, Loader2, Database, ShieldAlert, Plus, Package } from 'luc
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { SimpleListSkeleton } from '@/components/ui/custom-skeletons';
 import { Badge } from '@/components/ui/badge';
 import {
     Dialog,
@@ -332,11 +333,8 @@ export default function NutritionistFoodsPage() {
           >
             {loading && foods.length === 0 ? (
               <Card>
-                <CardContent className="py-12">
-                  <div className="flex flex-col items-center gap-3">
-                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                    <p className="text-sm text-muted-foreground">Buscando alimentos...</p>
-                  </div>
+                <CardContent className="py-6">
+                  <SimpleListSkeleton />
                 </CardContent>
               </Card>
             ) : foods.length === 0 ? (

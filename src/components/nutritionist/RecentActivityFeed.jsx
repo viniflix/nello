@@ -21,6 +21,7 @@ import {
     Camera
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { SimpleListSkeleton } from '@/components/ui/custom-skeletons';
 
 const ActivityIcon = ({ type }) => {
     const iconClass = "h-5 w-5";
@@ -102,8 +103,8 @@ const RecentActivityFeed = ({ limit = 10, showHeader = true }) => {
                     </CardTitle>
                     <CardDescription className="text-muted-foreground">Carregando...</CardDescription>
                 </CardHeader>
-                <CardContent className="flex items-center justify-center py-10">
-                    <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                <CardContent className="pt-2">
+                    <SimpleListSkeleton count={4} />
                 </CardContent>
             </Card>
         );

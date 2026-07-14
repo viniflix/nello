@@ -10,6 +10,7 @@ import {
     Copy, Check, ShieldAlert
 } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { GridSkeleton, TableSkeleton } from '@/components/ui/custom-skeletons';
 import {
     DropdownMenu, DropdownMenuContent, DropdownMenuLabel,
     DropdownMenuRadioGroup, DropdownMenuRadioItem,
@@ -471,7 +472,9 @@ const PatientsPage = () => {
                         <CardContent className="pt-4 bg-muted/10 p-0">
                             <ScrollArea className="h-[400px] md:h-[550px] w-full p-4 md:p-6">
                         {loading ? (
-                            <div className="flex justify-center items-center h-40"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
+                            <div className="pr-1">
+                                {viewMode === 'grid' ? <GridSkeleton count={6} /> : <TableSkeleton rows={5} />}
+                            </div>
                         ) : filteredPatients.length > 0 ? (
                             <div className="pr-1">
                                 {viewMode === 'grid' ? (
