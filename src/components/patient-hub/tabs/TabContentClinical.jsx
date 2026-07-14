@@ -13,10 +13,10 @@ import { getRecentLabResults } from '@/lib/supabase/lab-results-queries';
 import { CardSkeleton, ActivityListSkeleton } from '@/components/ui/card-skeleton';
 import GlycemiaSummaryCard from '@/components/patient-hub/GlycemiaSummaryCard';
 
-import ClinicalRecordsList from '../../clinical-records/components/ClinicalRecordsList';
-import EvolutionEditor from '../../clinical-records/components/EvolutionEditor';
-import EvolutionTemplateSelector from '../../clinical-records/components/EvolutionTemplateSelector';
-import { listClinicalRecordsByEpisode } from '../../clinical-records/api/evolution-queries';
+import ClinicalRecordsList from '@/features/clinical-records/components/ClinicalRecordsList';
+import EvolutionEditor from '@/features/clinical-records/components/EvolutionEditor';
+import EvolutionTemplateSelector from '@/features/clinical-records/components/EvolutionTemplateSelector';
+import { listClinicalRecordsByEpisode } from '@/features/clinical-records/api/evolution-queries';
 
 const TabContentClinical = ({ patientId, patientData, modulesStatus = {}, viewedEpisodeId, writableEpisodeId, currentUserId, canCosign }) => {
     const patient = patientData || { id: patientId };
