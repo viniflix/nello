@@ -8,6 +8,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/lib/customSupabaseClient';
 import { patientRoute } from '@/lib/utils/patientRoutes';
 import { getPatientModuleSyncFlags } from '@/lib/supabase/anthropometry-queries';
+import { CardSkeleton } from '@/components/ui/card-skeleton';
 
 const EnergyExpenditureSummaryCard = ({ patientId, patient }) => {
     const navigate = useNavigate();
@@ -101,13 +102,7 @@ const EnergyExpenditureSummaryCard = ({ patientId, patient }) => {
     };
 
     if (loading) {
-        return (
-            <Card className="hover:shadow-md transition-all">
-                <CardContent className="flex items-center justify-center py-12">
-                    <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                </CardContent>
-            </Card>
-        );
+        return <CardSkeleton lines={4} />;
     }
 
     // Estado: Cálculo salvo existe — mostrar resumo (prioridade sobre "dados incompletos")

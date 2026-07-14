@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import PatientActivityFeed from '@/components/patient-hub/PatientActivityFeed';
 import TemplateDispatchHistoryCard from '@/components/patient-hub/TemplateDispatchHistoryCard';
+import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/lib/customSupabaseClient';
 
 const TabContentFeed = ({ patientId, patientSlugOrId, activities, loading, onLoadMore }) => {
@@ -94,9 +95,10 @@ const TabContentFeed = ({ patientId, patientSlugOrId, activities, loading, onLoa
 
                 <CardContent className="space-y-2">
                     {mealsLoading ? (
-                        <div className="text-center py-6">
-                            <Loader2 className="w-6 h-6 animate-spin text-[#5f6f52] mx-auto mb-2" />
-                            <p className="text-xs text-muted-foreground">Carregando...</p>
+                        <div className="space-y-3 mt-2">
+                            {[1, 2, 3].map((i) => (
+                                <Skeleton key={i} className="h-14 w-full rounded-lg" />
+                            ))}
                         </div>
                     ) : recentMeals.length > 0 ? (
                         <>

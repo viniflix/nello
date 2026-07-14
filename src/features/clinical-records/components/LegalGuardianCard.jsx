@@ -159,6 +159,15 @@ export default function LegalGuardianCard({
             Menor sem responsável legal ativo.
           </p>
         )}
+        {!isMinor && (
+          <p
+            role="alert"
+            className="flex gap-2 rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900 dark:border-blue-900/50 dark:bg-blue-900/20 dark:text-blue-300"
+          >
+            <AlertTriangle className="h-4 w-4 shrink-0" />
+            O paciente já atingiu a maioridade legal (≥ 18 anos). A presença de um responsável não é obrigatória.
+          </p>
+        )}
         {guardians.length === 0 && (
           <p className="text-sm text-muted-foreground">
             Nenhum responsável legal registrado neste episódio.
@@ -257,76 +266,95 @@ export default function LegalGuardianCard({
           </Button>
         )}
         {adding && (
-          <form onSubmit={save} className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <Label htmlFor="guardian-name">Nome do responsável</Label>
-              <Input
-                id="guardian-name"
-                required
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-              />
-            </div>
-            <div>
-              <Label htmlFor="guardian-relation">Relação</Label>
-              <Input
-                id="guardian-relation"
-                required
-                value={form.relationship}
-                onChange={(e) =>
-                  setForm({ ...form, relationship: e.target.value })
-                }
-              />
-            </div>
-            <div>
-              <Label htmlFor="guardian-from">Início do período</Label>
-              <Input
-                id="guardian-from"
-                type="date"
-                value={form.valid_from}
-                onChange={(e) =>
-                  setForm({ ...form, valid_from: e.target.value })
-                }
-              />
-            </div>
-            <div>
-              <Label htmlFor="guardian-phone">Telefone do responsável</Label>
-              <Input id="guardian-phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-            </div>
-            <div>
-              <Label htmlFor="guardian-email">E-mail do responsável</Label>
-              <Input id="guardian-email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-            </div>
-            <div>
-              <Label htmlFor="guardian-until">Fim do período</Label>
-              <Input
-                id="guardian-until"
-                type="date"
-                value={form.valid_until}
-                onChange={(e) =>
-                  setForm({ ...form, valid_until: e.target.value })
-                }
-              />
-            </div>
-            <label className="flex items-center gap-2 sm:col-span-2">
-              <input
-                type="checkbox"
-                checked={form.consent_recorded}
-                onChange={(e) =>
-                  setForm({ ...form, consent_recorded: e.target.checked })
-                }
-              />
-              Consentimento registrado
-            </label>
-            {form.consent_recorded && <>
-              <div><Label htmlFor="guardian-consent-version">Versão do consentimento</Label><Input id="guardian-consent-version" required value={form.consent_version} onChange={(e) => setForm({ ...form, consent_version: e.target.value })} /></div>
-              <div><Label htmlFor="guardian-consent-date">Data do consentimento</Label><Input id="guardian-consent-date" required type="datetime-local" value={form.consent_recorded_at} onChange={(e) => setForm({ ...form, consent_recorded_at: e.target.value })} /></div>
-              <div className="sm:col-span-2"><Label htmlFor="guardian-consent-evidence">Evidência do consentimento</Label><Input id="guardian-consent-evidence" required value={form.consent_evidence} onChange={(e) => setForm({ ...form, consent_evidence: e.target.value })} /></div>
-            </>}
-            {active && (
+          <form onSubmit={save} className="space-y-4 rounded-lg border bg-zinc-50/50 p-4 dark:bg-zinc-900/50">
+            <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
               <div className="sm:col-span-2">
+                <Label htmlFor="guardian-name">Nome do responsável</Label>
+                <Input
+                  id="guardian-name"
+                  required
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label htmlFor="guardian-relation">Relação</Label>
+                <Input
+                  id="guardian-relation"
+                  required
+                  value={form.relationship}
+                  onChange={(e) =>
+                    setForm({ ...form, relationship: e.target.value })
+                  }
+                />
+              </div>
+              <div>
+                <Label htmlFor="guardian-phone">Telefone</Label>
+                <Input id="guardian-phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+              </div>
+              <div className="sm:col-span-2 md:col-span-2">
+                <Label htmlFor="guardian-email">E-mail</Label>
+                <Input id="guardian-email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+              </div>
+              <div>
+                <Label htmlFor="guardian-from">Início do período</Label>
+                <Input
+                  id="guardian-from"
+                  type="date"
+                  value={form.valid_from}
+                  onChange={(e) =>
+                    setForm({ ...form, valid_from: e.target.value })
+                  }
+                />
+              </div>
+              <div>
+                <Label htmlFor="guardian-until">Fim do período</Label>
+                <Input
+                  id="guardian-until"
+                  type="date"
+                  value={form.valid_until}
+                  onChange={(e) =>
+                    setForm({ ...form, valid_until: e.target.value })
+                  }
+                />
+              </div>
+            </div>
+            
+            <div className="pt-2 border-t border-zinc-200 dark:border-zinc-800">
+              <label className="flex items-center gap-2 mb-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={form.consent_recorded}
+                  onChange={(e) =>
+                    setForm({ ...form, consent_recorded: e.target.checked })
+                  }
+                  className="rounded border-zinc-300 text-emerald-600 focus:ring-emerald-600"
+                />
+                <span className="text-sm font-medium">Consentimento registrado</span>
+              </label>
+              
+              {form.consent_recorded && (
+                <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 pl-6">
+                  <div>
+                    <Label htmlFor="guardian-consent-version">Versão do consentimento</Label>
+                    <Input id="guardian-consent-version" required value={form.consent_version} onChange={(e) => setForm({ ...form, consent_version: e.target.value })} />
+                  </div>
+                  <div>
+                    <Label htmlFor="guardian-consent-date">Data do registro</Label>
+                    <Input id="guardian-consent-date" required type="datetime-local" value={form.consent_recorded_at} onChange={(e) => setForm({ ...form, consent_recorded_at: e.target.value })} />
+                  </div>
+                  <div className="sm:col-span-2 md:col-span-3">
+                    <Label htmlFor="guardian-consent-evidence">Evidência (link ou referência)</Label>
+                    <Input id="guardian-consent-evidence" required value={form.consent_evidence} onChange={(e) => setForm({ ...form, consent_evidence: e.target.value })} />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {active && (
+              <div className="pt-2 border-t border-zinc-200 dark:border-zinc-800">
                 <Label htmlFor="replacement-reason">
-                  Motivo da substituição
+                  Motivo da substituição <span className="text-red-500">*</span>
                 </Label>
                 <Input
                   id="replacement-reason"
@@ -338,15 +366,16 @@ export default function LegalGuardianCard({
                 />
               </div>
             )}
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <Button disabled={busy}>
+            <div className="flex flex-col gap-2 sm:flex-row mt-6 pt-2">
+              <Button disabled={busy} className="w-full sm:w-auto">
                 {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Salvar
+                Salvar Responsável
               </Button>
               <Button
                 type="button"
                 variant="ghost"
                 onClick={() => setAdding(false)}
+                className="w-full sm:w-auto"
               >
                 Cancelar
               </Button>

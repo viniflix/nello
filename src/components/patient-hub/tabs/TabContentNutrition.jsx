@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { getActiveMealPlan } from '@/lib/supabase/meal-plan-queries';
 import { calculateDiaryAdherence, getNutritionalSummary } from '@/lib/supabase/food-diary-queries';
 import EnergyExpenditureSummaryCard from '@/components/patient-hub/EnergyExpenditureSummaryCard';
+import { CardSkeleton } from '@/components/ui/card-skeleton';
 import { patientRoute } from '@/lib/utils/patientRoutes';
 
 const TabContentNutrition = ({ patientId, patientData, modulesStatus = {} }) => {
@@ -72,11 +73,9 @@ const TabContentNutrition = ({ patientId, patientData, modulesStatus = {} }) => 
     const MealPlanCard = () => {
         if (planLoading) {
             return (
-                <Card className="h-full">
-                    <CardContent className="flex items-center justify-center py-12">
-                        <Loader2 className="w-8 h-8 animate-spin text-[#5f6f52]" />
-                    </CardContent>
-                </Card>
+                <div className="h-full">
+                    <CardSkeleton lines={4} />
+                </div>
             );
         }
 
@@ -193,11 +192,9 @@ const TabContentNutrition = ({ patientId, patientData, modulesStatus = {} }) => 
     const FoodDiaryCard = () => {
         if (diaryLoading) {
             return (
-                <Card className="h-full">
-                    <CardContent className="flex items-center justify-center py-12">
-                        <Loader2 className="w-8 h-8 animate-spin text-[#5f6f52]" />
-                    </CardContent>
-                </Card>
+                <div className="h-full">
+                    <CardSkeleton lines={3} />
+                </div>
             );
         }
 

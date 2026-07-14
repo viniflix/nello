@@ -10,9 +10,15 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
 import { getLatestAnamnesis } from '@/lib/supabase/anamnesis-queries';
 import { getRecentLabResults } from '@/lib/supabase/lab-results-queries';
+import { CardSkeleton, ActivityListSkeleton } from '@/components/ui/card-skeleton';
 import GlycemiaSummaryCard from '@/components/patient-hub/GlycemiaSummaryCard';
 
-const TabContentClinical = ({ patientId, patientData, modulesStatus = {} }) => {
+import ClinicalRecordsList from '../../clinical-records/components/ClinicalRecordsList';
+import EvolutionEditor from '../../clinical-records/components/EvolutionEditor';
+import EvolutionTemplateSelector from '../../clinical-records/components/EvolutionTemplateSelector';
+import { listClinicalRecordsByEpisode } from '../../clinical-records/api/evolution-queries';
+
+const TabContentClinical = ({ patientId, patientData, modulesStatus = {}, viewedEpisodeId, writableEpisodeId, currentUserId, canCosign }) => {
     const patient = patientData || { id: patientId };
     const navigate = useNavigate();
     const { user } = useAuth();
@@ -21,6 +27,22 @@ const TabContentClinical = ({ patientId, patientData, modulesStatus = {} }) => {
     const [anamnesisLoading, setAnamnesisLoading] = useState(true);
     const [labResults, setLabResults] = useState([]);
     const [labsLoading, setLabsLoading] = useState(true);
+
+    const [records, setRecords] = useState([]);
+    const [recordsLoading, setRecordsLoading] = useState(true);
+    const [selectedRecord, setSelectedRecord] = useState(null);
+    const [showTemplateSelector, setShowTemplateSelector] = useState(false);
+
+    const loadRecords = async () => {
+        if (!patientId || !viewedEpisodeId) {
+            setRecordsLoading(false);
+            return;
+        }
+        setRecordsLoading(true);
+        const { data } = await listClinicalRecordsByEpisode(patientId, viewedEpisodeId);
+        if (data) setRecords(data);
+        setRecordsLoading(false);
+    };
 
     useEffect(() => {
         const fetchLatestAnamnesis = async () => {
@@ -54,18 +76,17 @@ const TabContentClinical = ({ patientId, patientData, modulesStatus = {} }) => {
 
         fetchLatestAnamnesis();
         fetchLabResults();
-    }, [patientId]);
+        loadRecords();
+    }, [patientId, viewedEpisodeId]);
 
     const AnamnesisCard = () => {
         const hasAnamnesis = !anamnesisLoading && latestAnamnesis;
 
         if (anamnesisLoading) {
             return (
-                <Card className="border-l-4 border-l-[#a9b388] h-full">
-                    <CardContent className="py-8 text-center">
-                        <p className="text-sm text-muted-foreground">Carregando anamnese...</p>
-                    </CardContent>
-                </Card>
+                <div className="h-full">
+                    <CardSkeleton lines={2} />
+                </div>
             );
         }
 
@@ -160,12 +181,9 @@ const TabContentClinical = ({ patientId, patientData, modulesStatus = {} }) => {
     const LabsCard = () => {
         if (labsLoading) {
             return (
-                <Card className="border-l-4 border-l-[#b99470] h-full">
-                    <CardContent className="py-8 text-center">
-                        <Loader2 className="w-6 h-6 animate-spin text-primary mx-auto mb-2" />
-                        <p className="text-sm text-muted-foreground">Carregando exames...</p>
-                    </CardContent>
-                </Card>
+                <div className="h-full">
+                    <CardSkeleton lines={2} />
+                </div>
             );
         }
 
@@ -270,23 +288,82 @@ const TabContentClinical = ({ patientId, patientData, modulesStatus = {} }) => {
 
     const isDiabetic = patient?.preferences?.is_diabetic === true;
 
+    if (selectedRecord) {
+        return (
+            <div className="h-[700px]">
+                <EvolutionEditor 
+                    initialRecord={selectedRecord} 
+                    onBack={() => {
+                        setSelectedRecord(null);
+                        loadRecords();
+                    }}
+                    currentUserId={currentUserId}
+                    canCosign={canCosign}
+                />
+            </div>
+        );
+    }
+
     return (
-        <div className="space-y-6">
-            <div>
-                <h3 className="text-xl font-bold text-foreground mb-1">Dados Clínicos</h3>
-                <p className="text-sm text-muted-foreground">
-                    Histórico de saúde e exames laboratoriais
-                </p>
+        <div className="space-y-8">
+            <div className="space-y-6">
+                <div>
+                    <h3 className="text-xl font-bold text-foreground mb-1">Visão Geral Clínica</h3>
+                    <p className="text-sm text-muted-foreground">
+                        Histórico de saúde, anamnese e exames laboratoriais
+                    </p>
+                </div>
+
+                <div className={cn(
+                    "grid grid-cols-1 gap-4",
+                    isDiabetic ? "md:grid-cols-2 lg:grid-cols-3" : "md:grid-cols-2 lg:grid-cols-2"
+                )}>
+                    <AnamnesisCard />
+                    <LabsCard />
+                    <GlycemiaSummaryCard patientId={patientId} patient={patient} />
+                </div>
             </div>
 
-            <div className={cn(
-                "grid grid-cols-1 gap-4",
-                isDiabetic ? "md:grid-cols-2 lg:grid-cols-3" : "md:grid-cols-2 lg:grid-cols-2"
-            )}>
-                <AnamnesisCard />
-                <LabsCard />
-                <GlycemiaSummaryCard patientId={patientId} patient={patient} />
+            <div className="border-t border-zinc-200 dark:border-zinc-800 pt-8 space-y-4">
+                <div>
+                    <h3 className="text-xl font-bold text-foreground mb-1">Evoluções Clínicas</h3>
+                    <p className="text-sm text-muted-foreground">
+                        Acompanhamento contínuo e registros do episódio de cuidado atual.
+                    </p>
+                </div>
+
+                {recordsLoading ? (
+                    <ActivityListSkeleton />
+                ) : (
+                    <ClinicalRecordsList 
+                        records={records} 
+                        onSelectRecord={setSelectedRecord}
+                        onCreateDraft={() => setShowTemplateSelector(true)}
+                        canWriteEpisode={!!writableEpisodeId}
+                    />
+                )}
             </div>
+
+            <EvolutionTemplateSelector 
+                open={showTemplateSelector} 
+                onOpenChange={setShowTemplateSelector}
+                onSelectTemplate={async (template) => {
+                    const { supabase } = await import('@/infrastructure/supabase/client');
+                    // Workaround to create a new record since the wrapper doesn't support template_code param directly yet.
+                    const { data, error } = await supabase.rpc('update_clinical_record_draft', {
+                        p_record_id: null,
+                        p_template_code: template.code,
+                        p_content: {},
+                        p_visibility: 'professional_private'
+                    });
+                    
+                    if (!error && data) {
+                        setSelectedRecord(data);
+                    } else {
+                        toast({ title: 'Erro ao criar evolução', description: error?.message || 'Falha desconhecida', variant: 'destructive' });
+                    }
+                }}
+            />
         </div>
     );
 };

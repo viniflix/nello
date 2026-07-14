@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/AuthContext';
 import { getTemplateDispatchHistory } from '@/lib/supabase/message-templates-queries';
 import { format } from 'date-fns';
@@ -72,8 +73,9 @@ const TemplateDispatchHistoryCard = ({ patientId }) => {
             </CardHeader>
             <CardContent>
                 {loading ? (
-                    <div className="flex items-center justify-center py-3">
-                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    <div className="space-y-2 py-2">
+                        <Skeleton className="h-20 w-full" />
+                        <Skeleton className="h-20 w-full" />
                     </div>
                 ) : (
                     <>

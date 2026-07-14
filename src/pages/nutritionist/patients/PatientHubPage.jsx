@@ -423,6 +423,10 @@ const PatientHubPage = () => {
                                     patientId={patientId}
                                     patientData={patientData}
                                     modulesStatus={modulesStatus}
+                                    viewedEpisodeId={viewedEpisodeId}
+                                    writableEpisodeId={writableEpisodeId}
+                                    currentUserId={user?.id}
+                                    canCosign={user?.profile?.user_type === 'nutritionist'}
                                 />
                             </TabsContent>
 

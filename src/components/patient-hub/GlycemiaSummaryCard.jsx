@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { getGlycemiaRecords, insertGlycemiaRecord } from '@/lib/supabase/glycemia-queries';
+import { CardSkeleton } from '@/components/ui/card-skeleton';
 
 const GlycemiaSummaryCard = ({ patientId, patient }) => {
     const isDiabetic = patient?.preferences?.is_diabetic === true;
@@ -62,13 +63,7 @@ const GlycemiaSummaryCard = ({ patientId, patient }) => {
     if (!isDiabetic) return null;
 
     if (loading) {
-        return (
-            <Card className="hover:shadow-md transition-all">
-                <CardContent className="flex items-center justify-center py-12">
-                    <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                </CardContent>
-            </Card>
-        );
+        return <CardSkeleton lines={3} />;
     }
 
     const chartData = records.map(r => ({
