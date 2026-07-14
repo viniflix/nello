@@ -14,9 +14,9 @@ describe('LegalGuardianCard', () => {
     fireEvent.change(screen.getByLabelText(/relação/i), { target: { value: 'Mãe' } });
     fireEvent.click(screen.getByLabelText(/consentimento registrado/i));
     fireEvent.change(screen.getByLabelText(/versão do consentimento/i), { target: { value: 'v1' } });
-    fireEvent.change(screen.getByLabelText(/data do consentimento/i), { target: { value: '2026-07-12T10:00' } });
-    fireEvent.change(screen.getByLabelText(/evidência do consentimento/i), { target: { value: 'Termo arquivado' } });
-    fireEvent.submit(screen.getByRole('button', { name: /^salvar$/i }).closest('form'));
+    fireEvent.change(screen.getByLabelText(/data do registro/i), { target: { value: '2026-07-12T10:00' } });
+    fireEvent.change(screen.getByLabelText(/evidência \(link ou referência\)/i), { target: { value: 'Termo arquivado' } });
+    fireEvent.submit(screen.getByRole('button', { name: /salvar responsável/i }).closest('form'));
     await waitFor(() => expect(onSave).toHaveBeenCalledWith('p1', 'episode-current', expect.objectContaining({ name: 'Beatriz Lima', relationship: 'Mãe' })));
     expect(onSave.mock.calls[0][2]).not.toHaveProperty('valid_from');
     expect(onSave.mock.calls[0][2]).not.toHaveProperty('valid_until');
@@ -57,12 +57,12 @@ describe('LegalGuardianCard', () => {
     fireEvent.change(screen.getByLabelText(/fim do período/i), { target: { value: '2027-07-12' } });
     fireEvent.click(screen.getByLabelText(/consentimento registrado/i));
     fireEvent.change(screen.getByLabelText(/versão do consentimento/i), { target: { value: 'v1' } });
-    fireEvent.change(screen.getByLabelText(/data do consentimento/i), { target: { value: '2026-07-12T10:00' } });
-    fireEvent.change(screen.getByLabelText(/evidência do consentimento/i), { target: { value: 'Termo arquivado' } });
-    fireEvent.submit(screen.getByRole('button', { name: /^salvar$/i }).closest('form'));
+    fireEvent.change(screen.getByLabelText(/data do registro/i), { target: { value: '2026-07-12T10:00' } });
+    fireEvent.change(screen.getByLabelText(/evidência \(link ou referência\)/i), { target: { value: 'Termo arquivado' } });
+    fireEvent.submit(screen.getByRole('button', { name: /salvar responsável/i }).closest('form'));
     expect(screen.getByText(/motivo da substituição é obrigatório/i)).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText(/motivo da substituição/i), { target: { value: 'Mudança familiar' } });
-    fireEvent.click(screen.getByRole('button', { name: /^salvar$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /salvar responsável/i }));
     await waitFor(() => expect(onSave).toHaveBeenCalledWith('p1', 'e1', expect.objectContaining({
       valid_from: '2026-07-12', valid_until: '2027-07-12', consent: expect.objectContaining({ recorded: true, version: 'v1' }), reason: 'Mudança familiar'
     })));
@@ -91,13 +91,13 @@ describe('LegalGuardianCard', () => {
     fireEvent.click(screen.getByRole('button', { name: /adicionar responsável/i }));
     fireEvent.change(screen.getByLabelText(/nome do responsável/i), { target: { value: 'Bia' } });
     fireEvent.change(screen.getByLabelText(/^relação$/i), { target: { value: 'Mãe' } });
-    fireEvent.change(screen.getByLabelText(/telefone do responsável/i), { target: { value: '85999999999' } });
-    fireEvent.change(screen.getByLabelText(/e-mail do responsável/i), { target: { value: 'bia@example.com' } });
+    fireEvent.change(screen.getByLabelText(/^telefone$/i), { target: { value: '85999999999' } });
+    fireEvent.change(screen.getByLabelText(/^e-mail$/i), { target: { value: 'bia@example.com' } });
     fireEvent.click(screen.getByLabelText(/consentimento registrado/i));
     fireEvent.change(screen.getByLabelText(/versão do consentimento/i), { target: { value: 'v1' } });
-    fireEvent.change(screen.getByLabelText(/data do consentimento/i), { target: { value: '2026-07-12T10:00' } });
-    fireEvent.change(screen.getByLabelText(/evidência do consentimento/i), { target: { value: 'Termo físico arquivado' } });
-    fireEvent.click(screen.getByRole('button', { name: /^salvar$/i }));
+    fireEvent.change(screen.getByLabelText(/data do registro/i), { target: { value: '2026-07-12T10:00' } });
+    fireEvent.change(screen.getByLabelText(/evidência \(link ou referência\)/i), { target: { value: 'Termo físico arquivado' } });
+    fireEvent.click(screen.getByRole('button', { name: /salvar responsável/i }));
     await waitFor(() => expect(onSave).toHaveBeenCalledWith('p1', 'e1', expect.objectContaining({
       contact: { phone: '85999999999', email: 'bia@example.com' },
       consent: expect.objectContaining({ recorded: true, version: 'v1', recorded_at: '2026-07-12T10:00', evidence: 'Termo físico arquivado' }),
@@ -120,7 +120,7 @@ describe('LegalGuardianCard', () => {
     fireEvent.change(screen.getByLabelText(/nome do responsável/i), { target: { value: 'Nova' } });
     fireEvent.change(screen.getByLabelText(/relação/i), { target: { value: 'Mãe' } });
     fireEvent.change(screen.getByLabelText(/motivo da substituição/i), { target: { value: 'Mudança' } });
-    fireEvent.click(screen.getByRole('button', { name: /^salvar$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /salvar responsável/i }));
     await waitFor(() => expect(onSave).toHaveBeenCalled());
     fireEvent.click(screen.getByRole('button', { name: /substituir responsável/i }));
     expect(screen.getByLabelText(/nome do responsável/i)).toHaveValue('');
