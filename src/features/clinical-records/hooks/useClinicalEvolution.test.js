@@ -1,14 +1,29 @@
-import { renderHook, act } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { useClinicalEvolution } from './useClinicalEvolution';
+import { act, renderHook } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as evolutionQueries from '../api/evolution-queries';
+import { useClinicalEvolution } from './useClinicalEvolution';
 
 vi.mock('../api/evolution-queries', () => ({
-  updateClinicalRecordDraft: vi.fn(),
   finalizeClinicalRecord: vi.fn(),
   signClinicalRecord: vi.fn(),
-  cosignClinicalRecord: vi.fn(),
+  updateClinicalRecordDraft: vi.fn(),
 }));
+
+const draft = (overrides = {}) => ({
+  id: 'rec-1',
+  status: 'draft',
+  revision: 1,
+  updated_at: '2026-07-14T09:00:00.000Z',
+  visibility: 'professional_private',
+  content: { context: '<p>Inicial</p>' },
+  ...overrides,
+});
+
+const deferred = () => {
+  let resolve;
+  const promise = new Promise((resolver) => { resolve = resolver; });
+  return { promise, resolve };
+};
 
 describe('useClinicalEvolution', () => {
   beforeEach(() => {
@@ -20,138 +35,250 @@ describe('useClinicalEvolution', () => {
     vi.useRealTimers();
   });
 
-  const mockDraftRecord = { id: 'rec-1', status: 'draft', content: { context: 'initial' } };
-
-  it('initializes with provided record data', () => {
-    const { result } = renderHook(() => useClinicalEvolution(mockDraftRecord));
-    
-    expect(result.current.record).toEqual(mockDraftRecord);
-    expect(result.current.content).toEqual({ context: 'initial' });
-    expect(result.current.status).toBe('idle');
-    expect(result.current.isDirty).toBe(false);
-  });
-
-  it('marks as dirty and schedules autosave on content change', async () => {
-    const { result } = renderHook(() => useClinicalEvolution(mockDraftRecord));
-    
-    act(() => {
-      result.current.setContent({ context: 'updated' });
-    });
-
-    expect(result.current.isDirty).toBe(true);
-    expect(result.current.content).toEqual({ context: 'updated' });
-    expect(result.current.status).toBe('editing');
-
-    // Fast-forward 15s
+  it('saves with the current revision and returns a structured success result', async () => {
     evolutionQueries.updateClinicalRecordDraft.mockResolvedValue({
-      data: { ...mockDraftRecord, content: { context: 'updated' } },
-      error: null
+      data: draft({ revision: 2, updated_at: '2026-07-14T10:00:00.000Z' }),
+      error: null,
     });
+    const { result } = renderHook(() => useClinicalEvolution(draft()));
 
-    await act(async () => {
-      vi.advanceTimersByTime(15000);
-    });
+    act(() => result.current.setContent({ context: '<p>Atualizado</p>' }));
+    let outcome;
+    await act(async () => { outcome = await result.current.forceSave(); });
 
     expect(evolutionQueries.updateClinicalRecordDraft).toHaveBeenCalledWith(
       'rec-1',
-      { context: 'updated' },
-      'professional_private'
+      { context: '<p>Atualizado</p>' },
+      'professional_private',
+      1,
     );
+    expect(outcome).toEqual({ ok: true, reason: 'saved' });
+    expect(result.current.hasUnsavedChanges).toBe(false);
+    expect(result.current.record.revision).toBe(2);
+    expect(result.current.lastSaved).toBe('2026-07-14T10:00:00.000Z');
   });
 
-  it('forceSave triggers immediate save', async () => {
-    const { result } = renderHook(() => useClinicalEvolution(mockDraftRecord));
-    
-    act(() => {
-      result.current.setContent({ context: 'updated' });
-    });
+  it('returns clean without calling the server when there is nothing to save', async () => {
+    const { result } = renderHook(() => useClinicalEvolution(draft()));
+    let outcome;
 
+    await act(async () => { outcome = await result.current.forceSave(); });
+
+    expect(outcome).toEqual({ ok: true, reason: 'clean' });
+    expect(evolutionQueries.updateClinicalRecordDraft).not.toHaveBeenCalled();
+  });
+
+  it('keeps edit B dirty when response A confirms only the older snapshot', async () => {
+    const pending = deferred();
+    evolutionQueries.updateClinicalRecordDraft.mockReturnValue(pending.promise);
+    const { result } = renderHook(() => useClinicalEvolution(draft()));
+
+    act(() => result.current.setContent({ context: '<p>A</p>' }));
+    let savePromise;
+    act(() => { savePromise = result.current.forceSave(); });
+    act(() => result.current.setContent({ context: '<p>B</p>' }));
+    pending.resolve({
+      data: draft({
+        content: { context: '<p>A</p>' },
+        revision: 2,
+        updated_at: '2026-07-14T10:01:00.000Z',
+      }),
+      error: null,
+    });
+    await act(async () => { await savePromise; });
+
+    expect(result.current.content).toEqual({ context: '<p>B</p>' });
+    expect(result.current.hasUnsavedChanges).toBe(true);
+    expect(result.current.record.revision).toBe(2);
+    expect(result.current.lastSaved).toBe('2026-07-14T10:01:00.000Z');
+  });
+
+  it('preserves local content and exposes a revision conflict', async () => {
     evolutionQueries.updateClinicalRecordDraft.mockResolvedValue({
-      data: { ...mockDraftRecord, content: { context: 'updated' } },
-      error: null
+      data: null,
+      error: { code: '40001', message: 'draft_revision_conflict' },
     });
+    const { result } = renderHook(() => useClinicalEvolution(draft()));
 
-    await act(async () => {
-      const saved = await result.current.forceSave();
-      expect(saved).toBe(true);
+    act(() => result.current.setContent({ context: '<p>Minha alteração</p>' }));
+    let outcome;
+    await act(async () => { outcome = await result.current.forceSave(); });
+
+    expect(outcome).toEqual({ ok: false, reason: 'conflict' });
+    expect(result.current.status).toBe('conflict');
+    expect(result.current.conflict).toEqual(expect.objectContaining({
+      code: '40001',
+      message: 'draft_revision_conflict',
+    }));
+    expect(result.current.content).toEqual({ context: '<p>Minha alteração</p>' });
+    expect(result.current.hasUnsavedChanges).toBe(true);
+  });
+
+  it('ignores an old save response after switching records', async () => {
+    const pending = deferred();
+    evolutionQueries.updateClinicalRecordDraft.mockReturnValue(pending.promise);
+    const { result, rerender } = renderHook(
+      ({ initialRecord }) => useClinicalEvolution(initialRecord),
+      { initialProps: { initialRecord: draft() } },
+    );
+
+    act(() => result.current.setContent({ context: '<p>Registro A</p>' }));
+    let savePromise;
+    act(() => { savePromise = result.current.forceSave(); });
+    rerender({
+      initialRecord: draft({
+        id: 'rec-2',
+        revision: 8,
+        content: { context: '<p>Registro B</p>' },
+        updated_at: '2026-07-14T11:00:00.000Z',
+      }),
     });
+    pending.resolve({
+      data: draft({ revision: 2, content: { context: '<p>Registro A</p>' } }),
+      error: null,
+    });
+    await act(async () => { await savePromise; });
 
-    expect(result.current.isDirty).toBe(false);
+    expect(result.current.record.id).toBe('rec-2');
+    expect(result.current.record.revision).toBe(8);
+    expect(result.current.content).toEqual({ context: '<p>Registro B</p>' });
+    expect(result.current.hasUnsavedChanges).toBe(false);
+    expect(result.current.error).toBeNull();
+    expect(result.current.conflict).toBeNull();
     expect(result.current.status).toBe('idle');
   });
 
-  it('does not allow editing finalized records', () => {
-    const finalizedRecord = { ...mockDraftRecord, status: 'finalized' };
-    const { result } = renderHook(() => useClinicalEvolution(finalizedRecord));
-    
-    act(() => {
-      result.current.setContent({ context: 'updated' });
-    });
+  it('clears a pending autosave when switching records', async () => {
+    const { result, rerender } = renderHook(
+      ({ initialRecord }) => useClinicalEvolution(initialRecord),
+      { initialProps: { initialRecord: draft() } },
+    );
 
-    // Content should not change, isDirty remains false
-    expect(result.current.isDirty).toBe(false);
-    expect(result.current.content).toEqual({ context: 'initial' });
+    act(() => result.current.setContent({ context: '<p>Registro A</p>' }));
+    rerender({ initialRecord: draft({ id: 'rec-2', content: {} }) });
+    await act(async () => { vi.advanceTimersByTime(15_000); });
+
+    expect(evolutionQueries.updateClinicalRecordDraft).not.toHaveBeenCalled();
   });
 
-  it('handles finalize action', async () => {
-    const { result } = renderHook(() => useClinicalEvolution(mockDraftRecord));
-    
+  it('finalizes with the latest revision after saving pending changes', async () => {
+    evolutionQueries.updateClinicalRecordDraft.mockResolvedValue({
+      data: draft({ revision: 2, content: { context: '<p>Atualizado</p>' } }),
+      error: null,
+    });
     evolutionQueries.finalizeClinicalRecord.mockResolvedValue({
-      data: { ...mockDraftRecord, status: 'finalized' },
-      error: null
+      data: draft({ revision: 3, status: 'finalized' }),
+      error: null,
     });
+    const { result } = renderHook(() => useClinicalEvolution(draft()));
 
-    await act(async () => {
-      const finalized = await result.current.finalize('reason');
-      expect(finalized).toBe(true);
-    });
+    act(() => result.current.setContent({ context: '<p>Atualizado</p>' }));
+    let finalized;
+    await act(async () => { finalized = await result.current.finalize('Motivo retroativo válido'); });
 
+    expect(finalized).toBe(true);
     expect(evolutionQueries.finalizeClinicalRecord).toHaveBeenCalledWith(
       'rec-1',
-      { context: 'initial' },
-      'reason'
+      { context: '<p>Atualizado</p>' },
+      2,
+      'Motivo retroativo válido',
     );
-    expect(result.current.status).toBe('idle');
     expect(result.current.record.status).toBe('finalized');
   });
 
-  it('handles sign action', async () => {
-    const finalizedRecord = { ...mockDraftRecord, status: 'finalized' };
-    const { result } = renderHook(() => useClinicalEvolution(finalizedRecord));
-    
-    evolutionQueries.signClinicalRecord.mockResolvedValue({
-      data: { ...finalizedRecord, status: 'signed' },
-      error: null
-    });
+  it('blocks edits while finalization is in flight so finalized content cannot diverge', async () => {
+    const pending = deferred();
+    evolutionQueries.finalizeClinicalRecord.mockReturnValue(pending.promise);
+    const { result } = renderHook(() => useClinicalEvolution(draft()));
 
-    await act(async () => {
-      const signed = await result.current.sign();
-      expect(signed).toBe(true);
-    });
+    let finalizePromise;
+    act(() => { finalizePromise = result.current.finalize(); });
+    act(() => result.current.setContent({ context: '<p>Edição tardia</p>' }));
 
-    expect(evolutionQueries.signClinicalRecord).toHaveBeenCalledWith('rec-1');
-    expect(result.current.record.status).toBe('signed');
+    expect(result.current.content).toEqual({ context: '<p>Inicial</p>' });
+    expect(result.current.hasUnsavedChanges).toBe(false);
+
+    pending.resolve({
+      data: draft({ status: 'finalized', revision: 2 }),
+      error: null,
+    });
+    await act(async () => { await finalizePromise; });
+
+    expect(result.current.record.status).toBe('finalized');
+    expect(result.current.content).toEqual({ context: '<p>Inicial</p>' });
   });
 
-  it('handles errors properly', async () => {
-    const { result } = renderHook(() => useClinicalEvolution(mockDraftRecord));
-    
-    act(() => {
-      result.current.setContent({ context: 'updated' });
+  it('does not schedule autosave while finalization owns the current revision', async () => {
+    const pendingSave = deferred();
+    const pendingFinalize = deferred();
+    evolutionQueries.updateClinicalRecordDraft.mockReturnValue(pendingSave.promise);
+    evolutionQueries.finalizeClinicalRecord.mockReturnValue(pendingFinalize.promise);
+    const { result } = renderHook(() => useClinicalEvolution(draft()));
+
+    act(() => result.current.setContent({ context: '<p>A</p>' }));
+    let finalizePromise;
+    act(() => { finalizePromise = result.current.finalize(); });
+    act(() => result.current.setContent({ context: '<p>B</p>' }));
+
+    pendingSave.resolve({
+      data: draft({
+        revision: 2,
+        content: { context: '<p>A</p>' },
+        updated_at: '2026-07-14T10:01:00.000Z',
+      }),
+      error: null,
+    });
+    await act(async () => { await Promise.resolve(); });
+
+    expect(evolutionQueries.finalizeClinicalRecord).toHaveBeenCalledWith(
+      'rec-1',
+      { context: '<p>B</p>' },
+      2,
+      null,
+    );
+    expect(result.current.status).toBe('finalizing');
+
+    await act(async () => { vi.advanceTimersByTime(15_000); });
+    expect(evolutionQueries.updateClinicalRecordDraft).toHaveBeenCalledTimes(1);
+
+    pendingFinalize.resolve({
+      data: draft({ status: 'finalized', revision: 3, content: { context: '<p>B</p>' } }),
+      error: null,
+    });
+    await act(async () => { await finalizePromise; });
+  });
+
+  it('synchronizes an externally signed version even when its revision is unchanged', () => {
+    const finalizedRecord = draft({
+      status: 'finalized',
+      revision: 4,
+      updated_at: '2026-07-14T11:00:00.000Z',
+    });
+    const { result, rerender } = renderHook(
+      ({ initialRecord }) => useClinicalEvolution(initialRecord),
+      { initialProps: { initialRecord: finalizedRecord } },
+    );
+
+    rerender({
+      initialRecord: {
+        ...finalizedRecord,
+        status: 'signed',
+        signed_at: '2026-07-14T11:05:00.000Z',
+        updated_at: '2026-07-14T11:05:00.000Z',
+      },
     });
 
-    evolutionQueries.updateClinicalRecordDraft.mockResolvedValue({
-      data: null,
-      error: { message: 'Fake error' }
-    });
+    expect(result.current.record.status).toBe('signed');
+    expect(result.current.record.signed_at).toBe('2026-07-14T11:05:00.000Z');
+  });
 
-    await act(async () => {
-      const saved = await result.current.forceSave();
-      expect(saved).toBe(false);
-    });
+  it('does not edit immutable records', () => {
+    const finalized = draft({ status: 'finalized' });
+    const { result } = renderHook(() => useClinicalEvolution(finalized));
 
-    expect(result.current.status).toBe('error');
-    expect(result.current.error).toBe('Fake error');
-    expect(result.current.isDirty).toBe(true); // Remains dirty since save failed
+    act(() => result.current.setContent({ context: '<p>Alterado</p>' }));
+
+    expect(result.current.content).toEqual(finalized.content);
+    expect(result.current.hasUnsavedChanges).toBe(false);
   });
 });
