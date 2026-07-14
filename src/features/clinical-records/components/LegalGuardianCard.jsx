@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { AlertTriangle, Loader2 } from "lucide-react";
+import { AlertTriangle, Info, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -46,6 +46,7 @@ export default function LegalGuardianCard({
   episodeId,
   viewedEpisodeId = null,
   isMinor = false,
+  ageStatus,
   guardians = [],
   onSave,
   onRevoke,
@@ -58,6 +59,7 @@ export default function LegalGuardianCard({
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const active = guardians.find((guardian) => guardian.status === "active");
+  const resolvedAgeStatus = ageStatus || (isMinor ? "minor" : "unknown");
   const resetForm = () => {
     setForm(emptyGuardianForm());
     setError("");
@@ -150,22 +152,31 @@ export default function LegalGuardianCard({
               : "Inicie um episódio de cuidado para registrar um responsável legal."}
           </p>
         )}
-        {isMinor && !active && (
+        {resolvedAgeStatus === "minor" && !active && (
           <p
             role="alert"
             className="flex gap-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900"
           >
             <AlertTriangle className="h-4 w-4 shrink-0" />
-            Menor sem responsável legal ativo.
+            Menor sem responsável legal ativo. Regularize o vínculo para o atendimento.
           </p>
         )}
-        {!isMinor && (
+        {resolvedAgeStatus === "adult" && (
           <p
-            role="alert"
+            role="status"
             className="flex gap-2 rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900 dark:border-blue-900/50 dark:bg-blue-900/20 dark:text-blue-300"
           >
-            <AlertTriangle className="h-4 w-4 shrink-0" />
+            <Info className="h-4 w-4 shrink-0" />
             O paciente já atingiu a maioridade legal (≥ 18 anos). A presença de um responsável não é obrigatória.
+          </p>
+        )}
+        {resolvedAgeStatus === "unknown" && (
+          <p
+            role="status"
+            className="flex gap-2 rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900 dark:border-blue-900/50 dark:bg-blue-900/20 dark:text-blue-300"
+          >
+            <Info className="h-4 w-4 shrink-0" />
+            A data de nascimento é necessária apenas para aplicar regras etárias. Sem ela, a plataforma não presume maioridade ou menoridade.
           </p>
         )}
         {guardians.length === 0 && (

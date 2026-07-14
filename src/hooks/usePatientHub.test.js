@@ -20,13 +20,29 @@ vi.mock('@/features/clinical-records/api/record-foundation-queries', () => ({
   listPatientLegalGuardians: mocks.listPatientLegalGuardians,
 }));
 
-import { usePatientHub } from './usePatientHub';
+import { getPatientAgeStatus, usePatientHub } from './usePatientHub';
 
 const deferred = () => {
   let resolve;
   const promise = new Promise((done) => { resolve = done; });
   return { promise, resolve };
 };
+
+describe('getPatientAgeStatus', () => {
+  it.each([null, '', 'data-invalida', '2026-02-31', '2999-01-01'])(
+    'returns unknown when the birth date cannot establish age (%s)',
+    (birthDate) => {
+      expect(getPatientAgeStatus(birthDate)).toBe('unknown');
+    },
+  );
+
+  it('distinguishes a minor from an adult at the exact 18-year boundary', () => {
+    const today = new Date(2026, 6, 14, 12);
+
+    expect(getPatientAgeStatus('2008-07-15', today)).toBe('minor');
+    expect(getPatientAgeStatus('2008-07-14', today)).toBe('adult');
+  });
+});
 
 describe('usePatientHub clinical record foundation', () => {
   beforeEach(() => {
@@ -195,6 +211,23 @@ describe('usePatientHub clinical record foundation', () => {
     const { result } = renderHook(() => usePatientHub('patient-1'));
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.profileRequirements).toEqual(['legal_guardian']);
+  });
+
+  it('requests birth date without assuming adulthood when age is unknown', async () => {
+    mocks.getPatientSummary.mockResolvedValue({
+      data: { profile: { name: 'Ana', care_episode_id: 'episode-1' }, metrics: {}, modulesStatus: {} },
+      error: null,
+    });
+    mocks.getPatientRecordFoundation.mockResolvedValue({
+      data: { viewed_episode_id: 'episode-1', writable_episode_id: 'episode-1', can_write: true, patient: { name: 'Ana' }, records: [] },
+      error: null,
+    });
+    mocks.listPatientLegalGuardians.mockResolvedValue({ data: [], error: null });
+
+    const { result } = renderHook(() => usePatientHub('patient-1'));
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.profileRequirements).toEqual(['birth_date']);
   });
 
   it('clears the previous patient snapshot immediately when patientId changes', async () => {

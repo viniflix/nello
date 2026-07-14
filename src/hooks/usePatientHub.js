@@ -10,15 +10,26 @@ import {
 } from '@/features/clinical-records/api/record-foundation-queries';
 import { getContextualProfileRequirements } from '@/features/clinical-records/model/progressiveProfileSchema';
 
-const isPatientMinor = (birthDate) => {
-    if (!birthDate) return false;
+export const getPatientAgeStatus = (birthDate, referenceDate = new Date()) => {
+    if (typeof birthDate !== 'string') return 'unknown';
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(birthDate);
+    if (!match) return 'unknown';
+
+    const [, yearText, monthText, dayText] = match;
+    const year = Number(yearText);
+    const month = Number(monthText);
+    const day = Number(dayText);
     const birth = new Date(`${birthDate}T00:00:00`);
-    if (Number.isNaN(birth.getTime())) return false;
-    const today = new Date();
-    let age = today.getFullYear() - birth.getFullYear();
-    if (today.getMonth() < birth.getMonth()
-        || (today.getMonth() === birth.getMonth() && today.getDate() < birth.getDate())) age -= 1;
-    return age < 18;
+    if (Number.isNaN(birth.getTime())
+        || birth.getFullYear() !== year
+        || birth.getMonth() !== month - 1
+        || birth.getDate() !== day
+        || birth > referenceDate) return 'unknown';
+
+    let age = referenceDate.getFullYear() - birth.getFullYear();
+    if (referenceDate.getMonth() < birth.getMonth()
+        || (referenceDate.getMonth() === birth.getMonth() && referenceDate.getDate() < birth.getDate())) age -= 1;
+    return age < 18 ? 'minor' : 'adult';
 };
 
 const getEpisodeContract = (foundation, summaryProfile) => ({
@@ -96,8 +107,10 @@ export const usePatientHub = (patientId) => {
                 setLegalGuardians(guardians);
 
                 const profile = loadedFoundation?.patient || data.profile || {};
+                const ageStatus = getPatientAgeStatus(profile.birth_date);
                 setProfileRequirements(getContextualProfileRequirements(profile, {
-                    isMinor: isPatientMinor(profile.birth_date),
+                    isMinor: ageStatus === 'minor',
+                    ageBasedProtocol: ageStatus === 'unknown',
                     legalGuardians: guardians
                 }));
             } else {

@@ -4,6 +4,28 @@ import { describe, expect, it, vi } from 'vitest';
 import LegalGuardianCard from './LegalGuardianCard';
 
 describe('LegalGuardianCard', () => {
+  it('explains an unknown age without announcing adulthood as an alert', () => {
+    render(<LegalGuardianCard patientId="p1" episodeId="e1" ageStatus="unknown" guardians={[]} />);
+
+    expect(screen.getByText(/data de nascimento.*regras etárias/i)).toBeInTheDocument();
+    expect(screen.queryByText(/atingiu a maioridade/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('defaults to unknown when no age evidence or legacy minor flag is provided', () => {
+    render(<LegalGuardianCard patientId="p1" episodeId="e1" guardians={[]} />);
+
+    expect(screen.getByText(/data de nascimento.*regras etárias/i)).toBeInTheDocument();
+    expect(screen.queryByText(/atingiu a maioridade/i)).not.toBeInTheDocument();
+  });
+
+  it('presents adulthood as information rather than an urgent alert', () => {
+    render(<LegalGuardianCard patientId="p1" episodeId="e1" ageStatus="adult" guardians={[]} />);
+
+    expect(screen.getByText(/atingiu a maioridade/i)).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
   it('warns when a minor has no guardian and saves against the active episode without CPF', async () => {
     const onSave = vi.fn().mockResolvedValue({ error: null });
     render(<LegalGuardianCard patientId="p1" episodeId="episode-current" isMinor guardians={[]} onSave={onSave} />);

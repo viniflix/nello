@@ -17,6 +17,7 @@ import {
   savePatientLegalGuardian,
   updatePatientProgressiveProfile,
 } from "@/features/clinical-records/api/record-foundation-queries";
+import { getPatientAgeStatus } from "@/hooks/usePatientHub";
 
 export default function PatientEditProfileModal({
   isOpen,
@@ -33,7 +34,9 @@ export default function PatientEditProfileModal({
   const [uploading, setUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState(null);
   const episodeId = writableEpisodeId;
-  const isMinor = profileRequirements.includes("legal_guardian");
+  const ageStatus = profileRequirements.includes("legal_guardian")
+    ? "minor"
+    : getPatientAgeStatus(patientData?.birth_date);
   const refreshAfter = async (operation) => {
     const result = await operation;
     if (!result?.error) await onSaveSuccess?.();
@@ -139,7 +142,7 @@ export default function PatientEditProfileModal({
           patientId={patientData.id}
           episodeId={episodeId}
           viewedEpisodeId={viewedEpisodeId}
-          isMinor={isMinor}
+          ageStatus={ageStatus}
           guardians={legalGuardians}
           onSave={(patientId, currentEpisodeId, payload) =>
             refreshAfter(
