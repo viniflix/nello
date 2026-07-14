@@ -1,12 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FileText, Droplet, CheckCircle2, AlertCircle, Calendar, ArrowRight, Loader2 } from 'lucide-react';
+import { FileText, Droplet, CheckCircle2, AlertCircle, Calendar, ArrowRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Alert } from '@/components/ui/alert';
 import { cn } from '@/lib/utils';
 import { patientRoute } from '@/lib/utils/patientRoutes';
-import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
 import { getLatestAnamnesis } from '@/lib/supabase/anamnesis-queries';
 import { getRecentLabResults } from '@/lib/supabase/lab-results-queries';
@@ -16,12 +16,11 @@ import GlycemiaSummaryCard from '@/components/patient-hub/GlycemiaSummaryCard';
 import ClinicalRecordsList from '@/features/clinical-records/components/ClinicalRecordsList';
 import EvolutionEditor from '@/features/clinical-records/components/EvolutionEditor';
 import EvolutionTemplateSelector from '@/features/clinical-records/components/EvolutionTemplateSelector';
-import { listClinicalRecordsByEpisode } from '@/features/clinical-records/api/evolution-queries';
+import { createClinicalEvolutionDraft, listClinicalRecordsByEpisode } from '@/features/clinical-records/api/evolution-queries';
 
 const TabContentClinical = ({ patientId, patientData, modulesStatus = {}, viewedEpisodeId, writableEpisodeId, currentUserId, canCosign }) => {
     const patient = patientData || { id: patientId };
     const navigate = useNavigate();
-    const { user } = useAuth();
     const { toast } = useToast();
     const [latestAnamnesis, setLatestAnamnesis] = useState(null);
     const [anamnesisLoading, setAnamnesisLoading] = useState(true);
@@ -30,19 +29,27 @@ const TabContentClinical = ({ patientId, patientData, modulesStatus = {}, viewed
 
     const [records, setRecords] = useState([]);
     const [recordsLoading, setRecordsLoading] = useState(true);
+    const [recordsError, setRecordsError] = useState(null);
     const [selectedRecord, setSelectedRecord] = useState(null);
     const [showTemplateSelector, setShowTemplateSelector] = useState(false);
+    const recordsRequestRef = useRef(0);
+    const creationRequestRef = useRef(0);
 
-    const loadRecords = async () => {
+    const loadRecords = useCallback(async () => {
+        const requestId = ++recordsRequestRef.current;
+        setRecords([]);
+        setRecordsError(null);
         if (!patientId || !viewedEpisodeId) {
             setRecordsLoading(false);
             return;
         }
         setRecordsLoading(true);
-        const { data } = await listClinicalRecordsByEpisode(patientId, viewedEpisodeId);
-        if (data) setRecords(data);
+        const { data, error } = await listClinicalRecordsByEpisode(patientId, viewedEpisodeId);
+        if (requestId !== recordsRequestRef.current) return;
+        if (error) setRecordsError(error.message || 'Falha ao carregar evoluções.');
+        else setRecords(data || []);
         setRecordsLoading(false);
-    };
+    }, [patientId, viewedEpisodeId]);
 
     useEffect(() => {
         const fetchLatestAnamnesis = async () => {
@@ -76,8 +83,43 @@ const TabContentClinical = ({ patientId, patientData, modulesStatus = {}, viewed
 
         fetchLatestAnamnesis();
         fetchLabResults();
-        loadRecords();
-    }, [patientId, viewedEpisodeId]);
+        setSelectedRecord(null);
+        setShowTemplateSelector(false);
+        void loadRecords();
+        return () => {
+            recordsRequestRef.current += 1;
+        };
+    }, [patientId, viewedEpisodeId, loadRecords]);
+
+    useEffect(() => () => {
+        creationRequestRef.current += 1;
+    }, [patientId, writableEpisodeId]);
+
+    const handleCreateDraft = async ({ template, encounterAt, visibility, retrospectiveReason }) => {
+        if (!patientId || !writableEpisodeId) return false;
+        const requestId = ++creationRequestRef.current;
+        const { data, error } = await createClinicalEvolutionDraft(
+            patientId,
+            writableEpisodeId,
+            template.code,
+            encounterAt,
+            visibility,
+            retrospectiveReason || null,
+        );
+        if (requestId !== creationRequestRef.current) return false;
+
+        if (error || !data) {
+            toast({
+                title: 'Erro ao criar evolução',
+                description: error?.message || 'Não foi possível criar o rascunho.',
+                variant: 'destructive',
+            });
+            return false;
+        }
+
+        setSelectedRecord(data);
+        return true;
+    };
 
     const AnamnesisCard = () => {
         const hasAnamnesis = !anamnesisLoading && latestAnamnesis;
@@ -334,6 +376,16 @@ const TabContentClinical = ({ patientId, patientData, modulesStatus = {}, viewed
 
                 {recordsLoading ? (
                     <ActivityListSkeleton />
+                ) : recordsError ? (
+                    <Alert variant="destructive">
+                        <AlertCircle className="h-4 w-4" />
+                        <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <span>Não foi possível carregar as evoluções. {recordsError}</span>
+                            <Button type="button" variant="outline" size="sm" onClick={loadRecords}>
+                                Tentar novamente
+                            </Button>
+                        </div>
+                    </Alert>
                 ) : (
                     <ClinicalRecordsList 
                         records={records} 
@@ -347,22 +399,7 @@ const TabContentClinical = ({ patientId, patientData, modulesStatus = {}, viewed
             <EvolutionTemplateSelector 
                 open={showTemplateSelector} 
                 onOpenChange={setShowTemplateSelector}
-                onSelectTemplate={async (template) => {
-                    const { supabase } = await import('@/infrastructure/supabase/client');
-                    // Workaround to create a new record since the wrapper doesn't support template_code param directly yet.
-                    const { data, error } = await supabase.rpc('update_clinical_record_draft', {
-                        p_record_id: null,
-                        p_template_code: template.code,
-                        p_content: {},
-                        p_visibility: 'professional_private'
-                    });
-                    
-                    if (!error && data) {
-                        setSelectedRecord(data);
-                    } else {
-                        toast({ title: 'Erro ao criar evolução', description: error?.message || 'Falha desconhecida', variant: 'destructive' });
-                    }
-                }}
+                onSelectTemplate={handleCreateDraft}
             />
         </div>
     );

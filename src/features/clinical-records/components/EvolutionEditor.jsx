@@ -1,303 +1,314 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { AlertCircle, ArrowLeft, FileSignature, Lock } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Textarea } from '@/components/ui/textarea';
 import { useClinicalEvolution } from '../hooks/useClinicalEvolution';
+import {
+  getMeaningfulClinicalText,
+  isContentMinimallyValid,
+  RECORD_STATUS_COLORS,
+  RECORD_STATUS_LABELS,
+} from '../model/evolutionSchema';
+import { listEvolutionTemplates } from '../api/evolution-queries';
 import RichTextEditor from './RichTextEditor';
 import SaveStatusIndicator from './SaveStatusIndicator';
-import { RECORD_STATUS_LABELS, RECORD_STATUS_COLORS, isContentMinimallyValid } from '../model/evolutionSchema';
-import { listEvolutionTemplates } from '../api/evolution-queries';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { ShieldCheck, Lock, FileSignature, ArrowLeft, AlertCircle, Download } from 'lucide-react';
-import { exportEvolutionAsPdf } from '@/lib/utils/exportEvolutionAsPdf';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { Textarea } from '@/components/ui/textarea';
 
-const EvolutionEditor = ({ initialRecord, onBack, currentUserId, canCosign }) => {
+const RETROSPECTIVE_THRESHOLD_MS = 5 * 60 * 1000;
+
+const EvolutionEditor = ({ initialRecord, onBack, currentUserId }) => {
   const {
     record,
     content,
+    visibility,
     status: hookStatus,
     error: hookError,
+    conflict,
+    hasUnsavedChanges,
     lastSaved,
     setContent,
+    setVisibility,
+    forceSave,
     finalize,
     sign,
-    cosign,
   } = useClinicalEvolution(initialRecord);
 
   const [templates, setTemplates] = useState([]);
-  const [activeTab, setActiveTab] = useState('');
+  const [activeSection, setActiveSection] = useState('');
   const [showFinalizeDialog, setShowFinalizeDialog] = useState(false);
-  const [retrospectiveReason, setRetrospectiveReason] = useState('');
+  const [retrospectiveReason, setRetrospectiveReason] = useState(
+    initialRecord?.retrospective_reason || '',
+  );
+  const [leaving, setLeaving] = useState(false);
 
   const isDraft = record?.status === 'draft';
   const isFinalized = record?.status === 'finalized';
-  const isSigned = record?.status === 'signed';
-
-  // Can the current user sign?
   const canSign = isFinalized && currentUserId === record?.nutritionist_id;
-  const canCosignRecord = isSigned && canCosign && currentUserId === record?.supervisor_id;
-
   const color = RECORD_STATUS_COLORS[record?.status] || 'zinc';
 
   useEffect(() => {
-    const fetchTemplates = async () => {
-      const { data } = await listEvolutionTemplates();
-      if (data) setTemplates(data);
-    };
-    fetchTemplates();
+    let current = true;
+    void listEvolutionTemplates().then(({ data }) => {
+      if (current) setTemplates(data || []);
+    });
+    return () => { current = false; };
   }, []);
 
-  const template = templates.find((t) => t.code === record?.template_code);
-  const sections = template?.sections || [];
+  const template = templates.find((candidate) => candidate.code === record?.template_code);
+  const sections = useMemo(
+    () => record?.template_sections_snapshot || template?.sections || [],
+    [record?.template_sections_snapshot, template?.sections],
+  );
 
   useEffect(() => {
-    if (sections.length > 0 && !activeTab) {
-      setActiveTab(sections[0].key);
-    }
-  }, [sections, activeTab]);
+    const nextSection = sections.some((section) => section.key === activeSection)
+      ? activeSection
+      : sections[0]?.key || '';
+    if (nextSection !== activeSection) setActiveSection(nextSection);
+  }, [activeSection, record?.id, sections]);
 
-  const handleContentChange = (sectionKey, html) => {
-    setContent((prev) => ({ ...prev, [sectionKey]: html }));
+  useEffect(() => {
+    setRetrospectiveReason(record?.retrospective_reason || '');
+  }, [record?.id, record?.retrospective_reason]);
+
+  useEffect(() => {
+    if (!hasUnsavedChanges) return undefined;
+    const preventUnload = (event) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', preventUnload);
+    return () => window.removeEventListener('beforeunload', preventUnload);
+  }, [hasUnsavedChanges]);
+
+  const activeSectionDefinition = sections.find((section) => section.key === activeSection);
+  const isRetrospective = record?.encounter_at && record?.created_at
+    ? new Date(record.created_at).getTime() - new Date(record.encounter_at).getTime()
+      > RETROSPECTIVE_THRESHOLD_MS
+    : Boolean(record?.retrospective_reason);
+  const validRetrospectiveReason = !isRetrospective
+    || (retrospectiveReason.trim().length >= 10 && retrospectiveReason.trim().length <= 500);
+
+  const handleBack = async () => {
+    if (leaving) return;
+    setLeaving(true);
+    const result = await forceSave();
+    if (result.ok) onBack();
+    setLeaving(false);
   };
 
   const handleFinalize = async () => {
-    // If encounter is older than 5 min, we need retrospective reason
-    const encounterDate = new Date(record.encounter_at);
-    const isRetrospective = (new Date() - encounterDate) > 5 * 60 * 1000;
-    
-    if (isRetrospective && (!retrospectiveReason || retrospectiveReason.length < 10)) {
-      return; // Handled by UI validation in dialog
-    }
-
-    const success = await finalize(isRetrospective ? retrospectiveReason : null);
-    if (success) {
-      setShowFinalizeDialog(false);
-    }
+    if (!validRetrospectiveReason) return;
+    const succeeded = await finalize(isRetrospective ? retrospectiveReason.trim() : null);
+    if (succeeded) setShowFinalizeDialog(false);
   };
 
-  const isValidToFinalize = isContentMinimallyValid(content);
+  const copyLocalContent = async () => {
+    const plainText = sections
+      .map((section) => `${section.label}\n${getMeaningfulClinicalText(content[section.key])}`)
+      .join('\n\n');
+    if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(plainText);
+  };
 
   return (
-    <div className="flex flex-col h-full bg-white dark:bg-zinc-950 rounded-lg border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden">
-      {/* Header */}
-      <div className="flex-none p-4 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50 flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
+    <div className="flex h-full flex-col overflow-hidden rounded-lg border bg-background shadow-sm">
+      <div className="flex flex-none flex-col items-start justify-between gap-4 border-b bg-muted/30 p-4 sm:flex-row sm:items-center">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={onBack} className="h-8 w-8 -ml-2 text-zinc-500">
-            <ArrowLeft className="h-4 w-4" />
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={() => void handleBack()}
+            disabled={leaving}
+            aria-label="Voltar para a lista de evoluções"
+          >
+            <ArrowLeft aria-hidden="true" />
           </Button>
           <div>
-            <div className="flex items-center gap-2 mb-1">
-              <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 leading-none">
-                {template ? template.name : 'Evolução Clínica'}
-              </h2>
-              <Badge 
-                variant="secondary" 
-                className={`
-                  ${color === 'yellow' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' : ''}
-                  ${color === 'blue' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' : ''}
-                  ${color === 'green' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400' : ''}
-                `}
-              >
-                {RECORD_STATUS_LABELS[record?.status]}
+            <div className="flex items-center gap-2">
+              <h2 className="text-lg font-semibold">{template?.name || 'Evolução Clínica'}</h2>
+              <Badge variant="secondary" data-status-color={color}>
+                {RECORD_STATUS_LABELS[record?.status] || record?.status}
               </Badge>
             </div>
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">
-              Atendimento em {new Date(record?.encounter_at).toLocaleString('pt-BR')}
+            <p className="text-sm text-muted-foreground">
+              Atendimento em {record?.encounter_at
+                ? new Date(record.encounter_at).toLocaleString('pt-BR')
+                : 'data não informada'}
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-4 w-full sm:w-auto">
-          {isDraft && <SaveStatusIndicator status={hookStatus} error={hookError} lastSaved={lastSaved} />}
-          
-          {isDraft && (
-            <Button 
-              onClick={() => setShowFinalizeDialog(true)} 
-              disabled={!isValidToFinalize || hookStatus === 'finalizing' || hookStatus === 'saving'}
-              className="w-full sm:w-auto"
+        <div className="flex w-full items-center gap-4 sm:w-auto">
+          {isDraft ? <SaveStatusIndicator status={hookStatus} error={hookError} lastSaved={lastSaved} /> : null}
+          {isDraft ? (
+            <Button
+              onClick={() => setShowFinalizeDialog(true)}
+              disabled={!isContentMinimallyValid(content) || ['finalizing', 'saving', 'conflict'].includes(hookStatus)}
             >
-              <Lock className="w-4 h-4 mr-2" />
+              <Lock data-icon="inline-start" aria-hidden="true" />
               Finalizar
             </Button>
-          )}
-
-          {canSign && (
-            <Button 
-              onClick={sign} 
-              disabled={hookStatus === 'signing'}
-              className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white"
-            >
-              <FileSignature className="w-4 h-4 mr-2" />
-              Assinar Registro
+          ) : null}
+          {canSign ? (
+            <Button onClick={() => void sign()} disabled={hookStatus === 'signing'}>
+              <FileSignature data-icon="inline-start" aria-hidden="true" />
+              Assinar registro
             </Button>
-          )}
-
-          {canCosignRecord && (
-            <Button 
-              onClick={cosign} 
-              disabled={hookStatus === 'signing'}
-              variant="outline"
-              className="w-full sm:w-auto border-emerald-600 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
-            >
-              <ShieldCheck className="w-4 h-4 mr-2" />
-              Co-assinar (Supervisor)
-            </Button>
-          )}
-
-          {!isDraft && (
-            <Button
-              variant="secondary"
-              onClick={() => {
-                exportEvolutionAsPdf({
-                  record,
-                  content,
-                  sections,
-                  templateName: template?.name,
-                  patientName: record?.patient?.name || record?.patient_name || 'Paciente',
-                  nutritionistName: record?.nutritionist?.name || record?.nutritionist_name || 'Profissional',
-                });
-              }}
-              className="w-full sm:w-auto"
-            >
-              <Download className="w-4 h-4 mr-2" />
-              Baixar PDF
-            </Button>
-          )}
+          ) : null}
         </div>
       </div>
 
-      {hookError && hookStatus === 'error' && (
-        <div className="px-4 pt-4 flex-none">
+      {hookStatus === 'conflict' || conflict ? (
+        <div className="flex-none px-4 pt-4">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <span>
+                Outra sessão alterou este rascunho. Seu conteúdo local foi preservado; copie-o
+                antes de comparar com a versão atual.
+              </span>
+              <Button type="button" variant="outline" size="sm" onClick={() => void copyLocalContent()}>
+                Copiar conteúdo local
+              </Button>
+            </AlertDescription>
+          </Alert>
+        </div>
+      ) : hookError && hookStatus === 'error' ? (
+        <div className="flex-none px-4 pt-4">
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>{hookError}</AlertDescription>
           </Alert>
         </div>
-      )}
+      ) : null}
 
-      {/* Content Area */}
-      <div className="flex-1 min-h-0 flex flex-col md:flex-row">
-        {/* Sidebar Tabs */}
-        {sections.length > 0 && (
-          <div className="w-full md:w-64 flex-none border-r border-zinc-200 dark:border-zinc-800 bg-zinc-50/30 dark:bg-zinc-900/30">
+      <div className="flex min-h-0 flex-1 flex-col md:flex-row">
+        {sections.length > 0 ? (
+          <nav aria-label="Seções da evolução" className="w-full flex-none border-r bg-muted/20 md:w-64">
             <ScrollArea className="h-full">
-              <div className="p-2 space-y-1">
+              <div className="flex flex-col gap-1 p-2">
                 {sections.map((section) => {
-                  const hasContent = content[section.key]?.replace(/<[^>]*>?/gm, '').trim().length > 0;
+                  const isActive = activeSection === section.key;
+                  const hasContent = getMeaningfulClinicalText(content[section.key]).length > 0;
                   return (
                     <button
                       key={section.key}
-                      onClick={() => setActiveTab(section.key)}
-                      className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center justify-between group
-                        ${activeTab === section.key 
-                          ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-sm font-medium' 
-                          : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 hover:text-zinc-900 dark:hover:text-zinc-300'
-                        }`}
+                      type="button"
+                      aria-label={section.label}
+                      onClick={() => setActiveSection(section.key)}
+                      aria-current={isActive ? 'true' : undefined}
+                      className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm transition-colors ${isActive ? 'bg-background font-medium shadow-sm' : 'text-muted-foreground hover:bg-accent'}`}
                     >
                       <span className="truncate pr-2">{section.label}</span>
-                      {hasContent && (
-                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500 flex-shrink-0" title="Possui conteúdo" />
-                      )}
+                      {hasContent ? <span className="size-1.5 rounded-full bg-primary" aria-label="Possui conteúdo" /> : null}
                     </button>
                   );
                 })}
               </div>
             </ScrollArea>
-          </div>
-        )}
+          </nav>
+        ) : null}
 
-        {/* Editor Area */}
-        <div className="flex-1 min-h-[400px] md:min-h-0 bg-white dark:bg-zinc-950 relative">
+        <div className="relative min-h-[400px] min-w-0 flex-1">
           <ScrollArea className="h-full">
-            <div className="p-4 md:p-6 lg:p-8 max-w-4xl mx-auto space-y-6">
-              {sections.length > 0 ? (
-                sections.map((section) => (
-                  <div 
-                    key={section.key} 
-                    className={activeTab === section.key ? 'block' : 'hidden'}
+            <div className="mx-auto flex max-w-4xl flex-col gap-5 p-4 md:p-6 lg:p-8">
+              {isDraft ? (
+                <label className="flex max-w-sm flex-col gap-2 text-sm font-medium">
+                  Visibilidade da evolução
+                  <select
+                    className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+                    value={visibility}
+                    onChange={(event) => setVisibility(event.target.value)}
                   >
-                    <div className="mb-4">
-                      <h3 className="text-lg font-medium text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-                        {section.label}
-                        {section.required && <span className="text-red-500 text-sm font-normal">*</span>}
-                      </h3>
-                      {section.hint && (
-                        <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
-                          {section.hint}
-                        </p>
-                      )}
-                    </div>
-                    
-                    <RichTextEditor
-                      value={content[section.key] || ''}
-                      onChange={(html) => handleContentChange(section.key, html)}
-                      placeholder={`Digite aqui o conteúdo para ${section.label.toLowerCase()}...`}
-                      disabled={!isDraft}
-                      minHeight="min-h-[300px]"
-                    />
+                    <option value="professional_private">Privada do profissional</option>
+                    <option value="share_later">Compartilhar posteriormente</option>
+                    <option value="shared_with_patient">Compartilhada com o paciente</option>
+                  </select>
+                </label>
+              ) : null}
+              <p className="text-xs text-muted-foreground">
+                Notas privadas continuam sujeitas aos direitos legais de acesso e exportação aplicáveis.
+              </p>
+
+              {activeSectionDefinition ? (
+                <section aria-labelledby={`section-${activeSectionDefinition.key}`}>
+                  <div className="mb-4">
+                    <h3 id={`section-${activeSectionDefinition.key}`} className="text-lg font-medium">
+                      {activeSectionDefinition.label}
+                      {activeSectionDefinition.required ? <span aria-label="obrigatória"> *</span> : null}
+                    </h3>
+                    {activeSectionDefinition.hint ? (
+                      <p className="mt-1 text-sm text-muted-foreground">{activeSectionDefinition.hint}</p>
+                    ) : null}
                   </div>
-                ))
+                  <RichTextEditor
+                    key={`${record?.id}:${activeSectionDefinition.key}`}
+                    value={content[activeSectionDefinition.key] || ''}
+                    onChange={(html) => setContent((previous) => ({
+                      ...previous,
+                      [activeSectionDefinition.key]: html,
+                    }))}
+                    placeholder={`Digite o conteúdo de ${activeSectionDefinition.label.toLowerCase()}...`}
+                    disabled={!isDraft}
+                    minHeight="min-h-[300px]"
+                  />
+                </section>
               ) : (
-                <div className="text-center py-12 text-zinc-500">
-                  <p>Nenhum template selecionado ou o template não possui seções definidas.</p>
-                </div>
+                <p className="py-12 text-center text-muted-foreground">
+                  O modelo desta evolução não possui seções disponíveis.
+                </p>
               )}
             </div>
           </ScrollArea>
 
-          {/* Read Only Overlay for Signed/Finalized */}
-          {!isDraft && (
-            <div className="absolute top-4 right-4 bg-zinc-100 dark:bg-zinc-800 px-3 py-1.5 rounded-md border border-zinc-200 dark:border-zinc-700 shadow-sm flex items-center gap-2 opacity-80 pointer-events-none">
-              <Lock className="w-4 h-4 text-zinc-500" />
-              <span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">Modo Leitura</span>
+          {!isDraft ? (
+            <div className="pointer-events-none absolute right-4 top-4 flex items-center gap-2 rounded-md border bg-muted px-3 py-1.5">
+              <Lock aria-hidden="true" />
+              <span className="text-xs font-medium">Modo leitura</span>
             </div>
-          )}
+          ) : null}
         </div>
       </div>
 
-      {/* Finalize Dialog */}
       <Dialog open={showFinalizeDialog} onOpenChange={setShowFinalizeDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Finalizar Registro Clínico</DialogTitle>
+            <DialogTitle>Finalizar registro clínico</DialogTitle>
             <DialogDescription>
-              Ao finalizar, o conteúdo não poderá mais ser alterado. Você precisará assinar o registro em seguida para torná-lo um documento oficial.
+              A finalização torna o conteúdo imutável. A assinatura profissional ocorre na etapa seguinte.
             </DialogDescription>
           </DialogHeader>
-
-          {/* Retrospective reason if encounter is older than 5 min */}
-          {record && (new Date() - new Date(record.encounter_at)) > 5 * 60 * 1000 && (
-            <div className="mt-4 space-y-2">
-              <label className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                Motivo do registro retroativo <span className="text-red-500">*</span>
-              </label>
-              <Textarea 
-                placeholder="Ex: Registro realizado após a consulta devido a queda de energia."
+          {isRetrospective ? (
+            <label className="flex flex-col gap-2 text-sm font-medium">
+              Motivo do registro retroativo
+              <Textarea
                 value={retrospectiveReason}
-                onChange={(e) => setRetrospectiveReason(e.target.value)}
-                rows={3}
+                onChange={(event) => setRetrospectiveReason(event.target.value)}
+                maxLength={500}
+                aria-invalid={!validRetrospectiveReason}
               />
-              {retrospectiveReason.length > 0 && retrospectiveReason.length < 10 && (
-                <p className="text-xs text-red-500">Mínimo de 10 caracteres necessários.</p>
-              )}
-            </div>
-          )}
-
-          <DialogFooter className="mt-6">
+              {!validRetrospectiveReason ? (
+                <span className="text-xs text-destructive">Informe entre 10 e 500 caracteres.</span>
+              ) : null}
+            </label>
+          ) : null}
+          <DialogFooter>
             <Button variant="outline" onClick={() => setShowFinalizeDialog(false)} disabled={hookStatus === 'finalizing'}>
               Cancelar
             </Button>
-            <Button 
-              onClick={handleFinalize} 
-              disabled={
-                hookStatus === 'finalizing' || 
-                ((new Date() - new Date(record?.encounter_at)) > 5 * 60 * 1000 && retrospectiveReason.length < 10)
-              }
-            >
-              {hookStatus === 'finalizing' ? 'Finalizando...' : 'Finalizar Registro'}
+            <Button onClick={() => void handleFinalize()} disabled={hookStatus === 'finalizing' || !validRetrospectiveReason}>
+              {hookStatus === 'finalizing' ? 'Finalizando...' : 'Finalizar registro'}
             </Button>
           </DialogFooter>
         </DialogContent>

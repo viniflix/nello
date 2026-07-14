@@ -33,6 +33,8 @@ const ClinicalRecordsList = ({ records, onSelectRecord, onCreateDraft, canWriteE
           <div className="relative flex-1 sm:w-64">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-zinc-500" />
             <Input
+              type="search"
+              aria-label="Buscar registros clínicos"
               placeholder="Buscar registros..."
               className="pl-9 bg-white dark:bg-zinc-900"
               value={searchTerm}
@@ -41,6 +43,7 @@ const ClinicalRecordsList = ({ records, onSelectRecord, onCreateDraft, canWriteE
           </div>
           <div className="relative">
             <select
+              aria-label="Filtrar por status"
               className="h-10 px-3 pl-9 rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-300 appearance-none pr-8"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
@@ -83,12 +86,15 @@ const ClinicalRecordsList = ({ records, onSelectRecord, onCreateDraft, canWriteE
             const color = RECORD_STATUS_COLORS[record.status] || 'zinc';
             
             return (
-              <Card 
-                key={record.id} 
-                className="overflow-hidden hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors cursor-pointer group"
+              <button
+                key={record.id}
+                type="button"
                 onClick={() => onSelectRecord(record)}
+                aria-label={`Abrir evolução de ${formatDateTime(record.encounter_at)}`}
+                className="group w-full rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
-                <CardContent className="p-0">
+                <Card className="overflow-hidden transition-colors group-hover:border-zinc-300 dark:group-hover:border-zinc-700">
+                  <CardContent className="p-0">
                   <div className="flex items-center p-4">
                     <div className="flex-1 min-w-0 pr-4">
                       <div className="flex items-center gap-2 mb-1">
@@ -127,8 +133,9 @@ const ClinicalRecordsList = ({ records, onSelectRecord, onCreateDraft, canWriteE
                       <ChevronRight className="w-5 h-5" />
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              </button>
             );
           })}
         </div>

@@ -20,10 +20,6 @@ const MenuBar = ({ editor, disabled }) => {
   const [linkUrl, setLinkUrl] = useState('');
   const [isLinkPopoverOpen, setIsLinkPopoverOpen] = useState(false);
 
-  if (!editor) {
-    return null;
-  }
-
   const toggleClasses = "p-1.5 rounded text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 dark:hover:text-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:hover:bg-transparent transition-colors";
   const activeClasses = "bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100";
 
@@ -51,10 +47,16 @@ const MenuBar = ({ editor, disabled }) => {
     setIsLinkPopoverOpen(false);
   }, [editor, linkUrl]);
 
+  if (!editor) {
+    return null;
+  }
+
   return (
     <div className="sticky top-0 z-10 flex flex-wrap items-center gap-1 p-2 border-b border-zinc-200 dark:border-zinc-800 bg-white/95 dark:bg-zinc-950/95 backdrop-blur supports-[backdrop-filter]:bg-white/60">
       <button
         type="button"
+        aria-label="Negrito"
+        aria-pressed={editor.isActive('bold')}
         onClick={() => editor.chain().focus().toggleBold().run()}
         disabled={disabled || !editor.can().chain().focus().toggleBold().run()}
         className={`${toggleClasses} ${editor.isActive('bold') ? activeClasses : ''}`}
@@ -64,6 +66,8 @@ const MenuBar = ({ editor, disabled }) => {
       </button>
       <button
         type="button"
+        aria-label="Itálico"
+        aria-pressed={editor.isActive('italic')}
         onClick={() => editor.chain().focus().toggleItalic().run()}
         disabled={disabled || !editor.can().chain().focus().toggleItalic().run()}
         className={`${toggleClasses} ${editor.isActive('italic') ? activeClasses : ''}`}
@@ -73,6 +77,8 @@ const MenuBar = ({ editor, disabled }) => {
       </button>
       <button
         type="button"
+        aria-label="Tachado"
+        aria-pressed={editor.isActive('strike')}
         onClick={() => editor.chain().focus().toggleStrike().run()}
         disabled={disabled || !editor.can().chain().focus().toggleStrike().run()}
         className={`${toggleClasses} ${editor.isActive('strike') ? activeClasses : ''}`}
@@ -85,6 +91,8 @@ const MenuBar = ({ editor, disabled }) => {
       
       <button
         type="button"
+        aria-label="Título nível 2"
+        aria-pressed={editor.isActive('heading', { level: 2 })}
         onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
         disabled={disabled}
         className={`${toggleClasses} ${editor.isActive('heading', { level: 2 }) ? activeClasses : ''}`}
@@ -94,6 +102,8 @@ const MenuBar = ({ editor, disabled }) => {
       </button>
       <button
         type="button"
+        aria-label="Título nível 3"
+        aria-pressed={editor.isActive('heading', { level: 3 })}
         onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
         disabled={disabled}
         className={`${toggleClasses} ${editor.isActive('heading', { level: 3 }) ? activeClasses : ''}`}
@@ -106,6 +116,8 @@ const MenuBar = ({ editor, disabled }) => {
 
       <button
         type="button"
+        aria-label="Lista com marcadores"
+        aria-pressed={editor.isActive('bulletList')}
         onClick={() => editor.chain().focus().toggleBulletList().run()}
         disabled={disabled}
         className={`${toggleClasses} ${editor.isActive('bulletList') ? activeClasses : ''}`}
@@ -115,6 +127,8 @@ const MenuBar = ({ editor, disabled }) => {
       </button>
       <button
         type="button"
+        aria-label="Lista numerada"
+        aria-pressed={editor.isActive('orderedList')}
         onClick={() => editor.chain().focus().toggleOrderedList().run()}
         disabled={disabled}
         className={`${toggleClasses} ${editor.isActive('orderedList') ? activeClasses : ''}`}
@@ -124,6 +138,8 @@ const MenuBar = ({ editor, disabled }) => {
       </button>
       <button
         type="button"
+        aria-label="Citação"
+        aria-pressed={editor.isActive('blockquote')}
         onClick={() => editor.chain().focus().toggleBlockquote().run()}
         disabled={disabled}
         className={`${toggleClasses} ${editor.isActive('blockquote') ? activeClasses : ''}`}
@@ -138,6 +154,8 @@ const MenuBar = ({ editor, disabled }) => {
         <PopoverTrigger asChild>
           <button
             type="button"
+            aria-label="Adicionar link"
+            aria-pressed={editor.isActive('link')}
             disabled={disabled}
             className={`${toggleClasses} ${editor.isActive('link') ? activeClasses : ''}`}
             title="Adicionar Link"
@@ -179,6 +197,7 @@ const MenuBar = ({ editor, disabled }) => {
 
       <button
         type="button"
+        aria-label="Inserir tabela"
         onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}
         disabled={disabled}
         className={toggleClasses}
@@ -191,6 +210,7 @@ const MenuBar = ({ editor, disabled }) => {
           <div className="flex items-center gap-1 bg-zinc-100 dark:bg-zinc-800 rounded-md p-1 ml-1">
               <button
                 type="button"
+                aria-label="Adicionar coluna"
                 onClick={() => editor.chain().focus().addColumnAfter().run()}
                 className={toggleClasses}
                 title="Adicionar Coluna"
@@ -199,6 +219,7 @@ const MenuBar = ({ editor, disabled }) => {
               </button>
               <button
                 type="button"
+                aria-label="Adicionar linha"
                 onClick={() => editor.chain().focus().addRowAfter().run()}
                 className={toggleClasses}
                 title="Adicionar Linha"
@@ -207,6 +228,7 @@ const MenuBar = ({ editor, disabled }) => {
               </button>
               <button
                 type="button"
+                aria-label="Excluir tabela"
                 onClick={() => editor.chain().focus().deleteTable().run()}
                 className={`${toggleClasses} text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30`}
                 title="Excluir Tabela"
@@ -220,6 +242,7 @@ const MenuBar = ({ editor, disabled }) => {
 
       <button
         type="button"
+        aria-label="Desfazer"
         onClick={() => editor.chain().focus().undo().run()}
         disabled={disabled || !editor.can().chain().focus().undo().run()}
         className={toggleClasses}
@@ -229,6 +252,7 @@ const MenuBar = ({ editor, disabled }) => {
       </button>
       <button
         type="button"
+        aria-label="Refazer"
         onClick={() => editor.chain().focus().redo().run()}
         disabled={disabled || !editor.can().chain().focus().redo().run()}
         className={toggleClasses}
