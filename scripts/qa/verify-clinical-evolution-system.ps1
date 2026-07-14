@@ -27,11 +27,25 @@ foreach ($file in @($baseline, $matrix, $c1Migration, $c2Migration) + $migration
     if (-not (Test-Path -LiteralPath $file)) { throw "Required local Supabase artifact is missing: $file" }
 }
 
+$dockerAvailable = $false
+try {
+    docker info 2>$null | Out-Null
+    $dockerAvailable = ($LASTEXITCODE -eq 0)
+} catch {
+    $dockerAvailable = $false
+}
+if (-not $dockerAvailable) {
+    throw 'Docker Desktop indisponível; matriz C2 não executada'
+}
+
 $existing = docker ps -a --filter "name=^/$container$" --format '{{.Names}}'
 if ($existing -eq $container) { docker rm -f $container | Out-Null }
 
+$containerCreated = $false
 try {
     docker run -d --name $container -e POSTGRES_USER=supabase_admin -e POSTGRES_PASSWORD=postgres $image | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw 'Disposable C2 database container could not be created.' }
+    $containerCreated = $true
     $stableReadyChecks = 0
     foreach ($attempt in 1..60) {
         docker exec -e PGPASSWORD=postgres $container pg_isready -U supabase_admin -d postgres 2>$null | Out-Null
@@ -72,19 +86,37 @@ insert into public.user_profiles(id,name,user_type,is_admin,is_active) values
 ('10000000-0000-0000-0000-000000000042','Former C1','nutritionist',false,true),
 ('10000000-0000-0000-0000-000000000043','Unrelated C1','nutritionist',false,true),
 ('10000000-0000-0000-0000-000000000044','Student C1','nutritionist',false,true);
-insert into public.professional_verifications(user_id,professional_role,status,verification_method,valid_until,decision_reason) values
-('10000000-0000-0000-0000-000000000041','nutritionist','approved','official_registry_manual',now()+interval '1 year','matrix'),
-('10000000-0000-0000-0000-000000000042','nutritionist','approved','official_registry_manual',now()+interval '1 year','matrix'),
-('10000000-0000-0000-0000-000000000043','nutritionist','approved','official_registry_manual',now()+interval '1 year','matrix'),
-('10000000-0000-0000-0000-000000000044','student','approved','student_document_manual',now()+interval '1 year','matrix');
-insert into public.care_episodes(id,patient_id,nutritionist_id,status,started_at,ended_at,start_reason,end_reason,started_by,ended_by) values
-('40000000-0000-0000-0000-000000000041','20000000-0000-0000-0000-000000000041','10000000-0000-0000-0000-000000000042','ended',now()-interval '1 year',now()-interval '6 months','started','ended','10000000-0000-0000-0000-000000000042','10000000-0000-0000-0000-000000000042'),
-('40000000-0000-0000-0000-000000000043','20000000-0000-0000-0000-000000000041','10000000-0000-0000-0000-000000000041','active',now()-interval '1 month',null,'started',null,'10000000-0000-0000-0000-000000000041',null);
 '@ }
     )
     for ($index = 0; $index -lt $migrations.Count; $index++) {
         $commands += @{ Label = "B migration $($index + 1)"; Sql = "\i /tmp/b-migration-$index.sql" }
     }
+    $commands += @{ Label = 'C2 persona seed'; Sql = @'
+insert into public.professional_verifications(
+  user_id,professional_role,status,verification_method,crn_number,crn_region,
+  valid_until,reviewed_at,decision_reason
+) values
+('10000000-0000-0000-0000-000000000041','nutritionist','approved','official_registry_manual','12345','CRN-3',now()+interval '1 year',now(),'matrix'),
+('10000000-0000-0000-0000-000000000042','nutritionist','approved','official_registry_manual','12345','CRN-3',now()+interval '1 year',now(),'matrix'),
+('10000000-0000-0000-0000-000000000043','nutritionist','approved','official_registry_manual','12345','CRN-3',now()+interval '1 year',now(),'matrix'),
+('10000000-0000-0000-0000-000000000044','student','approved','student_document_manual',null,null,now()+interval '1 year',now(),'matrix')
+on conflict (user_id) do update set
+  professional_role = excluded.professional_role,
+  status = excluded.status,
+  verification_method = excluded.verification_method,
+  crn_number = excluded.crn_number,
+  crn_region = excluded.crn_region,
+  normalized_crn = null,
+  valid_until = excluded.valid_until,
+  reviewed_at = excluded.reviewed_at,
+  decision_reason = excluded.decision_reason;
+
+insert into public.care_episodes(
+  id,patient_id,nutritionist_id,status,started_at,ended_at,start_reason,end_reason,started_by,ended_by
+) values
+('40000000-0000-0000-0000-000000000041','20000000-0000-0000-0000-000000000041','10000000-0000-0000-0000-000000000042','ended',now()-interval '1 year',now()-interval '6 months','started','ended','10000000-0000-0000-0000-000000000042','10000000-0000-0000-0000-000000000042'),
+('40000000-0000-0000-0000-000000000043','20000000-0000-0000-0000-000000000041','10000000-0000-0000-0000-000000000041','active',now()-interval '1 month',null,'started',null,'10000000-0000-0000-0000-000000000041',null);
+'@ }
     $commands += @{ Label = 'C1 migration'; Sql = '\i /tmp/c1.sql' }
     if (Test-Path -LiteralPath $c1HardeningMigration) { $commands += @{ Label = 'C1 hardening migration'; Sql = '\i /tmp/c1-hardening.sql' } }
     $commands += @{ Label = 'C2 migration'; Sql = '\i /tmp/c2.sql' }
@@ -101,5 +133,7 @@ insert into public.care_episodes(id,patient_id,nutritionist_id,status,started_at
     Write-Output 'Clinical evolution system approved in local disposable database.'
 }
 finally {
-    docker rm -f $container 2>$null | Out-Null
+    if ($containerCreated) {
+        docker rm -f $container 2>$null | Out-Null
+    }
 }
