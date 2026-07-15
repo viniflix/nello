@@ -337,7 +337,7 @@ describe('EvolutionEditor', () => {
       'amendment-1',
       'Correção aberta por engano e sem alteração clínica válida.',
     ));
-    await waitFor(() => expect(loadChain).toHaveBeenCalledTimes(2));
+    expect(loadChain).toHaveBeenCalledTimes(1);
     expect(onRecordsRefresh).toHaveBeenCalledTimes(1);
     expect(onReplacementOpen).toHaveBeenCalledWith(signedTarget);
   });
@@ -346,6 +346,7 @@ describe('EvolutionEditor', () => {
     const correctionDraft = {
       ...record,
       id: 'replacement-v2',
+      author_id: 'student-1',
       replaces_record_id: 'signed-v1',
       root_record_id: 'signed-v1',
       student_id: 'student-1',
@@ -383,6 +384,7 @@ describe('EvolutionEditor', () => {
     const correctionDraft = {
       ...record,
       id: 'replacement-v2',
+      author_id: 'student-1',
       replaces_record_id: 'signed-v1',
       root_record_id: 'signed-v1',
       amendment: { id: 'amendment-1', type: 'correction', status: 'draft', target_record_id: 'signed-v1' },
@@ -420,6 +422,7 @@ describe('EvolutionEditor', () => {
     const correctionDraft = {
       ...record,
       id: 'replacement-v2',
+      author_id: 'student-1',
       replaces_record_id: 'signed-v1',
       root_record_id: 'signed-v1',
       student_id: 'student-1',
@@ -455,6 +458,7 @@ describe('EvolutionEditor', () => {
     const correctionDraft = {
       ...record,
       id: 'replacement-v2',
+      author_id: 'student-1',
       replaces_record_id: 'signed-v1',
       root_record_id: 'signed-v1',
       student_id: 'student-1',
@@ -472,6 +476,89 @@ describe('EvolutionEditor', () => {
     expect(await screen.findByLabelText('editor clinico')).toBeDisabled();
     expect(screen.queryByRole('button', { name: /abandonar|finalizar|assinar|corrigir|invalidar/i }))
       .not.toBeInTheDocument();
+  });
+
+  it('keeps a linked student read-only when the supervisor authored the correction', async () => {
+    const supervisorCorrection = {
+      ...record,
+      id: 'replacement-v2',
+      author_id: 'supervisor-1',
+      replaces_record_id: 'signed-v1',
+      root_record_id: 'signed-v1',
+      student_id: 'student-1',
+      supervisor_id: 'supervisor-1',
+      amendment: {
+        id: 'amendment-1',
+        type: 'correction',
+        status: 'draft',
+        actor_id: 'supervisor-1',
+        target_record_id: 'signed-v1',
+      },
+    };
+    const chain = [supervisorCorrection, { ...record, id: 'signed-v1', status: 'signed' }];
+    amendmentHook.useClinicalAmendment.mockReturnValue(amendmentState({
+      chain,
+      loadChain: vi.fn().mockResolvedValue(chain),
+    }));
+    evolutionHook.useClinicalEvolution.mockReturnValue(hookState({ record: supervisorCorrection }));
+    render(<EvolutionEditor initialRecord={supervisorCorrection} onBack={vi.fn()} currentUserId="student-1" />);
+
+    expect(await screen.findByLabelText('editor clinico')).toBeDisabled();
+    expect(screen.queryByRole('button', { name: /abandonar corre/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /finalizar|assinar|invalidar/i })).not.toBeInTheDocument();
+  });
+
+  it('closes and safely returns after successful abandonment even when parent refresh fails', async () => {
+    const signedTarget = {
+      ...record,
+      id: 'signed-v1',
+      status: 'signed',
+      root_record_id: 'signed-v1',
+      chain_version: 1,
+    };
+    const correctionDraft = {
+      ...record,
+      id: 'replacement-v2',
+      author_id: 'nutritionist-1',
+      replaces_record_id: signedTarget.id,
+      root_record_id: signedTarget.id,
+      chain_version: 2,
+      amendment: {
+        id: 'amendment-1', type: 'correction', status: 'draft', target_record_id: signedTarget.id,
+      },
+    };
+    const chain = [correctionDraft, signedTarget];
+    const loadChain = vi.fn()
+      .mockResolvedValueOnce(chain)
+      .mockRejectedValueOnce(new Error('redundant refresh must not run'));
+    const abandonCorrection = vi.fn().mockResolvedValue({ amendment_id: 'amendment-1' });
+    amendmentHook.useClinicalAmendment.mockReturnValue(amendmentState({
+      chain,
+      loadChain,
+      abandonCorrection,
+    }));
+    evolutionHook.useClinicalEvolution.mockReturnValue(hookState({ record: correctionDraft }));
+    const onReplacementOpen = vi.fn();
+    const onRecordsRefresh = vi.fn().mockRejectedValue(new Error('parent refresh failed'));
+    render(<EvolutionEditor
+      initialRecord={correctionDraft}
+      onBack={vi.fn()}
+      currentUserId="nutritionist-1"
+      onReplacementOpen={onReplacementOpen}
+      onRecordsRefresh={onRecordsRefresh}
+    />);
+
+    fireEvent.click(await screen.findByRole('button', { name: /abandonar corre/i }));
+    fireEvent.change(screen.getByRole('textbox', { name: /motivo do abandono/i }), {
+      target: { value: 'Correção aberta por engano e sem alteração clínica válida.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /confirmar abandono/i }));
+
+    await waitFor(() => expect(abandonCorrection).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());
+    expect(loadChain).toHaveBeenCalledTimes(1);
+    expect(onRecordsRefresh).toHaveBeenCalledTimes(1);
+    expect(onReplacementOpen).toHaveBeenCalledWith(signedTarget);
   });
 
   it('shows amendment actions only to the responsible signer of a signed current record', async () => {

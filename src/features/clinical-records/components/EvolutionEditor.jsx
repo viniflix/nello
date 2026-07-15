@@ -47,6 +47,7 @@ const correctionAmendmentFrom = (record, chain = []) => {
     reason: amendment.reason || amendment.amendment_reason || flatSource.amendment_reason || '',
     target_record_id: amendment.target_record_id || flatSource.replaces_record_id || null,
     replacement_record_id: amendment.replacement_record_id || flatSource.id || null,
+    actor_id: amendment.actor_id || flatSource.author_id || null,
   };
 };
 
@@ -103,7 +104,8 @@ const EvolutionEditor = ({
   const responsibleSignerId = record?.student_id ? record?.supervisor_id : record?.nutritionist_id;
   const isResponsibleActor = Boolean(currentUserId && currentUserId === responsibleSignerId);
   const isStudentAuthor = Boolean(record?.student_id && currentUserId === record.student_id);
-  const canEditDraft = isDraft && (isResponsibleActor || isStudentAuthor);
+  const isDraftAuthor = Boolean(record?.author_id && currentUserId === record.author_id);
+  const canEditDraft = isDraft && (isResponsibleActor || isDraftAuthor);
   const canFinalize = isDraft && isResponsibleActor;
   const canSign = isFinalized && currentUserId === responsibleSignerId;
   const amendment = correctionAmendmentFrom(record, chain);
@@ -127,7 +129,7 @@ const EvolutionEditor = ({
   const canInvalidate = canStartCorrection && isResponsibleActor;
   const canAbandonCorrection = isCorrectionDraft
     && Boolean(amendment?.id)
-    && (isResponsibleActor || isStudentAuthor);
+    && (isResponsibleActor || currentUserId === amendment?.actor_id);
   const historyChain = chain.length > 0 ? chain : (record ? [record] : []);
   const amendmentPending = [
     'loading-impact',
@@ -262,13 +264,15 @@ const EvolutionEditor = ({
   const handleAbandonCorrection = async (reason) => {
     const abandoned = await abandonCorrection(amendment?.id, reason);
     if (!abandoned) return false;
-    const refreshedChain = await loadChain();
-    await onRecordsRefresh?.();
-    if (!Array.isArray(refreshedChain)) return false;
-    const signedTarget = refreshedChain.find((candidate) => (
+    const signedTarget = chain.find((candidate) => (
       candidate.id === amendment?.target_record_id && candidate.status === 'signed'
-    )) || refreshedChain.find((candidate) => candidate.status === 'signed');
+    )) || chain.find((candidate) => candidate.status === 'signed');
     setShowAbandonDialog(false);
+    try {
+      await onRecordsRefresh?.();
+    } catch {
+      // The remote mutation already succeeded; navigation must not become retryable.
+    }
     if (signedTarget) onReplacementOpen?.(signedTarget);
     else onBack?.();
     return true;
