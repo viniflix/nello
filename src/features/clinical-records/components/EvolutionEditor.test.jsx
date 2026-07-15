@@ -68,6 +68,7 @@ const amendmentState = (overrides = {}) => ({
   loadImpact: vi.fn().mockResolvedValue({ impactHash: 'impact-1' }),
   loadChain: vi.fn().mockResolvedValue([]),
   startCorrection: vi.fn(),
+  abandonCorrection: vi.fn(),
   invalidateRecord: vi.fn(),
   compareVersions: vi.fn(),
   ...overrides,
@@ -251,6 +252,226 @@ describe('EvolutionEditor', () => {
         replacement_record_id: 'replacement-2',
       },
     }));
+  });
+
+  it('lets the student author start a correction but never exposes invalidation', async () => {
+    const signedStudentRecord = {
+      ...record,
+      status: 'signed',
+      student_id: 'student-1',
+      supervisor_id: 'supervisor-1',
+      root_record_id: 'root-1',
+      chain_version: 1,
+    };
+    amendmentHook.useClinicalAmendment.mockReturnValue(amendmentState({
+      chain: [signedStudentRecord],
+      loadChain: vi.fn().mockResolvedValue([signedStudentRecord]),
+    }));
+    evolutionHook.useClinicalEvolution.mockReturnValue(hookState({ record: signedStudentRecord }));
+    render(<EvolutionEditor
+      initialRecord={signedStudentRecord}
+      onBack={vi.fn()}
+      currentUserId="student-1"
+    />);
+
+    expect(await screen.findByRole('button', { name: 'Corrigir' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Invalidar' })).not.toBeInTheDocument();
+  });
+
+  it('lets an authorized correction author abandon with a trimmed reason and returns to the signed target', async () => {
+    const signedTarget = {
+      ...record,
+      id: 'signed-v1',
+      status: 'signed',
+      root_record_id: 'signed-v1',
+      chain_version: 1,
+    };
+    const correctionDraft = {
+      ...record,
+      id: 'replacement-v2',
+      status: 'draft',
+      replaces_record_id: signedTarget.id,
+      root_record_id: signedTarget.id,
+      chain_version: 2,
+      amendment: {
+        id: 'amendment-1',
+        type: 'correction',
+        status: 'draft',
+        reason: 'Correção factual devidamente justificada.',
+        target_record_id: signedTarget.id,
+      },
+    };
+    const initialChain = [correctionDraft, signedTarget];
+    const abandonedChain = [
+      { ...correctionDraft, status: 'invalidated', amendment: { ...correctionDraft.amendment, status: 'abandoned' } },
+      signedTarget,
+    ];
+    const abandonCorrection = vi.fn().mockResolvedValue({ amendment_id: 'amendment-1' });
+    const loadChain = vi.fn()
+      .mockResolvedValueOnce(initialChain)
+      .mockResolvedValueOnce(abandonedChain);
+    amendmentHook.useClinicalAmendment.mockReturnValue(amendmentState({
+      chain: initialChain,
+      loadChain,
+      abandonCorrection,
+    }));
+    evolutionHook.useClinicalEvolution.mockReturnValue(hookState({ record: correctionDraft }));
+    const onReplacementOpen = vi.fn();
+    const onRecordsRefresh = vi.fn().mockResolvedValue(undefined);
+    render(<EvolutionEditor
+      initialRecord={correctionDraft}
+      onBack={vi.fn()}
+      currentUserId="nutritionist-1"
+      onReplacementOpen={onReplacementOpen}
+      onRecordsRefresh={onRecordsRefresh}
+    />);
+
+    fireEvent.click(await screen.findByRole('button', { name: /abandonar corre/i }));
+    const reason = screen.getByRole('textbox', { name: /motivo do abandono/i });
+    fireEvent.change(reason, { target: { value: '  Motivo curto  ' } });
+    expect(screen.getByRole('button', { name: /confirmar abandono/i })).toBeDisabled();
+    fireEvent.change(reason, { target: { value: '  Correção aberta por engano e sem alteração clínica válida.  ' } });
+    fireEvent.click(screen.getByRole('button', { name: /confirmar abandono/i }));
+
+    await waitFor(() => expect(abandonCorrection).toHaveBeenCalledWith(
+      'amendment-1',
+      'Correção aberta por engano e sem alteração clínica válida.',
+    ));
+    await waitFor(() => expect(loadChain).toHaveBeenCalledTimes(2));
+    expect(onRecordsRefresh).toHaveBeenCalledTimes(1);
+    expect(onReplacementOpen).toHaveBeenCalledWith(signedTarget);
+  });
+
+  it('keeps the correction draft open and shows the hook error when abandonment fails', async () => {
+    const correctionDraft = {
+      ...record,
+      id: 'replacement-v2',
+      replaces_record_id: 'signed-v1',
+      root_record_id: 'signed-v1',
+      student_id: 'student-1',
+      supervisor_id: 'supervisor-1',
+      amendment: { id: 'amendment-1', type: 'correction', status: 'draft', target_record_id: 'signed-v1' },
+    };
+    const chain = [correctionDraft, { ...record, id: 'signed-v1', status: 'signed' }];
+    amendmentHook.useClinicalAmendment.mockImplementation(() => {
+      const [error, setError] = React.useState(null);
+      return amendmentState({
+        chain,
+        error,
+        loadChain: vi.fn().mockResolvedValue(chain),
+        abandonCorrection: vi.fn().mockImplementation(async () => {
+          setError('Não foi possível abandonar a correção do registro.');
+          return null;
+        }),
+      });
+    });
+    evolutionHook.useClinicalEvolution.mockReturnValue(hookState({ record: correctionDraft }));
+    render(<EvolutionEditor initialRecord={correctionDraft} onBack={vi.fn()} currentUserId="student-1" />);
+
+    fireEvent.click(await screen.findByRole('button', { name: /abandonar corre/i }));
+    fireEvent.change(screen.getByRole('textbox', { name: /motivo do abandono/i }), {
+      target: { value: 'Correção aberta por engano e sem alteração clínica válida.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /confirmar abandono/i }));
+
+    expect(await screen.findByRole('alert', { name: '' })).toHaveTextContent(/não foi possível abandonar a correção/i);
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument();
+  });
+
+  it('blocks every competing mutation while responsible abandonment is in flight', async () => {
+    const pending = deferred();
+    const correctionDraft = {
+      ...record,
+      id: 'replacement-v2',
+      replaces_record_id: 'signed-v1',
+      root_record_id: 'signed-v1',
+      amendment: { id: 'amendment-1', type: 'correction', status: 'draft', target_record_id: 'signed-v1' },
+    };
+    const chain = [correctionDraft, { ...record, id: 'signed-v1', status: 'signed' }];
+    amendmentHook.useClinicalAmendment.mockImplementation(() => {
+      const [status, setStatus] = React.useState('idle');
+      return amendmentState({
+        chain,
+        status,
+        loadChain: vi.fn().mockResolvedValue(chain),
+        abandonCorrection: vi.fn().mockImplementation(() => {
+          setStatus('abandoning-correction');
+          return pending.promise;
+        }),
+      });
+    });
+    evolutionHook.useClinicalEvolution.mockReturnValue(hookState({ record: correctionDraft }));
+    render(<EvolutionEditor initialRecord={correctionDraft} onBack={vi.fn()} currentUserId="nutritionist-1" />);
+
+    fireEvent.click(await screen.findByRole('button', { name: /abandonar corre/i }));
+    fireEvent.change(screen.getByRole('textbox', { name: /motivo do abandono/i }), {
+      target: { value: 'Correção aberta por engano e sem alteração clínica válida.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /confirmar abandono/i }));
+
+    await waitFor(() => expect(screen.getByRole('button', { name: /^finalizar$/i, hidden: true })).toBeDisabled());
+    expect(screen.getByRole('button', { name: /voltar.*evolu/i, hidden: true })).toBeDisabled();
+    expect(screen.getByLabelText('editor clinico', { selector: 'textarea' })).toBeDisabled();
+    await act(async () => pending.resolve(null));
+  });
+
+  it('blocks duplicate abandonment and keeps student correction drafts away from finalize and sign', async () => {
+    const pending = deferred();
+    const correctionDraft = {
+      ...record,
+      id: 'replacement-v2',
+      replaces_record_id: 'signed-v1',
+      root_record_id: 'signed-v1',
+      student_id: 'student-1',
+      supervisor_id: 'supervisor-1',
+      amendment: { id: 'amendment-1', type: 'correction', status: 'draft', target_record_id: 'signed-v1' },
+    };
+    const chain = [correctionDraft, { ...record, id: 'signed-v1', status: 'signed' }];
+    const abandonCorrection = vi.fn().mockReturnValue(pending.promise);
+    amendmentHook.useClinicalAmendment.mockReturnValue(amendmentState({
+      chain,
+      loadChain: vi.fn().mockResolvedValue(chain),
+      abandonCorrection,
+    }));
+    evolutionHook.useClinicalEvolution.mockReturnValue(hookState({ record: correctionDraft }));
+    render(<EvolutionEditor initialRecord={correctionDraft} onBack={vi.fn()} currentUserId="student-1" />);
+
+    expect(await screen.findByRole('button', { name: /abandonar corre/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /finalizar/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /assinar/i })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /abandonar corre/i }));
+    fireEvent.change(screen.getByRole('textbox', { name: /motivo do abandono/i }), {
+      target: { value: 'Correção aberta por engano e sem alteração clínica válida.' },
+    });
+    const confirm = screen.getByRole('button', { name: /confirmar abandono/i });
+    fireEvent.click(confirm);
+    fireEvent.click(confirm);
+    expect(abandonCorrection).toHaveBeenCalledTimes(1);
+    expect(confirm).toBeDisabled();
+    await act(async () => pending.resolve(null));
+  });
+
+  it('keeps unrelated users read-only and without actions on a correction draft', async () => {
+    const correctionDraft = {
+      ...record,
+      id: 'replacement-v2',
+      replaces_record_id: 'signed-v1',
+      root_record_id: 'signed-v1',
+      student_id: 'student-1',
+      supervisor_id: 'supervisor-1',
+      amendment: { id: 'amendment-1', type: 'correction', status: 'draft', target_record_id: 'signed-v1' },
+    };
+    const chain = [correctionDraft, { ...record, id: 'signed-v1', status: 'signed' }];
+    amendmentHook.useClinicalAmendment.mockReturnValue(amendmentState({
+      chain,
+      loadChain: vi.fn().mockResolvedValue(chain),
+    }));
+    evolutionHook.useClinicalEvolution.mockReturnValue(hookState({ record: correctionDraft }));
+    render(<EvolutionEditor initialRecord={correctionDraft} onBack={vi.fn()} currentUserId="unrelated-user" />);
+
+    expect(await screen.findByLabelText('editor clinico')).toBeDisabled();
+    expect(screen.queryByRole('button', { name: /abandonar|finalizar|assinar|corrigir|invalidar/i }))
+      .not.toBeInTheDocument();
   });
 
   it('shows amendment actions only to the responsible signer of a signed current record', async () => {

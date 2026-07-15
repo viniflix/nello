@@ -1,5 +1,5 @@
 import React from 'react';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import TabContentClinical from './TabContentClinical';
 import ClinicalRecordsList from '@/features/clinical-records/components/ClinicalRecordsList';
@@ -235,5 +235,21 @@ describe('ClinicalRecordsList accessibility', () => {
     expect(screen.getByRole('button', { name: /abrir evolu.*13\/07\/2026/i })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /abrir evolu.*12\/07\/2026/i })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /mostrar 1 vers.o anterior/i })).toBeInTheDocument();
+  });
+
+  it('labels an abandoned replacement exactly as Rascunho abandonado', () => {
+    render(<ClinicalRecordsList
+      records={[
+        { id: 'signed-v1', root_record_id: 'root-1', chain_version: 1, status: 'signed', record_type: 'clinical_evolution', encounter_at: '2026-07-13T12:00:00Z' },
+        { id: 'abandoned-v2', root_record_id: 'root-1', chain_version: 2, status: 'invalidated', amendment_status: 'abandoned', record_type: 'clinical_evolution', encounter_at: '2026-07-14T12:00:00Z' },
+      ]}
+      onSelectRecord={vi.fn()}
+      canWriteEpisode={false}
+    />);
+
+    fireEvent.click(screen.getByRole('button', { name: /mostrar 1 vers.o anterior/i }));
+    const historicalRow = screen.getByTestId('historical-record-row');
+    expect(within(historicalRow).getByText('Rascunho abandonado')).toBeInTheDocument();
+    expect(within(historicalRow).queryByText('Invalidado')).not.toBeInTheDocument();
   });
 });

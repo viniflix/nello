@@ -12,6 +12,9 @@ export const AMENDMENT_STATUS_LABELS = {
 export const recordDisplayStatus = (record) => {
   if (!record?.status) return 'Status indisponível';
 
+  const amendmentStatus = record.amendment?.status || record.amendment_status;
+  if (amendmentStatus === 'abandoned') return 'Rascunho abandonado';
+
   if (
     record.status === 'signed'
     && record.amendment?.type === 'correction'

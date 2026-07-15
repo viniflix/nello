@@ -23,7 +23,9 @@ describe('ClinicalRecordAmendmentDialog', () => {
 
     const reason = screen.getByRole('textbox', { name: /motivo da corre/i });
     await waitFor(() => expect(reason).toHaveFocus());
-    expect(screen.getByText(/paciente ser. avisado/i)).toBeInTheDocument();
+    expect(screen.getByText(/motivo.*poder. ser exibido ao paciente/i)).toBeInTheDocument();
+    expect(screen.getByText(/texto objetivo, respeitoso.*sem conte.do interno desnecess.rio/i))
+      .toBeInTheDocument();
     expect(screen.getByRole('button', { name: /iniciar corre/i })).toBeDisabled();
 
     fireEvent.change(reason, { target: { value: '   Motivo curto   ' } });

@@ -49,7 +49,8 @@ const DialogBody = ({
         <Alert>
           <AlertTriangle className="h-4 w-4" aria-hidden="true" />
           <AlertDescription>
-            Este registro foi compartilhado. O paciente será avisado sobre a alteração.
+            Este registro foi compartilhado. O motivo da correção ou invalidação poderá ser
+            exibido ao paciente. Use texto objetivo, respeitoso e sem conteúdo interno desnecessário.
           </AlertDescription>
         </Alert>
       ) : null}

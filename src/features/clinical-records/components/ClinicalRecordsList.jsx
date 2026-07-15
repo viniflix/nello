@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { RECORD_STATUS_COLORS, RECORD_STATUS_LABELS } from '../model/evolutionSchema';
+import { recordDisplayStatus } from '../model/amendmentSchema';
 
 const formatDateTime = (dateString) => {
   if (!dateString) return '';
@@ -42,7 +43,7 @@ const RecordButton = ({ record, onSelectRecord, historical = false }) => {
               <div className="min-w-0 flex-1 pr-4">
                 <div className="mb-1 flex items-center gap-2">
                   <Badge variant="secondary" className={statusClasses(color)}>
-                    {RECORD_STATUS_LABELS[record.status] || record.status}
+                    {recordDisplayStatus(record)}
                   </Badge>
                   <span className="text-xs font-medium capitalize text-zinc-500 dark:text-zinc-400">
                     {record.record_type?.replace('_', ' ')}
@@ -106,7 +107,7 @@ const ClinicalRecordsList = ({ records, onSelectRecord, onCreateDraft, canWriteE
     const recordMatches = (record) => {
       const matchesStatus = statusFilter === 'all' || record.status === statusFilter;
       const matchesSearch = !searchTerm || (
-        RECORD_STATUS_LABELS[record.status]?.toLowerCase().includes(normalizedSearch)
+        recordDisplayStatus(record).toLowerCase().includes(normalizedSearch)
         || record.record_type?.toLowerCase().includes(normalizedSearch)
       );
       return matchesStatus && matchesSearch;

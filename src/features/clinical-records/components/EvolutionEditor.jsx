@@ -28,6 +28,7 @@ import SaveStatusIndicator from './SaveStatusIndicator';
 import ClinicalRecordAmendmentDialog from './ClinicalRecordAmendmentDialog';
 import ClinicalRecordComparison from './ClinicalRecordComparison';
 import ClinicalRecordVersionHistory from './ClinicalRecordVersionHistory';
+import AbandonCorrectionDialog from './AbandonCorrectionDialog';
 
 const RETROSPECTIVE_THRESHOLD_MS = 5 * 60 * 1000;
 
@@ -81,6 +82,7 @@ const EvolutionEditor = ({
     loadImpact,
     loadChain,
     startCorrection,
+    abandonCorrection,
     invalidateRecord,
     compareVersions,
   } = useClinicalAmendment(record?.id, record?.root_record_id);
@@ -93,11 +95,16 @@ const EvolutionEditor = ({
   );
   const [leaving, setLeaving] = useState(false);
   const [amendmentMode, setAmendmentMode] = useState(null);
+  const [showAbandonDialog, setShowAbandonDialog] = useState(false);
   const [chainLoaded, setChainLoaded] = useState(false);
 
   const isDraft = record?.status === 'draft';
   const isFinalized = record?.status === 'finalized';
   const responsibleSignerId = record?.student_id ? record?.supervisor_id : record?.nutritionist_id;
+  const isResponsibleActor = Boolean(currentUserId && currentUserId === responsibleSignerId);
+  const isStudentAuthor = Boolean(record?.student_id && currentUserId === record.student_id);
+  const canEditDraft = isDraft && (isResponsibleActor || isStudentAuthor);
+  const canFinalize = isDraft && isResponsibleActor;
   const canSign = isFinalized && currentUserId === responsibleSignerId;
   const amendment = correctionAmendmentFrom(record, chain);
   const isCorrectionDraft = Boolean(
@@ -112,15 +119,20 @@ const EvolutionEditor = ({
   const hasOpenCorrection = chain.some((candidate) => (
     correctionAmendmentFrom(candidate, chain)?.status === 'draft'
   ));
-  const canAmend = chainLoaded
+  const canStartCorrection = chainLoaded
     && record?.status === 'signed'
     && record.id === currentSignedRecord?.id
     && !hasOpenCorrection
-    && currentUserId === responsibleSignerId;
+    && (isResponsibleActor || isStudentAuthor);
+  const canInvalidate = canStartCorrection && isResponsibleActor;
+  const canAbandonCorrection = isCorrectionDraft
+    && Boolean(amendment?.id)
+    && (isResponsibleActor || isStudentAuthor);
   const historyChain = chain.length > 0 ? chain : (record ? [record] : []);
   const amendmentPending = [
     'loading-impact',
     'starting-correction',
+    'abandoning-correction',
     'invalidating-record',
   ].includes(amendmentStatus);
   const color = RECORD_STATUS_COLORS[record?.status] || 'zinc';
@@ -180,7 +192,11 @@ const EvolutionEditor = ({
     || (retrospectiveReason.trim().length >= 10 && retrospectiveReason.trim().length <= 500);
 
   const handleBack = async () => {
-    if (leaving) return;
+    if (leaving || amendmentPending) return;
+    if (isDraft && !canEditDraft) {
+      onBack();
+      return;
+    }
     setLeaving(true);
     const result = await forceSave();
     if (result.ok) onBack();
@@ -188,12 +204,13 @@ const EvolutionEditor = ({
   };
 
   const handleFinalize = async () => {
-    if (!validRetrospectiveReason) return;
+    if (!validRetrospectiveReason || amendmentPending) return;
     const succeeded = await finalize(isRetrospective ? retrospectiveReason.trim() : null);
     if (succeeded) setShowFinalizeDialog(false);
   };
 
   const handleSign = async () => {
+    if (amendmentPending) return;
     const succeeded = await sign();
     if (!succeeded || !record?.replaces_record_id) return;
     const refreshedChain = await loadChain();
@@ -242,6 +259,21 @@ const EvolutionEditor = ({
     }
   };
 
+  const handleAbandonCorrection = async (reason) => {
+    const abandoned = await abandonCorrection(amendment?.id, reason);
+    if (!abandoned) return false;
+    const refreshedChain = await loadChain();
+    await onRecordsRefresh?.();
+    if (!Array.isArray(refreshedChain)) return false;
+    const signedTarget = refreshedChain.find((candidate) => (
+      candidate.id === amendment?.target_record_id && candidate.status === 'signed'
+    )) || refreshedChain.find((candidate) => candidate.status === 'signed');
+    setShowAbandonDialog(false);
+    if (signedTarget) onReplacementOpen?.(signedTarget);
+    else onBack?.();
+    return true;
+  };
+
   const handleReauthenticate = async (password) => {
     if (!user?.email || typeof signIn !== 'function') return false;
     try {
@@ -261,7 +293,7 @@ const EvolutionEditor = ({
             variant="ghost"
             size="icon"
             onClick={() => void handleBack()}
-            disabled={leaving}
+            disabled={leaving || amendmentPending}
             aria-label="Voltar para a lista de evoluções"
           >
             <ArrowLeft aria-hidden="true" />
@@ -283,32 +315,38 @@ const EvolutionEditor = ({
 
         <div className="flex w-full items-center gap-4 sm:w-auto">
           {isDraft ? <SaveStatusIndicator status={hookStatus} error={hookError} lastSaved={lastSaved} /> : null}
-          {isDraft ? (
+          {canFinalize ? (
             <Button
               onClick={() => setShowFinalizeDialog(true)}
-              disabled={!isContentMinimallyValid(content) || ['finalizing', 'saving', 'conflict'].includes(hookStatus)}
+              disabled={amendmentPending || !isContentMinimallyValid(content) || ['finalizing', 'saving', 'conflict'].includes(hookStatus)}
             >
               <Lock data-icon="inline-start" aria-hidden="true" />
               Finalizar
             </Button>
           ) : null}
           {canSign ? (
-            <Button onClick={() => void handleSign()} disabled={hookStatus === 'signing'}>
+            <Button onClick={() => void handleSign()} disabled={amendmentPending || hookStatus === 'signing'}>
               <FileSignature data-icon="inline-start" aria-hidden="true" />
               Assinar registro
             </Button>
           ) : null}
-          {canAmend ? (
-            <>
+          {canStartCorrection ? (
               <Button type="button" variant="outline" onClick={() => void openAmendmentDialog('correction')} disabled={amendmentPending}>
                 <FileText data-icon="inline-start" aria-hidden="true" />
                 Corrigir
               </Button>
+          ) : null}
+          {canInvalidate ? (
               <Button type="button" variant="destructive" onClick={() => void openAmendmentDialog('invalidation')} disabled={amendmentPending}>
                 <XCircle data-icon="inline-start" aria-hidden="true" />
                 Invalidar
               </Button>
-            </>
+          ) : null}
+          {canAbandonCorrection ? (
+            <Button type="button" variant="destructive" onClick={() => setShowAbandonDialog(true)} disabled={amendmentPending}>
+              <XCircle data-icon="inline-start" aria-hidden="true" />
+              Abandonar correção
+            </Button>
           ) : null}
         </div>
       </div>
@@ -395,7 +433,7 @@ const EvolutionEditor = ({
                     className="h-10 rounded-md border border-input bg-background px-3 text-sm"
                     value={visibility}
                     onChange={(event) => setVisibility(event.target.value)}
-                    disabled={isCorrectionDraft}
+                    disabled={isCorrectionDraft || !canEditDraft || amendmentPending}
                   >
                     <option value="professional_private">Privada do profissional</option>
                     <option value="share_later">Compartilhar posteriormente</option>
@@ -426,7 +464,7 @@ const EvolutionEditor = ({
                       [activeSectionDefinition.key]: html,
                     }))}
                     placeholder={`Digite o conteúdo de ${activeSectionDefinition.label.toLowerCase()}...`}
-                    disabled={!isDraft}
+                    disabled={!canEditDraft || amendmentStatus === 'abandoning-correction'}
                     minHeight="min-h-[300px]"
                   />
                 </section>
@@ -496,6 +534,13 @@ const EvolutionEditor = ({
         onOpenChange={(nextOpen) => { if (!nextOpen) setAmendmentMode(null); }}
         onConfirm={handleCorrection}
         pending={amendmentPending}
+      />
+      <AbandonCorrectionDialog
+        open={showAbandonDialog}
+        onOpenChange={setShowAbandonDialog}
+        onConfirm={handleAbandonCorrection}
+        pending={amendmentStatus === 'abandoning-correction'}
+        error={amendmentError}
       />
       <ClinicalRecordAmendmentDialog
         open={amendmentMode === 'invalidation'}
