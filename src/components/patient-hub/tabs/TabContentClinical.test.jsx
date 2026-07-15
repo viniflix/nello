@@ -16,7 +16,15 @@ vi.mock('@/lib/supabase/lab-results-queries', () => ({
 }));
 vi.mock('@/components/patient-hub/GlycemiaSummaryCard', () => ({ default: () => null }));
 vi.mock('@/features/clinical-records/components/EvolutionEditor', () => ({
-  default: ({ initialRecord }) => <div>Editor {initialRecord.id}</div>,
+  default: ({ initialRecord, onReplacementOpen, onRecordsRefresh }) => (
+    <div>
+      Editor {initialRecord.id}
+      <button type="button" onClick={() => onReplacementOpen?.({ id: 'replacement-2', status: 'draft' })}>
+        abrir substituição
+      </button>
+      <button type="button" onClick={() => onRecordsRefresh?.()}>recarregar registros</button>
+    </div>
+  ),
 }));
 vi.mock('@/features/clinical-records/components/EvolutionTemplateSelector', () => ({
   default: ({ open, onSelectTemplate }) => open ? (
@@ -133,6 +141,41 @@ describe('TabContentClinical C2 flow', () => {
     await waitFor(() => expect(evolutionQueries.listClinicalRecordsByEpisode).toHaveBeenCalledTimes(2));
     expect(screen.queryByText(/n.o foi poss.vel carregar as evolu/i)).not.toBeInTheDocument();
   });
+
+  it('opens a correction replacement immediately and preserves a selected record through refresh', async () => {
+    evolutionQueries.listClinicalRecordsByEpisode
+      .mockResolvedValueOnce({
+        data: [{ id: 'signed-1', root_record_id: 'root-1', chain_version: 1, status: 'signed', record_type: 'clinical_evolution', encounter_at: '2026-07-14T12:00:00Z' }],
+        error: null,
+      })
+      .mockResolvedValueOnce({
+        data: [{ id: 'signed-1', root_record_id: 'root-1', chain_version: 1, status: 'signed', record_type: 'refreshed_record', encounter_at: '2026-07-14T12:00:00Z' }],
+        error: null,
+      });
+    render(<TabContentClinical {...props} />);
+    fireEvent.click(await screen.findByRole('button', { name: /abrir evolu/i }));
+    expect(await screen.findByText('Editor signed-1')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /recarregar registros/i }));
+    await waitFor(() => expect(evolutionQueries.listClinicalRecordsByEpisode).toHaveBeenCalledTimes(2));
+    expect(screen.getByText('Editor signed-1')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /abrir substitui/i }));
+    expect(await screen.findByText('Editor replacement-2')).toBeInTheDocument();
+  });
+
+  it('does not offer a new evolution for an ended viewed episode while signed records remain openable', async () => {
+    evolutionQueries.listClinicalRecordsByEpisode.mockResolvedValue({
+      data: [{ id: 'signed-ended', status: 'signed', record_type: 'clinical_evolution', encounter_at: '2026-07-14T12:00:00Z' }],
+      error: null,
+    });
+    render(<TabContentClinical {...props} writableEpisodeId={null} />);
+
+    expect(await screen.findByRole('button', { name: /abrir evolu/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /nova evolu/i })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /abrir evolu/i }));
+    expect(await screen.findByText('Editor signed-ended')).toBeInTheDocument();
+  });
 });
 
 describe('ClinicalRecordsList accessibility', () => {
@@ -156,5 +199,23 @@ describe('ClinicalRecordsList accessibility', () => {
     fireEvent.keyDown(recordButton, { key: 'Enter' });
     fireEvent.click(recordButton);
     expect(onSelectRecord).toHaveBeenCalledWith(expect.objectContaining({ id: 'record-keyboard' }));
+  });
+
+  it('shows one current row per root and keeps historical versions collapsed in descending order', () => {
+    render(<ClinicalRecordsList
+      records={[
+        { id: 'v1', root_record_id: 'root-1', chain_version: 1, status: 'corrected', record_type: 'clinical_evolution', encounter_at: '2026-07-12T12:00:00Z' },
+        { id: 'v3', root_record_id: 'root-1', chain_version: 3, status: 'draft', record_type: 'clinical_evolution', encounter_at: '2026-07-14T12:00:00Z' },
+        { id: 'v2', root_record_id: 'root-1', chain_version: 2, status: 'signed', record_type: 'clinical_evolution', encounter_at: '2026-07-13T12:00:00Z' },
+      ]}
+      onSelectRecord={vi.fn()}
+      canWriteEpisode={false}
+    />);
+
+    expect(screen.getByRole('button', { name: /abrir evolu.*13\/07\/2026/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /abrir evolu.*14\/07\/2026/i })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /mostrar 2 vers.es anteriores/i }));
+    const historical = screen.getAllByTestId('historical-record-row');
+    expect(historical.map((row) => row.dataset.recordId)).toEqual(['v3', 'v1']);
   });
 });

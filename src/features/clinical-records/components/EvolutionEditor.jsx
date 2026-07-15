@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { AlertCircle, ArrowLeft, FileSignature, Lock } from 'lucide-react';
+import { AlertCircle, ArrowLeft, FileSignature, FileText, Lock, XCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,8 @@ import {
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
+import { useAuth } from '@/contexts/AuthContext';
+import { useClinicalAmendment } from '../hooks/useClinicalAmendment';
 import { useClinicalEvolution } from '../hooks/useClinicalEvolution';
 import {
   getMeaningfulClinicalText,
@@ -23,10 +25,20 @@ import {
 import { listEvolutionTemplates } from '../api/evolution-queries';
 import RichTextEditor from './RichTextEditor';
 import SaveStatusIndicator from './SaveStatusIndicator';
+import ClinicalRecordAmendmentDialog from './ClinicalRecordAmendmentDialog';
+import ClinicalRecordComparison from './ClinicalRecordComparison';
+import ClinicalRecordVersionHistory from './ClinicalRecordVersionHistory';
 
 const RETROSPECTIVE_THRESHOLD_MS = 5 * 60 * 1000;
 
-const EvolutionEditor = ({ initialRecord, onBack, currentUserId }) => {
+const EvolutionEditor = ({
+  initialRecord,
+  onBack,
+  currentUserId,
+  onReplacementOpen,
+  onRecordsRefresh,
+}) => {
+  const { user, signIn } = useAuth();
   const {
     record,
     content,
@@ -42,6 +54,18 @@ const EvolutionEditor = ({ initialRecord, onBack, currentUserId }) => {
     finalize,
     sign,
   } = useClinicalEvolution(initialRecord);
+  const {
+    impact,
+    chain,
+    comparison,
+    status: amendmentStatus,
+    error: amendmentError,
+    loadImpact,
+    loadChain,
+    startCorrection,
+    invalidateRecord,
+    compareVersions,
+  } = useClinicalAmendment(record?.id, record?.root_record_id);
 
   const [templates, setTemplates] = useState([]);
   const [activeSection, setActiveSection] = useState('');
@@ -50,11 +74,31 @@ const EvolutionEditor = ({ initialRecord, onBack, currentUserId }) => {
     initialRecord?.retrospective_reason || '',
   );
   const [leaving, setLeaving] = useState(false);
+  const [amendmentMode, setAmendmentMode] = useState(null);
 
   const isDraft = record?.status === 'draft';
   const isFinalized = record?.status === 'finalized';
-  const canSign = isFinalized && currentUserId === record?.nutritionist_id;
+  const responsibleSignerId = record?.student_id ? record?.supervisor_id : record?.nutritionist_id;
+  const canSign = isFinalized && currentUserId === responsibleSignerId;
+  const canAmend = record?.status === 'signed' && currentUserId === responsibleSignerId;
+  const amendment = record?.amendment || {};
+  const isCorrectionDraft = Boolean(
+    record?.replaces_record_id
+    && (amendment.type || record?.amendment_type) === 'correction'
+    && (amendment.status || record?.amendment_status) === 'draft',
+  );
+  const amendmentReason = amendment.reason || record?.amendment_reason || '';
+  const historyChain = chain.length > 0 ? chain : (record ? [record] : []);
+  const amendmentPending = [
+    'loading-impact',
+    'starting-correction',
+    'invalidating-record',
+  ].includes(amendmentStatus);
   const color = RECORD_STATUS_COLORS[record?.status] || 'zinc';
+
+  useEffect(() => {
+    if (record?.id) void loadChain();
+  }, [loadChain, record?.id]);
 
   useEffect(() => {
     let current = true;
@@ -120,6 +164,36 @@ const EvolutionEditor = ({ initialRecord, onBack, currentUserId }) => {
     if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(plainText);
   };
 
+  const openAmendmentDialog = async (mode) => {
+    const loadedImpact = await loadImpact();
+    if (loadedImpact) setAmendmentMode(mode);
+  };
+
+  const handleCorrection = async (reason, impactConfirmation) => {
+    const replacement = await startCorrection(reason, impactConfirmation);
+    if (!replacement) return;
+    setAmendmentMode(null);
+    onReplacementOpen?.(replacement);
+  };
+
+  const handleInvalidation = async (reason, impactConfirmation) => {
+    const invalidated = await invalidateRecord(reason, impactConfirmation);
+    if (invalidated) {
+      setAmendmentMode(null);
+      await onRecordsRefresh?.();
+    }
+  };
+
+  const handleReauthenticate = async (password) => {
+    if (!user?.email || typeof signIn !== 'function') return false;
+    try {
+      const result = await signIn({ email: user.email, password });
+      return !result?.error;
+    } catch {
+      return false;
+    }
+  };
+
   return (
     <div className="flex h-full flex-col overflow-hidden rounded-lg border bg-background shadow-sm">
       <div className="flex flex-none flex-col items-start justify-between gap-4 border-b bg-muted/30 p-4 sm:flex-row sm:items-center">
@@ -166,8 +240,41 @@ const EvolutionEditor = ({ initialRecord, onBack, currentUserId }) => {
               Assinar registro
             </Button>
           ) : null}
+          {canAmend ? (
+            <>
+              <Button type="button" variant="outline" onClick={() => void openAmendmentDialog('correction')} disabled={amendmentPending}>
+                <FileText data-icon="inline-start" aria-hidden="true" />
+                Corrigir
+              </Button>
+              <Button type="button" variant="destructive" onClick={() => void openAmendmentDialog('invalidation')} disabled={amendmentPending}>
+                <XCircle data-icon="inline-start" aria-hidden="true" />
+                Invalidar
+              </Button>
+            </>
+          ) : null}
         </div>
       </div>
+
+      {isCorrectionDraft ? (
+        <div className="flex-none px-4 pt-4">
+          <Alert>
+            <FileText className="h-4 w-4" aria-hidden="true" />
+            <AlertDescription>
+              <strong>Correção em preparação.</strong>{' '}
+              Alvo: {record.replaces_record_id}. Motivo: {amendmentReason || 'Motivo indisponível.'}
+            </AlertDescription>
+          </Alert>
+        </div>
+      ) : null}
+
+      {amendmentError ? (
+        <div className="flex-none px-4 pt-4">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" aria-hidden="true" />
+            <AlertDescription>{amendmentError}</AlertDescription>
+          </Alert>
+        </div>
+      ) : null}
 
       {hookStatus === 'conflict' || conflict ? (
         <div className="flex-none px-4 pt-4">
@@ -230,6 +337,7 @@ const EvolutionEditor = ({ initialRecord, onBack, currentUserId }) => {
                     className="h-10 rounded-md border border-input bg-background px-3 text-sm"
                     value={visibility}
                     onChange={(event) => setVisibility(event.target.value)}
+                    disabled={isCorrectionDraft}
                   >
                     <option value="professional_private">Privada do profissional</option>
                     <option value="share_later">Compartilhar posteriormente</option>
@@ -281,6 +389,15 @@ const EvolutionEditor = ({ initialRecord, onBack, currentUserId }) => {
         </div>
       </div>
 
+      <div className="flex-none space-y-4 border-t p-4">
+        <ClinicalRecordVersionHistory
+          chain={historyChain}
+          onSelectRecord={onReplacementOpen}
+          onCompare={(leftRecordId, rightRecordId) => void compareVersions(leftRecordId, rightRecordId)}
+        />
+        {comparison ? <ClinicalRecordComparison comparison={comparison} /> : null}
+      </div>
+
       <Dialog open={showFinalizeDialog} onOpenChange={setShowFinalizeDialog}>
         <DialogContent>
           <DialogHeader>
@@ -313,6 +430,24 @@ const EvolutionEditor = ({ initialRecord, onBack, currentUserId }) => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ClinicalRecordAmendmentDialog
+        open={amendmentMode === 'correction'}
+        mode="correction"
+        impact={impact}
+        onOpenChange={(nextOpen) => { if (!nextOpen) setAmendmentMode(null); }}
+        onConfirm={handleCorrection}
+        pending={amendmentPending}
+      />
+      <ClinicalRecordAmendmentDialog
+        open={amendmentMode === 'invalidation'}
+        mode="invalidation"
+        impact={impact}
+        onOpenChange={(nextOpen) => { if (!nextOpen) setAmendmentMode(null); }}
+        onConfirm={handleInvalidation}
+        onReauthenticate={user?.email ? handleReauthenticate : undefined}
+        pending={amendmentPending}
+      />
     </div>
   );
 };

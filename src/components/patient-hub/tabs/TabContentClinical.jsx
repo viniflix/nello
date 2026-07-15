@@ -47,7 +47,14 @@ const TabContentClinical = ({ patientId, patientData, modulesStatus = {}, viewed
         const { data, error } = await listClinicalRecordsByEpisode(patientId, viewedEpisodeId);
         if (requestId !== recordsRequestRef.current) return;
         if (error) setRecordsError(error.message || 'Falha ao carregar evoluções.');
-        else setRecords(data || []);
+        else {
+            const nextRecords = data || [];
+            setRecords(nextRecords);
+            setSelectedRecord((previous) => {
+                if (!previous) return previous;
+                return nextRecords.find((candidate) => candidate.id === previous.id) || null;
+            });
+        }
         setRecordsLoading(false);
     }, [patientId, viewedEpisodeId]);
 
@@ -341,6 +348,8 @@ const TabContentClinical = ({ patientId, patientData, modulesStatus = {}, viewed
                     }}
                     currentUserId={currentUserId}
                     canCosign={canCosign}
+                    onReplacementOpen={setSelectedRecord}
+                    onRecordsRefresh={loadRecords}
                 />
             </div>
         );
