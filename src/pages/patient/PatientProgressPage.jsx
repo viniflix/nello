@@ -67,6 +67,11 @@ const formatCivilDate = (value, pattern = 'dd/MM/yyyy') => {
   return Number.isNaN(date.getTime()) ? 'Data não informada' : format(date, pattern);
 };
 
+export const formatWeightTooltip = (value) => [
+  `${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} kg`,
+  'Peso',
+];
+
 const CLINICAL_TYPE_LABELS = {
   clinical_evolution: 'Evolução clínica',
   follow_up: 'Acompanhamento clínico',
@@ -472,15 +477,43 @@ export default function PatientProgressPage() {
                     VER EVOLUÇÃO <ChevronRight className="ml-2 h-4 w-4" aria-hidden="true" />
                   </Button>
                 </div>
-                <div className="h-40 rounded-xl bg-primary/5 p-3" aria-label="Resumo gráfico do peso">
-                  {weightOnlyData.length > 1 ? (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={weightOnlyData}>
-                        <Line type="monotone" dataKey="weight" stroke="hsl(var(--primary))" strokeWidth={3} dot={false} />
-                        <Tooltip />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  ) : <div className="flex h-full items-center justify-center text-sm text-muted-foreground">O GRÁFICO APARECERÁ COM NOVOS REGISTROS</div>}
+                <div
+                  className="rounded-xl border border-primary/10 bg-primary/5 p-3"
+                  role="img"
+                  aria-label="Gráfico de evolução do peso com pontos por registro"
+                >
+                  {weightOnlyData.length > 0 ? (
+                    <div className="h-32 sm:h-36">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={weightOnlyData} margin={{ top: 10, right: 10, bottom: 4, left: 10 }}>
+                            <CartesianGrid vertical={false} strokeDasharray="4 4" className="stroke-border/70" />
+                            <XAxis dataKey="record_date" hide />
+                            <YAxis hide domain={['dataMin - 2', 'dataMax + 2']} />
+                            <Tooltip
+                              formatter={formatWeightTooltip}
+                              labelFormatter={(label) => `Registro de ${formatCivilDate(label)}`}
+                              separator=": "
+                              cursor={{ stroke: 'hsl(var(--border))', strokeDasharray: '4 4' }}
+                              contentStyle={{
+                                background: 'hsl(var(--card))',
+                                border: '1px solid hsl(var(--border))',
+                                borderRadius: '0.75rem',
+                                color: 'hsl(var(--card-foreground))',
+                              }}
+                            />
+                            <Line
+                              type="monotone"
+                              dataKey="weight"
+                              name="Peso"
+                              stroke="hsl(var(--primary))"
+                              strokeWidth={3}
+                              dot={{ r: 4, fill: 'hsl(var(--primary))', stroke: 'hsl(var(--background))', strokeWidth: 2 }}
+                              activeDot={{ r: 6, fill: 'hsl(var(--primary))', stroke: 'hsl(var(--background))', strokeWidth: 3 }}
+                            />
+                          </LineChart>
+                        </ResponsiveContainer>
+                    </div>
+                  ) : <div className="flex h-40 items-center justify-center text-center text-sm text-muted-foreground">O GRÁFICO APARECERÁ APÓS O PRIMEIRO REGISTRO DE PESO</div>}
                 </div>
               </CardContent>
             </Card>

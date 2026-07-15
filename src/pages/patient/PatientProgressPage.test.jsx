@@ -41,10 +41,15 @@ vi.mock('@/lib/customSupabaseClient', () => ({
   },
 }));
 
-import PatientProgressPage from './PatientProgressPage';
+import PatientProgressPage, { formatWeightTooltip } from './PatientProgressPage';
 
 describe('PatientProgressPage', () => {
   beforeEach(() => {
+    vi.stubGlobal('ResizeObserver', class ResizeObserver {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    });
     mocks.userId = 'patient-1';
     mocks.foundation.mockResolvedValue({
       data: { records: [{
@@ -61,6 +66,8 @@ describe('PatientProgressPage', () => {
     expect(await screen.findByRole('heading', { name: 'MEU PROGRESSO' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'SEUS INDICADORES' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'LINHA DO TEMPO' })).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: /gráfico de evolução do peso/i })).toBeInTheDocument();
+    expect(screen.queryByText(/toque ou passe o cursor/i)).not.toBeInTheDocument();
     expect(screen.getAllByText('75.2 kg').length).toBeGreaterThan(0);
     expect(screen.getByText('ACOMPANHAMENTO CLÍNICO')).toBeInTheDocument();
     expect(screen.getByText('COMPARTILHADO PELO SEU NUTRICIONISTA')).toBeInTheDocument();
@@ -70,6 +77,10 @@ describe('PatientProgressPage', () => {
     expect(await screen.findByText('GRÁFICO DE PESO')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'REGISTRAR PESO' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^adicionar registro$/i })).not.toBeInTheDocument();
+  });
+
+  it('formats the compact chart tooltip in Portuguese with an explicit unit', () => {
+    expect(formatWeightTooltip(77.9)).toEqual(['77,9 kg', 'Peso']);
   });
 
   it('does not expose private or draft clinical records in the timeline', async () => {
