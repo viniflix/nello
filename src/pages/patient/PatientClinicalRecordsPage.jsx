@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AlertCircle, ChevronRight, FileClock, FileText, RefreshCw } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -16,9 +16,19 @@ const TYPE_LABELS = {
 };
 
 const isShared = (record) => record?.visibility === 'shared_with_patient';
+const isOfficial = (record) => {
+  if (record?.status === 'signed') return true;
+  if (record?.status === 'corrected') {
+    return record?.amendment?.status === 'effective' && record?.amendment?.type === 'correction';
+  }
+  if (record?.status === 'invalidated') {
+    return record?.amendment?.status === 'effective' && record?.amendment?.type === 'invalidation';
+  }
+  return false;
+};
 const safeSharedRecords = (records) => (Array.isArray(records) ? records : [])
   .filter(isShared)
-  .filter((record) => record?.amendment?.status !== 'abandoned')
+  .filter(isOfficial)
   .sort((left, right) => (right.chain_version || 0) - (left.chain_version || 0));
 
 const currentSharedRecords = (records) => {
@@ -72,7 +82,7 @@ function RecordVersion({ record, current }) {
 
       {invalidated && (
         <div className="rounded-lg bg-red-50 p-3 text-sm text-red-800">
-          Este registro foi invalidado e não deve mais ser considerado como orientação clínica vigente.
+          Este registro foi invalidado pelo profissional responsável. Ele permanece preservado no histórico, mas não representa uma orientação clínica vigente.
         </div>
       )}
 
@@ -88,7 +98,7 @@ function RecordVersion({ record, current }) {
           <p className="font-medium text-slate-900">Atualização do registro</p>
           <p className="mt-1"><span className="font-medium">Motivo:</span> {amendment.reason}</p>
           <p className="mt-1"><span className="font-medium">Data:</span> {formatDate(amendment.effective_at || amendment.created_at)}</p>
-          <p className="mt-1"><span className="font-medium">Responsável:</span> profissional responsável pelo atendimento</p>
+          <p className="mt-1"><span className="font-medium">Responsável:</span> {record.professional_display_name || 'profissional responsável pelo atendimento'}</p>
         </div>
       )}
     </article>
@@ -103,12 +113,23 @@ export default function PatientClinicalRecordsPage() {
   const [selected, setSelected] = useState(null);
   const [chain, setChain] = useState([]);
   const [chainState, setChainState] = useState('idle');
+  const mountedRef = useRef(false);
+  const foundationRequestRef = useRef(0);
+  const chainRequestRef = useRef(0);
+  const currentUserIdRef = useRef(user?.id);
+  currentUserIdRef.current = user?.id;
 
   const loadRecords = useCallback(async () => {
     if (!user?.id) return;
+    const requestId = ++foundationRequestRef.current;
+    const requestedUserId = user.id;
     setLoading(true);
     setError(false);
+    setSelected(null);
+    setChain([]);
+    setChainState('idle');
     const { data, error: requestError } = await getPatientRecordFoundation(user.id);
+    if (!mountedRef.current || requestId !== foundationRequestRef.current || requestedUserId !== currentUserIdRef.current) return;
     if (requestError) {
       setRecords([]);
       setError(true);
@@ -118,13 +139,24 @@ export default function PatientClinicalRecordsPage() {
     setLoading(false);
   }, [user?.id]);
 
-  useEffect(() => { loadRecords(); }, [loadRecords]);
+  useEffect(() => {
+    mountedRef.current = true;
+    loadRecords();
+    return () => {
+      mountedRef.current = false;
+      foundationRequestRef.current += 1;
+      chainRequestRef.current += 1;
+    };
+  }, [loadRecords]);
 
   const openRecord = async (record) => {
+    const requestId = ++chainRequestRef.current;
+    const requestedUserId = user?.id;
     setSelected(record);
     setChainState('loading');
     setChain([]);
     const { data, error: requestError } = await listClinicalRecordVersionChain(record.id);
+    if (!mountedRef.current || requestId !== chainRequestRef.current || requestedUserId !== currentUserIdRef.current) return;
     if (requestError) {
       setChainState('error');
       return;

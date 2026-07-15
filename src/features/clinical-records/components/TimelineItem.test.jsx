@@ -63,7 +63,9 @@ describe('TimelineItem', () => {
     }} patientSlug="ana" /></MemoryRouter>);
 
     expect(screen.getByText('Registro clínico invalidado')).toBeInTheDocument();
-    expect(screen.getByText(/este registro não deve mais ser considerado/i)).toBeInTheDocument();
+    expect(screen.getByText(/invalidado pelo profissional responsável/i)).toBeInTheDocument();
+    expect(screen.getByText(/preservado no histórico/i)).toBeInTheDocument();
+    expect(screen.getByText(/não representa uma orientação clínica vigente/i)).toBeInTheDocument();
     expect(screen.queryByText(/internal|private reason|secret-hash|technical-id/i)).not.toBeInTheDocument();
   });
 });

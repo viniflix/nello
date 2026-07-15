@@ -24,7 +24,8 @@ $migrations = @(
     '20260714100000_create_clinical_evolution_system.sql',
     '20260714110000_create_patient_timeline.sql',
     '20260715010000_fix_clinical_write_lock_read_compatibility.sql',
-    '20260715120000_create_clinical_record_amendments.sql'
+    '20260715120000_create_clinical_record_amendments.sql',
+    '20260715130000_secure_patient_clinical_record_projection.sql'
 ) | ForEach-Object { Join-Path $root "supabase\migrations\$_" }
 $matrix = Join-Path $root 'supabase\tests\clinical_record_amendments_matrix.sql'
 $concurrencySetup = Join-Path $root 'supabase\tests\clinical_record_amendments_concurrency_setup.sql'

@@ -54,7 +54,7 @@ export default function TimelineItem({ item, patientSlug }) {
     ? 'Registro clínico invalidado'
     : isCorrectedClinicalRecord ? 'Registro clínico substituído' : item.title;
   const safeSummary = isInvalidatedClinicalRecord
-    ? 'Este registro não deve mais ser considerado como orientação clínica vigente.'
+    ? 'Este registro foi invalidado pelo profissional responsável, permanece preservado no histórico e não representa uma orientação clínica vigente.'
     : isCorrectedClinicalRecord ? 'Uma versão mais recente deste registro está vigente.' : item.summary;
 
   useEffect(() => {
