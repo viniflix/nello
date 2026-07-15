@@ -137,6 +137,85 @@ describe('useClinicalAmendment', () => {
     expect(result.current.status).toBe('idle');
   });
 
+  it('keeps the newest response when two impact reads resolve out of order', async () => {
+    const older = deferred();
+    const newer = deferred();
+    amendmentQueries.getAmendmentImpact
+      .mockReturnValueOnce(older.promise)
+      .mockReturnValueOnce(newer.promise);
+    const { result } = renderHook(() => useClinicalAmendment('record-1'));
+    let olderRequest;
+    let newerRequest;
+
+    act(() => {
+      olderRequest = result.current.loadImpact();
+      newerRequest = result.current.loadImpact();
+    });
+    newer.resolve({ data: { ...impact, impact_hash: 'hash-newer' }, error: null });
+    await act(async () => { await newerRequest; });
+    older.resolve({ data: { ...impact, impact_hash: 'hash-older' }, error: null });
+    await act(async () => { await olderRequest; });
+
+    expect(result.current.impact.impactHash).toBe('hash-newer');
+    expect(result.current.status).toBe('idle');
+  });
+
+  it('does not let an old chain read overwrite a conflict refresh', async () => {
+    const olderRead = deferred();
+    const conflictRefresh = deferred();
+    const conflict = { code: '40001', message: 'amendment_chain_conflict' };
+    amendmentQueries.listClinicalRecordVersionChain
+      .mockReturnValueOnce(olderRead.promise)
+      .mockReturnValueOnce(conflictRefresh.promise);
+    amendmentQueries.invalidateClinicalRecord.mockResolvedValue({ data: null, error: conflict });
+    const { result } = renderHook(() => useClinicalAmendment('record-1', 'root-1'));
+    let olderRequest;
+    let mutationRequest;
+
+    act(() => { olderRequest = result.current.loadChain(); });
+    act(() => {
+      mutationRequest = result.current.invalidateRecord(
+        'Registro atribuído ao atendimento incorreto',
+        { impact_hash: 'hash-1', confirmed: true },
+      );
+    });
+    conflictRefresh.resolve({
+      data: [{ id: 'record-new', chain_version: 2 }],
+      error: null,
+    });
+    await act(async () => { await mutationRequest; });
+
+    expect(result.current.chain).toEqual([{ id: 'record-new', chain_version: 2 }]);
+    expect(result.current.status).toBe('conflict');
+
+    olderRead.resolve({
+      data: [{ id: 'record-old', chain_version: 1 }],
+      error: null,
+    });
+    await act(async () => { await olderRequest; });
+
+    expect(result.current.chain).toEqual([{ id: 'record-new', chain_version: 2 }]);
+    expect(result.current.status).toBe('conflict');
+  });
+
+  it('ignores a pending response after unmount without late update warnings', async () => {
+    const pending = deferred();
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    amendmentQueries.getAmendmentImpact.mockReturnValueOnce(pending.promise);
+    const { result, unmount } = renderHook(() => useClinicalAmendment('record-1'));
+    let request;
+
+    act(() => { request = result.current.loadImpact(); });
+    unmount();
+    pending.resolve({ data: impact, error: null });
+    let outcome;
+    await act(async () => { outcome = await request; });
+
+    expect(outcome).toBeNull();
+    expect(consoleError).not.toHaveBeenCalled();
+    consoleError.mockRestore();
+  });
+
   it('keeps callbacks stable while the target identifiers are unchanged', () => {
     const { result, rerender } = renderHook(
       ({ marker }) => ({ marker, amendment: useClinicalAmendment('record-1', 'root-1') }),
