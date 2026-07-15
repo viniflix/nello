@@ -318,4 +318,103 @@ describe('EvolutionEditor', () => {
     expect(screen.queryByRole('button', { name: 'Corrigir' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Invalidar' })).not.toBeInTheDocument();
   });
+
+  it('reloads the amendment chain and parent after signing a correction replacement', async () => {
+    const correctionRecord = {
+      ...record,
+      id: 'replacement-2',
+      status: 'finalized',
+      replaces_record_id: 'target-1',
+      root_record_id: 'target-1',
+      chain_version: 2,
+    };
+    const draftChain = [
+      {
+        ...correctionRecord,
+        status: 'finalized',
+        amendment: {
+          id: 'amendment-1',
+          type: 'correction',
+          status: 'draft',
+          reason: 'Correção factual devidamente justificada.',
+          target_record_id: 'target-1',
+          replacement_record_id: 'replacement-2',
+        },
+      },
+      { ...record, id: 'target-1', status: 'signed', root_record_id: 'target-1', chain_version: 1 },
+    ];
+    const effectiveChain = [
+      {
+        ...draftChain[0],
+        status: 'signed',
+        amendment: { ...draftChain[0].amendment, status: 'effective' },
+      },
+      { ...draftChain[1], status: 'corrected' },
+    ];
+    const initialChain = deferred();
+    const loadChainRequest = vi.fn()
+      .mockReturnValueOnce(initialChain.promise)
+      .mockResolvedValueOnce(effectiveChain);
+    amendmentHook.useClinicalAmendment.mockImplementation(() => {
+      const [chain, setChain] = React.useState([]);
+      const loadChain = React.useCallback(async () => {
+        const nextChain = await loadChainRequest();
+        setChain(nextChain);
+        return nextChain;
+      }, []);
+      return amendmentState({ chain, loadChain });
+    });
+    const sign = vi.fn().mockResolvedValue(true);
+    evolutionHook.useClinicalEvolution.mockReturnValue(hookState({ record: correctionRecord, sign }));
+    const onRecordsRefresh = vi.fn().mockResolvedValue(undefined);
+    render(<EvolutionEditor
+      initialRecord={correctionRecord}
+      onBack={vi.fn()}
+      currentUserId="nutritionist-1"
+      onRecordsRefresh={onRecordsRefresh}
+    />);
+
+    expect(screen.queryByText(/correção em preparação/i)).not.toBeInTheDocument();
+    await act(async () => {
+      initialChain.resolve(draftChain);
+      await initialChain.promise;
+    });
+    expect((await screen.findAllByRole('alert')).some((alert) => (
+      /correção em preparação/i.test(alert.textContent)
+    ))).toBe(true);
+
+    fireEvent.click(screen.getByRole('button', { name: /assinar registro/i }));
+    await waitFor(() => expect(sign).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(loadChainRequest).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(onRecordsRefresh).toHaveBeenCalledTimes(1));
+    expect(screen.queryAllByRole('alert').some((alert) => (
+      /correção em preparação/i.test(alert.textContent)
+    ))).toBe(false);
+    expect(screen.getByText('Vigente')).toBeInTheDocument();
+    expect(screen.getByText('Substituído')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /abrir vers.o 2, vigente/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /abrir vers.o 1, substitu.do/i })).toBeInTheDocument();
+    expect(loadChainRequest.mock.invocationCallOrder[1])
+      .toBeLessThan(onRecordsRefresh.mock.invocationCallOrder[0]);
+  });
+
+  it('keeps normal signing on the existing path without an amendment refresh', async () => {
+    const finalizedRecord = { ...record, status: 'finalized' };
+    const loadChain = vi.fn().mockResolvedValue([finalizedRecord]);
+    amendmentHook.useClinicalAmendment.mockReturnValue(amendmentState({ chain: [finalizedRecord], loadChain }));
+    const sign = vi.fn().mockResolvedValue(true);
+    evolutionHook.useClinicalEvolution.mockReturnValue(hookState({ record: finalizedRecord, sign }));
+    const onRecordsRefresh = vi.fn();
+    render(<EvolutionEditor
+      initialRecord={finalizedRecord}
+      onBack={vi.fn()}
+      currentUserId="nutritionist-1"
+      onRecordsRefresh={onRecordsRefresh}
+    />);
+
+    fireEvent.click(screen.getByRole('button', { name: /assinar registro/i }));
+    await waitFor(() => expect(sign).toHaveBeenCalledTimes(1));
+    expect(loadChain).toHaveBeenCalledTimes(1);
+    expect(onRecordsRefresh).not.toHaveBeenCalled();
+  });
 });

@@ -193,6 +193,13 @@ const EvolutionEditor = ({
     if (succeeded) setShowFinalizeDialog(false);
   };
 
+  const handleSign = async () => {
+    const succeeded = await sign();
+    if (!succeeded || !record?.replaces_record_id) return;
+    const refreshedChain = await loadChain();
+    if (Array.isArray(refreshedChain)) await onRecordsRefresh?.();
+  };
+
   const copyLocalContent = async () => {
     const plainText = sections
       .map((section) => `${section.label}\n${getMeaningfulClinicalText(content[section.key])}`)
@@ -286,7 +293,7 @@ const EvolutionEditor = ({
             </Button>
           ) : null}
           {canSign ? (
-            <Button onClick={() => void sign()} disabled={hookStatus === 'signing'}>
+            <Button onClick={() => void handleSign()} disabled={hookStatus === 'signing'}>
               <FileSignature data-icon="inline-start" aria-hidden="true" />
               Assinar registro
             </Button>
