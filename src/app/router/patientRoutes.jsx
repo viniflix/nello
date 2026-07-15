@@ -15,6 +15,7 @@ const AddFoodPage = lazy(() => import('@/pages/patient/AddFoodPage.jsx'));
 const ChatPage = lazy(() => import('@/pages/shared/ChatPage.jsx'));
 const PatientInvitesPage = lazy(() => import('@/pages/patient/PatientInvitesPage.jsx'));
 const CheckinResponsePage = lazy(() => import('@/pages/patient/CheckinResponsePage.jsx'));
+const PatientClinicalRecordsPage = lazy(() => import('@/pages/patient/PatientClinicalRecordsPage.jsx'));
 
 export const patientRoutes = (
     <>
@@ -28,6 +29,7 @@ export const patientRoutes = (
             <Route path="/patient/perfil" element={<PatientProfilePage />} />
             <Route path="/patient/editar-perfil" element={<PatientEditProfilePage />} />
             <Route path="/patient/conquistas" element={<PatientAchievementsPage />} />
+            <Route path="/patient/registros-clinicos" element={<PatientClinicalRecordsPage />} />
         </Route>
 
         {/* Rotas do Paciente (Fora do layout - páginas completas) */}

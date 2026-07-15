@@ -1,5 +1,5 @@
 import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { Home, BookMarked, LineChart, MessagesSquare, User, Bell, LogOut, Shield } from 'lucide-react';
+import { Home, BookMarked, LineChart, MessagesSquare, User, LogOut, Shield, FileClock } from 'lucide-react';
 import { useChat } from '@/contexts/ChatContext';
 import { Button } from '@/components/ui/button';
 import NotificationsPanel from '@/components/NotificationsPanel';
@@ -88,6 +88,11 @@ export default function PatientLayout() {
       to: '/patient/progresso',
       icon: LineChart,
       label: 'Progresso'
+    },
+    {
+      to: '/patient/registros-clinicos',
+      icon: FileClock,
+      label: 'Registros'
     },
     {
       to: '/patient/chat',

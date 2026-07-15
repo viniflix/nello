@@ -1,3 +1,4 @@
+/* eslint-disable import/first */
 import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter, useLocation } from 'react-router-dom';
@@ -49,5 +50,20 @@ describe('TimelineItem', () => {
     rerender(<MemoryRouter><TimelineItem item={{ ...baseItem, status: 'future_internal_value' }} patientSlug="ana" /></MemoryRouter>);
     expect(screen.getByText('Registrado')).toBeInTheDocument();
     expect(screen.queryByText('future_internal_value')).not.toBeInTheDocument();
+  });
+
+  it('presents amendments neutrally without leaking technical metadata', () => {
+    render(<MemoryRouter><TimelineItem item={{
+      ...baseItem,
+      source_type: 'clinical_record',
+      status: 'invalidated',
+      title: 'Internal title must not win',
+      summary: 'Internal summary must not win',
+      raw: { reason: 'private reason', canonical_hash: 'secret-hash', responsible_id: 'technical-id' },
+    }} patientSlug="ana" /></MemoryRouter>);
+
+    expect(screen.getByText('Registro clínico invalidado')).toBeInTheDocument();
+    expect(screen.getByText(/este registro não deve mais ser considerado/i)).toBeInTheDocument();
+    expect(screen.queryByText(/internal|private reason|secret-hash|technical-id/i)).not.toBeInTheDocument();
   });
 });

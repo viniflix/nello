@@ -35,7 +35,7 @@ const formatNotificationTime = (createdAt) => {
   return `${day}/${month}/${year} - às ${hour}:${minute}`;
 };
 
-const getNotificationMeta = (notification, userType) => {
+export const getNotificationMeta = (notification, userType) => {
   const genericMessage = notification?.content?.message || notification?.message || 'Você recebeu uma atualização.';
   const genericTitle = notification?.title || 'Nova notificação';
 
@@ -74,6 +74,8 @@ const getNotificationMeta = (notification, userType) => {
     },
     daily_log_reminder: { title: 'Lembrete Diário', ctaLabel: 'Registrar refeição', ctaPath: '/patient/add-food' },
     measurement_reminder: { title: 'Atualizar Medidas', ctaLabel: 'Abrir perfil', ctaPath: '/patient/profile' },
+    clinical_record_corrected: { title: 'Registro clínico corrigido', ctaLabel: 'Ver registro', ctaPath: '/patient/registros-clinicos' },
+    clinical_record_invalidated: { title: 'Registro clínico invalidado', ctaLabel: 'Ver registro', ctaPath: '/patient/registros-clinicos' },
     success: { title: genericTitle || 'Sucesso', ctaLabel: 'Ver detalhes', ctaPath: notification?.link_url || '/patient' },
     info: { title: genericTitle || 'Informação', ctaLabel: 'Ver detalhes', ctaPath: notification?.link_url || '/patient' },
     warning: { title: genericTitle || 'Atenção', ctaLabel: 'Ver detalhes', ctaPath: notification?.link_url || '/patient' },
@@ -99,10 +101,11 @@ const getNotificationMeta = (notification, userType) => {
     ctaLabel: 'Ver detalhes',
     ctaPath: notification?.link_url || (userType === 'nutritionist' ? '/nutritionist' : '/patient')
   };
+  const isClinicalAmendment = ['clinical_record_corrected', 'clinical_record_invalidated'].includes(notification.type);
 
   return {
     ...base,
-    description: genericMessage
+    description: isClinicalAmendment ? 'Seu registro clínico recebeu uma atualização.' : genericMessage
   };
 };
 

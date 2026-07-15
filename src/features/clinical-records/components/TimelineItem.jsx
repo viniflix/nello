@@ -48,6 +48,14 @@ export default function TimelineItem({ item, patientSlug }) {
   const route = getItemRoute(item, patientSlug);
   const occurredAt = new Date(item.occurred_at);
   const hasValidDate = isValid(occurredAt);
+  const isInvalidatedClinicalRecord = item.source_type === 'clinical_record' && item.status === 'invalidated';
+  const isCorrectedClinicalRecord = item.source_type === 'clinical_record' && item.status === 'corrected';
+  const safeTitle = isInvalidatedClinicalRecord
+    ? 'Registro clínico invalidado'
+    : isCorrectedClinicalRecord ? 'Registro clínico substituído' : item.title;
+  const safeSummary = isInvalidatedClinicalRecord
+    ? 'Este registro não deve mais ser considerado como orientação clínica vigente.'
+    : isCorrectedClinicalRecord ? 'Uma versão mais recente deste registro está vigente.' : item.summary;
 
   useEffect(() => {
     if (!hasValidDate) {
@@ -63,14 +71,14 @@ export default function TimelineItem({ item, patientSlug }) {
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-2">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <h4 className="font-semibold text-slate-800 text-base">{item.title}</h4>
+            <h4 className="font-semibold text-slate-800 text-base">{safeTitle}</h4>
             {item.is_legacy && <Badge variant="outline" className="text-[10px] bg-amber-50 text-amber-700 border-amber-200 px-1.5 py-0">Legado</Badge>}
           </div>
           <div className="flex items-center text-xs text-slate-500 gap-1"><Calendar className="w-3 h-3" aria-hidden="true" /><span>{dateLabel}</span></div>
         </div>
         <Badge variant="secondary" className={cn('w-fit', ['completed', 'active', 'published', 'signed', 'finalized'].includes(item.status) ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-700')}>{STATUS_LABELS[item.status] || 'Registrado'}</Badge>
       </div>
-      <p className="text-sm text-slate-600 line-clamp-2 mt-2">{item.summary || 'Registro do atendimento.'}</p>
+      <p className="text-sm text-slate-600 line-clamp-2 mt-2">{safeSummary || 'Registro do atendimento.'}</p>
       {route && <div className="mt-4 flex justify-end text-xs font-medium items-center text-slate-500 group-hover:text-blue-600">Ver detalhes <ChevronRight className="w-3 h-3 ml-1" aria-hidden="true" /></div>}
     </CardContent>
   );
