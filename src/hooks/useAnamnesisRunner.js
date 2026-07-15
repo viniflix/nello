@@ -90,7 +90,7 @@ export function useAnamnesisRunner(patientId) {
 
     // ── 5. Criar novo record (com snapshot do template) ──────────
     const createRecord = useMutation({
-        mutationFn: async ({ templateId, content = {} }) => {
+        mutationFn: async ({ templateId, episodeId, content = {} }) => {
             // Buscar template completo para snapshot imutável
             const { data: templateData, error: tErr } = await supabase
                 .from('anamnesis_templates')
@@ -103,6 +103,7 @@ export function useAnamnesisRunner(patientId) {
                 .from('anamnesis_records')
                 .insert({
                     patient_id: patientId,
+                    care_episode_id: episodeId || null,
                     nutritionist_id: user.id,
                     template_id: templateId,
                     status: 'draft',
