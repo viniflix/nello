@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   getFoundation: vi.fn(),
   listChain: vi.fn(),
   userId: 'patient-1',
+  requestedRecordId: null,
 }));
 
 vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ user: { id: mocks.userId } }) }));
@@ -14,6 +15,9 @@ vi.mock('@/features/clinical-records/api/record-foundation-queries', () => ({
 }));
 vi.mock('@/features/clinical-records/api/amendment-queries', () => ({
   listClinicalRecordVersionChain: mocks.listChain,
+}));
+vi.mock('react-router-dom', () => ({
+  useSearchParams: () => [new URLSearchParams(mocks.requestedRecordId ? { record: mocks.requestedRecordId } : {})],
 }));
 
 import PatientClinicalRecordsPage from './PatientClinicalRecordsPage';
@@ -39,6 +43,7 @@ describe('PatientClinicalRecordsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.userId = 'patient-1';
+    mocks.requestedRecordId = null;
     mocks.getFoundation.mockResolvedValue({ data: { records: [currentRecord] }, error: null });
     mocks.listChain.mockResolvedValue({
       data: [
@@ -63,7 +68,9 @@ describe('PatientClinicalRecordsPage', () => {
   it('shows the current shared version first and a labeled, safe history', async () => {
     render(<PatientClinicalRecordsPage />);
 
-    expect(await screen.findByRole('heading', { name: 'Registros clínicos' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'REGISTROS CLÍNICOS' })).toBeInTheDocument();
+    expect(screen.getByText('CONTEÚDOS COMPARTILHADOS PELO SEU NUTRICIONISTA')).toBeInTheDocument();
+    expect(screen.queryByText(/equipe do cuidado/i)).not.toBeInTheDocument();
     fireEvent.click(await screen.findByRole('button', { name: /abrir evolução clínica/i }));
 
     await waitFor(() => expect(mocks.listChain).toHaveBeenCalledWith('record-current'));
@@ -152,5 +159,13 @@ describe('PatientClinicalRecordsPage', () => {
     expect(await screen.findByText(/invalidado pelo profissional responsável/i)).toBeInTheDocument();
     expect(screen.getByText(/permanece preservado no histórico/i)).toBeInTheDocument();
     expect(screen.getByText(/não representa uma orientação clínica vigente/i)).toBeInTheDocument();
+  });
+
+  it('opens a specific safe record linked from the progress timeline', async () => {
+    mocks.requestedRecordId = 'record-current';
+    render(<PatientClinicalRecordsPage />);
+
+    await waitFor(() => expect(mocks.listChain).toHaveBeenCalledWith('record-current'));
+    expect(await screen.findByText('Evolução revisada e compartilhada.')).toBeInTheDocument();
   });
 });

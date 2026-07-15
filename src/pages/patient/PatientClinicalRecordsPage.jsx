@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AlertCircle, ChevronRight, FileClock, FileText, RefreshCw } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -7,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { getPatientRecordFoundation } from '@/features/clinical-records/api/record-foundation-queries';
 import { listClinicalRecordVersionChain } from '@/features/clinical-records/api/amendment-queries';
 import { getMeaningfulClinicalText } from '@/features/clinical-records/model/evolutionSchema';
+import { getCurrentSharedClinicalRecords } from '@/features/patient-progress/model/progressTimeline';
 
 const TYPE_LABELS = {
   clinical_evolution: 'Evolução clínica',
@@ -30,16 +32,6 @@ const safeSharedRecords = (records) => (Array.isArray(records) ? records : [])
   .filter(isShared)
   .filter(isOfficial)
   .sort((left, right) => (right.chain_version || 0) - (left.chain_version || 0));
-
-const currentSharedRecords = (records) => {
-  const roots = new Set();
-  return safeSharedRecords(records).filter((record) => {
-    const root = record.root_record_id || record.id;
-    if (roots.has(root)) return false;
-    roots.add(root);
-    return true;
-  });
-};
 
 const formatDate = (value) => {
   const date = new Date(value);
@@ -107,6 +99,8 @@ function RecordVersion({ record, current }) {
 
 export default function PatientClinicalRecordsPage() {
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+  const requestedRecordId = searchParams.get('record');
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -117,6 +111,7 @@ export default function PatientClinicalRecordsPage() {
   const foundationRequestRef = useRef(0);
   const chainRequestRef = useRef(0);
   const currentUserIdRef = useRef(user?.id);
+  const autoOpenedRecordRef = useRef(null);
   currentUserIdRef.current = user?.id;
 
   const loadRecords = useCallback(async () => {
@@ -128,13 +123,14 @@ export default function PatientClinicalRecordsPage() {
     setSelected(null);
     setChain([]);
     setChainState('idle');
+    autoOpenedRecordRef.current = null;
     const { data, error: requestError } = await getPatientRecordFoundation(user.id);
     if (!mountedRef.current || requestId !== foundationRequestRef.current || requestedUserId !== currentUserIdRef.current) return;
     if (requestError) {
       setRecords([]);
       setError(true);
     } else {
-      setRecords(currentSharedRecords(data?.records));
+      setRecords(getCurrentSharedClinicalRecords(data?.records));
     }
     setLoading(false);
   }, [user?.id]);
@@ -149,7 +145,7 @@ export default function PatientClinicalRecordsPage() {
     };
   }, [loadRecords]);
 
-  const openRecord = async (record) => {
+  const openRecord = useCallback(async (record) => {
     const requestId = ++chainRequestRef.current;
     const requestedUserId = user?.id;
     setSelected(record);
@@ -163,17 +159,25 @@ export default function PatientClinicalRecordsPage() {
     }
     setChain(safeSharedRecords(data));
     setChainState('success');
-  };
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!requestedRecordId || autoOpenedRecordRef.current === requestedRecordId) return;
+    const requestedRecord = records.find((record) => record.id === requestedRecordId);
+    if (!requestedRecord) return;
+    autoOpenedRecordRef.current = requestedRecordId;
+    openRecord(requestedRecord);
+  }, [openRecord, records, requestedRecordId]);
 
   return (
-    <div className="min-h-full bg-slate-50 px-4 py-6 sm:px-6 lg:px-8">
+    <div className="min-h-full bg-slate-50 px-4 py-6 sm:px-6 lg:px-8 [&_h1]:uppercase [&_h2]:uppercase [&_h3]:uppercase [&_h4]:uppercase">
       <div className="mx-auto max-w-6xl space-y-6">
         <header>
           <div className="flex items-center gap-3">
             <div className="rounded-xl bg-blue-100 p-2 text-blue-700"><FileClock className="h-6 w-6" aria-hidden="true" /></div>
             <div>
-              <h1 className="text-2xl font-bold text-slate-900">Registros clínicos</h1>
-              <p className="mt-1 text-sm text-slate-600">Consulte registros que sua equipe de cuidado compartilhou com você.</p>
+              <h1 className="text-2xl font-bold text-slate-900">REGISTROS CLÍNICOS</h1>
+              <p className="mt-1 text-sm font-semibold tracking-wide text-slate-600">CONTEÚDOS COMPARTILHADOS PELO SEU NUTRICIONISTA</p>
             </div>
           </div>
         </header>
