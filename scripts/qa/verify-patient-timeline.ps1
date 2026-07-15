@@ -1,3 +1,5 @@
+param([switch]$KeepContainer)
+
 $ErrorActionPreference = 'Stop'
 
 $container = 'nello_patient_timeline_test'
@@ -22,9 +24,10 @@ $migrations = @(
     (Join-Path $root 'supabase\migrations\20260714100000_create_clinical_evolution_system.sql')
 )
 $c3Migration = Join-Path $root 'supabase\migrations\20260714110000_create_patient_timeline.sql'
+$c3ReadCompatibilityMigration = Join-Path $root 'supabase\migrations\20260715010000_fix_clinical_write_lock_read_compatibility.sql'
 $matrix = Join-Path $root 'supabase\tests\patient_timeline_matrix.sql'
 
-foreach ($file in @($baseline, $matrix, $c3Migration) + $migrations) {
+foreach ($file in @($baseline, $matrix, $c3Migration, $c3ReadCompatibilityMigration) + $migrations) {
     if (-not (Test-Path -LiteralPath $file)) { throw "Required local Supabase artifact is missing: $file" }
 }
 
@@ -64,6 +67,7 @@ try {
         docker cp $migrations[$index] "${container}:/tmp/migration-$index.sql" | Out-Null
     }
     docker cp $c3Migration "${container}:/tmp/c3.sql" | Out-Null
+    docker cp $c3ReadCompatibilityMigration "${container}:/tmp/c3-read-compatibility.sql" | Out-Null
 
     $commands = @(
         @{ Label = 'database preparation'; Sql = 'CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA extensions; CREATE EXTENSION IF NOT EXISTS pgcrypto; ALTER EVENT TRIGGER graphql_watch_ddl DISABLE; ALTER EVENT TRIGGER graphql_watch_drop DISABLE; ALTER EVENT TRIGGER pgrst_ddl_watch DISABLE; ALTER EVENT TRIGGER pgrst_drop_watch DISABLE;' },
@@ -134,6 +138,7 @@ insert into public.care_episodes(
 ('40000000-0000-0000-0000-000000000055','20000000-0000-0000-0000-000000000056','10000000-0000-0000-0000-000000000055','active',now()-interval '1 day',null,'simulation',null,'10000000-0000-0000-0000-000000000055',null);
 '@ }
     $commands += @{ Label = 'C3 migration'; Sql = '\i /tmp/c3.sql' }
+    $commands += @{ Label = 'C3 read compatibility migration'; Sql = '\i /tmp/c3-read-compatibility.sql' }
     $commands += @{ Label = 'C3 patient timeline matrix'; Sql = '\i /tmp/c3-matrix.sql'; ShowOutput = $true }
 
     foreach ($command in $commands) {
@@ -147,7 +152,7 @@ insert into public.care_episodes(
     Write-Output 'Patient timeline approved in local disposable database.'
 }
 finally {
-    if ($containerCreated) {
+    if ($containerCreated -and -not $KeepContainer) {
         docker rm -f $container 2>$null | Out-Null
     }
 }
