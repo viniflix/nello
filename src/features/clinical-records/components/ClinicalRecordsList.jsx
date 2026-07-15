@@ -87,6 +87,7 @@ const groupRecordChains = (records) => {
     const primary = ordered.find((record) => record.status === 'signed') || ordered[0];
     return {
       rootId,
+      versions: ordered,
       primary,
       historical: ordered.filter((record) => record.id !== primary.id),
     };
@@ -100,16 +101,20 @@ const ClinicalRecordsList = ({ records, onSelectRecord, onCreateDraft, canWriteE
   const [statusFilter, setStatusFilter] = useState('all');
   const [expandedRoots, setExpandedRoots] = useState(() => new Set());
 
-  const filteredRecords = records?.filter((record) => {
-    const matchesStatus = statusFilter === 'all' || record.status === statusFilter;
+  const recordChains = useMemo(() => {
     const normalizedSearch = searchTerm.toLowerCase();
-    const matchesSearch = !searchTerm || (
-      RECORD_STATUS_LABELS[record.status]?.toLowerCase().includes(normalizedSearch)
-      || record.record_type?.toLowerCase().includes(normalizedSearch)
+    const recordMatches = (record) => {
+      const matchesStatus = statusFilter === 'all' || record.status === statusFilter;
+      const matchesSearch = !searchTerm || (
+        RECORD_STATUS_LABELS[record.status]?.toLowerCase().includes(normalizedSearch)
+        || record.record_type?.toLowerCase().includes(normalizedSearch)
+      );
+      return matchesStatus && matchesSearch;
+    };
+    return groupRecordChains(records || []).filter(
+      ({ versions }) => versions.some(recordMatches),
     );
-    return matchesStatus && matchesSearch;
-  }) || [];
-  const recordChains = useMemo(() => groupRecordChains(filteredRecords), [filteredRecords]);
+  }, [records, searchTerm, statusFilter]);
 
   const toggleChain = (rootId) => {
     setExpandedRoots((previous) => {
@@ -183,7 +188,8 @@ const ClinicalRecordsList = ({ records, onSelectRecord, onCreateDraft, canWriteE
                 <>
                   <Button type="button" variant="ghost" size="sm" onClick={() => toggleChain(rootId)}>
                     <ChevronDown className={`mr-2 h-4 w-4 transition-transform ${expandedRoots.has(rootId) ? 'rotate-180' : ''}`} aria-hidden="true" />
-                    {expandedRoots.has(rootId) ? 'Ocultar' : 'Mostrar'} {historical.length} versões anteriores
+                    {expandedRoots.has(rootId) ? 'Ocultar' : 'Mostrar'} {historical.length}{' '}
+                    {historical.length === 1 ? 'versão anterior' : 'versões anteriores'}
                   </Button>
                   {expandedRoots.has(rootId) ? (
                     <div className="space-y-2">

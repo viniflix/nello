@@ -218,4 +218,22 @@ describe('ClinicalRecordsList accessibility', () => {
     const historical = screen.getAllByTestId('historical-record-row');
     expect(historical.map((row) => row.dataset.recordId)).toEqual(['v3', 'v1']);
   });
+
+  it('filters whole chains without promoting the matching historical version over the current record', () => {
+    render(<ClinicalRecordsList
+      records={[
+        { id: 'historic', root_record_id: 'root-1', chain_version: 1, status: 'corrected', record_type: 'historic_match', encounter_at: '2026-07-12T12:00:00Z' },
+        { id: 'current', root_record_id: 'root-1', chain_version: 2, status: 'signed', record_type: 'clinical_evolution', encounter_at: '2026-07-13T12:00:00Z' },
+      ]}
+      onSelectRecord={vi.fn()}
+      canWriteEpisode={false}
+    />);
+
+    fireEvent.change(screen.getByRole('searchbox', { name: /buscar registros cl.nicos/i }), {
+      target: { value: 'historic_match' },
+    });
+    expect(screen.getByRole('button', { name: /abrir evolu.*13\/07\/2026/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /abrir evolu.*12\/07\/2026/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /mostrar 1 vers.o anterior/i })).toBeInTheDocument();
+  });
 });

@@ -31,6 +31,24 @@ import ClinicalRecordVersionHistory from './ClinicalRecordVersionHistory';
 
 const RETROSPECTIVE_THRESHOLD_MS = 5 * 60 * 1000;
 
+const correctionAmendmentFrom = (record, chain = []) => {
+  if (!record) return null;
+  const chainRecord = chain.find((candidate) => candidate.id === record.id);
+  const amendment = chainRecord?.amendment || record.amendment || {};
+  const flatSource = chainRecord || record;
+  const type = amendment.type || amendment.amendment_type || flatSource.amendment_type;
+  const status = amendment.status || amendment.amendment_status || flatSource.amendment_status;
+  if (type !== 'correction') return null;
+  return {
+    id: amendment.id || amendment.amendment_id || flatSource.amendment_id || null,
+    type,
+    status,
+    reason: amendment.reason || amendment.amendment_reason || flatSource.amendment_reason || '',
+    target_record_id: amendment.target_record_id || flatSource.replaces_record_id || null,
+    replacement_record_id: amendment.replacement_record_id || flatSource.id || null,
+  };
+};
+
 const EvolutionEditor = ({
   initialRecord,
   onBack,
@@ -75,19 +93,30 @@ const EvolutionEditor = ({
   );
   const [leaving, setLeaving] = useState(false);
   const [amendmentMode, setAmendmentMode] = useState(null);
+  const [chainLoaded, setChainLoaded] = useState(false);
 
   const isDraft = record?.status === 'draft';
   const isFinalized = record?.status === 'finalized';
   const responsibleSignerId = record?.student_id ? record?.supervisor_id : record?.nutritionist_id;
   const canSign = isFinalized && currentUserId === responsibleSignerId;
-  const canAmend = record?.status === 'signed' && currentUserId === responsibleSignerId;
-  const amendment = record?.amendment || {};
+  const amendment = correctionAmendmentFrom(record, chain);
   const isCorrectionDraft = Boolean(
     record?.replaces_record_id
-    && (amendment.type || record?.amendment_type) === 'correction'
-    && (amendment.status || record?.amendment_status) === 'draft',
+    && amendment?.type === 'correction'
+    && amendment.status === 'draft',
   );
-  const amendmentReason = amendment.reason || record?.amendment_reason || '';
+  const amendmentReason = amendment?.reason || '';
+  const currentSignedRecord = [...chain]
+    .sort((left, right) => Number(right.chain_version || 0) - Number(left.chain_version || 0))
+    .find((candidate) => candidate.status === 'signed');
+  const hasOpenCorrection = chain.some((candidate) => (
+    correctionAmendmentFrom(candidate, chain)?.status === 'draft'
+  ));
+  const canAmend = chainLoaded
+    && record?.status === 'signed'
+    && record.id === currentSignedRecord?.id
+    && !hasOpenCorrection
+    && currentUserId === responsibleSignerId;
   const historyChain = chain.length > 0 ? chain : (record ? [record] : []);
   const amendmentPending = [
     'loading-impact',
@@ -97,7 +126,14 @@ const EvolutionEditor = ({
   const color = RECORD_STATUS_COLORS[record?.status] || 'zinc';
 
   useEffect(() => {
-    if (record?.id) void loadChain();
+    let current = true;
+    setChainLoaded(false);
+    if (record?.id) {
+      void loadChain().then((loadedChain) => {
+        if (current && Array.isArray(loadedChain)) setChainLoaded(true);
+      });
+    }
+    return () => { current = false; };
   }, [loadChain, record?.id]);
 
   useEffect(() => {
@@ -172,8 +208,23 @@ const EvolutionEditor = ({
   const handleCorrection = async (reason, impactConfirmation) => {
     const replacement = await startCorrection(reason, impactConfirmation);
     if (!replacement) return;
+    const replacementRecordId = replacement.replacement_record_id || replacement.id;
+    const enrichedReplacement = {
+      ...replacement,
+      id: replacement.id || replacementRecordId,
+      replaces_record_id: replacement.replaces_record_id || record.id,
+      root_record_id: replacement.root_record_id || record.root_record_id || record.id,
+      amendment: {
+        id: replacement.amendment_id || null,
+        type: 'correction',
+        status: replacement.amendment_status || 'draft',
+        reason,
+        target_record_id: record.id,
+        replacement_record_id: replacementRecordId,
+      },
+    };
     setAmendmentMode(null);
-    onReplacementOpen?.(replacement);
+    onReplacementOpen?.(enrichedReplacement);
   };
 
   const handleInvalidation = async (reason, impactConfirmation) => {
@@ -261,7 +312,7 @@ const EvolutionEditor = ({
             <FileText className="h-4 w-4" aria-hidden="true" />
             <AlertDescription>
               <strong>Correção em preparação.</strong>{' '}
-              Alvo: {record.replaces_record_id}. Motivo: {amendmentReason || 'Motivo indisponível.'}
+              Alvo: {amendment?.target_record_id || record.replaces_record_id}. Motivo: {amendmentReason || 'Motivo indisponível.'}
             </AlertDescription>
           </Alert>
         </div>

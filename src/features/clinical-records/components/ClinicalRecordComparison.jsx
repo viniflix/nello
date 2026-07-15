@@ -17,8 +17,22 @@ const plainText = (value) => {
 };
 
 const normalizeSections = (comparison) => {
-  if (Array.isArray(comparison?.sections)) return comparison.sections;
-  const labels = comparison?.section_labels || {};
+  const snapshotSections = [
+    comparison?.right?.template_sections_snapshot,
+    comparison?.left?.template_sections_snapshot,
+    comparison?.right_record?.template_sections_snapshot,
+    comparison?.left_record?.template_sections_snapshot,
+  ].filter(Array.isArray).flat();
+  const snapshotLabels = Object.fromEntries(
+    snapshotSections.map((section) => [section.key, section.label]),
+  );
+  const labels = { ...snapshotLabels, ...(comparison?.section_labels || {}) };
+  if (Array.isArray(comparison?.sections)) {
+    return comparison.sections.map((section) => ({
+      ...section,
+      label: section.label || labels[section.key] || section.key,
+    }));
+  }
   const leftContent = comparison?.left?.content || comparison?.left_content || {};
   const rightContent = comparison?.right?.content || comparison?.right_content || {};
   return [...new Set([...Object.keys(leftContent), ...Object.keys(rightContent)])].map((key) => ({

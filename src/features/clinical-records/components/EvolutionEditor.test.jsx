@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import EvolutionEditor from './EvolutionEditor';
 import * as evolutionHook from '../hooks/useClinicalEvolution';
@@ -35,6 +35,12 @@ const templates = [{
     { key: 'objective', label: 'Objetivo', required: false },
   ],
 }];
+
+const deferred = () => {
+  let resolve;
+  const promise = new Promise((resolver) => { resolve = resolver; });
+  return { promise, resolve };
+};
 
 const hookState = (overrides = {}) => ({
   record,
@@ -154,16 +160,31 @@ describe('EvolutionEditor', () => {
     expect(screen.queryByRole('button', { name: /co-assinar/i })).not.toBeInTheDocument();
   });
 
-  it('identifies a correction draft, shows its target and reason, and locks visibility', async () => {
+  it('derives correction metadata from the loaded chain after reopening a list payload', async () => {
     const correctionDraft = {
       ...record,
+      id: 'replacement-2',
       replaces_record_id: 'signed-v1',
+      root_record_id: 'root-1',
+      chain_version: 2,
+      amendment_id: 'amendment-1',
+      amendment_status: 'draft',
+    };
+    const chainRecord = {
+      ...correctionDraft,
       amendment: {
+        id: 'amendment-1',
         type: 'correction',
         status: 'draft',
         reason: 'Correção factual devidamente justificada.',
+        target_record_id: 'signed-v1',
+        replacement_record_id: 'replacement-2',
       },
     };
+    amendmentHook.useClinicalAmendment.mockReturnValue(amendmentState({
+      chain: [chainRecord],
+      loadChain: vi.fn().mockResolvedValue([chainRecord]),
+    }));
     evolutionHook.useClinicalEvolution.mockReturnValue(hookState({ record: correctionDraft }));
     render(<EvolutionEditor initialRecord={correctionDraft} onBack={vi.fn()} />);
 
@@ -184,9 +205,21 @@ describe('EvolutionEditor', () => {
       root_record_id: 'root-1',
       chain_version: 1,
     };
-    const replacement = { ...record, id: 'replacement-2', replaces_record_id: signedStudentRecord.id };
+    const replacement = {
+      ...record,
+      id: 'replacement-2',
+      replaces_record_id: signedStudentRecord.id,
+      root_record_id: 'root-1',
+      chain_version: 2,
+      amendment_id: 'amendment-1',
+      amendment_status: 'draft',
+    };
     const startCorrection = vi.fn().mockResolvedValue(replacement);
-    amendmentHook.useClinicalAmendment.mockReturnValue(amendmentState({ startCorrection }));
+    amendmentHook.useClinicalAmendment.mockReturnValue(amendmentState({
+      chain: [signedStudentRecord],
+      loadChain: vi.fn().mockResolvedValue([signedStudentRecord]),
+      startCorrection,
+    }));
     evolutionHook.useClinicalEvolution.mockReturnValue(hookState({ record: signedStudentRecord }));
     const onReplacementOpen = vi.fn();
     render(<EvolutionEditor
@@ -207,11 +240,25 @@ describe('EvolutionEditor', () => {
       'Correção factual devidamente justificada.',
       { impact_hash: 'impact-1', confirmed: true },
     ));
-    await waitFor(() => expect(onReplacementOpen).toHaveBeenCalledWith(replacement));
+    await waitFor(() => expect(onReplacementOpen).toHaveBeenCalledWith({
+      ...replacement,
+      amendment: {
+        id: 'amendment-1',
+        type: 'correction',
+        status: 'draft',
+        reason: 'Correção factual devidamente justificada.',
+        target_record_id: signedStudentRecord.id,
+        replacement_record_id: 'replacement-2',
+      },
+    }));
   });
 
   it('shows amendment actions only to the responsible signer of a signed current record', async () => {
     const signedRecord = { ...record, status: 'signed', root_record_id: 'root-1' };
+    amendmentHook.useClinicalAmendment.mockReturnValue(amendmentState({
+      chain: [signedRecord],
+      loadChain: vi.fn().mockResolvedValue([signedRecord]),
+    }));
     evolutionHook.useClinicalEvolution.mockReturnValue(hookState({ record: signedRecord }));
     const { rerender } = render(<EvolutionEditor
       initialRecord={signedRecord}
@@ -227,7 +274,48 @@ describe('EvolutionEditor', () => {
       onBack={vi.fn()}
       currentUserId="nutritionist-1"
     />);
-    expect(screen.getByRole('button', { name: 'Corrigir' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Corrigir' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Invalidar' })).toBeInTheDocument();
+  });
+
+  it('keeps amendment actions hidden until the chain confirms the current signed record', async () => {
+    const signedRecord = { ...record, status: 'signed', root_record_id: 'root-1' };
+    const pendingChain = deferred();
+    amendmentHook.useClinicalAmendment.mockReturnValue(amendmentState({
+      chain: [signedRecord],
+      loadChain: vi.fn().mockReturnValue(pendingChain.promise),
+    }));
+    evolutionHook.useClinicalEvolution.mockReturnValue(hookState({ record: signedRecord }));
+    render(<EvolutionEditor initialRecord={signedRecord} onBack={vi.fn()} currentUserId="nutritionist-1" />);
+
+    expect(screen.queryByRole('button', { name: 'Corrigir' })).not.toBeInTheDocument();
+    await act(async () => {
+      pendingChain.resolve([signedRecord]);
+      await pendingChain.promise;
+    });
+    expect(await screen.findByRole('button', { name: 'Corrigir' })).toBeInTheDocument();
+  });
+
+  it('does not offer duplicate amendment actions while a correction draft is open in the chain', async () => {
+    const signedRecord = { ...record, status: 'signed', root_record_id: 'root-1', chain_version: 1 };
+    const replacementDraft = {
+      ...record,
+      id: 'replacement-2',
+      root_record_id: 'root-1',
+      chain_version: 2,
+      replaces_record_id: signedRecord.id,
+      amendment: { type: 'correction', status: 'draft' },
+    };
+    const chain = [replacementDraft, signedRecord];
+    amendmentHook.useClinicalAmendment.mockReturnValue(amendmentState({
+      chain,
+      loadChain: vi.fn().mockResolvedValue(chain),
+    }));
+    evolutionHook.useClinicalEvolution.mockReturnValue(hookState({ record: signedRecord }));
+    render(<EvolutionEditor initialRecord={signedRecord} onBack={vi.fn()} currentUserId="nutritionist-1" />);
+
+    await waitFor(() => expect(screen.getAllByTestId('version-row')).toHaveLength(2));
+    expect(screen.queryByRole('button', { name: 'Corrigir' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Invalidar' })).not.toBeInTheDocument();
   });
 });

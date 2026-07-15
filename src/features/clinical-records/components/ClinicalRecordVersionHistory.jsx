@@ -1,11 +1,15 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 
 const getAmendmentStatus = (record) => record?.amendment?.status || record?.amendment_status;
+const getAmendmentType = (record) => record?.amendment?.type || record?.amendment_type;
 
 const getVersionState = (record, currentRecordId) => {
   if (getAmendmentStatus(record) === 'abandoned') return 'Rascunho abandonado';
+  if (getAmendmentType(record) === 'correction' && getAmendmentStatus(record) === 'draft') {
+    return 'Correção em preparação';
+  }
   if (record.status === 'invalidated') return 'Invalidado';
   if (record.id === currentRecordId && record.status === 'signed') return 'Vigente';
   return 'Substituído';
@@ -17,9 +21,26 @@ const ClinicalRecordVersionHistory = ({ chain = [], onSelectRecord, onCompare })
     () => [...chain].sort((left, right) => Number(right.chain_version || 0) - Number(left.chain_version || 0)),
     [chain],
   );
+  const rootIdentity = orderedChain[0]?.root_record_id
+    || orderedChain[0]?.rootRecordId
+    || orderedChain.map((record) => record.id).sort().join(':');
+  const previousRootRef = useRef(rootIdentity);
   const currentRecord = orderedChain.find((record) => (
     record.status === 'signed' && getAmendmentStatus(record) !== 'abandoned'
   ));
+
+  useEffect(() => {
+    const validIds = new Set(orderedChain.map((record) => record.id));
+    setSelectedIds((previous) => {
+      const next = previousRootRef.current === rootIdentity
+        ? previous.filter((id) => validIds.has(id))
+        : [];
+      return next.length === previous.length && next.every((id, index) => id === previous[index])
+        ? previous
+        : next;
+    });
+    previousRootRef.current = rootIdentity;
+  }, [orderedChain, rootIdentity]);
 
   const toggleSelection = (recordId) => {
     setSelectedIds((previous) => {

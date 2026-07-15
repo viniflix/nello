@@ -22,4 +22,19 @@ describe('ClinicalRecordComparison', () => {
     expect(container.querySelector('script')).toBeNull();
     expect(container.querySelector('b')).toBeNull();
   });
+
+  it('uses immutable snapshot labels for technical section keys returned by the comparison RPC', () => {
+    render(<ClinicalRecordComparison comparison={{
+      left: {
+        template_sections_snapshot: [{ key: 'subjective', label: 'Relato do paciente' }],
+      },
+      right: {
+        template_sections_snapshot: [{ key: 'subjective', label: 'Relato clínico' }],
+      },
+      sections: [{ key: 'subjective', left_value: '<p>Antes</p>', right_value: '<p>Depois</p>' }],
+    }} />);
+
+    expect(screen.getByRole('heading', { name: 'Relato do paciente' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'subjective' })).not.toBeInTheDocument();
+  });
 });
