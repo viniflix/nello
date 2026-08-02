@@ -1,7 +1,9 @@
 param(
     [switch]$ExpectRed,
     [switch]$ExpectStage3Red,
+    [switch]$ExpectStage4Red,
     [switch]$Stage2Only,
+    [switch]$Stage3Only,
     [switch]$KeepContainer
 )
 
@@ -35,6 +37,7 @@ $migrationNames = @(
 $migrations = $migrationNames | ForEach-Object { Join-Path $root "supabase\migrations\$_" }
 $c5Migration = Join-Path $root 'supabase\migrations\20260802120000_create_clinical_attachment_domain.sql'
 $c5StorageMigration = Join-Path $root 'supabase\migrations\20260802140000_secure_clinical_attachment_uploads.sql'
+$c5ReadMigration = Join-Path $root 'supabase\migrations\20260802160000_secure_clinical_attachment_reads.sql'
 $matrix = Join-Path $root 'supabase\tests\clinical_attachments_contract_matrix.sql'
 $storageFixture = Join-Path $root 'supabase\tests\storage_schema_fixture.sql'
 
@@ -46,6 +49,9 @@ if (-not $ExpectRed -and -not (Test-Path -LiteralPath $c5Migration)) {
 }
 if (-not $ExpectRed -and -not $ExpectStage3Red -and -not $Stage2Only -and -not (Test-Path -LiteralPath $c5StorageMigration)) {
     throw "Required C5 Storage migration is missing: $c5StorageMigration"
+}
+if (-not $ExpectRed -and -not $ExpectStage3Red -and -not $ExpectStage4Red -and -not $Stage2Only -and -not $Stage3Only -and -not (Test-Path -LiteralPath $c5ReadMigration)) {
+    throw "Required C5 read migration is missing: $c5ReadMigration"
 }
 
 docker info 2>$null | Out-Null
@@ -81,6 +87,9 @@ try {
     if (-not $ExpectRed -and -not $ExpectStage3Red -and -not $Stage2Only) {
         docker cp $c5StorageMigration "${container}:/tmp/c5-storage.sql" | Out-Null
     }
+    if (-not $ExpectRed -and -not $ExpectStage3Red -and -not $ExpectStage4Red -and -not $Stage2Only -and -not $Stage3Only) {
+        docker cp $c5ReadMigration "${container}:/tmp/c5-read.sql" | Out-Null
+    }
 
     $commands = @(
         @{ Label='database preparation'; Sql='CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA extensions; CREATE EXTENSION IF NOT EXISTS pgcrypto; ALTER EVENT TRIGGER graphql_watch_ddl DISABLE; ALTER EVENT TRIGGER graphql_watch_drop DISABLE; ALTER EVENT TRIGGER pgrst_ddl_watch DISABLE; ALTER EVENT TRIGGER pgrst_drop_watch DISABLE;' },
@@ -90,12 +99,18 @@ try {
 insert into auth.users(instance_id,id,aud,role,email,encrypted_password,confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at) values
 ('00000000-0000-0000-0000-000000000000','10000000-0000-0000-0000-000000000081','authenticated','authenticated','nutritionist-c5@nello.test','not-used',now(),'{}','{}',now(),now()),
 ('00000000-0000-0000-0000-000000000000','10000000-0000-0000-0000-000000000083','authenticated','authenticated','student-c5@nello.test','not-used',now(),'{}','{}',now(),now()),
+('00000000-0000-0000-0000-000000000000','10000000-0000-0000-0000-000000000084','authenticated','authenticated','former-nutritionist-c5@nello.test','not-used',now(),'{}','{}',now(),now()),
+('00000000-0000-0000-0000-000000000000','10000000-0000-0000-0000-000000000085','authenticated','authenticated','unrelated-nutritionist-c5@nello.test','not-used',now(),'{}','{}',now(),now()),
+('00000000-0000-0000-0000-000000000000','30000000-0000-0000-0000-000000000081','authenticated','authenticated','admin-c5@nello.test','not-used',now(),'{}','{}',now(),now()),
 ('00000000-0000-0000-0000-000000000000','20000000-0000-0000-0000-000000000081','authenticated','authenticated','patient-c5@nello.test','not-used',now(),'{}','{}',now(),now()),
 ('00000000-0000-0000-0000-000000000000','20000000-0000-0000-0000-000000000082','authenticated','authenticated','other-patient-c5@nello.test','not-used',now(),'{}','{}',now(),now()),
 ('00000000-0000-0000-0000-000000000000','20000000-0000-0000-0000-000000000083','authenticated','authenticated','student-patient-c5@nello.test','not-used',now(),'{}','{}',now(),now());
 insert into public.user_profiles(id,name,user_type,is_admin,is_active) values
 ('10000000-0000-0000-0000-000000000081','Nutricionista C5','nutritionist',false,true),
 ('10000000-0000-0000-0000-000000000083','Estudante C5','nutritionist',false,true),
+('10000000-0000-0000-0000-000000000084','Ex Nutricionista C5','nutritionist',false,true),
+('10000000-0000-0000-0000-000000000085','Nutricionista Sem Vinculo C5','nutritionist',false,true),
+('30000000-0000-0000-0000-000000000081','Administrador C5','patient',true,true),
 ('20000000-0000-0000-0000-000000000081','Paciente C5','patient',false,true),
 ('20000000-0000-0000-0000-000000000082','Outro Paciente C5','patient',false,true),
 ('20000000-0000-0000-0000-000000000083','Paciente do Estudante C5','patient',false,true);
@@ -114,6 +129,12 @@ insert into public.professional_verifications(
 ) ,(
   '10000000-0000-0000-0000-000000000083','student','approved',
   'student_document_manual',null,null,now()+interval '6 months',now(),'matrix'
+) ,(
+  '10000000-0000-0000-0000-000000000084','nutritionist','approved',
+  'official_registry_manual','54321','CRN-3',now()+interval '1 year',now(),'matrix'
+) ,(
+  '10000000-0000-0000-0000-000000000085','nutritionist','approved',
+  'official_registry_manual','67890','CRN-3',now()+interval '1 year',now(),'matrix'
 ) on conflict (user_id) do update set
   professional_role=excluded.professional_role,status=excluded.status,
   verification_method=excluded.verification_method,crn_number=excluded.crn_number,
@@ -126,20 +147,26 @@ insert into public.student_supervisions(
   'active',now(),now(),now()
 );
 insert into public.care_episodes(
-  id,patient_id,nutritionist_id,status,started_at,start_reason,started_by
+  id,patient_id,nutritionist_id,status,started_at,start_reason,started_by,
+  ended_at,end_reason,ended_by
 ) values
 (
   '40000000-0000-0000-0000-000000000081','20000000-0000-0000-0000-000000000081',
   '10000000-0000-0000-0000-000000000081','active',now(),'matrix',
-  '10000000-0000-0000-0000-000000000081'
+  '10000000-0000-0000-0000-000000000081',null,null,null
 ),(
   '40000000-0000-0000-0000-000000000082','20000000-0000-0000-0000-000000000082',
   '10000000-0000-0000-0000-000000000081','active',now(),'matrix-other',
-  '10000000-0000-0000-0000-000000000081'
+  '10000000-0000-0000-0000-000000000081',null,null,null
 ),(
   '40000000-0000-0000-0000-000000000083','20000000-0000-0000-0000-000000000083',
   '10000000-0000-0000-0000-000000000083','active',now(),'matrix-student',
-  '10000000-0000-0000-0000-000000000083'
+  '10000000-0000-0000-0000-000000000083',null,null,null
+),(
+  '40000000-0000-0000-0000-000000000084','20000000-0000-0000-0000-000000000082',
+  '10000000-0000-0000-0000-000000000084','ended',now()-interval '1 year','matrix-former',
+  '10000000-0000-0000-0000-000000000084',now()-interval '6 months',
+  'matrix-ended','10000000-0000-0000-0000-000000000084'
 );
 insert into public.clinical_records(
   id,patient_id,care_episode_id,nutritionist_id,author_id,record_type,status,content
@@ -153,6 +180,9 @@ insert into public.clinical_records(
     if (-not $ExpectRed -and -not $ExpectStage3Red -and -not $Stage2Only) {
         $commands += @{ Label='C5 stage 3 Storage migration'; Sql='\i /tmp/c5-storage.sql' }
     }
+    if (-not $ExpectRed -and -not $ExpectStage3Red -and -not $ExpectStage4Red -and -not $Stage2Only -and -not $Stage3Only) {
+        $commands += @{ Label='C5 stage 4 read migration'; Sql='\i /tmp/c5-read.sql' }
+    }
 
     foreach ($command in $commands) {
         docker exec -e PGPASSWORD=postgres $container psql -v ON_ERROR_STOP=1 -U supabase_admin -d postgres -c $command.Sql | Out-Null
@@ -161,7 +191,13 @@ insert into public.clinical_records(
 
     $previousErrorActionPreference = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
-    $matrixStageArgument = if ($ExpectRed -or $Stage2Only) { 'stage2_only=1' } else { 'stage3_only=1' }
+    $matrixStageArgument = if ($ExpectRed -or $Stage2Only) {
+        'stage2_only=1'
+    } elseif ($ExpectStage3Red -or $Stage3Only) {
+        'stage3_only=1'
+    } else {
+        'stage4_only=1'
+    }
     $matrixOutput = docker exec -e PGPASSWORD=postgres $container psql -v ON_ERROR_STOP=1 -v $matrixStageArgument -U supabase_admin -d postgres -f /tmp/c5-matrix.sql 2>&1
     $matrixExitCode = $LASTEXITCODE
     $ErrorActionPreference = $previousErrorActionPreference
@@ -175,6 +211,11 @@ insert into public.clinical_records(
             throw "C5 stage 3 RED contract did not fail for the expected missing upload RPC.`n$($matrixOutput -join "`n")"
         }
         Write-Output 'PASS: C5 stage 3 contract reproduced RED because secure upload RPCs are absent.'
+    } elseif ($ExpectStage4Red) {
+        if ($matrixExitCode -eq 0 -or ($matrixOutput -join "`n") -notmatch 'c5_read_rpc_missing') {
+            throw "C5 stage 4 RED contract did not fail for the expected missing read RPC.`n$($matrixOutput -join "`n")"
+        }
+        Write-Output 'PASS: C5 stage 4 contract reproduced RED because secure read RPCs are absent.'
     } else {
         if ($matrixExitCode -ne 0) { throw "C5 stage matrix failed.`n$($matrixOutput -join "`n")" }
         $concurrencySeed = @'
@@ -310,8 +351,10 @@ insert into storage.objects(bucket_id,name,owner_id,metadata) values(
 
         if ($Stage2Only) {
             Write-Output 'Clinical attachment domain stage 2 approved in local disposable database.'
-        } else {
+        } elseif ($Stage3Only) {
             Write-Output 'Clinical attachment Storage and two-phase upload stage 3 approved in local disposable database.'
+        } else {
+            Write-Output 'Clinical attachment authorized reads and short-lived URL contract stage 4 approved in local disposable database.'
         }
     }
 }
