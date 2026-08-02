@@ -5,6 +5,7 @@ import {
   CLINICAL_ATTACHMENT_MAX_FILE_SIZE,
   CLINICAL_ATTACHMENT_MAX_FILES_PER_BATCH,
   CLINICAL_ATTACHMENT_SIGNED_URL_TTL_SECONDS,
+  calculateClinicalAttachmentSha256,
   canTransitionClinicalAttachment,
   clinicalAttachmentActionRequiresReason,
   clinicalAttachmentCategoryLabel,
@@ -81,6 +82,32 @@ describe('clinical attachment contracts', () => {
       });
   });
 
+  it('calculates a lowercase SHA-256 digest from the original file bytes', async () => {
+    const bytes = new Uint8Array([10, 20, 30]).buffer;
+    const cryptoProvider = {
+      subtle: {
+        digest: async (algorithm, receivedBytes) => {
+          expect(algorithm).toBe('SHA-256');
+          expect(new Uint8Array(receivedBytes)).toEqual(new Uint8Array(bytes));
+          return new Uint8Array([0, 15, 16, 255]).buffer;
+        },
+      },
+    };
+
+    await expect(calculateClinicalAttachmentSha256({
+      ...file(),
+      arrayBuffer: async () => bytes,
+    }, cryptoProvider)).resolves.toBe('000f10ff');
+  });
+
+  it('refuses to hash a file outside the accepted upload contract', async () => {
+    await expect(calculateClinicalAttachmentSha256({
+      ...file({ type: 'text/html' }),
+      arrayBuffer: async () => new ArrayBuffer(0),
+    }, { subtle: { digest: async () => new ArrayBuffer(0) } }))
+      .rejects.toThrow('unsupported_mime_type');
+  });
+
   it('allows only explicit lifecycle transitions', () => {
     expect(canTransitionClinicalAttachment('uploading', 'active')).toBe(true);
     expect(canTransitionClinicalAttachment('pending_review', 'active')).toBe(true);
@@ -144,4 +171,3 @@ describe('clinical attachment contracts', () => {
     }, { audience: 'patient' })).toBeNull();
   });
 });
-

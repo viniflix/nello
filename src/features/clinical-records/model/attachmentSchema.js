@@ -98,6 +98,20 @@ export const validateClinicalAttachmentBatch = (files) => {
   };
 };
 
+export const calculateClinicalAttachmentSha256 = async (
+  file,
+  cryptoProvider = window.crypto,
+) => {
+  const validation = validateClinicalAttachmentFile(file);
+  if (!validation.valid) throw new Error(validation.errors[0]);
+  if (typeof file.arrayBuffer !== 'function') throw new Error('file_bytes_unavailable');
+  if (!cryptoProvider?.subtle?.digest) throw new Error('sha256_unavailable');
+
+  const bytes = await file.arrayBuffer();
+  const digest = await cryptoProvider.subtle.digest('SHA-256', bytes);
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
+};
+
 export const canTransitionClinicalAttachment = (fromStatus, toStatus) => (
   CLINICAL_ATTACHMENT_TRANSITIONS[fromStatus]?.includes(toStatus) === true
 );
@@ -130,4 +144,3 @@ export const normalizeClinicalAttachment = (data, { audience = 'professional' } 
       || 'Indisponível',
   };
 };
-

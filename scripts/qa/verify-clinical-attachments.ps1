@@ -1,5 +1,7 @@
 param(
     [switch]$ExpectRed,
+    [switch]$ExpectStage3Red,
+    [switch]$Stage2Only,
     [switch]$KeepContainer
 )
 
@@ -32,13 +34,18 @@ $migrationNames = @(
 )
 $migrations = $migrationNames | ForEach-Object { Join-Path $root "supabase\migrations\$_" }
 $c5Migration = Join-Path $root 'supabase\migrations\20260802120000_create_clinical_attachment_domain.sql'
+$c5StorageMigration = Join-Path $root 'supabase\migrations\20260802140000_secure_clinical_attachment_uploads.sql'
 $matrix = Join-Path $root 'supabase\tests\clinical_attachments_contract_matrix.sql'
+$storageFixture = Join-Path $root 'supabase\tests\storage_schema_fixture.sql'
 
-foreach ($file in @($baseline, $matrix) + $migrations) {
+foreach ($file in @($baseline, $matrix, $storageFixture) + $migrations) {
     if (-not (Test-Path -LiteralPath $file)) { throw "Required C5 artifact is missing: $file" }
 }
 if (-not $ExpectRed -and -not (Test-Path -LiteralPath $c5Migration)) {
     throw "Required C5 migration is missing: $c5Migration"
+}
+if (-not $ExpectRed -and -not $ExpectStage3Red -and -not $Stage2Only -and -not (Test-Path -LiteralPath $c5StorageMigration)) {
+    throw "Required C5 Storage migration is missing: $c5StorageMigration"
 }
 
 docker info 2>$null | Out-Null
@@ -66,23 +73,32 @@ try {
 
     docker cp $baseline "${container}:/tmp/baseline.sql" | Out-Null
     docker cp $matrix "${container}:/tmp/c5-matrix.sql" | Out-Null
+    docker cp $storageFixture "${container}:/tmp/storage-fixture.sql" | Out-Null
     for ($index = 0; $index -lt $migrations.Count; $index++) {
         docker cp $migrations[$index] "${container}:/tmp/migration-$index.sql" | Out-Null
     }
     if (-not $ExpectRed) { docker cp $c5Migration "${container}:/tmp/c5.sql" | Out-Null }
+    if (-not $ExpectRed -and -not $ExpectStage3Red -and -not $Stage2Only) {
+        docker cp $c5StorageMigration "${container}:/tmp/c5-storage.sql" | Out-Null
+    }
 
     $commands = @(
         @{ Label='database preparation'; Sql='CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA extensions; CREATE EXTENSION IF NOT EXISTS pgcrypto; ALTER EVENT TRIGGER graphql_watch_ddl DISABLE; ALTER EVENT TRIGGER graphql_watch_drop DISABLE; ALTER EVENT TRIGGER pgrst_ddl_watch DISABLE; ALTER EVENT TRIGGER pgrst_drop_watch DISABLE;' },
         @{ Label='baseline restore'; Sql='\i /tmp/baseline.sql' },
+        @{ Label='Storage schema fixture'; Sql='\i /tmp/storage-fixture.sql' },
         @{ Label='C5 personas seed'; Sql=@'
 insert into auth.users(instance_id,id,aud,role,email,encrypted_password,confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at) values
 ('00000000-0000-0000-0000-000000000000','10000000-0000-0000-0000-000000000081','authenticated','authenticated','nutritionist-c5@nello.test','not-used',now(),'{}','{}',now(),now()),
+('00000000-0000-0000-0000-000000000000','10000000-0000-0000-0000-000000000083','authenticated','authenticated','student-c5@nello.test','not-used',now(),'{}','{}',now(),now()),
 ('00000000-0000-0000-0000-000000000000','20000000-0000-0000-0000-000000000081','authenticated','authenticated','patient-c5@nello.test','not-used',now(),'{}','{}',now(),now()),
-('00000000-0000-0000-0000-000000000000','20000000-0000-0000-0000-000000000082','authenticated','authenticated','other-patient-c5@nello.test','not-used',now(),'{}','{}',now(),now());
+('00000000-0000-0000-0000-000000000000','20000000-0000-0000-0000-000000000082','authenticated','authenticated','other-patient-c5@nello.test','not-used',now(),'{}','{}',now(),now()),
+('00000000-0000-0000-0000-000000000000','20000000-0000-0000-0000-000000000083','authenticated','authenticated','student-patient-c5@nello.test','not-used',now(),'{}','{}',now(),now());
 insert into public.user_profiles(id,name,user_type,is_admin,is_active) values
 ('10000000-0000-0000-0000-000000000081','Nutricionista C5','nutritionist',false,true),
+('10000000-0000-0000-0000-000000000083','Estudante C5','nutritionist',false,true),
 ('20000000-0000-0000-0000-000000000081','Paciente C5','patient',false,true),
-('20000000-0000-0000-0000-000000000082','Outro Paciente C5','patient',false,true);
+('20000000-0000-0000-0000-000000000082','Outro Paciente C5','patient',false,true),
+('20000000-0000-0000-0000-000000000083','Paciente do Estudante C5','patient',false,true);
 '@ }
     )
     for ($index = 0; $index -lt $migrations.Count; $index++) {
@@ -95,11 +111,20 @@ insert into public.professional_verifications(
 ) values (
   '10000000-0000-0000-0000-000000000081','nutritionist','approved',
   'official_registry_manual','12345','CRN-3',now()+interval '1 year',now(),'matrix'
+) ,(
+  '10000000-0000-0000-0000-000000000083','student','approved',
+  'student_document_manual',null,null,now()+interval '6 months',now(),'matrix'
 ) on conflict (user_id) do update set
   professional_role=excluded.professional_role,status=excluded.status,
   verification_method=excluded.verification_method,crn_number=excluded.crn_number,
   crn_region=excluded.crn_region,normalized_crn=null,valid_until=excluded.valid_until,
   reviewed_at=excluded.reviewed_at,decision_reason=excluded.decision_reason;
+insert into public.student_supervisions(
+  student_id,supervisor_id,status,requested_at,responded_at,started_at
+) values (
+  '10000000-0000-0000-0000-000000000083','10000000-0000-0000-0000-000000000081',
+  'active',now(),now(),now()
+);
 insert into public.care_episodes(
   id,patient_id,nutritionist_id,status,started_at,start_reason,started_by
 ) values
@@ -111,6 +136,10 @@ insert into public.care_episodes(
   '40000000-0000-0000-0000-000000000082','20000000-0000-0000-0000-000000000082',
   '10000000-0000-0000-0000-000000000081','active',now(),'matrix-other',
   '10000000-0000-0000-0000-000000000081'
+),(
+  '40000000-0000-0000-0000-000000000083','20000000-0000-0000-0000-000000000083',
+  '10000000-0000-0000-0000-000000000083','active',now(),'matrix-student',
+  '10000000-0000-0000-0000-000000000083'
 );
 insert into public.clinical_records(
   id,patient_id,care_episode_id,nutritionist_id,author_id,record_type,status,content
@@ -121,6 +150,9 @@ insert into public.clinical_records(
 );
 '@ }
     if (-not $ExpectRed) { $commands += @{ Label='C5 stage 2 migration'; Sql='\i /tmp/c5.sql' } }
+    if (-not $ExpectRed -and -not $ExpectStage3Red -and -not $Stage2Only) {
+        $commands += @{ Label='C5 stage 3 Storage migration'; Sql='\i /tmp/c5-storage.sql' }
+    }
 
     foreach ($command in $commands) {
         docker exec -e PGPASSWORD=postgres $container psql -v ON_ERROR_STOP=1 -U supabase_admin -d postgres -c $command.Sql | Out-Null
@@ -129,7 +161,8 @@ insert into public.clinical_records(
 
     $previousErrorActionPreference = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
-    $matrixOutput = docker exec -e PGPASSWORD=postgres $container psql -v ON_ERROR_STOP=1 -v stage2_only=1 -U supabase_admin -d postgres -f /tmp/c5-matrix.sql 2>&1
+    $matrixStageArgument = if ($ExpectRed -or $Stage2Only) { 'stage2_only=1' } else { 'stage3_only=1' }
+    $matrixOutput = docker exec -e PGPASSWORD=postgres $container psql -v ON_ERROR_STOP=1 -v $matrixStageArgument -U supabase_admin -d postgres -f /tmp/c5-matrix.sql 2>&1
     $matrixExitCode = $LASTEXITCODE
     $ErrorActionPreference = $previousErrorActionPreference
     if ($ExpectRed) {
@@ -137,8 +170,13 @@ insert into public.clinical_records(
             throw "C5 RED contract did not fail for the expected missing domain.`n$($matrixOutput -join "`n")"
         }
         Write-Output 'PASS: C5 contract reproduced RED because the attachment domain is absent.'
+    } elseif ($ExpectStage3Red) {
+        if ($matrixExitCode -eq 0 -or ($matrixOutput -join "`n") -notmatch 'c5_upload_rpc_missing') {
+            throw "C5 stage 3 RED contract did not fail for the expected missing upload RPC.`n$($matrixOutput -join "`n")"
+        }
+        Write-Output 'PASS: C5 stage 3 contract reproduced RED because secure upload RPCs are absent.'
     } else {
-        if ($matrixExitCode -ne 0) { throw "C5 stage 2 matrix failed.`n$($matrixOutput -join "`n")" }
+        if ($matrixExitCode -ne 0) { throw "C5 stage matrix failed.`n$($matrixOutput -join "`n")" }
         $concurrencySeed = @'
 create table public.c5_concurrency_barrier(release boolean not null default false);
 insert into public.c5_concurrency_barrier(release) values(false);
@@ -202,7 +240,79 @@ insert into public.clinical_attachments(
             throw "C5 concurrent replacement expected one atomic winner and one root/version conflict.`n$($results.Output -join "`n")"
         }
         Write-Output 'PASS: C5 replacement chain has exactly one atomic version winner.'
-        Write-Output 'Clinical attachment domain stage 2 approved in local disposable database.'
+
+        if (-not $Stage2Only) {
+            $confirmationSeed = @'
+update public.c5_concurrency_barrier set release=false;
+insert into public.clinical_attachments(
+  id,patient_id,care_episode_id,category_code,description,source,author_id,
+  storage_path,original_filename,mime_type,size_bytes,status,visibility,upload_expires_at
+) values (
+  '50000000-0000-0000-0000-000000000094','20000000-0000-0000-0000-000000000081',
+  '40000000-0000-0000-0000-000000000081','laboratory_exam','Confirmacao concorrente C5',
+  'nutritionist','10000000-0000-0000-0000-000000000081','c5/concurrency/confirmation',
+  'confirmation.pdf','application/pdf',4096,'uploading','professional_private',now()+interval '15 minutes'
+);
+insert into storage.objects(bucket_id,name,owner_id,metadata) values(
+  'clinical-attachments','c5/concurrency/confirmation','10000000-0000-0000-0000-000000000081',
+  jsonb_build_object('size',4096,'mimetype','application/pdf')
+);
+'@
+            docker exec -e PGPASSWORD=postgres $container psql -v ON_ERROR_STOP=1 -U supabase_admin -d postgres -c $confirmationSeed | Out-Null
+            if ($LASTEXITCODE -ne 0) { throw 'C5 concurrent confirmation fixture could not be prepared.' }
+
+            $confirmationBarrierKey = 91053
+            $confirmationBlocker = Start-Job -ScriptBlock {
+                param($ContainerName,$Key)
+                $sql = "select pg_advisory_lock($Key); do `$`$ begin loop exit when (select release from public.c5_concurrency_barrier limit 1); perform pg_sleep(0.05); end loop; end `$`$; select pg_advisory_unlock($Key);"
+                $sql | docker exec -i -e PGPASSWORD=postgres $ContainerName psql -v ON_ERROR_STOP=1 -U supabase_admin -d postgres 2>&1 | Out-Null
+            } -ArgumentList $container,$confirmationBarrierKey
+            foreach ($attempt in 1..100) {
+                $held = docker exec -e PGPASSWORD=postgres $container psql -At -U supabase_admin -d postgres -c "select count(*) from pg_locks where locktype='advisory' and objid=$confirmationBarrierKey and granted"
+                if ([int]$held -ge 1) { break }
+                Start-Sleep -Milliseconds 50
+            }
+            if ([int]$held -lt 1) { throw 'C5 confirmation concurrency barrier was not acquired.' }
+
+            $confirmationSql = "begin; set role authenticated; select set_config('request.jwt.claim.sub','10000000-0000-0000-0000-000000000081',true); select pg_advisory_xact_lock_shared($confirmationBarrierKey); select public.confirm_clinical_attachment_upload('50000000-0000-0000-0000-000000000094',repeat('5',64),4096,'application/pdf'); commit;"
+            $confirmationJobs = 1..2 | ForEach-Object {
+                Start-Job -ScriptBlock {
+                    param($ContainerName,$Statement)
+                    $output = & docker exec -e PGPASSWORD=postgres $ContainerName psql -v ON_ERROR_STOP=1 --set=VERBOSITY=verbose -U supabase_admin -d postgres -c $Statement 2>&1
+                    [pscustomobject]@{ ExitCode=$LASTEXITCODE; Output=($output -join "`n") }
+                } -ArgumentList $container,$confirmationSql
+            }
+            try {
+                foreach ($attempt in 1..100) {
+                    $waiting = docker exec -e PGPASSWORD=postgres $container psql -At -U supabase_admin -d postgres -c "select count(*) from pg_locks where locktype='advisory' and objid=$confirmationBarrierKey and not granted"
+                    if ([int]$waiting -ge 2) { break }
+                    Start-Sleep -Milliseconds 50
+                }
+                if ([int]$waiting -lt 2) { throw 'C5 confirmation sessions did not overlap.' }
+                docker exec -e PGPASSWORD=postgres $container psql -v ON_ERROR_STOP=1 -U supabase_admin -d postgres -c 'update public.c5_concurrency_barrier set release=true' | Out-Null
+                $confirmationBlocker | Wait-Job | Receive-Job | Out-Null
+                $confirmationResults = $confirmationJobs | Wait-Job | Receive-Job
+            } finally {
+                docker exec -e PGPASSWORD=postgres $container psql -U supabase_admin -d postgres -c 'update public.c5_concurrency_barrier set release=true' 2>$null | Out-Null
+                $confirmationBlocker | Stop-Job -ErrorAction SilentlyContinue
+                $confirmationBlocker | Remove-Job -Force -ErrorAction SilentlyContinue
+                $confirmationJobs | Remove-Job -Force -ErrorAction SilentlyContinue
+            }
+            $confirmationWinners = @($confirmationResults | Where-Object { $_.ExitCode -eq 0 }).Count
+            $confirmationConflicts = @($confirmationResults | Where-Object {
+                $_.ExitCode -ne 0 -and $_.Output -match 'P0001' -and $_.Output -match 'upload_already_finalized'
+            }).Count
+            if ($confirmationWinners -ne 1 -or $confirmationConflicts -ne 1) {
+                throw "C5 concurrent confirmation expected one atomic winner and one finalized conflict.`n$($confirmationResults.Output -join "`n")"
+            }
+            Write-Output 'PASS: C5 upload confirmation has exactly one atomic winner.'
+        }
+
+        if ($Stage2Only) {
+            Write-Output 'Clinical attachment domain stage 2 approved in local disposable database.'
+        } else {
+            Write-Output 'Clinical attachment Storage and two-phase upload stage 3 approved in local disposable database.'
+        }
     }
 }
 finally {
