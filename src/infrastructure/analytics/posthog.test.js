@@ -37,6 +37,8 @@ describe('sanitizeAnalyticsProperties', () => {
         $current_url: 'https://www.hipozero.com.br/nutritionist/patients/:patient/meal-plan',
         route: '/nutritionist/patients/:patient/anthropometry',
         error: 'Contact [EMAIL] for [UUID]',
+        app_release: '0.0.0',
+        environment: 'test',
       },
     });
   });

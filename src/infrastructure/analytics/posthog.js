@@ -49,7 +49,11 @@ export function sanitizePosthogEvent(captureResult) {
   if (!captureResult) return null;
   return {
     ...captureResult,
-    properties: sanitizeAnalyticsProperties(captureResult.properties || {}),
+    properties: {
+      ...sanitizeAnalyticsProperties(captureResult.properties || {}),
+      app_release: import.meta.env.VITE_APP_RELEASE || 'development',
+      environment: import.meta.env.MODE || 'development',
+    },
   };
 }
 
