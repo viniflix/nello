@@ -2,6 +2,7 @@ import { supabase } from '@/lib/customSupabaseClient';
 import { calculateCaloriesFromMacros } from '@/lib/utils/nutrition-calculations';
 import { getTodayIsoDate } from '@/lib/utils/date';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
+import { normalizeMealTime } from '@/lib/utils/mealTime';
 
 
 // =====================================================
@@ -555,13 +556,15 @@ export const addMealToPlan = async (mealData) => {
             order_index
         } = mealData;
 
+        const normalizedMealTime = normalizeMealTime(meal_time);
+
         const { data, error } = await supabase
             .from('meal_plan_meals')
             .insert([{
                 meal_plan_id,
                 name,
                 meal_type,
-                meal_time: meal_time || null,
+                meal_time: normalizedMealTime,
                 notes: notes || null,
                 order_index: order_index || 0
             }])
@@ -584,9 +587,12 @@ export const addMealToPlan = async (mealData) => {
  */
 export const updateMealInPlan = async (mealId, updates) => {
     try {
+        const normalizedUpdates = Object.prototype.hasOwnProperty.call(updates, 'meal_time')
+            ? { ...updates, meal_time: normalizeMealTime(updates.meal_time) }
+            : updates;
         const { data, error } = await supabase
             .from('meal_plan_meals')
-            .update(updates)
+            .update(normalizedUpdates)
             .eq('id', mealId)
             .select()
             .single();
@@ -1347,7 +1353,7 @@ export const updateFullMealPlan = async (planId, planData) => {
             p_meals: (planData.meals || []).map((meal, idx) => ({
                 name: meal.name,
                 meal_type: meal.meal_type || 'other',
-                meal_time: meal.meal_time || null,
+                meal_time: normalizeMealTime(meal.meal_time),
                 notes: meal.notes || null,
                 order_index: meal.order_index ?? idx,
                 total_calories: meal.calories || meal.total_calories || 0,
@@ -1717,7 +1723,7 @@ export const applyTemplateToPatient = async (templateId, patientId, startDate = 
             meal_plan_id: newPlan.id,
             name: meal.name,
             meal_type: meal.meal_type,
-            meal_time: meal.meal_time,
+            meal_time: normalizeMealTime(meal.meal_time),
             notes: meal.notes,
             order_index: meal.order_index ?? index
         }));

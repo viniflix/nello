@@ -135,6 +135,22 @@ export const normalizeClinicalAttachment = (data, { audience = 'professional' } 
     }, {});
   }
 
+  if (audience === 'patient_documents') {
+    const visible = data.status === 'active' && data.visibility === 'shared_with_patient';
+    const ownSubmission = data.source === 'patient'
+      && ['pending_review', 'active', 'invalidated'].includes(data.status);
+    if (!visible && !ownSubmission) return null;
+    return {
+      ...PATIENT_PROJECTION_FIELDS.reduce((projection, field) => {
+        if (data[field] !== undefined) projection[field] = data[field];
+        return projection;
+      }, {}),
+      category_label: clinicalAttachmentCategoryLabel(data.category_code),
+      status_label: CLINICAL_ATTACHMENT_STATUS_LABELS[data.status] || data.status,
+      can_open: data.can_open === true,
+    };
+  }
+
   return {
     ...data,
     category_label: clinicalAttachmentCategoryLabel(data.category_code),

@@ -17,6 +17,7 @@ import ClinicalRecordsList from '@/features/clinical-records/components/Clinical
 import EvolutionEditor from '@/features/clinical-records/components/EvolutionEditor';
 import EvolutionTemplateSelector from '@/features/clinical-records/components/EvolutionTemplateSelector';
 import { createClinicalEvolutionDraft, listClinicalRecordsByEpisode } from '@/features/clinical-records/api/evolution-queries';
+import ClinicalAttachmentsPanel from '@/features/clinical-records/components/ClinicalAttachmentsPanel';
 
 const TabContentClinical = ({ patientId, patientData, modulesStatus = {}, viewedEpisodeId, writableEpisodeId, currentUserId, canCosign }) => {
     const patient = patientData || { id: patientId };
@@ -404,6 +405,16 @@ const TabContentClinical = ({ patientId, patientData, modulesStatus = {}, viewed
                     />
                 )}
             </div>
+
+            {viewedEpisodeId ? (
+                <div className="border-t border-zinc-200 pt-8 dark:border-zinc-800">
+                    <ClinicalAttachmentsPanel
+                        patientId={patientId}
+                        episodeId={viewedEpisodeId}
+                        canUpload={Boolean(writableEpisodeId)}
+                    />
+                </div>
+            ) : null}
 
             <EvolutionTemplateSelector 
                 open={showTemplateSelector} 

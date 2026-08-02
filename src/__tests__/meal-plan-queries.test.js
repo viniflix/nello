@@ -49,7 +49,46 @@ const {
     promoteDraftToActive,
     createDraftMealPlan,
     deleteDraftMealPlan,
+    addMealToPlan,
 } = await import('@/lib/supabase/meal-plan-queries');
+
+describe('addMealToPlan - validação de horário', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        mockFrom.mockReturnValue(chainable);
+        Object.values(chainable).forEach((fn) => fn.mockReturnValue(chainable));
+    });
+
+    it('bloqueia horário incompleto antes de enviar ao Supabase', async () => {
+        const result = await addMealToPlan({
+            meal_plan_id: 10,
+            name: 'Café da manhã',
+            meal_type: 'breakfast',
+            meal_time: '1',
+            order_index: 0,
+        });
+
+        expect(result.data).toBeNull();
+        expect(result.error?.code).toBe('MEAL_TIME_INVALID');
+        expect(mockFrom).not.toHaveBeenCalled();
+    });
+
+    it('normaliza segundos antes de persistir um horário válido', async () => {
+        mockSingle.mockResolvedValue({ data: { id: 50 }, error: null });
+
+        await addMealToPlan({
+            meal_plan_id: 10,
+            name: 'Almoço',
+            meal_type: 'lunch',
+            meal_time: '12:30:00',
+            order_index: 1,
+        });
+
+        expect(mockInsert).toHaveBeenCalledWith([
+            expect.objectContaining({ meal_time: '12:30' }),
+        ]);
+    });
+});
 
 // ─── Testes ────────────────────────────────────────────────────────────────────
 

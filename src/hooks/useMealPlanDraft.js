@@ -158,8 +158,9 @@ export function useMealPlanDraft({ patientId, nutritionistId, enabled = false })
             const { error: batchError } = await addFoodsToMeal(newMeal.id, mealData.foods);
             if (batchError) {
                 console.error('[useMealPlanDraft] Erro ao salvar alimentos no rascunho:', batchError);
+                await deleteMealFromPlan(newMeal.id);
                 setSaveStatus('error');
-                return newMeal.id; // refeição existe no banco, mas alimentos falharam
+                return null;
             }
             // Recalcular totais da refeição e do plano após salvar alimentos
             await recalculateMealNutrition(newMeal.id);
@@ -216,8 +217,9 @@ export function useMealPlanDraft({ patientId, nutritionistId, enabled = false })
                 const { error: batchError } = await addFoodsToMeal(newMeal.id, mealData.foods);
                 if (batchError) {
                     console.error('[useMealPlanDraft] Erro ao salvar alimentos ao atualizar refeição:', batchError);
-                    // Nova refeição existe mas sem alimentos — ainda melhor que perder tudo
-                    // Continua para deletar a antiga de qualquer forma
+                    await deleteMealFromPlan(newMeal.id);
+                    setSaveStatus('error');
+                    return null; // a refeição antiga permanece intacta
                 }
                 // Recalcular totais da refeição e do plano após salvar alimentos
                 await recalculateMealNutrition(newMeal.id);

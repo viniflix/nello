@@ -254,7 +254,7 @@ const MealPlanForm = ({
             activeDraftId = await draft.startNewDraft();
             if (!activeDraftId) {
                 console.error('[MealPlanForm] Não foi possível criar rascunho. Refeição não adicionada.');
-                return;
+                return false;
             }
         }
 
@@ -263,10 +263,12 @@ const MealPlanForm = ({
         if (!isEditing && activeDraftId) {
             // Persiste refeição + alimentos no rascunho imediatamente
             const dbMealId = await draft.saveMeal({ ...mealData, order_index: meals.length });
+            if (!dbMealId) return false;
             newMealData.dbId = dbMealId;
         }
 
         setMeals(prev => [...prev, newMealData]);
+        return true;
     };
 
     const handleEditMeal = (meal) => {
@@ -281,6 +283,7 @@ const MealPlanForm = ({
         // Persist to DB when building a draft (not editing an existing saved plan)
         if (!isEditing && draft.draftId && draft.updateMeal) {
             newDbId = await draft.updateMeal(editingMeal.dbId, updatedMeal, mealIndex >= 0 ? mealIndex : 0);
+            if (!newDbId) return false;
         }
 
         setMeals(prev => prev.map(m =>
@@ -289,6 +292,7 @@ const MealPlanForm = ({
                 : m
         ));
         setEditingMeal(null);
+        return true;
     };
 
     const handleDeleteMeal = async (meal) => {

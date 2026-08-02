@@ -9,6 +9,7 @@ import { getPatientRecordFoundation } from '@/features/clinical-records/api/reco
 import { listClinicalRecordVersionChain } from '@/features/clinical-records/api/amendment-queries';
 import { getMeaningfulClinicalText } from '@/features/clinical-records/model/evolutionSchema';
 import { getCurrentSharedClinicalRecords } from '@/features/patient-progress/model/progressTimeline';
+import ClinicalAttachmentsPanel from '@/features/clinical-records/components/ClinicalAttachmentsPanel';
 
 const TYPE_LABELS = {
   clinical_evolution: 'Evolução clínica',
@@ -181,6 +182,8 @@ export default function PatientClinicalRecordsPage() {
             </div>
           </div>
         </header>
+
+        <ClinicalAttachmentsPanel audience="patient" />
 
         {loading && (
           <div role="status" aria-label="Carregando registros clínicos" className="grid gap-4 md:grid-cols-2">

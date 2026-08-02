@@ -29,6 +29,7 @@ import ClinicalRecordAmendmentDialog from './ClinicalRecordAmendmentDialog';
 import ClinicalRecordComparison from './ClinicalRecordComparison';
 import ClinicalRecordVersionHistory from './ClinicalRecordVersionHistory';
 import AbandonCorrectionDialog from './AbandonCorrectionDialog';
+import ClinicalAttachmentsPanel from './ClinicalAttachmentsPanel';
 
 const RETROSPECTIVE_THRESHOLD_MS = 5 * 60 * 1000;
 
@@ -477,6 +478,15 @@ const EvolutionEditor = ({
                   O modelo desta evolução não possui seções disponíveis.
                 </p>
               )}
+              {record?.patient_id && record?.care_episode_id ? (
+                <div className="border-t pt-6">
+                  <ClinicalAttachmentsPanel
+                    patientId={record.patient_id}
+                    episodeId={record.care_episode_id}
+                    clinicalRecordId={record.id}
+                  />
+                </div>
+              ) : null}
             </div>
           </ScrollArea>
 

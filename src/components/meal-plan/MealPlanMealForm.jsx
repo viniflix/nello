@@ -25,6 +25,7 @@ import { Badge } from '@/components/ui/badge';
 import AddFoodToMealDialog from './AddFoodToMealDialog';
 import { formatQuantityWithUnit } from '@/lib/utils/measureTranslations';
 import SubstitutionDialog from './SubstitutionDialog';
+import { isValidMealTime, normalizeMealTime } from '@/lib/utils/mealTime';
 
 const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null }) => {
     const [formData, setFormData] = useState({
@@ -40,6 +41,7 @@ const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null }) => {
     const [showSubstitutions, setShowSubstitutions] = useState(false);
     const [substitutingFood, setSubstitutingFood] = useState(null);
     const [errors, setErrors] = useState({});
+    const [isSaving, setIsSaving] = useState(false);
 
     const mealTypes = [
         { value: 'breakfast', label: 'Café da Manhã' },
@@ -150,11 +152,15 @@ const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null }) => {
             newErrors.foods = 'Adicione pelo menos um alimento';
         }
 
+        if (!isValidMealTime(formData.meal_time)) {
+            newErrors.meal_time = 'Informe um horário completo no formato HH:MM ou deixe em branco';
+        }
+
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
         if (!validate()) return;
 
         const totals = calculateTotals();
@@ -167,14 +173,32 @@ const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null }) => {
         const mealData = {
             name: mealName,
             meal_type: formData.meal_type,
-            meal_time: formData.meal_time,
+            meal_time: normalizeMealTime(formData.meal_time),
             notes: formData.notes,
             foods,
             ...totals
         };
 
-        onSave(mealData);
-        handleClose();
+        setIsSaving(true);
+        setErrors((current) => ({ ...current, save: undefined }));
+        try {
+            const saved = await onSave(mealData);
+            if (saved === false) {
+                setErrors((current) => ({
+                    ...current,
+                    save: 'Não foi possível salvar esta refeição. Seus dados foram mantidos; tente novamente.'
+                }));
+                return;
+            }
+            handleClose();
+        } catch {
+            setErrors((current) => ({
+                ...current,
+                save: 'Não foi possível salvar esta refeição. Seus dados foram mantidos; tente novamente.'
+            }));
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const handleClose = () => {
@@ -244,7 +268,11 @@ const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null }) => {
                                             id="meal_time"
                                             value={formData.meal_time}
                                             onChange={(value) => handleChange('meal_time', value)}
+                                            className={errors.meal_time ? 'border-destructive' : ''}
                                         />
+                                        {errors.meal_time && (
+                                            <p className="text-xs text-destructive">{errors.meal_time}</p>
+                                        )}
                                     </div>
                                 </div>
 
@@ -399,11 +427,14 @@ const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null }) => {
                     </div>
 
                     <DialogFooter>
+                        {errors.save && (
+                            <p className="mr-auto text-sm text-destructive" role="alert">{errors.save}</p>
+                        )}
                         <Button variant="outline" onClick={handleClose}>
                             <X className="h-4 w-4 mr-2" />
                             Cancelar
                         </Button>
-                        <Button onClick={handleSave}>
+                        <Button onClick={handleSave} disabled={isSaving}>
                             {initialData ? 'Atualizar' : 'Adicionar'} Refeição
                         </Button>
                     </DialogFooter>

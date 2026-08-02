@@ -1,8 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   createClinicalAttachmentSignedUrl,
+  changeClinicalAttachmentVisibility,
+  getMyClinicalDocumentContext,
+  invalidateClinicalAttachment,
   listClinicalAttachmentsByEpisode,
+  listMyClinicalDocuments,
   listPatientClinicalAttachments,
+  reviewPatientClinicalAttachment,
 } from './attachment-queries';
 
 const mocks = vi.hoisted(() => ({
@@ -138,5 +143,63 @@ describe('clinical attachment read API', () => {
       error,
     );
     expect(mocks.createSignedUrl).not.toHaveBeenCalled();
+  });
+
+  it('maps the complete professional lifecycle to audited RPCs', async () => {
+    mocks.rpc.mockResolvedValue({ data: { success: true }, error: null });
+
+    await reviewPatientClinicalAttachment(attachmentId, {
+      decision: 'reject',
+      reason: 'Documento ilegível para avaliação',
+    });
+    await changeClinicalAttachmentVisibility(
+      attachmentId,
+      'shared_with_patient',
+      'Compartilhado após validação clínica',
+    );
+    await invalidateClinicalAttachment(attachmentId, 'Documento perdeu validade clínica');
+
+    expect(mocks.rpc).toHaveBeenNthCalledWith(1, 'review_patient_clinical_attachment', expect.objectContaining({
+      p_attachment_id: attachmentId,
+      p_decision: 'reject',
+    }));
+    expect(mocks.rpc).toHaveBeenNthCalledWith(2, 'change_clinical_attachment_visibility', expect.objectContaining({
+      p_visibility: 'shared_with_patient',
+    }));
+    expect(mocks.rpc).toHaveBeenNthCalledWith(3, 'invalidate_clinical_attachment', expect.objectContaining({
+      p_reason: 'Documento perdeu validade clínica',
+    }));
+  });
+
+  it('returns the current patient document context', async () => {
+    mocks.rpc.mockResolvedValue({
+      data: { patient_id: 'patient-1', care_episode_id: 'episode-1', can_upload: true },
+      error: null,
+    });
+
+    await expect(getMyClinicalDocumentContext()).resolves.toEqual({
+      patient_id: 'patient-1', care_episode_id: 'episode-1', can_upload: true,
+    });
+    expect(mocks.rpc).toHaveBeenCalledWith('get_my_clinical_document_context');
+  });
+
+  it('keeps pending patient uploads in the minimized document inbox', async () => {
+    mocks.rpc.mockResolvedValue({
+      data: { items: [{
+        id: attachmentId,
+        category_code: 'patient_document',
+        source: 'patient',
+        status: 'pending_review',
+        visibility: 'professional_private',
+        original_filename: 'exame.pdf',
+        storage_path: 'must-not-leak',
+      }] },
+      error: null,
+    });
+
+    const result = await listMyClinicalDocuments('episode-1');
+
+    expect(result).toEqual([expect.objectContaining({ id: attachmentId, status: 'pending_review' })]);
+    expect(result[0]).not.toHaveProperty('storage_path');
   });
 });
