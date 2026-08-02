@@ -1,7 +1,13 @@
+import { captureOperationalError } from '@/infrastructure/observability/telemetry';
+
 export const logSupabaseError = (context, error) => {
   const msg = error?.message || String(error);
-  const details = error?.details || error?.hint || error?.code;
-  console.error(`[Supabase] ${context}:`, msg, details ? { details, code: error?.code } : '');
+  console.error(`[Supabase] ${context}:`, msg, error?.code ? { code: error.code } : '');
+  return captureOperationalError(error, {
+    operation: context,
+    module: 'supabase_query',
+    source: 'supabase',
+  });
 };
 
 export const normalizeEventName = (eventName, fallback = 'unknown.event') => {

@@ -1,0 +1,20 @@
+# Live observability for the Nello workspace. Authentication is stored by Codex OAuth;
+# no Sentry or PostHog secret is committed with this project configuration.
+
+[mcp_servers.sentry]
+url = "https://mcp.sentry.dev/mcp/nello/javascript-react"
+auth = "oauth"
+enabled = true
+required = false
+default_tools_approval_mode = "writes"
+startup_timeout_sec = 20
+tool_timeout_sec = 90
+
+[mcp_servers.posthog]
+url = "https://mcp.posthog.com/mcp?mode=cli&readonly=true&project_id=341310"
+auth = "oauth"
+enabled = true
+required = false
+default_tools_approval_mode = "prompt"
+startup_timeout_sec = 20
+tool_timeout_sec = 90

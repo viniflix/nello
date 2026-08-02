@@ -13,6 +13,7 @@
     "test:coverage": "vitest run --coverage",
     "check:structure": "node scripts/qa/check-project-structure.mjs",
     "check:bundle": "node scripts/qa/check-bundle-budget.mjs",
+    "diagnose:observability": "node scripts/observability/diagnose.mjs",
     "verify": "npm run check:structure && npm run lint && npm run test:run && vite build && npm run check:bundle"
   },
   "dependencies": {

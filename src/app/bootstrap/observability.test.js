@@ -21,6 +21,16 @@ describe('createSentryOptions', () => {
       tracePropagationTargets: [],
     });
   });
+
+  it('captures every error replay only when explicitly enabled', () => {
+    const options = createSentryOptions({
+      VITE_SENTRY_DSN: 'https://public@example.invalid/1',
+      VITE_SENTRY_REPLAY_ENABLED: 'true',
+    });
+
+    expect(options.replaysSessionSampleRate).toBe(0);
+    expect(options.replaysOnErrorSampleRate).toBe(1);
+  });
 });
 
 describe('scrubSentryEvent', () => {

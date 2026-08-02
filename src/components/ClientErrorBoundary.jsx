@@ -5,9 +5,9 @@ import * as Sentry from '@sentry/react';
 const FallbackComponent = ({ error, resetError }) => (
   <div className="min-h-screen flex items-center justify-center p-4 bg-background">
     <div className="max-w-md w-full rounded-xl border bg-card p-6 shadow-xl text-center">
-      <h2 className="text-lg font-semibold text-foreground">Algo deu errado 😓</h2>
+      <h2 className="text-lg font-semibold text-foreground">Algo deu errado</h2>
       <p className="text-sm text-muted-foreground mt-2">
-        Nossa equipe de engenharia foi notificada automaticamente com os detalhes técnicos e uma gravação de tela blindada (sem dados sensíveis) para corrigir este problema rapidamente.
+        O erro foi registrado automaticamente com dados técnicos protegidos. Recarregue a página para continuar.
       </p>
       
       <div className="bg-destructive/10 text-destructive text-xs p-3 rounded mt-4 overflow-auto text-left max-h-32">
@@ -18,8 +18,8 @@ const FallbackComponent = ({ error, resetError }) => (
         <Button
           variant="default"
           onClick={() => {
-             resetError();
-             window.location.reload();
+            resetError();
+            window.location.reload();
           }}
           className="w-full"
         >
@@ -37,4 +37,3 @@ export default function ClientErrorBoundary({ children }) {
     </Sentry.ErrorBoundary>
   );
 }
-

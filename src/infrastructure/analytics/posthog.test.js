@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { sanitizeAnalyticsProperties } from './posthog';
+import { sanitizeAnalyticsProperties, sanitizePosthogEvent } from './posthog';
 
 describe('sanitizeAnalyticsProperties', () => {
   it('keeps operational metrics and removes nested personal or clinical data', () => {
@@ -21,5 +21,23 @@ describe('sanitizeAnalyticsProperties', () => {
       payload: { item_count: 3 },
     });
     expect(source.payload.diagnosis).toBe('sensitive');
+  });
+
+  it('redacts patient routes, identifiers, email addresses and query strings', () => {
+    expect(sanitizePosthogEvent({
+      event: '$pageview',
+      properties: {
+        $current_url: 'https://www.hipozero.com.br/nutritionist/patients/9ba45c9b-d0d4-490d-96a0-6addd7826833/meal-plan?token=secret',
+        route: '/nutritionist/patients/patient-slug/anthropometry',
+        error: 'Contact patient@example.com for 9ba45c9b-d0d4-490d-96a0-6addd7826833',
+      },
+    })).toEqual({
+      event: '$pageview',
+      properties: {
+        $current_url: 'https://www.hipozero.com.br/nutritionist/patients/:patient/meal-plan',
+        route: '/nutritionist/patients/:patient/anthropometry',
+        error: 'Contact [EMAIL] for [UUID]',
+      },
+    });
   });
 });

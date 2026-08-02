@@ -2,7 +2,10 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { Loader2 } from 'lucide-react';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useNavigate } from 'react-router-dom';
-import { identifyUser, resetUser } from '@/infrastructure/analytics/posthog';
+import {
+  clearObservabilityUser,
+  setObservabilityUser,
+} from '@/infrastructure/observability/telemetry';
 import { useQueryClient } from '@tanstack/react-query';
 import { useProfile } from '@/hooks/useProfile';
 import { getMyProfessionalVerification } from '@/lib/supabase/verification-queries';
@@ -100,7 +103,7 @@ export function AuthProvider({ children }) {
       });
       
       // Identifica o usuário no Analytics (agora com dados sanitizados)
-      identifyUser({ id: user.id, profile });
+      setObservabilityUser({ id: user.id, profile });
     } else if (isProfileError && isOffline) {
         // Se houver erro de perfil mas estivermos offline, mantemos o que temos (graceful degradation)
         if (import.meta.env.DEV) console.warn('[AuthContext] Perfil indisponível devido a offline, mantendo sessão.');
@@ -109,7 +112,7 @@ export function AuthProvider({ children }) {
 
   const signOut = useCallback(async () => {
     setUser(null);
-    resetUser(); // PostHog: limpa identidade ao sair
+    clearObservabilityUser();
     queryClient.clear(); // Limpa cache global ao sair
     try {
       await supabase.auth.signOut();
@@ -134,6 +137,7 @@ export function AuthProvider({ children }) {
       try {
         if (!nextSession?.user) {
           setUser(null);
+          clearObservabilityUser();
           continue;
         }
 
@@ -235,6 +239,7 @@ export function AuthProvider({ children }) {
 
       if (event === 'SIGNED_OUT') {
         setUser(null);
+        clearObservabilityUser();
         setLoading(false);
         return;
       }

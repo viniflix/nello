@@ -23,8 +23,19 @@ function normalizeKey(key) {
   return key.replace(/([a-z])([A-Z])/g, '$1_$2').toLowerCase();
 }
 
+export function scrubAnalyticsString(value) {
+  return value
+    .replace(/Bearer\s+[A-Za-z0-9._~-]+/gi, 'Bearer [REDACTED]')
+    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, '[EMAIL]')
+    .replace(/(\/patients\/)[^/?#\s]+/gi, '$1:patient')
+    .replace(/\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b/g, '[CPF]')
+    .replace(/\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/gi, '[UUID]')
+    .replace(/(https?:\/\/[^\s?#]+)[?#][^\s]*/gi, '$1');
+}
+
 export function sanitizeAnalyticsProperties(value) {
   if (Array.isArray(value)) return value.map(sanitizeAnalyticsProperties);
+  if (typeof value === 'string') return scrubAnalyticsString(value);
   if (!value || typeof value !== 'object') return value;
 
   return Object.fromEntries(
@@ -32,6 +43,14 @@ export function sanitizeAnalyticsProperties(value) {
       .filter(([key]) => !SENSITIVE_KEYS.has(normalizeKey(key)))
       .map(([key, nestedValue]) => [key, sanitizeAnalyticsProperties(nestedValue)]),
   );
+}
+
+export function sanitizePosthogEvent(captureResult) {
+  if (!captureResult) return null;
+  return {
+    ...captureResult,
+    properties: sanitizeAnalyticsProperties(captureResult.properties || {}),
+  };
 }
 
 export function identifyUser(user) {
@@ -63,6 +82,8 @@ export function track(event, properties = {}) {
     posthog.capture(event, {
       ...sanitizeAnalyticsProperties(properties),
       platform: 'nello',
+      app_release: import.meta.env.VITE_APP_RELEASE || 'development',
+      environment: import.meta.env.MODE || 'development',
     });
   } catch (err) {
     if (import.meta.env.DEV) console.warn('[PostHog] track failed:', err.message);
@@ -71,6 +92,7 @@ export function track(event, properties = {}) {
 
 // Catalogo estavel de eventos de produto.
 export const Events = {
+  OPERATION_FAILED: 'operation_failed',
   MEAL_LOGGED: 'meal_logged',
   MEAL_EDITED: 'meal_edited',
   MEAL_DELETED: 'meal_deleted',
