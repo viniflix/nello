@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/customSupabaseClient';
 import { translateMealType } from '@/utils/mealTranslations';
-import { buildActivityEventPayload, logSupabaseError } from '@/lib/supabase/query-helpers';
+import { buildActivityEventPayload, isExpectedRequestCancellation, logSupabaseError } from '@/lib/supabase/query-helpers';
 import { classifyLabResultsRiskBatch, getLabRiskRules } from '@/lib/supabase/lab-results-queries';
 
 import { isUuid } from '@/lib/utils/patientRoutes';
@@ -803,6 +803,13 @@ const buildFeedTaskIdentity = ({ nutritionistId, sourceType, sourceId }) => {
     };
 };
 
+const ownsCurrentSession = async (expectedUserId) => {
+    if (!expectedUserId) return false;
+    const { data, error } = await supabase.auth.getSession();
+    if (error) throw error;
+    return data?.session?.user?.id === expectedUserId;
+};
+
 const pushFeedTaskAuditEntry = (metadata, entry) => {
     const safeMetadata = metadata && typeof metadata === 'object' ? metadata : {};
     const previous = Array.isArray(safeMetadata.audit_history) ? safeMetadata.audit_history : [];
@@ -903,6 +910,10 @@ export const upsertFeedTask = async ({
     auditAction = null
 }) => {
     try {
+        if (!await ownsCurrentSession(nutritionistId)) {
+            return { data: null, error: null, skipped: true };
+        }
+
         const identity = buildFeedTaskIdentity({ nutritionistId, sourceType, sourceId });
         const { data: existingRows, error: existingError } = await supabase
             .from('feed_tasks')
@@ -1040,6 +1051,10 @@ export const syncFeedTasksFromItems = async (nutritionistId, items = [], existin
     try {
         if (!nutritionistId) {
             return { data: [], error: null };
+        }
+
+        if (!await ownsCurrentSession(nutritionistId)) {
+            return { data: [], error: null, skipped: true };
         }
 
         const stateMap = new Map(
@@ -1523,12 +1538,19 @@ export const archivePatient = async (patientId, nutritionistId) => {
     }
 };
 
-export const getMyCareRelationship = async () => {
+export const getMyCareRelationship = async ({ signal } = {}) => {
     try {
-        const { data, error } = await supabase.rpc('get_my_care_relationship');
+        if (signal?.aborted) return { data: null, error: null, cancelled: true };
+
+        let request = supabase.rpc('get_my_care_relationship');
+        if (signal) request = request.abortSignal(signal);
+        const { data, error } = await request;
         if (error) throw error;
         return { data, error: null };
     } catch (error) {
+        if (isExpectedRequestCancellation(error, signal)) {
+            return { data: null, error: null, cancelled: true };
+        }
         logSupabaseError('Erro ao buscar vínculo de atendimento', error);
         return { data: null, error };
     }

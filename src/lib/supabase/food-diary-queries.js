@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/customSupabaseClient';
 import { formatDateToIsoDate, getTodayIsoDate } from '@/lib/utils/date';
-import { logSupabaseError } from '@/lib/supabase/query-helpers';
+import { isExpectedRequestCancellation, logSupabaseError } from '@/lib/supabase/query-helpers';
 
 
 /**
@@ -376,15 +376,22 @@ export const upsertPatientReminderPreferences = async (patientId, preferences = 
 /**
  * Processa lembretes in-app para o paciente atual (idempotente por dia/tipo).
  */
-export const processPatientReminders = async (patientId) => {
+export const processPatientReminders = async (patientId, { signal } = {}) => {
     try {
-        const { data, error } = await supabase.rpc('process_patient_reminders', {
+        if (signal?.aborted) return { data: null, error: null, cancelled: true };
+
+        let request = supabase.rpc('process_patient_reminders', {
             p_patient_id: patientId
         });
+        if (signal) request = request.abortSignal(signal);
+        const { data, error } = await request;
 
         if (error) throw error;
         return { data, error: null };
     } catch (error) {
+        if (isExpectedRequestCancellation(error, signal)) {
+            return { data: null, error: null, cancelled: true };
+        }
         logSupabaseError('Erro ao processar lembretes do paciente', error);
         return { data: null, error };
     }

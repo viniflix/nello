@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { BookMarked, UtensilsCrossed, CalendarClock, Bell, Info } from 'lucide-react';
+import { BookMarked, UtensilsCrossed, CalendarClock, Bell, Clock, Info } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
@@ -36,7 +36,7 @@ export default function PatientHomePage() {
   const [isArchived, setIsArchived] = useState(false);
   const { unreadCount } = useNotifications();
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (signal) => {
     if (!user) return;
     setLoading(true);
 
@@ -44,7 +44,8 @@ export default function PatientHomePage() {
     const todayStr = format(today, 'yyyy-MM-dd');
 
     // 0. O episódio é a fonte de verdade do vínculo; pending ainda vive na solicitação.
-    const { data: careRelationship } = await getMyCareRelationship();
+    const { data: careRelationship, cancelled } = await getMyCareRelationship({ signal });
+    if (cancelled || signal?.aborted) return;
     let resolvedLinkStatus = careRelationship?.status || 'unlinked';
 
     if (user?.profile?.nutritionist_id) {
@@ -139,7 +140,9 @@ export default function PatientHomePage() {
   }, [user]);
 
   useEffect(() => {
-    loadData();
+    const controller = new AbortController();
+    loadData(controller.signal);
+    return () => controller.abort();
   }, [loadData]);
 
   if (loading) {

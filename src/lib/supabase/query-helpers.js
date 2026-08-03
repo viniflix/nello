@@ -1,5 +1,16 @@
 import { captureOperationalError } from '@/infrastructure/observability/telemetry';
 
+export const isExpectedRequestCancellation = (error, signal) => {
+  if (signal?.aborted) return true;
+
+  const name = String(error?.name || '').toLowerCase();
+  const message = String(error?.message || error || '').toLowerCase();
+  return name === 'aborterror'
+    || message.includes('operation was aborted')
+    || message.includes('request was aborted')
+    || message.includes('signal is aborted');
+};
+
 export const logSupabaseError = (context, error) => {
   const msg = error?.message || String(error);
   console.error(`[Supabase] ${context}:`, msg, error?.code ? { code: error.code } : '');
