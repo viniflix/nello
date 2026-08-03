@@ -8,7 +8,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { getModulesStatus } from '@/lib/supabase/patient-queries';
+import { getEmptyPatientRemovalStatus } from '@/lib/supabase/patient-queries';
 
 // ── Gradient Avatar ───────────────────────────────────────────────────────────
 const stringToHue = (str = '') => {
@@ -50,11 +50,8 @@ const PatientCard = ({ patient, isOnline, onArchive, onDelete }) => {
         if (open && !isArchived && deleteCheckRef.current === null) {
             setIsCheckingData(true);
             try {
-                const { data: statusObj } = await getModulesStatus(patient.id);
-                const hasData = statusObj
-                    ? Object.values(statusObj).some(val => val !== 'not_started')
-                    : false;
-                deleteCheckRef.current = !hasData;
+                const { data: statusObj } = await getEmptyPatientRemovalStatus(patient.id);
+                deleteCheckRef.current = statusObj?.can_remove === true;
             } catch {
                 deleteCheckRef.current = false;
             } finally {
@@ -190,7 +187,7 @@ const PatientCard = ({ patient, isOnline, onArchive, onDelete }) => {
                                         className={`cursor-pointer ${canDelete ? 'text-destructive focus:text-destructive' : 'text-muted-foreground'}`}
                                     >
                                         <Trash2 className="mr-2 h-4 w-4" />
-                                        Excluir Permanentemente
+                                        Remover cadastro vazio
                                     </DropdownMenuItem>
                                 </>
                             )}
@@ -226,18 +223,18 @@ const PatientCard = ({ patient, isOnline, onArchive, onDelete }) => {
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle className="text-destructive flex items-center gap-2">
-                            <AlertCircle className="h-5 w-5" /> Excluir Permanentemente
+                            <AlertCircle className="h-5 w-5" /> Remover cadastro vazio
                         </DialogTitle>
                         <DialogDescription>
-                            Você está prestes a excluir permanentemente <strong>{patient.name}</strong>.
-                            Esta ação <strong>não pode ser desfeita</strong>. A conta do paciente será apagada
-                            da autenticação, liberando o e-mail <em>{patient.email}</em> para um novo cadastro.
+                            O cadastro de <strong>{patient.name}</strong> será removido da sua lista.
+                            Essa opção existe apenas para cadastros sem dados clínicos. A identidade do paciente
+                            e a auditoria mínima da ação permanecem preservadas.
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setShowDeleteModal(false)}>Cancelar</Button>
                         <Button variant="destructive" onClick={() => { setShowDeleteModal(false); onDelete(patient); }}>
-                            Excluir Definitivamente
+                            Confirmar remoção
                         </Button>
                     </DialogFooter>
                 </DialogContent>

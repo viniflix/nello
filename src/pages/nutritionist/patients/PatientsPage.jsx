@@ -28,7 +28,7 @@ import ArchivedPatientsModal from '@/components/nutritionist/ArchivedPatientsMod
 import PatientCard from '@/components/nutritionist/PatientCard';
 import { usePatientFormStore } from '@/stores/usePatientFormStore';
 import {
-    fetchAllNutritionistPatients, archivePatient, hardDeletePatient, getModulesStatus,
+    fetchAllNutritionistPatients, archivePatient, removeEmptyPatient, getEmptyPatientRemovalStatus,
     approvePatientLink, rejectPatientLink
 } from '@/lib/supabase/patient-queries';
 import { useOnlinePresence } from '@/hooks/useOnlinePresence';
@@ -70,9 +70,8 @@ const ListActionsMenu = ({ patient, onArchive, onDelete }) => {
         if (open && !isArchived && canDeleteRef.current === null) {
             setIsCheckingData(true);
             try {
-                const { data } = await getModulesStatus(patient.id);
-                const hasData = data ? Object.values(data).some(v => v !== 'not_started') : false;
-                canDeleteRef.current = !hasData;
+                const { data } = await getEmptyPatientRemovalStatus(patient.id);
+                canDeleteRef.current = data?.can_remove === true;
             } catch { canDeleteRef.current = false; }
             finally { setIsCheckingData(false); }
         }
@@ -104,7 +103,7 @@ const ListActionsMenu = ({ patient, onArchive, onDelete }) => {
                                 <DropdownMenuItem onClick={() => setShowArchive(true)} className="cursor-pointer"><Archive className="mr-2 h-4 w-4" /> Encerrar acompanhamento</DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem onClick={() => setShowDelete(true)} disabled={isCheckingData || !canDeleteRef.current} className={`cursor-pointer ${canDeleteRef.current ? 'text-destructive focus:text-destructive' : 'text-muted-foreground'}`}>
-                                    <Trash2 className="mr-2 h-4 w-4" /> Excluir
+                                    <Trash2 className="mr-2 h-4 w-4" /> Remover cadastro vazio
                                 </DropdownMenuItem>
                             </>
                         )}
@@ -122,8 +121,8 @@ const ListActionsMenu = ({ patient, onArchive, onDelete }) => {
 
             <Dialog open={showDelete} onOpenChange={setShowDelete}>
                 <DialogContent>
-                    <DialogHeader><DialogTitle className="text-destructive flex items-center gap-2"><AlertCircle className="h-5 w-5" /> Excluir Permanentemente</DialogTitle><DialogDescription>Você está prestes a excluir permanentemente <strong>{patient.name}</strong>. Esta ação não pode ser desfeita.</DialogDescription></DialogHeader>
-                    <DialogFooter><Button variant="outline" onClick={() => setShowDelete(false)}>Cancelar</Button><Button variant="destructive" onClick={() => { setShowDelete(false); onDelete(patient); }}>Excluir Definitivamente</Button></DialogFooter>
+                    <DialogHeader><DialogTitle className="text-destructive flex items-center gap-2"><AlertCircle className="h-5 w-5" /> Remover cadastro vazio</DialogTitle><DialogDescription>O cadastro de <strong>{patient.name}</strong> será removido da sua lista. Essa opção existe apenas para cadastros sem dados clínicos; a conta do paciente e a auditoria mínima da ação são preservadas.</DialogDescription></DialogHeader>
+                    <DialogFooter><Button variant="outline" onClick={() => setShowDelete(false)}>Cancelar</Button><Button variant="destructive" onClick={() => { setShowDelete(false); onDelete(patient); }}>Confirmar remoção</Button></DialogFooter>
                 </DialogContent>
             </Dialog>
         </>
@@ -193,9 +192,13 @@ const PatientsPage = () => {
     };
 
     const handleDelete = async (patient) => {
-        const { success } = await hardDeletePatient(patient.id);
-        if (success) { toast({ title: "Conta Excluída", variant: "success" }); fetchPatients(); }
-        else toast({ title: "Erro ao excluir", variant: "destructive" });
+        const { success, error } = await removeEmptyPatient(patient.id);
+        if (success) {
+            toast({ title: "Cadastro removido", description: "O cadastro vazio saiu da sua lista e a auditoria foi preservada.", variant: "success" });
+            fetchPatients();
+        } else {
+            toast({ title: "Não foi possível remover", description: error?.message || "Confira se o cadastro ainda está vazio.", variant: "destructive" });
+        }
     };
 
     const handleApprove = async (patientId) => {

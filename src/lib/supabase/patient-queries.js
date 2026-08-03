@@ -1599,32 +1599,38 @@ export const unarchivePatient = async (patientId, nutritionistId) => {
 };
 
 /**
- * Realiza o Hard Delete via Edge Function (requer service_role no backend)
- * O RPC 'delete_patient' foi substituído pela Edge Function 'delete-user-securely'
- * pois auth.admin_delete_user() não existe como função SQL no Supabase.
+ * Confirma no servidor se o cadastro pode ser removido da lista de atendimento.
+ * Apenas um primeiro vínculo ainda vazio pode ser removido; qualquer histórico
+ * clínico exige o encerramento normal do acompanhamento.
  */
-export const hardDeletePatient = async (patientId) => {
+export const getEmptyPatientRemovalStatus = async (patientId) => {
     try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.access_token) throw new Error('Usuário não autenticado');
-
-        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-        const res = await fetch(`${supabaseUrl}/functions/v1/delete-user-securely`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${session.access_token}`,
-            },
-            body: JSON.stringify({ userIdToDelete: patientId }),
+        const { data, error } = await supabase.rpc('get_empty_patient_removal_status', {
+            p_patient_id: patientId,
         });
-
-        const body = await res.json();
-        if (!res.ok) throw new Error(body?.error || 'Erro ao excluir usuário');
-
-        return { success: true, error: null };
+        if (error) throw error;
+        return { data, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao excluir conta do paciente permanentemente', error);
-        return { success: false, error };
+        logSupabaseError('Erro ao verificar remoção de cadastro vazio', error);
+        return { data: { can_remove: false, reason: 'status_check_failed' }, error };
+    }
+};
+
+/**
+ * Remove da área do nutricionista somente um cadastro acidental ainda vazio.
+ * A identidade do paciente e uma trilha mínima de auditoria são preservadas.
+ */
+export const removeEmptyPatient = async (patientId) => {
+    try {
+        const { data, error } = await supabase.rpc('remove_empty_patient', {
+            p_patient_id: patientId,
+        });
+        if (error) throw error;
+        if (!data?.success) throw new Error('A remoção não foi confirmada pelo servidor.');
+        return { success: true, data, error: null };
+    } catch (error) {
+        logSupabaseError('Erro ao remover cadastro vazio do paciente', error);
+        return { success: false, data: null, error };
     }
 };
 
