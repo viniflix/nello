@@ -1,21 +1,23 @@
-import React, { lazy } from 'react';
+import React from 'react';
 import { Route } from 'react-router-dom';
 import { ProtectedRoute } from './routeGuards';
 import PatientLayout from '@/portals/patient/layouts/PatientLayout.jsx';
+import { lazyWithReload } from '@/lib/utils/lazyWithReload';
 
 // Lazy load das páginas do paciente
-const PatientHomePage = lazy(() => import('@/pages/patient/PatientHomePage.jsx'));
-const PatientDiaryPage = lazy(() => import('@/pages/patient/PatientDiaryPage.jsx'));
-const PatientProgressPage = lazy(() => import('@/pages/patient/PatientProgressPage.jsx'));
-const PatientProfilePage = lazy(() => import('@/pages/patient/PatientProfilePage.jsx'));
-const PatientEditProfilePage = lazy(() => import('@/pages/patient/PatientEditProfilePage.jsx'));
-const PatientAchievementsPage = lazy(() => import('@/pages/patient/PatientAchievementsPage.jsx'));
-const AddMealPage = lazy(() => import('@/pages/patient/AddMealPage.jsx'));
-const AddFoodPage = lazy(() => import('@/pages/patient/AddFoodPage.jsx'));
-const ChatPage = lazy(() => import('@/pages/shared/ChatPage.jsx'));
-const PatientInvitesPage = lazy(() => import('@/pages/patient/PatientInvitesPage.jsx'));
-const CheckinResponsePage = lazy(() => import('@/pages/patient/CheckinResponsePage.jsx'));
-const PatientClinicalRecordsPage = lazy(() => import('@/pages/patient/PatientClinicalRecordsPage.jsx'));
+const route = (key, importer) => lazyWithReload(importer, `patient:${key}`);
+const PatientHomePage = route('home', () => import('@/pages/patient/PatientHomePage.jsx'));
+const PatientDiaryPage = route('diary', () => import('@/pages/patient/PatientDiaryPage.jsx'));
+const PatientProgressPage = route('progress', () => import('@/pages/patient/PatientProgressPage.jsx'));
+const PatientProfilePage = route('profile', () => import('@/pages/patient/PatientProfilePage.jsx'));
+const PatientEditProfilePage = route('edit-profile', () => import('@/pages/patient/PatientEditProfilePage.jsx'));
+const PatientAchievementsPage = route('achievements', () => import('@/pages/patient/PatientAchievementsPage.jsx'));
+const AddMealPage = route('add-meal', () => import('@/pages/patient/AddMealPage.jsx'));
+const AddFoodPage = route('add-food', () => import('@/pages/patient/AddFoodPage.jsx'));
+const ChatPage = route('chat', () => import('@/pages/shared/ChatPage.jsx'));
+const PatientInvitesPage = route('invites', () => import('@/pages/patient/PatientInvitesPage.jsx'));
+const CheckinResponsePage = route('checkin-response', () => import('@/pages/patient/CheckinResponsePage.jsx'));
+const PatientClinicalRecordsPage = route('clinical-records', () => import('@/pages/patient/PatientClinicalRecordsPage.jsx'));
 
 export const patientRoutes = (
     <>

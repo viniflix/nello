@@ -1,38 +1,40 @@
-import React, { lazy } from 'react';
+import React from 'react';
 import { Route, Navigate } from 'react-router-dom';
 import { ProtectedRoute } from './routeGuards';
 import NutritionistLayout from '@/portals/nutritionist/layouts/NutritionistLayout.jsx';
+import { lazyWithReload } from '@/lib/utils/lazyWithReload';
 
 // Lazy load das páginas do nutricionista
-const NutritionistDashboard = lazy(() => import('@/pages/nutritionist/dashboard/NutritionistDashboard.jsx'));
-const NutritionistProfilePage = lazy(() => import('@/pages/nutritionist/profile/NutritionistProfilePage.jsx'));
-const NotificationsPage = lazy(() => import('@/pages/nutritionist/notifications/NotificationsPage.jsx'));
-const CalculationInfoPage = lazy(() => import('@/pages/nutritionist/tools/CalculationInfoPage.jsx'));
-const PatientsPage = lazy(() => import('@/pages/nutritionist/patients/PatientsPage.jsx'));
-const PatientHubPage = lazy(() => import('@/pages/nutritionist/patients/PatientHubPage.jsx'));
-const PatientAnamnesePage = lazy(() => import('@/pages/nutritionist/patients/PatientAnamnesePage.jsx'));
-const PatientAnamnesisList = lazy(() => import('@/pages/nutritionist/patients/PatientAnamnesisList.jsx'));
-const PatientAnamnesisForm = lazy(() => import('@/pages/nutritionist/patients/PatientAnamnesisForm.jsx'));
-const AnthropometryPage = lazy(() => import('@/pages/nutritionist/patients/AnthropometryPage.jsx'));
-const MealPlanPage = lazy(() => import('@/pages/nutritionist/patients/MealPlanPage.jsx'));
-const MealPlanSummaryPage = lazy(() => import('@/pages/nutritionist/patients/MealPlanSummaryPage.jsx'));
-const EnergyExpenditurePage = lazy(() => import('@/pages/nutritionist/patients/EnergyExpenditurePage.jsx'));
-const LabResultsPage = lazy(() => import('@/pages/nutritionist/patients/LabResultsPage.jsx'));
-const GoalsPage = lazy(() => import('@/pages/nutritionist/patients/GoalsPage.jsx'));
-const FoodDiaryPage = lazy(() => import('@/pages/nutritionist/patients/FoodDiaryPage.jsx'));
-const NutritionistPatientAchievementsPage = lazy(() => import('@/pages/nutritionist/patients/NutritionistPatientAchievementsPage.jsx'));
-const ProgressPhotosPage = lazy(() => import('@/pages/nutritionist/patients/ProgressPhotosPage.jsx'));
-const AlertsPage = lazy(() => import('@/pages/nutritionist/alerts/AlertsPage.jsx'));
-const FinancialPage = lazy(() => import('@/pages/nutritionist/tools/FinancialPage.jsx'));
-const AgendaPage = lazy(() => import('@/pages/nutritionist/tools/AgendaPage.jsx'));
-const NutritionistFoodsPage = lazy(() => import('@/pages/nutritionist/tools/NutritionistFoodsPage.jsx'));
-const ChatDashboardPage = lazy(() => import('@/pages/shared/ChatDashboardPage.jsx'));
+const route = (key, importer) => lazyWithReload(importer, `nutritionist:${key}`);
+const NutritionistDashboard = route('dashboard', () => import('@/pages/nutritionist/dashboard/NutritionistDashboard.jsx'));
+const NutritionistProfilePage = route('profile', () => import('@/pages/nutritionist/profile/NutritionistProfilePage.jsx'));
+const NotificationsPage = route('notifications', () => import('@/pages/nutritionist/notifications/NotificationsPage.jsx'));
+const CalculationInfoPage = route('calculations', () => import('@/pages/nutritionist/tools/CalculationInfoPage.jsx'));
+const PatientsPage = route('patients', () => import('@/pages/nutritionist/patients/PatientsPage.jsx'));
+const PatientHubPage = route('patient-hub', () => import('@/pages/nutritionist/patients/PatientHubPage.jsx'));
+const PatientAnamnesePage = route('anamnese', () => import('@/pages/nutritionist/patients/PatientAnamnesePage.jsx'));
+const PatientAnamnesisList = route('anamnesis-list', () => import('@/pages/nutritionist/patients/PatientAnamnesisList.jsx'));
+const PatientAnamnesisForm = route('anamnesis-form', () => import('@/pages/nutritionist/patients/PatientAnamnesisForm.jsx'));
+const AnthropometryPage = route('anthropometry', () => import('@/pages/nutritionist/patients/AnthropometryPage.jsx'));
+const MealPlanPage = route('meal-plan', () => import('@/pages/nutritionist/patients/MealPlanPage.jsx'));
+const MealPlanSummaryPage = route('meal-plan-summary', () => import('@/pages/nutritionist/patients/MealPlanSummaryPage.jsx'));
+const EnergyExpenditurePage = route('energy-expenditure', () => import('@/pages/nutritionist/patients/EnergyExpenditurePage.jsx'));
+const LabResultsPage = route('lab-results', () => import('@/pages/nutritionist/patients/LabResultsPage.jsx'));
+const GoalsPage = route('goals', () => import('@/pages/nutritionist/patients/GoalsPage.jsx'));
+const FoodDiaryPage = route('food-diary', () => import('@/pages/nutritionist/patients/FoodDiaryPage.jsx'));
+const NutritionistPatientAchievementsPage = route('achievements', () => import('@/pages/nutritionist/patients/NutritionistPatientAchievementsPage.jsx'));
+const ProgressPhotosPage = route('progress-photos', () => import('@/pages/nutritionist/patients/ProgressPhotosPage.jsx'));
+const AlertsPage = route('alerts', () => import('@/pages/nutritionist/alerts/AlertsPage.jsx'));
+const FinancialPage = route('financial', () => import('@/pages/nutritionist/tools/FinancialPage.jsx'));
+const AgendaPage = route('agenda', () => import('@/pages/nutritionist/tools/AgendaPage.jsx'));
+const NutritionistFoodsPage = route('foods', () => import('@/pages/nutritionist/tools/NutritionistFoodsPage.jsx'));
+const ChatDashboardPage = route('chat', () => import('@/pages/shared/ChatDashboardPage.jsx'));
 // Removed CheckinManagerPage as it's now part of TemplatesPage
-const TemplatesPage = lazy(() => import('@/pages/nutritionist/tools/TemplatesPage.jsx'));
-const TemplateBuilder = lazy(() => import('@/pages/nutritionist/tools/TemplateBuilder.jsx'));
+const TemplatesPage = route('templates', () => import('@/pages/nutritionist/tools/TemplatesPage.jsx'));
+const TemplateBuilder = route('template-builder', () => import('@/pages/nutritionist/tools/TemplateBuilder.jsx'));
 
 // Sprint 1 UX Shell - Formbuilder e Configs de Anamnese
-const AnamnesisTemplateBuilder = lazy(() => import('@/pages/nutritionist/settings/anamnesis-templates/TemplateBuilder.jsx'));
+const AnamnesisTemplateBuilder = route('anamnesis-template-builder', () => import('@/pages/nutritionist/settings/anamnesis-templates/TemplateBuilder.jsx'));
 
 export const nutritionistRoutes = (
     <Route 

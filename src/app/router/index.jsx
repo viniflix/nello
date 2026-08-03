@@ -9,9 +9,10 @@ import { patientRoutes } from './patientRoutes';
 import { adminRoutes } from './adminRoutes';
 import PresenceGlobal from '@/components/PresenceGlobal';
 import { getHomePath } from './homePath';
+import { lazyWithReload } from '@/lib/utils/lazyWithReload';
 
 // Rota Omnichannel Public Facing (Sem Auth Block)
-const PatientFacingAnamnesis = React.lazy(() => import('@/pages/public/anamnesis/PatientFacingUi.jsx'));
+const PatientFacingAnamnesis = lazyWithReload(() => import('@/pages/public/anamnesis/PatientFacingUi.jsx'), 'public:anamnesis');
 
 const AppRouter = () => {
   const { user, loading } = useAuth();

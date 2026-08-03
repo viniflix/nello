@@ -1,13 +1,14 @@
-import React, { lazy } from 'react';
+import React from 'react';
 import { Route } from 'react-router-dom';
 import { AuthWrapper } from './routeGuards';
+import { lazyWithReload } from '@/lib/utils/lazyWithReload';
 
 // Lazy load das páginas de autenticação
-const LoginPage = lazy(() => import('@/pages/auth/LoginPage.jsx'));
-const RegisterPage = lazy(() => import('@/pages/auth/RegisterPage.jsx'));
-const UpdatePasswordPage = lazy(() => import('@/pages/auth/UpdatePasswordPage.jsx'));
-const AuthVerifyPage = lazy(() => import('@/pages/auth/AuthVerifyPage.jsx'));
-const RedeemDeepLinkPage = lazy(() => import('@/pages/auth/RedeemDeepLinkPage.jsx'));
+const LoginPage = lazyWithReload(() => import('@/pages/auth/LoginPage.jsx'), 'auth:login');
+const RegisterPage = lazyWithReload(() => import('@/pages/auth/RegisterPage.jsx'), 'auth:register');
+const UpdatePasswordPage = lazyWithReload(() => import('@/pages/auth/UpdatePasswordPage.jsx'), 'auth:update-password');
+const AuthVerifyPage = lazyWithReload(() => import('@/pages/auth/AuthVerifyPage.jsx'), 'auth:verify');
+const RedeemDeepLinkPage = lazyWithReload(() => import('@/pages/auth/RedeemDeepLinkPage.jsx'), 'auth:invite');
 
 export const authRoutes = (
     <>

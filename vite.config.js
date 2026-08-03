@@ -5,8 +5,8 @@ import { sentryVitePlugin } from "@sentry/vite-plugin";
 import { createBuildPolicy } from './build/viteBuildPolicy.js';
 
 const buildPolicy = createBuildPolicy(process.env);
-const appRelease = process.env.VITE_APP_RELEASE
-	|| process.env.VERCEL_GIT_COMMIT_SHA
+const appRelease = process.env.VERCEL_GIT_COMMIT_SHA
+	|| process.env.VITE_APP_RELEASE
 	|| process.env.npm_package_version
 	|| 'development';
 
