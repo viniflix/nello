@@ -233,25 +233,14 @@ export const getLatestMetrics = async (patientId) => {
  */
 export const getModulesStatus = async (patientId) => {
     try {
-        // Verificar se tem anamnese (padrão em anamnesis_records OU personalizado em anamnese_answers)
-        const [
-            { data: anamnesisRecordsData },
-            { data: anamneseAnswersData }
-        ] = await Promise.all([
-            supabase
-                .from('anamnesis_records')
-                .select('id')
-                .eq('patient_id', patientId)
-                .limit(1)
-                .maybeSingle(),
-            supabase
-                .from('anamnese_answers')
-                .select('id')
-                .eq('patient_id', patientId)
-                .limit(1)
-                .maybeSingle()
-        ]);
-        const anamneseData = anamnesisRecordsData || anamneseAnswersData;
+        // A anamnese atual é versionada em anamnesis_records. O antigo modelo
+        // EAV (anamnese_answers) foi removido do banco e não deve ser consultado.
+        const { data: anamneseData } = await supabase
+            .from('anamnesis_records')
+            .select('id')
+            .eq('patient_id', patientId)
+            .limit(1)
+            .maybeSingle();
 
         // Verificar se tem avaliação antropométrica
         const { data: anthropometryData } = await supabase

@@ -1,6 +1,6 @@
 import { lazy } from 'react';
 
-const CHUNK_ERROR_PATTERN = /(?:Failed to fetch dynamically imported module|Importing a module script failed|ChunkLoadError|Loading chunk \d+ failed)/i;
+const CHUNK_ERROR_PATTERN = /(?:Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module|ChunkLoadError|Loading chunk \d+ failed|not a valid JavaScript MIME type|Expected a JavaScript(?:-or-Wasm)? module script|module script.+MIME type)/i;
 
 export const isChunkLoadError = (error) => CHUNK_ERROR_PATTERN.test(String(error?.message || error || ''));
 
