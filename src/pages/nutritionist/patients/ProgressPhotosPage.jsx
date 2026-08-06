@@ -33,7 +33,7 @@ import { supabase } from '@/lib/customSupabaseClient';
 import { patientHubRoute } from '@/lib/utils/patientRoutes';
 import {
     getProgressPhotos,
-    addProgressPhoto,
+    uploadProgressPhoto,
     updateProgressPhoto,
     deleteProgressPhoto
 } from '@/lib/supabase/progress-photos-queries';
@@ -41,11 +41,6 @@ import { logActivityEvent } from '@/lib/supabase/patient-queries';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
-const BUCKET = 'patient-photos';
-/** Path: {patient_id}/progress_photos/{uuid}.ext - first folder must be patient_id for RLS */
-function getStoragePath(patientId) {
-    return `${patientId}/progress_photos/${crypto.randomUUID()}`;
-}
 const MIME_BY_EXT = {
     jpg: 'image/jpeg',
     jpeg: 'image/jpeg',
@@ -144,16 +139,11 @@ export default function ProgressPhotosPage() {
         setUploading(true);
         try {
             const safeExt = allowedExtensions.includes(ext) ? ext : (file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : file.type === 'image/heic' ? 'heic' : file.type === 'image/heif' ? 'heif' : 'jpg');
-            const path = `${getStoragePath(patientId)}.${safeExt}`;
-            const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, file, {
-                upsert: false,
-                contentType: MIME_BY_EXT[safeExt] || file.type || 'application/octet-stream'
-            });
-            if (upErr) throw upErr;
-            const { data: { publicUrl } } = supabase.storage.from(BUCKET).getPublicUrl(path);
-            const { data: row, error: insertErr } = await addProgressPhoto({
+            const { data: row, error: insertErr } = await uploadProgressPhoto({
                 patientId,
-                photoUrl: publicUrl,
+                file,
+                extension: safeExt,
+                contentType: MIME_BY_EXT[safeExt] || file.type || 'application/octet-stream',
                 photoDate,
                 uploadedBy: user.id,
                 notes: photoNotes?.trim() || null

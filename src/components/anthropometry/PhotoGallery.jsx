@@ -1,9 +1,13 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Upload, X, Image as ImageIcon, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useToast } from '@/hooks/use-toast';
+import {
+  createPatientPhotoSignedUrl,
+  getActiveCareEpisodeId,
+} from '@/lib/supabase/progress-photos-queries';
 
 /**
  * PhotoGallery - Componente para upload e exibição de fotos de progresso
@@ -11,13 +15,24 @@ import { useToast } from '@/hooks/use-toast';
  * @param {array} initialPhotos - Array inicial de URLs de fotos
  * @param {function} onPhotosChange - Callback quando as fotos mudam
  */
-export default function PhotoGallery({ recordId, initialPhotos = [], onPhotosChange }) {
+export default function PhotoGallery({ patientId, recordId, initialPhotos = [], onPhotosChange }) {
   const { toast } = useToast();
-  const [photos, setPhotos] = useState(initialPhotos || []);
+  const [photos, setPhotos] = useState([]);
   const [uploading, setUploading] = useState(false);
 
   // Se não houver recordId (registro novo), desabilitar upload até salvar
   const isNewRecord = !recordId || recordId.toString().startsWith('temp-');
+
+  useEffect(() => {
+    let active = true;
+    Promise.all((initialPhotos || []).map(async (value) => {
+      const signed = await createPatientPhotoSignedUrl(value);
+      return signed.data && signed.path ? { storagePath: signed.path, url: signed.data } : null;
+    })).then((resolved) => {
+      if (active) setPhotos(resolved.filter(Boolean));
+    });
+    return () => { active = false; };
+  }, [initialPhotos]);
 
   const handleUpload = async (event) => {
     const file = event.target.files?.[0];
@@ -57,9 +72,12 @@ export default function PhotoGallery({ recordId, initialPhotos = [], onPhotosCha
 
     try {
       // Gerar nome único para o arquivo
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${recordId}-${Date.now()}.${fileExt}`;
-      const filePath = `${recordId}/${fileName}`;
+      const episode = await getActiveCareEpisodeId(patientId);
+      if (episode.error) throw episode.error;
+      const allowedExtensions = ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif'];
+      const rawExtension = (file.name.split('.').pop() || '').toLowerCase();
+      const fileExt = allowedExtensions.includes(rawExtension) ? rawExtension : 'jpg';
+      const filePath = `${patientId}/${episode.data}/anthropometry/${recordId}/${crypto.randomUUID()}.${fileExt}`;
 
       // Upload para Supabase Storage
       const { error: uploadError } = await supabase.storage
@@ -76,17 +94,19 @@ export default function PhotoGallery({ recordId, initialPhotos = [], onPhotosCha
       }
 
       // Obter URL pública
-      const { data: { publicUrl } } = supabase.storage
-        .from('patient-photos')
-        .getPublicUrl(filePath);
+      const signed = await createPatientPhotoSignedUrl(filePath);
+      if (signed.error || !signed.data) {
+        await supabase.storage.from('patient-photos').remove([filePath]);
+        throw signed.error || new Error('Não foi possível autorizar a visualização da foto.');
+      }
 
       // Adicionar à lista de fotos
-      const newPhotos = [...photos, publicUrl];
+      const newPhotos = [...photos, { storagePath: filePath, url: signed.data }];
       setPhotos(newPhotos);
 
       // Notificar mudança
       if (onPhotosChange) {
-        onPhotosChange(newPhotos);
+        onPhotosChange(newPhotos.map((photo) => photo.storagePath));
       }
 
       toast({
@@ -107,21 +127,13 @@ export default function PhotoGallery({ recordId, initialPhotos = [], onPhotosCha
     }
   };
 
-  const handleDelete = async (photoUrl, index) => {
+  const handleDelete = async (_photo, index) => {
     try {
       // Extrair o caminho do arquivo da URL
-      const urlParts = photoUrl.split('/');
-      const filePath = urlParts.slice(urlParts.indexOf('patient-photos') + 1).join('/');
 
       // Deletar do storage
-      const { error: deleteError } = await supabase.storage
-        .from('patient-photos')
-        .remove([filePath]);
 
-      if (deleteError) {
-        console.error('Erro ao deletar foto:', deleteError);
         // Continuar mesmo se houver erro no storage (pode ser que o arquivo já não exista)
-      }
 
       // Remover da lista
       const newPhotos = photos.filter((_, i) => i !== index);
@@ -129,7 +141,7 @@ export default function PhotoGallery({ recordId, initialPhotos = [], onPhotosCha
 
       // Notificar mudança
       if (onPhotosChange) {
-        onPhotosChange(newPhotos);
+        onPhotosChange(newPhotos.map((photo) => photo.storagePath));
       }
 
       toast({
@@ -204,13 +216,13 @@ export default function PhotoGallery({ recordId, initialPhotos = [], onPhotosCha
         {/* Photo Grid */}
         {photos.length > 0 ? (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {photos.map((photoUrl, index) => (
+            {photos.map((photo, index) => (
               <div
-                key={index}
+                key={photo.storagePath || index}
                 className="relative group aspect-square rounded-lg overflow-hidden border border-border bg-muted"
               >
                 <img
-                  src={photoUrl}
+                  src={photo.url}
                   alt={`Foto ${index + 1}`}
                   className="w-full h-full object-cover"
                 />
@@ -219,7 +231,7 @@ export default function PhotoGallery({ recordId, initialPhotos = [], onPhotosCha
                     type="button"
                     variant="destructive"
                     size="sm"
-                    onClick={() => handleDelete(photoUrl, index)}
+                    onClick={() => handleDelete(photo, index)}
                     className="opacity-100"
                   >
                     <X className="w-4 h-4 mr-1" />

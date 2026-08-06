@@ -1354,6 +1354,7 @@ const AnthropometryForm = ({
                         {/* TAB 5: Fotos */}
                         <TabsContent value="fotos" className="mt-4">
                             <PhotoGallery
+                                patientId={patientId}
                                 recordId={initialData?.id || `temp-${Date.now()}`}
                                 initialPhotos={formData.photos}
                                 onPhotosChange={handlePhotosChange}

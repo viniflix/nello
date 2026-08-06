@@ -30,7 +30,11 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/customSupabaseClient';
-import { deleteProgressPhoto } from '@/lib/supabase/progress-photos-queries';
+import {
+  deleteProgressPhoto,
+  getProgressPhotos,
+  uploadProgressPhoto,
+} from '@/lib/supabase/progress-photos-queries';
 import { logActivityEvent } from '@/lib/supabase/patient-queries';
 import { useToast } from '@/hooks/use-toast';
 import PatientCheckinHistoryWidget from '@/components/patient/PatientCheckinHistoryWidget';
@@ -134,7 +138,7 @@ export default function PatientProgressPage() {
       const [weightResult, glycemiaResult, photoResult, foundationResult] = await Promise.all([
         supabase.from('growth_records').select('*').eq('patient_id', requestedUserId).order('record_date', { ascending: true }),
         supabase.from('glycemia_records').select('*').eq('patient_id', requestedUserId).order('date', { ascending: true }),
-        supabase.from('progress_photos').select('*').eq('patient_id', requestedUserId).order('photo_date', { ascending: false }).limit(50),
+        getProgressPhotos({ patientId: requestedUserId, limit: 50 }),
         getPatientRecordFoundation(requestedUserId),
       ]);
 
@@ -317,33 +321,16 @@ export default function PatientProgressPage() {
     const safeExt = allowedExtensions.includes(ext) ? ext : (file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : file.type === 'image/heic' ? 'heic' : file.type === 'image/heif' ? 'heif' : 'jpg');
 
     try {
-      const path = `${user.id}/progress_photos/${crypto.randomUUID()}.${safeExt}`;
-      const { error: uploadError } = await supabase.storage
-        .from('patient-photos')
-        .upload(path, file, {
-          upsert: false,
-          contentType: MIME_BY_EXT[safeExt] || file.type || 'application/octet-stream'
-        });
-
+      const { data: inserted, error: uploadError } = await uploadProgressPhoto({
+        patientId: user.id,
+        file,
+        extension: safeExt,
+        contentType: MIME_BY_EXT[safeExt] || file.type || 'application/octet-stream',
+        photoDate: recordDate,
+        uploadedBy: user.id,
+        notes: notes?.trim() || null,
+      });
       if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('patient-photos')
-        .getPublicUrl(path);
-
-      const { data: inserted, error: dbError } = await supabase
-        .from('progress_photos')
-        .insert({
-          patient_id: user.id,
-          photo_url: publicUrl,
-          photo_date: recordDate,
-          uploaded_by: user.id,
-          notes: notes?.trim() || null
-        })
-        .select('id')
-        .single();
-
-      if (dbError) throw dbError;
 
       await logActivityEvent({
         eventName: 'progress_photo.added',

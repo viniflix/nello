@@ -9,7 +9,8 @@ export function createPosthogOptions(env) {
     capture_pageleave: true,
     capture_exceptions: true,
     capture_dead_clicks: true,
-    disable_session_recording: false,
+    // Health data must not be replayed until a consent/legal-basis gate exists.
+    disable_session_recording: true,
     enable_recording_console_log: false,
     mask_all_text: true,
     mask_all_element_attributes: true,

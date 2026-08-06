@@ -70,15 +70,18 @@ export const useAnthropometryController = ({ patientId, user, resolveLoading, re
         return 'maintenance';
     };
 
-    const getRecordSections = (record) => ({
+    const getRecordSections = useCallback((record) => ({
         basico: Boolean(record?.weight || record?.height),
         circunferencias: getFilledCount(record?.circumferences) > 0,
         dobras: getFilledCount(record?.skinfolds) > 0 || getFilledCount(record?.bioimpedance) > 0,
         diametros: getFilledCount(record?.bone_diameters) > 0,
         fotos: Array.isArray(record?.photos) && record.photos.length > 0
-    });
+    }), []);
 
-    const getRecordSectionCount = (record) => Object.values(getRecordSections(record)).filter(Boolean).length;
+    const getRecordSectionCount = useCallback(
+        (record) => Object.values(getRecordSections(record)).filter(Boolean).length,
+        [getRecordSections]
+    );
 
     const getRecordComparison = (current, other) => {
         if (!current || !other) return null;
@@ -145,7 +148,7 @@ export const useAnthropometryController = ({ patientId, user, resolveLoading, re
             .filter(Boolean);
     };
 
-    const getVersionTimeline = (record) => {
+    const getVersionTimeline = useCallback((record) => {
         if (!record) return [];
         const result = [];
         let cursor = record;
@@ -158,7 +161,7 @@ export const useAnthropometryController = ({ patientId, user, resolveLoading, re
             cursor = records.find((r) => String(r.id) === String(parentId));
         }
         return result.reverse();
-    };
+    }, [records]);
 
     const getClinicalIndicator = (current, previous, objective) => {
         if (!current || !previous) return null;
@@ -443,7 +446,7 @@ export const useAnthropometryController = ({ patientId, user, resolveLoading, re
             bioimpedance: compareObjectFields(selectedRecord.bioimpedance, compareRecord.bioimpedance)
         };
     }, [selectedRecord, compareRecord]);
-    const versionTimeline = useMemo(() => getVersionTimeline(selectedRecord), [selectedRecord, orderedRecords]);
+    const versionTimeline = useMemo(() => getVersionTimeline(selectedRecord), [selectedRecord, getVersionTimeline]);
 
     const formatDelta = (value, unit = '') => {
         if (value === null || value === undefined) return 'N/A';
@@ -545,7 +548,7 @@ export const useAnthropometryController = ({ patientId, user, resolveLoading, re
             return orderedRecords.filter((r) => r?.supersedes_record_id || r?.results?.audit?.source_record_id);
         }
         return orderedRecords;
-    }, [orderedRecords, historyFilter]);
+    }, [orderedRecords, historyFilter, getRecordSectionCount]);
 
     return {
         loading,
