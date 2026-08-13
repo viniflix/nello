@@ -273,7 +273,8 @@ export function useMealPlanController({
                     description: finalPlanData.description,
                     active_days: finalPlanData.active_days,
                     start_date: finalPlanData.start_date,
-                    end_date: finalPlanData.end_date || null
+                    end_date: finalPlanData.end_date || null,
+                    plan_mode: finalPlanData.plan_mode || 'hybrid'
                 });
                 if (result.error) throw result.error;
 
@@ -330,7 +331,8 @@ export function useMealPlanController({
                     start_date: finalPlanData.start_date,
                     end_date: finalPlanData.end_date || null,
                     is_active: false,
-                    is_draft: false
+                    is_draft: false,
+                    plan_mode: finalPlanData.plan_mode || 'hybrid'
                 });
                 if (result.error) throw result.error;
 
@@ -456,13 +458,13 @@ export function useMealPlanController({
         try {
             const result = await deleteMealPlan(planToDelete);
             if (result.error) throw result.error;
-            toast({ title: 'Sucesso', description: 'Plano deletado com sucesso', variant: 'success' });
+            toast({ title: 'PLANO ARQUIVADO', description: 'O plano saiu do uso ativo e foi preservado no histórico.', variant: 'success' });
             setPlanToDelete(null);
             setDeleteDialogOpen(false);
             await loadPlans();
         } catch (error) {
-            console.error('Erro ao deletar plano:', error);
-            toast({ title: 'Erro', description: 'Não foi possível deletar o plano', variant: 'destructive' });
+            console.error('Erro ao arquivar plano:', error);
+            toast({ title: 'ERRO', description: 'Não foi possível arquivar o plano.', variant: 'destructive' });
         }
     };
 

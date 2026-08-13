@@ -2,7 +2,7 @@ import React from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Check, Star } from "lucide-react";
+import { Check, Scale } from "lucide-react";
 import CalculationInfoTooltip from './CalculationInfoTooltip';
 import { getFormulaBreakdown } from '@/lib/utils/energy-calculations';
 
@@ -30,7 +30,7 @@ export function ProtocolComparisonTable({ protocols, activityFactor, selectedPro
     <div className="border rounded-lg overflow-hidden bg-card shadow-sm">
       <div className="p-4 bg-muted/50 border-b flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
         <h3 className="font-semibold text-foreground flex items-center gap-2">
-          <Star className="w-4 h-4 text-primary" />
+          <Scale className="w-4 h-4 text-primary" />
           Comparativo Científico
         </h3>
         <span className="text-xs text-muted-foreground">
@@ -69,11 +69,6 @@ export function ProtocolComparisonTable({ protocols, activityFactor, selectedPro
                     <div className="flex flex-col gap-1">
                       <span className="font-medium flex items-center gap-2">
                         {protocol.name}
-                        {protocol.recommended && (
-                          <Badge variant="default" className="text-[10px] h-5 px-1.5">
-                            Recomendado
-                          </Badge>
-                        )}
                         {protocol.isEer && (
                           <Badge variant="outline" className="text-[10px] h-5 px-1.5">
                             GET direto

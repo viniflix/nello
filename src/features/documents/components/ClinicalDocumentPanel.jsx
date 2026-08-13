@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { CheckCircle2, FileSignature, FileText, Loader2, RefreshCw, ShieldCheck } from 'lucide-react';
+import { CheckCircle2, Download, FileSignature, FileText, Loader2, RefreshCw, ShieldCheck } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -8,9 +8,11 @@ import { useToast } from '@/components/ui/use-toast';
 import {
   createDocumentArtifactFromClinicalRecord,
   finalizeDocumentArtifact,
+  getDocumentArtifact,
   listDocumentArtifacts,
   signDocumentArtifact,
 } from '../api/document-queries';
+import { downloadCanonicalDocumentPdf } from '../pdf/render-canonical-document';
 
 const STATUS = {
   draft: 'Rascunho documental',
@@ -90,6 +92,19 @@ export default function ClinicalDocumentPanel({ record, currentUserId }) {
     toast({ title: 'Documento assinado', description: 'Autenticidade pública e trilha de auditoria foram geradas.' });
   };
 
+  const download = async () => {
+    setState('working');
+    const result = await getDocumentArtifact(artifact.id || artifact.artifact_id);
+    try {
+      if (result.error || !result.data) throw result.error || new Error('document_not_found');
+      await downloadCanonicalDocumentPdf(result.data);
+    } catch {
+      toast({ title: 'PDF não gerado', description: 'O documento oficial continua preservado. Tente novamente.', variant: 'destructive' });
+    } finally {
+      setState('ready');
+    }
+  };
+
   if (!record || !['signed', 'corrected'].includes(record.status)) return null;
 
   const responsibleId = record.nutritionist_id;
@@ -115,7 +130,7 @@ export default function ClinicalDocumentPanel({ record, currentUserId }) {
         ) : null}
         {artifact?.status === 'draft' ? <div className="flex flex-wrap items-center justify-between gap-3"><p className="text-sm">Revise o preview da identidade antes de congelar esta versão.</p><Button onClick={() => void finalize()} disabled={busy}>{busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}Finalizar documento</Button></div> : null}
         {artifact?.status === 'finalized' ? <div className="flex flex-wrap items-center justify-between gap-3"><p className="text-sm">Hash gerado. Somente o nutricionista responsável pode concluir a assinatura.</p>{isResponsible ? <Button onClick={() => void sign()} disabled={busy}>{busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileSignature className="mr-2 h-4 w-4" />}Assinar documento</Button> : <Badge variant="outline">Aguardando nutricionista responsável</Badge>}</div> : null}
-        {artifact?.status === 'signed' ? <Alert><ShieldCheck className="h-4 w-4 text-emerald-600" /><AlertDescription><strong>Documento autêntico.</strong> Hash SHA-256 preservado e código público gerado sem expor dados do paciente.</AlertDescription></Alert> : null}
+        {artifact?.status === 'signed' ? <div className="space-y-3"><Alert><ShieldCheck className="h-4 w-4 text-emerald-600" /><AlertDescription><strong>Documento autêntico.</strong> Hash SHA-256 preservado e código público gerado sem expor dados do paciente.</AlertDescription></Alert><Button variant="outline" onClick={() => void download()} disabled={busy}><Download className="mr-2 h-4 w-4" />Baixar PDF oficial</Button></div> : null}
         {artifact && state === 'error' ? <Button variant="outline" size="sm" onClick={() => void load()}><RefreshCw className="mr-2 h-4 w-4" />Recarregar</Button> : null}
       </CardContent>
     </Card>

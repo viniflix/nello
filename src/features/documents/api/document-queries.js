@@ -110,6 +110,12 @@ export const createDocumentArtifactFromClinicalRecord = (
   'Erro ao criar documento clínico',
 );
 
+export const createDocumentArtifactFromMealPlan = (planId, visibility = 'shared_with_patient') => callRpc(
+  'create_document_artifact_from_meal_plan',
+  { p_plan_id: planId, p_visibility: visibility },
+  'Erro ao criar documento do plano alimentar',
+);
+
 export const finalizeDocumentArtifact = (artifactId, expectedRevision) => callRpc(
   'finalize_document_artifact',
   { p_artifact_id: artifactId, p_expected_revision: expectedRevision },

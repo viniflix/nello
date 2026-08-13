@@ -11,6 +11,7 @@ import { DateInputWithCalendar } from '@/components/ui/date-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { FormSkeleton } from '@/components/ui/custom-skeletons';
 import {
@@ -68,6 +69,7 @@ const MealPlanForm = ({
     const [formData, setFormData] = useState({
         name: '',
         description: '',
+        plan_mode: 'hybrid',
         start_date: new Date().toISOString().split('T')[0],
         end_date: '',
         active_days: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
@@ -125,6 +127,7 @@ const MealPlanForm = ({
             setFormData({
                 name: initialData.name || '',
                 description: initialData.description || '',
+                plan_mode: initialData.plan_mode || 'hybrid',
                 start_date: initialData.start_date || new Date().toISOString().split('T')[0],
                 end_date: initialData.end_date || '',
                 active_days: initialData.active_days || []
@@ -175,6 +178,7 @@ const MealPlanForm = ({
                 setFormData({
                     name: fullPlan.name || '',
                     description: fullPlan.description || '',
+                    plan_mode: fullPlan.plan_mode || 'hybrid',
                     start_date: fullPlan.start_date || new Date().toISOString().split('T')[0],
                     end_date: fullPlan.end_date || '',
                     active_days: fullPlan.active_days?.length ? fullPlan.active_days : ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
@@ -212,6 +216,7 @@ const MealPlanForm = ({
         setFormData({
             name: '',
             description: '',
+            plan_mode: 'hybrid',
             start_date: new Date().toISOString().split('T')[0],
             end_date: '',
             active_days: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
@@ -526,6 +531,19 @@ const MealPlanForm = ({
                                 onChange={(e) => handleChange('description', e.target.value)}
                                 disabled={loading}
                             />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="plan_mode">ESTRATÉGIA DO PLANO</Label>
+                            <Select value={formData.plan_mode} onValueChange={(value) => handleChange('plan_mode', value)} disabled={loading}>
+                                <SelectTrigger id="plan_mode"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="quantitative">QUANTITATIVO — PORÇÕES E METAS DEFINIDAS</SelectItem>
+                                    <SelectItem value="qualitative">QUALITATIVO — ORIENTAÇÕES E ESCOLHAS</SelectItem>
+                                    <SelectItem value="hybrid">HÍBRIDO — PORÇÕES COM FLEXIBILIDADE</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <p className="text-xs text-muted-foreground">O modo organiza a apresentação; a decisão e a validação clínica permanecem com o nutricionista.</p>
                         </div>
 
                         {/* Datas */}

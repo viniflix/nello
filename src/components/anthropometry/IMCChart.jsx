@@ -77,23 +77,6 @@ const IMCChart = ({ data = [], patientAge = null, patientSex = null, patientEthn
 
     const currentCategory = getIMCCategory(lastBMI);
 
-    // Calcular Peso Ideal (Broca Modificado) e Ajustado
-    const lastRecordWithHeight = chartData.slice().reverse().find(r => r.height && r.weight);
-    let brocaIdeal = null;
-    let adjustedIdeal = null;
-    if (lastRecordWithHeight) {
-        const hCm = parseFloat(lastRecordWithHeight.height);
-        const wNow = parseFloat(lastRecordWithHeight.weight);
-        const gender = patientSex?.toLowerCase() || '';
-        const isMale = /^(male|masculino|m)$/i.test(String(gender || '').trim());
-        
-        brocaIdeal = isMale 
-            ? 52 + (0.75 * (hCm - 152.4))
-            : 52 + (0.67 * (hCm - 152.4));
-        
-        adjustedIdeal = ((wNow - brocaIdeal) * 0.25) + brocaIdeal;
-    }
-
     // Custom tooltip
     const CustomTooltip = ({ active, payload }) => {
         if (active && payload && payload.length) {
@@ -151,24 +134,24 @@ const IMCChart = ({ data = [], patientAge = null, patientSex = null, patientEthn
                         <Legend />
 
                         {/* Faixas de IMC como referência — dinâmicas por perfil */}
-                        <ReferenceLine
+                        {cuts && <ReferenceLine
                             y={cuts.underweight}
                             stroke="#3b82f6"
                             strokeDasharray="3 3"
                             label={{ value: `Abaixo (${cuts.underweight})`, position: 'insideTopLeft', fontSize: 10 }}
-                        />
-                        <ReferenceLine
+                        />}
+                        {cuts && <ReferenceLine
                             y={cuts.normal_high}
                             stroke="#10b981"
                             strokeDasharray="3 3"
                             label={{ value: `Normal (${cuts.normal_high})`, position: 'insideTopLeft', fontSize: 10 }}
-                        />
-                        <ReferenceLine
+                        />}
+                        {cuts?.overweight_high != null && <ReferenceLine
                             y={cuts.overweight_high}
                             stroke="#f59e0b"
                             strokeDasharray="3 3"
                             label={{ value: `Sobrepeso (${cuts.overweight_high})`, position: 'insideTopLeft', fontSize: 10 }}
-                        />
+                        />}
 
                         {/* Área colorida baseada no IMC */}
                         <Area
@@ -210,45 +193,19 @@ const IMCChart = ({ data = [], patientAge = null, patientSex = null, patientEthn
                     </div>
                 </div>
 
-                {/* Pesos Ideais */}
-                {brocaIdeal !== null && (
-                    <div className="mt-4 pt-4 border-t">
-                        <p className="text-xs font-semibold text-muted-foreground mb-2">Estimativas de Peso (Fórmula de Broca)</p>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="bg-muted/50 p-2 rounded-md">
-                                <p className="text-[11px] text-muted-foreground uppercase tracking-wider">Peso Ideal</p>
-                                <p className="text-sm font-semibold text-foreground">{brocaIdeal.toFixed(1)} kg</p>
-                            </div>
-                            <div className="bg-muted/50 p-2 rounded-md">
-                                <p className="text-[11px] text-muted-foreground uppercase tracking-wider">Peso Ideal Ajustado</p>
-                                <p className="text-sm font-semibold text-foreground">{adjustedIdeal.toFixed(1)} kg</p>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
                 {/* Legenda de faixas — dinâmica */}
-                <div className="mt-4 pt-4 border-t">
+                {cuts ? <div className="mt-4 pt-4 border-t">
                     <p className="text-xs text-muted-foreground mb-2 font-semibold">Classificação IMC:</p>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
-                        <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded bg-blue-500"></div>
-                            <span>{'< '}{cuts.underweight} Abaixo</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded bg-green-500"></div>
-                            <span>{cuts.underweight}–{cuts.normal_high} Normal</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded bg-yellow-500"></div>
-                            <span>{cuts.normal_high}–{cuts.overweight_high} Sobrepeso</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded bg-red-500"></div>
-                            <span>{'> '}{cuts.overweight_high} Obesidade</span>
-                        </div>
+                        <div className="flex items-center gap-2"><div className="w-3 h-3 rounded bg-blue-500" /><span>{'≤ '}{cuts.underweight} Baixo peso</span></div>
+                        <div className="flex items-center gap-2"><div className="w-3 h-3 rounded bg-green-500" /><span>{cuts.underweight}–{cuts.normal_high} Eutrofia</span></div>
+                        {cuts.overweight_high != null ? <>
+                            <div className="flex items-center gap-2"><div className="w-3 h-3 rounded bg-yellow-500" /><span>{cuts.normal_high}–{cuts.overweight_high} Sobrepeso</span></div>
+                            <div className="flex items-center gap-2"><div className="w-3 h-3 rounded bg-red-500" /><span>{'≥ '}{cuts.overweight_high} Obesidade</span></div>
+                        </> : <div className="flex items-center gap-2"><div className="w-3 h-3 rounded bg-yellow-500" /><span>{'≥ '}{cuts.normal_high} Sobrepeso</span></div>}
                     </div>
-                </div>
+                    <p className="mt-2 text-xs text-muted-foreground">REFERÊNCIA PARA APOIO À AVALIAÇÃO; NÃO DEFINE META OU CONDUTA.</p>
+                </div> : <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">AVALIAÇÃO PEDIÁTRICA: utilize curvas OMS completas de IMC-por-idade/sexo e escore-z. O gráfico apresenta apenas a evolução das medidas.</div>}
             </CardContent>
         </Card>
     );

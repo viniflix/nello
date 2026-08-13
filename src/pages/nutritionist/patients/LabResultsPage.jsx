@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useResolvedPatientId } from '@/hooks/useResolvedPatientId';
-import { ArrowLeft, Droplet, Plus, Edit, Trash2, Calendar, Activity, AlertCircle, Search, Filter, Loader2, Save, X, FileText, Upload, Eye, Download, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { ArrowLeft, Droplet, Plus, Edit, Trash2, Calendar, Activity, AlertCircle, Search, Filter, Loader2, Save, X, FileText, Upload, Eye, Download, TrendingUp, TrendingDown, Minus, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -23,7 +23,8 @@ import {
     createLabResult,
     updateLabResult,
     deleteLabResult,
-    deleteLabResultPDF,
+    confirmLabResultInterpretation,
+    getLabResultPDFUrl,
     uploadLabResultPDF,
     calculateStatus
 } from '@/lib/supabase/lab-results-queries';
@@ -50,6 +51,9 @@ const LabResultsPage = () => {
     const [editingLab, setEditingLab] = useState(null);
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
     const [labToDelete, setLabToDelete] = useState(null);
+    const [labToConfirm, setLabToConfirm] = useState(null);
+    const [confirmationReason, setConfirmationReason] = useState('Valores, unidade e referência conferidos no laudo apresentado.');
+    const [confirming, setConfirming] = useState(false);
     const [pdfViewerOpen, setPdfViewerOpen] = useState(false);
     const [viewingPdfUrl, setViewingPdfUrl] = useState(null);
 
@@ -259,8 +263,13 @@ const LabResultsPage = () => {
         }
     };
 
-    const handleViewPdf = (pdfUrl) => {
-        setViewingPdfUrl(pdfUrl);
+    const handleViewPdf = async (pdfPath) => {
+        const { url, error } = await getLabResultPDFUrl(pdfPath, 300);
+        if (error || !url) {
+            toast({ title: 'PDF indisponível', description: 'Não foi possível autorizar o acesso temporário.', variant: 'destructive' });
+            return;
+        }
+        setViewingPdfUrl(url);
         setPdfViewerOpen(true);
     };
 
@@ -307,10 +316,7 @@ const LabResultsPage = () => {
                 pdfUrl = uploadResult.url;
                 pdfFilename = uploadResult.filename;
 
-                // Se estava editando e havia PDF antigo, deletar
-                if (editingLab?.pdf_url) {
-                    await deleteLabResultPDF(editingLab.pdf_url);
-                }
+                // A versão anterior permanece preservada para auditoria clínica.
             }
 
             const labData = {
@@ -385,6 +391,22 @@ const LabResultsPage = () => {
                 description: 'Não foi possível excluir o exame.',
                 variant: 'destructive'
             });
+        }
+    };
+
+    const handleConfirmInterpretation = async () => {
+        if (!labToConfirm || confirmationReason.trim().length < 10) return;
+        setConfirming(true);
+        try {
+            const { error } = await confirmLabResultInterpretation(labToConfirm.id, confirmationReason.trim());
+            if (error) throw error;
+            toast({ title: 'INTERPRETAÇÃO VALIDADA', description: 'A confirmação profissional foi registrada na auditoria.' });
+            setLabToConfirm(null);
+            await loadLabResults();
+        } catch (error) {
+            toast({ title: 'VALIDAÇÃO NÃO REGISTRADA', description: toPortugueseError(error, 'Tente novamente.'), variant: 'destructive' });
+        } finally {
+            setConfirming(false);
         }
     };
 
@@ -654,6 +676,9 @@ const LabResultsPage = () => {
                                                 )}
                                                 {(lab.test_value !== null && lab.test_value !== undefined && lab.test_value !== '') && lab.status && getStatusBadge(lab.status)}
                                                 {(lab.test_value !== null && lab.test_value !== undefined && lab.test_value !== '') && getRiskBadge(lab.risk_level || 'none')}
+                                                <Badge variant="outline" className={cn('text-xs', lab.interpretation_status === 'confirmed' ? 'border-emerald-300 bg-emerald-50 text-emerald-800' : 'border-amber-300 bg-amber-50 text-amber-800')}>
+                                                    {lab.interpretation_status === 'confirmed' ? 'INTERPRETAÇÃO VALIDADA' : 'AGUARDA VALIDAÇÃO PROFISSIONAL'}
+                                                </Badge>
                                             </div>
 
                                             <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
@@ -699,6 +724,11 @@ const LabResultsPage = () => {
                                             )}
                                         </div>
                                         <div className="flex gap-2">
+                                            {lab.interpretation_status !== 'confirmed' && (
+                                                <Button variant="outline" size="icon" onClick={() => setLabToConfirm(lab)} title="Validar interpretação profissional">
+                                                    <CheckCircle2 className="w-4 h-4 text-emerald-700" />
+                                                </Button>
+                                            )}
                                             {lab.pdf_url && (
                                                 <Button
                                                     variant="outline"
@@ -724,7 +754,7 @@ const LabResultsPage = () => {
                                                     setLabToDelete(lab);
                                                     setDeleteConfirmOpen(true);
                                                 }}
-                                                title="Excluir"
+                                                title="Invalidar registro"
                                             >
                                                 <Trash2 className="w-4 h-4 text-destructive" />
                                             </Button>
@@ -976,17 +1006,36 @@ const LabResultsPage = () => {
                 </DialogContent>
             </Dialog>
 
+            <Dialog open={Boolean(labToConfirm)} onOpenChange={(open) => !open && setLabToConfirm(null)}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>VALIDAR INTERPRETAÇÃO LABORATORIAL</DialogTitle>
+                        <DialogDescription>O Nello apenas sinaliza a faixa informada. Confirme unidade, referência do laudo e contexto clínico antes de validar.</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-2">
+                        <Label htmlFor="confirmation-reason">JUSTIFICATIVA PROFISSIONAL</Label>
+                        <textarea id="confirmation-reason" className="min-h-24 w-full rounded-md border bg-background p-3 text-sm" value={confirmationReason} onChange={(event) => setConfirmationReason(event.target.value)} maxLength={1000} />
+                        <p className="text-xs text-muted-foreground">MÍNIMO DE 10 CARACTERES · {confirmationReason.length}/1000</p>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setLabToConfirm(null)}>CANCELAR</Button>
+                        <Button onClick={() => void handleConfirmInterpretation()} disabled={confirming || confirmationReason.trim().length < 10}>
+                            {confirming && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}VALIDAR INTERPRETAÇÃO
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
             {/* Delete Confirmation Modal */}
             <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
                             <AlertCircle className="w-5 h-5 text-destructive" />
-                            Confirmar Exclusão
+                            INVALIDAR REGISTRO
                         </DialogTitle>
                         <DialogDescription>
-                            Tem certeza que deseja excluir o exame <strong>{labToDelete?.test_name}</strong>?
-                            Esta ação não pode ser desfeita.
+                            O exame <strong>{labToDelete?.test_name}</strong> deixará de ser usado nas análises, mas será preservado no histórico e na auditoria.
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
@@ -995,7 +1044,7 @@ const LabResultsPage = () => {
                         </Button>
                         <Button variant="destructive" onClick={handleDelete}>
                             <Trash2 className="w-4 h-4 mr-2" />
-                            Excluir
+                            Invalidar registro
                         </Button>
                     </DialogFooter>
                 </DialogContent>

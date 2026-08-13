@@ -351,7 +351,10 @@ export const useAnthropometryController = ({ patientId, user, resolveLoading, re
                     }
                 });
             } else {
-                result = await createAnthropometryRecord(data);
+                result = await createAnthropometryRecord({
+                    ...data,
+                    created_by_user_id: user?.id || null
+                });
             }
 
             if (result.error) throw result.error;
@@ -400,7 +403,7 @@ export const useAnthropometryController = ({ patientId, user, resolveLoading, re
     };
 
     const handleDelete = async (record) => {
-        if (!window.confirm('Tem certeza que deseja excluir este registro?')) {
+        if (!window.confirm('Invalidar este registro? O original será preservado na auditoria.')) {
             return;
         }
 
@@ -410,7 +413,7 @@ export const useAnthropometryController = ({ patientId, user, resolveLoading, re
 
             toast({
                 title: 'Sucesso',
-                description: 'Registro excluído com sucesso',
+                description: 'Registro invalidado; o original foi preservado',
                 variant: 'success'
             });
 

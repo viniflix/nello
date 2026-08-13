@@ -47,10 +47,50 @@ const {
     getDraftMealPlan,
     setActiveMealPlan,
     promoteDraftToActive,
-    createDraftMealPlan,
     deleteDraftMealPlan,
     addMealToPlan,
+    updateFullMealPlan,
+    archiveMealPlan,
 } = await import('@/lib/supabase/meal-plan-queries');
+
+describe('D6-D8 — plano clínico atômico e auditável', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        mockFrom.mockReturnValue(chainable);
+        Object.values(chainable).forEach((fn) => fn.mockReturnValue(chainable));
+    });
+
+    it('envia estratégia, dias e motivo para o versionamento transacional do servidor', async () => {
+        mockRpc.mockResolvedValue({ data: { status: 'success', version_number: 2 }, error: null });
+        mockSingle.mockResolvedValue({ data: { id: 42, plan_mode: 'qualitative', meals: [] }, error: null });
+
+        const result = await updateFullMealPlan(42, {
+            name: 'Plano flexível', start_date: '2026-08-13', active_days: ['monday'],
+            plan_mode: 'qualitative', change_reason: 'Ajuste clínico após retorno', meals: [],
+        });
+
+        expect(result.error).toBeNull();
+        expect(mockRpc).toHaveBeenCalledWith('upsert_full_meal_plan', expect.objectContaining({
+            p_plan_id: 42,
+            p_plan_data: expect.objectContaining({
+                plan_mode: 'qualitative', active_days: ['monday'],
+                change_reason: 'Ajuste clínico após retorno',
+            }),
+        }));
+        expect(mockFrom).not.toHaveBeenCalledWith('meal_plan_versions');
+    });
+
+    it('arquiva pelo contrato auditável em vez de atualizar ou apagar diretamente', async () => {
+        mockRpc.mockResolvedValue({ data: { id: 42, status: 'archived' }, error: null });
+        const result = await archiveMealPlan(42, 'Encerramento confirmado pelo profissional');
+        expect(result.error).toBeNull();
+        expect(mockRpc).toHaveBeenCalledWith('archive_meal_plan', {
+            p_plan_id: 42, p_reason: 'Encerramento confirmado pelo profissional',
+        });
+        expect(mockUpdate).not.toHaveBeenCalled();
+        expect(mockDelete).not.toHaveBeenCalled();
+    });
+});
 
 describe('addMealToPlan - validação de horário', () => {
     beforeEach(() => {

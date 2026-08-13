@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Settings, User, Calendar, DollarSign, Key, FileSignature } from 'lucide-react';
+import { Settings, User, Calendar, DollarSign, Key, FileSignature, BookOpenCheck } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/contexts/AuthContext';
@@ -12,6 +12,7 @@ import ProfessionalVerificationSection from './ProfessionalVerificationSection';
 import StudentSupervisionCard from '@/components/verification/StudentSupervisionCard';
 import { PageHeaderSkeleton, FormSkeleton } from '@/components/ui/custom-skeletons';
 import DocumentIdentitySection from '@/features/documents/components/DocumentIdentitySection';
+import ClinicalProtocolCatalogSection from '@/features/clinical-science/components/ClinicalProtocolCatalogSection';
 
 const NutritionistProfilePage = () => {
     const { user, updateUserProfile } = useAuth();
@@ -86,7 +87,7 @@ const NutritionistProfilePage = () => {
                     <Card>
                         <CardContent className="p-0">
                             <Tabs defaultValue="personal" className="w-full">
-                                <TabsList className="grid w-full grid-cols-2 md:grid-cols-5 h-auto p-1">
+                                <TabsList className="grid w-full grid-cols-2 md:grid-cols-6 h-auto p-1">
                                     <TabsTrigger value="personal" className="flex items-center gap-2 py-3">
                                         <User className="w-4 h-4" />
                                         <span className="hidden sm:inline">Dados & Branding</span>
@@ -106,6 +107,11 @@ const NutritionistProfilePage = () => {
                                         <FileSignature className="w-4 h-4" />
                                         <span className="hidden sm:inline">Documentos</span>
                                         <span className="sm:hidden">Docs</span>
+                                    </TabsTrigger>
+                                    <TabsTrigger value="protocols" className="flex items-center gap-2 py-3">
+                                        <BookOpenCheck className="w-4 h-4" />
+                                        <span className="hidden sm:inline">Protocolos</span>
+                                        <span className="sm:hidden">Ciência</span>
                                     </TabsTrigger>
                                     <TabsTrigger value="account" className="flex items-center gap-2 py-3">
                                         <Key className="w-4 h-4" />
@@ -138,6 +144,10 @@ const NutritionistProfilePage = () => {
 
                                     <TabsContent value="documents" className="mt-0">
                                         <DocumentIdentitySection verification={user.verification} />
+                                    </TabsContent>
+
+                                    <TabsContent value="protocols" className="mt-0">
+                                        <ClinicalProtocolCatalogSection />
                                     </TabsContent>
 
                                     <TabsContent value="account" className="mt-0">

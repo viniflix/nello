@@ -22,6 +22,8 @@ export async function getPatientLabResults(patientId, limit = 50) {
             .from('lab_results')
             .select('*')
             .eq('patient_id', patientId)
+            .eq('is_latest_revision', true)
+            .eq('record_status', 'active')
             .order('test_date', { ascending: false })
             .limit(limit);
 
@@ -47,6 +49,8 @@ export async function getRecentLabResults(patientId) {
             .from('lab_results')
             .select('*')
             .eq('patient_id', patientId)
+            .eq('is_latest_revision', true)
+            .eq('record_status', 'active')
             .gte('test_date', dateString)
             .order('test_date', { ascending: false });
 
@@ -102,14 +106,9 @@ export async function createLabResult(labResult) {
             );
         }
 
-        const { data, error } = await supabase
-            .from('lab_results')
-            .insert([{
-                ...labResult,
-                status
-            }])
-            .select()
-            .single();
+        const { data, error } = await supabase.rpc('create_lab_result_record', {
+            p_payload: { ...labResult, status }
+        });
 
         return { data, error };
     } catch (error) {
@@ -147,12 +146,11 @@ export async function updateLabResult(labResultId, updates) {
             updates.status = 'pending';
         }
 
-        const { data, error } = await supabase
-            .from('lab_results')
-            .update(updates)
-            .eq('id', labResultId)
-            .select()
-            .single();
+        const { data, error } = await supabase.rpc('revise_lab_result_record', {
+            p_result_id: labResultId,
+            p_payload: updates,
+            p_reason: 'Nova versão confirmada pelo nutricionista na interface'
+        });
 
         return { data, error };
     } catch (error) {
@@ -168,25 +166,27 @@ export async function updateLabResult(labResultId, updates) {
  */
 export async function deleteLabResult(labResultId) {
     try {
-        // Primeiro, buscar o exame para ver se tem PDF
-        const { data: labResult } = await getLabResultById(labResultId);
-
-        // Se tem PDF, deletar do storage antes
-        if (labResult?.pdf_url) {
-            await deleteLabResultPDF(labResult.pdf_url);
-        }
-
-        // Deletar o registro
-        const { data, error } = await supabase
-            .from('lab_results')
-            .delete()
-            .eq('id', labResultId)
-            .select()
-            .single();
+        const { data, error } = await supabase.rpc('invalidate_lab_result_record', {
+            p_result_id: labResultId,
+            p_reason: 'Invalidado pelo nutricionista na interface de exames'
+        });
 
         return { data, error };
     } catch (error) {
         logSupabaseError('Erro ao deletar exame', error);
+        return { data: null, error };
+    }
+}
+
+export async function confirmLabResultInterpretation(labResultId, reason) {
+    try {
+        const { data, error } = await supabase.rpc('confirm_lab_result_interpretation', {
+            p_result_id: labResultId,
+            p_reason: reason
+        });
+        return { data, error };
+    } catch (error) {
+        logSupabaseError('Erro ao confirmar interpretação laboratorial', error);
         return { data: null, error };
     }
 }
@@ -203,6 +203,8 @@ export async function getLabResultsByTestName(patientId, testName) {
             .from('lab_results')
             .select('*')
             .eq('patient_id', patientId)
+            .eq('is_latest_revision', true)
+            .eq('record_status', 'active')
             .ilike('test_name', `%${testName}%`)
             .order('test_date', { ascending: false });
 
@@ -224,6 +226,8 @@ export async function getAbnormalLabResults(patientId) {
             .from('lab_results')
             .select('*')
             .eq('patient_id', patientId)
+            .eq('is_latest_revision', true)
+            .eq('record_status', 'active')
             .in('status', ['low', 'high'])
             .order('test_date', { ascending: false });
 
@@ -455,7 +459,7 @@ export async function uploadLabResultPDF(patientId, file) {
         const fileName = `${patientId}/${timestamp}_${randomString}.${fileExtension}`;
 
         // Upload para o storage
-        const { data, error } = await supabase.storage
+        const { error } = await supabase.storage
             .from('lab-results-pdfs')
             .upload(fileName, file, {
                 cacheControl: '3600',
@@ -464,13 +468,8 @@ export async function uploadLabResultPDF(patientId, file) {
 
         if (error) throw error;
 
-        // Obter URL pública (signed URL para acesso privado)
-        const { data: urlData } = await supabase.storage
-            .from('lab-results-pdfs')
-            .createSignedUrl(fileName, 31536000); // 1 ano
-
         return {
-            url: urlData.signedUrl,
+            url: fileName,
             filename: file.name,
             path: fileName,
             error: null

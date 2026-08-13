@@ -12,518 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.1"
   }
-  private: {
-    Tables: {
-      empty_patient_removal_audit: {
-        Row: {
-          care_episode_id: string
-          id: string
-          nutritionist_id: string
-          patient_id: string
-          patient_snapshot: Json
-          reason: string
-          removed_at: string
-          removed_by: string
-        }
-        Insert: {
-          care_episode_id: string
-          id?: string
-          nutritionist_id: string
-          patient_id: string
-          patient_snapshot?: Json
-          reason?: string
-          removed_at?: string
-          removed_by: string
-        }
-        Update: {
-          care_episode_id?: string
-          id?: string
-          nutritionist_id?: string
-          patient_id?: string
-          patient_snapshot?: Json
-          reason?: string
-          removed_at?: string
-          removed_by?: string
-        }
-        Relationships: []
-      }
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      add_patient_xp: {
-        Args: {
-          p_nutritionist_id: string
-          p_patient_id: string
-          p_reason?: string
-          p_xp: number
-        }
-        Returns: Json
-      }
-      approve_patient_link: { Args: { p_patient_id: string }; Returns: Json }
-      build_clinical_record_amendment_impact: {
-        Args: {
-          p_record: Database["public"]["Tables"]["clinical_records"]["Row"]
-        }
-        Returns: Json
-      }
-      can_access_patient_photo_object: {
-        Args: { p_name: string }
-        Returns: boolean
-      }
-      can_list_clinical_attachment: {
-        Args: { p_attachment_id: string }
-        Returns: boolean
-      }
-      can_manage_clinical_attachment: {
-        Args: { p_episode_id: string }
-        Returns: boolean
-      }
-      can_manage_clinical_record_correction: {
-        Args: {
-          p_action: string
-          p_actor: string
-          p_replacement_record_id: string
-        }
-        Returns: boolean
-      }
-      can_open_clinical_attachment: {
-        Args: { p_attachment_id: string }
-        Returns: boolean
-      }
-      can_read_care_episode: {
-        Args: { p_episode_id: string }
-        Returns: boolean
-      }
-      can_read_clinical_attachment_object: {
-        Args: { p_bucket_id: string; p_name: string }
-        Returns: boolean
-      }
-      can_read_clinical_record: {
-        Args: { p_record_id: string }
-        Returns: boolean
-      }
-      can_read_legal_guardian_event: {
-        Args: { p_event_id: string }
-        Returns: boolean
-      }
-      can_start_clinical_record_correction: {
-        Args: { p_actor: string; p_record_id: string }
-        Returns: boolean
-      }
-      can_upload_clinical_attachment_object: {
-        Args: { p_bucket_id: string; p_name: string }
-        Returns: boolean
-      }
-      can_upload_patient_photo_object: {
-        Args: { p_name: string }
-        Returns: boolean
-      }
-      can_write_active_care_episode: {
-        Args: { p_episode_id: string }
-        Returns: boolean
-      }
-      can_write_active_meal_plan: {
-        Args: {
-          p_care_episode_id: string
-          p_nutritionist_id: string
-          p_patient_id: string
-        }
-        Returns: boolean
-      }
-      check_and_grant_achievements: {
-        Args: { p_user_id: string }
-        Returns: {
-          description: string
-          icon_name: string
-          name: string
-        }[]
-      }
-      check_is_admin: { Args: never; Returns: boolean }
-      clear_message_notifications_from_sender: {
-        Args: { p_sender_id: string }
-        Returns: undefined
-      }
-      clinical_attachment_actor_role: {
-        Args: { p_actor_id: string; p_source: string }
-        Returns: string
-      }
-      clinical_record_canonical_payload: {
-        Args: {
-          p_content: Json
-          p_record: Database["public"]["Tables"]["clinical_records"]["Row"]
-          p_retrospective_reason: string
-        }
-        Returns: Json
-      }
-      clinical_record_signed_by: {
-        Args: { p_record_id: string }
-        Returns: string
-      }
-      clone_diet_template_to_patient: {
-        Args: {
-          p_name?: string
-          p_nutritionist_id: string
-          p_patient_id: string
-          p_template_id: string
-        }
-        Returns: number
-      }
-      clone_meal_template_to_plan: {
-        Args: {
-          p_meal_plan_id: number
-          p_meal_template_id: string
-          p_meal_time?: string
-          p_meal_type: string
-        }
-        Returns: number
-      }
-      create_appointment_reminders: { Args: never; Returns: undefined }
-      create_daily_log_reminders: { Args: never; Returns: undefined }
-      create_notification: {
-        Args: {
-          p_content?: Json
-          p_link_url?: string
-          p_message?: string
-          p_title?: string
-          p_type?: string
-          p_user_id: string
-        }
-        Returns: number
-      }
-      current_recent_authentication_evidence: { Args: never; Returns: Json }
-      delete_patient: { Args: { patient_id: string }; Returns: undefined }
-      empty_patient_removal_status: {
-        Args: { p_patient_id: string }
-        Returns: Json
-      }
-      end_care_episode: {
-        Args: { p_end_reason?: string; p_patient_id: string }
-        Returns: Json
-      }
-      get_admin_dashboard_stats: { Args: never; Returns: Json }
-      get_chat_recipient_profile: {
-        Args: { recipient_id: string }
-        Returns: {
-          avatar_url: string
-          id: string
-          is_active: boolean
-          last_seen_at: string
-          name: string
-          nutritionist_id: string
-          user_type: string
-        }[]
-      }
-      get_comprehensive_activity_feed_optimized: {
-        Args: { p_limit?: number; p_nutritionist_id: string }
-        Returns: {
-          activity_data: Json
-          activity_date: string
-          activity_id: string
-          activity_type: string
-          patient_id: string
-          patient_name: string
-        }[]
-      }
-      get_daily_adherence: {
-        Args: { p_nutritionist_id: string }
-        Returns: number
-      }
-      get_financial_summary: {
-        Args: { end_date: string; start_date: string }
-        Returns: Json
-      }
-      get_invite_details: {
-        Args: { p_invite_code: string }
-        Returns: {
-          nutritionist_gender: string
-          nutritionist_name: string
-          patient_name: string
-        }[]
-      }
-      get_meal_plan_with_foods_optimized: {
-        Args: { p_meal_plan_id: string }
-        Returns: Json
-      }
-      get_nutritionist_conversations: {
-        Args: { p_nutritionist_id: string }
-        Returns: {
-          is_active: boolean
-          last_message_at: string
-          last_message_content: string
-          last_seen_at: string
-          recipient_avatar: string
-          recipient_id: string
-          recipient_name: string
-          unread_count: number
-        }[]
-      }
-      get_nutritionist_detail: {
-        Args: { p_nutritionist_id: string }
-        Returns: Json
-      }
-      get_nutritionists_list: {
-        Args: never
-        Returns: {
-          created_at: string
-          email: string
-          id: string
-          is_active: boolean
-          last_activity: string
-          name: string
-          patients_count: number
-        }[]
-      }
-      get_operational_health_summary: {
-        Args: { p_nutritionist_id?: string; p_window_hours?: number }
-        Returns: Json
-      }
-      get_own_profile_attrs: {
-        Args: never
-        Returns: {
-          is_admin: boolean
-          user_type: string
-        }[]
-      }
-      get_patients_for_new_chat: {
-        Args: { p_nutritionist_id: string }
-        Returns: {
-          avatar_url: string
-          id: string
-          is_active: boolean
-          last_seen_at: string
-          name: string
-        }[]
-      }
-      get_patients_low_adherence_optimized: {
-        Args: { p_days_threshold?: number; p_nutritionist_id: string }
-        Returns: {
-          days_since_last_meal: number
-          last_meal_date: string
-          patient_id: string
-          patient_name: string
-        }[]
-      }
-      get_patients_pending_data_optimized: {
-        Args: { p_nutritionist_id: string }
-        Returns: {
-          has_anamnese: boolean
-          has_anthropometry: boolean
-          has_meal_plan: boolean
-          has_prescription: boolean
-          patient_id: string
-          patient_name: string
-          pending_items: string[]
-        }[]
-      }
-      get_system_live_logs: {
-        Args: { limit_count?: number }
-        Returns: {
-          event_timestamp: string
-          id: string
-          message: string
-          type: string
-          user_name: string
-        }[]
-      }
-      get_tcc_study_metrics: { Args: never; Returns: Json }
-      get_user_id: { Args: never; Returns: string }
-      has_current_clinical_capacity: {
-        Args: { p_user_id: string }
-        Returns: boolean
-      }
-      has_meaningful_clinical_text: {
-        Args: { p_value: string }
-        Returns: boolean
-      }
-      increment_checkin_streak: {
-        Args: { p_nutritionist_id: string; p_patient_id: string }
-        Returns: undefined
-      }
-      interact_notification: {
-        Args: { p_delete_if_message?: boolean; p_notification_id: string }
-        Returns: undefined
-      }
-      is_admin: { Args: never; Returns: boolean }
-      is_nutritionist: { Args: never; Returns: boolean }
-      is_patient: { Args: never; Returns: boolean }
-      is_patient_visible_clinical_record: {
-        Args: { p_record_id: string }
-        Returns: boolean
-      }
-      lock_and_can_write_active_care_episode: {
-        Args: { p_episode_id: string }
-        Returns: boolean
-      }
-      log_activity_event: {
-        Args: {
-          p_event_name: string
-          p_event_version?: number
-          p_nutritionist_id?: string
-          p_patient_id?: string
-          p_payload?: Json
-          p_source_module?: string
-        }
-        Returns: string
-      }
-      log_bug_report: {
-        Args: {
-          p_column_number?: number
-          p_component_stack?: string
-          p_console_log?: Json
-          p_error_message?: string
-          p_error_type?: string
-          p_line_number?: number
-          p_metadata?: Json
-          p_route?: string
-          p_source_file?: string
-          p_stack_trace?: string
-          p_user_agent?: string
-          p_user_email?: string
-          p_user_id?: string
-          p_user_name?: string
-          p_user_type?: string
-        }
-        Returns: string
-      }
-      log_meal_action: {
-        Args: {
-          p_action: string
-          p_details?: Json
-          p_meal_date?: string
-          p_meal_id: number
-          p_meal_time?: string
-          p_meal_type?: string
-          p_patient_id: string
-        }
-        Returns: number
-      }
-      log_meal_action_secure: {
-        Args: { p_action: string; p_details: Json; p_meal_id: string }
-        Returns: undefined
-      }
-      log_operational_event: {
-        Args: {
-          p_error_message?: string
-          p_event_type?: string
-          p_latency_ms?: number
-          p_metadata?: Json
-          p_module: string
-          p_nutritionist_id?: string
-          p_operation: string
-          p_patient_id?: string
-        }
-        Returns: number
-      }
-      minimal_patient_snapshot: {
-        Args: { p_patient_id: string }
-        Returns: Json
-      }
-      normalize_meal_time: { Args: { p_value: string }; Returns: string }
-      notify_care_episode_participant: {
-        Args: {
-          p_episode_id: string
-          p_message: string
-          p_title: string
-          p_type: string
-          p_user_id: string
-        }
-        Returns: undefined
-      }
-      patient_has_meaningful_data: {
-        Args: { p_patient_id: string }
-        Returns: boolean
-      }
-      process_patient_reminders: {
-        Args: { p_patient_id?: string }
-        Returns: Json
-      }
-      project_clinical_evolution_record: {
-        Args: {
-          p_record: Database["public"]["Tables"]["clinical_records"]["Row"]
-        }
-        Returns: Json
-      }
-      project_clinical_record_chain_item: {
-        Args: {
-          p_record: Database["public"]["Tables"]["clinical_records"]["Row"]
-        }
-        Returns: Json
-      }
-      project_patient_clinical_record: {
-        Args: {
-          p_record: Database["public"]["Tables"]["clinical_records"]["Row"]
-        }
-        Returns: Json
-      }
-      promote_draft_to_active: {
-        Args: { p_draft_id: number; p_patient_id: string }
-        Returns: undefined
-      }
-      redeem_invite_code: { Args: { input_code: string }; Returns: Json }
-      reject_patient_link: { Args: { p_patient_id: string }; Returns: Json }
-      require_verification_admin: { Args: never; Returns: undefined }
-      resolve_active_care_episode: {
-        Args: { p_patient_id: string }
-        Returns: string
-      }
-      set_active_meal_plan: { Args: { p_plan_id: number }; Returns: undefined }
-      soft_delete_meal: { Args: { p_meal_id: number }; Returns: boolean }
-      start_care_episode: {
-        Args: { p_patient_id: string; p_start_reason?: string }
-        Returns: Json
-      }
-      transition_appointment_status:
-        | {
-            Args: {
-              p_appointment_id: number
-              p_next_status: string
-              p_reason?: string
-            }
-            Returns: Json
-          }
-        | {
-            Args: {
-              p_appointment_id: string
-              p_next_status: string
-              p_reason?: string
-            }
-            Returns: Json
-          }
-      upsert_full_meal_plan: {
-        Args: { p_meals: Json; p_plan_data: Json; p_plan_id: number }
-        Returns: Json
-      }
-      validate_clinical_record_content: {
-        Args: {
-          p_content: Json
-          p_require_meaningful: boolean
-          p_sections_snapshot: Json
-        }
-        Returns: number
-      }
-      validate_evolution_template_sections: {
-        Args: { p_sections: Json }
-        Returns: boolean
-      }
-      write_care_episode_activity: {
-        Args: {
-          p_actor_user_id: string
-          p_episode: Database["public"]["Tables"]["care_episodes"]["Row"]
-          p_event_name: string
-          p_reason?: string
-        }
-        Returns: undefined
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       achievements: {
@@ -1709,6 +1197,117 @@ export type Database = {
           },
         ]
       }
+      clinical_calculation_snapshots: {
+        Row: {
+          care_episode_id: string
+          confirmed_at: string
+          confirmed_by: string
+          created_at: string
+          domain: string
+          id: string
+          input_snapshot: Json
+          nutritionist_id: string
+          output_snapshot: Json
+          patient_id: string
+          professional_decision: string
+          protocol_code: string
+          protocol_version: number
+          source_entity: string
+          source_id: string
+        }
+        Insert: {
+          care_episode_id: string
+          confirmed_at?: string
+          confirmed_by: string
+          created_at?: string
+          domain: string
+          id?: string
+          input_snapshot: Json
+          nutritionist_id: string
+          output_snapshot: Json
+          patient_id: string
+          professional_decision: string
+          protocol_code: string
+          protocol_version: number
+          source_entity: string
+          source_id: string
+        }
+        Update: {
+          care_episode_id?: string
+          confirmed_at?: string
+          confirmed_by?: string
+          created_at?: string
+          domain?: string
+          id?: string
+          input_snapshot?: Json
+          nutritionist_id?: string
+          output_snapshot?: Json
+          patient_id?: string
+          professional_decision?: string
+          protocol_code?: string
+          protocol_version?: number
+          source_entity?: string
+          source_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clinical_calculation_snapshot_protocol_code_protocol_versi_fkey"
+            columns: ["protocol_code", "protocol_version"]
+            isOneToOne: false
+            referencedRelation: "clinical_protocol_catalog"
+            referencedColumns: ["code", "version"]
+          },
+          {
+            foreignKeyName: "clinical_calculation_snapshots_care_episode_id_fkey"
+            columns: ["care_episode_id"]
+            isOneToOne: false
+            referencedRelation: "care_episodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clinical_calculation_snapshots_confirmed_by_fkey"
+            columns: ["confirmed_by"]
+            isOneToOne: false
+            referencedRelation: "patient_hub_summary"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "clinical_calculation_snapshots_confirmed_by_fkey"
+            columns: ["confirmed_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clinical_calculation_snapshots_nutritionist_id_fkey"
+            columns: ["nutritionist_id"]
+            isOneToOne: false
+            referencedRelation: "patient_hub_summary"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "clinical_calculation_snapshots_nutritionist_id_fkey"
+            columns: ["nutritionist_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clinical_calculation_snapshots_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patient_hub_summary"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "clinical_calculation_snapshots_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clinical_evolution_template_events: {
         Row: {
           action: string
@@ -1865,6 +1464,123 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "user_profiles"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      clinical_protocol_acceptances: {
+        Row: {
+          accepted_at: string
+          decision: string
+          id: string
+          nutritionist_id: string
+          protocol_code: string
+          protocol_version: number
+          reason: string
+          superseded_at: string | null
+        }
+        Insert: {
+          accepted_at?: string
+          decision: string
+          id?: string
+          nutritionist_id: string
+          protocol_code: string
+          protocol_version: number
+          reason: string
+          superseded_at?: string | null
+        }
+        Update: {
+          accepted_at?: string
+          decision?: string
+          id?: string
+          nutritionist_id?: string
+          protocol_code?: string
+          protocol_version?: number
+          reason?: string
+          superseded_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clinical_protocol_acceptances_nutritionist_id_fkey"
+            columns: ["nutritionist_id"]
+            isOneToOne: false
+            referencedRelation: "patient_hub_summary"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "clinical_protocol_acceptances_nutritionist_id_fkey"
+            columns: ["nutritionist_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clinical_protocol_acceptances_protocol_code_protocol_versi_fkey"
+            columns: ["protocol_code", "protocol_version"]
+            isOneToOne: false
+            referencedRelation: "clinical_protocol_catalog"
+            referencedColumns: ["code", "version"]
+          },
+        ]
+      }
+      clinical_protocol_catalog: {
+        Row: {
+          code: string
+          created_at: string
+          description: string
+          domain: string
+          effective_from: string
+          effective_until: string | null
+          implementation_key: string | null
+          limitations: string
+          name: string
+          population: Json
+          required_inputs: Json
+          source_code: string
+          source_version: number
+          validation_status: string
+          version: number
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          description: string
+          domain: string
+          effective_from: string
+          effective_until?: string | null
+          implementation_key?: string | null
+          limitations: string
+          name: string
+          population?: Json
+          required_inputs?: Json
+          source_code: string
+          source_version: number
+          validation_status?: string
+          version: number
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          description?: string
+          domain?: string
+          effective_from?: string
+          effective_until?: string | null
+          implementation_key?: string | null
+          limitations?: string
+          name?: string
+          population?: Json
+          required_inputs?: Json
+          source_code?: string
+          source_version?: number
+          validation_status?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clinical_protocol_catalog_source_code_source_version_fkey"
+            columns: ["source_code", "source_version"]
+            isOneToOne: false
+            referencedRelation: "scientific_sources"
+            referencedColumns: ["code", "version"]
           },
         ]
       }
@@ -2376,6 +2092,177 @@ export type Database = {
           },
         ]
       }
+      data_retention_policy_catalog: {
+        Row: {
+          active: boolean
+          category_code: string
+          default_policy: string
+          description: string
+          legal_review_required: boolean
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          active?: boolean
+          category_code: string
+          default_policy: string
+          description: string
+          legal_review_required?: boolean
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          active?: boolean
+          category_code?: string
+          default_policy?: string
+          description?: string
+          legal_review_required?: boolean
+          updated_at?: string
+          version?: number
+        }
+        Relationships: []
+      }
+      data_subject_request_events: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          event_type: string
+          from_status: string | null
+          id: string
+          metadata: Json
+          reason: string
+          request_id: string
+          to_status: string | null
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          event_type: string
+          from_status?: string | null
+          id?: string
+          metadata?: Json
+          reason: string
+          request_id: string
+          to_status?: string | null
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          event_type?: string
+          from_status?: string | null
+          id?: string
+          metadata?: Json
+          reason?: string
+          request_id?: string
+          to_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "data_subject_request_events_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "patient_hub_summary"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "data_subject_request_events_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "data_subject_request_events_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "data_subject_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      data_subject_requests: {
+        Row: {
+          assigned_to: string | null
+          cancelled_at: string | null
+          completed_at: string | null
+          created_at: string
+          due_at: string
+          id: string
+          legal_basis: string | null
+          request_type: string
+          resolution_summary: string | null
+          retention_decision: string | null
+          revision: number
+          status: string
+          subject_id: string
+          subject_note: string | null
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          cancelled_at?: string | null
+          completed_at?: string | null
+          created_at?: string
+          due_at?: string
+          id?: string
+          legal_basis?: string | null
+          request_type: string
+          resolution_summary?: string | null
+          retention_decision?: string | null
+          revision?: number
+          status?: string
+          subject_id: string
+          subject_note?: string | null
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          cancelled_at?: string | null
+          completed_at?: string | null
+          created_at?: string
+          due_at?: string
+          id?: string
+          legal_basis?: string | null
+          request_type?: string
+          resolution_summary?: string | null
+          retention_decision?: string | null
+          revision?: number
+          status?: string
+          subject_id?: string
+          subject_note?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "data_subject_requests_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "patient_hub_summary"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "data_subject_requests_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "data_subject_requests_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "patient_hub_summary"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "data_subject_requests_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       diet_template_food_substitutions: {
         Row: {
           created_at: string | null
@@ -2487,9 +2374,62 @@ export type Database = {
           },
         ]
       }
+      diet_template_versions: {
+        Row: {
+          change_reason: string
+          created_at: string
+          created_by: string
+          id: string
+          snapshot: Json
+          template_id: string
+          version: number
+        }
+        Insert: {
+          change_reason: string
+          created_at?: string
+          created_by: string
+          id?: string
+          snapshot: Json
+          template_id: string
+          version: number
+        }
+        Update: {
+          change_reason?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          snapshot?: Json
+          template_id?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "diet_template_versions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "patient_hub_summary"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "diet_template_versions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "diet_template_versions_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "diet_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       diet_templates: {
         Row: {
           created_at: string | null
+          current_version: number
           description: string | null
           id: string
           name: string
@@ -2499,6 +2439,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          current_version?: number
           description?: string | null
           id?: string
           name: string
@@ -2508,6 +2449,7 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          current_version?: number
           description?: string | null
           id?: string
           name?: string
@@ -2517,6 +2459,461 @@ export type Database = {
         }
         Relationships: []
       }
+      document_artifact_events: {
+        Row: {
+          actor_id: string
+          artifact_id: string
+          created_at: string
+          event_type: string
+          from_status: string | null
+          id: string
+          metadata: Json
+          reason: string
+          to_status: string | null
+        }
+        Insert: {
+          actor_id: string
+          artifact_id: string
+          created_at?: string
+          event_type: string
+          from_status?: string | null
+          id?: string
+          metadata?: Json
+          reason: string
+          to_status?: string | null
+        }
+        Update: {
+          actor_id?: string
+          artifact_id?: string
+          created_at?: string
+          event_type?: string
+          from_status?: string | null
+          id?: string
+          metadata?: Json
+          reason?: string
+          to_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_artifact_events_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "patient_hub_summary"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "document_artifact_events_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_artifact_events_artifact_id_fkey"
+            columns: ["artifact_id"]
+            isOneToOne: false
+            referencedRelation: "document_artifacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      document_artifacts: {
+        Row: {
+          authenticity_code: string | null
+          canonical_payload: Json | null
+          canonical_sha256: string | null
+          care_episode_id: string | null
+          created_at: string
+          draft_payload: Json
+          finalized_at: string | null
+          finalized_by: string | null
+          id: string
+          identity_id: string
+          invalidated_at: string | null
+          invalidated_by: string | null
+          invalidation_reason: string | null
+          layout_code: string
+          layout_version: number
+          patient_id: string | null
+          preparer_id: string
+          professional_id: string
+          replacement_reason: string | null
+          revision: number
+          signature_evidence: Json | null
+          signature_method: string | null
+          signed_at: string | null
+          signed_by: string | null
+          source_id: string | null
+          source_key: string | null
+          source_type: string
+          status: string
+          supersedes_id: string | null
+          supervisor_id: string | null
+          updated_at: string
+          visibility: string
+        }
+        Insert: {
+          authenticity_code?: string | null
+          canonical_payload?: Json | null
+          canonical_sha256?: string | null
+          care_episode_id?: string | null
+          created_at?: string
+          draft_payload: Json
+          finalized_at?: string | null
+          finalized_by?: string | null
+          id?: string
+          identity_id: string
+          invalidated_at?: string | null
+          invalidated_by?: string | null
+          invalidation_reason?: string | null
+          layout_code: string
+          layout_version: number
+          patient_id?: string | null
+          preparer_id: string
+          professional_id: string
+          replacement_reason?: string | null
+          revision?: number
+          signature_evidence?: Json | null
+          signature_method?: string | null
+          signed_at?: string | null
+          signed_by?: string | null
+          source_id?: string | null
+          source_key?: string | null
+          source_type: string
+          status?: string
+          supersedes_id?: string | null
+          supervisor_id?: string | null
+          updated_at?: string
+          visibility: string
+        }
+        Update: {
+          authenticity_code?: string | null
+          canonical_payload?: Json | null
+          canonical_sha256?: string | null
+          care_episode_id?: string | null
+          created_at?: string
+          draft_payload?: Json
+          finalized_at?: string | null
+          finalized_by?: string | null
+          id?: string
+          identity_id?: string
+          invalidated_at?: string | null
+          invalidated_by?: string | null
+          invalidation_reason?: string | null
+          layout_code?: string
+          layout_version?: number
+          patient_id?: string | null
+          preparer_id?: string
+          professional_id?: string
+          replacement_reason?: string | null
+          revision?: number
+          signature_evidence?: Json | null
+          signature_method?: string | null
+          signed_at?: string | null
+          signed_by?: string | null
+          source_id?: string | null
+          source_key?: string | null
+          source_type?: string
+          status?: string
+          supersedes_id?: string | null
+          supervisor_id?: string | null
+          updated_at?: string
+          visibility?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_artifacts_care_episode_id_fkey"
+            columns: ["care_episode_id"]
+            isOneToOne: false
+            referencedRelation: "care_episodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_artifacts_finalized_by_fkey"
+            columns: ["finalized_by"]
+            isOneToOne: false
+            referencedRelation: "patient_hub_summary"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "document_artifacts_finalized_by_fkey"
+            columns: ["finalized_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_artifacts_identity_id_fkey"
+            columns: ["identity_id"]
+            isOneToOne: false
+            referencedRelation: "professional_document_identities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_artifacts_invalidated_by_fkey"
+            columns: ["invalidated_by"]
+            isOneToOne: false
+            referencedRelation: "patient_hub_summary"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "document_artifacts_invalidated_by_fkey"
+            columns: ["invalidated_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_artifacts_layout_code_layout_version_fkey"
+            columns: ["layout_code", "layout_version"]
+            isOneToOne: false
+            referencedRelation: "document_layout_versions"
+            referencedColumns: ["layout_code", "version"]
+          },
+          {
+            foreignKeyName: "document_artifacts_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patient_hub_summary"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "document_artifacts_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_artifacts_preparer_id_fkey"
+            columns: ["preparer_id"]
+            isOneToOne: false
+            referencedRelation: "patient_hub_summary"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "document_artifacts_preparer_id_fkey"
+            columns: ["preparer_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_artifacts_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "patient_hub_summary"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "document_artifacts_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_artifacts_signed_by_fkey"
+            columns: ["signed_by"]
+            isOneToOne: false
+            referencedRelation: "patient_hub_summary"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "document_artifacts_signed_by_fkey"
+            columns: ["signed_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_artifacts_supersedes_id_fkey"
+            columns: ["supersedes_id"]
+            isOneToOne: false
+            referencedRelation: "document_artifacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_artifacts_supervisor_id_fkey"
+            columns: ["supervisor_id"]
+            isOneToOne: false
+            referencedRelation: "patient_hub_summary"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "document_artifacts_supervisor_id_fkey"
+            columns: ["supervisor_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      document_asset_uploads: {
+        Row: {
+          asset_type: string
+          confirmed_at: string | null
+          created_at: string
+          created_identity_id: string | null
+          expires_at: string
+          failure_code: string | null
+          id: string
+          identity_id: string
+          mime_type: string
+          original_filename: string
+          professional_id: string
+          sha256: string | null
+          size_bytes: number
+          status: string
+          storage_bucket: string
+          storage_path: string
+        }
+        Insert: {
+          asset_type: string
+          confirmed_at?: string | null
+          created_at?: string
+          created_identity_id?: string | null
+          expires_at?: string
+          failure_code?: string | null
+          id?: string
+          identity_id: string
+          mime_type: string
+          original_filename: string
+          professional_id: string
+          sha256?: string | null
+          size_bytes: number
+          status?: string
+          storage_bucket?: string
+          storage_path: string
+        }
+        Update: {
+          asset_type?: string
+          confirmed_at?: string | null
+          created_at?: string
+          created_identity_id?: string | null
+          expires_at?: string
+          failure_code?: string | null
+          id?: string
+          identity_id?: string
+          mime_type?: string
+          original_filename?: string
+          professional_id?: string
+          sha256?: string | null
+          size_bytes?: number
+          status?: string
+          storage_bucket?: string
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_asset_uploads_created_identity_id_fkey"
+            columns: ["created_identity_id"]
+            isOneToOne: false
+            referencedRelation: "professional_document_identities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_asset_uploads_identity_id_fkey"
+            columns: ["identity_id"]
+            isOneToOne: false
+            referencedRelation: "professional_document_identities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_asset_uploads_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "patient_hub_summary"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "document_asset_uploads_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      document_layout_versions: {
+        Row: {
+          allowed_source_types: string[]
+          blocks: Json
+          created_at: string
+          layout_code: string
+          nello_attribution: string
+          payload_schema_version: number
+          tokens: Json
+          version: number
+        }
+        Insert: {
+          allowed_source_types?: string[]
+          blocks: Json
+          created_at?: string
+          layout_code: string
+          nello_attribution?: string
+          payload_schema_version?: number
+          tokens: Json
+          version: number
+        }
+        Update: {
+          allowed_source_types?: string[]
+          blocks?: Json
+          created_at?: string
+          layout_code?: string
+          nello_attribution?: string
+          payload_schema_version?: number
+          tokens?: Json
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_layout_versions_layout_code_fkey"
+            columns: ["layout_code"]
+            isOneToOne: false
+            referencedRelation: "document_layouts"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
+      document_layouts: {
+        Row: {
+          active_version: number
+          code: string
+          created_at: string
+          description: string | null
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          active_version?: number
+          code: string
+          created_at?: string
+          description?: string | null
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          active_version?: number
+          code?: string
+          created_at?: string
+          description?: string | null
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_layouts_active_version_fk"
+            columns: ["code", "active_version"]
+            isOneToOne: false
+            referencedRelation: "document_layout_versions"
+            referencedColumns: ["layout_code", "version"]
+          },
+        ]
+      }
       energy_expenditure_calculations: {
         Row: {
           activities: Json | null
@@ -2525,6 +2922,8 @@ export type Database = {
           age: number
           body_fat_percentage: number | null
           care_episode_id: string | null
+          confirmed_at: string | null
+          confirmed_by: string | null
           created_at: string | null
           final_planned_kcal: number | null
           gender: string
@@ -2534,10 +2933,15 @@ export type Database = {
           height: number
           id: number
           injury_factor: number | null
+          input_snapshot: Json
           mets_activities: Json | null
           nutritionist_id: string | null
+          output_snapshot: Json
           patient_id: string
           protocol: string | null
+          protocol_code: string | null
+          protocol_version: number | null
+          source_snapshot: Json
           target_weight: number | null
           tmb: number | null
           tmb_protocol: string | null
@@ -2556,6 +2960,8 @@ export type Database = {
           age: number
           body_fat_percentage?: number | null
           care_episode_id?: string | null
+          confirmed_at?: string | null
+          confirmed_by?: string | null
           created_at?: string | null
           final_planned_kcal?: number | null
           gender: string
@@ -2565,10 +2971,15 @@ export type Database = {
           height: number
           id?: number
           injury_factor?: number | null
+          input_snapshot?: Json
           mets_activities?: Json | null
           nutritionist_id?: string | null
+          output_snapshot?: Json
           patient_id: string
           protocol?: string | null
+          protocol_code?: string | null
+          protocol_version?: number | null
+          source_snapshot?: Json
           target_weight?: number | null
           tmb?: number | null
           tmb_protocol?: string | null
@@ -2587,6 +2998,8 @@ export type Database = {
           age?: number
           body_fat_percentage?: number | null
           care_episode_id?: string | null
+          confirmed_at?: string | null
+          confirmed_by?: string | null
           created_at?: string | null
           final_planned_kcal?: number | null
           gender?: string
@@ -2596,10 +3009,15 @@ export type Database = {
           height?: number
           id?: number
           injury_factor?: number | null
+          input_snapshot?: Json
           mets_activities?: Json | null
           nutritionist_id?: string | null
+          output_snapshot?: Json
           patient_id?: string
           protocol?: string | null
+          protocol_code?: string | null
+          protocol_version?: number | null
+          source_snapshot?: Json
           target_weight?: number | null
           tmb?: number | null
           tmb_protocol?: string | null
@@ -2617,6 +3035,20 @@ export type Database = {
             columns: ["care_episode_id"]
             isOneToOne: false
             referencedRelation: "care_episodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "energy_expenditure_calculations_confirmed_by_fkey"
+            columns: ["confirmed_by"]
+            isOneToOne: false
+            referencedRelation: "patient_hub_summary"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "energy_expenditure_calculations_confirmed_by_fkey"
+            columns: ["confirmed_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
             referencedColumns: ["id"]
           },
           {
@@ -3003,6 +3435,8 @@ export type Database = {
           label: string
           nutritionist_food_id: string | null
           reference_food_id: string | null
+          source_snapshot: Json
+          version: number
           weight_in_grams: number
         }
         Insert: {
@@ -3011,6 +3445,8 @@ export type Database = {
           label: string
           nutritionist_food_id?: string | null
           reference_food_id?: string | null
+          source_snapshot?: Json
+          version?: number
           weight_in_grams: number
         }
         Update: {
@@ -3019,6 +3455,8 @@ export type Database = {
           label?: string
           nutritionist_food_id?: string | null
           reference_food_id?: string | null
+          source_snapshot?: Json
+          version?: number
           weight_in_grams?: number
         }
         Relationships: [
@@ -3117,21 +3555,30 @@ export type Database = {
           care_episode_id: string | null
           change_reason: string | null
           circumferences: Json | null
+          confirmed_at: string | null
+          confirmed_by: string | null
           created_at: string | null
           created_by_user_id: string | null
           head_circumference: number | null
           height: number | null
           id: number
+          invalidated_at: string | null
+          invalidated_by: string | null
+          invalidation_reason: string | null
           is_latest_revision: boolean
           notes: string | null
           patient_id: string
           peso_usual: number | null
           photos: string[] | null
+          protocol_code: string | null
+          protocol_version: number | null
           record_date: string
           results: Json | null
           revision_group_id: number | null
           revision_number: number
           skinfolds: Json | null
+          source_snapshot: Json
+          status: string
           supersedes_record_id: number | null
           updated_at: string | null
           weight: number | null
@@ -3142,21 +3589,30 @@ export type Database = {
           care_episode_id?: string | null
           change_reason?: string | null
           circumferences?: Json | null
+          confirmed_at?: string | null
+          confirmed_by?: string | null
           created_at?: string | null
           created_by_user_id?: string | null
           head_circumference?: number | null
           height?: number | null
           id?: never
+          invalidated_at?: string | null
+          invalidated_by?: string | null
+          invalidation_reason?: string | null
           is_latest_revision?: boolean
           notes?: string | null
           patient_id: string
           peso_usual?: number | null
           photos?: string[] | null
+          protocol_code?: string | null
+          protocol_version?: number | null
           record_date: string
           results?: Json | null
           revision_group_id?: number | null
           revision_number?: number
           skinfolds?: Json | null
+          source_snapshot?: Json
+          status?: string
           supersedes_record_id?: number | null
           updated_at?: string | null
           weight?: number | null
@@ -3167,21 +3623,30 @@ export type Database = {
           care_episode_id?: string | null
           change_reason?: string | null
           circumferences?: Json | null
+          confirmed_at?: string | null
+          confirmed_by?: string | null
           created_at?: string | null
           created_by_user_id?: string | null
           head_circumference?: number | null
           height?: number | null
           id?: never
+          invalidated_at?: string | null
+          invalidated_by?: string | null
+          invalidation_reason?: string | null
           is_latest_revision?: boolean
           notes?: string | null
           patient_id?: string
           peso_usual?: number | null
           photos?: string[] | null
+          protocol_code?: string | null
+          protocol_version?: number | null
           record_date?: string
           results?: Json | null
           revision_group_id?: number | null
           revision_number?: number
           skinfolds?: Json | null
+          source_snapshot?: Json
+          status?: string
           supersedes_record_id?: number | null
           updated_at?: string | null
           weight?: number | null
@@ -3192,6 +3657,34 @@ export type Database = {
             columns: ["care_episode_id"]
             isOneToOne: false
             referencedRelation: "care_episodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "growth_records_confirmed_by_fkey"
+            columns: ["confirmed_by"]
+            isOneToOne: false
+            referencedRelation: "patient_hub_summary"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "growth_records_confirmed_by_fkey"
+            columns: ["confirmed_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "growth_records_invalidated_by_fkey"
+            columns: ["invalidated_by"]
+            isOneToOne: false
+            referencedRelation: "patient_hub_summary"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "growth_records_invalidated_by_fkey"
+            columns: ["invalidated_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
             referencedColumns: ["id"]
           },
           {
@@ -3229,6 +3722,10 @@ export type Database = {
           ml_equivalent: number | null
           name: string
           order_index: number | null
+          source_code: string | null
+          source_version: number | null
+          updated_at: string
+          version: number
         }
         Insert: {
           category?: string | null
@@ -3241,6 +3738,10 @@ export type Database = {
           ml_equivalent?: number | null
           name: string
           order_index?: number | null
+          source_code?: string | null
+          source_version?: number | null
+          updated_at?: string
+          version?: number
         }
         Update: {
           category?: string | null
@@ -3253,21 +3754,38 @@ export type Database = {
           ml_equivalent?: number | null
           name?: string
           order_index?: number | null
+          source_code?: string | null
+          source_version?: number | null
+          updated_at?: string
+          version?: number
         }
         Relationships: []
       }
       lab_results: {
         Row: {
           care_episode_id: string | null
+          confirmed_at: string | null
+          confirmed_by: string | null
           created_at: string | null
           id: number
+          interpretation_status: string
+          invalidated_at: string | null
+          invalidated_by: string | null
+          invalidation_reason: string | null
+          is_latest_revision: boolean
           notes: string | null
           patient_id: string
           pdf_filename: string | null
           pdf_url: string | null
+          record_status: string
           reference_max: number | null
           reference_min: number | null
+          reference_snapshot: Json
+          reference_source: string
+          revision_number: number
+          root_result_id: number | null
           status: string | null
+          supersedes_result_id: number | null
           test_date: string
           test_name: string
           test_unit: string | null
@@ -3276,15 +3794,28 @@ export type Database = {
         }
         Insert: {
           care_episode_id?: string | null
+          confirmed_at?: string | null
+          confirmed_by?: string | null
           created_at?: string | null
           id?: number
+          interpretation_status?: string
+          invalidated_at?: string | null
+          invalidated_by?: string | null
+          invalidation_reason?: string | null
+          is_latest_revision?: boolean
           notes?: string | null
           patient_id: string
           pdf_filename?: string | null
           pdf_url?: string | null
+          record_status?: string
           reference_max?: number | null
           reference_min?: number | null
+          reference_snapshot?: Json
+          reference_source?: string
+          revision_number?: number
+          root_result_id?: number | null
           status?: string | null
+          supersedes_result_id?: number | null
           test_date: string
           test_name: string
           test_unit?: string | null
@@ -3293,15 +3824,28 @@ export type Database = {
         }
         Update: {
           care_episode_id?: string | null
+          confirmed_at?: string | null
+          confirmed_by?: string | null
           created_at?: string | null
           id?: number
+          interpretation_status?: string
+          invalidated_at?: string | null
+          invalidated_by?: string | null
+          invalidation_reason?: string | null
+          is_latest_revision?: boolean
           notes?: string | null
           patient_id?: string
           pdf_filename?: string | null
           pdf_url?: string | null
+          record_status?: string
           reference_max?: number | null
           reference_min?: number | null
+          reference_snapshot?: Json
+          reference_source?: string
+          revision_number?: number
+          root_result_id?: number | null
           status?: string | null
+          supersedes_result_id?: number | null
           test_date?: string
           test_name?: string
           test_unit?: string | null
@@ -3317,6 +3861,34 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "lab_results_confirmed_by_fkey"
+            columns: ["confirmed_by"]
+            isOneToOne: false
+            referencedRelation: "patient_hub_summary"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "lab_results_confirmed_by_fkey"
+            columns: ["confirmed_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lab_results_invalidated_by_fkey"
+            columns: ["invalidated_by"]
+            isOneToOne: false
+            referencedRelation: "patient_hub_summary"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "lab_results_invalidated_by_fkey"
+            columns: ["invalidated_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "lab_results_patient_id_fkey"
             columns: ["patient_id"]
             isOneToOne: false
@@ -3328,6 +3900,20 @@ export type Database = {
             columns: ["patient_id"]
             isOneToOne: false
             referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lab_results_root_result_id_fkey"
+            columns: ["root_result_id"]
+            isOneToOne: false
+            referencedRelation: "lab_results"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lab_results_supersedes_result_id_fkey"
+            columns: ["supersedes_result_id"]
+            isOneToOne: false
+            referencedRelation: "lab_results"
             referencedColumns: ["id"]
           },
         ]
@@ -3668,6 +4254,8 @@ export type Database = {
       meal_plan_food_substitutions: {
         Row: {
           created_at: string | null
+          equivalence_basis: string
+          food_snapshot: Json
           id: number
           meal_plan_food_id: number
           notes: string | null
@@ -3677,6 +4265,8 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          equivalence_basis?: string
+          food_snapshot?: Json
           id?: number
           meal_plan_food_id: number
           notes?: string | null
@@ -3686,6 +4276,8 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          equivalence_basis?: string
+          food_snapshot?: Json
           id?: number
           meal_plan_food_id?: number
           notes?: string | null
@@ -3708,10 +4300,13 @@ export type Database = {
           calories: number
           carbs: number
           created_at: string | null
+          equivalent_group: string | null
           fat: number
           food_id: string
+          food_snapshot: Json
           id: number
           meal_plan_meal_id: number
+          measure_snapshot: Json
           notes: string | null
           order_index: number | null
           patient_description: string | null
@@ -3723,10 +4318,13 @@ export type Database = {
           calories: number
           carbs: number
           created_at?: string | null
+          equivalent_group?: string | null
           fat: number
           food_id: string
+          food_snapshot?: Json
           id?: number
           meal_plan_meal_id: number
+          measure_snapshot?: Json
           notes?: string | null
           order_index?: number | null
           patient_description?: string | null
@@ -3738,10 +4336,13 @@ export type Database = {
           calories?: number
           carbs?: number
           created_at?: string | null
+          equivalent_group?: string | null
           fat?: number
           food_id?: string
+          food_snapshot?: Json
           id?: number
           meal_plan_meal_id?: number
+          measure_snapshot?: Json
           notes?: string | null
           order_index?: number | null
           patient_description?: string | null
@@ -3888,6 +4489,7 @@ export type Database = {
       }
       meal_plan_versions: {
         Row: {
+          care_episode_id: string | null
           change_reason: string | null
           created_at: string
           created_by: string | null
@@ -3901,6 +4503,7 @@ export type Database = {
           version_number: number
         }
         Insert: {
+          care_episode_id?: string | null
           change_reason?: string | null
           created_at?: string
           created_by?: string | null
@@ -3914,6 +4517,7 @@ export type Database = {
           version_number?: number
         }
         Update: {
+          care_episode_id?: string | null
           change_reason?: string | null
           created_at?: string
           created_by?: string | null
@@ -3928,6 +4532,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "meal_plan_versions_care_episode_id_fkey"
+            columns: ["care_episode_id"]
+            isOneToOne: false
+            referencedRelation: "care_episodes"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "meal_plan_versions_meal_plan_id_fkey"
             columns: ["meal_plan_id"]
             isOneToOne: false
@@ -3939,7 +4550,12 @@ export type Database = {
       meal_plans: {
         Row: {
           active_days: Json
+          archive_reason: string | null
+          archived_at: string | null
+          archived_by: string | null
           care_episode_id: string | null
+          confirmed_at: string | null
+          confirmed_by: string | null
           created_at: string | null
           daily_calories: number | null
           daily_carbs: number | null
@@ -3954,13 +4570,21 @@ export type Database = {
           name: string
           nutritionist_id: string
           patient_id: string | null
+          plan_mode: string
+          prescription_status: string
+          source_snapshot: Json
           start_date: string | null
           template_tags: string[] | null
           updated_at: string | null
         }
         Insert: {
           active_days?: Json
+          archive_reason?: string | null
+          archived_at?: string | null
+          archived_by?: string | null
           care_episode_id?: string | null
+          confirmed_at?: string | null
+          confirmed_by?: string | null
           created_at?: string | null
           daily_calories?: number | null
           daily_carbs?: number | null
@@ -3975,13 +4599,21 @@ export type Database = {
           name: string
           nutritionist_id: string
           patient_id?: string | null
+          plan_mode?: string
+          prescription_status?: string
+          source_snapshot?: Json
           start_date?: string | null
           template_tags?: string[] | null
           updated_at?: string | null
         }
         Update: {
           active_days?: Json
+          archive_reason?: string | null
+          archived_at?: string | null
+          archived_by?: string | null
           care_episode_id?: string | null
+          confirmed_at?: string | null
+          confirmed_by?: string | null
           created_at?: string | null
           daily_calories?: number | null
           daily_carbs?: number | null
@@ -3996,16 +4628,47 @@ export type Database = {
           name?: string
           nutritionist_id?: string
           patient_id?: string | null
+          plan_mode?: string
+          prescription_status?: string
+          source_snapshot?: Json
           start_date?: string | null
           template_tags?: string[] | null
           updated_at?: string | null
         }
         Relationships: [
           {
+            foreignKeyName: "meal_plans_archived_by_fkey"
+            columns: ["archived_by"]
+            isOneToOne: false
+            referencedRelation: "patient_hub_summary"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "meal_plans_archived_by_fkey"
+            columns: ["archived_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "meal_plans_care_episode_id_fkey"
             columns: ["care_episode_id"]
             isOneToOne: false
             referencedRelation: "care_episodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meal_plans_confirmed_by_fkey"
+            columns: ["confirmed_by"]
+            isOneToOne: false
+            referencedRelation: "patient_hub_summary"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "meal_plans_confirmed_by_fkey"
+            columns: ["confirmed_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
             referencedColumns: ["id"]
           },
           {
@@ -5251,6 +5914,201 @@ export type Database = {
           },
         ]
       }
+      professional_document_identities: {
+        Row: {
+          accent_color: string
+          address_city: string | null
+          address_line: string | null
+          address_postal_code: string | null
+          address_state: string | null
+          archive_reason: string | null
+          archived_at: string | null
+          clinic_name: string | null
+          created_at: string
+          created_by: string
+          crn_number: string | null
+          crn_region: string | null
+          footer_text: string | null
+          header_text: string | null
+          id: string
+          logo_storage_path: string | null
+          normalized_crn: string | null
+          primary_color: string
+          professional_email: string | null
+          professional_id: string
+          professional_name: string
+          professional_phone: string | null
+          signature_storage_path: string | null
+          stamp_storage_path: string | null
+          status: string
+          verification_id: string
+          version: number
+        }
+        Insert: {
+          accent_color: string
+          address_city?: string | null
+          address_line?: string | null
+          address_postal_code?: string | null
+          address_state?: string | null
+          archive_reason?: string | null
+          archived_at?: string | null
+          clinic_name?: string | null
+          created_at?: string
+          created_by: string
+          crn_number?: string | null
+          crn_region?: string | null
+          footer_text?: string | null
+          header_text?: string | null
+          id?: string
+          logo_storage_path?: string | null
+          normalized_crn?: string | null
+          primary_color: string
+          professional_email?: string | null
+          professional_id: string
+          professional_name: string
+          professional_phone?: string | null
+          signature_storage_path?: string | null
+          stamp_storage_path?: string | null
+          status: string
+          verification_id: string
+          version: number
+        }
+        Update: {
+          accent_color?: string
+          address_city?: string | null
+          address_line?: string | null
+          address_postal_code?: string | null
+          address_state?: string | null
+          archive_reason?: string | null
+          archived_at?: string | null
+          clinic_name?: string | null
+          created_at?: string
+          created_by?: string
+          crn_number?: string | null
+          crn_region?: string | null
+          footer_text?: string | null
+          header_text?: string | null
+          id?: string
+          logo_storage_path?: string | null
+          normalized_crn?: string | null
+          primary_color?: string
+          professional_email?: string | null
+          professional_id?: string
+          professional_name?: string
+          professional_phone?: string | null
+          signature_storage_path?: string | null
+          stamp_storage_path?: string | null
+          status?: string
+          verification_id?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "professional_document_identities_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "patient_hub_summary"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "professional_document_identities_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "professional_document_identities_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "patient_hub_summary"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "professional_document_identities_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "professional_document_identities_verification_id_fkey"
+            columns: ["verification_id"]
+            isOneToOne: false
+            referencedRelation: "professional_verifications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      professional_document_identity_events: {
+        Row: {
+          actor_id: string
+          created_at: string
+          event_type: string
+          id: string
+          identity_id: string
+          metadata: Json
+          professional_id: string
+          reason: string
+        }
+        Insert: {
+          actor_id: string
+          created_at?: string
+          event_type: string
+          id?: string
+          identity_id: string
+          metadata?: Json
+          professional_id: string
+          reason: string
+        }
+        Update: {
+          actor_id?: string
+          created_at?: string
+          event_type?: string
+          id?: string
+          identity_id?: string
+          metadata?: Json
+          professional_id?: string
+          reason?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "professional_document_identity_events_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "patient_hub_summary"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "professional_document_identity_events_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "professional_document_identity_events_identity_id_fkey"
+            columns: ["identity_id"]
+            isOneToOne: false
+            referencedRelation: "professional_document_identities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "professional_document_identity_events_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "patient_hub_summary"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "professional_document_identity_events_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       professional_verifications: {
         Row: {
           created_at: string
@@ -5519,7 +6377,9 @@ export type Database = {
         Row: {
           created_at: string | null
           food_id: string | null
+          food_snapshot: Json
           id: string
+          measure_snapshot: Json
           quantity: number
           recipe_id: string | null
           unit: string | null
@@ -5527,7 +6387,9 @@ export type Database = {
         Insert: {
           created_at?: string | null
           food_id?: string | null
+          food_snapshot?: Json
           id?: string
+          measure_snapshot?: Json
           quantity: number
           recipe_id?: string | null
           unit?: string | null
@@ -5535,7 +6397,9 @@ export type Database = {
         Update: {
           created_at?: string | null
           food_id?: string | null
+          food_snapshot?: Json
           id?: string
+          measure_snapshot?: Json
           quantity?: number
           recipe_id?: string | null
           unit?: string | null
@@ -5552,6 +6416,7 @@ export type Database = {
       }
       recipes: {
         Row: {
+          archived_at: string | null
           base_calories: number | null
           base_carbs: number | null
           base_fat: number | null
@@ -5562,12 +6427,15 @@ export type Database = {
           is_deleted: boolean | null
           name: string
           preparation_method: string | null
+          source_snapshot: Json
           updated_at: string | null
           user_id: string | null
+          version: number
           yield_quantity: number
           yield_unit: string
         }
         Insert: {
+          archived_at?: string | null
           base_calories?: number | null
           base_carbs?: number | null
           base_fat?: number | null
@@ -5578,12 +6446,15 @@ export type Database = {
           is_deleted?: boolean | null
           name: string
           preparation_method?: string | null
+          source_snapshot?: Json
           updated_at?: string | null
           user_id?: string | null
+          version?: number
           yield_quantity: number
           yield_unit: string
         }
         Update: {
+          archived_at?: string | null
           base_calories?: number | null
           base_carbs?: number | null
           base_fat?: number | null
@@ -5594,8 +6465,10 @@ export type Database = {
           is_deleted?: boolean | null
           name?: string
           preparation_method?: string | null
+          source_snapshot?: Json
           updated_at?: string | null
           user_id?: string | null
+          version?: number
           yield_quantity?: number
           yield_unit?: string
         }
@@ -5829,6 +6702,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      scientific_sources: {
+        Row: {
+          citation: string
+          code: string
+          created_at: string
+          jurisdiction: string | null
+          publication_year: number | null
+          publisher: string
+          retrieved_at: string
+          source_url: string
+          status: string
+          title: string
+          version: number
+        }
+        Insert: {
+          citation: string
+          code: string
+          created_at?: string
+          jurisdiction?: string | null
+          publication_year?: number | null
+          publisher: string
+          retrieved_at: string
+          source_url: string
+          status?: string
+          title: string
+          version: number
+        }
+        Update: {
+          citation?: string
+          code?: string
+          created_at?: string
+          jurisdiction?: string | null
+          publication_year?: number | null
+          publisher?: string
+          retrieved_at?: string
+          source_url?: string
+          status?: string
+          title?: string
+          version?: number
+        }
+        Relationships: []
       }
       services: {
         Row: {
@@ -6675,6 +7590,15 @@ export type Database = {
         Args: { p_amendment_id: string; p_reason: string }
         Returns: Json
       }
+      accept_clinical_protocol: {
+        Args: {
+          p_code: string
+          p_decision: string
+          p_reason: string
+          p_version: number
+        }
+        Returns: Json
+      }
       add_patient_xp: {
         Args: {
           p_nutritionist_id: string
@@ -6685,6 +7609,10 @@ export type Database = {
         Returns: Json
       }
       approve_patient_link: { Args: { p_patient_id: string }; Returns: Json }
+      archive_meal_plan: {
+        Args: { p_plan_id: number; p_reason: string }
+        Returns: Json
+      }
       archive_private_evolution_template: {
         Args: { p_template_code: string }
         Returns: Json
@@ -6692,6 +7620,11 @@ export type Database = {
       auth_role: { Args: never; Returns: string }
       auth_setting: { Args: { p_name: string }; Returns: string }
       auth_uid: { Args: never; Returns: string }
+      authorize_my_data_export_attachment: {
+        Args: { p_attachment_id: string }
+        Returns: Json
+      }
+      build_my_data_export_snapshot: { Args: never; Returns: Json }
       calculate_goal_progress: { Args: { goal_id: number }; Returns: number }
       calculate_lab_status: {
         Args: { ref_max: number; ref_min: number; test_value_text: string }
@@ -6706,6 +7639,10 @@ export type Database = {
         }[]
       }
       can_delete_user: { Args: { p_target_id: string }; Returns: boolean }
+      cancel_my_data_subject_request: {
+        Args: { p_request_id: string }
+        Returns: Json
+      }
       change_clinical_attachment_visibility: {
         Args: {
           p_attachment_id: string
@@ -6772,6 +7709,19 @@ export type Database = {
         }
         Returns: Json
       }
+      confirm_document_asset_upload: {
+        Args: {
+          p_mime_type: string
+          p_sha256: string
+          p_size_bytes: number
+          p_upload_id: string
+        }
+        Returns: Json
+      }
+      confirm_lab_result_interpretation: {
+        Args: { p_reason: string; p_result_id: number }
+        Returns: Json
+      }
       create_appointment_reminders: { Args: never; Returns: undefined }
       create_clinical_attachment_replacement_intent: {
         Args: {
@@ -6821,27 +7771,44 @@ export type Database = {
         Returns: Json
       }
       create_daily_log_reminders: { Args: never; Returns: undefined }
-      create_diet_template:
-        | {
-            Args: {
-              p_description: string
-              p_meals: Json
-              p_name: string
-              p_tags: Json
-              p_user_id: string
-            }
-            Returns: string
-          }
-        | {
-            Args: {
-              p_description: string
-              p_meals: Json
-              p_name: string
-              p_tags: string[]
-              p_user_id: string
-            }
-            Returns: string
-          }
+      create_diet_template: {
+        Args: {
+          p_description: string
+          p_meals: Json
+          p_name: string
+          p_tags: string[]
+          p_user_id: string
+        }
+        Returns: string
+      }
+      create_document_artifact_from_clinical_record: {
+        Args: {
+          p_record_id: string
+          p_replacement_reason?: string
+          p_supersedes_id?: string
+          p_visibility?: string
+        }
+        Returns: Json
+      }
+      create_document_artifact_from_meal_plan: {
+        Args: { p_plan_id: number; p_visibility?: string }
+        Returns: Json
+      }
+      create_document_asset_upload_intent: {
+        Args: {
+          p_asset_type: string
+          p_expected_identity_version: number
+          p_mime_type: string
+          p_original_filename: string
+          p_size_bytes: number
+        }
+        Returns: Json
+      }
+      create_lab_result_record: { Args: { p_payload: Json }; Returns: Json }
+      create_my_data_subject_request: {
+        Args: { p_request_type: string; p_subject_note?: string }
+        Returns: Json
+      }
       delete_patient: { Args: { patient_id: string }; Returns: undefined }
       delete_read_notifications: { Args: never; Returns: undefined }
       end_care_episode: {
@@ -6856,12 +7823,20 @@ export type Database = {
         Args: { p_limit?: number }
         Returns: number
       }
+      expire_document_asset_uploads: {
+        Args: { p_limit?: number }
+        Returns: number
+      }
       extract_and_inject_clinical_flags: {
         Args: { p_record_id: string }
         Returns: Json
       }
       fail_clinical_attachment_upload: {
         Args: { p_attachment_id: string; p_reason: string }
+        Returns: Json
+      }
+      fail_document_asset_upload: {
+        Args: { p_failure_code: string; p_upload_id: string }
         Returns: Json
       }
       finalize_clinical_record: {
@@ -6871,6 +7846,10 @@ export type Database = {
           p_record_id: string
           p_retrospective_reason?: string
         }
+        Returns: Json
+      }
+      finalize_document_artifact: {
+        Args: { p_artifact_id: string; p_expected_revision: number }
         Returns: Json
       }
       generate_anamnesis_link: {
@@ -6930,6 +7909,7 @@ export type Database = {
         Args: { p_nutritionist_id: string }
         Returns: number
       }
+      get_document_artifact: { Args: { p_artifact_id: string }; Returns: Json }
       get_empty_patient_removal_status: {
         Args: { p_patient_id: string }
         Returns: Json
@@ -6958,6 +7938,11 @@ export type Database = {
       }
       get_my_care_relationship: { Args: never; Returns: Json }
       get_my_clinical_document_context: { Args: never; Returns: Json }
+      get_my_document_asset_preview: {
+        Args: { p_asset_type: string }
+        Returns: Json
+      }
+      get_my_document_identity: { Args: never; Returns: Json }
       get_my_professional_verification: { Args: never; Returns: Json }
       get_my_student_supervisions: {
         Args: never
@@ -7084,6 +8069,10 @@ export type Database = {
         Args: { p_delete_if_message?: boolean; p_notification_id: string }
         Returns: undefined
       }
+      invalidate_anthropometry_record: {
+        Args: { p_reason: string; p_record_id: number }
+        Returns: Json
+      }
       invalidate_clinical_attachment: {
         Args: { p_attachment_id: string; p_reason: string }
         Returns: Json
@@ -7094,6 +8083,14 @@ export type Database = {
           p_reason: string
           p_record_id: string
         }
+        Returns: Json
+      }
+      invalidate_document_artifact: {
+        Args: { p_artifact_id: string; p_reason: string }
+        Returns: Json
+      }
+      invalidate_lab_result_record: {
+        Args: { p_reason: string; p_result_id: number }
         Returns: Json
       }
       invalidate_progress_photo: {
@@ -7112,6 +8109,10 @@ export type Database = {
         }
         Returns: Json
       }
+      list_clinical_protocol_catalog: {
+        Args: { p_domain?: string }
+        Returns: Json[]
+      }
       list_clinical_record_version_chain: {
         Args: { p_record_id: string }
         Returns: Json[]
@@ -7122,6 +8123,18 @@ export type Database = {
           p_patient_id: string
           p_status_filter?: string
         }
+        Returns: Json[]
+      }
+      list_data_subject_requests: {
+        Args: { p_status?: string }
+        Returns: Json[]
+      }
+      list_diet_template_versions: {
+        Args: { p_template_id: string }
+        Returns: Json[]
+      }
+      list_document_artifacts: {
+        Args: { p_episode_id: string; p_patient_id: string }
         Returns: Json[]
       }
       list_evolution_templates: {
@@ -7148,6 +8161,7 @@ export type Database = {
         Args: { p_care_episode_id: string }
         Returns: Json
       }
+      list_my_data_subject_requests: { Args: never; Returns: Json[] }
       list_nutritionist_care_patients: { Args: never; Returns: Json[] }
       list_patient_clinical_attachments: {
         Args: { p_care_episode_id: string }
@@ -7319,8 +8333,24 @@ export type Database = {
         }
         Returns: Json
       }
+      revise_anthropometry_record: {
+        Args: { p_payload: Json; p_reason: string; p_record_id: number }
+        Returns: Json
+      }
+      revise_lab_result_record: {
+        Args: { p_payload: Json; p_reason: string; p_result_id: number }
+        Returns: Json
+      }
       revoke_patient_legal_guardian: {
         Args: { p_guardian_id: string; p_reason: string }
+        Returns: Json
+      }
+      save_my_document_identity: {
+        Args: {
+          p_expected_version?: number
+          p_payload: Json
+          p_reason?: string
+        }
         Returns: Json
       }
       search_foods: {
@@ -7339,6 +8369,7 @@ export type Database = {
       }
       set_active_meal_plan: { Args: { p_plan_id: number }; Returns: undefined }
       sign_clinical_record: { Args: { p_record_id: string }; Returns: Json }
+      sign_document_artifact: { Args: { p_artifact_id: string }; Returns: Json }
       slugify_name: { Args: { p_name: string }; Returns: string }
       soft_delete_meal: { Args: { p_meal_id: number }; Returns: boolean }
       start_care_episode: {
@@ -7398,29 +8429,37 @@ export type Database = {
         }
         Returns: Json
       }
-      update_diet_template:
-        | {
-            Args: {
-              p_description: string
-              p_meals: Json
-              p_name: string
-              p_tags: Json
-              p_template_id: string
-              p_user_id: string
-            }
-            Returns: undefined
-          }
-        | {
-            Args: {
-              p_description: string
-              p_meals: Json
-              p_name: string
-              p_tags: string[]
-              p_template_id: string
-              p_user_id: string
-            }
-            Returns: undefined
-          }
+      update_data_subject_request: {
+        Args: {
+          p_assign_to_me?: boolean
+          p_expected_revision: number
+          p_legal_basis?: string
+          p_reason: string
+          p_request_id: string
+          p_retention_decision?: string
+          p_status: string
+        }
+        Returns: Json
+      }
+      update_diet_template: {
+        Args: {
+          p_description: string
+          p_meals: Json
+          p_name: string
+          p_tags: string[]
+          p_template_id: string
+          p_user_id: string
+        }
+        Returns: undefined
+      }
+      update_document_artifact_draft: {
+        Args: {
+          p_artifact_id: string
+          p_expected_revision: number
+          p_payload: Json
+        }
+        Returns: Json
+      }
       update_patient_progressive_profile: {
         Args: { p_changes: Json; p_patient_id: string; p_source: string }
         Returns: Json
@@ -7433,6 +8472,7 @@ export type Database = {
         Args: { p_episode_id: string; p_patient_id: string; p_payload: Json }
         Returns: Json
       }
+      verify_document_authenticity: { Args: { p_code: string }; Returns: Json }
       version_private_evolution_template: {
         Args: { p_sections: Json; p_template_code: string }
         Returns: Json
@@ -7457,456 +8497,6 @@ export type Database = {
         | "pre_workout"
         | "post_workout"
         | "other"
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
-  storage: {
-    Tables: {
-      buckets: {
-        Row: {
-          allowed_mime_types: string[] | null
-          avif_autodetection: boolean | null
-          created_at: string | null
-          file_size_limit: number | null
-          id: string
-          name: string
-          owner: string | null
-          owner_id: string | null
-          public: boolean | null
-          type: Database["storage"]["Enums"]["buckettype"]
-          updated_at: string | null
-        }
-        Insert: {
-          allowed_mime_types?: string[] | null
-          avif_autodetection?: boolean | null
-          created_at?: string | null
-          file_size_limit?: number | null
-          id: string
-          name: string
-          owner?: string | null
-          owner_id?: string | null
-          public?: boolean | null
-          type?: Database["storage"]["Enums"]["buckettype"]
-          updated_at?: string | null
-        }
-        Update: {
-          allowed_mime_types?: string[] | null
-          avif_autodetection?: boolean | null
-          created_at?: string | null
-          file_size_limit?: number | null
-          id?: string
-          name?: string
-          owner?: string | null
-          owner_id?: string | null
-          public?: boolean | null
-          type?: Database["storage"]["Enums"]["buckettype"]
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
-      buckets_analytics: {
-        Row: {
-          created_at: string
-          deleted_at: string | null
-          format: string
-          id: string
-          name: string
-          type: Database["storage"]["Enums"]["buckettype"]
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          deleted_at?: string | null
-          format?: string
-          id?: string
-          name: string
-          type?: Database["storage"]["Enums"]["buckettype"]
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          deleted_at?: string | null
-          format?: string
-          id?: string
-          name?: string
-          type?: Database["storage"]["Enums"]["buckettype"]
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      buckets_vectors: {
-        Row: {
-          created_at: string
-          id: string
-          type: Database["storage"]["Enums"]["buckettype"]
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          id: string
-          type?: Database["storage"]["Enums"]["buckettype"]
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          type?: Database["storage"]["Enums"]["buckettype"]
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      migrations: {
-        Row: {
-          executed_at: string | null
-          hash: string
-          id: number
-          name: string
-        }
-        Insert: {
-          executed_at?: string | null
-          hash: string
-          id: number
-          name: string
-        }
-        Update: {
-          executed_at?: string | null
-          hash?: string
-          id?: number
-          name?: string
-        }
-        Relationships: []
-      }
-      objects: {
-        Row: {
-          bucket_id: string | null
-          created_at: string | null
-          id: string
-          last_accessed_at: string | null
-          metadata: Json | null
-          name: string | null
-          owner: string | null
-          owner_id: string | null
-          path_tokens: string[] | null
-          updated_at: string | null
-          user_metadata: Json | null
-          version: string | null
-        }
-        Insert: {
-          bucket_id?: string | null
-          created_at?: string | null
-          id?: string
-          last_accessed_at?: string | null
-          metadata?: Json | null
-          name?: string | null
-          owner?: string | null
-          owner_id?: string | null
-          path_tokens?: string[] | null
-          updated_at?: string | null
-          user_metadata?: Json | null
-          version?: string | null
-        }
-        Update: {
-          bucket_id?: string | null
-          created_at?: string | null
-          id?: string
-          last_accessed_at?: string | null
-          metadata?: Json | null
-          name?: string | null
-          owner?: string | null
-          owner_id?: string | null
-          path_tokens?: string[] | null
-          updated_at?: string | null
-          user_metadata?: Json | null
-          version?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "objects_bucketId_fkey"
-            columns: ["bucket_id"]
-            isOneToOne: false
-            referencedRelation: "buckets"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      s3_multipart_uploads: {
-        Row: {
-          bucket_id: string
-          created_at: string
-          id: string
-          in_progress_size: number
-          key: string
-          metadata: Json | null
-          owner_id: string | null
-          upload_signature: string
-          user_metadata: Json | null
-          version: string
-        }
-        Insert: {
-          bucket_id: string
-          created_at?: string
-          id: string
-          in_progress_size?: number
-          key: string
-          metadata?: Json | null
-          owner_id?: string | null
-          upload_signature: string
-          user_metadata?: Json | null
-          version: string
-        }
-        Update: {
-          bucket_id?: string
-          created_at?: string
-          id?: string
-          in_progress_size?: number
-          key?: string
-          metadata?: Json | null
-          owner_id?: string | null
-          upload_signature?: string
-          user_metadata?: Json | null
-          version?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "s3_multipart_uploads_bucket_id_fkey"
-            columns: ["bucket_id"]
-            isOneToOne: false
-            referencedRelation: "buckets"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      s3_multipart_uploads_parts: {
-        Row: {
-          bucket_id: string
-          created_at: string
-          etag: string
-          id: string
-          key: string
-          owner_id: string | null
-          part_number: number
-          size: number
-          upload_id: string
-          version: string
-        }
-        Insert: {
-          bucket_id: string
-          created_at?: string
-          etag: string
-          id?: string
-          key: string
-          owner_id?: string | null
-          part_number: number
-          size?: number
-          upload_id: string
-          version: string
-        }
-        Update: {
-          bucket_id?: string
-          created_at?: string
-          etag?: string
-          id?: string
-          key?: string
-          owner_id?: string | null
-          part_number?: number
-          size?: number
-          upload_id?: string
-          version?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "s3_multipart_uploads_parts_bucket_id_fkey"
-            columns: ["bucket_id"]
-            isOneToOne: false
-            referencedRelation: "buckets"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "s3_multipart_uploads_parts_upload_id_fkey"
-            columns: ["upload_id"]
-            isOneToOne: false
-            referencedRelation: "s3_multipart_uploads"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      vector_indexes: {
-        Row: {
-          bucket_id: string
-          created_at: string
-          data_type: string
-          dimension: number
-          distance_metric: string
-          id: string
-          metadata_configuration: Json | null
-          name: string
-          updated_at: string
-        }
-        Insert: {
-          bucket_id: string
-          created_at?: string
-          data_type: string
-          dimension: number
-          distance_metric: string
-          id?: string
-          metadata_configuration?: Json | null
-          name: string
-          updated_at?: string
-        }
-        Update: {
-          bucket_id?: string
-          created_at?: string
-          data_type?: string
-          dimension?: number
-          distance_metric?: string
-          id?: string
-          metadata_configuration?: Json | null
-          name?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "vector_indexes_bucket_id_fkey"
-            columns: ["bucket_id"]
-            isOneToOne: false
-            referencedRelation: "buckets_vectors"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      allow_any_operation: {
-        Args: { expected_operations: string[] }
-        Returns: boolean
-      }
-      allow_only_operation: {
-        Args: { expected_operation: string }
-        Returns: boolean
-      }
-      can_insert_object: {
-        Args: { bucketid: string; metadata: Json; name: string; owner: string }
-        Returns: undefined
-      }
-      extension: { Args: { name: string }; Returns: string }
-      filename: { Args: { name: string }; Returns: string }
-      foldername: { Args: { name: string }; Returns: string[] }
-      get_common_prefix: {
-        Args: { p_delimiter: string; p_key: string; p_prefix: string }
-        Returns: string
-      }
-      get_size_by_bucket: {
-        Args: never
-        Returns: {
-          bucket_id: string
-          size: number
-        }[]
-      }
-      list_multipart_uploads_with_delimiter: {
-        Args: {
-          bucket_id: string
-          delimiter_param: string
-          max_keys?: number
-          next_key_token?: string
-          next_upload_token?: string
-          prefix_param: string
-        }
-        Returns: {
-          created_at: string
-          id: string
-          key: string
-        }[]
-      }
-      list_objects_with_delimiter: {
-        Args: {
-          _bucket_id: string
-          delimiter_param: string
-          max_keys?: number
-          next_token?: string
-          prefix_param: string
-          sort_order?: string
-          start_after?: string
-        }
-        Returns: {
-          created_at: string
-          id: string
-          last_accessed_at: string
-          metadata: Json
-          name: string
-          updated_at: string
-        }[]
-      }
-      operation: { Args: never; Returns: string }
-      search: {
-        Args: {
-          bucketname: string
-          levels?: number
-          limits?: number
-          offsets?: number
-          prefix: string
-          search?: string
-          sortcolumn?: string
-          sortorder?: string
-        }
-        Returns: {
-          created_at: string
-          id: string
-          last_accessed_at: string
-          metadata: Json
-          name: string
-          updated_at: string
-        }[]
-      }
-      search_by_timestamp: {
-        Args: {
-          p_bucket_id: string
-          p_level: number
-          p_limit: number
-          p_prefix: string
-          p_sort_column: string
-          p_sort_column_after: string
-          p_sort_order: string
-          p_start_after: string
-        }
-        Returns: {
-          created_at: string
-          id: string
-          key: string
-          last_accessed_at: string
-          metadata: Json
-          name: string
-          updated_at: string
-        }[]
-      }
-      search_v2: {
-        Args: {
-          bucket_name: string
-          levels?: number
-          limits?: number
-          prefix: string
-          sort_column?: string
-          sort_column_after?: string
-          sort_order?: string
-          start_after?: string
-        }
-        Returns: {
-          created_at: string
-          id: string
-          key: string
-          last_accessed_at: string
-          metadata: Json
-          name: string
-          updated_at: string
-        }[]
-      }
-    }
-    Enums: {
-      buckettype: "STANDARD" | "ANALYTICS" | "VECTOR"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -8032,9 +8622,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  private: {
-    Enums: {},
-  },
   public: {
     Enums: {
       food_source: [
@@ -8057,11 +8644,6 @@ export const Constants = {
         "post_workout",
         "other",
       ],
-    },
-  },
-  storage: {
-    Enums: {
-      buckettype: ["STANDARD", "ANALYTICS", "VECTOR"],
     },
   },
 } as const

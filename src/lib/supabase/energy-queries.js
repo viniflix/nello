@@ -63,7 +63,6 @@ export const getEnergyCalculationWithDetails = async (patientId) => {
  */
 function extractBiometryFromContent(obj, acc) {
   if (!obj || typeof obj !== 'object') return;
-  const keys = ['weight', 'height', 'peso', 'altura', 'data_nascimento', 'birth_date', 'idade', 'age', 'sexo', 'gender', 'body_fat_percentage', 'gordura', 'lean_mass_kg', 'massa_magra'];
   for (const [k, v] of Object.entries(obj)) {
     if (v == null) continue;
     const key = String(k).toLowerCase();
@@ -119,7 +118,7 @@ export const getInitialBiometryForEnergy = async (patientId) => {
 
     const [profileRes, grRes, anamnesisRes] = await Promise.all([
       supabase.from('user_profiles').select('birth_date, gender, weight, height').eq('id', patientId).single(),
-      supabase.from('growth_records').select('weight, height, results, record_date').eq('patient_id', patientId).order('record_date', { ascending: false }).limit(1).maybeSingle(),
+      supabase.from('growth_records').select('weight, height, results, record_date').eq('patient_id', patientId).eq('status', 'active').eq('is_latest_revision', true).order('record_date', { ascending: false }).limit(1).maybeSingle(),
       supabase.from('anamnesis_records').select('content').eq('patient_id', patientId).order('date', { ascending: false }).limit(1).maybeSingle()
     ]);
 
@@ -235,6 +234,30 @@ export const getInitialBiometryForEnergy = async (patientId) => {
 export const saveEnergyCalculation = async (data) => {
   try {
     // Colunas novas + legadas (protocol, activity_level, tmb, get) para compatibilidade com schema existente
+    const protocolCodes = {
+      harris: 'energy.harris_benedict_revised',
+      mifflin: 'energy.mifflin_st_jeor',
+      fao_1985: 'energy.fao_who_1985',
+      eer_iom: 'energy.eer_iom_2005',
+      cunningham: 'energy.cunningham_1980',
+      tinsley: 'energy.tinsley_2018'
+    };
+    const inputSnapshot = {
+      weight_kg: data.weight,
+      height_cm: data.height,
+      age_years: data.age,
+      sex: data.gender,
+      body_fat_percentage: data.body_fat_percentage ?? null,
+      activity_factor: data.activity_factor,
+      injury_factor: data.injury_factor ?? 1,
+      mets_activities: Array.isArray(data.mets_activities) ? data.mets_activities : []
+    };
+    const outputSnapshot = {
+      tmb_kcal: data.tmb_result,
+      get_kcal: data.get_result,
+      planned_kcal: data.final_planned_kcal,
+      venta_adjustment_kcal: data.venta_adjustment_kcal ?? null
+    };
     const row = {
       patient_id: data.patient_id,
       nutritionist_id: data.nutritionist_id || null,
@@ -257,27 +280,15 @@ export const saveEnergyCalculation = async (data) => {
       protocol: data.tmb_protocol ?? null,
       activity_level: data.activity_factor ?? null,
       tmb: data.tmb_result ?? null,
-      get: data.get_result ?? null
+      get: data.get_result ?? null,
+      protocol_code: protocolCodes[data.tmb_protocol] || `energy.${data.tmb_protocol}`,
+      protocol_version: 1,
+      source_snapshot: { implementation_key: data.tmb_protocol, catalog_version: 1 },
+      input_snapshot: inputSnapshot,
+      output_snapshot: outputSnapshot,
+      confirmed_by: data.nutritionist_id || null,
+      confirmed_at: data.nutritionist_id ? new Date().toISOString() : null
     };
-
-    const { data: existing } = await supabase
-      .from('energy_expenditure_calculations')
-      .select('id')
-      .eq('patient_id', data.patient_id)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (existing?.id) {
-      const { data: updated, error } = await supabase
-        .from('energy_expenditure_calculations')
-        .update(row)
-        .eq('id', existing.id)
-        .select()
-        .single();
-      if (error) throw error;
-      return { data: updated, error: null };
-    }
 
     const { data: inserted, error } = await supabase
       .from('energy_expenditure_calculations')

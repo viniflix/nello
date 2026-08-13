@@ -18,6 +18,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { patientRoute } from '@/lib/utils/patientRoutes';
 import MacrosChart from '@/components/meal-plan/MacrosChart';
+import MealPlanDocumentActions from '@/features/documents/components/MealPlanDocumentActions';
 
 const MealPlanViewer = ({
     patientId,
@@ -56,6 +57,7 @@ const MealPlanViewer = ({
                         <CardTitle className="text-lg sm:text-xl flex items-center gap-2">
                             <span className="break-words">{activePlan.name}</span>
                             <Badge className="bg-primary">Ativo</Badge>
+                            <Badge variant="outline">{({ quantitative: 'QUANTITATIVO', qualitative: 'QUALITATIVO', hybrid: 'HÍBRIDO' })[activePlan.plan_mode] || 'HÍBRIDO'}</Badge>
                         </CardTitle>
 
                         {/* Botões de Ação */}
@@ -131,6 +133,7 @@ const MealPlanViewer = ({
                 </div>
             </CardHeader>
             <CardContent>
+                <MealPlanDocumentActions plan={activePlan} patientId={patientId} />
                 {activePlan.description && (
                     <p className="text-muted-foreground mb-4">{activePlan.description}</p>
                 )}

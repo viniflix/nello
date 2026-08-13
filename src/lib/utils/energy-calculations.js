@@ -69,7 +69,7 @@ export const calculateCunningham = (leanMassKg) => {
  */
 export const calculateTinsley = (weight, leanMassKg) => {
   if (!leanMassKg || leanMassKg <= 0) return null;
-  return 259 + (25.9 * leanMassKg);
+  return 284 + (25.9 * leanMassKg);
 };
 
 /**
@@ -418,30 +418,15 @@ export const calculateAllProtocols = (data) => {
     {
       id: 'mifflin',
       name: 'Mifflin-St Jeor',
-      description: 'Padrão ouro clínico. Mais preciso para sobrepeso.',
-      recommended: true,
+      description: 'Estimativa para adultos; avalie a aplicabilidade individual.',
       bmr: calculateMifflinStJeor(weight, height, age, gender),
       category: 'clinical'
-    },
-    {
-      id: 'fao',
-      name: 'FAO/WHO (simplificado)',
-      description: 'Padrão OMS simplificado (adultos 18-60).',
-      bmr: calculateFaoWho(weight, height, age, gender),
-      category: 'general'
     },
     {
       id: 'fao_1985',
       name: 'FAO/OMS 1985',
       description: 'Equações por faixa etária (18-30, 30-60, >60) e sexo.',
       bmr: calculateFaoOms1985(weight, height, age, gender),
-      category: 'general'
-    },
-    {
-      id: 'fao_2001',
-      name: 'FAO/OMS 2001',
-      description: 'Equações WHO/FAO/UNU 2001 por faixa etária e sexo.',
-      bmr: calculateFaoOms2001(weight, height, age, gender),
       category: 'general'
     },
     {
@@ -464,7 +449,7 @@ export const calculateAllProtocols = (data) => {
       protocols.push({ 
         id: 'cunningham', 
         name: 'Cunningham (Atletas)', 
-        description: 'Baseado na Massa Magra. Ideal para alta performance.',
+        description: 'Baseado em massa livre de gordura; confirme método e população.',
         bmr: cunninghamBmr,
         category: 'athlete'
       });
@@ -533,10 +518,9 @@ export const getProtocolInfo = (protocolId) => {
     mifflin: {
       id: 'mifflin',
       name: 'Mifflin-St Jeor',
-      description: 'Padrão ouro clínico. Mais preciso para sobrepeso.',
+      description: 'Estimativa para adultos; avalie a aplicabilidade individual.',
       category: 'clinical',
       requiresLeanMass: false,
-      recommended: true
     },
     fao: {
       id: 'fao',
@@ -570,7 +554,7 @@ export const getProtocolInfo = (protocolId) => {
     cunningham: {
       id: 'cunningham',
       name: 'Cunningham (Atletas)',
-      description: 'Baseado na Massa Magra. Ideal para alta performance.',
+      description: 'Baseado em massa livre de gordura; confirme método e população.',
       category: 'athlete',
       requiresLeanMass: true
     },
@@ -689,16 +673,16 @@ export const getFormulaBreakdown = (method, data) => {
     case 'tinsley': {
       if (!weight || !leanMass || leanMass <= 0) return null;
 
-      const constant = 259;
+      const constant = 284;
       const leanMassTerm = 25.9 * leanMass;
       const result = leanMassTerm + constant;
 
       return {
         formulaName: 'Tinsley (Bodybuilding)',
-        equationStr: '259 + (25.9 × MM)',
-        appliedStr: `259 + (25.9 × ${leanMass})`,
+        equationStr: '284 + (25.9 × MM)',
+        appliedStr: `284 + (25.9 × ${leanMass})`,
         steps: [
-          { label: 'Constante', value: '259' },
+          { label: 'Constante', value: '284' },
           { label: 'Massa Magra', value: `25.9 × ${leanMass} = ${leanMassTerm.toFixed(2)}` },
           { label: 'Resultado', value: `${result.toFixed(0)} kcal` }
         ],
@@ -797,4 +781,3 @@ export const getGETBreakdown = (bmr, activityFactor, activityLabel = null) => {
     baseData: { bmr: Math.round(bmr), activityFactor, activityLabel: activityLabel || activityInfo?.label || 'N/A' }
   };
 };
-

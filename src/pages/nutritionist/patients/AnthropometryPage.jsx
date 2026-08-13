@@ -149,7 +149,7 @@ const AnthropometryPage = () => {
                         )}
                         {idealWeightRange?.min !== undefined && idealWeightRange?.max !== undefined && (
                             <div className="rounded-md border bg-primary/5 border-primary/20 px-3 py-2 shadow-sm">
-                                <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Faixa de peso ideal</p>
+                                <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Faixa de referência por IMC</p>
                                 <p className="text-sm font-semibold text-[#5f6f52]">
                                     {idealWeightRange.min.toFixed(1)} - {idealWeightRange.max.toFixed(1)} kg
                                 </p>
@@ -166,9 +166,9 @@ const AnthropometryPage = () => {
                                         : 'bg-green-100 text-green-700 hover:bg-green-100'
                                 }`}>
                                     {idealWeightRange.current < idealWeightRange.min
-                                        ? 'Abaixo do ideal'
+                                        ? 'Abaixo da referência'
                                         : idealWeightRange.current > idealWeightRange.max
-                                        ? 'Acima do ideal'
+                                        ? 'Acima da referência'
                                         : 'Na faixa ideal'}
                                 </Badge>
                             </div>

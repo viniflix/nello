@@ -7,8 +7,6 @@ import {
   Edit,
   Trophy,
   ClipboardList,
-  Download,
-  Trash2,
   LogOut,
   ChevronRight,
   Award,
@@ -34,8 +32,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger
 } from '@/components/ui/alert-dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useToast } from '@/hooks/use-toast';
@@ -44,6 +40,8 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { ThemeToggle } from '@/components/shared/ThemeToggle';
 import { endMyCareRelationship, getMyCareRelationship } from '@/lib/supabase/patient-queries';
+import DataPortabilitySection from '@/features/data-portability/components/DataPortabilitySection';
+import PatientPrivacyRequests from '@/features/privacy/components/PatientPrivacyRequests';
 
 /**
  * PatientProfilePage - Aba 5: Perfil
@@ -60,8 +58,6 @@ export default function PatientProfilePage() {
   const { toast } = useToast();
   const [achievements, setAchievements] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [deleteEmailConfirm, setDeleteEmailConfirm] = useState('');
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [careRelationship, setCareRelationship] = useState(null);
   const [endingCare, setEndingCare] = useState(false);
 
@@ -109,90 +105,6 @@ export default function PatientProfilePage() {
       title: 'Acompanhamento encerrado',
       description: 'O nutricionista foi avisado e seu histórico continua preservado.'
     });
-  };
-
-  const handleExportData = async () => {
-    try {
-      
-      toast({
-        title: 'Exportando dados...',
-        description: 'Preparando seu arquivo de dados pessoais.'
-      });
-
-      // Simulate LGPD compliance flow
-      setTimeout(() => {
-        toast({
-          title: 'Solicitação recebida!',
-          description: 'Seus dados foram solicitados. Você receberá um email em breve com o arquivo completo.'
-        });
-      }, 1500);
-    } catch (error) {
-      console.error('Erro ao exportar dados:', error);
-      toast({
-        title: 'Erro',
-        description: 'Não foi possível exportar seus dados.',
-        variant: 'destructive'
-      });
-    }
-  };
-
-  const handleDeleteAccount = async () => {
-    // Validate email confirmation
-    if (deleteEmailConfirm !== user?.email) {
-      toast({
-        title: 'Email incorreto',
-        description: 'Por favor, digite seu email corretamente para confirmar a exclusão.',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    try {
-      toast({
-        title: 'Excluindo conta...',
-        description: 'Processando sua solicitação. Esta ação é irreversível.'
-      });
-
-      // Delete user account via Supabase Admin API or RPC
-      // Note: This requires proper RLS policies and admin functions
-      const { error: deleteError } = await supabase.rpc('delete_user_account', {
-        user_id: user.id
-      });
-
-      if (deleteError) {
-        // Fallback: Try to delete via auth admin (if available)
-        // For now, we'll use a direct approach with proper error handling
-        console.error('Erro ao excluir conta:', deleteError);
-        
-        // Alternative: Mark account as deleted in user_profiles
-        const { error: markError } = await supabase
-          .from('user_profiles')
-          .update({ is_active: false, deleted_at: new Date().toISOString() })
-          .eq('id', user.id);
-
-        if (markError) {
-          throw markError;
-        }
-      }
-
-      // Sign out and redirect
-      await signOut();
-      
-      toast({
-        title: 'Conta excluída',
-        description: 'Sua conta e todos os dados foram permanentemente removidos.'
-      });
-    } catch (error) {
-      console.error('Erro ao excluir conta:', error);
-      toast({
-        title: 'Erro',
-        description: 'Não foi possível excluir sua conta. Tente novamente ou entre em contato com o suporte.',
-        variant: 'destructive'
-      });
-    } finally {
-      setDeleteDialogOpen(false);
-      setDeleteEmailConfirm('');
-    }
   };
 
   const handleLogout = async () => {
@@ -480,6 +392,9 @@ export default function PatientProfilePage() {
           </Card>
         </motion.div>
 
+        <DataPortabilitySection />
+        <PatientPrivacyRequests />
+
         {/* Seção: Privacidade */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -535,86 +450,6 @@ export default function PatientProfilePage() {
                 </>
               )}
 
-              {/* Exportar Dados */}
-              <Button
-                variant="ghost"
-                className="w-full justify-between h-auto py-3"
-                onClick={handleExportData}
-              >
-                <span className="flex items-center gap-3">
-                  <Download className="w-5 h-5 text-blue-600" />
-                  <div className="text-left">
-                    <p className="text-sm font-medium">Exportar Meus Dados</p>
-                    <p className="text-xs text-muted-foreground">
-                      Baixe uma cópia dos seus dados (LGPD)
-                    </p>
-                  </div>
-                </span>
-                <ChevronRight className="w-4 h-4" />
-              </Button>
-
-              <hr className="border-t" />
-
-              {/* Excluir Conta */}
-              <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    className="w-full justify-between h-auto py-3 text-destructive hover:text-destructive"
-                  >
-                    <span className="flex items-center gap-3">
-                      <Trash2 className="w-5 h-5" />
-                      <div className="text-left">
-                        <p className="text-sm font-medium">Excluir Minha Conta</p>
-                        <p className="text-xs text-muted-foreground">
-                          Remover permanentemente seus dados
-                        </p>
-                      </div>
-                    </span>
-                    <ChevronRight className="w-4 h-4" />
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent className="max-w-md">
-                  <AlertDialogHeader>
-                    <AlertDialogTitle className="text-destructive">
-                      Excluir Conta Permanentemente
-                    </AlertDialogTitle>
-                    <AlertDialogDescription className="space-y-3">
-                      <p>
-                        Esta ação é <strong>irreversível</strong>. Seus dados de saúde e histórico serão apagados permanentemente.
-                      </p>
-                      <p className="text-sm font-medium text-foreground">
-                        Para confirmar, digite seu email:
-                      </p>
-                      <div className="space-y-2">
-                        <Label htmlFor="delete-email" className="text-xs text-muted-foreground">
-                          Email de confirmação
-                        </Label>
-                        <Input
-                          id="delete-email"
-                          type="email"
-                          placeholder={user?.email || 'seu@email.com'}
-                          value={deleteEmailConfirm}
-                          onChange={(e) => setDeleteEmailConfirm(e.target.value)}
-                          className="w-full"
-                        />
-                      </div>
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel onClick={() => setDeleteEmailConfirm('')}>
-                      Cancelar
-                    </AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={handleDeleteAccount}
-                      disabled={deleteEmailConfirm !== user?.email}
-                      className="bg-destructive hover:bg-destructive/90 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Excluir Conta
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
             </CardContent>
           </Card>
         </motion.div>

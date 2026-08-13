@@ -380,13 +380,13 @@ const MealPlanPage = () => {
                 </AlertDialogContent>
             </AlertDialog>
 
-            {/* Dialog de Confirmação de Exclusão */}
+            {/* Confirmação de arquivamento auditável */}
             <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+                        <AlertDialogTitle>ARQUIVAR PLANO ALIMENTAR</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Tem certeza que deseja deletar este plano alimentar? Esta ação não pode ser desfeita.
+                            O plano deixará de aparecer como ativo, mas continuará preservado no histórico clínico e na auditoria.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -394,7 +394,7 @@ const MealPlanPage = () => {
                             Cancelar
                         </AlertDialogCancel>
                         <AlertDialogAction onClick={handleDelete} className="bg-destructive">
-                            Deletar
+                            Arquivar plano
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

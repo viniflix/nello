@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   createDocumentArtifactFromClinicalRecord,
+  createDocumentArtifactFromMealPlan,
   finalizeDocumentArtifact,
   getMyDocumentIdentity,
   saveMyDocumentIdentity,
@@ -59,6 +60,14 @@ describe('canonical document contracts', () => {
     });
     expect(supabase.rpc).toHaveBeenNthCalledWith(2, 'sign_document_artifact', {
       p_artifact_id: 'artifact-1',
+    });
+  });
+
+  it('creates the official meal-plan artifact from a server-owned snapshot', async () => {
+    await createDocumentArtifactFromMealPlan(42, 'shared_with_patient');
+    expect(supabase.rpc).toHaveBeenCalledWith('create_document_artifact_from_meal_plan', {
+      p_plan_id: 42,
+      p_visibility: 'shared_with_patient',
     });
   });
 });

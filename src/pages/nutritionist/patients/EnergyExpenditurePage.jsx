@@ -49,9 +49,7 @@ import { INJURY_FACTORS, getInjuryFactorValue } from '@/lib/constants/injury-fac
 const TMB_PROTOCOLS = [
   { id: 'mifflin', label: 'Mifflin-St Jeor' },
   { id: 'harris', label: 'Harris-Benedict (1984)' },
-  { id: 'fao', label: 'FAO/WHO' },
   { id: 'fao_1985', label: 'FAO/OMS 1985' },
-  { id: 'fao_2001', label: 'FAO/OMS 2001' },
   { id: 'eer_iom', label: 'EER/IOM (2005)' },
   { id: 'cunningham', label: 'Cunningham (Massa Magra)' },
   { id: 'tinsley', label: 'Tinsley (Atletas)' }
@@ -80,7 +78,7 @@ export default function EnergyExpenditurePage() {
   const [activityFactor, setActivityFactor] = useState(1.55);
   const [injuryFactorId, setInjuryFactorId] = useState('none');
   const [metsActivities, setMetsActivities] = useState([]);
-  const [selectedProtocol, setSelectedProtocol] = useState('mifflin');
+  const [selectedProtocol, setSelectedProtocol] = useState('');
   const [ventaTargetWeight, setVentaTargetWeight] = useState('');
   const [ventaTimeframeDays, setVentaTimeframeDays] = useState('');
   const [etaEnabled, setEtaEnabled] = useState(false);
@@ -133,11 +131,7 @@ export default function EnergyExpenditurePage() {
     setProtocols(calculated);
     const current = calculated.find((p) => p.id === selectedProtocol);
     if (current) setSelectedProtocolData(current);
-    else if (calculated.length) {
-      const rec = calculated.find((p) => p.recommended) || calculated[0];
-      setSelectedProtocol(rec.id);
-      setSelectedProtocolData(rec);
-    }
+    else setSelectedProtocolData(null);
   }, [weight, height, age, gender, leanMass, selectedProtocol]);
 
   const weightNum = parseFloat(weight) || 0;
@@ -486,7 +480,7 @@ export default function EnergyExpenditurePage() {
                 </div>
                 <div className="space-y-2">
                   <Label>Protocolo TMB</Label>
-                  <Select value={selectedProtocol || 'mifflin'} onValueChange={(v) => setSelectedProtocol(v)}>
+                  <Select value={selectedProtocol} onValueChange={(v) => setSelectedProtocol(v)}>
                     <SelectTrigger><SelectValue placeholder="Selecione o protocolo" /></SelectTrigger>
                     <SelectContent>
                       {TMB_PROTOCOLS.map((p) => (

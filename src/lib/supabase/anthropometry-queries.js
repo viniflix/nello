@@ -37,6 +37,7 @@ export const getAnthropometryRecords = async (patientId, options = {}) => {
             .from('growth_records')
             .select('*')
             .eq('patient_id', patientId)
+            .eq('status', 'active')
             .order(orderBy, { ascending })
             .range(offset, offset + limit - 1);
 
@@ -67,6 +68,7 @@ export const getAnthropometryChartData = async (patientId) => {
             .from('growth_records')
             .select('id, weight, height, record_date')
             .eq('patient_id', patientId)
+            .eq('status', 'active')
             .order('record_date', { ascending: true });
 
         let data;
@@ -120,7 +122,10 @@ export const createAnthropometryRecord = async (recordData) => {
             results,
             supersedes_record_id,
             change_reason,
-            created_by_user_id
+            created_by_user_id,
+            protocol_code,
+            protocol_version,
+            source_snapshot
         } = recordData;
 
         const insertData = {
@@ -137,7 +142,12 @@ export const createAnthropometryRecord = async (recordData) => {
             ...(results && { results }),
             ...(supersedes_record_id && { supersedes_record_id }),
             ...(change_reason && { change_reason }),
-            ...(created_by_user_id && { created_by_user_id })
+            ...(created_by_user_id && { created_by_user_id }),
+            protocol_code: protocol_code || null,
+            protocol_version: protocol_version || null,
+            source_snapshot: source_snapshot || { entry_method: 'professional_measurement', catalog_version: 1 },
+            confirmed_by: created_by_user_id || null,
+            confirmed_at: created_by_user_id ? new Date().toISOString() : null
         };
 
         let { data, error } = await supabase
@@ -228,12 +238,11 @@ export const updateAnthropometryRecord = async (recordId, recordData) => {
             ...(results !== undefined && { results })
         };
 
-        const { data, error } = await supabase
-            .from('growth_records')
-            .update(updateData)
-            .eq('id', recordId)
-            .select()
-            .single();
+        const { data, error } = await supabase.rpc('revise_anthropometry_record', {
+            p_record_id: recordId,
+            p_payload: updateData,
+            p_reason: recordData.change_reason || 'Correção clínica confirmada pelo nutricionista na interface'
+        });
 
         if (error) throw error;
 
@@ -262,17 +271,15 @@ export const updateAnthropometryRecord = async (recordId, recordData) => {
  */
 export const deleteAnthropometryRecord = async (recordId) => {
     try {
-        const { data, error } = await supabase
-            .from('growth_records')
-            .delete()
-            .eq('id', recordId)
-            .select()
-            .single();
+        const { data, error } = await supabase.rpc('invalidate_anthropometry_record', {
+            p_record_id: recordId,
+            p_reason: 'Invalidado pelo nutricionista na interface do módulo'
+        });
 
         if (error) throw error;
 
         await logActivityEvent({
-            eventName: 'anthropometry.record.deleted',
+            eventName: 'anthropometry.record.invalidated',
             sourceModule: 'anthropometry',
             patientId: data?.patient_id || null,
             nutritionistId: data?.nutritionist_id || null,
@@ -283,7 +290,7 @@ export const deleteAnthropometryRecord = async (recordId) => {
 
         return { data, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao deletar registro antropométrico', error);
+        logSupabaseError('Erro ao invalidar registro antropométrico', error);
         return { data: null, error };
     }
 };
@@ -299,6 +306,7 @@ export const getLatestAnthropometryRecord = async (patientId) => {
             .from('growth_records')
             .select('weight, height, notes')
             .eq('patient_id', patientId)
+            .eq('status', 'active')
             .order('record_date', { ascending: false })
             .limit(1);
 
@@ -329,6 +337,8 @@ export const getAnthropometryStats = async (patientId) => {
             .from('growth_records')
             .select('weight, height, record_date')
             .eq('patient_id', patientId)
+            .eq('status', 'active')
+            .eq('is_latest_revision', true)
             .order('record_date', { ascending: true });
 
         if (error) throw error;

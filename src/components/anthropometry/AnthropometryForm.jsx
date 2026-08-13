@@ -141,7 +141,7 @@ const AnthropometryForm = ({
         }
     }, [initialData]);
 
-    // Calcular IMC e Peso Ideal automaticamente
+    // IMC é exibido como apoio. Faixas pediátricas exigem curvas OMS completas.
     useEffect(() => {
         const { weight, height } = formData;
         if (weight && height) {
@@ -150,41 +150,18 @@ const AnthropometryForm = ({
             setCalculatedBMI(bmi);
 
             const age = patientBirthDate ? differenceInYears(new Date(), new Date(patientBirthDate)) : null;
-            const cuts = getBMICuts({ age, ethnicity: patientEthnicity });
-            const minIdealWeight = cuts.underweight * Math.pow(heightM, 2);
-            const maxIdealWeight = cuts.normal_high * Math.pow(heightM, 2);
-
-            // Fórmula de Broca Modificada por sexo
-            const gender = patientGender?.toLowerCase() || '';
-            const isMale = /^(male|masculino|m)$/i.test(String(gender || '').trim());
-            const heightCm = parseFloat(height);
-            const broca = isMale
-                ? 52 + (0.75 * (heightCm - 152.4))
-                : 52 + (0.67 * (heightCm - 152.4));
-            const brocaFormula = isMale
-                ? `52 + (0.75 × (${heightCm} − 152.4))`
-                : `52 + (0.67 × (${heightCm} − 152.4))`;
+            const cuts = getBMICuts({ age });
             const weightNow = parseFloat(weight);
-            const adjusted = ((weightNow - broca) * 0.25) + broca;
-
-            setIdealWeightRange({
-                min: minIdealWeight,
-                max: maxIdealWeight,
-                current: weightNow,
-                low: cuts.underweight,
-                high: cuts.normal_high,
-                // Broca
-                broca: broca,
-                brocaFormula,
-                brocaAdjusted: adjusted,
-                brocaAdjustedFormula: `((${weightNow.toFixed(1)} − ${broca.toFixed(1)}) × 0.25) + ${broca.toFixed(1)}`,
-                isMale
-            });
+            setIdealWeightRange(cuts ? {
+                min: cuts.underweight * Math.pow(heightM, 2),
+                max: cuts.normal_high * Math.pow(heightM, 2),
+                current: weightNow, low: cuts.underweight, high: cuts.normal_high,
+            } : null);
         } else {
             setCalculatedBMI(null);
             setIdealWeightRange(null);
         }
-    }, [formData.weight, formData.height, patientBirthDate, patientEthnicity, patientGender]);
+    }, [formData.weight, formData.height, patientBirthDate]);
 
     // Calcular RCQ (Relação Cintura-Quadril)
     useEffect(() => {
@@ -462,8 +439,12 @@ const AnthropometryForm = ({
             results: {
                 ...(compositionResults || {}),
                 ...(frameSize && { frame_size: frameSize.size, frame_ratio: frameSize.ratio }),
-                ...(somatotype && { somatotype })
-            } || null
+                ...(somatotype && { somatotype }),
+                ...(calculatedBMI && imcCategory && { bmi_assessment: { value: calculatedBMI, label: imcCategory.label, method: imcCategory.method, source: imcCategory.source, requires_professional_validation: true } })
+            } || null,
+            protocol_code: calculatedBMI ? (imcCategory?.method === 'idoso_sisvan' ? 'anthropometry.bmi_elderly_sisvan' : imcCategory?.method === 'pediatrico_pendente_curva_oms' ? 'anthropometry.pediatric_who_lms' : 'anthropometry.bmi_adult') : null,
+            protocol_version: calculatedBMI ? 1 : null,
+            source_snapshot: calculatedBMI ? { classification_method: imcCategory?.method, source: imcCategory?.source, automated_diagnosis: false } : { entry_method: 'professional_measurement' }
         };
 
         onSubmit(submitData, initialData?.id);
@@ -724,64 +705,14 @@ const AnthropometryForm = ({
                                         </AlertDescription>
                                     </Alert>
 
-                                    {/* Peso Ideal Broca */}
-                                    {idealWeightRange?.broca != null && (
-                                        <Alert className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
-                                            <Calculator className="h-4 w-4 text-blue-600" />
-                                            <AlertDescription>
-                                                <div className="space-y-1">
-                                                    <div className="font-semibold text-blue-900 dark:text-blue-100 text-sm">
-                                                        Peso Ideal — Broca Modificado
-                                                    </div>
-                                                    <div
-                                                        className="text-base font-bold text-blue-800 dark:text-blue-200 cursor-help underline decoration-dotted"
-                                                        title={`Fórmula (${idealWeightRange.isMale ? 'Masc' : 'Fem'}): ${idealWeightRange.brocaFormula} = ${idealWeightRange.broca.toFixed(1)} kg`}
-                                                    >
-                                                        {idealWeightRange.broca.toFixed(1)} kg
-                                                    </div>
-                                                    <p className="text-xs text-blue-700 dark:text-blue-300">
-                                                        {idealWeightRange.isMale
-                                                            ? 'Masc: 52 + (0,75 × (altura − 152,4))'
-                                                            : 'Fem: 52 + (0,67 × (altura − 152,4))'}
-                                                    </p>
-                                                    <p className="text-xs text-muted-foreground italic">Passe o mouse no valor para ver o cálculo</p>
-                                                </div>
-                                            </AlertDescription>
-                                        </Alert>
-                                    )}
-
-                                    {/* Peso Ideal Ajustado */}
-                                    {idealWeightRange?.brocaAdjusted != null && (
-                                        <Alert className="bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800">
-                                            <Calculator className="h-4 w-4 text-emerald-600" />
-                                            <AlertDescription>
-                                                <div className="space-y-1">
-                                                    <div className="font-semibold text-emerald-900 dark:text-emerald-100 text-sm">
-                                                        Peso Ideal Ajustado
-                                                    </div>
-                                                    <div
-                                                        className="text-base font-bold text-emerald-800 dark:text-emerald-200 cursor-help underline decoration-dotted"
-                                                        title={`Fórmula: ((PesoAtual − PesoIdeal) × 0.25) + PesoIdeal = ${idealWeightRange.brocaAdjustedFormula} = ${idealWeightRange.brocaAdjusted.toFixed(1)} kg`}
-                                                    >
-                                                        {idealWeightRange.brocaAdjusted.toFixed(1)} kg
-                                                    </div>
-                                                    <p className="text-xs text-emerald-700 dark:text-emerald-300">
-                                                        ((PesoAtual − PesoIdeal) × 0,25) + PesoIdeal
-                                                    </p>
-                                                    <p className="text-xs text-muted-foreground italic">Passe o mouse no valor para ver o cálculo</p>
-                                                </div>
-                                            </AlertDescription>
-                                        </Alert>
-                                    )}
-
-                                    {/* Faixa OMS */}
+                                    {/* Faixa de referência: não é meta nem peso ideal */}
                                     {idealWeightRange && (
                                         <Alert className="bg-muted/30 border-muted">
                                             <Calculator className="h-4 w-4 text-muted-foreground" />
                                             <AlertDescription>
                                                 <div className="space-y-1">
                                                     <div className="font-semibold text-sm">
-                                                        Faixa OMS (IMC {idealWeightRange.low}–{idealWeightRange.high})
+                                                        Faixa de referência do IMC ({idealWeightRange.low}–{idealWeightRange.high})
                                                     </div>
                                                     <div className="text-sm">
                                                         {idealWeightRange.min.toFixed(1)} – {idealWeightRange.max.toFixed(1)} kg
@@ -794,6 +725,7 @@ const AnthropometryForm = ({
                                                             {idealWeightRange.current >= idealWeightRange.min && idealWeightRange.current <= idealWeightRange.max && <span className="ml-1 text-green-600">(Na faixa)</span>}
                                                         </div>
                                                     )}
+                                                    <p className="text-xs text-muted-foreground">APOIO À AVALIAÇÃO — NÃO REPRESENTA META OU “PESO IDEAL”.</p>
                                                 </div>
                                             </AlertDescription>
                                         </Alert>

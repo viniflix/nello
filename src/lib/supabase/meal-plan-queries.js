@@ -172,7 +172,8 @@ export const createMealPlan = async (planData) => {
             active_days,
             start_date,
             end_date,
-            is_active = true
+            is_active = true,
+            plan_mode = 'hybrid'
         } = planData;
 
         // Desativar outros planos ativos do mesmo paciente apenas se o novo plano for ativo
@@ -200,7 +201,9 @@ export const createMealPlan = async (planData) => {
                 active_days: active_days || ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
                 start_date: start_date || getTodayIsoDate(),
                 end_date: end_date || null,
-                is_active: is_active
+                is_active: is_active,
+                plan_mode,
+                prescription_status: 'draft'
             }])
             .select()
             .single();
@@ -480,8 +483,15 @@ export const updateMealPlan = async (planId, updates) => {
  * @param {number} planId - ID do plano
  * @returns {Promise<{data: object, error: object}>}
  */
-export const archiveMealPlan = async (planId) => {
-    return updateMealPlan(planId, { is_active: false });
+export const archiveMealPlan = async (planId, reason = 'Plano arquivado pelo nutricionista na interface') => {
+    try {
+        const { data, error } = await supabase.rpc('archive_meal_plan', { p_plan_id: planId, p_reason: reason });
+        if (error) throw error;
+        return { data, error: null };
+    } catch (error) {
+        logSupabaseError('Erro ao arquivar plano alimentar', error);
+        return { data: null, error };
+    }
 };
 
 /**
@@ -521,12 +531,10 @@ export const setActiveMealPlan = async (planId) => {
  */
 export const deleteMealPlan = async (planId) => {
     try {
-        const { data, error } = await supabase
-            .from('meal_plans')
-            .delete()
-            .eq('id', planId)
-            .select()
-            .single();
+        const { data, error } = await supabase.rpc('archive_meal_plan', {
+            p_plan_id: planId,
+            p_reason: 'Plano arquivado pelo nutricionista na interface'
+        });
 
         if (error) throw error;
         return { data, error: null };
@@ -1251,19 +1259,6 @@ const normalizeMealPlanVersionSnapshot = (plan) => {
     };
 };
 
-const getLatestMealPlanVersion = async (planId) => {
-    const { data, error } = await supabase
-        .from('meal_plan_versions')
-        .select('id, version_number')
-        .eq('meal_plan_id', planId)
-        .order('version_number', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-    if (error) throw error;
-    return data || null;
-};
-
 export const createMealPlanVersionSnapshot = async ({
     mealPlan,
     versionNumber,
@@ -1330,13 +1325,9 @@ export const getMealPlanVersions = async (planId, limit = 20) => {
  * @returns {Promise<{data: object, error: object}>}
  */
 export const updateFullMealPlan = async (planId, planData) => {
-    const startedAt = Date.now();
     try {
-        const { data: authData } = await supabase.auth.getUser();
-        const actorId = authData?.user?.id || null;
-
         // Perform atomic upsert via RPC
-        const { data: rpcResult, error: rpcError } = await supabase.rpc('upsert_full_meal_plan', {
+        const { error: rpcError } = await supabase.rpc('upsert_full_meal_plan', {
             p_plan_id: planId,
             p_plan_data: {
                 name: planData.name,
@@ -1348,7 +1339,10 @@ export const updateFullMealPlan = async (planId, planData) => {
                 daily_calories: planData.daily_calories || 0,
                 daily_protein: planData.daily_protein || 0,
                 daily_carbs: planData.daily_carbs || 0,
-                daily_fat: planData.daily_fat || 0
+                daily_fat: planData.daily_fat || 0,
+                active_days: planData.active_days || [],
+                plan_mode: planData.plan_mode || 'hybrid',
+                change_reason: planData.change_reason || 'Edição confirmada pelo nutricionista'
             },
             p_meals: (planData.meals || []).map((meal, idx) => ({
                 name: meal.name,
@@ -1384,21 +1378,6 @@ export const updateFullMealPlan = async (planId, planData) => {
         // Fetch updated data for UI
         const updatedResult = await getMealPlanById(planId);
         if (updatedResult.error) throw updatedResult.error;
-
-        // Versioning (Best-effort as before)
-        try {
-            const latestVersion = await getLatestMealPlanVersion(planId);
-            const nextVersion = (latestVersion?.version_number || 0) + 1;
-            await createMealPlanVersionSnapshot({
-                mealPlan: updatedResult.data,
-                versionNumber: nextVersion,
-                changeReason: planData?.change_reason || 'edicao_manual_atômica',
-                createdBy: actorId,
-                metadata: { origin: 'updateFullMealPlan_rpc' }
-            });
-        } catch (vError) {
-            console.warn('[updateFullMealPlan] Versioning failed:', vError);
-        }
 
         /* logOperationalEvent removed */
 
