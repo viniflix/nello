@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   clearForcedPasswordReset,
+  isExpectedLoginRejection,
   normalizeAuthEmail,
   redeemPatientInvite,
   requestPasswordRecovery,
@@ -108,5 +109,12 @@ describe('authFlows', () => {
     expect(validateNewPassword('12345678', '87654321')).toBe('As senhas não coincidem.');
     expect(validateNewPassword('        ', '        ')).toContain('apenas espaços');
     expect(validateNewPassword('Senha segura 123', 'Senha segura 123')).toBeNull();
+  });
+
+  it('separates expected credential rejection from operational authentication failures', () => {
+    expect(isExpectedLoginRejection({ code: 'invalid_credentials', status: 400 })).toBe(true);
+    expect(isExpectedLoginRejection({ code: 'email_not_confirmed', status: 400 })).toBe(true);
+    expect(isExpectedLoginRejection({ code: 'invalid_credentials', status: 500 })).toBe(false);
+    expect(isExpectedLoginRejection({ code: 'over_request_rate_limit', status: 429 })).toBe(false);
   });
 });

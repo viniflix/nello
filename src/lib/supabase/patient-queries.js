@@ -799,6 +799,15 @@ const ownsCurrentSession = async (expectedUserId) => {
     return data?.session?.user?.id === expectedUserId;
 };
 
+const sessionChangedDuringWrite = async (error, expectedUserId) => {
+    if (error?.code !== 'PGRST116') return false;
+    try {
+        return !await ownsCurrentSession(expectedUserId);
+    } catch {
+        return false;
+    }
+};
+
 const pushFeedTaskAuditEntry = (metadata, entry) => {
     const safeMetadata = metadata && typeof metadata === 'object' ? metadata : {};
     const previous = Array.isArray(safeMetadata.audit_history) ? safeMetadata.audit_history : [];
@@ -958,6 +967,9 @@ export const upsertFeedTask = async ({
                 .eq('id', existing.id)
                 .select()
                 .single();
+            if (await sessionChangedDuringWrite(error, nutritionistId)) {
+                return { data: null, error: null, skipped: true };
+            }
             if (error) throw error;
             return { data, error: null };
         }
@@ -972,6 +984,9 @@ export const upsertFeedTask = async ({
             .select()
             .single();
 
+        if (await sessionChangedDuringWrite(error, nutritionistId)) {
+            return { data: null, error: null, skipped: true };
+        }
         if (error) throw error;
         return { data, error: null };
     } catch (error) {

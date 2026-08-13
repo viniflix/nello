@@ -22,6 +22,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/customSupabaseClient';
 import { toPortugueseError } from '@/lib/utils/errorMessages';
 import {
+  isExpectedLoginRejection,
   normalizeAuthEmail,
   requestPasswordRecovery,
 } from '@/features/auth/authFlows';
@@ -70,11 +71,13 @@ export default function LoginPage() {
     const { data, error } = await signIn({ email: normalizeAuthEmail(email), password });
 
     if (error) {
-      captureOperationalError(error, {
-        operation: 'auth.sign_in_with_password',
-        module: 'authentication',
-        source: 'supabase_auth',
-      });
+      if (!isExpectedLoginRejection(error)) {
+        captureOperationalError(error, {
+          operation: 'auth.sign_in_with_password',
+          module: 'authentication',
+          source: 'supabase_auth',
+        });
+      }
       track(Events.AUTH_LOGIN_FAILED, { error_code: error.code || 'unknown' });
       toast({
         title: "Erro no login",

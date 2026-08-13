@@ -24,7 +24,14 @@ $manifest = @($files | ForEach-Object {
 
 if ($VerifyOnly) {
     if (-not (Test-Path -LiteralPath $manifestPath)) { throw 'No local Supabase integrity manifest exists.' }
-    $expected = @(Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json)
+    # Windows PowerShell 5.1 preserves a JSON root array as one pipeline item.
+    # Materialize its elements explicitly so the comparison has the same shape
+    # as the freshly generated manifest on both Windows PowerShell and pwsh.
+    $expectedRaw = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
+    $expected = @()
+    foreach ($item in $expectedRaw) {
+        $expected += $item
+    }
     if (($expected | ConvertTo-Json -Depth 4 -Compress) -ne ($manifest | ConvertTo-Json -Depth 4 -Compress)) {
         throw 'Local Supabase files differ from the latest integrity manifest.'
     }

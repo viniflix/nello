@@ -52,6 +52,45 @@ describe('session-safe background queries', () => {
     expect(mocks.logSupabaseError).not.toHaveBeenCalled();
   });
 
+  it('does not report a no-row write when logout wins the feed persistence race', async () => {
+    mocks.getSession
+      .mockResolvedValueOnce({
+        data: { session: { user: { id: 'nutritionist-session' } } },
+        error: null,
+      })
+      .mockResolvedValueOnce({ data: { session: null }, error: null });
+
+    mocks.from
+      .mockReturnValueOnce({
+        select: vi.fn(() => ({
+          match: vi.fn(() => ({
+            limit: vi.fn().mockResolvedValue({ data: [], error: null }),
+          })),
+        })),
+      })
+      .mockReturnValueOnce({
+        insert: vi.fn(() => ({
+          select: vi.fn(() => ({
+            single: vi.fn().mockResolvedValue({
+              data: null,
+              error: { code: 'PGRST116', message: 'JSON object requested, multiple (or no) rows returned' },
+            }),
+          })),
+        })),
+      });
+
+    const result = await upsertFeedTask({
+      nutritionistId: 'nutritionist-session',
+      sourceType: 'pending',
+      sourceId: 'pending-1',
+      title: 'PendÃªncia',
+    });
+
+    expect(result).toMatchObject({ data: null, error: null, skipped: true });
+    expect(mocks.getSession).toHaveBeenCalledTimes(2);
+    expect(mocks.logSupabaseError).not.toHaveBeenCalled();
+  });
+
   it('does not report relationship or reminder requests cancelled by navigation', async () => {
     const controller = new AbortController();
     controller.abort();

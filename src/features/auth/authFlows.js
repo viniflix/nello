@@ -1,8 +1,18 @@
 const MIN_PASSWORD_LENGTH = 8;
 const MAX_PASSWORD_LENGTH = 72;
+const EXPECTED_LOGIN_REJECTION_CODES = new Set([
+  'invalid_credentials',
+  'email_not_confirmed',
+  'user_banned',
+]);
 
 export function normalizeAuthEmail(value) {
   return String(value || '').trim().toLowerCase();
+}
+
+export function isExpectedLoginRejection(error) {
+  const status = Number(error?.status || error?.statusCode);
+  return status === 400 && EXPECTED_LOGIN_REJECTION_CODES.has(String(error?.code || ''));
 }
 
 export function validateNewPassword(password, confirmation = password) {
