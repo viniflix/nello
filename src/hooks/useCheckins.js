@@ -71,6 +71,80 @@ export function useCheckins() {
     }
   });
 
+  // --- NUTRI: Obter Template Específico ---
+  const getTemplate = async (templateId) => {
+    const { data, error } = await supabase
+      .from('checkin_templates')
+      .select(`
+        *,
+        checkin_fields (*)
+      `)
+      .eq('id', templateId)
+      .single();
+    
+    if (error) throw error;
+    // Order fields
+    if (data && data.checkin_fields) {
+      data.checkin_fields.sort((a, b) => a.order_index - b.order_index);
+    }
+    return data;
+  };
+
+  // --- NUTRI: Atualizar Template ---
+  const updateTemplate = useMutation({
+    mutationFn: async ({ id, template, fields }) => {
+      // 1. Atualizar o template principal
+      const { data: updatedTemplate, error: tmplError } = await supabase
+        .from('checkin_templates')
+        .update({ 
+          name: template.name,
+          description: template.description || '',
+          frequency: template.frequency,
+          send_time: template.send_time,
+          send_days: template.send_days || [1],
+          channel: template.channel || 'in_app'
+        })
+        .eq('id', id)
+        .select()
+        .single();
+        
+      if (tmplError) throw tmplError;
+      
+      // 2. Apagar os fields antigos (para simplicidade, já que não precisamos de versionamento forte dos fields de checkin ainda)
+      // Idealmente a longo prazo seria soft delete ou diffing.
+      const { error: delError } = await supabase
+        .from('checkin_fields')
+        .delete()
+        .eq('template_id', id);
+        
+      if (delError) throw delError;
+
+      // 3. Inserir os novos fields
+      if (fields && fields.length > 0) {
+        const fieldsToInsert = fields.map((f, i) => ({
+          template_id: id,
+          label: f.label,
+          field_type: f.field_type,
+          options: f.options || [],
+          score_weight: f.score_weight || 1.0,
+          unit: f.unit || null,
+          is_required: f.is_required !== undefined ? f.is_required : true,
+          order_index: i
+        }));
+        const { error: fError } = await supabase.from('checkin_fields').insert(fieldsToInsert);
+        if (fError) throw fError;
+      }
+      return updatedTemplate;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['checkinTemplates'] });
+      toast({ title: "Sucesso!", description: "Template atualizado com sucesso." });
+    },
+    onError: (error) => {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    }
+  });
+
   // --- NUTRI: Listar Schedules do Paciente ---
   const usePatientSchedules = (patientId) => useQuery({
     queryKey: ['checkinSchedules', patientId],
@@ -196,7 +270,9 @@ export function useCheckins() {
 
   return {
     useTemplates,
+    getTemplate,
     createTemplate,
+    updateTemplate,
     usePatientSchedules,
     linkTemplate,
     usePendingCheckins,

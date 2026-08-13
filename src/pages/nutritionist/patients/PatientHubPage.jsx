@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, RefreshCw, AlertCircle, Activity, Stethoscope, User, Utensils, Heart, CheckSquare, Copy, ChevronDown, ChevronUp, Check, Link as LinkIcon, Hash } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -10,17 +10,19 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useResolvedPatientId } from '@/hooks/useResolvedPatientId';
 import PatientProfileSummary from '@/components/patient-hub/PatientProfileSummary';
 import PatientJourneyWidget from '@/components/patient-hub/PatientJourneyWidget';
-import TabContentFeed from '@/components/patient-hub/tabs/TabContentFeed';
-import TabContentClinical from '@/components/patient-hub/tabs/TabContentClinical';
-import TabContentBody from '@/components/patient-hub/tabs/TabContentBody';
-import TabContentNutrition from '@/components/patient-hub/tabs/TabContentNutrition';
-import TabContentAdherence from '@/components/patient-hub/tabs/TabContentAdherence';
-import TabContentCheckins from '@/components/patient-hub/tabs/TabContentCheckins';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
+import { PatientProfileCardSkeleton, SimpleListSkeleton } from '@/components/ui/custom-skeletons';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { isUuid } from '@/lib/utils/patientRoutes';
 import PatientEditProfileModal from '@/components/patient-hub/PatientEditProfileModal';
+
+const TabContentFeed = lazy(() => import('@/components/patient-hub/tabs/TabContentFeed'));
+const TabContentClinical = lazy(() => import('@/components/patient-hub/tabs/TabContentClinical'));
+const TabContentBody = lazy(() => import('@/components/patient-hub/tabs/TabContentBody'));
+const TabContentNutrition = lazy(() => import('@/components/patient-hub/tabs/TabContentNutrition'));
+const TabContentAdherence = lazy(() => import('@/components/patient-hub/tabs/TabContentAdherence'));
+const TabContentCheckins = lazy(() => import('@/components/patient-hub/tabs/TabContentCheckins'));
 
 const PatientHubPage = () => {
     const { patientId: resolvedId, loading: resolveLoading, error: resolveError, paramValue } = useResolvedPatientId();
@@ -120,32 +122,7 @@ const PatientHubPage = () => {
                 {/* Content Skeleton */}
                 <main className="max-w-7xl mx-auto w-full p-4 md:p-8 space-y-8">
                     {/* Profile Summary Skeleton */}
-                    <Card>
-                        <CardHeader className="flex flex-row items-start justify-between space-y-0">
-                            <div className="flex items-center gap-4">
-                                <Skeleton className="h-20 w-20 rounded-full" />
-                                <div className="space-y-2">
-                                    <Skeleton className="h-6 w-48" />
-                                    <Skeleton className="h-4 w-32" />
-                                    <Skeleton className="h-4 w-40" />
-                                </div>
-                            </div>
-                            <div className="flex gap-2">
-                                <Skeleton className="h-10 w-24" />
-                                <Skeleton className="h-10 w-24" />
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                {[1, 2, 3, 4].map(i => (
-                                    <div key={i} className="space-y-2">
-                                        <Skeleton className="h-4 w-16" />
-                                        <Skeleton className="h-6 w-20" />
-                                    </div>
-                                ))}
-                            </div>
-                        </CardContent>
-                    </Card>
+                    <PatientProfileCardSkeleton />
 
                     {/* Journey Widget Skeleton */}
                     <Card>
@@ -408,58 +385,60 @@ const PatientHubPage = () => {
                         </TabsList>
 
                         <div className="mt-6">
-                            <TabsContent value="feed" className="m-0">
-                                <TabContentFeed
-                                    patientId={patientId}
-                                    patientSlugOrId={patientData?.slug}
-                                    activities={activities}
-                                    loading={activitiesLoading}
-                                    onLoadMore={handleLoadMoreActivities}
-                                />
-                            </TabsContent>
+                            <Suspense fallback={<div className="p-4 md:p-6"><SimpleListSkeleton count={4} /></div>}>
+                                <TabsContent value="feed" className="m-0">
+                                    <TabContentFeed
+                                        patientId={patientId}
+                                        patientSlugOrId={patientData?.slug}
+                                        activities={activities}
+                                        loading={activitiesLoading}
+                                        onLoadMore={handleLoadMoreActivities}
+                                    />
+                                </TabsContent>
 
-                            <TabsContent value="clinical" className="m-0">
-                                <TabContentClinical
-                                    patientId={patientId}
-                                    patientData={patientData}
-                                    modulesStatus={modulesStatus}
-                                    viewedEpisodeId={viewedEpisodeId}
-                                    writableEpisodeId={writableEpisodeId}
-                                    currentUserId={user?.id}
-                                    canCosign={user?.profile?.user_type === 'nutritionist'}
-                                />
-                            </TabsContent>
+                                <TabsContent value="clinical" className="m-0">
+                                    <TabContentClinical
+                                        patientId={patientId}
+                                        patientData={patientData}
+                                        modulesStatus={modulesStatus}
+                                        viewedEpisodeId={viewedEpisodeId}
+                                        writableEpisodeId={writableEpisodeId}
+                                        currentUserId={user?.id}
+                                        canCosign={user?.profile?.user_type === 'nutritionist'}
+                                    />
+                                </TabsContent>
 
-                            <TabsContent value="body" className="m-0">
-                                <TabContentBody
-                                    patientId={patientId}
-                                    patientData={patientData}
-                                    modulesStatus={modulesStatus}
-                                    latestMetrics={latestMetrics}
-                                />
-                            </TabsContent>
+                                <TabsContent value="body" className="m-0">
+                                    <TabContentBody
+                                        patientId={patientId}
+                                        patientData={patientData}
+                                        modulesStatus={modulesStatus}
+                                        latestMetrics={latestMetrics}
+                                    />
+                                </TabsContent>
 
-                            <TabsContent value="nutrition" className="m-0">
-                                <TabContentNutrition
-                                    patientId={patientId}
-                                    patientData={patientData}
-                                    modulesStatus={modulesStatus}
-                                />
-                            </TabsContent>
+                                <TabsContent value="nutrition" className="m-0">
+                                    <TabContentNutrition
+                                        patientId={patientId}
+                                        patientData={patientData}
+                                        modulesStatus={modulesStatus}
+                                    />
+                                </TabsContent>
 
-                            <TabsContent value="adherence" className="m-0">
-                                <TabContentAdherence
-                                    patientId={patientId}
-                                    patientData={patientData}
-                                    modulesStatus={modulesStatus}
-                                />
-                            </TabsContent>
+                                <TabsContent value="adherence" className="m-0">
+                                    <TabContentAdherence
+                                        patientId={patientId}
+                                        patientData={patientData}
+                                        modulesStatus={modulesStatus}
+                                    />
+                                </TabsContent>
 
-                            <TabsContent value="checkins" className="m-0">
-                                <TabContentCheckins
-                                    patientId={patientId}
-                                />
-                            </TabsContent>
+                                <TabsContent value="checkins" className="m-0">
+                                    <TabContentCheckins
+                                        patientId={patientId}
+                                    />
+                                </TabsContent>
+                            </Suspense>
                         </div>
                     </Tabs>
                 </section>

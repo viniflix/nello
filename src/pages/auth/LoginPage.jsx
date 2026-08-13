@@ -163,9 +163,12 @@ export default function LoginPage() {
               {/* Logo */}
               <div className="flex justify-center">
                 <img
-                  src="https://afyoidxrshkmplxhcyeh.supabase.co/storage/v1/object/public/IDV/HIPOZERO%20(2).png"
-                  alt="HipoZero"
-                  className="h-16 w-auto"
+                  src="https://afyoidxrshkmplxhcyeh.supabase.co/storage/v1/object/public/IDV/nello.png"
+                  alt="Nello"
+                  className="h-16 w-auto object-contain"
+                  fetchPriority="high"
+                  loading="eager"
+                  decoding="async"
                 />
               </div>
 

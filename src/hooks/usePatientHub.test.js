@@ -2,7 +2,20 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createElement, StrictMode } from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
+const createQueryClient = () => new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: false,
+    },
+  },
+});
+
+const createWrapper = () => {
+  const queryClient = createQueryClient();
+  return ({ children }) => createElement(QueryClientProvider, { client: queryClient }, children);
+};
 const mocks = vi.hoisted(() => ({
   getPatientSummary: vi.fn(),
   getPatientActivities: vi.fn(),
@@ -60,7 +73,7 @@ describe('usePatientHub clinical record foundation', () => {
   });
 
   it('loads foundation and guardians alongside the existing summary', async () => {
-    const { result } = renderHook(() => usePatientHub('patient-1'));
+    const { result } = renderHook(() => usePatientHub('patient-1'), { wrapper: createWrapper() });
 
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.foundation.patient.name).toBe('Ana');
@@ -79,7 +92,7 @@ describe('usePatientHub clinical record foundation', () => {
       data: { viewed_episode_id: 'episode-ended', viewed_episode_status: 'ended', writable_episode_id: null, can_write: false, patient: { name: 'Ana' }, records: [] },
       error: null,
     });
-    const { result } = renderHook(() => usePatientHub('patient-1'));
+    const { result } = renderHook(() => usePatientHub('patient-1'), { wrapper: createWrapper() });
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.viewedEpisodeId).toBe('episode-ended');
     expect(result.current.writableEpisodeId).toBeNull();
@@ -89,7 +102,7 @@ describe('usePatientHub clinical record foundation', () => {
 
   it('preserves summary fallbacks and empty states when foundation fails', async () => {
     mocks.getPatientRecordFoundation.mockResolvedValue({ data: null, error: new Error('unavailable') });
-    const { result } = renderHook(() => usePatientHub('patient-1'));
+    const { result } = renderHook(() => usePatientHub('patient-1'), { wrapper: createWrapper() });
 
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.error).toBeNull();
@@ -102,7 +115,7 @@ describe('usePatientHub clinical record foundation', () => {
   it('surfaces summary errors and clears clinical state', async () => {
     const error = new Error('summary denied');
     mocks.getPatientSummary.mockResolvedValue({ data: null, error });
-    const { result } = renderHook(() => usePatientHub('patient-1'));
+    const { result } = renderHook(() => usePatientHub('patient-1'), { wrapper: createWrapper() });
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.error).toBe(error);
     expect(result.current.patientData).toBeNull();
@@ -111,14 +124,14 @@ describe('usePatientHub clinical record foundation', () => {
 
   it('reports a not-found summary', async () => {
     mocks.getPatientSummary.mockResolvedValue({ data: null, error: null });
-    const { result } = renderHook(() => usePatientHub('patient-1'));
+    const { result } = renderHook(() => usePatientHub('patient-1'), { wrapper: createWrapper() });
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.error?.message).toContain('Paciente');
   });
 
   it('keeps guardians empty on guardian error and when no episode exists', async () => {
     mocks.listPatientLegalGuardians.mockResolvedValue({ data: null, error: new Error('denied') });
-    const first = renderHook(() => usePatientHub('patient-1'));
+    const first = renderHook(() => usePatientHub('patient-1'), { wrapper: createWrapper() });
     await waitFor(() => expect(first.result.current.loading).toBe(false));
     expect(first.result.current.legalGuardians).toEqual([]);
     first.unmount();
@@ -126,14 +139,14 @@ describe('usePatientHub clinical record foundation', () => {
     mocks.getPatientSummary.mockResolvedValue({ data: { profile: { name: 'Ana' }, metrics: {}, modulesStatus: {} }, error: null });
     mocks.getPatientRecordFoundation.mockResolvedValue({ data: { patient: { name: 'Ana' }, records: [] }, error: null });
     mocks.listPatientLegalGuardians.mockClear();
-    const second = renderHook(() => usePatientHub('patient-2'));
+    const second = renderHook(() => usePatientHub('patient-2'), { wrapper: createWrapper() });
     await waitFor(() => expect(second.result.current.loading).toBe(false));
     expect(mocks.listPatientLegalGuardians).not.toHaveBeenCalled();
     expect(second.result.current.legalGuardians).toEqual([]);
   });
 
   it('refreshes summary, foundation and activities', async () => {
-    const { result } = renderHook(() => usePatientHub('patient-1'));
+    const { result } = renderHook(() => usePatientHub('patient-1'), { wrapper: createWrapper() });
     await waitFor(() => expect(result.current.loading).toBe(false));
     await act(() => result.current.refresh());
     expect(mocks.getPatientSummary).toHaveBeenCalledTimes(2);
@@ -151,7 +164,7 @@ describe('usePatientHub clinical record foundation', () => {
       .mockReturnValueOnce(foundationA.promise)
       .mockResolvedValueOnce({ data: { patient: { name: 'B' }, records: [] }, error: null });
 
-    const { result, rerender } = renderHook(({ patientId }) => usePatientHub(patientId), {
+    const { result, rerender } = renderHook(({ patientId }) => usePatientHub(patientId), { wrapper: createWrapper(),
       initialProps: { patientId: 'patient-a' },
     });
     rerender({ patientId: 'patient-b' });
@@ -170,7 +183,7 @@ describe('usePatientHub clinical record foundation', () => {
     const foundation = deferred();
     mocks.getPatientSummary.mockReturnValue(summary.promise);
     mocks.getPatientRecordFoundation.mockReturnValue(foundation.promise);
-    const { unmount } = renderHook(() => usePatientHub('patient-1'));
+    const { unmount } = renderHook(() => usePatientHub('patient-1'), { wrapper: createWrapper() });
     unmount();
     await act(async () => {
       summary.resolve({ data: { profile: { care_episode_id: 'episode-1' }, metrics: {}, modulesStatus: {} }, error: null });
@@ -191,7 +204,7 @@ describe('usePatientHub clinical record foundation', () => {
     mocks.listPatientLegalGuardians
       .mockReturnValueOnce(guardiansA.promise)
       .mockResolvedValueOnce({ data: [{ id: 'guardian-b', status: 'active' }], error: null });
-    const { result, rerender } = renderHook(({ patientId }) => usePatientHub(patientId), {
+    const { result, rerender } = renderHook(({ patientId }) => usePatientHub(patientId), { wrapper: createWrapper(),
       initialProps: { patientId: 'patient-a' },
     });
     await waitFor(() => expect(mocks.listPatientLegalGuardians).toHaveBeenCalledWith('patient-a', 'episode-a'));
@@ -208,7 +221,7 @@ describe('usePatientHub clinical record foundation', () => {
 
   it('reports a legal guardian requirement for a minor without an active guardian', async () => {
     mocks.listPatientLegalGuardians.mockResolvedValue({ data: [], error: null });
-    const { result } = renderHook(() => usePatientHub('patient-1'));
+    const { result } = renderHook(() => usePatientHub('patient-1'), { wrapper: createWrapper() });
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.profileRequirements).toEqual(['legal_guardian']);
   });
@@ -224,7 +237,7 @@ describe('usePatientHub clinical record foundation', () => {
     });
     mocks.listPatientLegalGuardians.mockResolvedValue({ data: [], error: null });
 
-    const { result } = renderHook(() => usePatientHub('patient-1'));
+    const { result } = renderHook(() => usePatientHub('patient-1'), { wrapper: createWrapper() });
 
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.profileRequirements).toEqual(['birth_date']);
@@ -240,7 +253,7 @@ describe('usePatientHub clinical record foundation', () => {
       .mockResolvedValueOnce({ data: { patient: { name: 'A' }, records: [] }, error: null })
       .mockReturnValueOnce(foundationB.promise);
     mocks.getPatientActivities.mockResolvedValueOnce({ data: [{ id: 'activity-a' }], error: null });
-    const { result, rerender } = renderHook(({ patientId }) => usePatientHub(patientId), { initialProps: { patientId: 'a' } });
+    const { result, rerender } = renderHook(({ patientId }) => usePatientHub(patientId), { wrapper: createWrapper(), initialProps: { patientId: 'a' } });
     await waitFor(() => expect(result.current.patientData?.name).toBe('A'));
     await waitFor(() => expect(result.current.activities).toEqual([{ id: 'activity-a' }]));
     rerender({ patientId: 'b' });
@@ -263,7 +276,7 @@ describe('usePatientHub clinical record foundation', () => {
     mocks.getPatientActivities
       .mockReturnValueOnce(activitiesA.promise)
       .mockResolvedValueOnce({ data: [{ id: 'activity-b' }], error: null });
-    const { result, rerender } = renderHook(({ patientId }) => usePatientHub(patientId), { initialProps: { patientId: 'a' } });
+    const { result, rerender } = renderHook(({ patientId }) => usePatientHub(patientId), { wrapper: createWrapper(), initialProps: { patientId: 'a' } });
     await waitFor(() => expect(mocks.getPatientActivities).toHaveBeenCalledWith('a', 100));
     rerender({ patientId: 'b' });
     await waitFor(() => expect(result.current.activities).toEqual([{ id: 'activity-b' }]));
@@ -276,7 +289,8 @@ describe('usePatientHub clinical record foundation', () => {
   });
 
   it('completes loading during StrictMode effect replay', async () => {
-    const wrapper = ({ children }) => createElement(StrictMode, null, children);
+    const queryClient = createQueryClient();
+    const wrapper = ({ children }) => createElement(StrictMode, null, createElement(QueryClientProvider, { client: queryClient }, children));
     const { result } = renderHook(() => usePatientHub('patient-1'), { wrapper });
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.patientData?.name).toBe('Ana');

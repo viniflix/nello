@@ -60,7 +60,10 @@ export function getBMICuts({ age = null } = {}) {
 }
 
 export function calculateBMI(weight, height) {
-  const weightNum = Number(weight); const heightNum = Number(height);
-  if (!Number.isFinite(weightNum) || !Number.isFinite(heightNum) || weightNum <= 0 || heightNum <= 0) return null;
+  const weightNum = Number(weight);
+  const heightNum = Number(height);
+  if (!Number.isFinite(weightNum) || !Number.isFinite(heightNum)) return null;
+  // Enforce realistic bounds to prevent Infinity or impossible values
+  if (weightNum <= 0 || weightNum > 600 || heightNum <= 0 || heightNum > 300) return null;
   return weightNum / Math.pow(heightNum / 100, 2);
 }

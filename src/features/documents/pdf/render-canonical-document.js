@@ -1,12 +1,15 @@
-const stripHtml = (value) => String(value ?? '')
-  .replace(/<br\s*\/?>/gi, '\n')
-  .replace(/<\/p>/gi, '\n')
-  .replace(/<[^>]*>/g, ' ')
-  .replace(/&nbsp;/g, ' ')
-  .replace(/&amp;/g, '&')
-  .replace(/\s+\n/g, '\n')
-  .replace(/[ \t]+/g, ' ')
-  .trim();
+const stripHtml = (value) => {
+  if (value == null) return '';
+  const text = String(value)
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n');
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(text, 'text/html');
+  return (doc.body.textContent || '')
+    .replace(/\s+\n/g, '\n')
+    .replace(/[ \t]+/g, ' ')
+    .trim();
+};
 
 const LABELS = {
   title: 'Título', record_type: 'Tipo de registro', encounter_at: 'Data clínica',

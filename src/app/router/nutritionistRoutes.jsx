@@ -36,6 +36,9 @@ const TemplateBuilder = route('template-builder', () => import('@/pages/nutritio
 // Sprint 1 UX Shell - Formbuilder e Configs de Anamnese
 const AnamnesisTemplateBuilder = route('anamnesis-template-builder', () => import('@/pages/nutritionist/settings/anamnesis-templates/TemplateBuilder.jsx'));
 
+// Check-ins
+const CheckinEditorPage = route('checkin-editor', () => import('@/pages/nutritionist/settings/checkin-templates/CheckinEditorPage.jsx'));
+
 export const nutritionistRoutes = (
     <Route 
         element={
@@ -78,6 +81,10 @@ export const nutritionistRoutes = (
         <Route path="/nutritionist/templates/forms/new" element={<AnamnesisTemplateBuilder />} />
         <Route path="/nutritionist/templates/forms/:templateId/edit" element={<AnamnesisTemplateBuilder />} />
         
+        {/* Templates de Check-in */}
+        <Route path="/nutritionist/templates/checkins/new" element={<CheckinEditorPage />} />
+        <Route path="/nutritionist/templates/checkins/:templateId/edit" element={<CheckinEditorPage />} />
+
         {/* Admin-only routes (nutritionist layout) */}
         <Route 
             path="/nutritionist/foods" 

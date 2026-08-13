@@ -5,7 +5,7 @@ import { ArrowLeft, Plus } from 'lucide-react';
 import { useResolvedPatientId } from '@/hooks/useResolvedPatientId';
 import { useAnamnesisRunner } from '@/hooks/useAnamnesisRunner';
 import { useAnamnesisTemplates } from '@/hooks/useAnamnesisTemplates';
-import { SimpleListSkeleton } from '@/components/ui/custom-skeletons';
+import { SimpleListSkeleton, PageHeaderSkeleton, TimelineSkeleton } from '@/components/ui/custom-skeletons';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -53,7 +53,12 @@ export default function PatientAnamnesePage() {
   };
 
   if (resolvingPatient || (!patientResolutionError && foundationQuery.isLoading)) {
-    return <div className="max-w-5xl mx-auto p-4 md:p-6"><SimpleListSkeleton /></div>;
+    return (
+      <div className="max-w-5xl mx-auto p-4 md:p-6 space-y-8">
+        <PageHeaderSkeleton />
+        <TimelineSkeleton count={3} />
+      </div>
+    );
   }
 
   if (patientResolutionError || !patientId) {

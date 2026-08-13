@@ -69,7 +69,7 @@ export default function MealPlanViewDialog({ open, onOpenChange, mealPlan, patie
 
     // Logo do HipoZero
     try {
-      const logoUrl = 'https://afyoidxrshkmplxhcyeh.supabase.co/storage/v1/object/public/IDV/HIPOZERO%20(2).png';
+      const logoUrl = 'https://afyoidxrshkmplxhcyeh.supabase.co/storage/v1/object/public/IDV/nello.png';
       const response = await fetch(logoUrl);
       const blob = await response.blob();
 

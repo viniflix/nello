@@ -404,12 +404,14 @@ const DashboardHeader = ({ user, logout }) => {
               </SheetContent>
             </Sheet>
 
-            {/* Logo */}
             <Link to="/nutritionist" className="h-10 flex items-center min-w-0 shrink overflow-hidden max-w-[140px] md:max-w-none">
               <img
-                src="https://afyoidxrshkmplxhcyeh.supabase.co/storage/v1/object/public/IDV/HIPOZERO%20(2).png"
-                alt="HipoZero Logo"
+                src="https://afyoidxrshkmplxhcyeh.supabase.co/storage/v1/object/public/IDV/nello.png"
+                alt="Nello Logo"
                 className="h-10 w-auto max-h-10 object-contain object-left"
+                fetchPriority="high"
+                loading="eager"
+                decoding="async"
               />
             </Link>
 

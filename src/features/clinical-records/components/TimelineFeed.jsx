@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Filter, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { SimpleListSkeleton } from '@/components/ui/custom-skeletons';
+import { TimelineSkeleton } from '@/components/ui/custom-skeletons';
 import TimelineItem from './TimelineItem';
 import { useTimeline } from '../hooks/useTimeline';
 
@@ -23,7 +23,7 @@ export default function TimelineFeed({ patientId, viewedEpisodeId, patientSlug }
     return <div role="status" className="p-6 text-center bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-600">Nenhum episódio de atendimento está disponível para este histórico.</div>;
   }
   if (query.isLoading) {
-    return <div className="space-y-4"><div className="h-10 bg-slate-100 rounded-lg animate-pulse w-full max-w-md mb-6" /><SimpleListSkeleton count={4} /></div>;
+    return <div className="space-y-4"><div className="h-10 bg-slate-100 rounded-lg animate-pulse w-full max-w-md mb-6" /><TimelineSkeleton count={4} /></div>;
   }
   if (query.error) {
     return (

@@ -28,7 +28,7 @@ describe('Template Queries', () => {
     const errorMsg = { message: 'Database error' };
     supabase.rpc.mockResolvedValueOnce({ data: null, error: errorMsg });
 
-    await expect(cloneDietTemplateToPatient('template-1', 'patient-1', 'nutri-1')).rejects.toEqual(errorMsg);
+    await expect(cloneDietTemplateToPatient('template-1', 'patient-1', 'nutri-1')).rejects.toThrow('Não foi possível importar o protocolo. Tente novamente mais tarde.');
   });
 
   it('should call clone_meal_template_to_plan RPC with correct arguments', async () => {

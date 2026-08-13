@@ -9,19 +9,24 @@ import { supabase } from '@/lib/customSupabaseClient';
  * @returns {Promise<number>} - The ID of the newly created Meal Plan.
  */
 export async function cloneDietTemplateToPatient(templateId, patientId, nutritionistId, planName = null) {
-  const { data, error } = await supabase.rpc('clone_diet_template_to_patient', {
-    p_template_id: templateId,
-    p_patient_id: patientId,
-    p_nutritionist_id: nutritionistId,
-    p_name: planName
-  });
+  try {
+    const { data, error } = await supabase.rpc('clone_diet_template_to_patient', {
+      p_template_id: templateId,
+      p_patient_id: patientId,
+      p_nutritionist_id: nutritionistId,
+      p_name: planName
+    });
 
-  if (error) {
-    console.error('Error cloning diet template:', error);
-    throw error;
+    if (error) {
+      console.error('Error cloning diet template:', error);
+      throw new Error(error.message || 'Erro no banco de dados ao importar o protocolo.');
+    }
+
+    return data;
+  } catch (err) {
+    console.error('Exception in cloneDietTemplateToPatient:', err);
+    throw new Error('Não foi possível importar o protocolo. Tente novamente mais tarde.');
   }
-
-  return data;
 }
 
 /**

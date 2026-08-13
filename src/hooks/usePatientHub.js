@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useCallback } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import {
     getPatientSummary,
@@ -39,200 +40,102 @@ const getEpisodeContract = (foundation, summaryProfile) => ({
 });
 
 /**
- * Hook customizado para gerenciar dados do Hub do Paciente
+ * Hook customizado para gerenciar dados do Hub do Paciente (Otimizado com React Query)
  * @param {string} patientId - ID do paciente
  * @returns {object} - Objeto com dados e funções do hub
  */
 export const usePatientHub = (patientId) => {
     const { user } = useAuth();
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
-    const [patientData, setPatientData] = useState(null);
-    const [loadedPatientId, setLoadedPatientId] = useState(null);
-    const [latestMetrics, setLatestMetrics] = useState(null);
-    const [modulesStatus, setModulesStatus] = useState({});
-    const [activities, setActivities] = useState([]);
-    const [activitiesLoading, setActivitiesLoading] = useState(false);
-    const [foundation, setFoundation] = useState(null);
-    const [viewedEpisodeId, setViewedEpisodeId] = useState(null);
-    const [writableEpisodeId, setWritableEpisodeId] = useState(null);
-    const [canWriteEpisode, setCanWriteEpisode] = useState(false);
-    const [legalGuardians, setLegalGuardians] = useState([]);
-    const [profileRequirements, setProfileRequirements] = useState([]);
-    const requestGeneration = useRef(0);
-    const activitiesGeneration = useRef(0);
+    const queryClient = useQueryClient();
 
-    /**
-     * Carrega o resumo completo do paciente
-     */
-    const loadPatientSummary = useCallback(async (isCancelled = () => false) => {
-        if (!patientId || !user?.id) return;
-
-        const generation = ++requestGeneration.current;
-        const isLatestRequest = () => !isCancelled() && requestGeneration.current === generation;
-
-        setLoading(true);
-        setError(null);
-
-        try {
+    const summaryQuery = useQuery({
+        queryKey: ['patient-hub-summary', patientId, user?.id],
+        queryFn: async () => {
+            if (!patientId || !user?.id) throw new Error('Credenciais inválidas');
+            
             const [summaryResult, foundationResult] = await Promise.all([
                 getPatientSummary(patientId, user.id),
                 getPatientRecordFoundation(patientId)
             ]);
-            if (!isLatestRequest()) return;
-            const { data, error: summaryError } = summaryResult;
+            
+            if (summaryResult.error) throw summaryResult.error;
+            
+            const data = summaryResult.data;
+            if (!data) throw new Error('Paciente não encontrado');
 
-            if (summaryError) {
-                throw summaryError;
+            const loadedFoundation = foundationResult.error ? null : foundationResult.data;
+            const episodeContract = getEpisodeContract(loadedFoundation, data.profile);
+            
+            let guardians = [];
+            if (episodeContract.viewedEpisodeId) {
+                const guardiansResult = await listPatientLegalGuardians(patientId, episodeContract.viewedEpisodeId);
+                if (!guardiansResult.error) guardians = guardiansResult.data || [];
             }
 
-            if (data) {
-                setPatientData(data.profile);
-                setLoadedPatientId(patientId);
-                setLatestMetrics(data.metrics);
-                setModulesStatus(data.modulesStatus);
+            const profile = loadedFoundation?.patient || data.profile || {};
+            const ageStatus = getPatientAgeStatus(profile.birth_date);
+            const profileRequirements = getContextualProfileRequirements(profile, {
+                isMinor: ageStatus === 'minor',
+                ageBasedProtocol: ageStatus === 'unknown',
+                legalGuardians: guardians
+            });
 
-                const loadedFoundation = foundationResult.error ? null : foundationResult.data;
-                setFoundation(loadedFoundation);
-                const episodeContract = getEpisodeContract(loadedFoundation, data.profile);
-                setViewedEpisodeId(episodeContract.viewedEpisodeId);
-                setWritableEpisodeId(episodeContract.writableEpisodeId);
-                setCanWriteEpisode(episodeContract.canWriteEpisode);
-                let guardians = [];
-                if (episodeContract.viewedEpisodeId) {
-                    const guardiansResult = await listPatientLegalGuardians(patientId, episodeContract.viewedEpisodeId);
-                    if (!isLatestRequest()) return;
-                    if (!guardiansResult.error) guardians = guardiansResult.data || [];
-                }
-                setLegalGuardians(guardians);
+            return {
+                patientData: data.profile,
+                latestMetrics: data.metrics,
+                modulesStatus: data.modulesStatus,
+                foundation: loadedFoundation,
+                viewedEpisodeId: episodeContract.viewedEpisodeId,
+                writableEpisodeId: episodeContract.writableEpisodeId,
+                canWriteEpisode: episodeContract.canWriteEpisode,
+                legalGuardians: guardians,
+                profileRequirements
+            };
+        },
+        enabled: !!patientId && !!user?.id,
+        staleTime: 1000 * 60 * 5, // 5 minutos de cache
+    });
 
-                const profile = loadedFoundation?.patient || data.profile || {};
-                const ageStatus = getPatientAgeStatus(profile.birth_date);
-                setProfileRequirements(getContextualProfileRequirements(profile, {
-                    isMinor: ageStatus === 'minor',
-                    ageBasedProtocol: ageStatus === 'unknown',
-                    legalGuardians: guardians
-                }));
-            } else {
-                setError(new Error('Paciente não encontrado'));
+    const activitiesQuery = useQuery({
+        queryKey: ['patient-hub-activities', patientId],
+        queryFn: async () => {
+            const { data, error } = await getPatientActivities(patientId, 100);
+            if (error) {
+                console.error('Erro ao carregar atividades:', error);
+                return [];
             }
-        } catch (err) {
-            if (!isLatestRequest()) return;
-            console.error('Erro ao carregar resumo do paciente:', err);
-            setError(err);
-            setPatientData(null);
-            setLoadedPatientId(null);
-            setFoundation(null);
-            setViewedEpisodeId(null);
-            setWritableEpisodeId(null);
-            setCanWriteEpisode(false);
-            setLegalGuardians([]);
-            setProfileRequirements([]);
-        } finally {
-            if (isLatestRequest()) setLoading(false);
-        }
-    }, [patientId, user?.id]);
+            return data || [];
+        },
+        enabled: !!patientId && !!summaryQuery.data,
+        staleTime: 1000 * 60 * 5,
+    });
 
-    /**
-     * Carrega as atividades do paciente
-     * Busca TODAS as atividades disponíveis para permitir filtros client-side
-     */
-    const loadActivities = useCallback(async (isCancelled = () => false) => {
-        if (!patientId) return;
-
-        const generation = ++activitiesGeneration.current;
-        const isLatestRequest = () => !isCancelled() && activitiesGeneration.current === generation;
-
-        setActivitiesLoading(true);
-
-        try {
-            // Buscar até 100 atividades para permitir filtros de período funcionarem
-            const { data, error: activitiesError } = await getPatientActivities(
-                patientId,
-                100
-            );
-
-            if (activitiesError) {
-                throw activitiesError;
-            }
-
-            if (isLatestRequest()) setActivities(data || []);
-        } catch (err) {
-            if (!isLatestRequest()) return;
-            console.error('Erro ao carregar atividades:', err);
-            setActivities([]);
-        } finally {
-            if (isLatestRequest()) setActivitiesLoading(false);
-        }
-    }, [patientId]);
-
-    /**
-     * Recarrega todos os dados
-     */
     const refresh = useCallback(async () => {
         await Promise.all([
-            loadPatientSummary(),
-            loadActivities()
+            queryClient.invalidateQueries({ queryKey: ['patient-hub-summary', patientId] }),
+            queryClient.invalidateQueries({ queryKey: ['patient-hub-activities', patientId] })
         ]);
-    }, [loadPatientSummary, loadActivities]);
+    }, [queryClient, patientId]);
 
-    // Carrega os dados iniciais (ou define loading=false quando não há patientId)
-    useEffect(() => {
-        let cancelled = false;
-        requestGeneration.current += 1;
-        activitiesGeneration.current += 1;
-        setPatientData(null);
-        setLoadedPatientId(null);
-        setLatestMetrics(null);
-        setModulesStatus({});
-        setFoundation(null);
-        setViewedEpisodeId(null);
-        setWritableEpisodeId(null);
-        setCanWriteEpisode(false);
-        setLegalGuardians([]);
-        setProfileRequirements([]);
-        setActivities([]);
-        setActivitiesLoading(false);
-        if (!patientId || !user?.id) {
-            setLoading(false);
-            return () => { cancelled = true; };
-        }
-        setLoading(true);
-        loadPatientSummary(() => cancelled);
-        return () => {
-            cancelled = true;
-            requestGeneration.current += 1;
-            activitiesGeneration.current += 1;
-        };
-    }, [loadPatientSummary, patientId, user?.id]);
-
-    // Carrega atividades (opcionalmente, pode ser lazy)
-    useEffect(() => {
-        let cancelled = false;
-        if (patientData && loadedPatientId === patientId) {
-            loadActivities(() => cancelled);
-        }
-        return () => {
-            cancelled = true;
-            activitiesGeneration.current += 1;
-        };
-    }, [loadedPatientId, patientData, patientId, loadActivities]);
+    const loadActivities = useCallback(() => {
+        activitiesQuery.refetch();
+    }, [activitiesQuery]);
 
     return {
         // Estados
-        loading,
-        error,
-        patientData,
-        latestMetrics,
-        modulesStatus,
-        activities,
-        activitiesLoading,
-        foundation,
-        viewedEpisodeId,
-        writableEpisodeId,
-        canWriteEpisode,
-        profileRequirements,
-        legalGuardians,
+        loading: summaryQuery.isLoading, // true apenas no primeiro carregamento sem cache
+        error: summaryQuery.error,
+        patientData: summaryQuery.data?.patientData || null,
+        latestMetrics: summaryQuery.data?.latestMetrics || null,
+        modulesStatus: summaryQuery.data?.modulesStatus || {},
+        activities: activitiesQuery.data || [],
+        activitiesLoading: activitiesQuery.isLoading,
+        foundation: summaryQuery.data?.foundation || null,
+        viewedEpisodeId: summaryQuery.data?.viewedEpisodeId || null,
+        writableEpisodeId: summaryQuery.data?.writableEpisodeId || null,
+        canWriteEpisode: summaryQuery.data?.canWriteEpisode || false,
+        profileRequirements: summaryQuery.data?.profileRequirements || [],
+        legalGuardians: summaryQuery.data?.legalGuardians || [],
 
         // Funções
         refresh,

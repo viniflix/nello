@@ -158,17 +158,9 @@ const NutritionCard = React.memo(({ template, type, onDelete, toast }) => {
 
 // ─── Check-ins: Seção Inline ──────────────────────────────────────────────────
 const CheckinsSection = () => {
-  const { useTemplates: useCheckinTemplates, createTemplate } = useCheckins();
+  const navigate = useNavigate();
+  const { useTemplates: useCheckinTemplates } = useCheckins();
   const { data: templates, isLoading } = useCheckinTemplates();
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [frequency, setFrequency] = useState('weekly');
-  const [sendTime, setSendTime] = useState('09:00');
-  const [channel, setChannel] = useState('in_app');
-  const [fields, setFields] = useState([
-    { label: 'Como você avalia sua adesão à dieta nesta semana?', field_type: 'scale_1_10', options: [], score_weight: 1.0, is_required: true }
-  ]);
 
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -179,18 +171,6 @@ const CheckinsSection = () => {
       (t.description && t.description.toLowerCase().includes(searchTerm.toLowerCase()))
     );
   }, [templates, searchTerm]);
-
-  const handleCreate = async (e) => {
-    e.preventDefault();
-    if (!name) return;
-    await createTemplate.mutateAsync({
-      template: { name, description, frequency, send_time: sendTime, send_days: [1], channel },
-      fields
-    });
-    setIsCreateModalOpen(false);
-    setName(''); setDescription(''); setFrequency('weekly');
-    setFields([{ label: 'Como você avalia sua adesão à dieta nesta semana?', field_type: 'scale_1_10', options: [], score_weight: 1.0, is_required: true }]);
-  };
 
   return (
     <>
@@ -218,7 +198,7 @@ const CheckinsSection = () => {
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
-              <Button onClick={() => setIsCreateModalOpen(true)} className="bg-emerald-600 hover:bg-emerald-700 shrink-0">
+              <Button onClick={() => navigate('/nutritionist/templates/checkins/new')} className="bg-emerald-600 hover:bg-emerald-700 shrink-0">
                   <Plus className="w-4 h-4 mr-2" /> Novo Check-in
               </Button>
           </div>
@@ -244,7 +224,7 @@ const CheckinsSection = () => {
               : 'Crie formulários automáticos de check-in para acompanhar a adesão dos seus pacientes.'}
           </p>
           {!searchTerm && (
-            <Button onClick={() => setIsCreateModalOpen(true)} className="bg-emerald-600 hover:bg-emerald-700">
+            <Button onClick={() => navigate('/nutritionist/templates/checkins/new')} className="bg-emerald-600 hover:bg-emerald-700">
               <Plus className="w-4 h-4 mr-2" /> Começar agora
             </Button>
           )}
@@ -283,7 +263,7 @@ const CheckinsSection = () => {
                 </div>
               </CardContent>
               <CardFooter className="pt-3 border-t border-slate-100 bg-slate-50/30">
-                <Button className="w-full h-9" variant="outline" size="sm">
+                <Button className="w-full h-9" variant="outline" size="sm" onClick={() => navigate(`/nutritionist/templates/checkins/${template.id}/edit`)}>
                   <Settings2 className="w-4 h-4 mr-2" /> Editar Template
                 </Button>
               </CardFooter>
@@ -291,76 +271,6 @@ const CheckinsSection = () => {
           ))}
         </div>
       )}
-
-      <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col p-0">
-          <div className="px-6 py-4 border-b bg-slate-50">
-            <DialogHeader>
-              <DialogTitle className="text-xl">Criar Template de Check-in</DialogTitle>
-              <DialogDescription>
-                Configure as perguntas e escalas que geram o ranking de adesão automática.
-              </DialogDescription>
-            </DialogHeader>
-          </div>
-
-          <div className="p-6 overflow-y-auto flex-1">
-            <form id="create-checkin-form" onSubmit={handleCreate} className="space-y-8">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label className="font-semibold">Nome do Template</Label>
-                    <Input required value={name} onChange={e => setName(e.target.value)} placeholder="Ex: Relato Semanal de Adesão" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="font-semibold">Frequência de Envio</Label>
-                    <Select value={frequency} onValueChange={setFrequency}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="daily">Diariamente</SelectItem>
-                        <SelectItem value="weekly">Semanalmente</SelectItem>
-                        <SelectItem value="biweekly">A cada 15 dias</SelectItem>
-                        <SelectItem value="monthly">Mensalmente</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label className="font-semibold">Horário de Envio</Label>
-                    <Input type="time" required value={sendTime} onChange={e => setSendTime(e.target.value)} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="font-semibold">Canal de Disparo</Label>
-                    <Select value={channel} onValueChange={setChannel}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="in_app">App HipoZero (Notificação)</SelectItem>
-                        <SelectItem value="whatsapp">WhatsApp (Requer integração)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </div>
-
-              <div className="pt-6 border-t">
-                <CheckinTemplateBuilder fields={fields} setFields={setFields} />
-              </div>
-            </form>
-          </div>
-
-          <div className="px-6 py-4 border-t bg-slate-50 flex justify-end gap-3 shrink-0">
-            <Button type="button" variant="ghost" onClick={() => setIsCreateModalOpen(false)}>Cancelar</Button>
-            <Button
-              type="submit"
-              form="create-checkin-form"
-              disabled={createTemplate.isPending || fields.length === 0}
-              className="px-8 bg-emerald-600 hover:bg-emerald-700"
-            >
-              {createTemplate.isPending ? 'Salvando...' : 'Salvar Template'}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </>
   );
 };

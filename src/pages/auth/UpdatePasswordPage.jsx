@@ -161,11 +161,18 @@ export default function UpdatePasswordPage() {
     <div className="min-h-screen flex items-center justify-center p-4 bg-background">
       <Card className="w-full max-w-md shadow-xl">
         <CardHeader className="text-center space-y-4">
-          <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
-            <Leaf className="w-8 h-8 text-primary" />
+          <div className="flex justify-center">
+            <img
+              src="https://afyoidxrshkmplxhcyeh.supabase.co/storage/v1/object/public/IDV/nello.png"
+              alt="Nello"
+              className="h-16 w-auto object-contain"
+              fetchPriority="high"
+              loading="eager"
+              decoding="async"
+            />
           </div>
           <div>
-            <CardTitle className="text-3xl font-bold">NELLO</CardTitle>
+            <CardTitle className="text-2xl font-semibold text-foreground">Definição de Senha</CardTitle>
             <CardDescription className="mt-2">Defina e confirme sua nova senha</CardDescription>
           </div>
         </CardHeader>

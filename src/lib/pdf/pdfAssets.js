@@ -3,7 +3,7 @@
  */
 
 // URL da logo oficial no Supabase Storage
-export const HIPOZERO_LOGO_URL = 'https://afyoidxrshkmplxhcyeh.supabase.co/storage/v1/object/public/IDV/HIPOZERO%20(2).png';
+export const HIPOZERO_LOGO_URL = 'https://afyoidxrshkmplxhcyeh.supabase.co/storage/v1/object/public/IDV/nello.png';
 
 /**
  * Carrega a logo do projeto de forma robusta para uso em PDFs.
