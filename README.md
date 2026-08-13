@@ -1,6 +1,6 @@
-# HipoZero
+# Nello
 
-HipoZero e uma plataforma SaaS de acompanhamento nutricional que conecta nutricionistas, pacientes e administradores em um unico ecossistema. O projeto combina consultorio digital, prontuario nutricional, prescricao alimentar, acompanhamento do paciente, comunicacao em tempo real, agenda, financeiro, observabilidade e uma base crescente de automacoes.
+Nello e uma plataforma SaaS de acompanhamento nutricional que conecta nutricionistas, pacientes e administradores em um unico ecossistema. O projeto combina consultorio digital, prontuario nutricional, prescricao alimentar, acompanhamento do paciente, comunicacao em tempo real, agenda, financeiro, observabilidade e uma base crescente de automacoes.
 
 A proposta central e reduzir o trabalho operacional do nutricionista e aumentar a adesao do paciente. O sistema nao e apenas um criador de dieta: ele tenta funcionar como a camada de operacao diaria da clinica, com dados clinicos, plano alimentar, diario alimentar, chat, check-ins, alertas e historico do paciente em um unico lugar.
 
@@ -12,7 +12,7 @@ O produto ja tem uma base ampla em React/Vite/Supabase, com rotas reais para nut
 
 ### Nutricionista
 
-Usa o HipoZero como consultorio digital:
+Usa o Nello como consultorio digital:
 
 - Dashboard operacional.
 - Gestao de pacientes e hub central do paciente.
@@ -27,7 +27,7 @@ Usa o HipoZero como consultorio digital:
 
 ### Paciente
 
-Usa o HipoZero como aplicativo de acompanhamento:
+Usa o Nello como aplicativo de acompanhamento:
 
 - Home mobile com resumo do dia.
 - Diario alimentar.
@@ -38,7 +38,7 @@ Usa o HipoZero como aplicativo de acompanhamento:
 
 ### Admin
 
-Usa o HipoZero como painel de operacao do SaaS:
+Usa o Nello como painel de operacao do SaaS:
 
 - Dashboard administrativo.
 - Usuarios/nutricionistas.
