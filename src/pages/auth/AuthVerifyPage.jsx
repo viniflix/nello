@@ -17,9 +17,10 @@ export default function AuthVerifyPage() {
 
     useEffect(() => {
         const handleVerify = async () => {
-            const token = searchParams.get('token');
+            const token = searchParams.get('token_hash') || searchParams.get('token');
             const type = searchParams.get('type'); // 'invite', 'signup', 'recovery', etc.
-            const redirectTo = searchParams.get('redirect_to') || '/login';
+            const defaultTarget = type === 'recovery' ? '/update-password?mode=recovery' : '/login';
+            const redirectTo = searchParams.get('redirect_to') || defaultTarget;
             
             // Extract the pathname from redirectTo if it's a full URL on our domain
             let targetPath = redirectTo;

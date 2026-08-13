@@ -7,6 +7,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Ticket } from 'lucide-react';
+import { redeemPatientInvite } from '@/features/auth/authFlows';
+import { captureOperationalError } from '@/infrastructure/observability/telemetry';
+import { Events, track } from '@/infrastructure/analytics/posthog';
 
 export default function PatientInvitesPage() {
   const [code, setCode] = useState('');
@@ -23,11 +26,9 @@ export default function PatientInvitesPage() {
     }
     setLoading(true);
     try {
-      const { data, error } = await supabase.rpc('redeem_invite_code', { p_invite_code: trimmed });
-      if (error) throw error;
-
-      const result = typeof data === 'string' ? JSON.parse(data) : data;
+      const result = await redeemPatientInvite(supabase, trimmed);
       if (result?.success) {
+        track(Events.AUTH_INVITE_REDEEMED, { flow: 'manual_patient_code' });
         toast({
           title: 'Código resgatado!',
           description: 'Você foi vinculado ao nutricionista. Pode acessar o app normalmente.',
@@ -44,6 +45,11 @@ export default function PatientInvitesPage() {
       }
     } catch (err) {
       console.error('redeem_invite_code error:', err);
+      captureOperationalError(err, {
+        operation: 'auth.redeem_patient_invite',
+        module: 'authentication',
+        source: 'supabase_rpc',
+      });
       toast({
         title: 'Erro',
         description: err.message || 'Erro ao resgatar código. Tente novamente.',

@@ -10,6 +10,13 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { getInviteDetails } from '@/lib/supabase/patient-queries';
+import {
+    authFlowPolicy,
+    redeemPatientInvite,
+    validateNewPassword,
+} from '@/features/auth/authFlows';
+import { captureOperationalError } from '@/infrastructure/observability/telemetry';
+import { Events, track } from '@/infrastructure/analytics/posthog';
 import { supabase } from '@/lib/customSupabaseClient';
 import { toPortugueseError } from '@/lib/utils/errorMessages';
 
@@ -92,13 +99,9 @@ const RedeemDeepLinkPage = () => {
         }
 
         // 3. Força e Igualdade da Senha
-        if (formData.password.length < 6) {
-            toast({ title: "Atenção", description: "A senha deve conter pelo menos 6 caracteres.", variant: "destructive" });
-            return;
-        }
-
-        if (formData.password !== formData.confirmPassword) {
-            toast({ title: "Erro", description: "As senhas não coincidem.", variant: "destructive" });
+        const passwordError = validateNewPassword(formData.password, formData.confirmPassword);
+        if (passwordError) {
+            toast({ title: "Revise a senha", description: passwordError, variant: "destructive" });
             return;
         }
 
@@ -116,7 +119,7 @@ const RedeemDeepLinkPage = () => {
             password: formData.password,
             options: {
                 data: profileData,
-                emailRedirectTo: `${window.location.origin}/auth/v1/verify?redirect_to=${window.location.origin}/patient`,
+                emailRedirectTo: `${window.location.origin}/convite?token=${encodeURIComponent(token)}&confirmed=1`,
             }
         });
 
@@ -140,8 +143,9 @@ const RedeemDeepLinkPage = () => {
     const handleAcceptAsLoggedIn = async () => {
         setSubmitting(true);
         try {
-            const { data, error } = await supabase.rpc('redeem_invite_code', { input_code: token });
-            if (error) throw error;
+            const data = await redeemPatientInvite(supabase, token);
+            if (!data?.success) throw new Error(data?.message || 'Convite inválido ou expirado.');
+            track(Events.AUTH_INVITE_REDEEMED, { flow: 'deep_link_existing_account' });
             
             toast({
                 title: "Vínculo concluído!",
@@ -149,6 +153,11 @@ const RedeemDeepLinkPage = () => {
             });
             navigate('/patient');
         } catch (err) {
+            captureOperationalError(err, {
+                operation: 'auth.redeem_deep_link_invite',
+                module: 'authentication',
+                source: 'supabase_rpc',
+            });
             toast({
                 title: "Falha ao vincular",
                 description: err.message?.includes('inválido') ? 'Convite expirado ou inválido.' : toPortugueseError(err),
@@ -392,7 +401,10 @@ const RedeemDeepLinkPage = () => {
                                         <Label className="text-sm font-semibold text-muted-foreground">Nova Senha</Label>
                                         <Input
                                             type="password"
+                                            name="new-password"
+                                            autoComplete="new-password"
                                             required
+                                            minLength={authFlowPolicy.minPasswordLength}
                                             maxLength={72}
                                             placeholder="••••••••"
                                             value={formData.password}
@@ -404,7 +416,10 @@ const RedeemDeepLinkPage = () => {
                                         <Label className="text-sm font-semibold text-muted-foreground">Confirmar</Label>
                                         <Input
                                             type="password"
+                                            name="confirm-new-password"
+                                            autoComplete="new-password"
                                             required
+                                            minLength={authFlowPolicy.minPasswordLength}
                                             maxLength={72}
                                             placeholder="••••••••"
                                             value={formData.confirmPassword}

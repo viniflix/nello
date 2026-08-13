@@ -255,7 +255,7 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded }) => {
             );
         }
         
-        const redirectTo = `${window.location.origin}/update-password`;
+        const redirectTo = `${window.location.origin}/update-password?mode=invite`;
 
         const body = {
             email: isOffline ? null : clean(formData.email),

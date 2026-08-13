@@ -3,12 +3,15 @@ import { Loader2 } from 'lucide-react';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useNavigate } from 'react-router-dom';
 import {
+  captureOperationalError,
   clearObservabilityUser,
   setObservabilityUser,
 } from '@/infrastructure/observability/telemetry';
 import { useQueryClient } from '@tanstack/react-query';
 import { useProfile } from '@/hooks/useProfile';
 import { getMyProfessionalVerification } from '@/lib/supabase/verification-queries';
+import { redeemPatientInvite } from '@/features/auth/authFlows';
+import { Events, track } from '@/infrastructure/analytics/posthog';
 
 const AuthLoadingFallback = () => (
   <div className="flex min-h-screen items-center justify-center bg-background">
@@ -130,11 +133,11 @@ export function AuthProvider({ children }) {
     if (processingSession.current) return;
     processingSession.current = true;
 
-    while (pendingSessionRef.current) {
-      const { session: nextSession, event: nextEvent } = pendingSessionRef.current;
-      pendingSessionRef.current = null;
+    try {
+      while (pendingSessionRef.current) {
+        const { session: nextSession, event: nextEvent } = pendingSessionRef.current;
+        pendingSessionRef.current = null;
 
-      try {
         if (!nextSession?.user) {
           setUser(null);
           clearObservabilityUser();
@@ -148,39 +151,48 @@ export function AuthProvider({ children }) {
           profile: prev?.id === nextSession.user.id ? prev.profile : null,
           verification: prev?.id === nextSession.user.id ? prev.verification : null
         }));
-      } catch (error) {
-        console.error('[AuthContext] Erro no processSession:', error);
-        if (nextEvent === 'INITIAL_SESSION') {
-          setUser(null);
+
+        // Uma sessão temporária de recuperação nunca deve resgatar convites.
+        const pendingCode = localStorage.getItem('pending_invite_code');
+        const isPasswordRecoveryRoute = window.location.pathname === '/update-password';
+        if (pendingCode && nextEvent === 'SIGNED_IN' && !isPasswordRecoveryRoute) {
+          try {
+            const result = await redeemPatientInvite(supabase, pendingCode);
+            if (result?.success) {
+              queryClient.invalidateQueries({ queryKey: ['profile', nextSession.user.id] });
+              localStorage.removeItem('pending_invite_code');
+              track(Events.AUTH_INVITE_REDEEMED, { flow: 'pending_after_login' });
+            }
+          } catch (inviteError) {
+            captureOperationalError(inviteError, {
+              operation: 'auth.redeem_pending_invite',
+              module: 'authentication',
+              source: 'supabase_rpc',
+            });
+            if (/inválid|expir/i.test(inviteError.message || '')) {
+              localStorage.removeItem('pending_invite_code');
+            }
+          }
         }
       }
+    } catch (error) {
+      console.error('[AuthContext] Erro no processSession:', error);
+      captureOperationalError(error, {
+        operation: 'auth.process_session',
+        module: 'authentication',
+        source: 'application',
+      });
+      if (event === 'INITIAL_SESSION') setUser(null);
+    } finally {
+      processingSession.current = false;
+      // Não deixe um evento recebido durante o RPC aguardando até o reload.
+      if (pendingSessionRef.current) {
+        const pending = pendingSessionRef.current;
+        pendingSessionRef.current = null;
+        await processSession(pending.session, pending.event);
+      }
     }
-
-    // Auto-resgate de código de convite se houver um pendente no localStorage
-    const pendingCode = localStorage.getItem('pending_invite_code');
-    if (pendingCode && nextSession?.user) {
-        try {
-            const { data, error } = await supabase.rpc('redeem_invite_code', {
-                input_code: pendingCode
-            });
-            
-            if (error) throw error;
-            
-            if (data?.success) {
-                // Ao resgatar convite, invalidamos o cache para forçar recarga imediata do perfil novo
-                queryClient.invalidateQueries({ queryKey: ['profile', nextSession.user.id] });
-                localStorage.removeItem('pending_invite_code');
-            }
-        } catch (err) {
-            console.error('[AuthContext] Erro ao resgatar convite pendente:', err);
-            if (err.message?.includes('inválido')) {
-                localStorage.removeItem('pending_invite_code');
-            }
-        }
-    }
-
-    processingSession.current = false;
-  }, [signOut, queryClient]);
+  }, [queryClient]);
 
   useEffect(() => {
     let mounted = true;

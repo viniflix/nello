@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { toPortugueseError } from '@/lib/utils/errorMessages';
+import { authFlowPolicy, validateNewPassword } from '@/features/auth/authFlows';
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -41,10 +42,11 @@ export default function RegisterPage() {
     e.preventDefault();
     setLoading(true);
 
-    if (formData.password !== formData.confirmPassword) {
+    const passwordError = validateNewPassword(formData.password, formData.confirmPassword);
+    if (passwordError) {
       toast({
         title: "Erro no cadastro",
-        description: "As senhas não coincidem.",
+        description: passwordError,
         variant: "destructive",
       });
       setLoading(false);
@@ -81,7 +83,7 @@ export default function RegisterPage() {
       password: formData.password,
       options: {
         data: profileData,
-        emailRedirectTo: `${window.location.origin}/auth/v1/verify?redirect_to=${window.location.origin}/update-password`,
+        emailRedirectTo: `${window.location.origin}/login?confirmed=1`,
       }
     });
 
@@ -302,11 +304,14 @@ export default function RegisterPage() {
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input
                       id="password"
+                      name="new-password"
                       type={showPassword ? "text" : "password"}
+                      autoComplete="new-password"
                       placeholder="••••••••"
                       value={formData.password}
                       onChange={(e) => handleInputChange('password', e.target.value)}
                       required
+                      minLength={authFlowPolicy.minPasswordLength}
                       maxLength={72}
                       className="pl-10 pr-10 h-10"
                     />
@@ -326,11 +331,14 @@ export default function RegisterPage() {
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input
                       id="confirmPassword"
+                      name="confirm-new-password"
                       type={showConfirmPassword ? "text" : "password"}
+                      autoComplete="new-password"
                       placeholder="••••••••"
                       value={formData.confirmPassword}
                       onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
                       required
+                      minLength={authFlowPolicy.minPasswordLength}
                       maxLength={72}
                       className="pl-10 pr-10 h-10"
                     />

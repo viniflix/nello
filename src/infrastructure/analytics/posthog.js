@@ -97,6 +97,10 @@ export function track(event, properties = {}) {
 // Catalogo estavel de eventos de produto.
 export const Events = {
   OPERATION_FAILED: 'operation_failed',
+  AUTH_LOGIN_FAILED: 'auth_login_failed',
+  AUTH_PASSWORD_RECOVERY_REQUESTED: 'auth_password_recovery_requested',
+  AUTH_PASSWORD_UPDATED: 'auth_password_updated',
+  AUTH_INVITE_REDEEMED: 'auth_invite_redeemed',
   MEAL_LOGGED: 'meal_logged',
   MEAL_EDITED: 'meal_edited',
   MEAL_DELETED: 'meal_deleted',

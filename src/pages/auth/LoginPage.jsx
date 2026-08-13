@@ -21,6 +21,12 @@ import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/customSupabaseClient';
 import { toPortugueseError } from '@/lib/utils/errorMessages';
+import {
+  normalizeAuthEmail,
+  requestPasswordRecovery,
+} from '@/features/auth/authFlows';
+import { captureOperationalError } from '@/infrastructure/observability/telemetry';
+import { Events, track } from '@/infrastructure/analytics/posthog';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -61,9 +67,15 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
 
-    const { data, error } = await signIn({ email, password });
+    const { data, error } = await signIn({ email: normalizeAuthEmail(email), password });
 
     if (error) {
+      captureOperationalError(error, {
+        operation: 'auth.sign_in_with_password',
+        module: 'authentication',
+        source: 'supabase_auth',
+      });
+      track(Events.AUTH_LOGIN_FAILED, { error_code: error.code || 'unknown' });
       toast({
         title: "Erro no login",
         description: toPortugueseError(error, "E-mail ou senha incorretos."),
@@ -90,9 +102,18 @@ export default function LoginPage() {
 
     setLoading(true);
 
-    const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
-      redirectTo: `${window.location.origin}/update-password`,
-    });
+    let error = null;
+    try {
+      await requestPasswordRecovery(supabase, resetEmail, window.location.origin);
+      track(Events.AUTH_PASSWORD_RECOVERY_REQUESTED);
+    } catch (recoveryError) {
+      error = recoveryError;
+      captureOperationalError(recoveryError, {
+        operation: 'auth.request_password_recovery',
+        module: 'authentication',
+        source: 'supabase_auth',
+      });
+    }
 
     setLoading(false);
 
@@ -166,6 +187,7 @@ export default function LoginPage() {
                     <Input
                       id="email"
                       type="email"
+                      autoComplete="username"
                       placeholder="seu@email.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
@@ -195,6 +217,7 @@ export default function LoginPage() {
                     <Input
                       id="password"
                       type={showPassword ? "text" : "password"}
+                      autoComplete="current-password"
                       placeholder="••••••••"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
@@ -263,6 +286,7 @@ export default function LoginPage() {
           <Input
             id="reset-email"
             type="email"
+            autoComplete="email"
             placeholder="seu@email.com"
             value={resetEmail}
             onChange={(e) => setResetEmail(e.target.value)}

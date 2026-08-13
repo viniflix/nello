@@ -1,13 +1,21 @@
 import React, { useState } from 'react';
+import { Eye, EyeOff, Loader2, Lock, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Leaf, Eye, EyeOff, Lock, AlertTriangle } from 'lucide-react';
 import { toPortugueseError } from '@/lib/utils/errorMessages';
 import { useAuth } from '@/contexts/AuthContext';
+import {
+  authFlowPolicy,
+  clearForcedPasswordReset,
+  updateAndVerifyPassword,
+  validateNewPassword,
+} from '@/features/auth/authFlows';
+import { captureOperationalError } from '@/infrastructure/observability/telemetry';
+import { Events, track } from '@/infrastructure/analytics/posthog';
 
 export default function ForcePasswordUpdate() {
   const [password, setPassword] = useState('');
@@ -18,68 +26,49 @@ export default function ForcePasswordUpdate() {
   const { toast } = useToast();
   const { user, updateUserProfile } = useAuth();
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    const validationError = validateNewPassword(password, confirmPassword);
+    if (validationError) {
+      toast({ title: 'Revise a senha', description: validationError, variant: 'destructive' });
+      return;
+    }
+
     setLoading(true);
+    try {
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) throw sessionError;
 
-    if (password !== confirmPassword) {
-      toast({
-        title: "Erro",
-        description: "As senhas não coincidem.",
-        variant: "destructive",
+      await updateAndVerifyPassword(supabase, {
+        session: sessionData?.session,
+        password,
       });
-      setLoading(false);
-      return;
-    }
+      await clearForcedPasswordReset(supabase, user.id);
 
-    if (password.length < 6) {
-      toast({
-        title: "Senha Curta",
-        description: "A senha deve ter pelo menos 6 caracteres.",
-        variant: "destructive",
-      });
-      setLoading(false);
-      return;
-    }
-
-    // 1. Atualizar a senha no auth
-    const { error: authError } = await supabase.auth.updateUser({
-      password: password,
-    });
-
-    if (authError) {
-      setLoading(false);
-      toast({
-        title: "Erro ao atualizar senha",
-        description: toPortugueseError(authError, 'Não foi possível atualizar a senha.'),
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // 2. Atualizar o profile removendo a flag
-    const { error: profileError } = await supabase
-      .from('user_profiles')
-      .update({ needs_password_reset: false })
-      .eq('id', user.id);
-
-    setLoading(false);
-
-    if (profileError) {
-      console.error(profileError);
-      toast({
-        title: "Aviso",
-        description: "Senha alterada, mas houve um erro ao salvar o perfil. Atualize a página.",
-        variant: "destructive",
-      });
-    } else {
-      toast({
-        title: "Sucesso!",
-        description: "Sua senha foi redefinida. Bem-vindo(a) ao HipoZero!",
-        variant: "success"
-      });
-      // Atualizar o contexto para que PatientLayout esconda esta tela
+      track(Events.AUTH_PASSWORD_UPDATED, { user_type: 'patient', flow: 'first_access' });
       updateUserProfile({ needs_password_reset: false });
+      toast({
+        title: 'Senha atualizada e validada!',
+        description: 'O acesso com a nova senha foi confirmado.',
+        variant: 'success',
+      });
+    } catch (error) {
+      captureOperationalError(error, {
+        operation: error.passwordWasUpdated
+          ? 'auth.verify_first_access_password'
+          : 'auth.update_first_access_password',
+        module: 'authentication',
+        source: 'supabase_auth',
+      });
+      toast({
+        title: error.passwordWasUpdated ? 'Senha gravada, validação pendente' : 'Erro ao atualizar senha',
+        description: error.passwordWasUpdated
+          ? 'A senha foi alterada, mas a confirmação do acesso falhou. Atualize a página e tente entrar com a nova senha.'
+          : toPortugueseError(error, 'Não foi possível atualizar a senha.'),
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -91,63 +80,72 @@ export default function ForcePasswordUpdate() {
             <Lock className="w-8 h-8 text-amber-600" />
           </div>
           <div>
-            <CardTitle className="text-2xl font-bold text-slate-800">Ação Necessária</CardTitle>
+            <CardTitle className="text-2xl font-bold text-slate-800">AÇÃO NECESSÁRIA</CardTitle>
             <CardDescription className="text-gray-600 mt-2 flex items-start gap-2 text-left bg-amber-50 p-3 rounded-md text-amber-800 border border-amber-200">
               <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
-              <span>Por motivos de segurança, você precisa alterar sua senha temporária antes de continuar.</span>
+              <span>Por segurança, defina uma senha pessoal antes de continuar.</span>
             </CardDescription>
           </div>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4" autoComplete="off">
             <div className="space-y-2">
-              <Label htmlFor="password">Nova Senha</Label>
+              <Label htmlFor="firstAccessPassword">Nova senha</Label>
               <div className="relative">
                 <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
+                  id="firstAccessPassword"
+                  name="new-password"
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete="new-password"
+                  minLength={authFlowPolicy.minPasswordLength}
+                  maxLength={authFlowPolicy.maxPasswordLength}
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(event) => setPassword(event.target.value)}
                   required
+                  className="pr-10"
                 />
                 <button
                   type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                  onClick={() => setShowPassword((value) => !value)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
+              <p className="text-xs text-gray-500">
+                Use pelo menos {authFlowPolicy.minPasswordLength} caracteres.
+              </p>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirmar nova senha</Label>
+              <Label htmlFor="firstAccessPasswordConfirmation">Confirmar nova senha</Label>
               <div className="relative">
                 <Input
-                  id="confirmPassword"
-                  type={showConfirmPassword ? "text" : "password"}
-                  placeholder="••••••••"
+                  id="firstAccessPasswordConfirmation"
+                  name="confirm-new-password"
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  autoComplete="new-password"
+                  minLength={authFlowPolicy.minPasswordLength}
+                  maxLength={authFlowPolicy.maxPasswordLength}
                   value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  onChange={(event) => setConfirmPassword(event.target.value)}
                   required
+                  className="pr-10"
                 />
                 <button
                   type="button"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  aria-label={showConfirmPassword ? 'Ocultar confirmação' : 'Mostrar confirmação'}
+                  onClick={() => setShowConfirmPassword((value) => !value)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500"
                 >
                   {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
             </div>
 
-            <Button
-              type="submit"
-              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white mt-6"
-              disabled={loading || !password || (password !== confirmPassword && confirmPassword.length > 0)}
-            >
-              {loading ? "Salvando..." : "Definir Nova Senha"}
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Validando...</> : 'Definir e validar senha'}
             </Button>
           </form>
         </CardContent>

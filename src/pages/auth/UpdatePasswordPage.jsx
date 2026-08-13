@@ -1,139 +1,202 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/lib/customSupabaseClient'; // Verifique se este caminho está correto
+import { Eye, EyeOff, Leaf, Loader2 } from 'lucide-react';
+import { supabase } from '@/lib/customSupabaseClient';
 import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Leaf, Eye, EyeOff } from 'lucide-react';
 import { toPortugueseError } from '@/lib/utils/errorMessages';
+import { useAuth } from '@/contexts/AuthContext';
+import {
+  authFlowPolicy,
+  clearForcedPasswordReset,
+  updateAndVerifyPassword,
+  validateNewPassword,
+} from '@/features/auth/authFlows';
+import { captureOperationalError } from '@/infrastructure/observability/telemetry';
+import { Events, track } from '@/infrastructure/analytics/posthog';
 
 export default function UpdatePasswordPage() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [session, setSession] = useState(null);
+  const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  // Este useEffect captura o token da URL e define a sessão
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        setSession(session);
+    let active = true;
+
+    const acceptSession = (nextSession) => {
+      if (!active || !nextSession?.user) return;
+      setSession(nextSession);
+      setCheckingSession(false);
+    };
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN' || event === 'USER_UPDATED') {
+        acceptSession(nextSession);
       }
     });
 
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN' || event === 'USER_UPDATED') {
-          setSession(session);
-        }
+    supabase.auth.getSession().then(({ data, error }) => {
+      if (!active) return;
+      if (error || !data?.session?.user) {
+        setCheckingSession(false);
+        return;
       }
-    );
+      acceptSession(data.session);
+    });
 
     return () => {
+      active = false;
       authListener.subscription.unsubscribe();
     };
   }, []);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    const validationError = validateNewPassword(password, confirmPassword);
+    if (validationError) {
+      toast({ title: 'Revise a senha', description: validationError, variant: 'destructive' });
+      return;
+    }
+    if (!session?.user) {
+      toast({
+        title: 'Link inválido ou expirado',
+        description: 'Solicite um novo link de recuperação e tente novamente.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setLoading(true);
-
-    if (password !== confirmPassword) {
-      toast({
-        title: "Erro",
-        description: "As senhas não coincidem.",
-        variant: "destructive",
-      });
-      setLoading(false);
-      return;
-    }
-
-    if (!session) {
-      toast({
-        title: "Erro",
-        description: "Sessão inválida ou expirada. Tente novamente.",
-        variant: "destructive",
-      });
-      setLoading(false);
-      return;
-    }
-
-    // Usa o token da sessão para atualizar o usuário
-    const { error } = await supabase.auth.updateUser({
-      password: password,
-    });
-
-    setLoading(false);
-
-    if (error) {
-      toast({
-        title: "Erro ao atualizar senha",
-        description: toPortugueseError(error, 'Não foi possível atualizar a senha.'),
-        variant: "destructive",
-      });
-    } else {
-      if (session?.user?.id) {
-        const { error: profileError } = await supabase
-          .from('user_profiles')
-          .update({ needs_password_reset: false })
-          .eq('id', session.user.id);
-
-        if (profileError) {
-          console.error('[UpdatePassword] Failed to clear needs_password_reset:', profileError);
-        }
+    try {
+      await updateAndVerifyPassword(supabase, { session, password });
+      try {
+        await clearForcedPasswordReset(supabase, session.user.id);
+      } catch (profileError) {
+        // A credencial já foi confirmada. Uma falha auxiliar de perfil deve ser
+        // observável, mas não pode transformar uma troca válida em falso erro.
+        captureOperationalError(profileError, {
+          operation: 'auth.clear_forced_password_reset',
+          module: 'authentication',
+          source: 'supabase_database',
+        });
       }
 
-      toast({
-        title: "Sucesso!",
-        description: "Sua senha foi definida. Você já pode fazer o login.",
+      track(Events.AUTH_PASSWORD_UPDATED, {
+        user_type: user?.profile?.user_type || 'unknown',
+        flow: new URLSearchParams(window.location.search).get('mode') || 'email_link',
       });
-      // Desloga o usuário da sessão de convite e o envia para o login
-      await supabase.auth.signOut();
-      navigate('/login');
+      toast({
+        title: 'Senha atualizada e validada!',
+        description: 'O acesso com a nova senha foi confirmado. Você já está conectado.',
+        variant: 'success',
+      });
+
+      window.history.replaceState({}, document.title, '/update-password');
+      navigate(user?.profile?.user_type === 'nutritionist' ? '/nutritionist' : '/patient', {
+        replace: true,
+      });
+    } catch (error) {
+      captureOperationalError(error, {
+        operation: error.passwordWasUpdated
+          ? 'auth.verify_updated_password'
+          : 'auth.update_password',
+        module: 'authentication',
+        source: 'supabase_auth',
+      });
+      toast({
+        title: error.passwordWasUpdated ? 'Senha gravada, validação pendente' : 'Erro ao atualizar senha',
+        description: error.passwordWasUpdated
+          ? 'A senha foi alterada, mas a confirmação do login falhou. Tente entrar com a nova senha ou solicite outro link.'
+          : toPortugueseError(error, 'Não foi possível atualizar a senha.'),
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
     }
   };
-  
+
+  if (checkingSession) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-background">
+        <div className="flex items-center gap-3 text-muted-foreground">
+          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          Validando seu link seguro...
+        </div>
+      </div>
+    );
+  }
+
+  if (!session?.user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-background">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle>Link inválido ou expirado</CardTitle>
+            <CardDescription>
+              Por segurança, links de recuperação são de uso único. Solicite um novo link na tela de acesso.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button className="w-full" onClick={() => navigate('/login', { replace: true })}>
+              Voltar ao acesso
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
-      <Card className="w-full max-w-md glass-card shadow-xl">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-background">
+      <Card className="w-full max-w-md shadow-xl">
         <CardHeader className="text-center space-y-4">
-          <div className="mx-auto w-16 h-16 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-full flex items-center justify-center">
-            <Leaf className="w-8 h-8 text-white" />
+          <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
+            <Leaf className="w-8 h-8 text-primary" />
           </div>
           <div>
-            <CardTitle className="text-3xl font-bold gradient-text">HipoZero</CardTitle>
-            <CardDescription className="text-gray-600 mt-2">
-              Defina sua nova senha
-            </CardDescription>
+            <CardTitle className="text-3xl font-bold">NELLO</CardTitle>
+            <CardDescription className="mt-2">Defina e confirme sua nova senha</CardDescription>
           </div>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4" autoComplete="off">
             <div className="space-y-2">
-              <Label htmlFor="password">Nova Senha</Label>
+              <Label htmlFor="password">Nova senha</Label>
               <div className="relative">
                 <Input
                   id="password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
+                  name="new-password"
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete="new-password"
+                  minLength={authFlowPolicy.minPasswordLength}
+                  maxLength={authFlowPolicy.maxPasswordLength}
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(event) => setPassword(event.target.value)}
                   required
+                  className="pr-10"
                 />
                 <button
                   type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500"
+                  aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                  onClick={() => setShowPassword((value) => !value)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
+              <p className="text-xs text-muted-foreground">
+                Use pelo menos {authFlowPolicy.minPasswordLength} caracteres.
+              </p>
             </div>
 
             <div className="space-y-2">
@@ -141,28 +204,29 @@ export default function UpdatePasswordPage() {
               <div className="relative">
                 <Input
                   id="confirmPassword"
-                  type={showConfirmPassword ? "text" : "password"}
-                  placeholder="••••••••"
+                  name="confirm-new-password"
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  autoComplete="new-password"
+                  minLength={authFlowPolicy.minPasswordLength}
+                  maxLength={authFlowPolicy.maxPasswordLength}
                   value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  onChange={(event) => setConfirmPassword(event.target.value)}
                   required
+                  className="pr-10"
                 />
                 <button
                   type="button"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500"
+                  aria-label={showConfirmPassword ? 'Ocultar confirmação' : 'Mostrar confirmação'}
+                  onClick={() => setShowConfirmPassword((value) => !value)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
                 >
                   {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
             </div>
 
-            <Button
-              type="submit"
-              className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white"
-              disabled={loading}
-            >
-              {loading ? "Salvando..." : "Salvar Senha"}
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Validando...</> : 'Atualizar e validar senha'}
             </Button>
           </form>
         </CardContent>
