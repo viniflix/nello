@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { User, ShieldCheck, Phone, MapPin, GraduationCap, Briefcase, Info, Upload, Loader2 } from 'lucide-react';
+import { User, ShieldCheck, Phone, MapPin, GraduationCap, Info, Upload, Loader2 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
@@ -120,8 +120,8 @@ export default function ProfilePersonalTab({ profile, onUpdate }) {
         <div className="space-y-6">
             <Card>
                 <CardHeader>
-                    <CardTitle>Foto de Perfil / Logo</CardTitle>
-                    <CardDescription>Faça upload da sua foto ou logo do consultório</CardDescription>
+                    <CardTitle>Foto de Perfil</CardTitle>
+                    <CardDescription>Esta imagem identifica sua conta. A logo dos documentos fica na aba Documentos.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <div className="flex items-center gap-6">

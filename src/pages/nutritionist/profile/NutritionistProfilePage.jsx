@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Settings, User, Calendar, DollarSign, Key, Loader2 } from 'lucide-react';
+import { Settings, User, Calendar, DollarSign, Key, FileSignature } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/contexts/AuthContext';
-import { useToast } from '@/components/ui/use-toast';
 import ProfilePersonalTab from '@/components/profile/ProfilePersonalTab';
 import ProfileAgendaTab from '@/components/profile/ProfileAgendaTab';
 import ProfileFinancialTab from '@/components/profile/ProfileFinancialTab';
@@ -12,10 +11,10 @@ import { ThemeToggle } from '@/components/shared/ThemeToggle';
 import ProfessionalVerificationSection from './ProfessionalVerificationSection';
 import StudentSupervisionCard from '@/components/verification/StudentSupervisionCard';
 import { PageHeaderSkeleton, FormSkeleton } from '@/components/ui/custom-skeletons';
+import DocumentIdentitySection from '@/features/documents/components/DocumentIdentitySection';
 
 const NutritionistProfilePage = () => {
     const { user, updateUserProfile } = useAuth();
-    const { toast } = useToast();
     const [loading, setLoading] = useState(true);
     const [profile, setProfile] = useState(null);
 
@@ -87,7 +86,7 @@ const NutritionistProfilePage = () => {
                     <Card>
                         <CardContent className="p-0">
                             <Tabs defaultValue="personal" className="w-full">
-                                <TabsList className="grid w-full grid-cols-4 h-auto p-1">
+                                <TabsList className="grid w-full grid-cols-2 md:grid-cols-5 h-auto p-1">
                                     <TabsTrigger value="personal" className="flex items-center gap-2 py-3">
                                         <User className="w-4 h-4" />
                                         <span className="hidden sm:inline">Dados & Branding</span>
@@ -102,6 +101,11 @@ const NutritionistProfilePage = () => {
                                         <DollarSign className="w-4 h-4" />
                                         <span className="hidden sm:inline">Financeiro & Serviços</span>
                                         <span className="sm:hidden">Financeiro</span>
+                                    </TabsTrigger>
+                                    <TabsTrigger value="documents" className="flex items-center gap-2 py-3">
+                                        <FileSignature className="w-4 h-4" />
+                                        <span className="hidden sm:inline">Documentos</span>
+                                        <span className="sm:hidden">Docs</span>
                                     </TabsTrigger>
                                     <TabsTrigger value="account" className="flex items-center gap-2 py-3">
                                         <Key className="w-4 h-4" />
@@ -130,6 +134,10 @@ const NutritionistProfilePage = () => {
                                             userId={user.id}
                                             onUpdate={handleProfileUpdate}
                                         />
+                                    </TabsContent>
+
+                                    <TabsContent value="documents" className="mt-0">
+                                        <DocumentIdentitySection verification={user.verification} />
                                     </TabsContent>
 
                                     <TabsContent value="account" className="mt-0">

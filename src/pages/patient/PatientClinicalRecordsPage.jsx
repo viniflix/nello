@@ -10,6 +10,7 @@ import { listClinicalRecordVersionChain } from '@/features/clinical-records/api/
 import { getMeaningfulClinicalText } from '@/features/clinical-records/model/evolutionSchema';
 import { getCurrentSharedClinicalRecords } from '@/features/patient-progress/model/progressTimeline';
 import ClinicalAttachmentsPanel from '@/features/clinical-records/components/ClinicalAttachmentsPanel';
+import PatientDocumentCard from '@/features/documents/components/PatientDocumentCard';
 
 const TYPE_LABELS = {
   clinical_evolution: 'Evolução clínica',
@@ -233,6 +234,7 @@ export default function PatientClinicalRecordsPage() {
               {chainState === 'error' && <Card><CardContent className="space-y-3 py-8 text-center"><p>Não foi possível abrir o histórico deste registro.</p><Button variant="outline" onClick={() => openRecord(selected)}>Tentar novamente</Button></CardContent></Card>}
               {chainState === 'success' && chain.length > 0 && (
                 <div className="space-y-6">
+                  <PatientDocumentCard record={chain[0]} />
                   <RecordVersion record={chain[0]} current />
                   {chain.length > 1 && <div className="space-y-3"><h3 className="text-base font-semibold text-slate-900">Histórico de versões</h3>{chain.slice(1).map((record) => <RecordVersion key={record.id} record={record} />)}</div>}
                 </div>

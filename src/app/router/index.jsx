@@ -13,6 +13,7 @@ import { lazyWithReload } from '@/lib/utils/lazyWithReload';
 
 // Rota Omnichannel Public Facing (Sem Auth Block)
 const PatientFacingAnamnesis = lazyWithReload(() => import('@/pages/public/anamnesis/PatientFacingUi.jsx'), 'public:anamnesis');
+const DocumentAuthenticityPage = lazyWithReload(() => import('@/pages/public/DocumentAuthenticityPage.jsx'), 'public:document-authenticity');
 
 const AppRouter = () => {
   const { user, loading } = useAuth();
@@ -34,6 +35,7 @@ const AppRouter = () => {
               
               {/* Rota Externa Segura: Formulários Omnichannel Mobile-First */}
               <Route path="/f/:token" element={<PatientFacingAnamnesis />} />
+              <Route path="/verificar-documento/:code?" element={<DocumentAuthenticityPage />} />
               
               {/* Rotas de redirecionamento */}
               <Route path="/" element={<Navigate to={getHomePath(user)} replace />} />

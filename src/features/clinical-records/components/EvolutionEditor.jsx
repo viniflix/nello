@@ -30,6 +30,7 @@ import ClinicalRecordComparison from './ClinicalRecordComparison';
 import ClinicalRecordVersionHistory from './ClinicalRecordVersionHistory';
 import AbandonCorrectionDialog from './AbandonCorrectionDialog';
 import ClinicalAttachmentsPanel from './ClinicalAttachmentsPanel';
+import ClinicalDocumentPanel from '@/features/documents/components/ClinicalDocumentPanel';
 
 const RETROSPECTIVE_THRESHOLD_MS = 5 * 60 * 1000;
 
@@ -500,6 +501,7 @@ const EvolutionEditor = ({
       </div>
 
       <div className="flex-none space-y-4 border-t p-4">
+        <ClinicalDocumentPanel record={record} currentUserId={currentUserId} />
         <ClinicalRecordVersionHistory
           chain={historyChain}
           onSelectRecord={onReplacementOpen}
