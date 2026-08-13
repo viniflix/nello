@@ -119,11 +119,7 @@ export default function PatientDiaryPage() {
       .select(`
         *,
         meal_items (
-          *,
-          foods (
-            id,
-            name
-          )
+          *
         )
       `)
       .eq('patient_id', user.id)
@@ -684,7 +680,7 @@ export default function PatientDiaryPage() {
                                     className="flex justify-between items-center text-sm"
                                   >
                                     <span className="text-foreground">
-                                      {item.foods?.name || 'Alimento desconhecido'}
+                                      {item.name || 'Alimento desconhecido'}
                                     </span>
                                     <span className="font-medium text-muted-foreground">
                                       {item.quantity} {item.measure}

@@ -1,3 +1,7 @@
+param(
+    [switch]$KeepContainer
+)
+
 $ErrorActionPreference = 'Stop'
 
 $root = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '\..\..'))
@@ -23,5 +27,5 @@ try {
     Write-Output 'Pre-C6 notification, photo privacy, episode isolation and immutable audit matrix approved.'
 }
 finally {
-    docker rm -f $container 2>$null | Out-Null
+    if (-not $KeepContainer) { docker rm -f $container 2>$null | Out-Null }
 }
