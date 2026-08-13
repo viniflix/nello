@@ -8,7 +8,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
   console.warn("⚠️ Missing Supabase environment variables. Please check your .env file.");
 }
 
-// Supabase Client — HipoZero
+// Supabase Client — Nello
 // A chave 'anon' é pública por design e segura para uso no front-end.
 // A segurança real é garantida pelas Políticas de Segurança (RLS) no banco de dados.
 export const supabase = createClient(

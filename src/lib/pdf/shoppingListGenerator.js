@@ -26,7 +26,7 @@ export const generateShoppingList = async (planData, patientName = 'Paciente') =
     const pageWidth = doc.internal.pageSize.width;
     const pageHeight = doc.internal.pageSize.height;
 
-    // Cores do projeto HipoZero
+    // Cores do projeto Nello
     const PRIMARY_COLOR = [70, 125, 70];      // Verde
     const TEXT_COLOR = [68, 64, 60];          // Stone-800
     const MUTED_COLOR = [120, 113, 108];      // Stone-500
@@ -37,7 +37,7 @@ export const generateShoppingList = async (planData, patientName = 'Paciente') =
     // Configurar fonte
     doc.setFont('helvetica');
 
-    // Logo do HipoZero (opcional)
+    // Logo do Nello (opcional)
     const logoData = await loadLogo();
     if (logoData) {
         await new Promise((resolve) => {
@@ -173,7 +173,7 @@ export const generateShoppingList = async (planData, patientName = 'Paciente') =
     doc.setFontSize(8);
     doc.setTextColor(...MUTED_COLOR);
     doc.setFont('helvetica', 'italic');
-    doc.text('Gerado por HipoZero', pageWidth / 2, footerY, { align: 'center' });
+    doc.text('Gerado por Nello', pageWidth / 2, footerY, { align: 'center' });
 
     // Salvar PDF
     const fileName = `lista_compras_${patientName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;

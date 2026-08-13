@@ -287,7 +287,7 @@ const RedeemDeepLinkPage = () => {
                 <div className="z-10 max-w-lg space-y-6">
                     <img 
                         src="https://afyoidxrshkmplxhcyeh.supabase.co/storage/v1/object/public/IDV/nello.png" 
-                        alt="HipoZero" 
+                        alt="Nello" 
                         className="h-10 w-auto mb-8"
                     />
                     
@@ -299,7 +299,7 @@ const RedeemDeepLinkPage = () => {
                             Seu Plano Alimentar está pronto para acesso.
                         </h1>
                         <p className="text-lg text-muted-foreground">
-                            {getPronoun(inviteData?.nutritionist_gender)} <strong>{inviteData?.nutritionist_name}</strong> montou e liberou o seu acompanhamento completo no HipoZero.
+                            {getPronoun(inviteData?.nutritionist_gender)} <strong>{inviteData?.nutritionist_name}</strong> montou e liberou o seu acompanhamento completo no Nello.
                         </p>
                     </motion.div>
 
@@ -329,7 +329,7 @@ const RedeemDeepLinkPage = () => {
                 <div className="lg:hidden mb-8 text-center space-y-4">
                     <img 
                         src="https://afyoidxrshkmplxhcyeh.supabase.co/storage/v1/object/public/IDV/nello.png" 
-                        alt="HipoZero" 
+                        alt="Nello" 
                         className="h-10 w-auto mx-auto mb-4"
                     />
                     <h1 className="text-2xl font-black text-foreground max-w-[280px] mx-auto">

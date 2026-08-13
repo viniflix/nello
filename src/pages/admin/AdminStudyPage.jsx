@@ -478,7 +478,7 @@ function AnalyticsPanel({ metrics }) {
             <ol className="space-y-2 text-sm">
               {[
                 { n: 1, text: 'Crie conta em posthog.com', link: 'https://posthog.com' },
-                { n: 2, text: 'Crie projeto "HipoZero" e copie a API Key (phc_...)' },
+                { n: 2, text: 'Crie projeto "Nello" e copie a API Key (phc_...)' },
                 { n: 3, text: 'Adicione ao arquivo .env:' },
               ].map(({ n, text, link }) => (
                 <li key={n} className="flex items-start gap-2">

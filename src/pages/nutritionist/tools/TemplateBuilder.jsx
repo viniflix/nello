@@ -264,7 +264,7 @@ export default function TemplateBuilder() {
   return (
     <div className="container mx-auto px-4 py-6 max-w-5xl">
       <Helmet>
-        <title>{getTitle()} - HipoZero</title>
+        <title>{getTitle()} - Nello</title>
       </Helmet>
 
       {/* Header */}

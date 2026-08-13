@@ -263,7 +263,7 @@ const PatientHubPage = () => {
                                                         className={`mt-auto w-full h-9 transition-all text-xs sm:text-sm ${copyState === 'link-copied' ? 'bg-green-600 hover:bg-green-700 text-white' : 'bg-sky-600 hover:bg-sky-700 text-white'}`}
                                                         onClick={() => {
                                                             const link = `${window.location.origin}/convite?token=${patientData.patient_invite_code}`;
-                                                            const msg = `Olá, aqui é ${user?.profile?.name}, seu nutricionista! Seu acompanhamento nutricional detalhado no HipoZero já está pronto! Clique no link, crie sua senha com rapidez e acesse seu plano alimentar: ${link}`;
+                                                            const msg = `Olá, aqui é ${user?.profile?.name}, seu nutricionista! Seu acompanhamento nutricional detalhado no Nello já está pronto! Clique no link, crie sua senha com rapidez e acesse seu plano alimentar: ${link}`;
                                                             navigator.clipboard.writeText(msg);
                                                             setCopyState('link-copied');
                                                             setTimeout(() => setCopyState('idle'), 2000);

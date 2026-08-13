@@ -238,7 +238,7 @@ export default function AdminBugReportsPage() {
     const timestamp = format(new Date(log.timestamp || log.event_timestamp), "yyyy-MM-dd'T'HH:mm:ss");
     
     const formattedLog = `---
-📋 REGISTRO DE EVENTO - HIPOZERO
+📋 REGISTRO DE EVENTO - NELLO
 ═══════════════════════════════════════
 ⏰ Data/Hora: ${timestamp}
 📌 Tipo: ${log.type?.toUpperCase() || 'INFO'}
@@ -272,7 +272,7 @@ ${log.message}
     }).join('\n');
 
     const header = `═══════════════════════════════════════
-📋 HIPOZERO - REGISTRO DE AUDIT LOG
+📋 NELLO - REGISTRO DE AUDIT LOG
 📅 Gerado em: ${format(new Date(), "yyyy-MM-dd'T'HH:mm:ss")}
 📊 Total de eventos: ${liveLogs.length}
 ═══════════════════════════════════════
@@ -290,7 +290,7 @@ ${log.message}
   // Copy bug details
   const copyBugDetails = (bug) => {
     const formattedBug = `---
-🐛 RELATÓRIO DE BUG - HIPOZERO
+🐛 RELATÓRIO DE BUG - NELLO
 ═══════════════════════════════════════
 🆔 ID: ${bug.id}
 ⏰ Data: ${format(new Date(bug.created_at), "yyyy-MM-dd'T'HH:mm:ss")}

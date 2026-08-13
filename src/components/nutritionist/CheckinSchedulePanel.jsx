@@ -110,7 +110,7 @@ const CheckinSchedulePanel = ({ patientId }) => {
                 <Select name="checkin-channel" value={channel} onValueChange={setChannel}>
                   <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="in_app">App Hipozero (Notificação Push)</SelectItem>
+                    <SelectItem value="in_app">App Nello (Notificação Push)</SelectItem>
                     <SelectItem value="whatsapp">WhatsApp Z-API</SelectItem>
                   </SelectContent>
                 </Select>

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Document, Page, Text, View, StyleSheet, Image, Font } from '@react-pdf/renderer';
-import { HIPOZERO_LOGO_URL } from '@/lib/pdf/pdfAssets';
+import { NELLO_LOGO_URL } from '@/lib/pdf/pdfAssets';
 import { formatQuantityWithUnit } from '@/lib/utils/measureTranslations';
 
 // Registrando fontes (opcional, mas garante suporte a caracteres especiais e negrito suave)
@@ -14,7 +14,7 @@ Font.register({
   ]
 });
 
-// Cores do Projeto HipoZero
+// Cores do Projeto Nello
 const colors = {
   primary: '#467D46', // hsl(100, 31%, 38%)
   secondary: '#EE6706', // hsl(26, 95%, 48%)
@@ -456,7 +456,7 @@ const MealPlanPDF = ({
       <Page size="A4" style={styles.page}>
         {/* Header */}
         <View style={styles.header} fixed>
-          <Image style={styles.logo} src={HIPOZERO_LOGO_URL} />
+          <Image style={styles.logo} src={NELLO_LOGO_URL} />
           <Text style={styles.headerTitle}>Plano Alimentar</Text>
         </View>
 
@@ -587,7 +587,7 @@ const MealPlanPDF = ({
 
         {/* Footers Fixed on all pages */}
         <Text style={styles.footer} fixed>
-          Documento gerado pelo sistema HipoZero em {new Date().toLocaleDateString('pt-BR')} às {new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+          Documento gerado pelo sistema Nello em {new Date().toLocaleDateString('pt-BR')} às {new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
         </Text>
         <Text style={styles.pageNumber} render={({ pageNumber, totalPages }) => (
           `Página ${pageNumber} de ${totalPages}`
@@ -721,7 +721,7 @@ const MealPlanPDF = ({
 
           {/* Footers Fixed */}
           <Text style={styles.footer} fixed>
-            Documento gerado pelo sistema HipoZero em {new Date().toLocaleDateString('pt-BR')} às {new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+            Documento gerado pelo sistema Nello em {new Date().toLocaleDateString('pt-BR')} às {new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
           </Text>
           <Text style={styles.pageNumber} render={({ pageNumber, totalPages }) => (
             `Página ${pageNumber} de ${totalPages}`

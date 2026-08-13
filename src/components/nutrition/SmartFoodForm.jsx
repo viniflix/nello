@@ -323,7 +323,7 @@ const SmartFoodForm = forwardRef(function SmartFoodForm({
     };
 
     // Fill form with OpenFoodFacts data
-    // IMPORTANTE: O HipoZero sempre trabalha com base 100g no banco de dados
+    // IMPORTANTE: O Nello sempre trabalha com base 100g no banco de dados
     // Se o OpenFoodFacts tiver dados de porção, normalizamos para 100g primeiro
     const fillFormWithProduct = (product) => {
         const nutriments = product.nutriments || {};
@@ -347,7 +347,7 @@ const SmartFoodForm = forwardRef(function SmartFoodForm({
                                  nutriments.fat_serving !== undefined ||
                                  nutriments.energy_kcal_serving !== undefined;
 
-        // SEMPRE normalizar para 100g (padrão do HipoZero)
+        // SEMPRE normalizar para 100g (padrão do Nello)
         // Se tiver dados de porção, normalizar os valores da porção para 100g
         // Se não tiver dados de porção, usar diretamente os valores por 100g
 
@@ -544,7 +544,7 @@ const SmartFoodForm = forwardRef(function SmartFoodForm({
             setZinc((nutriments.zinc_100g * 1000).toString());
         }
 
-        // SEMPRE iniciar no modo 100g (padrão do HipoZero)
+        // SEMPRE iniciar no modo 100g (padrão do Nello)
         // Se tiver tamanho de porção detectado, salvar para uso futuro
             setInputMode('100g');
         setPrevInputMode('100g');

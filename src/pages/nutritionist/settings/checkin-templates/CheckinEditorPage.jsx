@@ -129,7 +129,7 @@ export default function CheckinEditorPage() {
                             <Select value={channel} onValueChange={setChannel}>
                                 <SelectTrigger><SelectValue /></SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="in_app">App HipoZero (Notificação)</SelectItem>
+                                    <SelectItem value="in_app">App Nello (Notificação)</SelectItem>
                                     <SelectItem value="whatsapp">WhatsApp (Requer integração)</SelectItem>
                                 </SelectContent>
                             </Select>

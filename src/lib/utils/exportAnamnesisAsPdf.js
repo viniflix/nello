@@ -110,7 +110,7 @@ export async function exportAnamnesisAsPdf({ record, template, patientName, nutr
         doc.setFontSize(7);
         doc.setTextColor(148, 163, 184); // slate-400
         doc.text(
-            `HipoZero • Gerado em ${new Date().toLocaleString('pt-BR')} • Pág ${i}/${pageCount}`,
+            `Nello • Gerado em ${new Date().toLocaleString('pt-BR')} • Pág ${i}/${pageCount}`,
             pageWidth / 2,
             doc.internal.pageSize.getHeight() - 6,
             { align: 'center' }

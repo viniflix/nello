@@ -222,7 +222,7 @@ export const exportAgendaToPdf = async (appointments, periodType, periodLabel, n
     }, async () => {
     const doc = new jsPDF();
 
-    // Cores do projeto HipoZero (convertidas de HSL para RGB)
+    // Cores do projeto Nello (convertidas de HSL para RGB)
     const PRIMARY_COLOR = [70, 125, 70];      // Verde: hsl(100, 31%, 38%)
     const SECONDARY_COLOR = [238, 103, 6];    // Laranja: hsl(26, 95%, 48%)
     const TEXT_COLOR = [68, 64, 60];          // Stone-800: hsl(24, 5.7%, 23.9%)
@@ -356,7 +356,7 @@ export const exportAgendaToPdf = async (appointments, periodType, periodLabel, n
         doc.setFontSize(8);
         doc.setTextColor(...MUTED_COLOR);
         doc.text(
-            `Página ${i} de ${pageCount} • HipoZero © ${new Date().getFullYear()}`,
+            `Página ${i} de ${pageCount} • Nello © ${new Date().getFullYear()}`,
             doc.internal.pageSize.getWidth() / 2,
             doc.internal.pageSize.getHeight() - 10,
             { align: 'center' }

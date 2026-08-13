@@ -343,7 +343,7 @@ export default function TemplatesPage() {
   return (
     <div className="container mx-auto px-4 py-6 max-w-7xl">
       <Helmet>
-        <title>Protocolos - HipoZero</title>
+        <title>Protocolos - Nello</title>
       </Helmet>
 
       {/* Header */}

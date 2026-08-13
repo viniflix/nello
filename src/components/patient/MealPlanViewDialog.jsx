@@ -48,14 +48,14 @@ export default function MealPlanViewDialog({ open, onOpenChange, mealPlan, patie
   }, { calories: 0, protein: 0, carbs: 0, fat: 0 });
 
   /**
-   * Exportar plano alimentar para PDF com identidade visual HipoZero
+   * Exportar plano alimentar para PDF com identidade visual Nello
    */
   const handleExportPDF = async () => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.width;
     const pageHeight = doc.internal.pageSize.height;
 
-    // Cores do projeto HipoZero
+    // Cores do projeto Nello
     const PRIMARY_COLOR = [70, 125, 70];      // Verde
     const SECONDARY_COLOR = [238, 103, 6];    // Laranja
     const TEXT_COLOR = [68, 64, 60];          // Stone-800
@@ -67,7 +67,7 @@ export default function MealPlanViewDialog({ open, onOpenChange, mealPlan, patie
     // Configurar fonte
     doc.setFont('helvetica');
 
-    // Logo do HipoZero
+    // Logo do Nello
     try {
       const logoUrl = 'https://afyoidxrshkmplxhcyeh.supabase.co/storage/v1/object/public/IDV/nello.png';
       const response = await fetch(logoUrl);

@@ -1,5 +1,5 @@
 /**
- * Motor de Cálculos Energéticos - HipoZero
+ * Motor de Cálculos Energéticos - Nello
  * 
  * Este módulo contém as principais fórmulas para cálculo de Taxa Metabólica Basal (BMR)
  * e Gasto Energético Total (GET), seguindo protocolos científicos reconhecidos.

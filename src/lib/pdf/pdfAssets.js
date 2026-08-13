@@ -3,7 +3,7 @@
  */
 
 // URL da logo oficial no Supabase Storage
-export const HIPOZERO_LOGO_URL = 'https://afyoidxrshkmplxhcyeh.supabase.co/storage/v1/object/public/IDV/nello.png';
+export const NELLO_LOGO_URL = 'https://afyoidxrshkmplxhcyeh.supabase.co/storage/v1/object/public/IDV/nello.png';
 
 /**
  * Carrega a logo do projeto de forma robusta para uso em PDFs.
@@ -18,7 +18,7 @@ export async function loadLogo(timeoutMs = 3000) {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-        const response = await fetch(HIPOZERO_LOGO_URL, {
+        const response = await fetch(NELLO_LOGO_URL, {
             signal: controller.signal,
             cache: 'force-cache' // Tentar usar cache do navegador
         });

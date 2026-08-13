@@ -44,7 +44,7 @@ export async function generateReceipt(transaction, nutritionistProfile, patientP
 
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.text('Gerado por HipoZero', pageWidth / 2, 28, { align: 'center' });
+    doc.text('Gerado por Nello', pageWidth / 2, 28, { align: 'center' });
 
     yPos = 50;
 
@@ -147,7 +147,7 @@ export async function generateReceipt(transaction, nutritionistProfile, patientP
     yPos = pageHeight - 20;
     doc.setFontSize(8);
     doc.setTextColor(150, 150, 150);
-    doc.text('Este documento foi gerado automaticamente pelo sistema HipoZero', pageWidth / 2, yPos, { align: 'center' });
+    doc.text('Este documento foi gerado automaticamente pelo sistema Nello', pageWidth / 2, yPos, { align: 'center' });
     doc.text('Para fins de comprovação fiscal e reembolso de planos de saúde', pageWidth / 2, yPos + 5, { align: 'center' });
 
     // Generate filename

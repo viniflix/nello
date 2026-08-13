@@ -27,14 +27,14 @@ describe('sanitizeAnalyticsProperties', () => {
     expect(sanitizePosthogEvent({
       event: '$pageview',
       properties: {
-        $current_url: 'https://www.hipozero.com.br/nutritionist/patients/9ba45c9b-d0d4-490d-96a0-6addd7826833/meal-plan?token=secret',
+        $current_url: 'https://www.nello.com.br/nutritionist/patients/9ba45c9b-d0d4-490d-96a0-6addd7826833/meal-plan?token=secret',
         route: '/nutritionist/patients/patient-slug/anthropometry',
         error: 'Contact patient@example.com for 9ba45c9b-d0d4-490d-96a0-6addd7826833',
       },
     })).toEqual({
       event: '$pageview',
       properties: {
-        $current_url: 'https://www.hipozero.com.br/nutritionist/patients/:patient/meal-plan',
+        $current_url: 'https://www.nello.com.br/nutritionist/patients/:patient/meal-plan',
         route: '/nutritionist/patients/:patient/anthropometry',
         error: 'Contact [EMAIL] for [UUID]',
         app_release: '0.0.0',

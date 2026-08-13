@@ -230,7 +230,7 @@ export default function FinancialPage() {
         const link = document.createElement("a");
         const url = URL.createObjectURL(blob);
         link.setAttribute("href", url);
-        link.setAttribute("download", `financeiro_hipozero_${format(selectedMonth, 'yyyy-MM')}.csv`);
+        link.setAttribute("download", `financeiro_nello_${format(selectedMonth, 'yyyy-MM')}.csv`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);

@@ -333,7 +333,7 @@ const CustomMeasuresSection = () => {
           <div className="flex items-center gap-2 mb-5 p-3 bg-slate-50 rounded-lg border border-slate-200">
             <Lock className="w-4 h-4 text-slate-400 shrink-0" />
             <p className="text-sm text-slate-500">
-              Estas medidas são gerenciadas pelo sistema HipoZero e não podem ser alteradas.
+              Estas medidas são gerenciadas pelo sistema Nello e não podem ser alteradas.
               Você pode criar medidas personalizadas na aba "Minhas Medidas".
             </p>
           </div>
