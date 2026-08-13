@@ -29,6 +29,7 @@ export default function UpdatePasswordPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const passwordsDiffer = confirmPassword.length > 0 && password !== confirmPassword;
 
   useEffect(() => {
     let active = true;
@@ -211,8 +212,10 @@ export default function UpdatePasswordPage() {
                   maxLength={authFlowPolicy.maxPasswordLength}
                   value={confirmPassword}
                   onChange={(event) => setConfirmPassword(event.target.value)}
+                  aria-invalid={passwordsDiffer}
+                  aria-describedby={passwordsDiffer ? 'confirmPasswordError' : undefined}
                   required
-                  className="pr-10"
+                  className={`pr-10 ${passwordsDiffer ? 'border-destructive focus-visible:ring-destructive' : ''}`}
                 />
                 <button
                   type="button"
@@ -223,9 +226,18 @@ export default function UpdatePasswordPage() {
                   {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
+              {passwordsDiffer && (
+                <p id="confirmPasswordError" className="text-xs font-medium text-destructive" role="alert">
+                  As senhas não coincidem. Confira os dois campos.
+                </p>
+              )}
             </div>
 
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={loading || passwordsDiffer || !password || !confirmPassword}
+            >
               {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Validando...</> : 'Atualizar e validar senha'}
             </Button>
           </form>

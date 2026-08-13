@@ -33,6 +33,8 @@ export default function RegisterPage() {
   const { signUp } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const passwordsDiffer = formData.confirmPassword.length > 0
+    && formData.password !== formData.confirmPassword;
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -337,10 +339,12 @@ export default function RegisterPage() {
                       placeholder="••••••••"
                       value={formData.confirmPassword}
                       onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
+                      aria-invalid={passwordsDiffer}
+                      aria-describedby={passwordsDiffer ? 'registerPasswordConfirmationError' : undefined}
                       required
                       minLength={authFlowPolicy.minPasswordLength}
                       maxLength={72}
-                      className="pl-10 pr-10 h-10"
+                      className={`pl-10 pr-10 h-10 ${passwordsDiffer ? 'border-destructive focus-visible:ring-destructive' : ''}`}
                     />
                     <button
                       type="button"
@@ -350,13 +354,18 @@ export default function RegisterPage() {
                       {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
+                  {passwordsDiffer && (
+                    <p id="registerPasswordConfirmationError" className="text-xs font-medium text-destructive" role="alert">
+                      As senhas não coincidem. Confira os dois campos.
+                    </p>
+                  )}
                 </div>
               </div>
 
               <Button
                 type="submit"
                 className="w-full h-10 bg-primary hover:bg-primary/90 text-white font-medium mt-6"
-                disabled={loading || !formData.type}
+                disabled={loading || !formData.type || passwordsDiffer}
               >
                 {loading ? "Cadastrando..." : "Criar conta"}
               </Button>

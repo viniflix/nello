@@ -16,6 +16,9 @@ vi.mock('@/features/clinical-records/api/record-foundation-queries', () => ({
 vi.mock('@/features/clinical-records/api/amendment-queries', () => ({
   listClinicalRecordVersionChain: mocks.listChain,
 }));
+vi.mock('@/features/clinical-records/components/ClinicalAttachmentsPanel', () => ({
+  default: () => null,
+}));
 vi.mock('react-router-dom', () => ({
   useSearchParams: () => [new URLSearchParams(mocks.requestedRecordId ? { record: mocks.requestedRecordId } : {})],
 }));

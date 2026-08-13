@@ -19,6 +19,7 @@ vi.mock('./RichTextEditor', () => ({
   ),
 }));
 vi.mock('./SaveStatusIndicator', () => ({ default: () => null }));
+vi.mock('./ClinicalAttachmentsPanel', () => ({ default: () => null }));
 
 const record = {
   id: 'record-1',

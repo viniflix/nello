@@ -15,6 +15,9 @@ vi.mock('@/lib/supabase/lab-results-queries', () => ({
   getRecentLabResults: vi.fn().mockResolvedValue({ data: [] }),
 }));
 vi.mock('@/components/patient-hub/GlycemiaSummaryCard', () => ({ default: () => null }));
+vi.mock('@/features/clinical-records/components/ClinicalAttachmentsPanel', () => ({
+  default: () => null,
+}));
 vi.mock('@/features/clinical-records/components/EvolutionEditor', () => ({
   default: ({ initialRecord, onReplacementOpen, onRecordsRefresh }) => (
     <div>

@@ -25,6 +25,7 @@ export default function ForcePasswordUpdate() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const { toast } = useToast();
   const { user, updateUserProfile } = useAuth();
+  const passwordsDiffer = confirmPassword.length > 0 && password !== confirmPassword;
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -130,8 +131,10 @@ export default function ForcePasswordUpdate() {
                   maxLength={authFlowPolicy.maxPasswordLength}
                   value={confirmPassword}
                   onChange={(event) => setConfirmPassword(event.target.value)}
+                  aria-invalid={passwordsDiffer}
+                  aria-describedby={passwordsDiffer ? 'firstAccessPasswordConfirmationError' : undefined}
                   required
-                  className="pr-10"
+                  className={`pr-10 ${passwordsDiffer ? 'border-destructive focus-visible:ring-destructive' : ''}`}
                 />
                 <button
                   type="button"
@@ -142,9 +145,22 @@ export default function ForcePasswordUpdate() {
                   {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
+              {passwordsDiffer && (
+                <p
+                  id="firstAccessPasswordConfirmationError"
+                  className="text-xs font-medium text-destructive"
+                  role="alert"
+                >
+                  As senhas não coincidem. Confira os dois campos.
+                </p>
+              )}
             </div>
 
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={loading || passwordsDiffer || !password || !confirmPassword}
+            >
               {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Validando...</> : 'Definir e validar senha'}
             </Button>
           </form>

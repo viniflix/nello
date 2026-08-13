@@ -39,6 +39,8 @@ const RedeemDeepLinkPage = () => {
         confirmPassword: ''
     });
     const [honeypot, setHoneypot] = useState(''); // Anti-spam bot trap
+    const passwordsDiffer = formData.confirmPassword.length > 0
+        && formData.password !== formData.confirmPassword;
 
     useEffect(() => {
         if (!token) {
@@ -424,15 +426,22 @@ const RedeemDeepLinkPage = () => {
                                             placeholder="••••••••"
                                             value={formData.confirmPassword}
                                             onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
-                                            className="h-11 bg-background"
+                                            aria-invalid={passwordsDiffer}
+                                            aria-describedby={passwordsDiffer ? 'invitePasswordConfirmationError' : undefined}
+                                            className={`h-11 bg-background ${passwordsDiffer ? 'border-destructive focus-visible:ring-destructive' : ''}`}
                                         />
                                     </div>
                                 </div>
+                                {passwordsDiffer && (
+                                    <p id="invitePasswordConfirmationError" className="text-xs font-medium text-destructive" role="alert">
+                                        As senhas não coincidem. Confira os dois campos.
+                                    </p>
+                                )}
 
                                 <Button
                                     type="submit"
                                     className="w-full h-12 text-base font-bold mt-6 group"
-                                    disabled={submitting}
+                                    disabled={submitting || passwordsDiffer}
                                 >
                                     {submitting ? "Acessando..." : "Ver Meu Plano Agora"}
                                     {!submitting && <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />}
