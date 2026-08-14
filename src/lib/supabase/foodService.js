@@ -27,7 +27,9 @@ export async function getFoodMeasures(foodId) {
     return (data || []).map((m) => ({
       id: m.id,
       label: m.label,
+      measure_label: m.label, // Alias for backward compatibility
       weight_in_grams: m.weight_in_grams,
+      quantity_grams: m.weight_in_grams, // Alias for backward compatibility
       grams: m.weight_in_grams,
       quantity: 1
     }));
