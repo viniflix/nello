@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import {
@@ -6,7 +6,6 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
   SelectGroup,
   SelectLabel,
 } from '@/components/ui/select';
@@ -14,40 +13,18 @@ import { useFoodMeasures } from '@/hooks/useFoodMeasures';
 import { useAllMeasures } from '@/hooks/useHouseholdMeasures';
 import {
   Scale,
-  Search,
-  Check,
   Star,
   User,
   Utensils,
-  ChevronDown,
   Info
 } from 'lucide-react';
-
-
-const CATEGORY_ICONS = {
-  volume: <Utensils className="w-3.5 h-3.5" />,
-  weight: <Scale className="w-3.5 h-3.5" />,
-  unit: <Utensils className="w-3.5 h-3.5" />,
-  other: <Info className="w-3.5 h-3.5" />,
-  custom: <User className="w-3.5 h-3.5" />,
-};
-
-const CATEGORY_LABELS = {
-  volume: 'Medidas de Volume',
-  weight: 'Peso',
-  unit: 'Unidades e Fatias',
-  other: 'Outras Medidas',
-  custom: 'Minhas Medidas Personalizadas',
-};
 
 /**
  * PremiumPortionSelector — Seletor de Porção de Alta Performance e UX
  * 
- * Melhora a experiência de seleção de medidas:
- * - Organização visual superior
- * - Destaque para medidas do próprio nutricionista
- * - Identificação clara de conversões específicas (★)
- * - Preview imediato de gramas equivalentes
+ * Atualizado para a nova arquitetura do banco: 
+ * Mostra APENAS gramas e as medidas específicas do alimento,
+ * eliminando listas genéricas incorretas.
  */
 export function PremiumPortionSelector({
   food,
@@ -56,17 +33,16 @@ export function PremiumPortionSelector({
   showNutrition = true,
   onNutritionChange = null,
 }) {
-  const { systemMeasures = [], customMeasures = [], isLoading } = useAllMeasures();
-  const { data: foodMeasures = [] } = useFoodMeasures(food?.id);
+  const { customMeasures = [], isLoading: loadingCustom } = useAllMeasures();
+  const { data: foodMeasures = [], isLoading: loadingFood } = useFoodMeasures(food?.id);
+  const isLoading = loadingCustom || loadingFood;
 
   // Determinar o code selecionado atualmente
   const selectedCode = useMemo(() => {
     const mid = value.measureId ?? value.measureCode;
     if (!mid || mid === 'gram') return 'gram';
-    if (isNaN(Number(mid))) return String(mid);
-    const found = systemMeasures.find(m => m.id === Number(mid));
-    return found ? found.code : 'gram';
-  }, [value.measureId, value.measureCode, systemMeasures]);
+    return String(mid);
+  }, [value.measureId, value.measureCode]);
 
   // Cálculo de gramas totais
   const totalGrams = useMemo(() => {
@@ -79,22 +55,18 @@ export function PremiumPortionSelector({
     // Custom
     if (String(selectedCode).startsWith('custom_')) {
       const c = customMeasures.find(m => m.code === selectedCode);
-      return c ? qty * c.grams_equivalent : 0;
+      return c ? qty * (c.grams_equivalent || 0) : 0;
     }
 
-    // Sistema - Específica
-    const specific = foodMeasures.find(fm => {
-      const sys = systemMeasures.find(s => s.id === fm.measure_id);
-      return sys && sys.code === selectedCode;
-    });
-    if (specific) return (specific.grams * qty) / (specific.quantity || 1);
-
-    // Sistema - Padrão
-    const sys = systemMeasures.find(s => s.code === selectedCode || String(s.id) === String(selectedCode));
-    if (sys?.grams_equivalent) return qty * sys.grams_equivalent;
+    // Specific food measure (from new food_measures table)
+    const specific = foodMeasures.find(fm => String(fm.id) === selectedCode);
+    if (specific) {
+      const g = specific.weight_in_grams || specific.quantity_grams || specific.grams || 0;
+      return qty * g;
+    }
 
     return qty;
-  }, [selectedCode, value.quantity, food, foodMeasures, systemMeasures, customMeasures]);
+  }, [selectedCode, value.quantity, food, foodMeasures, customMeasures]);
 
   // Cálculo Nutricional
   const nutrition = useMemo(() => {
@@ -115,39 +87,49 @@ export function PremiumPortionSelector({
 
   // Agrupamento
   const groups = useMemo(() => {
-    const specificIds = new Set(foodMeasures.map(fm => fm.measure_id));
     const grouped = {};
     
-    // Custom Measures primeiro
+    // Medidas do Alimento (Banco Novo)
+    if (foodMeasures.length > 0) {
+      grouped.specific = foodMeasures.map(m => ({
+        code: String(m.id),
+        name: m.label || m.measure_label,
+        grams: m.weight_in_grams || m.quantity_grams || m.grams,
+        source: 'specific'
+      }));
+    }
+
+    // Custom Measures (Nutricionista)
     if (customMeasures.length > 0) {
       grouped.custom = customMeasures.map(m => ({ ...m, source: 'custom' }));
     }
 
-    // System Measures
-    systemMeasures.forEach(m => {
-      const cat = m.category || 'other';
-      if (!grouped[cat]) grouped[cat] = [];
-      grouped[cat].push({ ...m, source: 'system', hasSpecific: specificIds.has(m.id) });
-    });
-
     return grouped;
-  }, [systemMeasures, customMeasures, foodMeasures]);
+  }, [customMeasures, foodMeasures]);
 
   const handleValueChange = (code) => {
     let measureObj = null;
-    if (code === 'gram') {
-      measureObj = null;
-    } else if (String(code).startsWith('custom_')) {
-      measureObj = customMeasures.find(m => m.code === code);
-    } else {
-      measureObj = systemMeasures.find(m => m.code === code);
+    if (code !== 'gram') {
+      if (String(code).startsWith('custom_')) {
+        measureObj = customMeasures.find(m => m.code === code);
+      } else {
+        // Encontrar a medida específica do alimento para injetar o nome completo
+        const fm = foodMeasures.find(m => String(m.id) === code);
+        if (fm) {
+          measureObj = {
+            id: fm.id,
+            name: fm.label || fm.measure_label,
+            grams_equivalent: fm.weight_in_grams || fm.quantity_grams || fm.grams
+          };
+        }
+      }
     }
 
     onChange({
       ...value,
       measureId: code,
       measureCode: code,
-      measure: measureObj ? { ...measureObj, source: code.startsWith('custom_') ? 'custom' : 'system' } : null
+      measure: measureObj ? { ...measureObj, source: code.startsWith('custom_') ? 'custom' : 'specific' } : null
     });
   };
 
@@ -157,8 +139,8 @@ export function PremiumPortionSelector({
       const m = customMeasures.find(c => c.code === code);
       return m ? `${m.name} (Minha Medida)` : code;
     }
-    const m = systemMeasures.find(s => s.code === code);
-    return m ? m.name : code;
+    const m = foodMeasures.find(s => String(s.id) === code);
+    return m ? (m.label || m.measure_label) : code;
   };
 
   return (
@@ -198,7 +180,7 @@ export function PremiumPortionSelector({
               <div className="flex items-center gap-2 truncate">
                 {selectedCode === 'gram' ? <Scale className="w-4 h-4 text-slate-400" /> : 
                  selectedCode.startsWith('custom_') ? <User className="w-4 h-4 text-emerald-500" /> : 
-                 <Utensils className="w-4 h-4 text-slate-400" />}
+                 <Utensils className="w-4 h-4 text-emerald-600" />}
                 <span className="font-medium text-slate-700 truncate">{getMeasureLabel(selectedCode)}</span>
               </div>
             </SelectTrigger>
@@ -211,37 +193,63 @@ export function PremiumPortionSelector({
                 </div>
               </SelectItem>
 
-              {Object.entries(groups).map(([cat, measures]) => (
-                <SelectGroup key={cat}>
+              {groups.specific && (
+                <SelectGroup>
                   <SelectLabel className="px-2 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5 mt-2 border-t border-slate-50 pt-3">
-                    {CATEGORY_ICONS[cat] || CATEGORY_ICONS.other}
-                    {CATEGORY_LABELS[cat] || cat}
+                    <Utensils className="w-3.5 h-3.5" />
+                    Medidas do Alimento
                   </SelectLabel>
-                  {measures.map(m => (
+                  {groups.specific.map(m => (
                     <SelectItem 
                       key={m.code} 
                       value={m.code} 
-                      className={`h-12 rounded-lg cursor-pointer ${m.source === 'custom' ? 'focus:bg-emerald-50 focus:text-emerald-800' : 'focus:bg-slate-100'}`}
+                      className="h-12 rounded-lg cursor-pointer focus:bg-emerald-50 focus:text-emerald-800"
                     >
                       <div className="flex flex-col w-full">
                         <div className="flex items-center justify-between w-full pr-1">
-                          <span className={`font-medium ${m.source === 'custom' ? 'text-emerald-700' : 'text-slate-700'}`}>
+                          <span className="font-medium text-emerald-800">
                             {m.name}
                           </span>
-                          {m.hasSpecific && (
-                            <span title="Conversão específica p/ este alimento" className="cursor-help">
-                              <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500 shrink-0 ml-2" />
-                            </span>
-                          )}
+                          <span title="Medida mapeada p/ este alimento" className="cursor-help">
+                            <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500 shrink-0 ml-2" />
+                          </span>
                         </div>
-                        <span className="text-[10px] text-slate-400 font-normal leading-tight">
-                          {m.source === 'custom' ? `Equivale a ${m.grams_equivalent}g` : m.description || 'Medida do sistema'}
+                        <span className="text-[10px] text-emerald-600/70 font-normal leading-tight">
+                          Equivale a {m.grams}g
                         </span>
                       </div>
                     </SelectItem>
                   ))}
                 </SelectGroup>
-              ))}
+              )}
+
+              {groups.custom && (
+                <SelectGroup>
+                  <SelectLabel className="px-2 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5 mt-2 border-t border-slate-50 pt-3">
+                    <User className="w-3.5 h-3.5" />
+                    Minhas Medidas
+                  </SelectLabel>
+                  {groups.custom.map(m => (
+                    <SelectItem 
+                      key={m.code} 
+                      value={m.code} 
+                      className="h-12 rounded-lg cursor-pointer focus:bg-emerald-50 focus:text-emerald-800"
+                    >
+                      <div className="flex flex-col w-full">
+                        <div className="flex items-center justify-between w-full pr-1">
+                          <span className="font-medium text-emerald-700">
+                            {m.name}
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-emerald-600/70 font-normal leading-tight">
+                          Equivale a {m.grams_equivalent}g
+                        </span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              )}
+
             </SelectContent>
           </Select>
         </div>

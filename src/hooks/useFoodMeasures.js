@@ -4,13 +4,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import {
-  getFoodMeasures,
-  createFoodMeasure,
-  updateFoodMeasure,
-  deleteFoodMeasure,
-  foodHasMeasures
-} from '@/lib/supabase/food-measures-queries';
+import { getFoodMeasures } from '@/lib/supabase/foodService';
 import { useToast } from '@/hooks/use-toast';
 
 /**
@@ -34,8 +28,7 @@ export const useFoodMeasures = (foodId) => {
 
     try {
       const result = await getFoodMeasures(foodId);
-      if (result.error) throw result.error;
-      setData(result.data || []);
+      setData(result || []);
     } catch (err) {
       console.error('Erro ao carregar medidas:', err);
       setError(err);
