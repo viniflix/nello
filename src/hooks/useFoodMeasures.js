@@ -5,6 +5,12 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { getFoodMeasures } from '@/lib/supabase/foodService';
+import {
+  createFoodMeasure,
+  updateFoodMeasure,
+  deleteFoodMeasure,
+  foodHasMeasures
+} from '@/lib/supabase/food-measures-queries';
 import { useToast } from '@/hooks/use-toast';
 
 /**
