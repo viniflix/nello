@@ -24,7 +24,6 @@ const MAX_SAFE_SURPLUS = 500; // kcal/dia para ganho de peso
  */
 export const calculateGoalViability = async (goalData, patientId) => {
     const {
-        goal_type,
         initial_weight,
         target_weight,
         start_date,

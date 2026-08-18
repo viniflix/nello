@@ -168,7 +168,12 @@ export default function ProgressPhotosPage() {
             const fullMsg = err?.message || err?.error_description || err?.details || err?.hint || JSON.stringify(err);
             toast({
                 title: 'Erro ao enviar foto',
-                description: fullMsg || 'Não foi possível enviar a imagem. Tente novamente.',
+                description: (
+                    <div className="flex flex-col gap-1">
+                        <span>Não foi possível enviar a imagem. Tente novamente.</span>
+                        {fullMsg && <span className="text-xs opacity-70">Detalhe técnico: {fullMsg}</span>}
+                    </div>
+                ),
                 variant: 'destructive'
             });
         } finally {

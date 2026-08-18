@@ -18,9 +18,13 @@
  * @returns {number|null} Densidade corporal (g/cm³)
  */
 export function calculateBodyDensityPollock3(triceps, subscapular, suprailiac, age, isMale) {
-  if (!triceps || !subscapular || !suprailiac || !age) return null;
+  const t = parseFloat(triceps);
+  const s = parseFloat(subscapular);
+  const si = parseFloat(suprailiac);
+  const a = parseFloat(age);
+  if (isNaN(t) || isNaN(s) || isNaN(si) || isNaN(a)) return null;
 
-  const sum = triceps + subscapular + suprailiac;
+  const sum = t + s + si;
 
   if (isMale) {
     return 1.10938 - (0.0008267 * sum) + (0.0000016 * sum * sum) - (0.0002574 * age);
@@ -43,9 +47,18 @@ export function calculateBodyDensityPollock3(triceps, subscapular, suprailiac, a
  * @returns {number|null} Densidade corporal (g/cm³)
  */
 export function calculateBodyDensityPollock7(chest, axillary, triceps, subscapular, abdominal, suprailiac, thigh, age, isMale) {
-  if (!chest || !axillary || !triceps || !subscapular || !abdominal || !suprailiac || !thigh || !age) return null;
+  const c = parseFloat(chest);
+  const ax = parseFloat(axillary);
+  const t = parseFloat(triceps);
+  const s = parseFloat(subscapular);
+  const ab = parseFloat(abdominal);
+  const si = parseFloat(suprailiac);
+  const th = parseFloat(thigh);
+  const a = parseFloat(age);
+  
+  if (isNaN(c) || isNaN(ax) || isNaN(t) || isNaN(s) || isNaN(ab) || isNaN(si) || isNaN(th) || isNaN(a)) return null;
 
-  const sum = chest + axillary + triceps + subscapular + abdominal + suprailiac + thigh;
+  const sum = c + ax + t + s + ab + si + th;
 
   if (isMale) {
     return 1.112 - (0.00043499 * sum) + (0.00000055 * sum * sum) - (0.00028826 * age);
@@ -64,9 +77,13 @@ export function calculateBodyDensityPollock7(chest, axillary, triceps, subscapul
  * @returns {number|null} Densidade corporal (g/cm³)
  */
 export function calculateBodyDensityWeltman(triceps, biceps, subscapular, suprailiac, isMale) {
-  if (!triceps || !biceps || !subscapular || !suprailiac) return null;
+  const t = parseFloat(triceps);
+  const b = parseFloat(biceps);
+  const s = parseFloat(subscapular);
+  const si = parseFloat(suprailiac);
+  if (isNaN(t) || isNaN(b) || isNaN(s) || isNaN(si)) return null;
 
-  const sum = triceps + biceps + subscapular + suprailiac;
+  const sum = t + b + s + si;
   const logSum = Math.log10(sum);
 
   if (isMale) {
@@ -107,8 +124,9 @@ export function calculateBodyDensity(skinfolds, age, isMale, protocol = 'pollock
  * @returns {number|null} Percentual de gordura corporal
  */
 export function calculateBodyFatPercent(bodyDensity) {
-  if (!bodyDensity || bodyDensity <= 0) return null;
-  return ((4.95 / bodyDensity) - 4.5) * 100;
+  const bd = parseFloat(bodyDensity);
+  if (isNaN(bd) || bd <= 0) return null;
+  return ((4.95 / bd) - 4.5) * 100;
 }
 
 /**
@@ -119,9 +137,11 @@ export function calculateBodyFatPercent(bodyDensity) {
  * @returns {{size: string, ratio: number}} Frame size e ratio
  */
 export function calculateFrameSize(height, wrist, isMale) {
-  if (!height || !wrist || height <= 0 || wrist <= 0) return null;
+  const h = parseFloat(height);
+  const w = parseFloat(wrist);
+  if (isNaN(h) || isNaN(w) || h <= 0 || w <= 0) return null;
 
-  const ratio = height / wrist;
+  const ratio = h / w;
 
   if (isMale) {
     if (ratio > 10.9) return { size: 'Pequena', ratio, label: 'Pequena' };
@@ -150,25 +170,22 @@ export function calculateFrameSize(height, wrist, isMale) {
  * @returns {{endo: number, meso: number, ecto: number, x: number, y: number}|null}
  */
 export function calculateSomatotype(params) {
-  const {
-    height,
-    weight,
-    triceps,
-    subscapular,
-    suprailiac,
-    humerusWidth,
-    femurWidth,
-    armCirc,
-    calfCirc,
-    isMale
-  } = params;
+  const height = parseFloat(params.height);
+  const weight = parseFloat(params.weight);
+  const triceps = parseFloat(params.triceps);
+  const subscapular = parseFloat(params.subscapular);
+  const suprailiac = parseFloat(params.suprailiac);
+  const humerusWidth = parseFloat(params.humerusWidth);
+  const femurWidth = parseFloat(params.femurWidth);
+  const armCirc = parseFloat(params.armCirc);
+  const calfCirc = parseFloat(params.calfCirc);
 
   // Validação mínima
-  if (!height || !weight) return null;
+  if (isNaN(height) || isNaN(weight) || height <= 0 || weight <= 0) return null;
 
   // 1. ENDOMORPHY (Gordura relativa)
   let endomorphy = null;
-  if (triceps && subscapular && suprailiac) {
+  if (!isNaN(triceps) && !isNaN(subscapular) && !isNaN(suprailiac)) {
     const sum = triceps + subscapular + suprailiac;
     endomorphy = -0.7182 + (0.1451 * sum) - (0.00068 * sum * sum) + (0.0000014 * sum * sum * sum);
     if (endomorphy < 0) endomorphy = 0;
@@ -176,10 +193,10 @@ export function calculateSomatotype(params) {
 
   // 2. MESOMORPHY (Massa muscular e óssea)
   let mesomorphy = null;
-  if (height && humerusWidth && femurWidth && armCirc && calfCirc) {
+  if (!isNaN(height) && !isNaN(humerusWidth) && !isNaN(femurWidth) && !isNaN(armCirc) && !isNaN(calfCirc)) {
     const heightM = height / 100;
-    const correctedArmCirc = armCirc - (triceps || 0) / 10; // Correção: subtrai dobra cutânea
-    const correctedCalfCirc = calfCirc - (subscapular || 0) / 10; // Aproximação
+    const correctedArmCirc = armCirc - (!isNaN(triceps) ? triceps : 0) / 10; // Correção: subtrai dobra cutânea
+    const correctedCalfCirc = calfCirc - (!isNaN(subscapular) ? subscapular : 0) / 10; // Aproximação
 
     mesomorphy = 0.858 * humerusWidth + 0.601 * femurWidth + 0.188 * correctedArmCirc + 
                  0.161 * correctedCalfCirc - (heightM * 0.131) + 4.5;

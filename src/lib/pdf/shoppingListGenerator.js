@@ -30,7 +30,6 @@ export const generateShoppingList = async (planData, patientName = 'Paciente') =
     const PRIMARY_COLOR = [70, 125, 70];      // Verde
     const TEXT_COLOR = [68, 64, 60];          // Stone-800
     const MUTED_COLOR = [120, 113, 108];      // Stone-500
-    const LIGHT_BG = [245, 245, 244];         // Stone-100
 
     let yPosition = 20;
 

@@ -39,6 +39,11 @@ export async function exportAnamnesisAsPdf({ record, template, patientName, nutr
     const content = record.content || {};
     const sections = template?.sections || [];
 
+    // Função definida fora do loop para evitar no-loop-func do ESLint
+    const handleDrawPage = (data) => {
+        y = data.cursor.y + 6;
+    };
+
     for (const section of sections) {
         if (!section.fields?.length) continue;
 
@@ -95,9 +100,7 @@ export async function exportAnamnesisAsPdf({ record, template, patientName, nutr
                 1: { cellWidth: 'auto' },
             },
             alternateRowStyles: { fillColor: [250, 250, 252] },
-            didDrawPage: (data) => {
-                y = data.cursor.y + 6;
-            },
+            didDrawPage: handleDrawPage,
         });
 
         y = doc.lastAutoTable.finalY + 8;

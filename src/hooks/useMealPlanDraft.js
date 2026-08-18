@@ -6,7 +6,6 @@ import {
     deleteDraftMealPlan,
     addMealToPlan,
     deleteMealFromPlan,
-    addFoodToMeal,
     addFoodsToMeal,
     getMealPlanById,
     recalculateMealNutrition

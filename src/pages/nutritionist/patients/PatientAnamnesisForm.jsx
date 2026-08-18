@@ -20,6 +20,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { patientAnamnesisListRoute, patientAnamnesisEditRoute } from '@/lib/utils/patientRoutes';
 import { useAuth } from '@/contexts/AuthContext';
 import { FormSkeleton } from '@/components/ui/custom-skeletons';
+import { toPortugueseError } from '@/lib/utils/errorMessages';
 
 export default function PatientAnamnesisForm() {
     const navigate = useNavigate();
@@ -132,7 +133,7 @@ export default function PatientAnamnesisForm() {
                 nutritionistName: user?.profile?.name,
             });
         } catch (err) {
-            toast({ title: 'Erro ao gerar PDF', description: err.message, variant: 'destructive' });
+            toast({ title: 'Erro ao gerar PDF', description: toPortugueseError(err), variant: 'destructive' });
         } finally {
             setIsExporting(false);
         }

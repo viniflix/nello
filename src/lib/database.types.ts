@@ -8499,6 +8499,7 @@ export type Database = {
         | "other"
     }
     CompositeTypes: {
+      // eslint-disable-next-line no-unused-vars
       [_ in never]: never
     }
   }

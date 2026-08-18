@@ -24,10 +24,11 @@ export function toPortugueseError(errorOrMessage, fallback = 'Ocorreu um erro. T
 
   const normalized = raw.trim();
   const lower = normalized.toLowerCase();
+  
   // Mensagens escritas pela própria interface já são seguras e úteis para o
   // usuário. Não as substitua pelo fallback genérico só porque não contêm a
   // palavra "erro" (ex.: "As senhas não coincidem.").
-  const alreadyPortuguese = /(não\s+foi\s+possível|não\s+coincid|não\s+pode|não\s+encontr|não\s+está|erro|falha|inválid|obrigat|sucesso|conexão|permissão|dados|senha|senhas|confirme|solicite|tente|conta|sessão|vínculo|paciente|usuário|atualiz|alterad)/i.test(normalized);
+  const alreadyPortuguese = /(não\s+foi\s+possível|não\s+coincid|não\s+pode|não\s+encontr|não\s+está|erro|falha|inválid|incomplet|obrigat|sucesso|conexão|permissão|dados|senha|senhas|confirme|solicite|tente|conta|sessão|vínculo|paciente|usuário|atualiz|alterad|preencha|selecione|informe|escolha|insira|digite)/i.test(normalized);
 
   if (alreadyPortuguese) return normalized;
 

@@ -183,7 +183,7 @@ export const getLatestMetrics = async (patientId) => {
         }
 
         // Buscar última consulta
-        const { data: lastAppointment, error: lastAppError } = await supabase
+        const { data: lastAppointment } = await supabase
             .from('appointments')
             .select('start_time, status')
             .eq('patient_id', patientId)
@@ -193,7 +193,7 @@ export const getLatestMetrics = async (patientId) => {
             .maybeSingle();
 
         // Buscar próxima consulta
-        const { data: nextAppointment, error: nextAppError } = await supabase
+        const { data: nextAppointment } = await supabase
             .from('appointments')
             .select('start_time, status')
             .eq('patient_id', patientId)
@@ -1173,7 +1173,6 @@ export const getComprehensiveActivityFeed = async (nutritionistId, limit = 20) =
         return { data: activityFeedCache.data, error: null };
     }
 
-    const startedAt = Date.now();
     try {
         // OTIMIZADO: Usa função SQL que consolida 8 queries em 1
         const { data, error } = await supabase

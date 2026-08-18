@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { format, parseISO } from 'date-fns';
+import { toPortugueseError } from '@/lib/utils/errorMessages';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Camera, ChevronRight, FileText, Plus, Ruler, Droplet, Scale, Trash2, X } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -120,32 +121,50 @@ export default function PatientProgressPage() {
   const [selectedPhotoFile, setSelectedPhotoFile] = useState(null);
   const [deletePhotoTarget, setDeletePhotoTarget] = useState(null);
   const [lightboxPhoto, setLightboxPhoto] = useState(null);
-  const loadRequestRef = useRef(0);
-  const currentUserIdRef = useRef(userId);
-  currentUserIdRef.current = userId;
+  
+  // Ref para AbortController e isMounted
+  const isMounted = useRef(true);
+  const abortControllerRef = useRef(null);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
 
   const loadProgressData = useCallback(async () => {
-    if (!userId) {
+    if (!userId || !isMounted.current) {
       setLoading(false);
       return;
     }
-    const requestId = ++loadRequestRef.current;
-    const requestedUserId = userId;
+
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const currentController = new AbortController();
+    abortControllerRef.current = currentController;
+
     setLoading(true);
     setLoadError(false);
     setClinicalLoadError(false);
+
     try {
       const [weightResult, glycemiaResult, photoResult, foundationResult] = await Promise.all([
-        supabase.from('growth_records').select('*').eq('patient_id', requestedUserId).order('record_date', { ascending: true }),
-        supabase.from('glycemia_records').select('*').eq('patient_id', requestedUserId).order('date', { ascending: true }),
-        getProgressPhotos({ patientId: requestedUserId, limit: 50 }),
-        getPatientRecordFoundation(requestedUserId),
+        supabase.from('growth_records').select('*').eq('patient_id', userId).order('record_date', { ascending: true }),
+        supabase.from('glycemia_records').select('*').eq('patient_id', userId).order('date', { ascending: true }),
+        getProgressPhotos({ patientId: userId, limit: 50 }),
+        getPatientRecordFoundation(userId),
       ]);
 
-      if (requestId !== loadRequestRef.current || requestedUserId !== currentUserIdRef.current) return;
+      if (!isMounted.current || currentController.signal.aborted) return;
 
       const requiredError = weightResult.error || glycemiaResult.error || photoResult.error;
       if (requiredError) throw requiredError;
+      
       const weightRecords = weightResult.data || [];
       const glycemiaRecords = glycemiaResult.data || [];
       const photoRecords = photoResult.data || [];
@@ -158,8 +177,15 @@ export default function PatientProgressPage() {
       setClinicalLoadError(Boolean(foundationResult.error));
       setGoalWeight(null);
     } catch (error) {
-      if (requestId !== loadRequestRef.current || requestedUserId !== currentUserIdRef.current) return;
+      if (!isMounted.current || currentController.signal.aborted) return;
       console.error('[PatientProgress][load]', error);
+      
+      toast({
+        title: 'Erro ao carregar dados',
+        description: toPortugueseError(error),
+        variant: 'destructive'
+      });
+
       setWeightData([]);
       setGlycemiaData([]);
       setPhotosData([]);
@@ -168,7 +194,7 @@ export default function PatientProgressPage() {
       setClinicalLoadError(false);
       setLoadError(true);
     } finally {
-      if (requestId === loadRequestRef.current && requestedUserId === currentUserIdRef.current) {
+      if (isMounted.current) {
         setLoading(false);
       }
     }
@@ -176,9 +202,6 @@ export default function PatientProgressPage() {
 
   useEffect(() => {
     loadProgressData();
-    return () => {
-      loadRequestRef.current += 1;
-    };
   }, [loadProgressData]);
 
   const handleAddWeightRecord = async (e) => {
@@ -352,8 +375,8 @@ export default function PatientProgressPage() {
     } catch (error) {
       console.error('[PatientProgress][upload] erro detalhado:', error);
       toast({
-        title: 'Erro',
-        description: error?.message || error?.error_description || error?.details || error?.hint || 'Não foi possível adicionar a foto.',
+        title: 'Erro ao adicionar foto',
+        description: toPortugueseError(error),
         variant: 'destructive'
       });
     }
@@ -364,7 +387,11 @@ export default function PatientProgressPage() {
     const photoId = deletePhotoTarget.id;
     const { error } = await deleteProgressPhoto({ photoId });
     if (error) {
-      toast({ title: 'Erro ao remover', description: error.message, variant: 'destructive' });
+      toast({ 
+        title: 'Erro ao remover', 
+        description: toPortugueseError(error), 
+        variant: 'destructive' 
+      });
       return;
     }
     await logActivityEvent({

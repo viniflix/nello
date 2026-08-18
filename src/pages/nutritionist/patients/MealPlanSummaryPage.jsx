@@ -19,6 +19,7 @@ import ReferenceValuesModal from '@/components/meal-plan/ReferenceValuesModal';
 import { MicronutrientsCard } from '@/components/meal-plan/MicronutrientsCard';
 import { getMealPlanById, getReferenceValues, deleteReferenceValues } from '@/lib/supabase/meal-plan-queries';
 import { useToast } from '@/components/ui/use-toast';
+import { toPortugueseError } from '@/lib/utils/errorMessages';
 
 const MEAL_COLORS = [
     '#8884d8', // Roxo
@@ -44,10 +45,46 @@ const MealPlanSummaryPage = () => {
     const [showRefModal, setShowRefModal] = useState(false);
 
     useEffect(() => {
-        loadData();
-    }, [planId]);
+        let isMounted = true;
 
-    const loadData = async () => {
+        const loadData = async () => {
+            setLoading(true);
+            try {
+                const [planResult, refResult] = await Promise.all([
+                    getMealPlanById(planId),
+                    getReferenceValues(planId)
+                ]);
+
+                if (planResult.error) throw planResult.error;
+
+                if (isMounted) {
+                    setPlan(planResult.data);
+                    setReferenceValues(refResult.data);
+                }
+            } catch (error) {
+                console.error('Erro ao carregar dados:', error);
+                if (isMounted) {
+                    toast({
+                        title: 'Erro de conexão',
+                        description: toPortugueseError(error),
+                        variant: 'destructive'
+                    });
+                }
+            } finally {
+                if (isMounted) {
+                    setLoading(false);
+                }
+            }
+        };
+
+        loadData();
+
+        return () => {
+            isMounted = false;
+        };
+    }, [planId, toast]);
+
+    const loadDataManual = async () => {
         setLoading(true);
         try {
             const [planResult, refResult] = await Promise.all([
@@ -63,7 +100,7 @@ const MealPlanSummaryPage = () => {
             console.error('Erro ao carregar dados:', error);
             toast({
                 title: 'Erro',
-                description: 'Não foi possível carregar o resumo nutricional',
+                description: toPortugueseError(error),
                 variant: 'destructive'
             });
         } finally {
@@ -74,7 +111,7 @@ const MealPlanSummaryPage = () => {
     const handleRefModalClose = () => {
         setShowRefModal(false);
         // Recarregar valores de referência
-        loadData();
+        loadDataManual();
     };
 
     const handleDeleteReferenceValues = async () => {
@@ -94,12 +131,12 @@ const MealPlanSummaryPage = () => {
             });
 
             // Recarregar dados para atualizar a UI
-            loadData();
+            loadDataManual();
         } catch (error) {
             console.error('Erro ao deletar valores:', error);
             toast({
-                title: 'Erro',
-                description: 'Não foi possível excluir os valores de referência.',
+                title: 'Erro ao deletar',
+                description: toPortugueseError(error),
                 variant: 'destructive'
             });
         } finally {

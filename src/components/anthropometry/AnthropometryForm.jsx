@@ -605,6 +605,9 @@ const AnthropometryForm = ({
                                         className={errors.peso_usual ? 'border-destructive' : ''}
                                         disabled={loading}
                                     />
+                                    <p className="text-[10px] text-muted-foreground leading-tight">
+                                        Peso habitual do paciente antes de qualquer processo intencional de perda ou ganho de peso.
+                                    </p>
                                 </div>
 
                                 {/* Altura */}
@@ -651,28 +654,7 @@ const AnthropometryForm = ({
                                 </div>
                             </div>
 
-                            {/* Peso Usual (opcional) */}
-                            <div className="space-y-1">
-                                <div className="flex items-center gap-1.5">
-                                    <Label htmlFor="peso_usual" className="text-sm">Peso Usual (kg)</Label>
-                                    <span className="text-xs text-muted-foreground px-2 py-0.5 rounded bg-muted">Opcional</span>
-                                </div>
-                                <Input
-                                    id="peso_usual"
-                                    name="peso_usual"
-                                    type="number"
-                                    step="0.1"
-                                    min="0"
-                                    placeholder="Ex: 68.0"
-                                    value={formData.peso_usual}
-                                    onChange={handleChange}
-                                    disabled={loading}
-                                    className="max-w-[180px]"
-                                />
-                                <p className="text-xs text-muted-foreground">
-                                    Peso habitual do paciente antes de qualquer processo intencional de perda ou ganho de peso. Usado para comparação clínica e avaliação de perda não intencional.
-                                </p>
-                            </div>
+
 
                             {/* ── Cards de Resultados ── */}
                             {calculatedBMI && (

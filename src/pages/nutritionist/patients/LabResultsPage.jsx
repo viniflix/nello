@@ -117,7 +117,7 @@ const LabResultsPage = () => {
             console.error('Erro ao carregar exames:', error);
             toast({
                 title: 'Erro',
-                description: 'Não foi possível carregar os exames.',
+                description: toPortugueseError(error, 'Não foi possível carregar os exames.'),
                 variant: 'destructive'
             });
         } finally {
@@ -388,7 +388,7 @@ const LabResultsPage = () => {
             console.error('Erro ao excluir exame:', error);
             toast({
                 title: 'Erro',
-                description: 'Não foi possível excluir o exame.',
+                description: toPortugueseError(error, 'Não foi possível excluir o exame.'),
                 variant: 'destructive'
             });
         }

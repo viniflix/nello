@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { resolvePatientId } from '@/lib/supabase/patient-queries';
 import { isUuid } from '@/lib/utils/patientRoutes';
@@ -8,10 +8,8 @@ import { isUuid } from '@/lib/utils/patientRoutes';
  * Resolve :patientSlugOrId para patientId real.
  * Suporta UUID (usa direto) ou slug (busca no banco).
  */
-export function useResolvedPatientId(options = {}) {
-    const { replaceUrlWithSlug = true } = options;
+export function useResolvedPatientId() {
     const { patientId: paramValue } = useParams();
-    const navigate = useNavigate();
     const { user } = useAuth();
     const [patientId, setPatientId] = useState(null);
     const [loading, setLoading] = useState(true);

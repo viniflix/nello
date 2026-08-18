@@ -35,7 +35,6 @@ const DEFAULT_REMINDER_PREFERENCES = {
  * @param {number} offset - Offset para paginação
  */
 export const getPatientMeals = async (patientId, filters = {}, limit = 50, offset = 0) => {
-    const startedAt = Date.now();
     try {
         let query = supabase
             .from('meals')

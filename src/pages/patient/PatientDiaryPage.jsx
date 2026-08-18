@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { format, addDays, subDays, isToday, isYesterday, isTomorrow, startOfDay, isSameDay, parseISO, isValid } from 'date-fns';
+import { toPortugueseError } from '@/lib/utils/errorMessages';
 import { ptBR } from 'date-fns/locale';
 import { Plus, Utensils, Trash2, MoreHorizontal, ChevronLeft, ChevronRight, FileText, Eye, Bell, Edit, Flame, Beef, Wheat, Droplet, Clock } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -333,8 +334,8 @@ export default function PatientDiaryPage() {
       setPreferencesDialogOpen(false);
     } catch (error) {
       toast({
-        title: 'Erro',
-        description: 'Não foi possível salvar as preferências de lembrete.',
+        title: 'Erro ao salvar',
+        description: toPortugueseError(error),
         variant: 'destructive'
       });
     } finally {

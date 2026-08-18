@@ -284,7 +284,7 @@ export default function EnergyExpenditurePage() {
       setSyncFlags(flags || null);
     } catch (err) {
       console.error(err);
-      toast({ title: 'Erro', description: 'Não foi possível carregar os dados do paciente.', variant: 'destructive' });
+      toast({ title: 'Erro', description: err?.message || 'Não foi possível carregar os dados do paciente.', variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -539,7 +539,7 @@ export default function EnergyExpenditurePage() {
                     setActiveTab('factors');
                     toast({ title: 'Salvo', description: 'Biometria e TMB salvos. Preencha fatores e atividades.' });
                   } catch (err) {
-                    toast({ title: 'Erro', description: 'Não foi possível salvar.', variant: 'destructive' });
+                    toast({ title: 'Erro', description: err?.message || 'Não foi possível salvar.', variant: 'destructive' });
                   } finally {
                     setSaving(false);
                   }

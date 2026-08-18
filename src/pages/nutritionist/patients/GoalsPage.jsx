@@ -153,7 +153,7 @@ const GoalsPage = () => {
             console.error('Erro ao carregar dados:', error);
             toast({
                 title: 'Erro',
-                description: 'Não foi possível carregar os dados das metas.',
+                description: toPortugueseError(error, 'Não foi possível carregar os dados das metas.'),
                 variant: 'destructive'
             });
         } finally {
@@ -325,7 +325,7 @@ const GoalsPage = () => {
             console.error('Erro ao atualizar progresso:', error);
             toast({
                 title: 'Erro',
-                description: 'Não foi possível atualizar o progresso.',
+                description: toPortugueseError(error, 'Não foi possível atualizar o progresso.'),
                 variant: 'destructive'
             });
         } finally {
@@ -353,7 +353,7 @@ const GoalsPage = () => {
             console.error('Erro ao completar meta:', error);
             toast({
                 title: 'Erro',
-                description: 'Não foi possível completar a meta.',
+                description: toPortugueseError(error, 'Não foi possível completar a meta.'),
                 variant: 'destructive'
             });
         }
@@ -377,7 +377,7 @@ const GoalsPage = () => {
             console.error('Erro ao pausar meta:', error);
             toast({
                 title: 'Erro',
-                description: 'Não foi possível pausar a meta.',
+                description: toPortugueseError(error, 'Não foi possível pausar a meta.'),
                 variant: 'destructive'
             });
         }
@@ -402,7 +402,7 @@ const GoalsPage = () => {
             console.error('Erro ao cancelar meta:', error);
             toast({
                 title: 'Erro',
-                description: 'Não foi possível cancelar a meta.',
+                description: toPortugueseError(error, 'Não foi possível cancelar a meta.'),
                 variant: 'destructive'
             });
         }

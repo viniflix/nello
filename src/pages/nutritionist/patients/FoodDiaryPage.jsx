@@ -55,100 +55,128 @@ const FoodDiaryPage = () => {
     const [showDetailsModal, setShowDetailsModal] = useState(false);
 
     useEffect(() => {
+        let isMounted = true;
+
         if (!patientId) {
             setLoading(false);
             return;
         }
+
+        const loadInitialData = async () => {
+            setLoading(true);
+            try {
+                // Buscar nome do paciente
+                const { data: profile } = await supabase
+                    .from('user_profiles')
+                    .select('name')
+                    .eq('id', patientId)
+                    .single();
+
+                if (isMounted && profile) {
+                    setPatientName(profile.name);
+                }
+
+                // Buscar data inicial do plano alimentar ativo
+                const { data: activePlan } = await supabase
+                    .from('meal_plans')
+                    .select('start_date')
+                    .eq('patient_id', patientId)
+                    .eq('is_active', true)
+                    .order('created_at', { ascending: false })
+                    .limit(1)
+                    .maybeSingle();
+
+                const today = new Date().toISOString().split('T')[0];
+                const planStartDate = activePlan?.start_date || today;
+
+                if (isMounted) {
+                    // Definir filtros de data
+                    setFilters({
+                        startDate: planStartDate,
+                        endDate: today,
+                        mealType: ''
+                    });
+                }
+
+                // Buscar refeições com as datas definidas
+                const { data: mealsData } = await getPatientMeals(patientId, {
+                    startDate: planStartDate,
+                    endDate: today,
+                    mealType: ''
+                });
+                if (isMounted) setMeals(mealsData || []);
+
+                // Buscar histórico de auditoria completo
+                const { data: auditData } = await getPatientAuditHistory(patientId, {
+                    startDate: planStartDate,
+                    endDate: today
+                });
+                if (isMounted) setAuditHistory(auditData || []);
+
+                // Calcular adesão (últimos 30 dias)
+                const { data: adherence } = await calculateDiaryAdherence(patientId, 30);
+                if (isMounted) setAdherenceStats(adherence);
+
+                // Calcular resumo nutricional (últimos 7 dias)
+                const sevenDaysAgo = new Date();
+                sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+                const sevenDaysStr = sevenDaysAgo.toISOString().split('T')[0];
+
+                const { data: summary } = await getNutritionalSummary(patientId, sevenDaysStr, today);
+                if (isMounted) setNutritionalSummary(summary);
+
+            } catch (error) {
+                console.error('Erro ao carregar dados:', error);
+                if (isMounted) {
+                    toast({
+                        title: 'Erro ao carregar diário',
+                        description: toPortugueseError(error),
+                        variant: 'destructive'
+                    });
+                }
+            } finally {
+                if (isMounted) setLoading(false);
+            }
+        };
+
         loadInitialData();
-    }, [patientId]);
+
+        return () => {
+            isMounted = false;
+        };
+    }, [patientId, toast]);
 
     useEffect(() => {
+        let isMounted = true;
+
+        const loadMeals = async () => {
+            if (!patientId) return;
+            try {
+                const { data: mealsData } = await getPatientMeals(patientId, filters);
+                if (isMounted) setMeals(mealsData || []);
+
+                const { data: auditData } = await getPatientAuditHistory(patientId, filters);
+                if (isMounted) setAuditHistory(auditData || []);
+            } catch (error) {
+                console.error('Erro ao buscar refeições:', error);
+                if (isMounted) {
+                    toast({
+                        title: 'Erro de sincronização',
+                        description: toPortugueseError(error),
+                        variant: 'destructive'
+                    });
+                }
+            }
+        };
+
         if (!loading && filters.startDate && filters.endDate) {
             loadMeals();
         }
-    }, [filters]);
 
-    const loadInitialData = async () => {
-        if (!patientId) return;
-        setLoading(true);
-        try {
-            // Buscar nome do paciente
-            const { data: profile } = await supabase
-                .from('user_profiles')
-                .select('name')
-                .eq('id', patientId)
-                .single();
-
-            if (profile) {
-                setPatientName(profile.name);
-            }
-
-            // Buscar data inicial do plano alimentar ativo
-            const { data: activePlan } = await supabase
-                .from('meal_plans')
-                .select('start_date')
-                .eq('patient_id', patientId)
-                .eq('is_active', true)
-                .order('created_at', { ascending: false })
-                .limit(1)
-                .maybeSingle();
-
-            const today = new Date().toISOString().split('T')[0];
-            const planStartDate = activePlan?.start_date || today;
-
-            // Definir filtros de data
-            setFilters({
-                startDate: planStartDate,
-                endDate: today,
-                mealType: ''
-            });
-
-            // Buscar refeições com as datas definidas
-            const { data: mealsData } = await getPatientMeals(patientId, {
-                startDate: planStartDate,
-                endDate: today,
-                mealType: ''
-            });
-            setMeals(mealsData || []);
-
-            // Buscar histórico de auditoria completo
-            const { data: auditData } = await getPatientAuditHistory(patientId, {
-                startDate: planStartDate,
-                endDate: today
-            });
-            setAuditHistory(auditData || []);
-
-            // Calcular adesão (últimos 30 dias)
-            const { data: adherence } = await calculateDiaryAdherence(patientId, 30);
-            setAdherenceStats(adherence);
-
-            // Calcular resumo nutricional (últimos 7 dias)
-            const sevenDaysAgo = new Date();
-            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-            const sevenDaysStr = sevenDaysAgo.toISOString().split('T')[0];
-
-            const { data: summary } = await getNutritionalSummary(patientId, sevenDaysStr, today);
-            setNutritionalSummary(summary);
-
-        } catch (error) {
-            console.error('Erro ao carregar dados:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const loadMeals = async () => {
-        if (!patientId) return;
-        try {
-            const { data: mealsData } = await getPatientMeals(patientId, filters);
-            setMeals(mealsData || []);
-
-            const { data: auditData } = await getPatientAuditHistory(patientId, filters);
-            setAuditHistory(auditData || []);
-        } catch (error) {
-            console.error('Erro ao buscar refeições:', error);
-        }
-    };
+        return () => {
+            isMounted = false;
+        };
+    }, [filters, loading, patientId, toast]);
 
     const handleMealClick = async (meal) => {
         setSelectedMeal(meal);

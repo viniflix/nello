@@ -1,5 +1,5 @@
 import Papa from 'papaparse';
-import { format } from 'date-fns';
+import { format as formatDate } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 /**
@@ -16,7 +16,7 @@ export function exportFinancialReport(records, format = 'csv') {
     // Prepare data for export
     const exportData = records.map(record => {
         const transactionDate = record.transaction_date
-            ? format(new Date(record.transaction_date + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR })
+            ? formatDate(new Date(record.transaction_date + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR })
             : '-';
 
         return {
@@ -29,7 +29,7 @@ export function exportFinancialReport(records, format = 'csv') {
             'Valor (R$)': parseFloat(record.amount || 0).toFixed(2),
             'Status': getStatusLabel(record.status),
             'Data de Vencimento': record.due_date 
-                ? format(new Date(record.due_date + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR })
+                ? formatDate(new Date(record.due_date + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR })
                 : '-'
         };
     });

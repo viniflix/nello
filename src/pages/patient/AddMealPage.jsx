@@ -10,6 +10,7 @@ import { TimeInput } from '@/components/ui/date-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/contexts/AuthContext';
+import { toPortugueseError } from '@/lib/utils/errorMessages';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useToast } from '@/hooks/use-toast';
 import { translateMealType } from '@/utils/mealTranslations';
@@ -125,8 +126,8 @@ export default function AddMealPage() {
     } catch (error) {
       console.error('Erro ao carregar refeição:', error);
       toast({
-        title: 'Erro',
-        description: 'Não foi possível carregar os dados da refeição',
+        title: 'Erro ao carregar',
+        description: toPortugueseError(error),
         variant: 'destructive'
       });
     } finally {
@@ -405,8 +406,8 @@ export default function AddMealPage() {
     } catch (error) {
       console.error('Erro ao salvar:', error);
       toast({
-        title: 'Erro',
-        description: 'Não foi possível salvar a refeição',
+        title: 'Erro ao salvar',
+        description: toPortugueseError(error),
         variant: 'destructive'
       });
     } finally {

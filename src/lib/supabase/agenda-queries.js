@@ -84,7 +84,6 @@ const isTerminalStatus = (status) => ['completed', 'canceled', 'cancelled', 'no_
  * @returns {Promise<{appointment: Object, transaction: Object}>}
  */
 export async function createAppointmentWithFinance(appointmentData, financialData) {
-    const startedAt = Date.now();
     const { nutritionist_id, patient_id, appointment_time } = appointmentData;
     const { service_id, custom_price, custom_description } = financialData;
     const appointmentPayload = buildAppointmentPayload(appointmentData);
@@ -179,7 +178,6 @@ export async function createAppointmentWithFinance(appointmentData, financialDat
  * @returns {Promise<Object>}
  */
 export async function updateAppointment(appointmentId, appointmentData) {
-    const startedAt = Date.now();
     const nutritionistId = appointmentData?.nutritionist_id || null;
     const patientId = appointmentData?.patient_id || null;
     const requestedStatus = normalizeAppointmentStatus(appointmentData?.status);
@@ -203,7 +201,7 @@ export async function updateAppointment(appointmentId, appointmentData) {
 
     // Campos de controle de status devem ser alterados apenas via RPC.
     const { status: _ignoredStatus, ...safePayload } = payload;
-    const { data, error } = await supabase
+    const { error } = await supabase
         .from('appointments')
         .update(safePayload)
         .eq('id', appointmentId)
@@ -333,7 +331,6 @@ export async function deleteAppointment(appointmentId) {
  * @returns {Promise<Array>}
  */
 export async function getAppointments(nutritionistId, filters = {}) {
-    const startedAt = Date.now();
     let query = supabase
         .from('appointments')
         .select('*, patient:user_profiles!appointments_patient_id_fkey(name, id)')

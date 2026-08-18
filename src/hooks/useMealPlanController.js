@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
 import {
@@ -38,7 +37,6 @@ export function useMealPlanController({
     user
 }) {
     const { toast } = useToast();
-    const navigate = useNavigate();
 
     // =============== UI States ===============
     const [submitting, setSubmitting] = useState(false);
@@ -591,6 +589,7 @@ export function useMealPlanController({
         discardingDraft,
         draftToDelete, setDraftToDelete,
         mealPlanVersions,
+        versionsLoading,
         selectedVersionId, setSelectedVersionId,
         restoringVersion,
         versionsExpanded, setVersionsExpanded,

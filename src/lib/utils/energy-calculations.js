@@ -22,10 +22,14 @@
  * @returns {number} BMR em kcal/dia
  */
 export const calculateHarrisBenedict = (weight, height, age, gender) => {
+  const w = parseFloat(weight);
+  const h = parseFloat(height);
+  const a = parseFloat(age);
+  if (isNaN(w) || isNaN(h) || isNaN(a) || w <= 0 || h <= 0 || a <= 0) return null;
   const isMale = /^(male|masculino|m)$/i.test(String(gender || '').trim());
   return isMale
-    ? 88.362 + (13.397 * weight) + (4.799 * height) - (5.677 * age)
-    : 447.593 + (9.247 * weight) + (3.098 * height) - (4.330 * age);
+    ? 88.362 + (13.397 * w) + (4.799 * h) - (5.677 * a)
+    : 447.593 + (9.247 * w) + (3.098 * h) - (4.330 * a);
 };
 
 /**
@@ -40,8 +44,12 @@ export const calculateHarrisBenedict = (weight, height, age, gender) => {
  * @returns {number} BMR em kcal/dia
  */
 export const calculateMifflinStJeor = (weight, height, age, gender) => {
+  const w = parseFloat(weight);
+  const h = parseFloat(height);
+  const a = parseFloat(age);
+  if (isNaN(w) || isNaN(h) || isNaN(a) || w <= 0 || h <= 0 || a <= 0) return null;
   const s = /^(male|masculino|m)$/i.test(String(gender || '').trim()) ? 5 : -161;
-  return (10 * weight) + (6.25 * height) - (5 * age) + s;
+  return (10 * w) + (6.25 * h) - (5 * a) + s;
 };
 
 /**
@@ -54,8 +62,9 @@ export const calculateMifflinStJeor = (weight, height, age, gender) => {
  * @returns {number|null} BMR em kcal/dia, ou null se leanMassKg não fornecido
  */
 export const calculateCunningham = (leanMassKg) => {
-  if (!leanMassKg || leanMassKg <= 0) return null;
-  return 500 + (22 * leanMassKg);
+  const lMass = parseFloat(leanMassKg);
+  if (isNaN(lMass) || lMass <= 0) return null;
+  return 500 + (22 * lMass);
 };
 
 /**
@@ -68,8 +77,9 @@ export const calculateCunningham = (leanMassKg) => {
  * @returns {number|null} BMR em kcal/dia, ou null se leanMassKg não fornecido
  */
 export const calculateTinsley = (weight, leanMassKg) => {
-  if (!leanMassKg || leanMassKg <= 0) return null;
-  return 284 + (25.9 * leanMassKg);
+  const lMass = parseFloat(leanMassKg);
+  if (isNaN(lMass) || lMass <= 0) return null;
+  return 284 + (25.9 * lMass);
 };
 
 /**
@@ -81,8 +91,10 @@ export const calculateTinsley = (weight, leanMassKg) => {
  * @returns {number} BMR em kcal/dia
  */
 export const calculateFaoWho = (weight, height, age, gender) => {
+  const w = parseFloat(weight);
+  if (isNaN(w) || w <= 0) return null;
   const isMale = /^(male|masculino|m)$/i.test(String(gender || '').trim());
-  return isMale ? (15.3 * weight) + 679 : (14.7 * weight) + 496;
+  return isMale ? (15.3 * w) + 679 : (14.7 * w) + 496;
 };
 
 /**
@@ -95,15 +107,18 @@ export const calculateFaoWho = (weight, height, age, gender) => {
  * @returns {number} BMR em kcal/dia
  */
 export const calculateFaoOms1985 = (weight, height, age, gender) => {
+  const w = parseFloat(weight);
+  const a = parseFloat(age);
+  if (isNaN(w) || isNaN(a) || w <= 0 || a <= 0) return null;
   const isMale = /^(male|masculino|m)$/i.test(String(gender || '').trim());
   if (isMale) {
-    if (age >= 18 && age < 30) return 15.3 * weight + 679;
-    if (age >= 30 && age < 60) return 11.6 * weight + 879;
-    return 13.5 * weight + 487; // >60
+    if (a >= 18 && a < 30) return 15.3 * w + 679;
+    if (a >= 30 && a < 60) return 11.6 * w + 879;
+    return 13.5 * w + 487; // >60
   }
-  if (age >= 18 && age < 30) return 14.7 * weight + 496;
-  if (age >= 30 && age < 60) return 8.7 * weight + 829;
-  return 10.5 * weight + 596; // >60
+  if (a >= 18 && a < 30) return 14.7 * w + 496;
+  if (a >= 30 && a < 60) return 8.7 * w + 829;
+  return 10.5 * w + 596; // >60
 };
 
 /**
@@ -115,15 +130,19 @@ export const calculateFaoOms1985 = (weight, height, age, gender) => {
  * @returns {number} BMR em kcal/dia
  */
 export const calculateFaoOms2001 = (weight, height, age, gender) => {
+  const w = parseFloat(weight);
+  const h = parseFloat(height);
+  const a = parseFloat(age);
+  if (isNaN(w) || isNaN(h) || isNaN(a) || w <= 0 || h <= 0 || a <= 0) return null;
   const isMale = /^(male|masculino|m)$/i.test(String(gender || '').trim());
   if (isMale) {
-    if (age >= 18 && age < 30) return 15.4 * weight - 27 * (height / 100) + 717;
-    if (age >= 30 && age < 60) return 11.3 * weight + 16 * (height / 100) + 901;
-    return 8.8 * weight + 1128 * (height / 100) - 1071; // >60
+    if (a >= 18 && a < 30) return 15.4 * w - 27 * (h / 100) + 717;
+    if (a >= 30 && a < 60) return 11.3 * w + 16 * (h / 100) + 901;
+    return 8.8 * w + 1128 * (h / 100) - 1071; // >60
   }
-  if (age >= 18 && age < 30) return 13.3 * weight + 334 * (height / 100) + 35;
-  if (age >= 30 && age < 60) return 8.7 * weight - 25 * (height / 100) + 865;
-  return 9.2 * weight + 637 * (height / 100) - 302; // >60
+  if (a >= 18 && a < 30) return 13.3 * w + 334 * (h / 100) + 35;
+  if (a >= 30 && a < 60) return 8.7 * w - 25 * (h / 100) + 865;
+  return 9.2 * w + 637 * (h / 100) - 302; // >60
 };
 
 /**
@@ -149,13 +168,18 @@ export const EER_PA_COEFFICIENTS = {
  * @returns {number} GET em kcal/dia (não TMB)
  */
 export const calculateEerIom = (weight, heightCm, age, paCoefficient, gender) => {
-  const heightM = (heightCm || 0) / 100;
-  const pa = typeof paCoefficient === 'number' && paCoefficient > 0 ? paCoefficient : 1.0;
+  const w = parseFloat(weight);
+  const h = parseFloat(heightCm);
+  const a = parseFloat(age);
+  if (isNaN(w) || isNaN(h) || isNaN(a) || w <= 0 || h <= 0 || a <= 0) return null;
+  const heightM = h / 100;
+  const paParam = parseFloat(paCoefficient);
+  const pa = isNaN(paParam) || paParam <= 0 ? 1.0 : paParam;
   const isMale = /^(male|masculino|m)$/i.test(String(gender || '').trim());
   if (isMale) {
-    return 662 - (9.53 * age) + pa * ((15.91 * weight) + (539.6 * heightM));
+    return 662 - (9.53 * a) + pa * ((15.91 * w) + (539.6 * heightM));
   }
-  return 354 - (6.91 * age) + pa * ((9.36 * weight) + (726 * heightM));
+  return 354 - (6.91 * a) + pa * ((9.36 * w) + (726 * heightM));
 };
 
 /**
@@ -221,9 +245,12 @@ export const ACTIVITY_FACTORS = [
  * @returns {number} GET em kcal/dia
  */
 export const calculateGET = (bmr, activityFactor, injuryFactor = 1.0) => {
-  if (!bmr || bmr <= 0 || !activityFactor || activityFactor <= 0) return 0;
-  const inj = typeof injuryFactor === 'number' && injuryFactor > 0 ? injuryFactor : 1.0;
-  return bmr * activityFactor * inj;
+  const b = parseFloat(bmr);
+  const af = parseFloat(activityFactor);
+  if (isNaN(b) || b <= 0 || isNaN(af) || af <= 0) return 0;
+  const injP = parseFloat(injuryFactor);
+  const inj = isNaN(injP) || injP <= 0 ? 1.0 : injP;
+  return b * af * inj;
 };
 
 // ============================================================================
@@ -353,16 +380,14 @@ export const KCAL_PER_KG_BODY_CHANGE = 7700;
  * @returns {{ totalKcal: number, dailyAdjustmentKcal: number, isDeficit: boolean } | null} null se dados inválidos
  */
 export const calculateVentaAdjustment = (currentWeightKg, targetWeightKg, timeframeDays) => {
-  if (
-    currentWeightKg == null ||
-    targetWeightKg == null ||
-    timeframeDays == null ||
-    timeframeDays <= 0
-  ) {
+  const cw = parseFloat(currentWeightKg);
+  const tw = parseFloat(targetWeightKg);
+  const td = parseFloat(timeframeDays);
+  if (isNaN(cw) || isNaN(tw) || isNaN(td) || td <= 0) {
     return null;
   }
-  const totalKcal = (currentWeightKg - targetWeightKg) * KCAL_PER_KG_BODY_CHANGE;
-  const dailyAdjustmentKcal = totalKcal / timeframeDays;
+  const totalKcal = (cw - tw) * KCAL_PER_KG_BODY_CHANGE;
+  const dailyAdjustmentKcal = totalKcal / td;
   const isDeficit = totalKcal > 0;
   return { totalKcal, dailyAdjustmentKcal, isDeficit };
 };
@@ -377,9 +402,11 @@ export const calculateVentaAdjustment = (currentWeightKg, targetWeightKg, timefr
  * @returns {number} Meta calórica final (VET) em kcal/dia
  */
 export const applyVentaToGet = (getKcal, ventaDailyAdjustmentKcal) => {
-  if (getKcal == null || getKcal <= 0) return getKcal;
-  const adj = ventaDailyAdjustmentKcal ?? 0;
-  return getKcal - adj; // déficit (adj > 0) reduz; superávit (adj < 0) aumenta
+  const gk = parseFloat(getKcal);
+  if (isNaN(gk) || gk <= 0) return gk || 0;
+  const adj = parseFloat(ventaDailyAdjustmentKcal);
+  const finalAdj = isNaN(adj) ? 0 : adj;
+  return gk - finalAdj; // déficit (adj > 0) reduz; superávit (adj < 0) aumenta
 };
 
 // ============================================================================
