@@ -5,6 +5,7 @@ import { ArrowLeft, Plus } from 'lucide-react';
 import { useResolvedPatientId } from '@/hooks/useResolvedPatientId';
 import { useAnamnesisRunner } from '@/hooks/useAnamnesisRunner';
 import { useAnamnesisTemplates } from '@/hooks/useAnamnesisTemplates';
+import { usePatientHub } from '@/hooks/usePatientHub';
 import { SimpleListSkeleton, PageHeaderSkeleton, TimelineSkeleton } from '@/components/ui/custom-skeletons';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -20,6 +21,34 @@ export default function PatientAnamnesePage() {
   const { useTemplates } = useAnamnesisTemplates();
   const { data: templates, isLoading: loadingTemplates } = useTemplates();
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
+  const { patientData } = usePatientHub(patientId);
+
+  const getTemplateScore = React.useCallback((template) => {
+    if (!patientData) return 0;
+    const title = (template.title || '').toLowerCase();
+    const gender = patientData.gender;
+    let age = null;
+    if (patientData.birth_date) {
+      const birth = new Date(patientData.birth_date);
+      if (!isNaN(birth.getTime())) {
+         age = new Date().getFullYear() - birth.getFullYear();
+      }
+    }
+    
+    let score = 0;
+    if (gender === 'F' && (title.includes('mulher') || title.includes('feminin'))) score += 10;
+    if (gender === 'M' && (title.includes('homem') || title.includes('masculin'))) score += 10;
+    if (age !== null && age < 18 && (title.includes('criança') || title.includes('infantil') || title.includes('pediatria'))) score += 10;
+    if (age !== null && age >= 60 && (title.includes('idoso') || title.includes('geriatria'))) score += 10;
+    if (age !== null && age >= 18 && age < 60 && title.includes('adulto')) score += 5;
+    
+    return score;
+  }, [patientData]);
+
+  const sortedTemplates = React.useMemo(() => {
+    if (!templates) return [];
+    return [...templates].sort((a, b) => getTemplateScore(b) - getTemplateScore(a));
+  }, [templates, getTemplateScore]);
 
   const foundationQuery = useQuery({
     queryKey: ['patientRecordFoundation', patientId],
@@ -117,17 +146,22 @@ export default function PatientAnamnesePage() {
           </DialogHeader>
           {loadingTemplates ? <div className="py-8"><SimpleListSkeleton /></div> : (
             <div className="space-y-3 mt-4 max-h-[60vh] overflow-y-auto pr-2">
-              {templates?.map((template) => (
+              {sortedTemplates?.map((template) => {
+                const isRecommended = getTemplateScore(template) >= 5;
+                return (
                 <button key={template.id} type="button" onClick={() => handleCreateNew(template.id)} className="w-full p-4 border rounded-xl hover:border-blue-500 hover:bg-blue-50/50 transition-all flex items-center justify-between text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
                   <span>
                     <span className="font-semibold text-slate-800 flex items-center gap-2">
-                      {template.title}{template.is_system_default && <Badge variant="secondary" className="text-[10px]">Global</Badge>}
+                      {template.title}
+                      {isRecommended && <Badge className="bg-amber-100 text-amber-800 border-amber-200 text-[10px]">⭐ Recomendado</Badge>}
+                      {template.is_system_default && !isRecommended && <Badge variant="secondary" className="text-[10px]">Global</Badge>}
                     </span>
                     <span className="block text-xs text-slate-500 mt-1 line-clamp-1">{template.description || 'Sem descrição'}</span>
                   </span>
                   <Plus className="w-5 h-5 text-slate-400" aria-hidden="true" />
                 </button>
-              ))}
+                );
+              })}
             </div>
           )}
         </DialogContent>

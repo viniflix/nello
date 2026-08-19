@@ -109,12 +109,12 @@ export function useAnamnesisRunner(patientId) {
                     status: 'draft',
                     filled_by: 'nutritionist',
                     content,
-                    template_version: templateData?.version || 1,
+                    version: templateData?.version || 1,
                     // Fix A6: Salva snapshot do template no momento da criação
                     template_snapshot: {
-                        title: templateData.title,
-                        description: templateData.description,
-                        sections: templateData.sections,
+                        title: templateData?.title || 'Formulário Sem Título',
+                        description: templateData?.description || '',
+                        sections: templateData?.sections || [],
                     },
                 })
                 .select()
