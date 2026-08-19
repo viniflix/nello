@@ -239,6 +239,7 @@ export const getModulesStatus = async (patientId) => {
             .from('anamnesis_records')
             .select('id')
             .eq('patient_id', patientId)
+            .in('status', ['completed', 'validated'])
             .limit(1)
             .maybeSingle();
 

@@ -2,6 +2,31 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
+import { STANDARD_ANAMNESIS_FIELDS } from '@/lib/constants/standard-anamnesis-fields';
+
+function getFallbackSections() {
+    const categoriesMap = {
+        identificacao: 'Identificação',
+        historico_clinico: 'Histórico Clínico',
+        habitos_vida: 'Hábitos de Vida',
+        sintomas_atuais: 'Sintomas Atuais',
+        objetivos: 'Objetivos',
+        recordatorio_alimentar: 'Recordatório Alimentar'
+    };
+
+    const categories = Array.from(new Set(STANDARD_ANAMNESIS_FIELDS.map(f => f.category)));
+    return categories.map(cat => ({
+        id: crypto.randomUUID(),
+        title: categoriesMap[cat] || cat,
+        fields: STANDARD_ANAMNESIS_FIELDS.filter(f => f.category === cat).map(f => ({
+            id: crypto.randomUUID(),
+            label: f.field_label,
+            type: f.field_type === 'texto_curto' ? 'text' : f.field_type === 'texto_longo' ? 'textarea' : f.field_type === 'selecao_unica' ? 'select' : 'multiselect',
+            options: (f.options || []).map(opt => ({ label: opt, value: opt })),
+            required: f.is_required || false
+        }))
+    }));
+}
 
 export function useAnamnesisRunner(patientId) {
     const { user } = useAuth();
@@ -59,7 +84,7 @@ export function useAnamnesisRunner(patientId) {
                 }
                 return data;
             },
-            enabled: !!recordId,
+            enabled: !!recordId && !!patientId,
         });
 
     // ── 3. Progressive Profiling ─────────────────────────────────
@@ -130,7 +155,7 @@ export function useAnamnesisRunner(patientId) {
                     template_snapshot: {
                         title: templateData?.title || 'Formulário Sem Título',
                         description: templateData?.description || '',
-                        sections: templateData?.sections || [],
+                        sections: templateData?.sections?.length > 0 ? templateData.sections : getFallbackSections(),
                     },
                 })
                 .select()
@@ -213,7 +238,25 @@ export function useAnamnesisRunner(patientId) {
         onError: (err) => toast({ title: 'Erro', description: err.message, variant: 'destructive' }),
     });
 
-    // ── 7. Gerar/Regenerar link externo via RPC ─────────────────
+    // ── 7. Deletar record ────────────────────────────────────────
+    const deleteRecord = useMutation({
+        mutationFn: async (recordId) => {
+            const { error } = await supabase
+                .from('anamnesis_records')
+                .delete()
+                .eq('id', recordId)
+                .eq('nutritionist_id', user.id);
+            if (error) throw error;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries(['anamnesis_records', patientId]);
+            queryClient.invalidateQueries(['patientTimeline', patientId]);
+            toast({ title: 'Anamnese excluída', description: 'O formulário foi excluído com sucesso.' });
+        },
+        onError: (err) => toast({ title: 'Erro ao excluir', description: err.message, variant: 'destructive' }),
+    });
+
+    // ── 8. Gerar/Reenviar Link Seguro para o Paciente ────────────
     const generateLink = useMutation({
         mutationFn: async ({ recordId, expiresDays = 7 }) => {
             const { data, error } = await supabase.rpc('generate_anamnesis_link', {
@@ -237,22 +280,6 @@ export function useAnamnesisRunner(patientId) {
         onError: (err) => toast({ title: 'Erro ao gerar link', description: err.message, variant: 'destructive' }),
     });
 
-    // ── 8. Deletar record ────────────────────────────────────────
-    const deleteRecord = useMutation({
-        mutationFn: async (recordId) => {
-            const { error } = await supabase
-                .from('anamnesis_records')
-                .delete()
-                .eq('id', recordId);
-            if (error) throw error;
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries(['anamnesis_records', patientId]);
-            toast({ title: 'Registro excluído.' });
-        },
-        onError: (err) => toast({ title: 'Erro', description: err.message, variant: 'destructive' }),
-    });
-
     return {
         usePatientRecords,
         useRecord,
@@ -260,7 +287,7 @@ export function useAnamnesisRunner(patientId) {
         usePendingRecords,
         createRecord,
         updateRecord,
-        generateLink,
         deleteRecord,
+        generateLink,
     };
 }

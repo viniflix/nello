@@ -72,7 +72,6 @@ export default function TimelineItem({ item, patientSlug }) {
         <div>
           <div className="flex items-center gap-2 mb-1">
             <h4 className="font-semibold text-slate-800 text-base">{safeTitle}</h4>
-            {item.is_legacy && <Badge variant="outline" className="text-[10px] bg-amber-50 text-amber-700 border-amber-200 px-1.5 py-0">Legado</Badge>}
           </div>
           <div className="flex items-center text-xs text-slate-500 gap-1"><Calendar className="w-3 h-3" aria-hidden="true" /><span>{dateLabel}</span></div>
         </div>

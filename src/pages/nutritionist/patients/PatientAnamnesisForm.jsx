@@ -7,7 +7,7 @@ import { ClinicalAlertsPanel } from '@/components/anamnesis/ClinicalAlertsPanel'
 import { FileUploadField } from '@/components/anamnesis/FileUploadField';
 import { exportAnamnesisAsPdf } from '@/lib/utils/exportAnamnesisAsPdf';
 import { isFieldVisible } from '@/lib/utils/conditionalLogic';
-import { Save, ArrowLeft, Loader2, CheckCircle, Clock, FileDown, ShieldCheck, Link2, Lock } from 'lucide-react';
+import { Save, ArrowLeft, Loader2, CheckCircle, Clock, FileDown, ShieldCheck, Link2, Lock, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -31,7 +31,7 @@ export default function PatientAnamnesisForm() {
     const [searchParams] = useSearchParams();
     const templateId = searchParams.get('templateId');
 
-    const { useRecord, updateRecord, createRecord, usePreviousProfile, generateLink } = useAnamnesisRunner(patientId);
+    const { useRecord, updateRecord, createRecord, usePreviousProfile, generateLink, deleteRecord } = useAnamnesisRunner(patientId);
     const { data: record, isLoading: loadingRecord } = useRecord(anamnesisId);
     const { data: previousProfile, isLoading: loadingPrev } = usePreviousProfile();
     const { uploadAttachment, deleteAttachment, getSignedUrl } = useAnamnesisAttachments(anamnesisId, patientId);
@@ -51,7 +51,7 @@ export default function PatientAnamnesisForm() {
                     navigate(patientAnamnesisEditRoute({ id: patientId, slug: paramValue }, newRecord.id), { replace: true });
                 })
                 .catch(err => {
-                    navigate(patientAnamnesisListRoute({ slug: paramValue }));
+                    navigate(patientAnamnesisListRoute({ id: patientId, slug: paramValue }));
                 });
         }
     }, [anamnesisId, templateId, isCreating, createRecord, navigate, paramValue, patientId]);
@@ -59,6 +59,17 @@ export default function PatientAnamnesisForm() {
     useEffect(() => {
         if (record?.content) setContent(record.content);
     }, [record]);
+
+    const handleDelete = async () => {
+        if (!window.confirm("Tem certeza que deseja excluir esta anamnese? Esta ação não pode ser desfeita.")) return;
+        setIsSubmitting(true);
+        try {
+            await deleteRecord.mutateAsync(record.id);
+            navigate(patientAnamnesisListRoute({ id: patientId, slug: paramValue }));
+        } catch (err) {
+            setIsSubmitting(false);
+        }
+    };
 
     // Auto-save draft every 10s if changed
     useEffect(() => {
@@ -114,7 +125,7 @@ export default function PatientAnamnesisForm() {
         else if (!isAutoSave) setIsSaving(true);
         try {
             await updateRecord.mutateAsync({ recordId: record.id, content, status });
-            if (isSubmit) navigate(patientAnamnesisListRoute({ slug: paramValue }));
+            if (isSubmit) navigate(patientAnamnesisListRoute({ id: patientId, slug: paramValue }));
         } finally {
             if (isSubmit) setIsSubmitting(false);
             else if (!isAutoSave) setIsSaving(false);
@@ -273,7 +284,7 @@ export default function PatientAnamnesisForm() {
         <div className="max-w-4xl mx-auto p-4 md:p-6 space-y-5">
             {/* Header */}
             <div className="flex items-center justify-between flex-wrap gap-3">
-                <Button variant="ghost" onClick={() => navigate(patientAnamnesisListRoute({ slug: paramValue }))}>
+                <Button variant="ghost" onClick={() => navigate(patientAnamnesisListRoute({ id: patientId, slug: paramValue }))}>
                     <ArrowLeft className="w-4 h-4 mr-2" />
                     Voltar
                 </Button>
@@ -310,6 +321,10 @@ export default function PatientAnamnesisForm() {
                             <Button variant="outline" onClick={() => handleSave('draft')} disabled={isSaving || isSubmitting}>
                                 {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
                                 Salvar Rascunho
+                            </Button>
+                            <Button variant="outline" onClick={handleDelete} disabled={isSaving || isSubmitting} className="text-red-600 border-red-200 hover:bg-red-50">
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Excluir
                             </Button>
                             <Button onClick={() => handleSave('completed')} className="bg-[#5f6f52] hover:bg-[#4a5740]" disabled={isSaving || isSubmitting}>
                                 {isSubmitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle className="w-4 h-4 mr-2" />}

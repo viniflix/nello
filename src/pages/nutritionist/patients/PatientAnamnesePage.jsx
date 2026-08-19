@@ -158,7 +158,8 @@ export default function PatientAnamnesePage() {
                     <span className="font-semibold text-slate-800 flex items-center gap-2">
                       {template.title}
                       {isRecommended && <Badge className="bg-amber-100 text-amber-800 border-amber-200 text-[10px]">⭐ Recomendado</Badge>}
-                      {template.is_system_default && !isRecommended && <Badge variant="secondary" className="text-[10px]">Global</Badge>}
+                      {template.is_system_default && !isRecommended && <Badge variant="secondary" className="text-[10px]">Nello</Badge>}
+                      {!template.is_system_default && <Badge variant="outline" className="text-[10px]">Customizado</Badge>}
                     </span>
                     <span className="block text-xs text-slate-500 mt-1 line-clamp-1">{template.description || 'Sem descrição'}</span>
                   </span>
