@@ -15,7 +15,6 @@ import TimelineFeed from '@/features/clinical-records/components/TimelineFeed';
 import { getPatientRecordFoundation } from '@/features/clinical-records/api/record-foundation-queries';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AnamnesisEvolutionChart } from '@/components/anamnesis/AnamnesisEvolutionChart';
-import { Activity, List } from 'lucide-react';
 
 export default function PatientAnamnesePage() {
   const navigate = useNavigate();
