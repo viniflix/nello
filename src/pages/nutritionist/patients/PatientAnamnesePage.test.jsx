@@ -34,6 +34,7 @@ vi.mock('@/features/clinical-records/api/record-foundation-queries', () => ({ ge
 vi.mock('@/features/clinical-records/components/TimelineFeed', () => ({
   default: ({ patientId, viewedEpisodeId }) => <output data-testid="timeline-context">{patientId}:{viewedEpisodeId}</output>,
 }));
+vi.mock('@/hooks/usePatientHub', () => ({ usePatientHub: () => ({ patientData: null }) }));
 
 import PatientAnamnesePage from './PatientAnamnesePage';
 
