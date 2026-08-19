@@ -28,13 +28,29 @@ export function useAnamnesisRunner(patientId) {
     // ── 2. Record específico (com template completo ou snapshot) ─
     const useRecord = (recordId) =>
         useQuery({
-            queryKey: ['anamnesis_record', recordId],
+            queryKey: ['anamnesis_record', recordId, patientId],
             queryFn: async () => {
                 if (!recordId) return null;
+                let actualId = recordId;
+                if (!recordId.includes('-')) {
+                    const { data: allRecords, error: listErr } = await supabase
+                        .from('anamnesis_records')
+                        .select('id')
+                        .eq('patient_id', patientId);
+                    if (listErr) throw listErr;
+                    
+                    const shortCode = String(recordId).toLowerCase();
+                    const match = (allRecords || []).find((r) =>
+                      String(r.id).replace(/-/g, '').toLowerCase().startsWith(shortCode)
+                    );
+                    if (!match) throw new Error('Formulário não encontrado');
+                    actualId = match.id;
+                }
+
                 const { data, error } = await supabase
                     .from('anamnesis_records')
                     .select('*, template:template_id(*)')
-                    .eq('id', recordId)
+                    .eq('id', actualId)
                     .single();
                 if (error) throw error;
                 // Usar template_snapshot se disponível (imutabilidade clínica)
@@ -59,8 +75,8 @@ export function useAnamnesisRunner(patientId) {
                     .in('status', ['completed', 'validated'])
                     .order('created_at', { ascending: false })
                     .limit(1)
-                    .single();
-                if (error && error.code !== 'PGRST116') throw error;
+                    .maybeSingle();
+                if (error) throw error;
                 return data?.content || {};
             },
             enabled: !!patientId,

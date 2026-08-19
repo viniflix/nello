@@ -25,8 +25,10 @@ export default function PatientAnamnesePage() {
 
   const getTemplateScore = React.useCallback((template) => {
     if (!patientData) return 0;
+    
+    let score = 0;
     const title = (template.title || '').toLowerCase();
-    const gender = patientData.gender;
+    
     let age = null;
     if (patientData.birth_date) {
       const birth = new Date(patientData.birth_date);
@@ -34,13 +36,15 @@ export default function PatientAnamnesePage() {
          age = new Date().getFullYear() - birth.getFullYear();
       }
     }
+    const rawGender = (patientData?.gender || patientData?.sex || patientData?.biological_sex || 'unknown').toLowerCase();
     
-    let score = 0;
-    if (gender === 'F' && (title.includes('mulher') || title.includes('feminin'))) score += 10;
-    if (gender === 'M' && (title.includes('homem') || title.includes('masculin'))) score += 10;
-    if (age !== null && age < 18 && (title.includes('criança') || title.includes('infantil') || title.includes('pediatria'))) score += 10;
-    if (age !== null && age >= 60 && (title.includes('idoso') || title.includes('geriatria'))) score += 10;
-    if (age !== null && age >= 18 && age < 60 && title.includes('adulto')) score += 5;
+    if (rawGender.startsWith('f') && (title.includes('mulher') || title.includes('feminin'))) score += 10;
+    if (rawGender.startsWith('m') && (title.includes('homem') || title.includes('masculin'))) score += 10;
+    
+    if (age !== null && age < 12 && (title.includes('criança') || title.includes('infantil') || title.includes('pediatr'))) score += 10;
+    if (age !== null && age >= 12 && age < 18 && title.includes('adolescente')) score += 10;
+    if (age !== null && age >= 60 && title.includes('idoso')) score += 10;
+    if (age !== null && age >= 18 && age < 60 && title.includes('adulto')) score += 10;
     
     return score;
   }, [patientData]);
