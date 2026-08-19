@@ -18,6 +18,7 @@ import { FileUploadField } from '@/components/anamnesis/FileUploadField';
 import { useAnamnesisAttachments } from '@/hooks/useAnamnesisAttachments';
 import { AnamnesisWizard } from '@/components/anamnesis/AnamnesisWizard';
 import { isFieldVisible } from '@/lib/utils/conditionalLogic';
+import { Card, CardContent } from '@/components/ui/card';
 
 // Tipos de erro mapeados da RPC — cada um com tela própria
 const ERROR_SCREENS = {

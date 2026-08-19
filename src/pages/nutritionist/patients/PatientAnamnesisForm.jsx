@@ -268,7 +268,7 @@ export default function PatientAnamnesisForm() {
                         }
                         onRequestUrl={getSignedUrl}
                         uploading={uploadAttachment.isPending}
-                        disabled={record.status === 'completed' || record.status === 'validated' || record.status === 'awaiting_patient'}
+                        disabled={record.status === 'completed' || record.status === 'validated' || record.status === 'pending_patient'}
                     />
                 )}
             </div>

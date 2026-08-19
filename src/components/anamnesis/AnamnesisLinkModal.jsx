@@ -41,7 +41,7 @@ export function AnamnesisLinkModal({ open, onOpenChange, patientId, patientName 
 
     const { data: patientRecords = [] } = usePatientRecords();
     // Verificar se já existe record pendente
-    const pendingRecord = patientRecords.find(r => r.status === 'awaiting_patient');
+    const pendingRecord = patientRecords.find(r => r.status === 'pending_patient');
 
     const handleGenerate = async () => {
         if (!selectedTemplateId) {
