@@ -21,6 +21,17 @@ import { patientAnamnesisListRoute, patientAnamnesisEditRoute } from '@/lib/util
 import { useAuth } from '@/contexts/AuthContext';
 import { FormSkeleton } from '@/components/ui/custom-skeletons';
 import { toPortugueseError } from '@/lib/utils/errorMessages';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export default function PatientAnamnesisForm() {
     const navigate = useNavigate();
@@ -61,7 +72,6 @@ export default function PatientAnamnesisForm() {
     }, [record]);
 
     const handleDelete = async () => {
-        if (!window.confirm("Tem certeza que deseja excluir esta anamnese? Esta ação não pode ser desfeita.")) return;
         setIsSubmitting(true);
         try {
             await deleteRecord.mutateAsync(record.id);
@@ -322,10 +332,28 @@ export default function PatientAnamnesisForm() {
                                 {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
                                 Salvar Rascunho
                             </Button>
-                            <Button variant="outline" onClick={handleDelete} disabled={isSaving || isSubmitting} className="text-red-600 border-red-200 hover:bg-red-50">
-                                <Trash2 className="w-4 h-4 mr-2" />
-                                Excluir
-                            </Button>
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button variant="outline" disabled={isSaving || isSubmitting} className="text-red-600 border-red-200 hover:bg-red-50">
+                                        <Trash2 className="w-4 h-4 mr-2" />
+                                        Excluir
+                                    </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>Excluir Anamnese</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            Tem certeza que deseja excluir esta anamnese? Esta ação não pode ser desfeita.
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                        <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
+                                            Sim, excluir
+                                        </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
                             <Button onClick={() => handleSave('completed')} className="bg-[#5f6f52] hover:bg-[#4a5740]" disabled={isSaving || isSubmitting}>
                                 {isSubmitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle className="w-4 h-4 mr-2" />}
                                 Finalizar Anamnese
