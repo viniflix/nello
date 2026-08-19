@@ -54,7 +54,7 @@ export function patientHubRoute(patient, tab) {
  * URL para listagem de anamneses do paciente
  */
 export function patientAnamnesisListRoute(patient) {
-  return patientRoute(patient, 'anamnesis');
+  return patientRoute(patient, 'anamnese');
 }
 
 /**
@@ -66,13 +66,13 @@ export function patientAnamnesisEditRoute(patient, anamnesisId) {
   const identifier = patient?.slug || patient?.id;
   if (!identifier) return '/nutritionist/patients';
   const anamnesisPart = isUuid(anamnesisId) ? uuidToShortCode(anamnesisId) : anamnesisId;
-  return `/nutritionist/patients/${identifier}/anamnesis/${anamnesisPart}/edit`;
+  return `/nutritionist/patients/${identifier}/anamnese/${anamnesisPart}/edit`;
 }
 
 /**
  * URL para nova anamnese
  */
 export function patientAnamnesisNewRoute(patient, queryParams = '') {
-  const base = patientRoute(patient, 'anamnesis/new');
+  const base = patientRoute(patient, 'anamnese/new');
   return queryParams ? `${base}?${queryParams}` : base;
 }

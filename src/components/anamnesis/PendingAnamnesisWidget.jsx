@@ -69,7 +69,7 @@ export function PendingAnamnesisWidget() {
                                 <div
                                     key={record.id}
                                     className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100 hover:border-slate-200 hover:bg-white transition-all cursor-pointer group"
-                                    onClick={() => navigate(`/nutritionist/patients/${record.patient?.slug || record.patient_id}/anamnesis/${record.id}`)}
+                                    onClick={() => navigate(`/nutritionist/patients/${record.patient?.slug || record.patient_id}/anamnese/${record.id}/edit`)}
                                 >
                                     <div className={`w-2 h-2 rounded-full shrink-0 ${isUrgent ? 'bg-red-400' : 'bg-amber-400'}`} />
 

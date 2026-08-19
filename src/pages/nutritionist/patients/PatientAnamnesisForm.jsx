@@ -34,7 +34,7 @@ export default function PatientAnamnesisForm() {
     const { useRecord, updateRecord, createRecord, usePreviousProfile, generateLink, deleteRecord } = useAnamnesisRunner(patientId);
     const { data: record, isLoading: loadingRecord } = useRecord(anamnesisId);
     const { data: previousProfile, isLoading: loadingPrev } = usePreviousProfile();
-    const { uploadAttachment, deleteAttachment, getSignedUrl } = useAnamnesisAttachments(anamnesisId, patientId);
+    const { uploadAttachment, deleteAttachment, getSignedUrl } = useAnamnesisAttachments(record?.id, patientId);
 
     const [content, setContent] = useState({});
     const [isSaving, setIsSaving] = useState(false);

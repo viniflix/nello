@@ -43,7 +43,8 @@ export function useAnamnesisRunner(patientId) {
                     .from('anamnesis_records')
                     .select('*, template:template_id(title)')
                     .eq('patient_id', patientId)
-                    .order('created_at', { ascending: false });
+                    .order('created_at', { ascending: false })
+                    .limit(50);
                 if (error) throw error;
                 return data || [];
             },
@@ -99,10 +100,9 @@ export function useAnamnesisRunner(patientId) {
                     .eq('patient_id', patientId)
                     .in('status', ['completed', 'validated'])
                     .order('created_at', { ascending: false })
-                    .limit(1)
-                    .maybeSingle();
+                    .limit(1);
                 if (error) throw error;
-                return data?.content || {};
+                return data?.[0]?.content || {};
             },
             enabled: !!patientId,
         });
@@ -245,7 +245,8 @@ export function useAnamnesisRunner(patientId) {
                 .from('anamnesis_records')
                 .delete()
                 .eq('id', recordId)
-                .eq('nutritionist_id', user.id);
+                .eq('nutritionist_id', user.id)
+                .in('status', ['draft', 'awaiting_patient']);
             if (error) throw error;
         },
         onSuccess: () => {
@@ -262,7 +263,7 @@ export function useAnamnesisRunner(patientId) {
             const { data, error } = await supabase.rpc('generate_anamnesis_link', {
                 p_record_id: recordId,
                 p_nutritionist_id: user.id,
-                p_expires_days: expiresDays,
+                p_expires_days: expiresDays
             });
             if (error) throw error;
             return data;

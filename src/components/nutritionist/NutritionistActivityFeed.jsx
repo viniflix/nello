@@ -848,7 +848,7 @@ const getCtaForActivity = (activity) => {
     switch (activity.type) {
         case 'meal': return { label: 'Ver diário', route: `/nutritionist/patients/${activity.patient_id}/food-diary` };
         case 'anthropometry': return { label: 'Ver avaliação', route: `/nutritionist/patients/${activity.patient_id}/anthropometry` };
-        case 'anamnesis': return { label: 'Ver anamnese', route: `/nutritionist/patients/${activity.patient_id}/anamnesis` };
+        case 'anamnesis': return { label: 'Ver anamnese', route: `/nutritionist/patients/${activity.patient_id}/anamnese` };
         case 'meal_plan': return { label: 'Ver plano', route: `/nutritionist/patients/${activity.patient_id}/meal-plan` };
         case 'prescription': return { label: 'Ver cálculo', route: `/nutritionist/patients/${activity.patient_id}/energy-expenditure` };
         case 'energy_expenditure': return { label: 'Ver gastos energéticos', route: `/nutritionist/patients/${activity.patient_id}/energy-expenditure` };

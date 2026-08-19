@@ -13,6 +13,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { patientAnamnesisEditRoute } from '@/lib/utils/patientRoutes';
 import TimelineFeed from '@/features/clinical-records/components/TimelineFeed';
 import { getPatientRecordFoundation } from '@/features/clinical-records/api/record-foundation-queries';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { AnamnesisEvolutionChart } from '@/components/anamnesis/AnamnesisEvolutionChart';
+import { Activity, List } from 'lucide-react';
 
 export default function PatientAnamnesePage() {
   const navigate = useNavigate();
@@ -131,16 +134,37 @@ export default function PatientAnamnesePage() {
         </div>
       </div>
 
-      <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 md:p-6 mb-8">
-        {foundationQuery.error ? (
-          <div role="alert" className="p-4 bg-red-50 border border-red-200 rounded-md text-red-700 text-sm space-y-3">
-            <p>Não foi possível determinar o episódio deste atendimento.</p>
-            <Button variant="outline" size="sm" onClick={() => foundationQuery.refetch()}>Tentar novamente</Button>
+      <Tabs defaultValue="historico" className="w-full">
+        <TabsList className="mb-6 bg-slate-100/50 p-1">
+          <TabsTrigger value="historico" className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm">
+            <List className="w-4 h-4" />
+            Histórico e Prontuário
+          </TabsTrigger>
+          <TabsTrigger value="evolucao" className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm">
+            <Activity className="w-4 h-4" />
+            Evolução de Sintomas
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="historico">
+          <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 md:p-6 mb-8">
+            {foundationQuery.error ? (
+              <div role="alert" className="p-4 bg-red-50 border border-red-200 rounded-md text-red-700 text-sm space-y-3">
+                <p>Não foi possível determinar o episódio deste atendimento.</p>
+                <Button variant="outline" size="sm" onClick={() => foundationQuery.refetch()}>Tentar novamente</Button>
+              </div>
+            ) : (
+              <TimelineFeed patientId={patientId} viewedEpisodeId={viewedEpisodeId} patientSlug={paramValue} />
+            )}
           </div>
-        ) : (
-          <TimelineFeed patientId={patientId} viewedEpisodeId={viewedEpisodeId} patientSlug={paramValue} />
-        )}
-      </div>
+        </TabsContent>
+
+        <TabsContent value="evolucao">
+          <div className="bg-white border border-slate-200 rounded-xl p-4 md:p-6 mb-8 shadow-sm">
+            <AnamnesisEvolutionChart patientId={patientId} />
+          </div>
+        </TabsContent>
+      </Tabs>
 
       <Dialog open={isTemplateModalOpen} onOpenChange={setIsTemplateModalOpen}>
         <DialogContent>

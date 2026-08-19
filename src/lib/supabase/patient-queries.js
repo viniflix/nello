@@ -1153,7 +1153,7 @@ export const getActivityCtaRoute = (activity) => {
     switch (activity.type) {
         case 'meal': return { label: 'Ver diário', route: `/nutritionist/patients/${patientSegment}/food-diary` };
         case 'anthropometry': return { label: 'Ver avaliação', route: `/nutritionist/patients/${patientSegment}/anthropometry` };
-        case 'anamnesis': return { label: 'Ver anamnese', route: `/nutritionist/patients/${patientSegment}/anamnesis` };
+        case 'anamnesis': return { label: 'Ver anamnese', route: `/nutritionist/patients/${patientSegment}/anamnese` };
         case 'meal_plan': return { label: 'Ver plano', route: `/nutritionist/patients/${patientSegment}/meal-plan` };
         case 'prescription': return { label: 'Ver cálculo', route: `/nutritionist/patients/${patientSegment}/energy-expenditure` };
         case 'energy_expenditure': return { label: 'Ver gastos energéticos', route: `/nutritionist/patients/${patientSegment}/energy-expenditure` };

@@ -13,7 +13,6 @@ const CalculationInfoPage = route('calculations', () => import('@/pages/nutritio
 const PatientsPage = route('patients', () => import('@/pages/nutritionist/patients/PatientsPage.jsx'));
 const PatientHubPage = route('patient-hub', () => import('@/pages/nutritionist/patients/PatientHubPage.jsx'));
 const PatientAnamnesePage = route('anamnese', () => import('@/pages/nutritionist/patients/PatientAnamnesePage.jsx'));
-const PatientAnamnesisList = route('anamnesis-list', () => import('@/pages/nutritionist/patients/PatientAnamnesisList.jsx'));
 const PatientAnamnesisForm = route('anamnesis-form', () => import('@/pages/nutritionist/patients/PatientAnamnesisForm.jsx'));
 const AnthropometryPage = route('anthropometry', () => import('@/pages/nutritionist/patients/AnthropometryPage.jsx'));
 const MealPlanPage = route('meal-plan', () => import('@/pages/nutritionist/patients/MealPlanPage.jsx'));
@@ -54,9 +53,8 @@ export const nutritionistRoutes = (
         <Route path="/nutritionist/patients" element={<PatientsPage />} />
         <Route path="/nutritionist/patients/:patientId/hub" element={<PatientHubPage />} />
         <Route path="/nutritionist/patients/:patientId/anamnese" element={<PatientAnamnesePage />} />
-        <Route path="/nutritionist/patients/:patientId/anamnesis" element={<PatientAnamnesisList />} />
-        <Route path="/nutritionist/patients/:patientId/anamnesis/new" element={<PatientAnamnesisForm />} />
-        <Route path="/nutritionist/patients/:patientId/anamnesis/:anamnesisId/edit" element={<PatientAnamnesisForm />} />
+        <Route path="/nutritionist/patients/:patientId/anamnese/new" element={<PatientAnamnesisForm />} />
+        <Route path="/nutritionist/patients/:patientId/anamnese/:anamnesisId/edit" element={<PatientAnamnesisForm />} />
         <Route path="/nutritionist/patients/:patientId/anthropometry" element={<AnthropometryPage />} />
         <Route path="/nutritionist/patients/:patientId/meal-plan" element={<MealPlanPage />} />
         <Route path="/nutritionist/patients/:patientId/meal-plan/:planId/summary" element={<MealPlanSummaryPage />} />
