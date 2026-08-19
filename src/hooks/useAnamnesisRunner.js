@@ -118,7 +118,7 @@ export function useAnamnesisRunner(patientId) {
                     .from('anamnesis_records')
                     .select('*, patient:patient_id(name, slug), template:template_id(title)')
                     .eq('nutritionist_id', user.id)
-                    .eq('status', 'awaiting_patient')
+                    .eq('status', 'pending_patient')
                     .not('public_access_token', 'is', null)
                     .lt('created_at', cutoff)
                     .order('created_at', { ascending: false })
@@ -190,7 +190,7 @@ export function useAnamnesisRunner(patientId) {
             queryClient.invalidateQueries(['anamnesis_record', data.id]);
 
             // Ao concluir: extrair clinical_flag_keys e salvar no perfil
-            if (data.status === 'completed') {
+            if (data.status === 'validated' || data.status === 'submitted') {
                 // Ler o template (snapshot ou live) para encontrar campos com clinical_flag_key
                 const sections = data.template_snapshot?.sections ||
                     (await supabase.from('anamnesis_templates').select('sections').eq('id', data.template_id).single()).data?.sections ||
@@ -246,7 +246,7 @@ export function useAnamnesisRunner(patientId) {
                 .delete()
                 .eq('id', recordId)
                 .eq('nutritionist_id', user.id)
-                .in('status', ['draft', 'awaiting_patient']);
+                .in('status', ['draft', 'pending_patient']);
             if (error) throw error;
         },
         onSuccess: () => {

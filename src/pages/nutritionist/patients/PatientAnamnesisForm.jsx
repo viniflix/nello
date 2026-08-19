@@ -83,7 +83,7 @@ export default function PatientAnamnesisForm() {
 
     // Auto-save draft every 10s if changed
     useEffect(() => {
-        if (!record || record.status === 'completed' || record.status === 'validated') return;
+        if (!record || record.status === 'validated' || record.status === 'submitted') return;
         const saveTimer = setTimeout(() => {
             if (JSON.stringify(content) !== JSON.stringify(record.content)) {
                 handleSave('draft', true);
@@ -129,13 +129,16 @@ export default function PatientAnamnesisForm() {
     };
 
     const handleSave = async (status = 'draft', isAutoSave = false) => {
-        if (status === 'completed' && !validateFields()) return;
-        const isSubmit = status === 'completed';
+        if (status === 'validated' && !validateFields()) return;
+        const isSubmit = status === 'validated';
         if (isSubmit) setIsSubmitting(true);
         else if (!isAutoSave) setIsSaving(true);
         try {
             await updateRecord.mutateAsync({ recordId: record.id, content, status });
             if (isSubmit) navigate(patientAnamnesisListRoute({ id: patientId, slug: paramValue }));
+        } catch (err) {
+            console.error('Error saving anamnesis:', err);
+            toast({ title: 'Erro ao salvar', description: toPortugueseError(err.message), variant: 'destructive' });
         } finally {
             if (isSubmit) setIsSubmitting(false);
             else if (!isAutoSave) setIsSaving(false);
@@ -311,8 +314,8 @@ export default function PatientAnamnesisForm() {
                             Baixar PDF
                         </Button>
                     )}
-                    {/* Gerar/Reenviar Link (fichas draft ou awaiting_patient) */}
-                    {(record.status === 'draft' || record.status === 'awaiting_patient') && (
+                    {/* Gerar/Reenviar Link (fichas draft ou pending_patient) */}
+                    {(record.status === 'draft' || record.status === 'pending_patient') && (
                         <Button
                             variant="outline"
                             onClick={() => generateLink.mutate({ recordId: record.id })}
@@ -323,7 +326,7 @@ export default function PatientAnamnesisForm() {
                                 ? <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                                 : <Link2 className="w-4 h-4 mr-2" />
                             }
-                            {record.status === 'awaiting_patient' ? 'Reenviar Link' : 'Gerar Link para Paciente'}
+                            {record.status === 'pending_patient' ? 'Reenviar Link' : 'Gerar Link para Paciente'}
                         </Button>
                     )}
                     {!isReadOnly && (
@@ -354,7 +357,7 @@ export default function PatientAnamnesisForm() {
                                     </AlertDialogFooter>
                                 </AlertDialogContent>
                             </AlertDialog>
-                            <Button onClick={() => handleSave('completed')} className="bg-[#5f6f52] hover:bg-[#4a5740]" disabled={isSaving || isSubmitting}>
+                            <Button onClick={() => handleSave('validated')} className="bg-[#5f6f52] hover:bg-[#4a5740]" disabled={isSaving || isSubmitting}>
                                 {isSubmitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle className="w-4 h-4 mr-2" />}
                                 Finalizar Anamnese
                             </Button>

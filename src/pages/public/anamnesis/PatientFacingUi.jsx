@@ -108,7 +108,7 @@ export default function PatientFacingUi() {
                 setContent(data.content || {});
                 setLgpdConsented(data.lgpd_consented || false);
 
-                if (data.status === 'completed' || data.status === 'validated') {
+                if (data.status === 'submitted' || data.status === 'validated') {
                     setIsCompleted(true);
                 }
             } catch (err) {
@@ -186,14 +186,14 @@ export default function PatientFacingUi() {
     };
 
     const handleSave = async (status = 'draft', isAutoSave = false) => {
-        if (status === 'completed' && !validateFields()) return;
-        if (status === 'completed') setIsSubmitting(true);
+        if (status === 'submitted' && !validateFields()) return;
+        if (status === 'submitted') setIsSubmitting(true);
         else if (!isAutoSave) setIsSaving(true);
 
         try {
             // Sprint J/I: Automação das Flags Clínicas (Mobile)
             let p_clinical_flags = null;
-            if (status === 'completed' && record?.template?.sections) {
+            if (status === 'submitted' && record?.template?.sections) {
                 const flagUpdates = {};
                 record.template.sections.forEach(section => {
                     section.fields?.forEach(field => {
@@ -230,7 +230,7 @@ export default function PatientFacingUi() {
             // Atualizar estado local para evitar loop de autosave
             setRecord((prev) => ({ ...prev, content, status }));
 
-            if (status === 'completed') {
+            if (status === 'submitted') {
                 setIsCompleted(true);
                 toast({
                     title: 'Questionário enviado!',
@@ -249,7 +249,7 @@ export default function PatientFacingUi() {
                 }
             }
         } finally {
-            if (status === 'completed') setIsSubmitting(false);
+            if (status === 'submitted') setIsSubmitting(false);
             else if (!isAutoSave) setIsSaving(false);
         }
     };
@@ -437,7 +437,7 @@ export default function PatientFacingUi() {
                     lgpdConsented={lgpdConsented}
                     setLgpdConsented={setLgpdConsented}
                     onSaveDraft={() => handleSave('draft')}
-                    onSubmit={() => handleSave('completed')}
+                    onSubmit={() => handleSave('submitted')}
                     isSaving={isSaving}
                     isSubmitting={isSubmitting}
                     nutritionistName={record.nutritionist_name}
