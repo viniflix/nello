@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Plus } from 'lucide-react';
+import { ArrowLeft, Plus, FileText, Activity, List } from 'lucide-react';
 import { useResolvedPatientId } from '@/hooks/useResolvedPatientId';
 import { useAnamnesisRunner } from '@/hooks/useAnamnesisRunner';
 import { useAnamnesisTemplates } from '@/hooks/useAnamnesisTemplates';
@@ -106,31 +106,48 @@ export default function PatientAnamnesePage() {
   }
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="sm" onClick={() => navigate(`/nutritionist/patients/${paramValue}/hub`)}>
-            <ArrowLeft className="w-4 h-4 mr-2" />Voltar ao Hub
+    <div className="container mx-auto p-4 sm:p-6 max-w-7xl space-y-6">
+      {/* Header */}
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate(`/nutritionist/patients/${paramValue}/hub`)}
+            className="gap-2 -ml-2 shrink-0 text-[#5f6f52] hover:text-[#5f6f52] hover:bg-[#5f6f52]/10"
+          >
+            <ArrowLeft className="w-4 h-4 shrink-0" />
+            Voltar
           </Button>
-          <div>
-            <h2 className="text-2xl font-bold text-slate-800">Prontuário & Histórico</h2>
-            <p className="text-sm text-slate-500">Linha do tempo do episódio de atendimento selecionado.</p>
+          <div className="text-right flex-shrink-0">
+            <Button
+              onClick={() => setIsTemplateModalOpen(true)}
+              disabled={!canWriteDisplayedEpisode}
+              aria-describedby={!canWriteDisplayedEpisode ? 'anamnesis-write-restriction' : undefined}
+              className="gap-2 bg-[#5f6f52] hover:bg-[#4a5740]"
+            >
+              <Plus className="w-4 h-4" />Nova Anamnese
+            </Button>
           </div>
         </div>
-        <div className="text-right">
-          <Button
-            onClick={() => setIsTemplateModalOpen(true)}
-            disabled={!canWriteDisplayedEpisode}
-            aria-describedby={!canWriteDisplayedEpisode ? 'anamnesis-write-restriction' : undefined}
-            className="gap-2 bg-[#5f6f52] hover:bg-[#4a5740]"
-          >
-            <Plus className="w-4 h-4" />Nova Anamnese
-          </Button>
-          {!canWriteDisplayedEpisode && (
-            <p id="anamnesis-write-restriction" className="mt-1 max-w-56 text-xs text-slate-500">
-              Este episódio está disponível somente para consulta.
-            </p>
-          )}
+
+        <div className="flex-1 min-w-0">
+          <div className="flex justify-between items-start">
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-foreground flex items-center gap-2">
+                <FileText className="w-6 h-6 sm:w-8 sm:h-8 text-[#5f6f52]" />
+                <span className="break-words">Prontuário & Histórico</span>
+              </h1>
+              <p className="text-sm text-muted-foreground mt-2">
+                Linha do tempo do episódio de atendimento selecionado.
+              </p>
+              {!canWriteDisplayedEpisode && (
+                <p id="anamnesis-write-restriction" className="mt-2 text-xs text-slate-500 bg-slate-100 p-2 rounded-md inline-block">
+                  Este episódio está disponível somente para consulta.
+                </p>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
