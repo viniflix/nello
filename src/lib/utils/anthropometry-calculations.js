@@ -9,27 +9,44 @@
  */
 
 /**
+ * Verifica de forma robusta se o paciente é do sexo masculino
+ * @param {string} genderStr - String do gênero
+ * @returns {boolean}
+ */
+export function isMalePatient(genderStr) {
+  if (!genderStr) return false;
+  return /^(male|masculino|m|h|homem|man)$/i.test(String(genderStr).trim());
+}
+
+/**
  * Calcula densidade corporal usando Pollock 3 dobras
- * @param {number} triceps - Dobra tríceps (mm)
- * @param {number} subscapular - Dobra subescapular (mm)
- * @param {number} suprailiac - Dobra suprailíaca (mm)
+ * @param {object} skinfolds - Objeto com as dobras cutâneas (peito, abdominal, coxa, triceps, suprailiaca)
  * @param {number} age - Idade (anos)
  * @param {boolean} isMale - Gênero (true = masculino)
  * @returns {number|null} Densidade corporal (g/cm³)
  */
-export function calculateBodyDensityPollock3(triceps, subscapular, suprailiac, age, isMale) {
-  const t = parseFloat(triceps);
-  const s = parseFloat(subscapular);
-  const si = parseFloat(suprailiac);
+export function calculateBodyDensityPollock3(skinfolds, age, isMale) {
   const a = parseFloat(age);
-  if (isNaN(t) || isNaN(s) || isNaN(si) || isNaN(a)) return null;
-
-  const sum = t + s + si;
+  if (isNaN(a)) return null;
 
   if (isMale) {
-    return 1.10938 - (0.0008267 * sum) + (0.0000016 * sum * sum) - (0.0002574 * age);
+    // Homens: Peitoral, Abdominal, Coxa
+    const c = parseFloat(skinfolds.peito);
+    const ab = parseFloat(skinfolds.abdominal);
+    const th = parseFloat(skinfolds.coxa);
+    if (isNaN(c) || isNaN(ab) || isNaN(th)) return null;
+
+    const sum = c + ab + th;
+    return 1.10938 - (0.0008267 * sum) + (0.0000016 * sum * sum) - (0.0002574 * a);
   } else {
-    return 1.0994921 - (0.0009929 * sum) + (0.0000023 * sum * sum) - (0.0001392 * age);
+    // Mulheres: Tríceps, Suprailíaca, Coxa
+    const t = parseFloat(skinfolds.triceps);
+    const si = parseFloat(skinfolds.suprailiaca);
+    const th = parseFloat(skinfolds.coxa);
+    if (isNaN(t) || isNaN(si) || isNaN(th)) return null;
+
+    const sum = t + si + th;
+    return 1.0994921 - (0.0009929 * sum) + (0.0000023 * sum * sum) - (0.0001392 * a);
   }
 }
 
@@ -105,8 +122,7 @@ export function calculateBodyDensity(skinfolds, age, isMale, protocol = 'pollock
   if (!age) return null;
 
   if (protocol === 'pollock3') {
-    const { triceps, subescapular, suprailiaca } = skinfolds;
-    return calculateBodyDensityPollock3(triceps, subescapular, suprailiaca, age, isMale);
+    return calculateBodyDensityPollock3(skinfolds, age, isMale);
   } else if (protocol === 'pollock7') {
     const { peito, axilar, triceps, subescapular, abdominal, suprailiaca, coxa } = skinfolds;
     return calculateBodyDensityPollock7(peito, axilar, triceps, subescapular, abdominal, suprailiaca, coxa, age, isMale);
@@ -126,7 +142,14 @@ export function calculateBodyDensity(skinfolds, age, isMale, protocol = 'pollock
 export function calculateBodyFatPercent(bodyDensity) {
   const bd = parseFloat(bodyDensity);
   if (isNaN(bd) || bd <= 0) return null;
-  return ((4.95 / bd) - 4.5) * 100;
+  
+  let bf = ((4.95 / bd) - 4.5) * 100;
+  
+  // Limitar aos bounds aceitáveis para evitar falhas silenciosas
+  if (bf < 2) bf = 2;
+  if (bf > 70) bf = 70;
+  
+  return bf;
 }
 
 /**

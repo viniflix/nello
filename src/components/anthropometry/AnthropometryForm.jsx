@@ -17,7 +17,10 @@ import { differenceInYears } from 'date-fns';
 import {
   calculateFrameSize,
   calculateSomatotype,
-  getSomatotypeDescription
+  getSomatotypeDescription,
+  calculateBodyDensity,
+  calculateBodyFatPercent,
+  isMalePatient
 } from '@/lib/utils/anthropometry-calculations';
 import { classifyBMI, getBMICuts, calculateBMI } from '@/lib/utils/bmi-classification';
 
@@ -97,6 +100,7 @@ const AnthropometryForm = ({
     const [compositionResults, setCompositionResults] = useState(null);
     const [frameSize, setFrameSize] = useState(null);
     const [somatotype, setSomatotype] = useState(null);
+    const [manualAge, setManualAge] = useState('');
 
     // Buscar último registro antropométrico e dados da anamnese para preencher formulário
     useEffect(() => {
@@ -178,9 +182,15 @@ const AnthropometryForm = ({
     useEffect(() => {
         const weight = parseFloat(formData.weight);
         const height = parseFloat(formData.height);
-        const age = patientBirthDate ? differenceInYears(new Date(), new Date(patientBirthDate)) : null;
-        const gender = patientGender?.toLowerCase() || '';
-        const isMale = /^(male|masculino|m)$/i.test(String(gender || '').trim());
+        
+        let age = null;
+        if (manualAge) {
+            age = parseFloat(manualAge);
+        } else if (patientBirthDate) {
+            age = differenceInYears(new Date(), new Date(patientBirthDate));
+        }
+
+        const isMale = isMalePatient(patientGender);
 
         if (!weight || !height) {
             setCompositionResults(null);
@@ -197,70 +207,15 @@ const AnthropometryForm = ({
         if (protocol === 'bioimpedance' && formData.bioimpedance?.percent_gordura) {
             // Usar bioimpedância diretamente
             bodyFatPercent = parseFloat(formData.bioimpedance.percent_gordura);
-        } else if (protocol === 'pollock3') {
-            // Pollock 3 dobras: Tríceps, Subescapular, Suprailíaca
-            const triceps = parseFloat(formData.skinfolds.triceps);
-            const subscapular = parseFloat(formData.skinfolds.subescapular);
-            const suprailiac = parseFloat(formData.skinfolds.suprailiaca);
-
-            if (triceps && subscapular && suprailiac && age) {
-                const sum = triceps + subscapular + suprailiac;
-                const logSum = Math.log10(sum);
-
-                // Jackson & Pollock (1985) - 3 dobras
-                if (isMale) {
-                    bodyDensity = 1.10938 - (0.0008267 * sum) + (0.0000016 * sum * sum) - (0.0002574 * age);
-                } else {
-                    bodyDensity = 1.0994921 - (0.0009929 * sum) + (0.0000023 * sum * sum) - (0.0001392 * age);
-                }
+        } else if (age) {
+            bodyDensity = calculateBodyDensity(formData.skinfolds, age, isMale, protocol);
+            if (bodyDensity) {
+                bodyFatPercent = calculateBodyFatPercent(bodyDensity);
             }
-        } else if (protocol === 'pollock7') {
-            // Pollock 7 dobras: Peito, Axilar, Tríceps, Subescapular, Abdominal, Suprailíaca, Coxa
-            const chest = parseFloat(formData.skinfolds.peito);
-            const axillary = parseFloat(formData.skinfolds.axilar);
-            const triceps = parseFloat(formData.skinfolds.triceps);
-            const subscapular = parseFloat(formData.skinfolds.subescapular);
-            const abdominal = parseFloat(formData.skinfolds.abdominal);
-            const suprailiac = parseFloat(formData.skinfolds.suprailiaca);
-            const thigh = parseFloat(formData.skinfolds.coxa);
-
-            if (chest && axillary && triceps && subscapular && abdominal && suprailiac && thigh && age) {
-                const sum = chest + axillary + triceps + subscapular + abdominal + suprailiac + thigh;
-
-                // Jackson & Pollock (1985) - 7 dobras
-                if (isMale) {
-                    bodyDensity = 1.112 - (0.00043499 * sum) + (0.00000055 * sum * sum) - (0.00028826 * age);
-                } else {
-                    bodyDensity = 1.097 - (0.00046971 * sum) + (0.00000056 * sum * sum) - (0.00012828 * age);
-                }
-            }
-        } else if (protocol === 'weltman') {
-            // Weltman (1988) - 4 dobras: Tríceps, Bíceps, Subescapular, Suprailíaca
-            const triceps = parseFloat(formData.skinfolds.triceps);
-            const biceps = parseFloat(formData.skinfolds.biceps);
-            const subscapular = parseFloat(formData.skinfolds.subescapular);
-            const suprailiac = parseFloat(formData.skinfolds.suprailiaca);
-
-            if (triceps && biceps && subscapular && suprailiac && age) {
-                const sum = triceps + biceps + subscapular + suprailiac;
-
-                // Weltman et al. (1988)
-                const logSum = Math.log10(sum);
-                if (isMale) {
-                    bodyDensity = 1.1714 - (0.0671 * logSum);
-                } else {
-                    bodyDensity = 1.1665 - (0.0706 * logSum);
-                }
-            }
-        }
-
-        // Converter densidade corporal para % de gordura (Siri equation)
-        if (bodyDensity && bodyDensity > 0) {
-            bodyFatPercent = ((4.95 / bodyDensity) - 4.5) * 100;
         }
 
         // Calcular massa gorda e massa magra
-        if (bodyFatPercent && bodyFatPercent > 0 && bodyFatPercent < 100) {
+        if (bodyFatPercent !== null) {
             fatMass = (weight * bodyFatPercent) / 100;
             leanMass = weight - fatMass;
 
@@ -919,6 +874,29 @@ const AnthropometryForm = ({
                                     {protocol === 'bioimpedance' && 'Use os valores de bioimpedância diretamente'}
                                 </p>
                             </div>
+
+                            {/* Alerta e Input para Idade caso não exista Data de Nascimento */}
+                            {!patientBirthDate && protocol !== 'bioimpedance' && (
+                                <Alert variant="warning" className="bg-yellow-500/10 text-yellow-500 border-yellow-500/20">
+                                    <AlertCircle className="h-4 w-4" />
+                                    <AlertDescription>
+                                        A data de nascimento não foi encontrada no cadastro. Por favor, insira a idade do paciente para o cálculo.
+                                        <div className="mt-3 max-w-[200px]">
+                                            <Label htmlFor="manualAge">Idade (anos)</Label>
+                                            <Input
+                                                id="manualAge"
+                                                name="manualAge"
+                                                type="number"
+                                                min="0"
+                                                value={manualAge}
+                                                onChange={(e) => setManualAge(e.target.value)}
+                                                className="mt-1"
+                                                placeholder="Ex: 30"
+                                            />
+                                        </div>
+                                    </AlertDescription>
+                                </Alert>
+                            )}
 
                             {/* Inputs Dinâmicos baseados no Protocolo */}
                             {protocol !== 'bioimpedance' && (
