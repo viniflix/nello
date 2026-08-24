@@ -17,7 +17,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { isUuid } from '@/lib/utils/patientRoutes';
 import PatientEditProfileModal from '@/components/patient-hub/PatientEditProfileModal';
 import { duplicatePatientTemporarily } from '@/utils/tempPatientCloner';
-import { useToast } from '@/hooks/useToast';
+import { useToast } from '@/hooks/use-toast';
 
 const TabContentFeed = lazy(() => import('@/components/patient-hub/tabs/TabContentFeed'));
 const TabContentClinical = lazy(() => import('@/components/patient-hub/tabs/TabContentClinical'));
@@ -219,6 +219,7 @@ const PatientHubPage = () => {
                                 Hub do Paciente
                             </p>
                         </div>
+                    </div>
                     <div className="flex items-center gap-2">
                         <Button
                             variant="outline"
