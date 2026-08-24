@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { CheckCircle2, Loader2, XCircle, AlertCircle, Clock } from 'lucide-react';
@@ -16,6 +17,13 @@ export const DuplicatePatientModal = ({ isOpen, onClose, patient }) => {
     const [step, setStep] = useState('selection'); // selection | cloning | success | error
     const [newPatientId, setNewPatientId] = useState(null);
     const [progressLogs, setProgressLogs] = useState([]);
+    const [cloneName, setCloneName] = React.useState('');
+
+    React.useEffect(() => {
+        if (isOpen && patient?.name) {
+            setCloneName(`(Cópia) ${patient.name}`);
+        }
+    }, [isOpen, patient]);
     
     const [options, setOptions] = useState({
         anthropometry: true,
@@ -31,13 +39,15 @@ export const DuplicatePatientModal = ({ isOpen, onClose, patient }) => {
     };
 
     const handleStartCloning = async () => {
+        if (!cloneName.trim()) return;
+
         setStep('cloning');
         setProgressLogs([]);
         
         const result = await duplicatePatientTemporarily(
             patient.id, 
             user.id, 
-            options, 
+            { ...options, customName: cloneName }, 
             (log) => {
                 setProgressLogs(prev => [...prev, log]);
             }
@@ -72,6 +82,16 @@ export const DuplicatePatientModal = ({ isOpen, onClose, patient }) => {
             </DialogHeader>
 
             <div className="py-4 space-y-4">
+                <div className="space-y-2 mb-4">
+                    <Label htmlFor="clone-name">Nome da Cópia</Label>
+                    <Input 
+                        id="clone-name" 
+                        value={cloneName} 
+                        onChange={(e) => setCloneName(e.target.value)} 
+                        placeholder="Ex: (Cópia) Nome" 
+                    />
+                </div>
+
                 <div className="flex items-center space-x-2">
                     <Checkbox id="opt-profile" checked disabled />
                     <Label htmlFor="opt-profile" className="opacity-70">Perfil e Dados Pessoais (Obrigatório)</Label>
@@ -104,7 +124,11 @@ export const DuplicatePatientModal = ({ isOpen, onClose, patient }) => {
 
             <DialogFooter>
                 <Button variant="outline" onClick={handleClose}>Cancelar</Button>
-                <Button onClick={handleStartCloning} className="bg-yellow-600 hover:bg-yellow-700 text-white">
+                <Button 
+                    onClick={handleStartCloning} 
+                    className="bg-yellow-600 hover:bg-yellow-700 text-white"
+                    disabled={!cloneName.trim()}
+                >
                     Iniciar Duplicação
                 </Button>
             </DialogFooter>

@@ -13,7 +13,7 @@ export const duplicatePatientTemporarily = async (originalPatientId, nutritionis
         const { data: originalProfile, error: profileError } = await getPatientProfile(originalPatientId, nutritionistId);
         if (profileError || !originalProfile) throw new Error('Não foi possível carregar o perfil original.');
 
-        const cloneName = `(Cópia) ${originalProfile.name || 'Paciente'}`;
+        const cloneName = options.customName?.trim() || `(Cópia) ${originalProfile.name || 'Paciente'}`;
         
         reportProgress('Criando novo perfil de paciente...', 'loading');
         const body = {
