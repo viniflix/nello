@@ -48,7 +48,7 @@ import { INJURY_FACTORS, getInjuryFactorValue } from '@/lib/constants/injury-fac
 
 const TMB_PROTOCOLS = [
   { id: 'mifflin', label: 'Mifflin-St Jeor' },
-  { id: 'harris', label: 'Harris-Benedict (1984)' },
+  { id: 'harris', label: 'Harris-Benedict (1919)' },
   { id: 'fao_1985', label: 'FAO/OMS 1985' },
   { id: 'eer_iom', label: 'EER/IOM (2005)' },
   { id: 'cunningham', label: 'Cunningham (Massa Magra)' },

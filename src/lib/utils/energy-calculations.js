@@ -12,8 +12,8 @@
 // ============================================================================
 
 /**
- * 1. Harris-Benedict (Original 1919 - Revisada 1984)
- * Bom para população geral, tende a superestimar levemente.
+ * 1. Harris-Benedict (Original 1919)
+ * Padrão clássico, muito utilizado no Brasil.
  * 
  * @param {number} weight - Peso em kg
  * @param {number} height - Altura em cm
@@ -28,8 +28,8 @@ export const calculateHarrisBenedict = (weight, height, age, gender) => {
   if (isNaN(w) || isNaN(h) || isNaN(a) || w <= 0 || h <= 0 || a <= 0) return null;
   const isMale = /^(male|masculino|m)$/i.test(String(gender || '').trim());
   return isMale
-    ? 88.362 + (13.397 * w) + (4.799 * h) - (5.677 * a)
-    : 447.593 + (9.247 * w) + (3.098 * h) - (4.330 * a);
+    ? 66.5 + (13.75 * w) + (5.003 * h) - (6.75 * a)
+    : 655.1 + (9.563 * w) + (1.85 * h) - (4.676 * a);
 };
 
 /**
@@ -437,7 +437,7 @@ export const calculateAllProtocols = (data) => {
   const protocols = [
     {
       id: 'harris',
-      name: 'Harris-Benedict (1984)',
+      name: 'Harris-Benedict (1919)',
       description: 'Clássico. Bom para população geral.',
       bmr: calculateHarrisBenedict(weight, height, age, gender),
       category: 'general'
@@ -537,7 +537,7 @@ export const getProtocolInfo = (protocolId) => {
   const protocols = {
     harris: {
       id: 'harris',
-      name: 'Harris-Benedict (1984)',
+      name: 'Harris-Benedict (1919)',
       description: 'Clássico. Bom para população geral.',
       category: 'general',
       requiresLeanMass: false
@@ -624,10 +624,10 @@ export const getFormulaBreakdown = (method, data) => {
     case 'harris': {
       if (!weight || !height || !age || !gender) return null;
 
-      const constant = isMale ? 88.362 : 447.593;
-      const weightCoeff = isMale ? 13.397 : 9.247;
-      const heightCoeff = isMale ? 4.799 : 3.098;
-      const ageCoeff = isMale ? 5.677 : 4.330;
+      const constant = isMale ? 66.5 : 655.1;
+      const weightCoeff = isMale ? 13.75 : 9.563;
+      const heightCoeff = isMale ? 5.003 : 1.850;
+      const ageCoeff = isMale ? 6.75 : 4.676;
 
       const weightTerm = weightCoeff * weight;
       const heightTerm = heightCoeff * height;
@@ -638,8 +638,8 @@ export const getFormulaBreakdown = (method, data) => {
       return {
         formulaName: `Harris-Benedict (${isMale ? 'Masculino' : 'Feminino'})`,
         equationStr: isMale
-          ? '88.362 + (13.397 × P) + (4.799 × A) - (5.677 × I)'
-          : '447.593 + (9.247 × P) + (3.098 × A) - (4.330 × I)',
+          ? '66.5 + (13.75 × P) + (5.003 × A) - (6.75 × I)'
+          : '655.1 + (9.563 × P) + (1.850 × A) - (4.676 × I)',
         appliedStr: `${constant.toFixed(3)} + (${weightCoeff.toFixed(3)} × ${weight}) + (${heightCoeff.toFixed(3)} × ${height}) - (${ageCoeff.toFixed(3)} × ${age})`,
         steps: [
           { label: 'Constante', value: constant.toFixed(3) },
