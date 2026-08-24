@@ -1,6 +1,6 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, RefreshCw, AlertCircle, Activity, Stethoscope, User, Utensils, Heart, CheckSquare, Copy, ChevronDown, ChevronUp, Check, Link as LinkIcon, Hash } from 'lucide-react';
+import { ArrowLeft, RefreshCw, AlertCircle, Activity, Stethoscope, User, Utensils, Heart, CheckSquare, Copy, ChevronDown, ChevronUp, Check, Link as LinkIcon, Hash, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
@@ -16,6 +16,8 @@ import { PatientProfileCardSkeleton, SimpleListSkeleton } from '@/components/ui/
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { isUuid } from '@/lib/utils/patientRoutes';
 import PatientEditProfileModal from '@/components/patient-hub/PatientEditProfileModal';
+import { duplicatePatientTemporarily } from '@/utils/tempPatientCloner';
+import { useToast } from '@/hooks/useToast';
 
 const TabContentFeed = lazy(() => import('@/components/patient-hub/tabs/TabContentFeed'));
 const TabContentClinical = lazy(() => import('@/components/patient-hub/tabs/TabContentClinical'));
@@ -42,6 +44,8 @@ const PatientHubPage = () => {
     const [isEditProfileModalOpen, setIsEditProfileModalOpen] = useState(false);
     const [isInviteExpanded, setIsInviteExpanded] = useState(false);
     const [copyState, setCopyState] = useState('idle'); // idle | copied
+    const [isCloning, setIsCloning] = useState(false);
+    const { toast } = useToast();
 
     // Sincronizar tab quando URL mudar (ex: navegação programática com ?tab=)
     useEffect(() => {
@@ -97,6 +101,25 @@ const PatientHubPage = () => {
 
     const handleLoadMoreActivities = () => {
         loadActivities(activities.length + 20);
+    };
+
+    const handleDuplicatePatient = async () => {
+        setIsCloning(true);
+        toast({ title: "Clonando paciente...", description: "Isso pode levar alguns segundos.", duration: 3000 });
+        
+        try {
+            const result = await duplicatePatientTemporarily(patientId, user.id);
+            if (result.success) {
+                toast({ title: "Sucesso!", description: "Paciente duplicado com sucesso.", variant: "success" });
+                navigate(`/nutritionist/patients/${result.newPatientId}/hub`);
+            } else {
+                toast({ title: "Erro", description: "Falha ao duplicar o paciente.", variant: "destructive" });
+            }
+        } catch (err) {
+            toast({ title: "Erro", description: "Ocorreu um erro ao duplicar.", variant: "destructive" });
+        } finally {
+            setIsCloning(false);
+        }
     };
 
     // Manter ?tab= na URL para shareability e back/forward - não limpar
@@ -196,16 +219,27 @@ const PatientHubPage = () => {
                                 Hub do Paciente
                             </p>
                         </div>
+                    <div className="flex items-center gap-2">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleDuplicatePatient}
+                            disabled={isCloning}
+                            className="gap-2 bg-yellow-50 hover:bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-400 dark:border-yellow-800"
+                        >
+                            <Clock className="w-4 h-4" />
+                            <span className="hidden sm:inline">Duplicar Paciente</span>
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={refresh}
+                            className="gap-2"
+                        >
+                            <RefreshCw className="w-4 h-4" />
+                            <span className="hidden sm:inline">Atualizar</span>
+                        </Button>
                     </div>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={refresh}
-                        className="gap-2"
-                    >
-                        <RefreshCw className="w-4 h-4" />
-                        <span className="hidden sm:inline">Atualizar</span>
-                    </Button>
                 </div>
             </header>
 
