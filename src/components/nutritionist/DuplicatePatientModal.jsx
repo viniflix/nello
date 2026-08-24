@@ -16,14 +16,34 @@ export const DuplicatePatientModal = ({ isOpen, onClose, patient }) => {
 
     const [step, setStep] = useState('selection'); // selection | cloning | success | error
     const [newPatientId, setNewPatientId] = useState(null);
-    const [progressLogs, setProgressLogs] = useState([]);
-    const [cloneName, setCloneName] = React.useState('');
+    const [numberOfCopies, setNumberOfCopies] = useState(1);
+    const [cloneNames, setCloneNames] = useState(['']); 
+    const [progressLogs, setProgressLogs] = useState({}); // { 0: [], 1: [] }
+    const [cloneStatuses, setCloneStatuses] = useState({}); // { 0: 'pending', 1: 'loading', 2: 'success' }
+    const [currentCloneIndex, setCurrentCloneIndex] = useState(-1);
 
     React.useEffect(() => {
         if (isOpen && patient?.name) {
-            setCloneName(`(Cópia) ${patient.name}`);
+            setCloneNames(prev => {
+                if (prev[0] === '' && prev.length === 1) {
+                    return [`(Cópia) ${patient.name}`];
+                }
+                return prev;
+            });
         }
     }, [isOpen, patient]);
+
+    // Prevenir recarregamento acidental da página durante a cópia
+    React.useEffect(() => {
+        const handleBeforeUnload = (e) => {
+            if (step === 'cloning') {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        };
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    }, [step]);
     
     const [options, setOptions] = useState({
         anthropometry: true,
@@ -38,23 +58,65 @@ export const DuplicatePatientModal = ({ isOpen, onClose, patient }) => {
         setOptions(prev => ({ ...prev, [key]: checked }));
     };
 
+    const handleNumberOfCopiesChange = (val) => {
+        const num = Math.min(10, Math.max(1, parseInt(val) || 1));
+        setNumberOfCopies(num);
+        
+        setCloneNames(prev => {
+            const newNames = [...prev];
+            for (let i = 0; i < num; i++) {
+                if (!newNames[i]) {
+                    newNames[i] = num === 1 ? `(Cópia) ${patient?.name || ''}` : `(Cópia ${i + 1}) ${patient?.name || ''}`;
+                }
+            }
+            if (prev.length === 1 && num > 1 && prev[0] === `(Cópia) ${patient?.name || ''}`) {
+                newNames[0] = `(Cópia 1) ${patient?.name || ''}`;
+            } else if (prev.length > 1 && num === 1 && prev[0] === `(Cópia 1) ${patient?.name || ''}`) {
+                newNames[0] = `(Cópia) ${patient?.name || ''}`;
+            }
+            return newNames.slice(0, num);
+        });
+    };
+
     const handleStartCloning = async () => {
-        if (!cloneName.trim()) return;
+        if (cloneNames.some(name => !name.trim())) return;
 
         setStep('cloning');
-        setProgressLogs([]);
+        setProgressLogs({});
+        setCloneStatuses({});
         
-        const result = await duplicatePatientTemporarily(
-            patient.id, 
-            user.id, 
-            { ...options, customName: cloneName }, 
-            (log) => {
-                setProgressLogs(prev => [...prev, log]);
-            }
-        );
+        let allSuccess = true;
+        let lastNewPatientId = null;
 
-        if (result.success) {
-            setNewPatientId(result.newPatientId);
+        for (let i = 0; i < numberOfCopies; i++) {
+            setCurrentCloneIndex(i);
+            setCloneStatuses(prev => ({ ...prev, [i]: 'loading' }));
+            setProgressLogs(prev => ({ ...prev, [i]: [] }));
+
+            const result = await duplicatePatientTemporarily(
+                patient.id, 
+                user.id, 
+                { ...options, customName: cloneNames[i] }, 
+                (log) => {
+                    setProgressLogs(prev => ({
+                        ...prev,
+                        [i]: [...(prev[i] || []), log]
+                    }));
+                }
+            );
+
+            if (result.success) {
+                lastNewPatientId = result.newPatientId;
+                setCloneStatuses(prev => ({ ...prev, [i]: 'success' }));
+            } else {
+                allSuccess = false;
+                setCloneStatuses(prev => ({ ...prev, [i]: 'error' }));
+                break; // Interrompe as próximas cópias se der erro fatal
+            }
+        }
+
+        if (allSuccess) {
+            setNewPatientId(lastNewPatientId);
             setStep('success');
             
             // Fecha o modal automaticamente e recarrega a página para atualizar a listagem
@@ -70,7 +132,9 @@ export const DuplicatePatientModal = ({ isOpen, onClose, patient }) => {
     const handleClose = () => {
         if (step === 'cloning') return; // Bloquear fechamento enquanto clona
         setStep('selection');
-        setProgressLogs([]);
+        setProgressLogs({});
+        setCloneStatuses({});
+        setCurrentCloneIndex(-1);
         setNewPatientId(null);
         onClose();
     };
@@ -88,14 +152,36 @@ export const DuplicatePatientModal = ({ isOpen, onClose, patient }) => {
             </DialogHeader>
 
             <div className="py-4 space-y-4">
-                <div className="space-y-2 mb-4">
-                    <Label htmlFor="clone-name">Nome da Cópia</Label>
-                    <Input 
-                        id="clone-name" 
-                        value={cloneName} 
-                        onChange={(e) => setCloneName(e.target.value)} 
-                        placeholder="Ex: (Cópia) Nome" 
-                    />
+                <div className="space-y-4 mb-4 bg-muted/30 p-3 rounded-md border">
+                    <div className="space-y-2">
+                        <Label htmlFor="num-copies">Quantidade de Cópias (Máx 10)</Label>
+                        <Input 
+                            id="num-copies"
+                            type="number"
+                            min={1}
+                            max={10}
+                            value={numberOfCopies}
+                            onChange={(e) => handleNumberOfCopiesChange(e.target.value)}
+                        />
+                    </div>
+                    
+                    <div className="space-y-2">
+                        <Label>Nomes das Cópias</Label>
+                        <div className="max-h-[160px] overflow-y-auto pr-2 space-y-2">
+                            {cloneNames.map((name, idx) => (
+                                <Input 
+                                    key={idx}
+                                    value={name} 
+                                    onChange={(e) => {
+                                        const newNames = [...cloneNames];
+                                        newNames[idx] = e.target.value;
+                                        setCloneNames(newNames);
+                                    }} 
+                                    placeholder={`Ex: (Cópia ${idx + 1}) Nome`} 
+                                />
+                            ))}
+                        </div>
+                    </div>
                 </div>
 
                 <div className="flex items-center space-x-2">
@@ -133,7 +219,7 @@ export const DuplicatePatientModal = ({ isOpen, onClose, patient }) => {
                 <Button 
                     onClick={handleStartCloning} 
                     className="bg-yellow-600 hover:bg-yellow-700 text-white"
-                    disabled={!cloneName.trim()}
+                    disabled={cloneNames.some(name => !name.trim())}
                 >
                     Iniciar Duplicação
                 </Button>
@@ -150,18 +236,44 @@ export const DuplicatePatientModal = ({ isOpen, onClose, patient }) => {
                 </DialogDescription>
             </DialogHeader>
 
-            <ScrollArea className="h-[250px] w-full rounded-md border p-4 bg-muted/30">
+            <ScrollArea className="h-[300px] w-full rounded-md border p-4 bg-muted/30">
                 <div className="space-y-3">
-                    {progressLogs.map((log, idx) => (
-                        <div key={idx} className="flex items-start gap-2 text-sm">
-                            {log.status === 'loading' && <Loader2 className="w-4 h-4 text-blue-500 animate-spin shrink-0 mt-0.5" />}
-                            {log.status === 'success' && <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />}
-                            {log.status === 'error' && <XCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />}
-                            <span className={log.status === 'error' ? 'text-red-600 font-medium' : 'text-foreground/80'}>
-                                {log.text}
-                            </span>
-                        </div>
-                    ))}
+                    {Array.from({ length: numberOfCopies }).map((_, idx) => {
+                        const status = cloneStatuses[idx] || 'pending';
+                        const logs = progressLogs[idx] || [];
+                        const isCurrent = currentCloneIndex === idx;
+                        
+                        return (
+                            <div key={idx} className={`p-3 rounded-md border transition-colors ${isCurrent ? 'bg-background border-blue-200 shadow-sm' : 'bg-transparent border-transparent'}`}>
+                                <div className="flex items-center gap-2 mb-1">
+                                    {status === 'pending' && <Clock className="w-4 h-4 text-muted-foreground shrink-0" />}
+                                    {status === 'loading' && <Loader2 className="w-4 h-4 text-blue-500 animate-spin shrink-0" />}
+                                    {status === 'success' && <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />}
+                                    {status === 'error' && <XCircle className="w-4 h-4 text-red-500 shrink-0" />}
+                                    
+                                    <span className={`font-medium ${status === 'pending' ? 'text-muted-foreground' : 'text-foreground'}`}>
+                                        {cloneNames[idx]}
+                                    </span>
+                                </div>
+                                
+                                {/* Mostra detalhes apenas se estiver processando agora ou se houve erro */}
+                                {(isCurrent || status === 'error') && logs.length > 0 && (
+                                    <div className="pl-6 space-y-1.5 mt-2">
+                                        {logs.map((log, logIdx) => (
+                                            <div key={logIdx} className="flex items-start gap-2 text-xs">
+                                                {log.status === 'loading' && <Loader2 className="w-3 h-3 text-blue-500 animate-spin shrink-0 mt-0.5" />}
+                                                {log.status === 'success' && <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0 mt-0.5" />}
+                                                {log.status === 'error' && <XCircle className="w-3 h-3 text-red-500 shrink-0 mt-0.5" />}
+                                                <span className={log.status === 'error' ? 'text-red-600 font-medium' : 'text-foreground/70'}>
+                                                    {log.text}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })}
                 </div>
             </ScrollArea>
 
