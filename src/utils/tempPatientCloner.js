@@ -46,6 +46,15 @@ export const duplicatePatientTemporarily = async (originalPatientId, nutritionis
         if (!newPatientId) throw new Error('Falha ao obter o ID do novo paciente criado.');
         reportProgress('Perfil criado com sucesso!', 'success');
 
+        // Buscar o care_episode ativo do novo clone para vincular aos registros corretamente
+        const { data: activeEpisode } = await supabase
+            .from('care_episodes')
+            .select('id')
+            .eq('patient_id', newPatientId)
+            .eq('status', 'active')
+            .single();
+        const newCareEpisodeId = activeEpisode?.id;
+
         const tableMap = {
             anthropometry: { table: 'growth_records', name: 'Antropometria' },
             energy_expenditures: { table: 'energy_expenditure_calculations', name: 'Gasto Energético' },
@@ -54,65 +63,79 @@ export const duplicatePatientTemporarily = async (originalPatientId, nutritionis
             anamnesis_records: { table: 'anamnesis_records', name: 'Anamneses' },
         };
 
+        const tasks = [];
+
         for (const [optionKey, config] of Object.entries(tableMap)) {
             if (options[optionKey]) {
-                reportProgress(`Copiando ${config.name}...`, 'loading');
-                const { data: records } = await supabase
-                    .from(config.table)
-                    .select('*')
-                    .eq('patient_id', originalPatientId);
+                tasks.push((async () => {
+                    reportProgress(`Copiando ${config.name}...`, 'loading');
+                    const { data: records } = await supabase
+                        .from(config.table)
+                        .select('*')
+                        .eq('patient_id', originalPatientId);
 
-                if (records && records.length > 0) {
-                    const clones = records.map(record => {
-                        const clone = { ...record };
-                        delete clone.id;
-                        clone.patient_id = newPatientId;
-                        
-                        if (clone.created_at) delete clone.created_at;
-                        if (clone.updated_at) delete clone.updated_at;
+                    if (records && records.length > 0) {
+                        const clones = records.map(record => {
+                            const clone = { ...record };
+                            delete clone.id;
+                            clone.patient_id = newPatientId;
+                            
+                            // Corrigir o vínculo do episódio de cuidado
+                            if (clone.care_episode_id && newCareEpisodeId) {
+                                clone.care_episode_id = newCareEpisodeId;
+                            }
+                            
+                            if (clone.created_at) delete clone.created_at;
+                            if (clone.updated_at) delete clone.updated_at;
 
-                        if (config.table === 'goals') {
-                            clone.energy_expenditure_id = null;
-                            clone.meal_plan_id = null;
+                            if (config.table === 'goals') {
+                                clone.energy_expenditure_id = null;
+                                clone.meal_plan_id = null;
+                            }
+                            if (config.table === 'lab_results') {
+                                clone.root_result_id = null;
+                                clone.supersedes_result_id = null;
+                            }
+                            return clone;
+                        });
+
+                        const { error: insertError } = await supabase.from(config.table).insert(clones);
+                        if (insertError) {
+                            reportProgress(`Erro ao copiar ${config.name}`, 'error');
+                            console.error(`[tempPatientCloner] Erro ao clonar a tabela ${config.table}:`, insertError);
+                        } else {
+                            reportProgress(`${config.name} copiada(s).`, 'success');
                         }
-                        if (config.table === 'lab_results') {
-                            clone.root_result_id = null;
-                            clone.supersedes_result_id = null;
-                        }
-                        return clone;
-                    });
-
-                    const { error: insertError } = await supabase.from(config.table).insert(clones);
-                    if (insertError) {
-                        reportProgress(`Erro ao copiar ${config.name}`, 'error');
-                        console.error(`[tempPatientCloner] Erro ao clonar a tabela ${config.table}:`, insertError);
                     } else {
-                        reportProgress(`${config.name} copiadas com sucesso.`, 'success');
+                        reportProgress(`Sem dados em ${config.name}.`, 'success');
                     }
-                } else {
-                    reportProgress(`Nenhum registro de ${config.name} encontrado.`, 'success');
-                }
+                })());
             }
         }
 
         if (options.mealPlans) {
-            reportProgress('Copiando Planos Alimentares...', 'loading');
-            const { data: mealPlans } = await getMealPlans(originalPatientId);
-            if (mealPlans && mealPlans.length > 0) {
-                let successCount = 0;
-                for (const plan of mealPlans) {
-                    try {
-                        await copyMealPlanToPatient(plan.id, newPatientId);
-                        successCount++;
-                    } catch (e) {
-                        console.error('Falha ao copiar plano', e);
-                    }
+            tasks.push((async () => {
+                reportProgress('Copiando Planos Alimentares...', 'loading');
+                const { data: mealPlans } = await getMealPlans(originalPatientId);
+                if (mealPlans && mealPlans.length > 0) {
+                    let successCount = 0;
+                    // Os planos alimentares podem ser copiados em paralelo também
+                    await Promise.all(mealPlans.map(async (plan) => {
+                        try {
+                            await copyMealPlanToPatient(plan.id, newPatientId);
+                            successCount++;
+                        } catch (e) {
+                            console.error('Falha ao copiar plano', e);
+                        }
+                    }));
+                    reportProgress(`${successCount}/${mealPlans.length} planos copiados.`, 'success');
+                } else {
+                    reportProgress(`Sem planos alimentares.`, 'success');
                 }
-                reportProgress(`${successCount}/${mealPlans.length} planos alimentares copiados.`, 'success');
-            } else {
-                reportProgress(`Nenhum plano alimentar encontrado.`, 'success');
-            }
+            })());
         }
+
+        await Promise.all(tasks);
 
         reportProgress('Duplicação concluída!', 'success');
         return { success: true, newPatientId };

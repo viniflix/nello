@@ -69,7 +69,9 @@ const PatientCard = ({ patient, isOnline, onArchive, onDelete, onRefresh }) => {
         }
     }, [isArchived, patient.id]);
 
-    const isClone = patient?.metadata?.observations === 'DUPLICATA DE TESTE';
+    const isClone = patient?.metadata?.observations === 'DUPLICATA DE TESTE' || 
+                    patient?.name?.toLowerCase().includes('(cópia)') ||
+                    patient?.name?.toLowerCase().includes('(copia)');
 
     const handleForceDeleteClone = async () => {
         setIsDeletingClone(true);
