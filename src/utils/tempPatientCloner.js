@@ -58,7 +58,7 @@ export const duplicatePatientTemporarily = async (originalPatientId, nutritionis
         const tableMap = {
             anthropometry: { table: 'growth_records', name: 'Antropometria' },
             energy_expenditures: { table: 'energy_expenditure_calculations', name: 'Gasto Energético' },
-            goals: { table: 'goals', name: 'Metas' },
+            goals: { table: 'patient_goals', name: 'Metas' },
             lab_results: { table: 'lab_results', name: 'Exames Laboratoriais' },
             anamnesis_records: { table: 'anamnesis_records', name: 'Anamneses' },
         };
@@ -154,12 +154,12 @@ export const forceDeleteClone = async (patientId) => {
         // Excluir registros dependentes para driblar a trava de "paciente vazio"
         const tablesToDelete = [
             'meal_plans',
-            'goals',
+            'patient_goals',
             'lab_results',
             'energy_expenditure_calculations',
             'growth_records',
             'anamnesis_records',
-            'anthropometric_assessments'
+            'clinical_records'
         ];
 
         for (const table of tablesToDelete) {
@@ -171,8 +171,11 @@ export const forceDeleteClone = async (patientId) => {
         const { error: rpcError } = await removeEmptyPatient(patientId);
         if (rpcError) {
             console.error('Falha no removeEmptyPatient RPC, tentando delete direto...', rpcError);
-            const { error: directError } = await supabase.from('user_profiles').delete().eq('id', patientId);
+            const { data, error: directError } = await supabase.from('user_profiles').delete().eq('id', patientId).select('id');
             if (directError) throw directError;
+            if (!data || data.length === 0) {
+                throw new Error('Não foi possível remover o clone (banco de dados bloqueou a exclusão). Tente recarregar a página e tentar de novo.');
+            }
         }
 
         console.log(`[tempPatientCloner] Clone excluído com sucesso!`);
