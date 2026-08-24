@@ -75,6 +75,8 @@ export const duplicatePatientTemporarily = async (originalPatientId, nutritionis
                         .eq('patient_id', originalPatientId);
 
                     if (records && records.length > 0) {
+                        const revisionGroupMap = {};
+
                         const clones = records.map(record => {
                             const clone = { ...record };
                             delete clone.id;
@@ -93,9 +95,13 @@ export const duplicatePatientTemporarily = async (originalPatientId, nutritionis
                             if (clone.created_at) delete clone.created_at;
                             if (clone.updated_at) delete clone.updated_at;
 
-                            // Prevenir conflitos de índice único gerando novos IDs de revisão
+                            // Prevenir conflitos de índice único gerando novos IDs de revisão (tipo bigint)
                             if (clone.revision_group_id) {
-                                clone.revision_group_id = crypto.randomUUID();
+                                if (!revisionGroupMap[clone.revision_group_id]) {
+                                    // Usa Date.now() + random para caber em um bigint no Postgres
+                                    revisionGroupMap[clone.revision_group_id] = Date.now() + Math.floor(Math.random() * 100000);
+                                }
+                                clone.revision_group_id = revisionGroupMap[clone.revision_group_id];
                             }
 
                             if (config.table === 'patient_goals') {
