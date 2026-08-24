@@ -125,7 +125,7 @@ const MacrosChart = ({ protein, carbs, fat, calories, patientId, patientSlugOrId
 
     const MacrosView = () => (
         <div className="flex flex-col h-full justify-center pb-2">
-            <PieChartSVG />
+            {PieChartSVG()}
             <div className="grid grid-cols-3 gap-2 px-2 mt-2">
                 {[
                     { label: 'Carboidratos', value: carbs, color: colors.carbs },
@@ -233,9 +233,8 @@ const MacrosChart = ({ protein, carbs, fat, calories, patientId, patientSlugOrId
             </CardHeader>
 
             <CardContent className="flex-1 flex flex-col pt-2 pb-5">
-                {/* Fixed Height Container: exact space needed to hold exactly the micros list with no jumps and no scroll. */}
                 <div className="h-[350px]">
-                    {activeTab === 'macros' ? <MacrosView /> : <MicrosView />}
+                    {activeTab === 'macros' ? MacrosView() : MicrosView()}
                 </div>
 
                 {/* Footer Buttons */}
