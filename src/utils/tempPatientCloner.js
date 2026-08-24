@@ -149,33 +149,16 @@ export const duplicatePatientTemporarily = async (originalPatientId, nutritionis
 
 export const forceDeleteClone = async (patientId) => {
     try {
-        console.log(`[tempPatientCloner] Iniciando deleção forçada do clone ${patientId}...`);
+        console.log(`[tempPatientCloner] Iniciando deleção forçada via RPC especial para o clone ${patientId}...`);
         
-        // Excluir registros dependentes para driblar a trava de "paciente vazio"
-        const tablesToDelete = [
-            'meal_plans',
-            'patient_goals',
-            'lab_results',
-            'energy_expenditure_calculations',
-            'growth_records',
-            'anamnesis_records',
-            'clinical_records'
-        ];
+        // Chama a RPC criada no Supabase SQL Editor para bypassar os triggers de segurança médica
+        const { error: rpcError } = await supabase.rpc('force_delete_test_clone', {
+            p_patient_id: patientId
+        });
 
-        for (const table of tablesToDelete) {
-            await supabase.from(table).delete().eq('patient_id', patientId);
-        }
-
-        console.log(`[tempPatientCloner] Registros dependentes excluídos. Removendo perfil principal...`);
-        // Agora o paciente está vazio, podemos usar a exclusão nativa
-        const { error: rpcError } = await removeEmptyPatient(patientId);
         if (rpcError) {
-            console.error('Falha no removeEmptyPatient RPC, tentando delete direto...', rpcError);
-            const { data, error: directError } = await supabase.from('user_profiles').delete().eq('id', patientId).select('id');
-            if (directError) throw directError;
-            if (!data || data.length === 0) {
-                throw new Error('Não foi possível remover o clone (banco de dados bloqueou a exclusão). Tente recarregar a página e tentar de novo.');
-            }
+            console.error('Falha no force_delete_test_clone RPC:', rpcError);
+            throw new Error('Não foi possível remover o clone completamente. O banco de dados bloqueou a exclusão devido às travas de segurança médica. Certifique-se de ter rodado o script SQL no painel do Supabase.');
         }
 
         console.log(`[tempPatientCloner] Clone excluído com sucesso!`);
