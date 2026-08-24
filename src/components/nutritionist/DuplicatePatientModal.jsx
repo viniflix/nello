@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { CheckCircle2, Loader2, XCircle, AlertCircle, Clock } from 'lucide-react';
 import { duplicatePatientTemporarily } from '@/utils/tempPatientCloner';
-import { useAuth } from '@/components/auth/AuthProvider';
+import { useAuth } from '@/contexts/AuthContext';
 
 export const DuplicatePatientModal = ({ isOpen, onClose, patient }) => {
     const { user } = useAuth();

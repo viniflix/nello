@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { getEmptyPatientRemovalStatus } from '@/lib/supabase/patient-queries';
 import { duplicatePatientTemporarily, forceDeleteClone } from '@/utils/tempPatientCloner';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/components/auth/AuthProvider';
+import { useAuth } from '@/contexts/AuthContext';
 import DuplicatePatientModal from './DuplicatePatientModal';
 
 // ── Gradient Avatar ───────────────────────────────────────────────────────────
