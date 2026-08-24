@@ -106,6 +106,9 @@ export const duplicatePatientTemporarily = async (originalPatientId, nutritionis
                                 clone.root_result_id = null;
                                 clone.supersedes_result_id = null;
                             }
+                            if (config.table === 'anamnesis_records') {
+                                clone.appointment_id = null;
+                            }
                             return clone;
                         });
 
