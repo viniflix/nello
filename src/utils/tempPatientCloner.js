@@ -135,7 +135,8 @@ export const forceDeleteClone = async (patientId) => {
             'lab_results',
             'energy_expenditure_calculations',
             'growth_records',
-            'anamnesis_records'
+            'anamnesis_records',
+            'anthropometric_assessments'
         ];
 
         for (const table of tablesToDelete) {

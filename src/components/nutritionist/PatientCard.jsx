@@ -37,7 +37,7 @@ export const GradientAvatar = ({ name = '', avatarUrl, size = 44 }) => {
 };
 
 // ── PatientCard ───────────────────────────────────────────────────────────────
-const PatientCard = ({ patient, isOnline, onArchive, onDelete }) => {
+const PatientCard = ({ patient, isOnline, onArchive, onDelete, onRefresh }) => {
     const navigate = useNavigate();
     const { toast } = useToast();
     const { user } = useAuth();
@@ -69,7 +69,7 @@ const PatientCard = ({ patient, isOnline, onArchive, onDelete }) => {
         }
     }, [isArchived, patient.id]);
 
-    const isClone = patient.name?.includes('(Cópia)') || patient.metadata?.observations === 'DUPLICATA DE TESTE';
+    const isClone = patient?.metadata?.observations === 'DUPLICATA DE TESTE';
 
     const handleForceDeleteClone = async () => {
         setIsDeletingClone(true);
@@ -78,7 +78,8 @@ const PatientCard = ({ patient, isOnline, onArchive, onDelete }) => {
         const result = await forceDeleteClone(patient.id);
         if (result.success) {
             toast({ title: "Removido", description: "Cópia excluída permanentemente.", variant: "success" });
-            if (onDelete) onDelete(patient);
+            if (onRefresh) onRefresh();
+            else window.location.reload();
         } else {
             toast({ title: "Erro", description: "Não foi possível remover a cópia completamente.", variant: "destructive" });
         }

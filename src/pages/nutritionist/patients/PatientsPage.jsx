@@ -492,7 +492,7 @@ const PatientsPage = () => {
                                                     transition={{ duration: 0.15 }}
                                                     className="h-full"
                                                 >
-                                                    <PatientCard patient={patient} isOnline={isUserOnline(patient.id)} onArchive={handleArchive} onDelete={handleDelete} />
+                                                    <PatientCard patient={patient} isOnline={isUserOnline(patient.id)} onArchive={handleArchive} onDelete={handleDelete} onRefresh={fetchPatients} />
                                                 </motion.div>
                                             ))}
                                         </AnimatePresence>
