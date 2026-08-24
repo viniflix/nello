@@ -210,7 +210,6 @@ const PatientHubPage = () => {
                             variant="outline"
                             size="sm"
                             onClick={handleDuplicatePatient}
-                            disabled={isCloning}
                             className="gap-2 bg-yellow-50 hover:bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-400 dark:border-yellow-800"
                         >
                             <Clock className="w-4 h-4" />
