@@ -85,10 +85,20 @@ export const duplicatePatientTemporarily = async (originalPatientId, nutritionis
                                 clone.care_episode_id = newCareEpisodeId;
                             }
                             
+                            // Corrigir o nutricionista responsável
+                            if (clone.nutritionist_id) {
+                                clone.nutritionist_id = nutritionistId;
+                            }
+
                             if (clone.created_at) delete clone.created_at;
                             if (clone.updated_at) delete clone.updated_at;
 
-                            if (config.table === 'goals') {
+                            // Prevenir conflitos de índice único gerando novos IDs de revisão
+                            if (clone.revision_group_id) {
+                                clone.revision_group_id = crypto.randomUUID();
+                            }
+
+                            if (config.table === 'patient_goals') {
                                 clone.energy_expenditure_id = null;
                                 clone.meal_plan_id = null;
                             }

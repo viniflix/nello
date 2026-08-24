@@ -56,6 +56,12 @@ export const DuplicatePatientModal = ({ isOpen, onClose, patient }) => {
         if (result.success) {
             setNewPatientId(result.newPatientId);
             setStep('success');
+            
+            // Fecha o modal automaticamente e recarrega a página para atualizar a listagem
+            setTimeout(() => {
+                handleClose();
+                window.location.reload();
+            }, 1500);
         } else {
             setStep('error');
         }
@@ -163,8 +169,8 @@ export const DuplicatePatientModal = ({ isOpen, onClose, patient }) => {
                 {step === 'cloning' ? (
                     <Button disabled className="w-full">Clonando...</Button>
                 ) : step === 'success' ? (
-                    <Button onClick={() => navigate(`/nutritionist/patients/${newPatientId}/hub`)} className="w-full">
-                        Ir para a Cópia
+                    <Button disabled className="w-full bg-emerald-600 hover:bg-emerald-700 text-white">
+                        Concluído! Atualizando...
                     </Button>
                 ) : (
                     <Button variant="outline" onClick={handleClose} className="w-full">Fechar (Houve um erro)</Button>
