@@ -2,13 +2,17 @@ import React, { useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { patientRoute } from '@/lib/utils/patientRoutes';
 import {
-    MoreVertical, Archive, Trash2, Loader2, AlertCircle, FileText, Copy, Check
+    MoreVertical, Archive, Trash2, Loader2, AlertCircle, FileText, Copy, Check, Clock
 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { getEmptyPatientRemovalStatus } from '@/lib/supabase/patient-queries';
+import { duplicatePatientTemporarily, forceDeleteClone } from '@/utils/tempPatientCloner';
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/components/auth/AuthProvider';
+import DuplicatePatientModal from './DuplicatePatientModal';
 
 // ── Gradient Avatar ───────────────────────────────────────────────────────────
 const stringToHue = (str = '') => {
@@ -35,9 +39,14 @@ export const GradientAvatar = ({ name = '', avatarUrl, size = 44 }) => {
 // ── PatientCard ───────────────────────────────────────────────────────────────
 const PatientCard = ({ patient, isOnline, onArchive, onDelete }) => {
     const navigate = useNavigate();
-    const [isCheckingData, setIsCheckingData] = useState(false);
-    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const { toast } = useToast();
+    const { user } = useAuth();
     const [showArchiveModal, setShowArchiveModal] = useState(false);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [isCheckingData, setIsCheckingData] = useState(false);
+    const [isDuplicateModalOpen, setIsDuplicateModalOpen] = useState(false);
+    const [isDeletingClone, setIsDeletingClone] = useState(false);
+
     const [copied, setCopied] = useState(false);
 
     // B1: cache do resultado via ref para não repetir a query
@@ -59,6 +68,22 @@ const PatientCard = ({ patient, isOnline, onArchive, onDelete }) => {
             }
         }
     }, [isArchived, patient.id]);
+
+    const isClone = patient.name?.includes('(Cópia)') || patient.metadata?.observations === 'DUPLICATA DE TESTE';
+
+    const handleForceDeleteClone = async () => {
+        setIsDeletingClone(true);
+        toast({ title: "Removendo cópia de teste...", description: "Limpando todos os registros...", duration: 3000 });
+        
+        const result = await forceDeleteClone(patient.id);
+        if (result.success) {
+            toast({ title: "Removido", description: "Cópia excluída permanentemente.", variant: "success" });
+            if (onDelete) onDelete(patient);
+        } else {
+            toast({ title: "Erro", description: "Não foi possível remover a cópia completamente.", variant: "destructive" });
+        }
+        setIsDeletingClone(false);
+    };
 
     const canDelete = deleteCheckRef.current === true;
 
@@ -175,20 +200,35 @@ const PatientCard = ({ patient, isOnline, onArchive, onDelete }) => {
                                         <FileText className="mr-2 h-4 w-4" />
                                         Abrir Prontuário
                                     </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => setIsDuplicateModalOpen(true)} className="cursor-pointer text-yellow-600 dark:text-yellow-500">
+                                        <Clock className="mr-2 h-4 w-4" />
+                                        Duplicar Paciente (Teste)
+                                    </DropdownMenuItem>
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem onClick={() => setShowArchiveModal(true)} className="cursor-pointer">
                                         <Archive className="mr-2 h-4 w-4" />
                                         Encerrar acompanhamento
                                     </DropdownMenuItem>
                                     <DropdownMenuSeparator />
-                                    <DropdownMenuItem
-                                        onClick={() => setShowDeleteModal(true)}
-                                        disabled={isCheckingData || !canDelete}
-                                        className={`cursor-pointer ${canDelete ? 'text-destructive focus:text-destructive' : 'text-muted-foreground'}`}
-                                    >
-                                        <Trash2 className="mr-2 h-4 w-4" />
-                                        Remover cadastro vazio
-                                    </DropdownMenuItem>
+                                    {isClone ? (
+                                        <DropdownMenuItem
+                                            onClick={handleForceDeleteClone}
+                                            disabled={isDeletingClone}
+                                            className="cursor-pointer text-destructive focus:text-destructive"
+                                        >
+                                            {isDeletingClone ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+                                            Apagar Cópia (Forçado)
+                                        </DropdownMenuItem>
+                                    ) : (
+                                        <DropdownMenuItem
+                                            onClick={() => setShowDeleteModal(true)}
+                                            disabled={isCheckingData || !canDelete}
+                                            className={`cursor-pointer ${canDelete ? 'text-destructive focus:text-destructive' : 'text-muted-foreground'}`}
+                                        >
+                                            <Trash2 className="mr-2 h-4 w-4" />
+                                            Remover cadastro vazio
+                                        </DropdownMenuItem>
+                                    )}
                                 </>
                             )}
                         </DropdownMenuContent>
@@ -239,8 +279,15 @@ const PatientCard = ({ patient, isOnline, onArchive, onDelete }) => {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {/* Duplicate Modal */}
+            <DuplicatePatientModal 
+                isOpen={isDuplicateModalOpen} 
+                onClose={() => setIsDuplicateModalOpen(false)} 
+                patient={patient} 
+            />
         </>
     );
 };
 
-export { PatientCard as default, PatientCard };
+export default PatientCard;

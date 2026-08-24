@@ -16,7 +16,7 @@ import { PatientProfileCardSkeleton, SimpleListSkeleton } from '@/components/ui/
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { isUuid } from '@/lib/utils/patientRoutes';
 import PatientEditProfileModal from '@/components/patient-hub/PatientEditProfileModal';
-import { duplicatePatientTemporarily } from '@/utils/tempPatientCloner';
+import DuplicatePatientModal from '@/components/nutritionist/DuplicatePatientModal';
 import { useToast } from '@/hooks/use-toast';
 
 const TabContentFeed = lazy(() => import('@/components/patient-hub/tabs/TabContentFeed'));
@@ -42,9 +42,9 @@ const PatientHubPage = () => {
         return 'feed';
     });
     const [isEditProfileModalOpen, setIsEditProfileModalOpen] = useState(false);
+    const [isDuplicateModalOpen, setIsDuplicateModalOpen] = useState(false);
     const [isInviteExpanded, setIsInviteExpanded] = useState(false);
     const [copyState, setCopyState] = useState('idle'); // idle | copied
-    const [isCloning, setIsCloning] = useState(false);
     const { toast } = useToast();
 
     // Sincronizar tab quando URL mudar (ex: navegação programática com ?tab=)
@@ -103,23 +103,8 @@ const PatientHubPage = () => {
         loadActivities(activities.length + 20);
     };
 
-    const handleDuplicatePatient = async () => {
-        setIsCloning(true);
-        toast({ title: "Clonando paciente...", description: "Isso pode levar alguns segundos.", duration: 3000 });
-        
-        try {
-            const result = await duplicatePatientTemporarily(patientId, user.id);
-            if (result.success) {
-                toast({ title: "Sucesso!", description: "Paciente duplicado com sucesso.", variant: "success" });
-                navigate(`/nutritionist/patients/${result.newPatientId}/hub`);
-            } else {
-                toast({ title: "Erro", description: "Falha ao duplicar o paciente.", variant: "destructive" });
-            }
-        } catch (err) {
-            toast({ title: "Erro", description: "Ocorreu um erro ao duplicar.", variant: "destructive" });
-        } finally {
-            setIsCloning(false);
-        }
+    const handleDuplicatePatient = () => {
+        setIsDuplicateModalOpen(true);
     };
 
     // Manter ?tab= na URL para shareability e back/forward - não limpar
@@ -263,6 +248,15 @@ const PatientHubPage = () => {
                                         Acesso do Paciente (Convite)
                                         <Badge variant="outline" className="bg-sky-100 text-sky-800 border-sky-300 text-[10px] py-0 hidden sm:inline-flex">AGUARDANDO VÍNCULO</Badge>
                                     </h4>
+                                    <Button 
+                                        variant="outline" 
+                                        size="sm" 
+                                        className="bg-background border-yellow-600/30 text-yellow-600 hover:bg-yellow-600/10 dark:text-yellow-500"
+                                        onClick={handleDuplicatePatient}
+                                    >
+                                        <Clock className="w-4 h-4 mr-2" />
+                                        Duplicar Paciente
+                                    </Button>
                                 </div>
                                 <Button variant="ghost" size="sm" className="h-8 text-sky-700 hover:text-sky-900 hover:bg-sky-200/50 dark:text-sky-400">
                                     {isInviteExpanded ? 'Ocultar' : 'Expandir'}
@@ -480,16 +474,24 @@ const PatientHubPage = () => {
             </main>
 
             {patientData && (
-                <PatientEditProfileModal 
-                    isOpen={isEditProfileModalOpen} 
-                    onClose={() => setIsEditProfileModalOpen(false)} 
-                    patientData={patientData}
-                    viewedEpisodeId={viewedEpisodeId}
-                    writableEpisodeId={writableEpisodeId}
-                    profileRequirements={profileRequirements}
-                    legalGuardians={legalGuardians}
-                    onSaveSuccess={refresh}
-                />
+                <>
+                    <PatientEditProfileModal 
+                        isOpen={isEditProfileModalOpen} 
+                        onClose={() => setIsEditProfileModalOpen(false)} 
+                        patientData={patientData}
+                        viewedEpisodeId={viewedEpisodeId}
+                        writableEpisodeId={writableEpisodeId}
+                        profileRequirements={profileRequirements}
+                        legalGuardians={legalGuardians}
+                        onSaveSuccess={refresh}
+                    />
+
+                    <DuplicatePatientModal
+                        isOpen={isDuplicateModalOpen}
+                        onClose={() => setIsDuplicateModalOpen(false)}
+                        patient={patientData}
+                    />
+                </>
             )}
         </div>
     );
