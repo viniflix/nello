@@ -44,6 +44,10 @@ export const duplicatePatientTemporarily = async (originalPatientId, nutritionis
 
         const newPatientId = cloneData?.userId;
         if (!newPatientId) throw new Error('Falha ao obter o ID do novo paciente criado.');
+
+        // Garante que a marcação de segurança seja salva na coluna correta
+        await supabase.from('user_profiles').update({ observations: 'DUPLICATA DE TESTE' }).eq('id', newPatientId);
+
         reportProgress('Perfil criado com sucesso!', 'success');
 
         // Buscar o care_episode ativo do novo clone para vincular aos registros corretamente
