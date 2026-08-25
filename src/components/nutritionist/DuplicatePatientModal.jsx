@@ -6,7 +6,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { CheckCircle2, Loader2, XCircle, AlertCircle, Clock } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { Badge } from '@/components/ui/badge';
+import { CheckCircle2, Loader2, XCircle, Clock, Plus, X, Pencil, Copy } from 'lucide-react';
 import { duplicatePatientTemporarily } from '@/utils/tempPatientCloner';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -16,20 +18,28 @@ export const DuplicatePatientModal = ({ isOpen, onClose, patient }) => {
 
     const [step, setStep] = useState('selection'); // selection | cloning | success | error
     const [newPatientId, setNewPatientId] = useState(null);
-    const [numberOfCopies, setNumberOfCopies] = useState(1);
-    const [cloneNames, setCloneNames] = useState(['']); 
+    
+    const [globalOptions, setGlobalOptions] = useState({
+        anthropometry: true,
+        energy_expenditures: true,
+        goals: true,
+        lab_results: true,
+        anamnesis_records: true,
+        mealPlans: true
+    });
+    
+    const [clones, setClones] = useState([
+        { id: '1', name: '', customOptions: null }
+    ]);
+    const [expandedCloneId, setExpandedCloneId] = useState(null);
+
     const [progressLogs, setProgressLogs] = useState({}); // { 0: [], 1: [] }
     const [cloneStatuses, setCloneStatuses] = useState({}); // { 0: 'pending', 1: 'loading', 2: 'success' }
     const [currentCloneIndex, setCurrentCloneIndex] = useState(-1);
 
     React.useEffect(() => {
         if (isOpen && patient?.name) {
-            setCloneNames(prev => {
-                if (prev[0] === '' && prev.length === 1) {
-                    return [`(Cópia) ${patient.name}`];
-                }
-                return prev;
-            });
+            setClones([{ id: Date.now().toString(), name: `(Cópia) ${patient.name}`, customOptions: null }]);
         }
     }, [isOpen, patient]);
 
@@ -44,42 +54,61 @@ export const DuplicatePatientModal = ({ isOpen, onClose, patient }) => {
         window.addEventListener('beforeunload', handleBeforeUnload);
         return () => window.removeEventListener('beforeunload', handleBeforeUnload);
     }, [step]);
-    
-    const [options, setOptions] = useState({
-        anthropometry: true,
-        energy_expenditures: true,
-        goals: true,
-        lab_results: true,
-        anamnesis_records: true,
-        mealPlans: true
-    });
 
-    const handleOptionChange = (key, checked) => {
-        setOptions(prev => ({ ...prev, [key]: checked }));
+    const handleAddClone = () => {
+        if (clones.length >= 10) return;
+        setClones(prev => [
+            ...prev, 
+            { id: Date.now().toString(), name: `(Cópia ${prev.length + 1}) ${patient?.name || ''}`, customOptions: null }
+        ]);
     };
 
-    const handleNumberOfCopiesChange = (val) => {
-        const num = Math.min(10, Math.max(1, parseInt(val) || 1));
-        setNumberOfCopies(num);
-        
-        setCloneNames(prev => {
-            const newNames = [...prev];
-            for (let i = 0; i < num; i++) {
-                if (!newNames[i]) {
-                    newNames[i] = num === 1 ? `(Cópia) ${patient?.name || ''}` : `(Cópia ${i + 1}) ${patient?.name || ''}`;
-                }
+    const handleRemoveClone = (id) => {
+        if (clones.length <= 1) return;
+        setClones(prev => prev.filter(c => c.id !== id));
+    };
+
+    const handleNameChange = (id, newName) => {
+        setClones(prev => prev.map(c => c.id === id ? { ...c, name: newName } : c));
+    };
+
+    const handleToggleCustomOptions = (id) => {
+        setExpandedCloneId(prev => prev === id ? null : id);
+        setClones(prev => prev.map(c => {
+            if (c.id === id && !c.customOptions) {
+                return { ...c, customOptions: { ...globalOptions } };
             }
-            if (prev.length === 1 && num > 1 && prev[0] === `(Cópia) ${patient?.name || ''}`) {
-                newNames[0] = `(Cópia 1) ${patient?.name || ''}`;
-            } else if (prev.length > 1 && num === 1 && prev[0] === `(Cópia 1) ${patient?.name || ''}`) {
-                newNames[0] = `(Cópia) ${patient?.name || ''}`;
+            return c;
+        }));
+    };
+
+    const handleClearCustomOptions = (id) => {
+        setClones(prev => prev.map(c => c.id === id ? { ...c, customOptions: null } : c));
+        if (expandedCloneId === id) setExpandedCloneId(null);
+    };
+
+    const handleCustomOptionChange = (id, key, checked) => {
+        setClones(prev => prev.map(c => {
+            if (c.id === id && c.customOptions) {
+                return { ...c, customOptions: { ...c.customOptions, [key]: checked } };
             }
-            return newNames.slice(0, num);
-        });
+            return c;
+        }));
+    };
+
+    const getCloneTotalSteps = (opts) => {
+        // 2 baselines: Buscando dados + Criando perfil
+        return 2 + 
+            (opts.anthropometry ? 1 : 0) + 
+            (opts.energy_expenditures ? 1 : 0) + 
+            (opts.mealPlans ? 1 : 0) + 
+            (opts.goals ? 1 : 0) + 
+            (opts.lab_results ? 1 : 0) + 
+            (opts.anamnesis_records ? 1 : 0);
     };
 
     const handleStartCloning = async () => {
-        if (cloneNames.some(name => !name.trim())) return;
+        if (clones.some(c => !c.name.trim())) return;
 
         setStep('cloning');
         setProgressLogs({});
@@ -88,15 +117,18 @@ export const DuplicatePatientModal = ({ isOpen, onClose, patient }) => {
         let allSuccess = true;
         let lastNewPatientId = null;
 
-        for (let i = 0; i < numberOfCopies; i++) {
+        for (let i = 0; i < clones.length; i++) {
+            const clone = clones[i];
             setCurrentCloneIndex(i);
             setCloneStatuses(prev => ({ ...prev, [i]: 'loading' }));
             setProgressLogs(prev => ({ ...prev, [i]: [] }));
 
+            const optsToUse = clone.customOptions || globalOptions;
+
             const result = await duplicatePatientTemporarily(
                 patient.id, 
                 user.id, 
-                { ...options, customName: cloneNames[i] }, 
+                { ...optsToUse, customName: clone.name }, 
                 (log) => {
                     setProgressLogs(prev => ({
                         ...prev,
@@ -119,7 +151,6 @@ export const DuplicatePatientModal = ({ isOpen, onClose, patient }) => {
             setNewPatientId(lastNewPatientId);
             setStep('success');
             
-            // Fecha o modal automaticamente e recarrega a página para atualizar a listagem
             setTimeout(() => {
                 handleClose();
                 window.location.reload();
@@ -130,87 +161,136 @@ export const DuplicatePatientModal = ({ isOpen, onClose, patient }) => {
     };
 
     const handleClose = () => {
-        if (step === 'cloning') return; // Bloquear fechamento enquanto clona
+        if (step === 'cloning') return;
         setStep('selection');
         setProgressLogs({});
         setCloneStatuses({});
         setCurrentCloneIndex(-1);
         setNewPatientId(null);
+        setExpandedCloneId(null);
         onClose();
     };
+
+    const renderOptionsGrid = (optionsObj, onChange) => (
+        <div className="grid grid-cols-2 gap-3 mt-3">
+            <div className="flex items-center space-x-2 opacity-70">
+                <Checkbox checked disabled />
+                <Label className="text-xs">Perfil e Pessoais</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+                <Checkbox checked={optionsObj.anthropometry} onCheckedChange={(c) => onChange('anthropometry', c)} />
+                <Label className="text-xs">Antropometria</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+                <Checkbox checked={optionsObj.energy_expenditures} onCheckedChange={(c) => onChange('energy_expenditures', c)} />
+                <Label className="text-xs">Gasto Energético</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+                <Checkbox checked={optionsObj.mealPlans} onCheckedChange={(c) => onChange('mealPlans', c)} />
+                <Label className="text-xs">Planos Alimentares</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+                <Checkbox checked={optionsObj.goals} onCheckedChange={(c) => onChange('goals', c)} />
+                <Label className="text-xs">Metas</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+                <Checkbox checked={optionsObj.lab_results} onCheckedChange={(c) => onChange('lab_results', c)} />
+                <Label className="text-xs">Exames</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+                <Checkbox checked={optionsObj.anamnesis_records} onCheckedChange={(c) => onChange('anamnesis_records', c)} />
+                <Label className="text-xs">Anamneses</Label>
+            </div>
+        </div>
+    );
 
     const renderSelection = () => (
         <>
             <DialogHeader>
                 <DialogTitle className="flex items-center gap-2">
-                    <Clock className="w-5 h-5 text-yellow-600" />
-                    Duplicar Paciente (Modo Teste)
+                    <Copy className="w-5 h-5 text-yellow-600" />
+                    Duplicar Paciente
                 </DialogTitle>
                 <DialogDescription>
-                    Selecione quais módulos de dados você deseja copiar de <strong>{patient?.name}</strong>. O perfil básico sempre será copiado. O novo paciente será marcado como "(Cópia)".
+                    Configure as cópias e os dados que devem ser transferidos de <strong>{patient?.name}</strong>.
                 </DialogDescription>
             </DialogHeader>
 
-            <div className="py-4 space-y-4">
-                <div className="space-y-4 mb-4 bg-muted/30 p-3 rounded-md border">
-                    <div className="space-y-2">
-                        <Label htmlFor="num-copies">Quantidade de Cópias (Máx 10)</Label>
-                        <Input 
-                            id="num-copies"
-                            type="number"
-                            min={1}
-                            max={10}
-                            value={numberOfCopies}
-                            onChange={(e) => handleNumberOfCopiesChange(e.target.value)}
-                        />
+            <div className="py-2 space-y-4">
+                <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                        <Label className="text-base font-semibold">Nomes das Cópias</Label>
+                        <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="h-8 gap-1 text-xs" 
+                            onClick={handleAddClone}
+                            disabled={clones.length >= 10}
+                        >
+                            <Plus className="w-3.5 h-3.5" /> Paciente
+                        </Button>
                     </div>
-                    
-                    <div className="space-y-2">
-                        <Label>Nomes das Cópias</Label>
-                        <div className="max-h-[160px] overflow-y-auto pr-2 space-y-2">
-                            {cloneNames.map((name, idx) => (
-                                <Input 
-                                    key={idx}
-                                    value={name} 
-                                    onChange={(e) => {
-                                        const newNames = [...cloneNames];
-                                        newNames[idx] = e.target.value;
-                                        setCloneNames(newNames);
-                                    }} 
-                                    placeholder={`Ex: (Cópia ${idx + 1}) Nome`} 
-                                />
+
+                    <ScrollArea className="max-h-[220px] pr-3">
+                        <div className="space-y-3">
+                            {clones.map((clone, idx) => (
+                                <div key={clone.id} className={`p-3 border rounded-md transition-all ${clone.customOptions ? 'bg-amber-50/50 border-amber-200 dark:bg-amber-950/20' : 'bg-background'}`}>
+                                    <div className="flex items-center gap-2">
+                                        <Input 
+                                            value={clone.name} 
+                                            onChange={(e) => handleNameChange(clone.id, e.target.value)} 
+                                            placeholder={`Ex: (Cópia ${idx + 1}) Nome`}
+                                            className="h-9"
+                                        />
+                                        <Button 
+                                            variant="ghost" 
+                                            size="icon" 
+                                            className={`h-9 w-9 shrink-0 ${clone.customOptions ? 'text-amber-600 bg-amber-100/50' : 'text-muted-foreground hover:text-foreground'}`}
+                                            onClick={() => handleToggleCustomOptions(clone.id)}
+                                            title="Configurar módulos individuais"
+                                        >
+                                            <Pencil className="w-4 h-4" />
+                                        </Button>
+                                        <Button 
+                                            variant="ghost" 
+                                            size="icon" 
+                                            className="h-9 w-9 shrink-0 text-muted-foreground hover:text-destructive"
+                                            onClick={() => handleRemoveClone(clone.id)}
+                                            disabled={clones.length === 1}
+                                        >
+                                            <X className="w-4 h-4" />
+                                        </Button>
+                                    </div>
+                                    
+                                    {clone.customOptions && (
+                                        <div className="mt-2 flex items-center justify-between">
+                                            <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-200 text-[10px]">
+                                                Personalizado
+                                            </Badge>
+                                            <Button variant="link" className="h-auto p-0 text-[10px] text-muted-foreground" onClick={() => handleClearCustomOptions(clone.id)}>
+                                                Usar padrão
+                                            </Button>
+                                        </div>
+                                    )}
+
+                                    {expandedCloneId === clone.id && clone.customOptions && (
+                                        <div className="mt-2 pt-2 border-t border-amber-200/50">
+                                            <p className="text-[10px] text-muted-foreground mb-1 uppercase tracking-wider font-semibold">O que copiar nesta cópia:</p>
+                                            {renderOptionsGrid(clone.customOptions, (k, v) => handleCustomOptionChange(clone.id, k, v))}
+                                        </div>
+                                    )}
+                                </div>
                             ))}
                         </div>
-                    </div>
+                    </ScrollArea>
                 </div>
 
-                <div className="flex items-center space-x-2">
-                    <Checkbox id="opt-profile" checked disabled />
-                    <Label htmlFor="opt-profile" className="opacity-70">Perfil e Dados Pessoais (Obrigatório)</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                    <Checkbox id="opt-anthro" checked={options.anthropometry} onCheckedChange={(c) => handleOptionChange('anthropometry', c)} />
-                    <Label htmlFor="opt-anthro">Antropometria (Medidas Corporais)</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                    <Checkbox id="opt-energy" checked={options.energy_expenditures} onCheckedChange={(c) => handleOptionChange('energy_expenditures', c)} />
-                    <Label htmlFor="opt-energy">Cálculos de Gasto Energético</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                    <Checkbox id="opt-meal" checked={options.mealPlans} onCheckedChange={(c) => handleOptionChange('mealPlans', c)} />
-                    <Label htmlFor="opt-meal">Planos Alimentares</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                    <Checkbox id="opt-goals" checked={options.goals} onCheckedChange={(c) => handleOptionChange('goals', c)} />
-                    <Label htmlFor="opt-goals">Metas</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                    <Checkbox id="opt-labs" checked={options.lab_results} onCheckedChange={(c) => handleOptionChange('lab_results', c)} />
-                    <Label htmlFor="opt-labs">Exames Laboratoriais</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                    <Checkbox id="opt-anamnesis" checked={options.anamnesis_records} onCheckedChange={(c) => handleOptionChange('anamnesis_records', c)} />
-                    <Label htmlFor="opt-anamnesis">Anamneses</Label>
+                <div className="p-3 bg-muted/40 border rounded-md">
+                    <Label className="text-sm font-semibold flex items-center gap-2">
+                        Configuração Padrão
+                        <span className="text-[10px] font-normal text-muted-foreground">(Aplica-se às cópias não personalizadas)</span>
+                    </Label>
+                    {renderOptionsGrid(globalOptions, (k, v) => setGlobalOptions(prev => ({ ...prev, [k]: v })))}
                 </div>
             </div>
 
@@ -219,7 +299,7 @@ export const DuplicatePatientModal = ({ isOpen, onClose, patient }) => {
                 <Button 
                     onClick={handleStartCloning} 
                     className="bg-yellow-600 hover:bg-yellow-700 text-white"
-                    disabled={cloneNames.some(name => !name.trim())}
+                    disabled={clones.some(c => !c.name.trim())}
                 >
                     Iniciar Duplicação
                 </Button>
@@ -230,45 +310,58 @@ export const DuplicatePatientModal = ({ isOpen, onClose, patient }) => {
     const renderProgress = () => (
         <>
             <DialogHeader>
-                <DialogTitle>Clonando Paciente...</DialogTitle>
+                <DialogTitle>Clonando Pacientes...</DialogTitle>
                 <DialogDescription>
                     Por favor, não feche esta janela até que a cópia seja concluída.
                 </DialogDescription>
             </DialogHeader>
 
-            <ScrollArea className="h-[300px] w-full rounded-md border p-4 bg-muted/30">
+            <ScrollArea className="h-[300px] w-full rounded-md border p-3 bg-muted/10">
                 <div className="space-y-3">
-                    {Array.from({ length: numberOfCopies }).map((_, idx) => {
+                    {clones.map((clone, idx) => {
                         const status = cloneStatuses[idx] || 'pending';
                         const logs = progressLogs[idx] || [];
                         const isCurrent = currentCloneIndex === idx;
                         
+                        const optsToUse = clone.customOptions || globalOptions;
+                        const totalSteps = getCloneTotalSteps(optsToUse);
+                        const completedSteps = logs.filter(l => l.status === 'success' || l.status === 'error').length;
+                        const progressPercent = Math.min(100, Math.round((completedSteps / totalSteps) * 100));
+                        
+                        const lastLog = logs[logs.length - 1];
+
                         return (
-                            <div key={idx} className={`p-3 rounded-md border transition-colors ${isCurrent ? 'bg-background border-blue-200 shadow-sm' : 'bg-transparent border-transparent'}`}>
-                                <div className="flex items-center gap-2 mb-1">
-                                    {status === 'pending' && <Clock className="w-4 h-4 text-muted-foreground shrink-0" />}
-                                    {status === 'loading' && <Loader2 className="w-4 h-4 text-blue-500 animate-spin shrink-0" />}
-                                    {status === 'success' && <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />}
-                                    {status === 'error' && <XCircle className="w-4 h-4 text-red-500 shrink-0" />}
-                                    
-                                    <span className={`font-medium ${status === 'pending' ? 'text-muted-foreground' : 'text-foreground'}`}>
-                                        {cloneNames[idx]}
+                            <div key={clone.id} className={`p-3 rounded-md border transition-all ${isCurrent ? 'bg-background border-blue-200 shadow-sm' : 'bg-transparent border-transparent'}`}>
+                                <div className="flex items-center justify-between mb-2">
+                                    <div className="flex items-center gap-2">
+                                        {status === 'pending' && <Clock className="w-4 h-4 text-muted-foreground shrink-0" />}
+                                        {status === 'loading' && <Loader2 className="w-4 h-4 text-blue-500 animate-spin shrink-0" />}
+                                        {status === 'success' && <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />}
+                                        {status === 'error' && <XCircle className="w-4 h-4 text-red-500 shrink-0" />}
+                                        
+                                        <span className={`font-medium text-sm ${status === 'pending' ? 'text-muted-foreground' : 'text-foreground'}`}>
+                                            {clone.name}
+                                        </span>
+                                    </div>
+                                    <span className="text-xs font-semibold text-muted-foreground">
+                                        {status === 'pending' ? 'Aguardando' : `${progressPercent}%`}
                                     </span>
                                 </div>
                                 
-                                {/* Mostra detalhes apenas se estiver processando agora ou se houve erro */}
-                                {(isCurrent || status === 'error') && logs.length > 0 && (
-                                    <div className="pl-6 space-y-1.5 mt-2">
-                                        {logs.map((log, logIdx) => (
-                                            <div key={logIdx} className="flex items-start gap-2 text-xs">
-                                                {log.status === 'loading' && <Loader2 className="w-3 h-3 text-blue-500 animate-spin shrink-0 mt-0.5" />}
-                                                {log.status === 'success' && <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0 mt-0.5" />}
-                                                {log.status === 'error' && <XCircle className="w-3 h-3 text-red-500 shrink-0 mt-0.5" />}
-                                                <span className={log.status === 'error' ? 'text-red-600 font-medium' : 'text-foreground/70'}>
-                                                    {log.text}
-                                                </span>
-                                            </div>
-                                        ))}
+                                <Progress 
+                                    value={status === 'pending' ? 0 : status === 'error' ? 100 : progressPercent} 
+                                    className={`h-1.5 mb-2 ${status === 'error' ? 'bg-red-100' : ''}`}
+                                    indicatorClassName={status === 'success' ? 'bg-emerald-500' : status === 'error' ? 'bg-red-500' : 'bg-blue-500'}
+                                />
+
+                                {(isCurrent || status === 'error') && lastLog && (
+                                    <div className="flex items-start gap-1.5 text-[11px]">
+                                        {lastLog.status === 'loading' && <Loader2 className="w-3 h-3 text-blue-500 animate-spin shrink-0 mt-0.5" />}
+                                        {lastLog.status === 'success' && <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0 mt-0.5" />}
+                                        {lastLog.status === 'error' && <XCircle className="w-3 h-3 text-red-500 shrink-0 mt-0.5" />}
+                                        <span className={`truncate ${lastLog.status === 'error' ? 'text-red-600 font-medium whitespace-normal' : 'text-muted-foreground'}`}>
+                                            {lastLog.text}
+                                        </span>
                                     </div>
                                 )}
                             </div>
@@ -279,13 +372,15 @@ export const DuplicatePatientModal = ({ isOpen, onClose, patient }) => {
 
             <DialogFooter>
                 {step === 'cloning' ? (
-                    <Button disabled className="w-full">Clonando...</Button>
+                    <Button disabled className="w-full">
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" /> Clonando {currentCloneIndex + 1} de {clones.length}...
+                    </Button>
                 ) : step === 'success' ? (
                     <Button disabled className="w-full bg-emerald-600 hover:bg-emerald-700 text-white">
-                        Concluído! Atualizando...
+                        <CheckCircle2 className="w-4 h-4 mr-2" /> Concluído! Atualizando...
                     </Button>
                 ) : (
-                    <Button variant="outline" onClick={handleClose} className="w-full">Fechar (Houve um erro)</Button>
+                    <Button variant="outline" onClick={handleClose} className="w-full text-red-600">Fechar (Houve um erro)</Button>
                 )}
             </DialogFooter>
         </>
