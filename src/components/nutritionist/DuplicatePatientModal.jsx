@@ -231,8 +231,7 @@ export const DuplicatePatientModal = ({ isOpen, onClose, patient }) => {
                         </Button>
                     </div>
 
-                    <ScrollArea className="max-h-[220px] pr-3">
-                        <div className="space-y-3">
+                    <div className="max-h-[240px] overflow-y-auto pr-2 space-y-3">
                             {clones.map((clone, idx) => (
                                 <div key={clone.id} className={`p-3 border rounded-md transition-all ${clone.customOptions ? 'bg-amber-50/50 border-amber-200 dark:bg-amber-950/20' : 'bg-background'}`}>
                                     <div className="flex items-center gap-2">
@@ -281,8 +280,7 @@ export const DuplicatePatientModal = ({ isOpen, onClose, patient }) => {
                                     )}
                                 </div>
                             ))}
-                        </div>
-                    </ScrollArea>
+                    </div>
                 </div>
 
                 <div className="p-3 bg-muted/40 border rounded-md">
