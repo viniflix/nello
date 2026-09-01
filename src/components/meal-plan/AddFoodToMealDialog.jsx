@@ -223,17 +223,17 @@ const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName, initialData = n
                                         </div>
                                         <div>
                                             <div className="text-muted-foreground text-xs">Proteínas</div>
-                                            <div className="font-bold text-lg">{calculatedNutrition.protein.toFixed(1)}</div>
+                                            <div className="font-bold text-lg">{(calculatedNutrition.protein || 0).toFixed(1)}</div>
                                             <div className="text-xs text-muted-foreground">g</div>
                                         </div>
                                         <div>
                                             <div className="text-muted-foreground text-xs">Carboidratos</div>
-                                            <div className="font-bold text-lg">{calculatedNutrition.carbs.toFixed(1)}</div>
+                                            <div className="font-bold text-lg">{(calculatedNutrition.carbs || 0).toFixed(1)}</div>
                                             <div className="text-xs text-muted-foreground">g</div>
                                         </div>
                                         <div>
                                             <div className="text-muted-foreground text-xs">Gorduras</div>
-                                            <div className="font-bold text-lg">{calculatedNutrition.fat.toFixed(1)}</div>
+                                            <div className="font-bold text-lg">{(calculatedNutrition.fat || 0).toFixed(1)}</div>
                                             <div className="text-xs text-muted-foreground">g</div>
                                         </div>
                                     </div>

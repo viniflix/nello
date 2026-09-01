@@ -45,6 +45,7 @@ dist-ssr/
 !/supabase/migrations/
 /supabase/migrations/*
 !/supabase/migrations/20260901000000_food_search_ranking.sql
+!/supabase/migrations/20260901000001_food_search_default_alphabetical.sql
 .env.example
 .env.example
 /[Dd][Oo][Cc][Ss]/

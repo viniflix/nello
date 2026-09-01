@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Search, Plus, Database, Package, Loader2, X, ChevronLeft, ChevronRight, SlidersHorizontal, ChevronDown, BookOpen } from 'lucide-react';
+import { Search, Plus, Database, Package, X, ChevronLeft, ChevronRight, SlidersHorizontal, ChevronDown, BookOpen } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
@@ -12,6 +12,7 @@ import FoodCardHorizontal from '@/components/nutrition/FoodCardHorizontal';
 import FoodDetailsDialog from '@/components/nutrition/FoodDetailsDialog';
 import SmartFoodForm from '@/components/nutrition/SmartFoodForm';
 import { useDebounce } from '@/hooks/useDebounce';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const ITEMS_PER_PAGE = 20;
 
@@ -48,6 +49,23 @@ const MACRO_FILTERS = [
   { id: 'fat',     label: 'Rico em gorduras',     desc: '≥ 15g gordura/100g' },
   { id: 'fiber',   label: 'Rico em fibra',        desc: '≥ 5g fibra/100g' },
 ];
+
+function FoodResultsSkeleton() {
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 mb-5" aria-label="Carregando alimentos">
+      {Array.from({ length: 8 }).map((_, index) => (
+        <div key={index} className="h-[78px] rounded-xl border border-slate-200 bg-white p-3 flex items-center gap-4">
+          <div className="flex-1 space-y-2">
+            <Skeleton className="h-4 w-3/5" />
+            <Skeleton className="h-3 w-1/4" />
+          </div>
+          <Skeleton className="h-9 w-44 rounded-xl" />
+          <Skeleton className="h-5 w-5 rounded" />
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function FoodBankSection() {
   const { user } = useAuth();
@@ -228,7 +246,7 @@ export default function FoodBankSection() {
       <div className="flex flex-col sm:flex-row gap-2 mb-3">
         {/* Busca */}
         <div className="relative flex-1 w-full sm:w-auto">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+          <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
             <Search className="h-4 w-4 text-slate-400" />
           </div>
           <input
@@ -239,10 +257,6 @@ export default function FoodBankSection() {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-
-        <p className="text-xs text-slate-500 self-center px-1 sm:max-w-48">
-          Use vírgulas ou espaços. Acrescente a fonte: “banana taco”.
-        </p>
 
         {/* Botão de filtros combinados */}
         <Popover open={filterOpen} onOpenChange={setFilterOpen}>
@@ -406,9 +420,7 @@ export default function FoodBankSection() {
 
       {/* ── Resultados ───────────────────────────────────────────────────── */}
       {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-7 h-7 animate-spin text-blue-500" />
-        </div>
+        <FoodResultsSkeleton />
       ) : foods.length === 0 ? (
         <div className="bg-white rounded-xl border border-dashed border-slate-300 p-12 text-center flex flex-col items-center">
           <Database className="w-12 h-12 text-slate-200 mb-4" />

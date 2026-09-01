@@ -1,30 +1,4 @@
--- Busca de alimentos por termos, tolerante a acentos, pontuação e fonte inline.
--- Exemplos: "banana", "abacate, cru", "banana taco".
-
-create or replace function public.normalize_food_search(p_value text)
-returns text
-language sql
-immutable
-parallel safe
-set search_path = ''
-as $$
-  select nullif(
-    btrim(
-      regexp_replace(
-        translate(
-          lower(coalesce(p_value, '')),
-          'áàâãäåéèêëíìîïóòôõöúùûüçñ',
-          'aaaaaaeeeeiiiiooooouuuucn'
-        ),
-        '[^a-z0-9]+',
-        ' ',
-        'g'
-      )
-    ),
-    ''
-  )
-$$;
-
+-- Mantém a listagem inicial em ordem alfabética, sem alterar o ranking de buscas.
 create or replace function public.search_foods(
   p_query text default null,
   p_source text default null,
@@ -186,15 +160,3 @@ begin
   offset v_offset;
 end;
 $$;
-
-revoke all on function public.normalize_food_search(text) from public, anon, authenticated;
-grant execute on function public.normalize_food_search(text) to authenticated, service_role;
-
-revoke all on function public.search_foods(text, text, text, text[], numeric, numeric, text, integer, integer) from public, anon, authenticated;
-grant execute on function public.search_foods(text, text, text, text[], numeric, numeric, text, integer, integer) to authenticated, service_role;
-
-create index if not exists reference_foods_source_normalized_name_idx
-  on public.reference_foods (source, public.normalize_food_search(name) text_pattern_ops);
-
-create index if not exists nutritionist_foods_owner_normalized_name_idx
-  on public.nutritionist_foods (nutritionist_id, public.normalize_food_search(name) text_pattern_ops);

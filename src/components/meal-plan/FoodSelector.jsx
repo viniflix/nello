@@ -270,7 +270,7 @@ const FoodSelector = ({ isOpen, onClose, onSelect, targetGroup, targetCalories, 
                                                         <div className="font-bold">{food.calories} kcal</div>
                                                     </div>
                                                     <div className="text-muted-foreground text-[10px] mt-1 tabular-nums">
-                                                        P:{food.protein.toFixed(1)} C:{food.carbs.toFixed(1)} G:{food.fat.toFixed(1)}
+                                                        P:{(food.protein || 0).toFixed(1)} C:{(food.carbs || 0).toFixed(1)} G:{(food.fat || 0).toFixed(1)}
                                                     </div>
                                                 </div>
                                             </div>

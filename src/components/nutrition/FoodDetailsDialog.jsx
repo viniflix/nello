@@ -94,14 +94,12 @@ const FoodDetailsDialog = ({ food, open, onOpenChange }) => {
     
     const isNotNull = (v) => v != null;
     const hasMinerals = isNotNull(f.calcium) || isNotNull(f.iron) || isNotNull(f.magnesium) || 
-                        isNotNull(f.phosphorus) || isNotNull(f.potassium) || isNotNull(f.zinc);
+                        isNotNull(f.phosphorus) || isNotNull(f.potassium) || isNotNull(f.zinc) || isNotNull(f.sodium);
     const hasVitamins = isNotNull(f.vitamin_a) || isNotNull(f.vitamin_c) || isNotNull(f.vitamin_d) || 
                         isNotNull(f.vitamin_e) || isNotNull(f.vitamin_b12) || isNotNull(f.folate);
     const checkMicros = hasMinerals || hasVitamins;
                         
-    const hasDetails = isNotNull(f.fiber) || isNotNull(f.sugar) || isNotNull(f.saturated_fat) || 
-                       isNotNull(f.trans_fat) || isNotNull(f.monounsaturated_fat) || 
-                       isNotNull(f.polyunsaturated_fat) || isNotNull(f.cholesterol) || isNotNull(f.sodium);
+    const hasDetails = isNotNull(f.fiber) || isNotNull(f.sugar);
 
     const TABS = [
         { id: 'macros', label: 'Macros' },
@@ -205,12 +203,6 @@ const FoodDetailsDialog = ({ food, open, onOpenChange }) => {
                                         <div className="px-4">
                                             <MicroRow label="Fibra alimentar" value={fmt(f.fiber)} unit="g" />
                                             <MicroRow label="Açúcares totais" value={fmt(f.sugar)} unit="g" />
-                                            <MicroRow label="Gordura saturada" value={fmt(f.saturated_fat)} unit="g" />
-                                            <MicroRow label="Gordura trans" value={fmt(f.trans_fat)} unit="g" />
-                                            <MicroRow label="Gord. Monoinsaturada" value={fmt(f.monounsaturated_fat)} unit="g" />
-                                            <MicroRow label="Gord. Poli-insaturada" value={fmt(f.polyunsaturated_fat)} unit="g" />
-                                            <MicroRow label="Colesterol" value={fmtInt(f.cholesterol)} unit="mg" />
-                                            <MicroRow label="Sódio" value={fmtInt(f.sodium)} unit="mg" />
                                         </div>
                                     </div>
                                 )}
@@ -234,6 +226,7 @@ const FoodDetailsDialog = ({ food, open, onOpenChange }) => {
                                             <MicroRow label="Fósforo" value={fmt(f.phosphorus)} unit="mg" />
                                             <MicroRow label="Potássio" value={fmt(f.potassium)} unit="mg" />
                                             <MicroRow label="Zinco" value={fmt(f.zinc)} unit="mg" />
+                                            <MicroRow label="Sódio" value={fmtInt(f.sodium)} unit="mg" />
                                         </div>
                                     </div>
                                 )}

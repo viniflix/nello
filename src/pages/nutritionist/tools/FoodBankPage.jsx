@@ -364,16 +364,13 @@ const FoodBankPage = () => {
                         <div className="space-y-3 sm:space-y-4 min-w-0">
                             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                                 <div className="flex-1 relative min-w-0">
-                                    <Search className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                                     <Input
                                         placeholder="Ex.: banana, cru ou banana taco"
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
                                         className="pl-10 min-w-0"
                                     />
-                                    <p className="mt-1 text-xs text-muted-foreground">
-                                        Use vírgulas ou espaços. Acrescente a fonte: “banana taco”.
-                                    </p>
                                 </div>
                                 <Select value={sourceFilter} onValueChange={setSourceFilter}>
                                     <SelectTrigger className="w-full sm:w-[250px]">
