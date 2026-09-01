@@ -1294,10 +1294,10 @@ const SmartFoodForm = forwardRef(function SmartFoodForm({
                                 </div>
                             </div>
                             <div className="space-y-4">
-                                <h3 className="text-sm font-semibold text-muted-foreground">Vitaminas (mg)</h3>
+                                <h3 className="text-sm font-semibold text-muted-foreground">Vitaminas</h3>
                                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                                     <div className="space-y-2">
-                                        <Label htmlFor="vitaminA">Vitamina A (mg)</Label>
+                                        <Label htmlFor="vitaminA">Vitamina A (µg RAE)</Label>
                                         <Input
                                             id="vitaminA"
                                             type="number"
@@ -1319,7 +1319,7 @@ const SmartFoodForm = forwardRef(function SmartFoodForm({
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label htmlFor="vitaminD">Vitamina D (mg)</Label>
+                                        <Label htmlFor="vitaminD">Vitamina D (µg)</Label>
                                         <Input
                                             id="vitaminD"
                                             type="number"
@@ -1341,7 +1341,7 @@ const SmartFoodForm = forwardRef(function SmartFoodForm({
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label htmlFor="vitaminB12">Vitamina B12 (mg)</Label>
+                                        <Label htmlFor="vitaminB12">Vitamina B12 (µg)</Label>
                                         <Input
                                             id="vitaminB12"
                                             type="number"
@@ -1352,7 +1352,7 @@ const SmartFoodForm = forwardRef(function SmartFoodForm({
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label htmlFor="folate">Folato (mg)</Label>
+                                        <Label htmlFor="folate">Folato (µg)</Label>
                                         <Input
                                             id="folate"
                                             type="number"

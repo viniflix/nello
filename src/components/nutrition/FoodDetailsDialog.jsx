@@ -246,12 +246,12 @@ const FoodDetailsDialog = ({ food, open, onOpenChange }) => {
                                             <span className="text-sm font-semibold text-slate-700">Vitaminas</span>
                                         </div>
                                         <div className="px-4">
-                                            <MicroRow label="Vitamina A" value={fmt(f.vitamin_a)} unit="mg" />
+                                            <MicroRow label="Vitamina A" value={fmt(f.vitamin_a)} unit="µg RAE" />
                                             <MicroRow label="Vitamina C" value={fmt(f.vitamin_c)} unit="mg" />
-                                            <MicroRow label="Vitamina D" value={fmt(f.vitamin_d)} unit="mg" />
+                                            <MicroRow label="Vitamina D" value={fmt(f.vitamin_d)} unit="µg" />
                                             <MicroRow label="Vitamina E" value={fmt(f.vitamin_e)} unit="mg" />
-                                            <MicroRow label="Vitamina B12" value={fmt(f.vitamin_b12)} unit="mg" />
-                                            <MicroRow label="Folato" value={fmt(f.folate)} unit="mg" />
+                                            <MicroRow label="Vitamina B12" value={fmt(f.vitamin_b12)} unit="µg" />
+                                            <MicroRow label="Folato" value={fmt(f.folate)} unit="µg" />
                                         </div>
                                     </div>
                                 )}
