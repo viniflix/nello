@@ -59,10 +59,10 @@ const FoodBankPage = () => {
         { value: 'all', label: 'Todas as Fontes' },
         { value: 'custom', label: 'Meus Alimentos Personalizados' },
         { value: 'TACO', label: 'TACO' },
-        { value: 'IBGE', label: 'IBGE' },
         { value: 'USDA', label: 'USDA' },
-        { value: 'Tucunduva', label: 'Tucunduva' },
-        { value: 'TBCA', label: 'TBCA' }
+        { value: 'TUCUNDUVA', label: 'Tucunduva' },
+        { value: 'TBCA', label: 'TBCA' },
+        { value: 'Nello', label: 'Nello' },
     ];
 
     // Fetch custom foods with pagination
@@ -78,21 +78,13 @@ const FoodBankPage = () => {
         setLoadingCustom(true);
         try {
             const offset = page * ITEMS_PER_PAGE;
-            let query = supabase
-                .from('foods')
-                .select('*', { count: 'exact' })
-                .eq('is_active', true)
-                .or(`source.eq.custom,nutritionist_id.eq.${user.id}`)
-                .order('name', { ascending: true })
-                .range(offset, offset + ITEMS_PER_PAGE - 1);
-
-            // Apply search filter
-            if (debouncedSearchTerm.trim()) {
-                const searchLower = debouncedSearchTerm.toLowerCase();
-                query = query.or(`name.ilike.%${searchLower}%,group.ilike.%${searchLower}%,description.ilike.%${searchLower}%`);
-            }
-
-            const { data, error, count } = await query;
+            const { data, error, count } = await supabase.rpc('search_foods', {
+                p_query: debouncedSearchTerm.trim() || null,
+                p_source: 'custom',
+                p_scope: 'custom',
+                p_limit: ITEMS_PER_PAGE,
+                p_offset: offset,
+            }, { count: 'exact' });
 
             if (error) throw error;
 
@@ -127,27 +119,13 @@ const FoodBankPage = () => {
         setLoadingPublic(true);
         try {
             const offset = page * ITEMS_PER_PAGE;
-            let query = supabase
-                .from('foods')
-                .select('*', { count: 'exact' })
-                .eq('is_active', true)
-                .neq('source', 'custom')
-                .is('nutritionist_id', null)
-                .order('name', { ascending: true })
-                .range(offset, offset + ITEMS_PER_PAGE - 1);
-
-            // Apply source filter
-            if (sourceFilter !== 'all') {
-                query = query.eq('source', sourceFilter);
-            }
-
-            // Apply search filter
-            if (debouncedSearchTerm.trim()) {
-                const searchLower = debouncedSearchTerm.toLowerCase();
-                query = query.or(`name.ilike.%${searchLower}%,group.ilike.%${searchLower}%,description.ilike.%${searchLower}%`);
-            }
-
-            const { data, error, count } = await query;
+            const { data, error, count } = await supabase.rpc('search_foods', {
+                p_query: debouncedSearchTerm.trim() || null,
+                p_source: sourceFilter === 'all' ? null : sourceFilter,
+                p_scope: 'public',
+                p_limit: ITEMS_PER_PAGE,
+                p_offset: offset,
+            }, { count: 'exact' });
 
             if (error) throw error;
 
@@ -388,11 +366,14 @@ const FoodBankPage = () => {
                                 <div className="flex-1 relative min-w-0">
                                     <Search className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
                                     <Input
-                                        placeholder="Buscar alimento por nome, grupo ou descrição..."
+                                        placeholder="Ex.: banana, cru ou banana taco"
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
                                         className="pl-10 min-w-0"
                                     />
+                                    <p className="mt-1 text-xs text-muted-foreground">
+                                        Use vírgulas ou espaços. Acrescente a fonte: “banana taco”.
+                                    </p>
                                 </div>
                                 <Select value={sourceFilter} onValueChange={setSourceFilter}>
                                     <SelectTrigger className="w-full sm:w-[250px]">

@@ -705,7 +705,7 @@ const MealPlanPDF = ({
                 </View>
                 <View style={styles.bentoItem}>
                   <Text style={styles.bentoLabel}>Vitamina A</Text>
-                  <Text style={styles.bentoValue}>{Math.round(planTotals.vitamin_a || 0)} µg</Text>
+                  <Text style={styles.bentoValue}>{Math.round(planTotals.vitamin_a || 0)} µg RAE</Text>
                 </View>
                 <View style={styles.bentoItem}>
                   <Text style={styles.bentoLabel}>Vitamina C</Text>

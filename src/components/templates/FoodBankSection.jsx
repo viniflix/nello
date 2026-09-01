@@ -116,48 +116,19 @@ export default function FoodBankSection() {
     setLoading(true);
     try {
       const offset = pg * ITEMS_PER_PAGE;
-      let q = supabase
-        .from('foods')
-        .select('*', { count: 'exact' })
-        .eq('is_active', true)
-        .order('name', { ascending: true })
-        .range(offset, offset + ITEMS_PER_PAGE - 1);
-
-      // Filtro de fonte
-      if (isCustom) {
-        q = q.or(`source.eq.custom,nutritionist_id.eq.${user.id}`);
-      } else {
-        q = q.neq('source', 'custom').is('nutritionist_id', null);
-        const tab = SOURCE_TABS.find(t => t.id === activeSource);
-        if (tab?.publicSource) q = q.eq('source', tab.publicSource);
-      }
-
-      // Busca textual
-      if (debouncedSearch.trim()) {
-        const s = debouncedSearch.trim();
-        q = q.or(`name.ilike.%${s}%,group.ilike.%${s}%,description.ilike.%${s}%`);
-      }
-
-      // Grupos alimentares (OR entre os selecionados)
-      if (groupFilters.length > 0) {
-        const orParts = groupFilters.map(g => `group.ilike.%${g}%`).join(',');
-        q = q.or(orParts);
-      }
-
-      // Faixa calórica — coluna: calories
       const calRange = CAL_RANGES.find(r => r.id === calFilter);
-      if (calRange) {
-        if (calRange.min != null) q = q.gte('calories', calRange.min);
-        if (calRange.max != null) q = q.lt('calories', calRange.max);
-      }
-
-      // Filtro de macro dominante
-      if (macroFilter === 'protein') q = q.gte('protein', 15);
-      if (macroFilter === 'carbs')   q = q.gte('carbs', 40);
-      if (macroFilter === 'fat')     q = q.gte('fat', 15);
-      if (macroFilter === 'fiber')   q = q.gte('fiber', 5);
-
-      const { data, error, count } = await q;
+      const tab = SOURCE_TABS.find(t => t.id === activeSource);
+      const { data, error, count } = await supabase.rpc('search_foods', {
+        p_query: debouncedSearch.trim() || null,
+        p_source: isCustom ? 'custom' : (tab?.publicSource || null),
+        p_scope: isCustom ? 'custom' : 'public',
+        p_groups: groupFilters.length ? groupFilters : null,
+        p_calories_min: calRange?.min ?? null,
+        p_calories_max: calRange?.max ?? null,
+        p_macro: macroFilter,
+        p_limit: ITEMS_PER_PAGE,
+        p_offset: offset,
+      }, { count: 'exact' });
       if (error) throw error;
       setFoods(data || []);
       setTotal(count || 0);
@@ -262,12 +233,16 @@ export default function FoodBankSection() {
           </div>
           <input
             type="text"
-            placeholder="Buscar por nome, grupo ou descrição..."
+            placeholder="Ex.: banana, cru ou banana taco"
             className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
+
+        <p className="text-xs text-slate-500 self-center px-1 sm:max-w-48">
+          Use vírgulas ou espaços. Acrescente a fonte: “banana taco”.
+        </p>
 
         {/* Botão de filtros combinados */}
         <Popover open={filterOpen} onOpenChange={setFilterOpen}>

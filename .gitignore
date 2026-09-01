@@ -41,7 +41,10 @@ dist-ssr/
 .copilot
 
 # Supabase infrastructure and local state stay outside GitHub.
-/supabase/
+/supabase/*
+!/supabase/migrations/
+/supabase/migrations/*
+!/supabase/migrations/20260901000000_food_search_ranking.sql
 .env.example
 .env.example
 /[Dd][Oo][Cc][Ss]/

@@ -459,7 +459,8 @@ const SmartFoodForm = forwardRef(function SmartFoodForm({
             setCholesterol((nutriments.cholesterol_100g * 1000).toFixed(0));
         }
 
-        // Micronutrientes (sempre em mg, normalizar de 100g ou serving)
+        // OpenFoodFacts normaliza micronutrientes em gramas. O banco usa mg
+        // para minerais, vitaminas C/E e µg para A/D/B12/folato.
         if (hasServingValues && servingSize && nutriments.calcium_serving !== undefined) {
             const factor = 100 / servingSize;
             setCalcium((nutriments.calcium_serving * factor * 1000).toFixed(0));
@@ -476,44 +477,44 @@ const SmartFoodForm = forwardRef(function SmartFoodForm({
 
         if (hasServingValues && servingSize && nutriments.vitamin_c_serving !== undefined) {
             const factor = 100 / servingSize;
-            setVitaminC((nutriments.vitamin_c_serving * factor * 1000).toFixed(0));
+            setVitaminC((nutriments.vitamin_c_serving * factor * 1000).toFixed(2));
         } else if (nutriments.vitamin_c_100g !== undefined) {
             setVitaminC((nutriments.vitamin_c_100g * 1000).toString());
         }
 
         if (hasServingValues && servingSize && nutriments.vitamin_a_serving !== undefined) {
             const factor = 100 / servingSize;
-            setVitaminA((nutriments.vitamin_a_serving * factor * 1000).toFixed(0));
+            setVitaminA((nutriments.vitamin_a_serving * factor * 1000000).toFixed(2));
         } else if (nutriments.vitamin_a_100g !== undefined) {
-            setVitaminA((nutriments.vitamin_a_100g * 1000).toString());
+            setVitaminA((nutriments.vitamin_a_100g * 1000000).toString());
         }
 
         if (hasServingValues && servingSize && nutriments.vitamin_d_serving !== undefined) {
             const factor = 100 / servingSize;
-            setVitaminD((nutriments.vitamin_d_serving * factor * 1000).toFixed(0));
+            setVitaminD((nutriments.vitamin_d_serving * factor * 1000000).toFixed(2));
         } else if (nutriments.vitamin_d_100g !== undefined) {
-            setVitaminD((nutriments.vitamin_d_100g * 1000).toString());
+            setVitaminD((nutriments.vitamin_d_100g * 1000000).toString());
         }
 
         if (hasServingValues && servingSize && nutriments.vitamin_e_serving !== undefined) {
             const factor = 100 / servingSize;
-            setVitaminE((nutriments.vitamin_e_serving * factor * 1000).toFixed(0));
+            setVitaminE((nutriments.vitamin_e_serving * factor * 1000).toFixed(2));
         } else if (nutriments.vitamin_e_100g !== undefined) {
             setVitaminE((nutriments.vitamin_e_100g * 1000).toString());
         }
 
         if (hasServingValues && servingSize && nutriments.vitamin_b12_serving !== undefined) {
             const factor = 100 / servingSize;
-            setVitaminB12((nutriments.vitamin_b12_serving * factor * 1000).toFixed(0));
+            setVitaminB12((nutriments.vitamin_b12_serving * factor * 1000000).toFixed(2));
         } else if (nutriments.vitamin_b12_100g !== undefined) {
-            setVitaminB12((nutriments.vitamin_b12_100g * 1000).toString());
+            setVitaminB12((nutriments.vitamin_b12_100g * 1000000).toString());
         }
 
         if (hasServingValues && servingSize && nutriments.folate_serving !== undefined) {
             const factor = 100 / servingSize;
-            setFolate((nutriments.folate_serving * factor * 1000).toFixed(0));
+            setFolate((nutriments.folate_serving * factor * 1000000).toFixed(2));
         } else if (nutriments.folate_100g !== undefined) {
-            setFolate((nutriments.folate_100g * 1000).toString());
+            setFolate((nutriments.folate_100g * 1000000).toString());
         }
 
         if (hasServingValues && servingSize && nutriments.magnesium_serving !== undefined) {
