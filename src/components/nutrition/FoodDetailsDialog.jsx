@@ -41,11 +41,12 @@ const MacroHero = ({ value, unit, label, bg, text }) => (
 
 // Linha de micronutriente
 const MicroRow = ({ label, value, unit }) => {
-    const displayValue = value != null ? value : '-';
+    if (value == null) return null;
+    
     return (
         <div className="flex items-center justify-between py-2 border-b border-slate-100 last:border-0">
             <span className="text-sm text-slate-600">{label}</span>
-            <span className="text-sm font-semibold text-slate-800">{displayValue} <span className="text-slate-400 font-normal">{value != null ? unit : ''}</span></span>
+            <span className="text-sm font-semibold text-slate-800">{value} <span className="text-slate-400 font-normal">{unit}</span></span>
         </div>
     );
 };
@@ -92,10 +93,11 @@ const FoodDetailsDialog = ({ food, open, onOpenChange }) => {
     const src = SOURCE_CONFIG[f.source] || { label: f.source, short: f.source, color: 'bg-slate-100 text-slate-600 border-slate-200' };
     
     const isNotNull = (v) => v != null;
-    const checkMicros = isNotNull(f.calcium) || isNotNull(f.iron) || isNotNull(f.magnesium) || 
-                        isNotNull(f.phosphorus) || isNotNull(f.potassium) || isNotNull(f.zinc) ||
-                        isNotNull(f.vitamin_a) || isNotNull(f.vitamin_c) || isNotNull(f.vitamin_d) || 
+    const hasMinerals = isNotNull(f.calcium) || isNotNull(f.iron) || isNotNull(f.magnesium) || 
+                        isNotNull(f.phosphorus) || isNotNull(f.potassium) || isNotNull(f.zinc);
+    const hasVitamins = isNotNull(f.vitamin_a) || isNotNull(f.vitamin_c) || isNotNull(f.vitamin_d) || 
                         isNotNull(f.vitamin_e) || isNotNull(f.vitamin_b12) || isNotNull(f.folate);
+    const checkMicros = hasMinerals || hasVitamins;
                         
     const hasDetails = isNotNull(f.fiber) || isNotNull(f.sugar) || isNotNull(f.saturated_fat) || 
                        isNotNull(f.trans_fat) || isNotNull(f.monounsaturated_fat) || 
@@ -219,36 +221,40 @@ const FoodDetailsDialog = ({ food, open, onOpenChange }) => {
                         {activeTab === 'micros' && (
                             <div className="space-y-3">
                                 {/* Minerais */}
-                                <div className="bg-white rounded-xl border border-slate-200 divide-y divide-slate-100">
-                                    <div className="px-4 py-2.5 flex items-center gap-2">
-                                        <Droplets className="w-4 h-4 text-blue-500" />
-                                        <span className="text-sm font-semibold text-slate-700">Minerais</span>
+                                {hasMinerals && (
+                                    <div className="bg-white rounded-xl border border-slate-200 divide-y divide-slate-100">
+                                        <div className="px-4 py-2.5 flex items-center gap-2">
+                                            <Droplets className="w-4 h-4 text-blue-500" />
+                                            <span className="text-sm font-semibold text-slate-700">Minerais</span>
+                                        </div>
+                                        <div className="px-4">
+                                            <MicroRow label="Cálcio" value={fmt(f.calcium)} unit="mg" />
+                                            <MicroRow label="Ferro" value={fmt(f.iron)} unit="mg" />
+                                            <MicroRow label="Magnésio" value={fmt(f.magnesium)} unit="mg" />
+                                            <MicroRow label="Fósforo" value={fmt(f.phosphorus)} unit="mg" />
+                                            <MicroRow label="Potássio" value={fmt(f.potassium)} unit="mg" />
+                                            <MicroRow label="Zinco" value={fmt(f.zinc)} unit="mg" />
+                                        </div>
                                     </div>
-                                    <div className="px-4">
-                                        <MicroRow label="Cálcio" value={fmt(f.calcium)} unit="mg" />
-                                        <MicroRow label="Ferro" value={fmt(f.iron)} unit="mg" />
-                                        <MicroRow label="Magnésio" value={fmt(f.magnesium)} unit="mg" />
-                                        <MicroRow label="Fósforo" value={fmt(f.phosphorus)} unit="mg" />
-                                        <MicroRow label="Potássio" value={fmt(f.potassium)} unit="mg" />
-                                        <MicroRow label="Zinco" value={fmt(f.zinc)} unit="mg" />
-                                    </div>
-                                </div>
+                                )}
 
                                 {/* Vitaminas */}
-                                <div className="bg-white rounded-xl border border-slate-200 divide-y divide-slate-100">
-                                    <div className="px-4 py-2.5 flex items-center gap-2">
-                                        <Zap className="w-4 h-4 text-amber-500" />
-                                        <span className="text-sm font-semibold text-slate-700">Vitaminas</span>
+                                {hasVitamins && (
+                                    <div className="bg-white rounded-xl border border-slate-200 divide-y divide-slate-100">
+                                        <div className="px-4 py-2.5 flex items-center gap-2">
+                                            <Zap className="w-4 h-4 text-amber-500" />
+                                            <span className="text-sm font-semibold text-slate-700">Vitaminas</span>
+                                        </div>
+                                        <div className="px-4">
+                                            <MicroRow label="Vitamina A" value={fmt(f.vitamin_a)} unit="mg" />
+                                            <MicroRow label="Vitamina C" value={fmt(f.vitamin_c)} unit="mg" />
+                                            <MicroRow label="Vitamina D" value={fmt(f.vitamin_d)} unit="mg" />
+                                            <MicroRow label="Vitamina E" value={fmt(f.vitamin_e)} unit="mg" />
+                                            <MicroRow label="Vitamina B12" value={fmt(f.vitamin_b12)} unit="mg" />
+                                            <MicroRow label="Folato" value={fmt(f.folate)} unit="mg" />
+                                        </div>
                                     </div>
-                                    <div className="px-4">
-                                        <MicroRow label="Vitamina A" value={fmt(f.vitamin_a)} unit="mg" />
-                                        <MicroRow label="Vitamina C" value={fmt(f.vitamin_c)} unit="mg" />
-                                        <MicroRow label="Vitamina D" value={fmt(f.vitamin_d)} unit="mg" />
-                                        <MicroRow label="Vitamina E" value={fmt(f.vitamin_e)} unit="mg" />
-                                        <MicroRow label="Vitamina B12" value={fmt(f.vitamin_b12)} unit="mg" />
-                                        <MicroRow label="Folato" value={fmt(f.folate)} unit="mg" />
-                                    </div>
-                                </div>
+                                )}
                             </div>
                         )}
 
