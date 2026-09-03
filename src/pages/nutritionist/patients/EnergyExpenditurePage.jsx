@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useResolvedPatientId } from '@/hooks/useResolvedPatientId';
 import { isUuid, patientHubRoute } from '@/lib/utils/patientRoutes';
-import { ArrowLeft, Calculator, Save, Loader2, Target, TrendingUp, Database, User, AlertCircle, HelpCircle, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Calculator, Save, Loader2, Target, TrendingUp, Database, User, AlertCircle, HelpCircle, ChevronRight, Flame, Activity, HeartPulse, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -605,51 +605,67 @@ export default function EnergyExpenditurePage() {
 
             <div className="space-y-4">
               <h3 className="text-lg font-semibold tracking-tight">Resultados Metabólicos (Base)</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card className="bg-background shadow-sm border-primary/10">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <Card className="bg-card shadow-sm border-border/60 hover:border-border transition-colors">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm text-muted-foreground flex items-center gap-2">
-                      1. Apenas TMB
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                      1. Taxa Metabólica Basal
                     </CardTitle>
                     <CardDescription className="text-xs">
                       Mínimo de energia para manter o corpo vivo em repouso.
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-2xl font-bold">
-                      {isEer ? 'N/A' : Math.round(tmbResult || 0)} <span className="text-base font-normal text-muted-foreground">kcal</span>
+                    <p className="text-2xl font-bold text-foreground">
+                      {isEer ? 'N/A' : Math.round(tmbResult || 0)} <span className="text-sm font-medium text-muted-foreground">kcal</span>
                     </p>
                   </CardContent>
                 </Card>
 
-                <Card className="bg-background shadow-sm border-primary/10">
+                <Card className="bg-card shadow-sm border-border/60 hover:border-border transition-colors">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm text-muted-foreground flex items-center gap-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
                       2. TMB + Fator de Atividade
                     </CardTitle>
                     <CardDescription className="text-xs">
-                      Gasto calórico considerando o nível de exercício/trabalho.
+                      Gasto considerando apenas o fator de atividade e rotina diária.
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-2xl font-bold">
-                      {Math.round(isEer ? getBase : (tmbResult || 0) * activityFactor)} <span className="text-base font-normal text-muted-foreground">kcal</span>
+                    <p className="text-2xl font-bold text-foreground">
+                      {Math.round(isEer ? getBase : (tmbResult || 0) * activityFactor)} <span className="text-sm font-medium text-muted-foreground">kcal</span>
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-card shadow-sm border-border/60 hover:border-border transition-colors">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                      3. TMB + Fator de Injúria
+                    </CardTitle>
+                    <CardDescription className="text-xs">
+                      Gasto considerando apenas o fator de estresse clínico/injúria atual.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-2xl font-bold text-foreground">
+                      {Math.round(isEer ? getBase : (tmbResult || 0) * injuryFactor)} <span className="text-sm font-medium text-muted-foreground">kcal</span>
                     </p>
                   </CardContent>
                 </Card>
 
                 <Card className="bg-primary/5 shadow-sm border-primary/20">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm text-primary flex items-center gap-2">
-                      3. TMB + FA + Injúria (GET Base)
+                    <CardTitle className="text-sm font-medium text-primary">
+                      4. Gasto Energético Total
                     </CardTitle>
                     <CardDescription className="text-xs">
-                      Gasto Energético Total base com todos os fatores.
+                      Gasto basal combinado (rotina + estresse clínico).
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-2xl font-bold text-primary">
-                      {Math.round(getBase)} <span className="text-base font-normal opacity-80">kcal</span>
+                    <p className="text-3xl font-bold text-primary">
+                      {Math.round(getBase)} <span className="text-sm font-medium opacity-80">kcal</span>
                     </p>
                   </CardContent>
                 </Card>
