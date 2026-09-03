@@ -338,6 +338,24 @@ export const getMealPlanById = async (planId) => {
             (customMeasures || []).forEach(m => { measuresMap[m.code] = { ...m, source: 'custom' }; });
         }
 
+        const isUuid = (str) => /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(String(str));
+        const foodMeasureIds = allUnits.filter(u => u && isUuid(u));
+        if (foodMeasureIds.length > 0) {
+            const { data: foodMeasures } = await supabase
+                .from('food_measures')
+                .select('id, label, weight_in_grams')
+                .in('id', foodMeasureIds);
+            (foodMeasures || []).forEach(m => {
+                measuresMap[m.id] = {
+                    id: m.id,
+                    name: m.label,
+                    code: m.id,
+                    grams_equivalent: m.weight_in_grams,
+                    source: 'specific'
+                };
+            });
+        }
+
         const resolveMeasure = (unit) => {
             if (!unit) return null;
             if (/^\d+$/.test(String(unit))) return measuresMap[Number(unit)] || null;

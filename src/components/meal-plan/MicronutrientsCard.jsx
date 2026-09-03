@@ -60,11 +60,26 @@ const calculateMicronutrients = (plan) => {
         if (meal.foods) {
             meal.foods.forEach(foodItem => {
                 if (foodItem.food) {
+                    let totalGrams = 0;
+                    if (!foodItem.unit || foodItem.unit === 'gram') {
+                        totalGrams = parseFloat(foodItem.quantity) || 0;
+                    } else if (foodItem.measure) {
+                        const measureGrams = parseFloat(foodItem.measure.grams_equivalent || foodItem.measure.weight_in_grams || foodItem.measure.quantity_grams || foodItem.measure.grams) || 0;
+                        totalGrams = (parseFloat(foodItem.quantity) || 0) * measureGrams;
+                    } else {
+                        // Fallback: se tivermos as calorias da porção, aplicamos engenharia reversa
+                        if (parseFloat(foodItem.food.calories) > 0 && foodItem.calories != null) {
+                            totalGrams = (parseFloat(foodItem.calories) / parseFloat(foodItem.food.calories)) * 100;
+                        } else {
+                            totalGrams = (parseFloat(foodItem.quantity) || 0) * 100; // Último caso
+                        }
+                    }
+                    
+                    const multiplier = totalGrams / 100;
+
                     Object.keys(DRI_VALUES).forEach(nutrient => {
                         const value = parseFloat(foodItem.food[nutrient]) || 0;
                         if (value > 0) {
-                            // Calcular baseado na quantidade
-                            const multiplier = foodItem.quantity / 100; // foods está em base 100g
                             totals[nutrient] += value * multiplier;
                         }
                     });
