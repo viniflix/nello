@@ -49,10 +49,8 @@ import { INJURY_FACTORS, getInjuryFactorValue } from '@/lib/constants/injury-fac
 const TMB_PROTOCOLS = [
   { id: 'mifflin', label: 'Mifflin-St Jeor' },
   { id: 'harris', label: 'Harris-Benedict (1919)' },
-  { id: 'fao_1985', label: 'FAO/OMS 1985' },
-  { id: 'eer_iom', label: 'EER/IOM (2005)' },
-  { id: 'cunningham', label: 'Cunningham (Massa Magra)' },
-  { id: 'tinsley', label: 'Tinsley (Atletas)' }
+  { id: 'fao_1985', label: 'FAO/OMS' },
+  { id: 'eer_iom', label: 'EER/IOM (2005)' }
 ];
 
 export default function EnergyExpenditurePage() {
@@ -605,32 +603,85 @@ export default function EnergyExpenditurePage() {
 
             <MetsActivitiesForm activities={metsActivities} onChange={setMetsActivities} weightKg={weightNum} />
 
-            <Card className="bg-muted/30">
-              <CardContent className="pt-6">
-                <div className="flex flex-wrap items-center justify-between gap-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">{isEer ? 'GET base (EER)' : 'GET base (TMB × FA × Injúria)'}</p>
-                    <p className="text-2xl font-bold">{Math.round(getBase)} kcal/dia</p>
-                  </div>
-                  {metsTotalKcal > 0 && (
-                    <div className="text-right">
-                      <p className="text-sm text-muted-foreground">+ Atividades (média diária)</p>
-                      <p className="text-xl font-semibold text-primary">+{Math.round(metsTotalKcal)} kcal</p>
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold tracking-tight">Resultados Metabólicos (Base)</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card className="bg-background shadow-sm border-primary/10">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm text-muted-foreground flex items-center gap-2">
+                      1. Apenas TMB
+                    </CardTitle>
+                    <CardDescription className="text-xs">
+                      Mínimo de energia para manter o corpo vivo em repouso.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-2xl font-bold">
+                      {isEer ? 'N/A' : Math.round(tmbResult || 0)} <span className="text-base font-normal text-muted-foreground">kcal</span>
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-background shadow-sm border-primary/10">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm text-muted-foreground flex items-center gap-2">
+                      2. TMB + Fator de Atividade
+                    </CardTitle>
+                    <CardDescription className="text-xs">
+                      Gasto calórico considerando o nível de exercício/trabalho.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-2xl font-bold">
+                      {Math.round(isEer ? getBase : (tmbResult || 0) * activityFactor)} <span className="text-base font-normal text-muted-foreground">kcal</span>
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-primary/5 shadow-sm border-primary/20">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm text-primary flex items-center gap-2">
+                      3. TMB + FA + Injúria (GET Base)
+                    </CardTitle>
+                    <CardDescription className="text-xs">
+                      Gasto Energético Total base com todos os fatores.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-2xl font-bold text-primary">
+                      {Math.round(getBase)} <span className="text-base font-normal opacity-80">kcal</span>
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <Card className="bg-muted/30 mt-4">
+                <CardContent className="pt-6">
+                  <div className="flex flex-wrap items-center justify-between gap-4">
+                    <div>
+                      <p className="text-sm text-muted-foreground">GET Base</p>
+                      <p className="text-xl font-bold">{Math.round(getBase)} kcal/dia</p>
                     </div>
-                  )}
-                  {etaKcal > 0 && (
+                    {metsTotalKcal > 0 && (
+                      <div className="text-right">
+                        <p className="text-sm text-muted-foreground">+ Atividades (média diária)</p>
+                        <p className="text-lg font-semibold text-primary">+{Math.round(metsTotalKcal)} kcal</p>
+                      </div>
+                    )}
+                    {etaKcal > 0 && (
+                      <div className="text-right">
+                        <p className="text-sm text-muted-foreground">+ ETA</p>
+                        <p className="text-lg font-semibold">+{Math.round(etaKcal)} kcal</p>
+                      </div>
+                    )}
                     <div className="text-right">
-                      <p className="text-sm text-muted-foreground">+ ETA</p>
-                      <p className="text-xl font-semibold">+{Math.round(etaKcal)} kcal</p>
+                      <p className="text-sm text-muted-foreground">GET Total (com atividades e ETA)</p>
+                      <p className="text-2xl font-bold text-primary">{Math.round(getResult)} kcal/dia</p>
                     </div>
-                  )}
-                  <div className="text-right">
-                    <p className="text-sm text-muted-foreground">GET total</p>
-                    <p className="text-2xl font-bold text-primary">{Math.round(getResult)} kcal/dia</p>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </div>
 
             <div className="flex justify-end">
               <Button

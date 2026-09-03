@@ -85,7 +85,7 @@ export function calculateBodyDensityPollock7(chest, axillary, triceps, subscapul
 }
 
 /**
- * Calcula densidade corporal usando Weltman (1988)
+ * Calcula densidade corporal usando Durnin & Womersley (1974)
  * @param {number} triceps - Dobra tríceps (mm)
  * @param {number} biceps - Dobra bíceps (mm)
  * @param {number} subscapular - Dobra subescapular (mm)
@@ -93,7 +93,7 @@ export function calculateBodyDensityPollock7(chest, axillary, triceps, subscapul
  * @param {boolean} isMale - Gênero (true = masculino)
  * @returns {number|null} Densidade corporal (g/cm³)
  */
-export function calculateBodyDensityWeltman(triceps, biceps, subscapular, suprailiac, isMale) {
+export function calculateBodyDensityDurnin(triceps, biceps, subscapular, suprailiac, isMale) {
   const t = parseFloat(triceps);
   const b = parseFloat(biceps);
   const s = parseFloat(subscapular);
@@ -115,7 +115,7 @@ export function calculateBodyDensityWeltman(triceps, biceps, subscapular, suprai
  * @param {object} skinfolds - Objeto com as dobras cutâneas (ex.: subescapular, suprailiaca)
  * @param {number} age - Idade (anos)
  * @param {boolean} isMale - Gênero (true = masculino)
- * @param {string} protocol - Protocolo: 'pollock3', 'pollock7', 'weltman'
+ * @param {string} protocol - Protocolo: 'pollock3', 'pollock7', 'durnin'
  * @returns {number|null} Densidade corporal (g/cm³)
  */
 export function calculateBodyDensity(skinfolds, age, isMale, protocol = 'pollock7') {
@@ -126,9 +126,9 @@ export function calculateBodyDensity(skinfolds, age, isMale, protocol = 'pollock
   } else if (protocol === 'pollock7') {
     const { peito, axilar, triceps, subescapular, abdominal, suprailiaca, coxa } = skinfolds;
     return calculateBodyDensityPollock7(peito, axilar, triceps, subescapular, abdominal, suprailiaca, coxa, age, isMale);
-  } else if (protocol === 'weltman') {
+  } else if (protocol === 'durnin') {
     const { triceps, biceps, subescapular, suprailiaca } = skinfolds;
-    return calculateBodyDensityWeltman(triceps, biceps, subescapular, suprailiaca, isMale);
+    return calculateBodyDensityDurnin(triceps, biceps, subescapular, suprailiaca, isMale);
   }
 
   return null;

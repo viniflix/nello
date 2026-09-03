@@ -70,7 +70,7 @@ const AnthropometryForm = ({
             abdominal: '',
             coxa: '',
             panturrilha: '',
-            // Campos adicionais para Pollock 7 e Weltman
+            // Campos adicionais para Pollock 7 e Durnin
             peito: '',
             axilar: ''
         },
@@ -863,14 +863,14 @@ const AnthropometryForm = ({
                                     <SelectContent>
                                         <SelectItem value="pollock3">Pollock 3 Dobras (Tríceps, Subescapular, Suprailíaca)</SelectItem>
                                         <SelectItem value="pollock7">Pollock 7 Dobras (Peito, Axilar, Tríceps, Subescapular, Abdominal, Suprailíaca, Coxa)</SelectItem>
-                                        <SelectItem value="weltman">Weltman 4 Dobras (Tríceps, Bíceps, Subescapular, Suprailíaca)</SelectItem>
+                                        <SelectItem value="durnin">Durnin & Womersley 4 Dobras (Tríceps, Bíceps, Subescapular, Suprailíaca)</SelectItem>
                                         <SelectItem value="bioimpedance">Bioimpedância (Direto)</SelectItem>
                                     </SelectContent>
                                 </Select>
                                 <p className="text-xs text-muted-foreground">
                                     {protocol === 'pollock3' && 'Requer: Tríceps, Subescapular, Suprailíaca, Idade, Gênero'}
                                     {protocol === 'pollock7' && 'Requer: Peito, Axilar, Tríceps, Subescapular, Abdominal, Suprailíaca, Coxa, Idade, Gênero'}
-                                    {protocol === 'weltman' && 'Requer: Tríceps, Bíceps, Subescapular, Suprailíaca, Idade, Gênero'}
+                                    {protocol === 'durnin' && 'Requer: Tríceps, Bíceps, Subescapular, Suprailíaca, Idade, Gênero'}
                                     {protocol === 'bioimpedance' && 'Use os valores de bioimpedância diretamente'}
                                 </p>
                             </div>
@@ -958,8 +958,8 @@ const AnthropometryForm = ({
                                             </div>
                                         ))}
 
-                                        {/* Weltman */}
-                                        {protocol === 'weltman' && [
+                                        {/* Durnin */}
+                                        {protocol === 'durnin' && [
                                             { key: 'triceps', label: 'Tríceps', required: true },
                                             { key: 'biceps', label: 'Bíceps', required: true },
                                             { key: 'subescapular', label: 'Subescapular', required: true },
@@ -1044,7 +1044,7 @@ const AnthropometryForm = ({
                                         Resultados Calculados em Tempo Real
                                     </CardTitle>
                                     <p className="text-sm text-muted-foreground">
-                                        Protocolo: {protocol === 'pollock3' ? 'Pollock 3 Dobras' : protocol === 'pollock7' ? 'Pollock 7 Dobras' : protocol === 'weltman' ? 'Weltman 4 Dobras' : 'Bioimpedância'}
+                                        Protocolo: {protocol === 'pollock3' ? 'Pollock 3 Dobras' : protocol === 'pollock7' ? 'Pollock 7 Dobras' : protocol === 'durnin' ? 'Durnin & Womersley 4 Dobras' : 'Bioimpedância'}
                                     </p>
                                 </CardHeader>
                                 <CardContent>
@@ -1082,7 +1082,7 @@ const AnthropometryForm = ({
                                             </div>
                                             <div className="pt-4 border-t border-emerald-200 dark:border-emerald-800">
                                                 <p className="text-xs text-muted-foreground">
-                                                    *Cálculos baseados em {protocol === 'pollock3' ? 'Jackson & Pollock (1985) - 3 dobras' : protocol === 'pollock7' ? 'Jackson & Pollock (1985) - 7 dobras' : protocol === 'weltman' ? 'Weltman et al. (1988)' : 'Bioimpedância direta'} e equação de Siri (1961) para conversão de densidade em % de gordura.
+                                                    *Cálculos baseados em {protocol === 'pollock3' ? 'Jackson & Pollock (1985) - 3 dobras' : protocol === 'pollock7' ? 'Jackson & Pollock (1985) - 7 dobras' : protocol === 'durnin' ? 'Durnin & Womersley (1974)' : 'Bioimpedância direta'} e equação de Siri (1961) para conversão de densidade em % de gordura.
                                                 </p>
                                             </div>
                                         </div>

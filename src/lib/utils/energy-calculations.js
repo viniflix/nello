@@ -426,7 +426,7 @@ export const applyVentaToGet = (getKcal, ventaDailyAdjustmentKcal) => {
  * @returns {Array} Array de objetos com informações de cada protocolo
  */
 export const calculateAllProtocols = (data) => {
-  const { weight, height, age, gender, leanMass } = data;
+  const { weight, height, age, gender } = data;
   
   // Validação básica
   if (!weight || !height || !age || !gender) {
@@ -451,7 +451,7 @@ export const calculateAllProtocols = (data) => {
     },
     {
       id: 'fao_1985',
-      name: 'FAO/OMS 1985',
+      name: 'FAO/OMS',
       description: 'Equações por faixa etária (18-30, 30-60, >60) e sexo.',
       bmr: calculateFaoOms1985(weight, height, age, gender),
       category: 'general'
@@ -467,32 +467,6 @@ export const calculateAllProtocols = (data) => {
     }
   ];
 
-  // Adiciona protocolos de atleta APENAS se tiver massa magra
-  if (leanMass && leanMass > 0) {
-    const cunninghamBmr = calculateCunningham(leanMass);
-    const tinsleyBmr = calculateTinsley(weight, leanMass);
-    
-    if (cunninghamBmr !== null) {
-      protocols.push({ 
-        id: 'cunningham', 
-        name: 'Cunningham (Atletas)', 
-        description: 'Baseado em massa livre de gordura; confirme método e população.',
-        bmr: cunninghamBmr,
-        category: 'athlete'
-      });
-    }
-    
-    if (tinsleyBmr !== null) {
-      protocols.push({ 
-        id: 'tinsley', 
-        name: 'Tinsley (Bodybuilding)', 
-        description: 'Específico para treinamento de força.',
-        bmr: tinsleyBmr,
-        category: 'athlete'
-      });
-    }
-  }
-
   return protocols;
 };
 
@@ -504,22 +478,14 @@ export const calculateAllProtocols = (data) => {
  * @returns {number|null} BMR em kcal/dia, ou null se dados insuficientes
  */
 export const calculateBMRByProtocol = (protocolId, data) => {
-  const { weight, height, age, gender, leanMass } = data;
+  const { weight, height, age, gender } = data;
   switch (protocolId) {
     case 'harris':
       return calculateHarrisBenedict(weight, height, age, gender);
     case 'mifflin':
       return calculateMifflinStJeor(weight, height, age, gender);
-    case 'fao':
-      return calculateFaoWho(weight, height, age, gender);
     case 'fao_1985':
       return calculateFaoOms1985(weight, height, age, gender);
-    case 'fao_2001':
-      return calculateFaoOms2001(weight, height, age, gender);
-    case 'cunningham':
-      return calculateCunningham(leanMass);
-    case 'tinsley':
-      return calculateTinsley(weight, leanMass);
     case 'eer_iom':
       return null; // EER retorna GET, não TMB
     default:
@@ -549,24 +515,10 @@ export const getProtocolInfo = (protocolId) => {
       category: 'clinical',
       requiresLeanMass: false,
     },
-    fao: {
-      id: 'fao',
-      name: 'FAO/WHO (simplificado)',
-      description: 'Padrão OMS simplificado.',
-      category: 'general',
-      requiresLeanMass: false
-    },
     fao_1985: {
       id: 'fao_1985',
-      name: 'FAO/OMS 1985',
+      name: 'FAO/OMS',
       description: 'Por faixa etária e sexo.',
-      category: 'general',
-      requiresLeanMass: false
-    },
-    fao_2001: {
-      id: 'fao_2001',
-      name: 'FAO/OMS 2001',
-      description: 'WHO/FAO/UNU 2001.',
       category: 'general',
       requiresLeanMass: false
     },
@@ -577,20 +529,6 @@ export const getProtocolInfo = (protocolId) => {
       category: 'clinical',
       requiresLeanMass: false,
       isEer: true
-    },
-    cunningham: {
-      id: 'cunningham',
-      name: 'Cunningham (Atletas)',
-      description: 'Baseado em massa livre de gordura; confirme método e população.',
-      category: 'athlete',
-      requiresLeanMass: true
-    },
-    tinsley: {
-      id: 'tinsley',
-      name: 'Tinsley (Bodybuilding)',
-      description: 'Específico para treinamento de força.',
-      category: 'athlete',
-      requiresLeanMass: true
     }
   };
 
