@@ -23,6 +23,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/lib/customSupabaseClient';
 import { searchFoodsPaginated, getFoodMeasures } from '@/lib/supabase/foodService';
 import { useDebounce } from '@/hooks/useDebounce';
+import { formatNutrient } from '@/lib/utils';
 
 /**
  * PatientAddFoodDialog - Modal para adicionar/editar alimento
@@ -394,7 +395,7 @@ const PatientAddFoodDialog = ({
                                                         >
                                                             <div className="font-medium">{food.name}</div>
                                                             <div className="text-xs text-muted-foreground">
-                                                                {food.group} • {food.calories} kcal/100g
+                                                                {food.group} • {formatNutrient(food.calories)} kcal/100g
                                                             </div>
                                                         </div>
                                                     ))}

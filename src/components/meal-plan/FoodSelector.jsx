@@ -17,6 +17,7 @@ import { supabase } from '@/lib/customSupabaseClient';
 import QuickFoodCreateDialog from './QuickFoodCreateDialog';
 import { getSubstitutionAnalysis } from '@/lib/utils/foodSubstitution';
 import { AlertCircle, FolderSync } from 'lucide-react';
+import { formatNutrient } from '@/lib/utils';
 
 const FoodSelector = ({ isOpen, onClose, onSelect, targetGroup, targetCalories, originalFood }) => {
     const [searchTerm, setSearchTerm] = useState('');
@@ -267,7 +268,7 @@ const FoodSelector = ({ isOpen, onClose, onSelect, targetGroup, targetCalories, 
                                                 </div>
                                                 <div className="ml-4 text-right text-sm">
                                                     <div className="flex flex-col items-end gap-1">
-                                                        <div className="font-bold">{food.calories} kcal</div>
+                                                        <div className="font-bold">{formatNutrient(food.calories)} kcal</div>
                                                     </div>
                                                     <div className="text-muted-foreground text-[10px] mt-1 tabular-nums">
                                                         P:{(food.protein || 0).toFixed(1)} C:{(food.carbs || 0).toFixed(1)} G:{(food.fat || 0).toFixed(1)}

@@ -16,6 +16,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { calculateNutrition } from '@/lib/utils/nutrition-calculations';
 import { mealItemFoodIds } from '@/lib/supabase/food-diary-queries';
 import { getFoodMeasures } from '@/lib/supabase/foodService';
+import { formatNutrient } from '@/lib/utils';
 
 const getMealType = (time) => {
     if (!time) return '';
@@ -256,7 +257,7 @@ const AddFoodPage = () => {
                                                 {filteredFoods.length > 0 ? filteredFoods.map(food => (
                                                     <div key={food.id} className="p-3 border-b cursor-pointer hover:bg-muted" onClick={() => handleSelectFood(food)}>
                                                         <p className="font-medium">{food.name}</p>
-                                                        <p className="text-xs text-muted-foreground">{food.calories} kcal por 100g</p>
+                                                        <p className="text-xs text-muted-foreground">{formatNutrient(food.calories)} kcal por 100g</p>
                                                     </div>
                                                 )) : <div className="p-3 text-center text-muted-foreground">Nenhum alimento encontrado.</div>}
                                             </div>

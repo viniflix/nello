@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { formatNutrient } from '@/lib/utils';
 import AddFoodToMealDialog from './AddFoodToMealDialog';
 import { formatQuantityWithUnit } from '@/lib/utils/measureTranslations';
 import SubstitutionDialog from './SubstitutionDialog';
@@ -353,10 +354,10 @@ const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null }) => {
                                                     </div>
                                                     <div className="text-sm text-muted-foreground">
                                                         {formatQuantityWithUnit(food.quantity, food.unit, food.measure)} •
-                                                        {' '}{food.calories} kcal •
-                                                        P: {food.protein}g •
-                                                        C: {food.carbs}g •
-                                                        G: {food.fat}g
+                                                        {' '}{formatNutrient(food.calories)} kcal •
+                                                        P: {formatNutrient(food.protein)}g •
+                                                        C: {formatNutrient(food.carbs)}g •
+                                                        G: {formatNutrient(food.fat)}g
                                                     </div>
                                                     {food.notes && (
                                                         <div className="text-xs text-muted-foreground mt-1">

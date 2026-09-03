@@ -22,6 +22,7 @@ import FoodMeasureManager from '@/components/nutritionist/FoodMeasureManager';
 import SmartFoodForm from '@/components/nutrition/SmartFoodForm';
 import { supabase } from '@/lib/customSupabaseClient';
 import { SimpleListSkeleton } from '@/components/ui/custom-skeletons';
+import { formatNutrient } from '@/lib/utils';
 
 /**
  * NutritionistFoodsPage - Gerenciar Alimentos e Medidas Caseiras
@@ -355,10 +356,10 @@ export default function NutritionistFoodsPage() {
                               </p>
                             )}
                             <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
-                              <span>{food.calories} kcal/100g</span>
-                              <span>P: {food.protein}g</span>
-                              <span>C: {food.carbs}g</span>
-                              <span>G: {food.fat}g</span>
+                              <span>{formatNutrient(food.calories)} kcal/100g</span>
+                              <span>P: {formatNutrient(food.protein)}g</span>
+                              <span>C: {formatNutrient(food.carbs)}g</span>
+                              <span>G: {formatNutrient(food.fat)}g</span>
                             </div>
                             {food.food_measures && food.food_measures.length > 0 && (
                               <div className="mt-3 pt-3 border-t">
