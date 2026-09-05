@@ -19,6 +19,8 @@ const createWrapper = () => {
 const mocks = vi.hoisted(() => ({
   getPatientSummary: vi.fn(),
   getPatientActivities: vi.fn(),
+  getPatientHubOperationalContext: vi.fn(),
+  calculateDiaryAdherence: vi.fn(),
   getPatientRecordFoundation: vi.fn(),
   listPatientLegalGuardians: vi.fn(),
 }));
@@ -27,6 +29,10 @@ vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ user: { id: 'nutrit
 vi.mock('@/lib/supabase/patient-queries', () => ({
   getPatientSummary: mocks.getPatientSummary,
   getPatientActivities: mocks.getPatientActivities,
+  getPatientHubOperationalContext: mocks.getPatientHubOperationalContext,
+}));
+vi.mock('@/lib/supabase/food-diary-queries', () => ({
+  calculateDiaryAdherence: mocks.calculateDiaryAdherence,
 }));
 vi.mock('@/features/clinical-records/api/record-foundation-queries', () => ({
   getPatientRecordFoundation: mocks.getPatientRecordFoundation,
@@ -65,6 +71,8 @@ describe('usePatientHub clinical record foundation', () => {
       error: null,
     });
     mocks.getPatientActivities.mockResolvedValue({ data: [], error: null });
+    mocks.getPatientHubOperationalContext.mockResolvedValue({ data: {}, error: null });
+    mocks.calculateDiaryAdherence.mockResolvedValue({ data: null, error: null });
     mocks.getPatientRecordFoundation.mockResolvedValue({
       data: { viewed_episode_id: 'episode-1', viewed_episode_status: 'active', writable_episode_id: 'episode-1', can_write: true, patient: { name: 'Ana', birth_date: '2012-01-01' }, records: [] },
       error: null,
@@ -85,6 +93,7 @@ describe('usePatientHub clinical record foundation', () => {
     expect(mocks.getPatientSummary).toHaveBeenCalledWith('patient-1', 'nutritionist-1');
     expect(mocks.getPatientRecordFoundation).toHaveBeenCalledWith('patient-1');
     expect(mocks.listPatientLegalGuardians).toHaveBeenCalledWith('patient-1', 'episode-1');
+    expect(mocks.getPatientHubOperationalContext).toHaveBeenCalledWith('patient-1', 'nutritionist-1', 'episode-1');
   });
 
   it('publishes separate viewed and writable episode contracts without inventing a foundation shape', async () => {

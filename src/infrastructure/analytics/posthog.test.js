@@ -1,7 +1,9 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { sanitizeAnalyticsProperties, sanitizePosthogEvent } from './posthog';
 
 describe('sanitizeAnalyticsProperties', () => {
+  beforeEach(() => vi.stubEnv('VITE_APP_RELEASE', '0.0.0'));
+  afterEach(() => vi.unstubAllEnvs());
   it('keeps operational metrics and removes nested personal or clinical data', () => {
     const source = {
       feature: 'agenda',

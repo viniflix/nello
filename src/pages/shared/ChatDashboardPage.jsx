@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Search, MessageSquare, Loader2, User as UserIcon, Plus, Filter } from 'lucide-react';
 import { useChat } from '@/contexts/ChatContext';
 import { useOnlinePresence } from '@/hooks/useOnlinePresence';
@@ -99,6 +99,7 @@ const ConversationItem = ({ conversation, isActive, onClick }) => {
 const ChatDashboardPage = () => {
   const { patientId } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { conversations, loading } = useChat();
   const [search, setSearch] = useState('');
   const [showArchived, setShowArchived] = useState(false);
@@ -210,7 +211,13 @@ const ChatDashboardPage = () => {
               transition={{ duration: 0.2 }}
               className="h-full w-full"
             >
-              <ChatPage propRecipientId={patientId} isEmbedded={true} />
+              <ChatPage
+                propRecipientId={patientId}
+                isEmbedded={true}
+                initialDraft={searchParams.get('draft') === 'meal-plan'
+                  ? 'Olá! Gostaria de conversar sobre seu acompanhamento e as orientações do plano alimentar.'
+                  : ''}
+              />
               
               {/* Botão de Voltar Mobile */}
               <Button

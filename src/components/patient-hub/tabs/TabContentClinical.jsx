@@ -1,33 +1,36 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FileText, Droplet, CheckCircle2, AlertCircle, Calendar, ArrowRight } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ArrowRight, Droplet, FileEdit, FileText, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert } from '@/components/ui/alert';
-import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/skeleton';
+import { HubPanel } from '@/components/patient-hub/HubPanel';
 import { patientRoute } from '@/lib/utils/patientRoutes';
 import { useToast } from '@/components/ui/use-toast';
 import { getLatestAnamnesis } from '@/lib/supabase/anamnesis-queries';
 import { getRecentLabResults } from '@/lib/supabase/lab-results-queries';
-import { CardSkeleton, ActivityListSkeleton } from '@/components/ui/card-skeleton';
 import GlycemiaSummaryCard from '@/components/patient-hub/GlycemiaSummaryCard';
-
 import ClinicalRecordsList from '@/features/clinical-records/components/ClinicalRecordsList';
 import EvolutionEditor from '@/features/clinical-records/components/EvolutionEditor';
 import EvolutionTemplateSelector from '@/features/clinical-records/components/EvolutionTemplateSelector';
 import { createClinicalEvolutionDraft, listClinicalRecordsByEpisode } from '@/features/clinical-records/api/evolution-queries';
 import ClinicalAttachmentsPanel from '@/features/clinical-records/components/ClinicalAttachmentsPanel';
 
-const TabContentClinical = ({ patientId, patientData, modulesStatus = {}, viewedEpisodeId, writableEpisodeId, currentUserId, canCosign }) => {
+const formatDate = value => value && !Number.isNaN(new Date(value).getTime())
+    ? new Date(value).toLocaleDateString('pt-BR')
+    : 'Data não informada';
+
+const labStatus = status => ({ normal: 'Normal', low: 'Baixo', high: 'Alto' }[status] || 'Pendente');
+
+export default function TabContentClinical({ patientId, patientData, viewedEpisodeId, writableEpisodeId, currentUserId, canCosign }) {
     const patient = patientData || { id: patientId };
     const navigate = useNavigate();
     const { toast } = useToast();
-    const [latestAnamnesis, setLatestAnamnesis] = useState(null);
-    const [anamnesisLoading, setAnamnesisLoading] = useState(true);
-    const [labResults, setLabResults] = useState([]);
-    const [labsLoading, setLabsLoading] = useState(true);
-
+    const [anamnesis, setAnamnesis] = useState(null);
+    const [anamnesisState, setAnamnesisState] = useState('loading');
+    const [labs, setLabs] = useState([]);
+    const [labsState, setLabsState] = useState('loading');
     const [records, setRecords] = useState([]);
     const [recordsLoading, setRecordsLoading] = useState(true);
     const [recordsError, setRecordsError] = useState(null);
@@ -35,6 +38,34 @@ const TabContentClinical = ({ patientId, patientData, modulesStatus = {}, viewed
     const [showTemplateSelector, setShowTemplateSelector] = useState(false);
     const recordsRequestRef = useRef(0);
     const creationRequestRef = useRef(0);
+
+    const loadSummary = useCallback(async () => {
+        if (!patientId) {
+            setAnamnesisState('ready');
+            setLabsState('ready');
+            return;
+        }
+        setAnamnesisState('loading');
+        setLabsState('loading');
+        const [anamnesisResult, labsResult] = await Promise.allSettled([
+            getLatestAnamnesis(patientId),
+            getRecentLabResults(patientId)
+        ]);
+        if (anamnesisResult.status === 'fulfilled' && !anamnesisResult.value?.error) {
+            setAnamnesis(anamnesisResult.value?.data || null);
+            setAnamnesisState('ready');
+        } else {
+            setAnamnesis(null);
+            setAnamnesisState('error');
+        }
+        if (labsResult.status === 'fulfilled' && !labsResult.value?.error) {
+            setLabs(labsResult.value?.data || []);
+            setLabsState('ready');
+        } else {
+            setLabs([]);
+            setLabsState('error');
+        }
+    }, [patientId]);
 
     const loadRecords = useCallback(async () => {
         const requestId = ++recordsRequestRef.current;
@@ -51,378 +82,92 @@ const TabContentClinical = ({ patientId, patientData, modulesStatus = {}, viewed
         else {
             const nextRecords = data || [];
             setRecords(nextRecords);
-            setSelectedRecord((previous) => {
-                if (!previous) return previous;
-                return nextRecords.find((candidate) => candidate.id === previous.id) || null;
-            });
+            setSelectedRecord(previous => previous ? nextRecords.find(candidate => candidate.id === previous.id) || null : previous);
         }
         setRecordsLoading(false);
     }, [patientId, viewedEpisodeId]);
 
     useEffect(() => {
-        const fetchLatestAnamnesis = async () => {
-            if (!patientId) return;
-
-            setAnamnesisLoading(true);
-            try {
-                const { data } = await getLatestAnamnesis(patientId);
-                setLatestAnamnesis(data);
-            } catch (error) {
-                console.error('Erro ao buscar anamnese:', error);
-            } finally {
-                setAnamnesisLoading(false);
-            }
-        };
-
-        const fetchLabResults = async () => {
-            if (!patientId) return;
-
-            setLabsLoading(true);
-            try {
-                const { data } = await getRecentLabResults(patientId);
-                setLabResults(data || []);
-            } catch (error) {
-                console.error('Erro ao buscar exames:', error);
-                setLabResults([]);
-            } finally {
-                setLabsLoading(false);
-            }
-        };
-
-        fetchLatestAnamnesis();
-        fetchLabResults();
+        void loadSummary();
         setSelectedRecord(null);
         setShowTemplateSelector(false);
         void loadRecords();
-        return () => {
-            recordsRequestRef.current += 1;
-        };
-    }, [patientId, viewedEpisodeId, loadRecords]);
+        return () => { recordsRequestRef.current += 1; };
+    }, [loadRecords, loadSummary]);
 
-    useEffect(() => () => {
-        creationRequestRef.current += 1;
-    }, [patientId, writableEpisodeId]);
+    useEffect(() => () => { creationRequestRef.current += 1; }, [patientId, writableEpisodeId]);
 
-    const handleCreateDraft = async ({ template, encounterAt, visibility, retrospectiveReason }) => {
+    const createDraft = async ({ template, encounterAt, visibility, retrospectiveReason }) => {
         if (!patientId || !writableEpisodeId) return false;
         const requestId = ++creationRequestRef.current;
-        const { data, error } = await createClinicalEvolutionDraft(
-            patientId,
-            writableEpisodeId,
-            template.code,
-            encounterAt,
-            visibility,
-            retrospectiveReason || null,
-        );
+        const { data, error } = await createClinicalEvolutionDraft(patientId, writableEpisodeId, template.code, encounterAt, visibility, retrospectiveReason || null);
         if (requestId !== creationRequestRef.current) return false;
-
         if (error || !data) {
-            toast({
-                title: 'Erro ao criar evolução',
-                description: error?.message || 'Não foi possível criar o rascunho.',
-                variant: 'destructive',
-            });
+            toast({ title: 'Erro ao criar evolução', description: error?.message || 'Não foi possível criar o rascunho.', variant: 'destructive' });
             return false;
         }
-
         setSelectedRecord(data);
         return true;
     };
 
-    const AnamnesisCard = () => {
-        const hasAnamnesis = !anamnesisLoading && latestAnamnesis;
-
-        if (anamnesisLoading) {
-            return (
-                <div className="h-full">
-                    <CardSkeleton lines={2} />
-                </div>
-            );
-        }
-
-        if (!hasAnamnesis) {
-            return (
-                <Card
-                    className="border-l-4 border-l-[#c4661f] bg-[#fefae0]/30 hover:shadow-md transition-all cursor-pointer h-full"
-                    onClick={() => navigate(patientRoute(patient, 'anamnesis'))}
-                >
-                    <CardContent className="py-8">
-                        <div className="flex items-start gap-4">
-                            <div className="w-12 h-12 rounded-full bg-[#fefae0] flex items-center justify-center flex-shrink-0">
-                                <AlertCircle className="w-6 h-6 text-[#c4661f]" />
-                            </div>
-                            <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <h3 className="text-lg font-semibold text-foreground">Anamnese</h3>
-                                    <Badge className="bg-[#fefae0] text-[#c4661f] border-[#c4661f]">
-                                        Pendente
-                                    </Badge>
-                                </div>
-                                <p className="text-sm text-muted-foreground mb-4">
-                                    Histórico clínico ainda não registrado. Complete a anamnese para identificar
-                                    alergias, condições de saúde e medicações em uso.
-                                </p>
-                                <span className="inline-flex items-center gap-2 text-sm font-medium text-[#c4661f]">
-                                    <FileText className="w-4 h-4" />
-                                    Iniciar Anamnese
-                                    <ArrowRight className="w-4 h-4" />
-                                </span>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-            );
-        }
-
-        const statusConfig = {
-            draft: { label: 'Rascunho', color: 'bg-yellow-100 text-yellow-800 border-yellow-300 dark:bg-yellow-500/20 dark:text-yellow-300 dark:border-yellow-500/30' },
-            completed: { label: 'Completa', color: 'bg-[#a9b388]/20 text-[#5f6f52] border-[#5f6f52] dark:text-[#a9b388]' }
-        };
-        const config = statusConfig[latestAnamnesis.status] || statusConfig.draft;
-
-        return (
-            <Card
-                className="border-l-4 border-l-[#5f6f52] dark:border-l-[#a9b388] hover:shadow-xl transition-all cursor-pointer h-full"
-                onClick={() => navigate(patientRoute(patient, 'anamnesis'))}
-            >
-                <CardHeader className="pb-3">
-                    <div className="flex items-center gap-2">
-                        <CheckCircle2 className="w-5 h-5 text-[#5f6f52]" />
-                        <CardTitle className="text-lg">Anamnese</CardTitle>
-                        <Badge variant="outline" className={config.color}>
-                            {config.label}
-                        </Badge>
-                    </div>
-                </CardHeader>
-
-                <CardContent>
-                    <div className="bg-[#fefae0] dark:bg-muted/30 border border-[#a9b388] dark:border-[#a9b388]/50 rounded-lg p-3 mb-3">
-                        <div className="text-xs font-semibold text-[#5f6f52] dark:text-[#a9b388] mb-1 uppercase tracking-wide">
-                            📋 Documento
-                        </div>
-                        <p className="text-sm text-foreground">
-                            {latestAnamnesis.template?.title || 'Anamnese Nutricional'}
-                        </p>
-                    </div>
-
-                    <div className="flex items-center justify-between text-xs text-muted-foreground pt-3 mt-3 border-t">
-                        <span className="flex items-center gap-1">
-                            <Calendar className="w-3 h-3" />
-                            Registrada em: {new Date(latestAnamnesis.date).toLocaleDateString('pt-BR', {
-                                day: '2-digit',
-                                month: 'long',
-                                year: 'numeric'
-                            })}
-                        </span>
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 text-[#5f6f52] dark:text-[#a9b388] hover:bg-[#5f6f52]/10 dark:hover:bg-[#a9b388]/10"
-                            onClick={() => navigate(patientRoute(patient, 'anamnesis'))}
-                        >
-                            Abrir <ArrowRight className="w-3 h-3 ml-1" />
-                        </Button>
-                    </div>
-                </CardContent>
-            </Card>
-        );
-    };
-
-    const LabsCard = () => {
-        if (labsLoading) {
-            return (
-                <div className="h-full">
-                    <CardSkeleton lines={2} />
-                </div>
-            );
-        }
-
-        const hasLabResults = labResults && labResults.length > 0;
-
-        if (!hasLabResults) {
-            return (
-                <Card
-                    className="border-dashed border-2 border-[#a9b388] bg-[#fefae0]/30 hover:shadow-md transition-all cursor-pointer h-full"
-                    onClick={() => navigate(patientRoute(patient, 'lab-results'))}
-                >
-                    <CardContent className="py-8 text-center">
-                        <div className="w-12 h-12 rounded-full bg-[#fefae0] flex items-center justify-center mx-auto mb-3">
-                            <Droplet className="w-6 h-6 text-[#b99470]" />
-                        </div>
-                        <h3 className="text-base font-semibold text-foreground mb-2">
-                            Exames Laboratoriais
-                        </h3>
-                        <p className="text-sm text-muted-foreground mb-4 max-w-sm mx-auto">
-                            Nenhum exame registrado. Adicione resultados de análises clínicas
-                            para um acompanhamento mais completo.
-                        </p>
-                        <span className="inline-flex items-center gap-2 text-sm font-medium text-[#b99470]">
-                            <Droplet className="w-4 h-4" />
-                            Adicionar Exames
-                            <ArrowRight className="w-4 h-4" />
-                        </span>
-                    </CardContent>
-                </Card>
-            );
-        }
-
-        // Mostrar apenas os 3 mais recentes
-        const recentTests = labResults.slice(0, 3);
-        const mostRecentDate = labResults[0]?.test_date;
-
-        return (
-            <Card
-                className="border-l-4 border-l-[#b99470] hover:shadow-xl transition-all cursor-pointer h-full"
-                onClick={() => navigate(patientRoute(patient, 'lab-results'))}
-            >
-                <CardHeader className="pb-3">
-                    <div className="flex items-center gap-2">
-                        <Droplet className="w-5 h-5 text-[#b99470]" />
-                        <CardTitle className="text-base">Exames Laboratoriais</CardTitle>
-                    </div>
-                </CardHeader>
-
-                <CardContent>
-                    <div className="space-y-2 mb-3">
-                        {recentTests.map((test) => (
-                            <div
-                                key={test.id}
-                                className={cn(
-                                    "flex items-center justify-between p-3 rounded-lg border",
-                                    test.status === 'normal' ? "bg-emerald-50 border-emerald-200" :
-                                    test.status === 'low' ? "bg-amber-50 border-amber-200" :
-                                    test.status === 'high' ? "bg-red-50 border-red-200" :
-                                    "bg-gray-50 border-gray-200"
-                                )}
-                            >
-                                <div className="flex-1 min-w-0">
-                                    <div className="text-sm font-medium text-foreground truncate">{test.test_name}</div>
-                                    <div className="text-xs text-muted-foreground">
-                                        {test.test_value} {test.test_unit || ''}
-                                    </div>
-                                </div>
-                                <Badge variant="outline" className={cn(
-                                    "text-xs ml-2",
-                                    test.status === 'normal' ? "bg-emerald-100 text-emerald-800 border-emerald-300" :
-                                    test.status === 'low' ? "bg-amber-100 text-amber-800 border-amber-300" :
-                                    test.status === 'high' ? "bg-red-100 text-red-800 border-red-300" :
-                                    "bg-gray-100 text-gray-800 border-gray-300"
-                                )}>
-                                    {test.status === 'normal' ? 'Normal' :
-                                     test.status === 'low' ? 'Baixo' :
-                                     test.status === 'high' ? 'Alto' : 'Pendente'}
-                                </Badge>
-                            </div>
-                        ))}
-                    </div>
-
-                    <div className="text-xs text-muted-foreground pt-3 border-t flex items-center justify-between">
-                        <span className="flex items-center gap-1">
-                            <Calendar className="w-3 h-3" />
-                            {mostRecentDate && `Últimos exames: ${new Date(mostRecentDate).toLocaleDateString('pt-BR')}`}
-                            {!mostRecentDate && 'Nenhum exame recente'}
-                        </span>
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 text-[#b99470] hover:bg-[#b99470]/10"
-                            onClick={() => navigate(patientRoute(patient, 'lab-results'))}
-                        >
-                            Abrir <ArrowRight className="w-3 h-3 ml-1" />
-                        </Button>
-                    </div>
-                </CardContent>
-            </Card>
-        );
-    };
-
-    const isDiabetic = patient?.preferences?.is_diabetic === true;
-
     if (selectedRecord) {
-        return (
-            <div className="h-[700px]">
-                <EvolutionEditor 
-                    initialRecord={selectedRecord} 
-                    onBack={() => {
-                        setSelectedRecord(null);
-                        loadRecords();
-                    }}
-                    currentUserId={currentUserId}
-                    canCosign={canCosign}
-                    onReplacementOpen={setSelectedRecord}
-                    onRecordsRefresh={loadRecords}
-                />
-            </div>
-        );
+        return <div className="h-[700px]"><EvolutionEditor
+            initialRecord={selectedRecord}
+            onBack={() => { setSelectedRecord(null); void loadRecords(); }}
+            currentUserId={currentUserId}
+            canCosign={canCosign}
+            onReplacementOpen={setSelectedRecord}
+            onRecordsRefresh={loadRecords}
+        /></div>;
     }
 
-    return (
-        <div className="space-y-8">
-            <div className="space-y-6">
-                <div>
-                    <h3 className="text-xl font-bold text-foreground mb-1">Visão Geral Clínica</h3>
-                    <p className="text-sm text-muted-foreground">
-                        Histórico de saúde, anamnese e exames laboratoriais
-                    </p>
-                </div>
+    const recentLabs = labs.slice(0, 3);
+    const isDiabetic = patient?.preferences?.is_diabetic === true;
 
-                <div className={cn(
-                    "grid grid-cols-1 gap-4",
-                    isDiabetic ? "md:grid-cols-2 lg:grid-cols-3" : "md:grid-cols-2 lg:grid-cols-2"
-                )}>
-                    <AnamnesisCard />
-                    <LabsCard />
-                    <GlycemiaSummaryCard patientId={patientId} patient={patient} />
-                </div>
-            </div>
+    return <div className="space-y-4">
+        <div className={`grid grid-cols-1 items-start gap-4 ${isDiabetic ? 'lg:grid-cols-3' : 'lg:grid-cols-2'}`}>
+            <HubPanel
+                title="Anamnese"
+                description="Histórico clínico e informações essenciais"
+                action={<Button size="sm" variant={anamnesis ? 'outline' : 'default'} onClick={() => navigate(patientRoute(patient, 'anamnesis'))}>{anamnesis ? 'Abrir' : 'Iniciar'}<ArrowRight className="ml-1.5 h-3.5 w-3.5" /></Button>}
+            >
+                {anamnesisState === 'loading' ? <div role="status" aria-label="Carregando anamnese" className="space-y-3"><Skeleton className="h-5 w-1/2" /><Skeleton className="h-14 w-full" /></div>
+                    : anamnesisState === 'error' ? <div className="space-y-3"><p className="text-sm text-slate-600">Não foi possível carregar a anamnese.</p><Button size="sm" variant="outline" onClick={() => void loadSummary()}>Recarregar</Button></div>
+                        : !anamnesis ? <p className="text-sm leading-relaxed text-muted-foreground">Histórico clínico ainda não registrado.</p>
+                            : <div className="space-y-3"><div className="rounded-lg border border-[#d8d5d0] bg-[#efeeec] p-3 shadow-inner"><p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-slate-500">Documento</p><p className="mt-1 break-words text-[13px] font-semibold text-slate-800">{anamnesis.template?.title || 'Anamnese nutricional'}</p></div><div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500"><span>Registrada em {formatDate(anamnesis.date)}</span><Badge variant="outline" className="font-medium">{anamnesis.status === 'completed' ? 'Completa' : 'Rascunho'}</Badge></div></div>}
+            </HubPanel>
 
-            <div className="border-t border-zinc-200 dark:border-zinc-800 pt-8 space-y-4">
-                <div>
-                    <h3 className="text-xl font-bold text-foreground mb-1">Evoluções Clínicas</h3>
-                    <p className="text-sm text-muted-foreground">
-                        Acompanhamento contínuo e registros do episódio de cuidado atual.
-                    </p>
-                </div>
+            <HubPanel
+                title="Exames laboratoriais"
+                description="Resultados recentes e pontos de atenção"
+                action={<Button size="sm" variant="outline" onClick={() => navigate(patientRoute(patient, 'lab-results'))}>{labs.length ? 'Abrir exames' : 'Adicionar'}<ArrowRight className="ml-1.5 h-3.5 w-3.5" /></Button>}
+            >
+                {labsState === 'loading' ? <div role="status" aria-label="Carregando exames" className="space-y-3"><Skeleton className="h-10 w-full" /><Skeleton className="h-10 w-full" /></div>
+                    : labsState === 'error' ? <div className="space-y-3"><p className="text-sm text-slate-600">Não foi possível carregar os exames.</p><Button size="sm" variant="outline" onClick={() => void loadSummary()}>Recarregar</Button></div>
+                        : recentLabs.length === 0 ? <p className="text-sm leading-relaxed text-muted-foreground">Nenhum resultado laboratorial foi registrado.</p>
+                            : <ul className="divide-y divide-slate-100">{recentLabs.map(test => <li key={test.id} className="flex min-w-0 items-start justify-between gap-3 py-2.5 first:pt-0 last:pb-0"><div className="min-w-0"><p className="truncate text-[13px] font-semibold text-slate-800">{test.test_name}</p><p className="mt-0.5 text-xs text-slate-500">{test.test_value} {test.test_unit || ''}</p></div><span className="shrink-0 text-[11px] font-medium text-slate-600">{labStatus(test.status)}</span></li>)}</ul>}
+            </HubPanel>
 
-                {recordsLoading ? (
-                    <ActivityListSkeleton />
-                ) : recordsError ? (
-                    <Alert variant="destructive">
-                        <AlertCircle className="h-4 w-4" />
-                        <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
-                            <span>Não foi possível carregar as evoluções. {recordsError}</span>
-                            <Button type="button" variant="outline" size="sm" onClick={loadRecords}>
-                                Tentar novamente
-                            </Button>
-                        </div>
-                    </Alert>
-                ) : (
-                    <ClinicalRecordsList 
-                        records={records} 
-                        onSelectRecord={setSelectedRecord}
-                        onCreateDraft={() => setShowTemplateSelector(true)}
-                        canWriteEpisode={!!writableEpisodeId}
-                    />
-                )}
-            </div>
-
-            {viewedEpisodeId ? (
-                <div className="border-t border-zinc-200 pt-8 dark:border-zinc-800">
-                    <ClinicalAttachmentsPanel
-                        patientId={patientId}
-                        episodeId={viewedEpisodeId}
-                        canUpload={Boolean(writableEpisodeId)}
-                    />
-                </div>
-            ) : null}
-
-            <EvolutionTemplateSelector 
-                open={showTemplateSelector} 
-                onOpenChange={setShowTemplateSelector}
-                onSelectTemplate={handleCreateDraft}
-            />
+            {isDiabetic && <GlycemiaSummaryCard patientId={patientId} patient={patient} />}
         </div>
-    );
-};
 
-export default TabContentClinical;
+        <HubPanel title="Ações clínicas" description="Atalhos para os registros mais usados">
+            <div className={`grid gap-2 ${writableEpisodeId ? 'grid-cols-3' : 'grid-cols-2'}`}>
+                {writableEpisodeId && <Button size="sm" onClick={() => setShowTemplateSelector(true)} className="min-w-0 gap-1.5 px-2 text-xs"><FileEdit className="h-3.5 w-3.5 shrink-0" /><span className="truncate">Evolução</span></Button>}
+                <Button variant="outline" size="sm" onClick={() => navigate(patientRoute(patient, 'lab-results'))} className="min-w-0 gap-1.5 px-2 text-xs"><Droplet className="h-3.5 w-3.5 shrink-0" /><span className="truncate">Exame</span></Button>
+                <Button variant="outline" size="sm" onClick={() => navigate(patientRoute(patient, 'anamnesis'))} className="min-w-0 gap-1.5 px-2 text-xs"><Plus className="h-3.5 w-3.5 shrink-0" /><span className="truncate">Anamnese</span></Button>
+            </div>
+        </HubPanel>
+
+        <section className="space-y-3" aria-labelledby="clinical-evolutions-title">
+            <div className="flex flex-wrap items-end justify-between gap-3"><div><h3 id="clinical-evolutions-title" className="font-heading text-lg font-semibold leading-snug text-slate-900">Evoluções clínicas</h3><p className="mt-1 text-xs leading-relaxed text-muted-foreground">Registros do episódio de cuidado atual</p></div>{writableEpisodeId && <Button size="sm" onClick={() => setShowTemplateSelector(true)}><FileText className="mr-1.5 h-4 w-4" />Nova evolução</Button>}</div>
+            {recordsLoading ? <div role="status" aria-label="Carregando evoluções" className="space-y-3 rounded-xl border border-[#d8d5d0] bg-white p-4"><Skeleton className="h-16 w-full" /><Skeleton className="h-16 w-full" /></div>
+                : recordsError ? <Alert variant="destructive"><div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between"><span>Não foi possível carregar as evoluções. {recordsError}</span><Button type="button" variant="outline" size="sm" onClick={() => void loadRecords()}>Tentar novamente</Button></div></Alert>
+                    : <ClinicalRecordsList records={records} onSelectRecord={setSelectedRecord} onCreateDraft={() => setShowTemplateSelector(true)} canWriteEpisode={Boolean(writableEpisodeId)} />}
+        </section>
+
+        {viewedEpisodeId && <section className="space-y-3"><div><h3 className="font-heading text-lg font-semibold leading-snug text-slate-900">Anexos clínicos</h3><p className="mt-1 text-xs leading-relaxed text-muted-foreground">Documentos vinculados ao episódio atual</p></div><ClinicalAttachmentsPanel patientId={patientId} episodeId={viewedEpisodeId} canUpload={Boolean(writableEpisodeId)} /></section>}
+
+        <EvolutionTemplateSelector open={showTemplateSelector} onOpenChange={setShowTemplateSelector} onSelectTemplate={createDraft} />
+    </div>;
+}

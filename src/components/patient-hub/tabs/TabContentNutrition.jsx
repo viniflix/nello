@@ -1,323 +1,96 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Utensils, Calendar, ArrowRight, Flame, Loader2, BookHeart, TrendingUp, Activity } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { useQuery } from '@tanstack/react-query';
+import { format, subDays, parseISO, isValid } from 'date-fns';
+import { Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { CardSkeleton } from '@/components/ui/card-skeleton';
+import { useAuth } from '@/contexts/AuthContext';
 import { getActiveMealPlan } from '@/lib/supabase/meal-plan-queries';
 import { calculateDiaryAdherence, getNutritionalSummary } from '@/lib/supabase/food-diary-queries';
 import EnergyExpenditureSummaryCard from '@/components/patient-hub/EnergyExpenditureSummaryCard';
-import { CardSkeleton } from '@/components/ui/card-skeleton';
+import { HubPanel, HubMetric } from '@/components/patient-hub/HubPanel';
 import { patientRoute } from '@/lib/utils/patientRoutes';
 
-const TabContentNutrition = ({ patientId, patientData, modulesStatus = {} }) => {
+const number = value => value == null || !Number.isFinite(Number(value)) ? '—' : Math.round(Number(value)).toLocaleString('pt-BR');
+const statusLabels = { active: 'Vigente', draft: 'Rascunho', review: 'Em revisão', unknown: 'Indisponível', missing: 'Sem plano' };
+
+export default function TabContentNutrition({ patientId, patientData, operationalContext, onOpenChat, onRefresh }) {
     const patient = patientData || { id: patientId };
     const navigate = useNavigate();
-    const [activePlan, setActivePlan] = useState(null);
-    const [planLoading, setPlanLoading] = useState(true);
-    const [diaryStats, setDiaryStats] = useState(null);
-    const [diaryLoading, setDiaryLoading] = useState(true);
+    const { user } = useAuth();
+    const openPlan = () => navigate(`${patientRoute(patient, 'meal-plan')}?quick=1`);
+    const today = format(new Date(), 'yyyy-MM-dd');
+    const planQuery = useQuery({
+        queryKey: ['hub-nutrition-plan', user?.id, patientId],
+        enabled: Boolean(user?.id && patientId && !operationalContext),
+        staleTime: 60000,
+        queryFn: async () => {
+            const result = await getActiveMealPlan(patientId);
+            if (result.error) throw result.error;
+            return result.data;
+        },
+    });
+    const diaryQuery = useQuery({
+        queryKey: ['hub-nutrition-diary', user?.id, patientId, today],
+        enabled: Boolean(user?.id && patientId),
+        staleTime: 60000,
+        queryFn: async () => {
+            const start = format(subDays(parseISO(today), 6), 'yyyy-MM-dd');
+            const [adherence, summary] = await Promise.all([
+                calculateDiaryAdherence(patientId, 7), getNutritionalSummary(patientId, start, today),
+            ]);
+            return { adherence, summary };
+        },
+    });
+    const plan = operationalContext ? operationalContext.displayedPlan : planQuery.data;
+    const status = operationalContext?.planStatus || (planQuery.isError ? 'unknown' : plan?.is_draft ? 'draft' : plan ? (plan.prescription_status === 'finalized' ? 'active' : 'review') : 'missing');
+    const loadingPlan = !operationalContext && planQuery.isLoading;
+    const canShare = Boolean(onOpenChat && status === 'active' && plan?.is_active && !plan?.is_draft
+        && plan?.prescription_status === 'finalized'
+        && (!plan.start_date || plan.start_date <= today) && (!plan.end_date || plan.end_date >= today));
+    const adherence = diaryQuery.data?.adherence;
+    const summary = diaryQuery.data?.summary;
+    const retryPlan = () => operationalContext ? onRefresh?.() : planQuery.refetch();
+    const startDate = plan?.start_date ? parseISO(plan.start_date) : null;
 
-    useEffect(() => {
-        const fetchActivePlan = async () => {
-            if (!patientId) return;
-
-            setPlanLoading(true);
-            try {
-                const { data, error } = await getActiveMealPlan(patientId);
-                if (error) throw error;
-                setActivePlan(data);
-            } catch (error) {
-                console.error('Erro ao buscar plano ativo:', error);
-                setActivePlan(null);
-            } finally {
-                setPlanLoading(false);
-            }
-        };
-
-        fetchActivePlan();
-    }, [patientId]);
-
-    useEffect(() => {
-        const fetchDiaryStats = async () => {
-            if (!patientId) return;
-
-            setDiaryLoading(true);
-            try {
-                // Buscar adesão dos últimos 7 dias
-                const { data: adherence } = await calculateDiaryAdherence(patientId, 7);
-
-                // Buscar resumo nutricional dos últimos 7 dias
-                const endDate = new Date().toISOString().split('T')[0];
-                const startDate = new Date();
-                startDate.setDate(startDate.getDate() - 7);
-                const startDateStr = startDate.toISOString().split('T')[0];
-
-                const { data: summary } = await getNutritionalSummary(patientId, startDateStr, endDate);
-
-                setDiaryStats({
-                    adherence: adherence || { adherencePercentage: 0, totalMeals: 0, currentStreak: 0 },
-                    summary: summary || { avgCaloriesPerDay: 0, avgProteinPerDay: 0 }
-                });
-            } catch (error) {
-                console.error('Erro ao buscar estatísticas do diário:', error);
-                setDiaryStats(null);
-            } finally {
-                setDiaryLoading(false);
-            }
-        };
-
-        fetchDiaryStats();
-    }, [patientId]);
-
-    const MealPlanCard = () => {
-        if (planLoading) {
-            return (
-                <div className="h-full">
-                    <CardSkeleton lines={4} />
-                </div>
-            );
-        }
-
-        if (!activePlan) {
-            return (
-                <Card
-                className="border-dashed border-2 border-[#a9b388] bg-[#fefae0]/30 dark:bg-muted/10 hover:shadow-lg transition-all cursor-pointer h-full"
-                    onClick={() => navigate(patientRoute(patient, 'meal-plan'))}
-                >
-                    <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-                        <div className="w-16 h-16 rounded-full bg-[#fefae0] flex items-center justify-center mb-4">
-                            <Utensils className="w-8 h-8 text-[#5f6f52]" />
-                        </div>
-                        <h3 className="text-lg font-semibold text-foreground mb-2">
-                            Nenhum Plano Alimentar Ativo
-                        </h3>
-                        <p className="text-sm text-muted-foreground mb-6 max-w-md">
-                            Crie um plano alimentar personalizado com refeições, alimentos e valores nutricionais
-                        </p>
-                        <span className="inline-flex items-center gap-2 text-sm font-medium text-[#5f6f52]">
-                            <Utensils className="w-4 h-4" />
-                            Criar Plano Alimentar
-                            <ArrowRight className="w-4 h-4" />
-                        </span>
-                    </CardContent>
-                </Card>
-            );
-        }
-
-        return (
-            <Card
-                className="border-l-4 border-l-[#5f6f52] dark:border-l-[#a9b388] hover:shadow-xl transition-all bg-gradient-to-br from-[#fefae0]/20 to-[#fefae0]/30 dark:from-muted/20 dark:to-muted/30 cursor-pointer h-full"
-                onClick={() => navigate(patientRoute(patient, 'meal-plan'))}
-            >
-                <CardHeader className="pb-3">
-                    <div className="flex items-center gap-2 mb-1">
-                        <Utensils className="w-5 h-5 text-[#5f6f52]" />
-                        <CardTitle className="text-lg">Plano Alimentar</CardTitle>
-                        <Badge className="bg-[#a9b388]/20 text-[#5f6f52] border-[#5f6f52]">
-                            Vigente
-                        </Badge>
-                    </div>
-                    <CardDescription className="text-base font-semibold text-foreground">
-                        {activePlan.name}
-                    </CardDescription>
-                </CardHeader>
-
-                <CardContent>
-                    <div className="grid grid-cols-2 gap-2 mb-3">
-                        <div className="text-center p-2 bg-[#fefae0] dark:bg-muted/30 rounded-lg border border-[#c4661f] dark:border-[#c4661f]/50">
-                            <Flame className="w-4 h-4 text-[#c4661f] mx-auto mb-0.5" />
-                            <div className="text-xl font-bold text-foreground">
-                                {activePlan.daily_calories ? Math.round(activePlan.daily_calories) : 0}
+    return <div className="flex flex-col gap-4">
+        <HubPanel title="Plano alimentar" description="Prescrição e composição diária" action={status !== 'unknown' && !loadingPlan ? <Button size="sm" onClick={openPlan}>{plan ? (status === 'draft' ? 'Continuar plano' : 'Ajustar plano') : 'Iniciar plano'}</Button> : null}>
+            {loadingPlan ? <div role="status" aria-label="Carregando plano alimentar"><CardSkeleton lines={3} /></div>
+                : status === 'unknown' ? <div className="flex flex-col items-start gap-3"><p className="text-sm">Não foi possível carregar o plano alimentar.</p><Button variant="outline" size="sm" onClick={retryPlan}>Recarregar plano</Button></div>
+                    : !plan ? <p className="text-sm text-muted-foreground">Ainda não há plano alimentar. Inicie a prescrição pelo botão acima.</p>
+                        : <div className="flex flex-col gap-4">
+                            <div className="flex flex-wrap items-center gap-2"><p className="min-w-0 break-words text-sm font-semibold">{plan.name}</p><Badge variant="outline">{statusLabels[status] || 'Em revisão'}</Badge></div>
+                            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                                <HubMetric label="Energia" value={number(plan.daily_calories)} detail="kcal/dia" />
+                                <HubMetric label="Proteínas" value={number(plan.daily_protein)} detail="g/dia" />
+                                <HubMetric label="Carboidratos" value={number(plan.daily_carbs)} detail="g/dia" />
+                                <HubMetric label="Gorduras" value={number(plan.daily_fat)} detail="g/dia" />
                             </div>
-                            <div className="text-xs text-muted-foreground">kcal/dia</div>
-                        </div>
-
-                        <div className="text-center p-2 bg-[#fefae0] dark:bg-muted/30 rounded-lg border border-[#8B3BF2] dark:border-[#8B3BF2]/50">
-                            <div className="text-xs text-[#8B3BF2] font-medium mb-0.5">Proteínas</div>
-                            <div className="text-lg font-bold text-[#8B3BF2]">
-                                {activePlan.daily_protein ? Math.round(activePlan.daily_protein) : 0}g
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                <div className="text-xs leading-relaxed text-muted-foreground"><p>{startDate && isValid(startDate) ? `Início em ${format(startDate, 'dd/MM/yyyy')}` : 'Data de início não informada'}</p>{!canShare && <p>O envio exige um plano finalizado e vigente.</p>}</div>
+                                <Button variant="outline" size="sm" disabled={!canShare} onClick={() => onOpenChat?.()} className="shrink-0 gap-2"><Send className="h-4 w-4" />Enviar ao paciente</Button>
                             </div>
-                            <div className="text-xs text-[#8B3BF2]">
-                                {activePlan.daily_calories
-                                    ? Math.round((activePlan.daily_protein * 4 / activePlan.daily_calories) * 100)
-                                    : 0}%
-                            </div>
-                        </div>
-
-                        <div className="text-center p-2 bg-[#a9b388]/10 rounded-lg border border-[#3B6FF2]">
-                            <div className="text-xs text-[#3B6FF2] font-medium mb-0.5">Carboidratos</div>
-                            <div className="text-lg font-bold text-[#3B6FF2]">
-                                {activePlan.daily_carbs ? Math.round(activePlan.daily_carbs) : 0}g
-                            </div>
-                            <div className="text-xs text-[#3B6FF2]">
-                                {activePlan.daily_calories
-                                    ? Math.round((activePlan.daily_carbs * 4 / activePlan.daily_calories) * 100)
-                                    : 0}%
-                            </div>
-                        </div>
-
-                        <div className="text-center p-2 bg-[#f9ebc7] rounded-lg border border-[#F28B3B]">
-                            <div className="text-xs text-[#F28B3B] font-medium mb-0.5">Gorduras</div>
-                            <div className="text-lg font-bold text-[#F28B3B]">
-                                {activePlan.daily_fat ? Math.round(activePlan.daily_fat) : 0}g
-                            </div>
-                            <div className="text-xs text-[#F28B3B]">
-                                {activePlan.daily_calories
-                                    ? Math.round((activePlan.daily_fat * 9 / activePlan.daily_calories) * 100)
-                                    : 0}%
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="flex items-center justify-between text-xs pt-3 border-t">
-                        <span className="flex items-center gap-1 text-muted-foreground">
-                            <Calendar className="w-3 h-3" />
-                            Iniciado em {new Date(activePlan.start_date).toLocaleDateString('pt-BR')}
-                        </span>
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 text-[#5f6f52] hover:text-[#5f6f52] hover:bg-[#5f6f52]/10"
-                            onClick={() => navigate(patientRoute(patient, 'meal-plan'))}
-                        >
-                            Abrir <ArrowRight className="w-3 h-3 ml-1" />
-                        </Button>
-                    </div>
-                </CardContent>
-            </Card>
-        );
-    };
-
-    const FoodDiaryCard = () => {
-        if (diaryLoading) {
-            return (
-                <div className="h-full">
-                    <CardSkeleton lines={3} />
-                </div>
-            );
-        }
-
-        const hasData = diaryStats && diaryStats.adherence.totalMeals > 0;
-
-        return (
-            <Card
-                className="border-l-4 border-l-[#c4661f] hover:shadow-lg transition-all h-full bg-gradient-to-br from-[#fefae0]/20 to-white dark:from-muted/20 dark:to-muted/10 cursor-pointer"
-                onClick={() => navigate(patientRoute(patient, 'food-diary'))}
-            >
-                <CardHeader className="pb-3">
-                    <div className="flex items-center gap-2 mb-1">
-                        <BookHeart className="w-5 h-5 text-[#c4661f]" />
-                        <CardTitle className="text-lg">Diário Alimentar</CardTitle>
-                    </div>
-                    <CardDescription className="text-sm">
-                        Últimos 7 dias
-                    </CardDescription>
-                </CardHeader>
-
-                <CardContent>
-                    {hasData ? (
-                        <>
-                            <div className="grid grid-cols-2 gap-3 mb-4">
-                                <div className="text-center p-3 bg-[#fefae0]/50 dark:bg-muted/20 rounded-lg border border-[#a9b388]/30 dark:border-[#a9b388]/20">
-                                    <div className="flex items-center justify-center gap-1 mb-1">
-                                        <TrendingUp className="w-3 h-3 text-[#5f6f52]" />
-                                        <span className="text-xs text-muted-foreground">Adesão</span>
-                                    </div>
-                                    <div className="text-2xl font-bold text-[#5f6f52]">
-                                        {diaryStats.adherence.adherencePercentage}%
-                                    </div>
+                        </div>}
+        </HubPanel>
+        <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
+            <EnergyExpenditureSummaryCard patientId={patientId} patient={patient} />
+            <HubPanel title="Diário alimentar" description="Registros dos últimos 7 dias" action={<Button variant="outline" size="sm" onClick={() => navigate(patientRoute(patient, 'food-diary'))}>Abrir diário</Button>}>
+                {diaryQuery.isLoading ? <div role="status" aria-label="Carregando diário alimentar"><CardSkeleton lines={3} /></div>
+                    : diaryQuery.isError || adherence?.error || !adherence?.data ? <div className="flex flex-col items-start gap-3"><p className="text-sm">Não foi possível carregar a regularidade do diário.</p><Button variant="outline" size="sm" onClick={() => diaryQuery.refetch()}>Recarregar diário</Button></div>
+                        : adherence.data.totalMeals === 0 ? <p className="text-sm text-muted-foreground">Nenhuma refeição registrada nos últimos 7 dias.</p>
+                            : <div className="flex flex-col gap-3">
+                                <div className="grid grid-cols-2 gap-2">
+                                    <HubMetric label="Regularidade" value={`${number(adherence.data.adherencePercentage)}%`} detail="dias com registros" />
+                                    <HubMetric label="Sequência" value={number(adherence.data.currentStreak)} detail="dias consecutivos" />
+                                    <HubMetric label="Refeições" value={number(adherence.data.totalMeals)} detail="no período" />
+                                    <HubMetric label="Média energética" value={summary?.error ? '—' : number(summary?.data?.avgCaloriesPerDay)} detail="kcal/dia registrado" />
                                 </div>
-
-                                <div className="text-center p-3 bg-[#fefae0]/50 dark:bg-muted/20 rounded-lg border border-[#a9b388]/30 dark:border-[#a9b388]/20">
-                                    <div className="flex items-center justify-center gap-1 mb-1">
-                                        <Activity className="w-3 h-3 text-[#c4661f]" />
-                                        <span className="text-xs text-muted-foreground">Sequência</span>
-                                    </div>
-                                    <div className="text-2xl font-bold text-[#c4661f]">
-                                        {diaryStats.adherence.currentStreak}
-                                    </div>
-                                    <div className="text-xs text-muted-foreground">dias</div>
-                                </div>
-                            </div>
-
-                            <div className="bg-[#fefae0]/40 dark:bg-muted/20 rounded-lg p-3 mb-3">
-                                <div className="flex items-center justify-between mb-2">
-                                    <span className="text-xs text-muted-foreground">Média Calórica</span>
-                                    <div className="flex items-center gap-1">
-                                        <Flame className="w-3 h-3 text-[#c4661f]" />
-                                        <span className="text-sm font-bold text-[#c4661f]">
-                                            {diaryStats.summary.avgCaloriesPerDay}
-                                        </span>
-                                        <span className="text-xs text-muted-foreground">kcal/dia</span>
-                                    </div>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <span className="text-xs text-muted-foreground">Total de Refeições</span>
-                                    <span className="text-sm font-semibold text-foreground">
-                                        {diaryStats.adherence.totalMeals}
-                                    </span>
-                                </div>
-                            </div>
-
-                            <div className="pt-3 border-t flex justify-center">
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="text-[#5f6f52] hover:bg-[#5f6f52]/10"
-                                    onClick={() => navigate(patientRoute(patient, 'food-diary'))}
-                                >
-                                    Ver Diário Completo
-                                    <ArrowRight className="w-3 h-3 ml-1" />
-                                </Button>
-                            </div>
-                        </>
-                    ) : (
-                        <div className="text-center py-6">
-                            <div className="w-12 h-12 rounded-full bg-[#fefae0] flex items-center justify-center mx-auto mb-3">
-                                <BookHeart className="w-6 h-6 text-[#c4661f]" />
-                            </div>
-                            <p className="text-sm font-medium text-foreground mb-2">
-                                Nenhum Registro Recente
-                            </p>
-                            <p className="text-xs text-muted-foreground mb-4">
-                                Paciente ainda não registrou refeições nos últimos 7 dias
-                            </p>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                className="border-[#c4661f] text-[#c4661f] hover:bg-[#c4661f]/10"
-                                onClick={() => navigate(patientRoute(patient, 'food-diary'))}
-                            >
-                                Abrir Diário
-                                <ArrowRight className="w-3 h-3 ml-1" />
-                            </Button>
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
-        );
-    };
-
-
-    return (
-        <div className="space-y-6">
-            <div>
-                <h3 className="text-xl font-bold text-foreground mb-1">Nutrição</h3>
-                <p className="text-sm text-muted-foreground">
-                    Prescrição dietética, gasto energético e acompanhamento alimentar
-                </p>
-            </div>
-
-            <div className="space-y-4">
-                <MealPlanCard />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <EnergyExpenditureSummaryCard patientId={patientId} patient={patient} />
-                    <FoodDiaryCard />
-                </div>
-            </div>
+                                <p className="text-xs leading-relaxed text-muted-foreground">A regularidade indica preenchimento do diário, não adesão à dieta prescrita.</p>
+                                {summary?.error && <Button variant="outline" size="sm" onClick={() => diaryQuery.refetch()}>Recarregar média energética</Button>}
+                            </div>}
+            </HubPanel>
         </div>
-    );
-};
-
-export default TabContentNutrition;
+    </div>;
+}

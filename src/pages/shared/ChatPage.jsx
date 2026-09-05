@@ -233,7 +233,7 @@ const ChatMessage = ({ msg, isSender, onImageClick }) => {
   );
 };
 
-const ChatPage = ({ propRecipientId, isEmbedded = false }) => {
+const ChatPage = ({ propRecipientId, isEmbedded = false, initialDraft = '' }) => {
   const { user } = useAuth();
   const { messages, sendMessage, fetchMessages, loading: messagesLoading, markChatAsRead } = useChat();
   const { isUserOnline } = useOnlinePresence();
@@ -249,6 +249,7 @@ const ChatPage = ({ propRecipientId, isEmbedded = false }) => {
   const messagesEndRef = useRef(null);
   const messagesContainerRef = useRef(null);
   const fileInputRef = useRef(null);
+  const initialDraftAppliedRef = useRef(false);
   const [isSending, setIsSending] = useState(false);
   const { setTyping, isUserTyping } = useOnlinePresence();
   const typingTimeoutRef = useRef(null);
@@ -263,6 +264,12 @@ const ChatPage = ({ propRecipientId, isEmbedded = false }) => {
     if (user?.profile?.user_type === 'nutritionist') return urlPatientId;
     return user?.profile?.nutritionist_id;
   }, [propRecipientId, urlPatientId, user]);
+
+  useEffect(() => {
+    if (!initialDraft || initialDraftAppliedRef.current) return;
+    initialDraftAppliedRef.current = true;
+    setNewMessage((current) => current.trim() ? current : initialDraft);
+  }, [initialDraft]);
 
   const isArchived = React.useMemo(() => {
     if (!user || !recipient) return false;

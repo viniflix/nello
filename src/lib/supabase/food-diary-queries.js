@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/customSupabaseClient';
-import { formatDateToIsoDate, getTodayIsoDate } from '@/lib/utils/date';
+import { format, subDays } from 'date-fns';
 import { isExpectedRequestCancellation, logSupabaseError } from '@/lib/supabase/query-helpers';
 
 
@@ -147,16 +147,22 @@ export const getPatientAuditHistory = async (patientId, filters = {}, limit = 10
  */
 export const calculateDiaryAdherence = async (patientId, days = 30) => {
     try {
-        const startDate = new Date();
-        startDate.setDate(startDate.getDate() - days);
-        const startDateStr = formatDateToIsoDate(startDate);
+        if (!Number.isInteger(days) || days < 1) {
+            throw new Error('O período do diário deve ser um número inteiro positivo de dias.');
+        }
+        // meal_date é uma data de calendário: não converter para UTC.
+        const referenceDate = new Date();
+        const today = format(referenceDate, 'yyyy-MM-dd');
+        const startDateStr = format(subDays(referenceDate, days - 1), 'yyyy-MM-dd');
 
         // Buscar todas as refeições no período
         const { data: meals, error } = await supabase
             .from('meals')
             .select('meal_date')
             .eq('patient_id', patientId)
-            .gte('meal_date', startDateStr);
+            .is('deleted_at', null)
+            .gte('meal_date', startDateStr)
+            .lte('meal_date', today);
 
         if (error) throw error;
 
@@ -167,15 +173,10 @@ export const calculateDiaryAdherence = async (patientId, days = 30) => {
 
         // Calcular streak (dias consecutivos)
         let currentStreak = 0;
-        const today = getTodayIsoDate();
-        const sortedDates = Array.from(uniqueDays).sort().reverse();
-
         for (let i = 0; i < days; i++) {
-            const checkDate = new Date();
-            checkDate.setDate(checkDate.getDate() - i);
-            const checkDateStr = formatDateToIsoDate(checkDate);
+            const checkDateStr = format(subDays(referenceDate, i), 'yyyy-MM-dd');
 
-            if (sortedDates.includes(checkDateStr)) {
+            if (uniqueDays.has(checkDateStr)) {
                 currentStreak++;
             } else if (checkDateStr !== today) {
                 // Se não é hoje e não tem registro, quebra a sequência

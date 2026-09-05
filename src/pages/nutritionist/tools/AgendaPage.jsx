@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Calendar as CalendarIcon, Plus, Clock, User, Edit, Trash2, Filter, CalendarDays, Eye, X, Search, ChevronLeft, ChevronRight, FileDown, ClipboardList } from 'lucide-react';
 import { AnamnesisLinkModal } from '@/components/anamnesis/AnamnesisLinkModal';
@@ -14,7 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { format, isToday, isThisWeek, isThisMonth, startOfWeek, endOfWeek, addWeeks, subWeeks, addMonths, subMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import AppointmentDialog from '@/components/agenda/AppointmentDialog';
 
 import { useAgendaController } from '@/hooks/useAgendaController';
@@ -22,6 +22,9 @@ import { useAgendaController } from '@/hooks/useAgendaController';
 export default function AgendaPage() {
     const { user, signOut } = useAuth();
     const navigate = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams();
+    const [routePatientId, setRoutePatientId] = useState(null);
+    const routeActionHandledRef = useRef(false);
     
     const {
         appointments,
@@ -79,6 +82,26 @@ export default function AgendaPage() {
         handleExportPDF
     } = useAgendaController({ user });
 
+    useEffect(() => {
+        if (searchParams.get('action') !== 'new') {
+            routeActionHandledRef.current = false;
+            return;
+        }
+        if (routeActionHandledRef.current || loading) return;
+
+        routeActionHandledRef.current = true;
+        const requestedPatientId = searchParams.get('patientId');
+        const availablePatient = requestedPatientId && patients.some((patient) => patient.id === requestedPatientId);
+        setRoutePatientId(availablePatient ? requestedPatientId : null);
+        setEditingAppointment(null);
+        setIsFormOpen(true);
+
+        const nextParams = new URLSearchParams(searchParams);
+        nextParams.delete('action');
+        nextParams.delete('patientId');
+        setSearchParams(nextParams, { replace: true });
+    }, [loading, patients, searchParams, setEditingAppointment, setIsFormOpen, setSearchParams]);
+
     return (
         <div className="min-h-screen bg-background overflow-x-hidden">
             <motion.div
@@ -107,6 +130,7 @@ export default function AgendaPage() {
                         </Button>
                         <Button 
                             onClick={() => {
+                                setRoutePatientId(null);
                                 setEditingAppointment(null);
                                 setIsFormOpen(true);
                             }} 
@@ -712,12 +736,16 @@ export default function AgendaPage() {
                 {/* Appointment Dialog */}
                 <AppointmentDialog
                     open={isFormOpen}
-                    onOpenChange={setIsFormOpen}
+                    onOpenChange={(open) => {
+                        setIsFormOpen(open);
+                        if (!open) setRoutePatientId(null);
+                    }}
                     appointment={editingAppointment}
                     patients={patients}
                     services={services}
                     nutritionistId={user?.id}
                     preSelectedDate={selectedDate}
+                    initialPatientId={routePatientId}
                     onSave={handleSaveAppointment}
                 />
 

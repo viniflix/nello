@@ -4,6 +4,7 @@ import { buildActivityEventPayload, isExpectedRequestCancellation, logSupabaseEr
 import { classifyLabResultsRiskBatch, getLabRiskRules } from '@/lib/supabase/lab-results-queries';
 
 import { isUuid } from '@/lib/utils/patientRoutes';
+import { listClinicalRecordsByEpisode } from '@/features/clinical-records/api/evolution-queries';
 
 let hasActivityLogTable = true;
 
@@ -222,6 +223,153 @@ export const getLatestMetrics = async (patientId) => {
         return { data: metrics, error: null };
     } catch (error) {
         logSupabaseError('Erro ao buscar métricas do paciente', error);
+        return { data: null, error };
+    }
+};
+
+/**
+ * Carrega o contexto operacional usado pelo novo Hub do Paciente.
+ * Todas as leituras respeitam as políticas RLS existentes e nenhuma falha
+ * opcional impede que o restante do prontuário seja exibido.
+ */
+export const getPatientHubOperationalContext = async (patientId, nutritionistId, episodeId = null) => {
+    if (!patientId || !nutritionistId) return { data: null, error: null };
+
+    const now = new Date();
+    const nowIso = now.toISOString();
+    const upcomingAppointmentStatuses = ['scheduled', 'confirmed', 'awaiting_confirmation'];
+    const partialErrors = [];
+
+    const read = (result, fallback, label) => {
+        if (result?.error) {
+            partialErrors.push(label);
+            logSupabaseError(`Erro ao carregar ${label} do Hub`, result.error);
+            return fallback;
+        }
+        return result?.data ?? fallback;
+    };
+
+    try {
+        const [plansResult, nextAppointmentResult, lastAppointmentResult, checkinResult, goalResult, weeklySummaryResult, clinicalRecordResult] = await Promise.all([
+            supabase
+                .from('meal_plans')
+                .select('id, name, start_date, end_date, is_active, is_draft, prescription_status, daily_calories, daily_protein, daily_carbs, daily_fat, updated_at, archived_at')
+                .eq('patient_id', patientId)
+                .eq('nutritionist_id', nutritionistId)
+                .is('archived_at', null)
+                .order('updated_at', { ascending: false })
+                .limit(20),
+            supabase
+                .from('appointments')
+                .select('id, start_time, appointment_time, duration, appointment_type, status, notes')
+                .eq('patient_id', patientId)
+                .eq('nutritionist_id', nutritionistId)
+                .in('status', upcomingAppointmentStatuses)
+                .gte('start_time', nowIso)
+                .order('start_time', { ascending: true })
+                .limit(1)
+                .maybeSingle(),
+            supabase
+                .from('appointments')
+                .select('id, start_time, appointment_time, duration, appointment_type, status, notes')
+                .eq('patient_id', patientId)
+                .eq('nutritionist_id', nutritionistId)
+                .eq('status', 'completed')
+                .lt('start_time', nowIso)
+                .order('start_time', { ascending: false })
+                .limit(1)
+                .maybeSingle(),
+            supabase
+                .from('checkin_sessions')
+                .select('id, status, completed_at, sent_at, adherence_percentage, score_total, score_max')
+                .eq('patient_id', patientId)
+                .eq('nutritionist_id', nutritionistId)
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .maybeSingle(),
+            supabase
+                .from('patient_goals')
+                .select('id, title, goal_type, status, progress_percentage, target_date, updated_at')
+                .eq('patient_id', patientId)
+                .eq('nutritionist_id', nutritionistId)
+                .eq('status', 'active')
+                .order('updated_at', { ascending: false })
+                .limit(1)
+                .maybeSingle(),
+            supabase
+                .from('weekly_summaries')
+                .select('id, week_start_date, notes, goals_met, updated_at')
+                .eq('patient_id', patientId)
+                .eq('nutritionist_id', nutritionistId)
+                .order('week_start_date', { ascending: false })
+                .limit(1)
+                .maybeSingle(),
+            episodeId
+                ? listClinicalRecordsByEpisode(patientId, episodeId)
+                : Promise.resolve({ data: [], error: null })
+        ]);
+
+        const plans = read(plansResult, [], 'planos alimentares');
+        const draftPlan = plans.find((plan) => plan.is_draft) || null;
+        const activePlan = plans.find((plan) => plan.is_active && !plan.is_draft) || null;
+        const displayedPlan = draftPlan || activePlan;
+
+        let meals = [];
+        let foodCount = 0;
+        if (displayedPlan?.id) {
+            const mealsResult = await supabase
+                .from('meal_plan_meals')
+                .select('id, name, meal_type, meal_time, order_index, total_calories, total_protein, total_carbs, total_fat')
+                .eq('meal_plan_id', displayedPlan.id)
+                .order('order_index', { ascending: true });
+            meals = read(mealsResult, [], 'refeições do plano');
+
+            const mealIds = meals.map((meal) => meal.id).filter(Boolean);
+            if (mealIds.length > 0) {
+                const foodCountResult = await supabase
+                    .from('meal_plan_foods')
+                    .select('id', { count: 'exact', head: true })
+                    .in('meal_plan_meal_id', mealIds);
+                if (foodCountResult.error) {
+                    partialErrors.push('alimentos do plano');
+                    foodCount = null;
+                    logSupabaseError('Erro ao contar alimentos do plano no Hub', foodCountResult.error);
+                }
+                else foodCount = foodCountResult.count || 0;
+            }
+        }
+
+        const planStatus = plansResult.error ? 'unknown' : draftPlan
+            ? 'draft'
+            : activePlan?.prescription_status === 'finalized'
+                ? 'active'
+                : activePlan
+                    ? 'review'
+                    : 'missing';
+
+        return {
+            data: {
+                plans,
+                partialErrors,
+                activePlan,
+                draftPlan,
+                displayedPlan,
+                planStatus,
+                meals,
+                mealCount: partialErrors.includes('refeições do plano') ? null : meals.length,
+                foodCount,
+                nextAppointment: read(nextAppointmentResult, null, 'próxima consulta'),
+                lastAppointment: read(lastAppointmentResult, null, 'última consulta'),
+                latestCheckin: read(checkinResult, null, 'check-in mais recente'),
+                activeGoal: read(goalResult, null, 'meta ativa'),
+                latestWeeklySummary: read(weeklySummaryResult, null, 'resumo semanal'),
+                latestClinicalRecord: read(clinicalRecordResult, [], 'registro clínico mais recente')
+                    .reduce((latest, record) => !latest || new Date(record.recorded_at || record.created_at) > new Date(latest.recorded_at || latest.created_at) ? record : latest, null)
+            },
+            error: null
+        };
+    } catch (error) {
+        logSupabaseError('Erro ao carregar contexto operacional do Hub', error);
         return { data: null, error };
     }
 };

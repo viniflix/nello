@@ -35,13 +35,13 @@ export function patientSubRoute(patient, subPath) {
   return patientRoute(patient, subPath);
 }
 
-/** Tabs válidas no hub (feed, clinical, body, nutrition, adherence) */
-const HUB_TABS = ['feed', 'clinical', 'body', 'nutrition', 'adherence'];
+/** Tabs válidas no hub do prontuário vivo. */
+const HUB_TABS = ['overview', 'clinical', 'body', 'nutrition', 'adherence', 'checkins'];
 
 /**
  * Retorna a URL do hub do paciente com a tab especificada (para UX de navegação)
  * @param {Object} patient - Objeto paciente com id e opcionalmente slug
- * @param {string} [tab] - Tab a abrir (clinical, body, nutrition, adherence, feed)
+ * @param {string} [tab] - Tab a abrir (overview, clinical, body, nutrition, adherence, checkins)
  * @returns {string}
  */
 export function patientHubRoute(patient, tab) {

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useResolvedPatientId } from '@/hooks/useResolvedPatientId';
 import { ArrowLeft, Plus, Copy, FileText, Download, RefreshCw, Utensils, FolderOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -45,8 +45,10 @@ import { supabase } from '@/lib/customSupabaseClient';
 const MealPlanPage = () => {
     const { patientId, paramValue } = useResolvedPatientId();
     const navigate = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams();
     const { toast } = useToast();
     const { user } = useAuth();
+    const quickEntryHandledRef = useRef(false);
 
     const [nutritionistId, setNutritionistId] = useState(null);
     const { plans, activePlan, pendingDrafts, loading, isFetching, loadPlans, invalidatePlans } = useMealPlan(patientId, nutritionistId);
@@ -125,6 +127,40 @@ const MealPlanPage = () => {
         };
         getNutritionistId();
     }, []);
+
+    // Entrada rápida vinda do Hub: retoma o rascunho, ajusta o plano vigente
+    // ou abre um plano novo sem passar pelo modal intermediário.
+    useEffect(() => {
+        if (searchParams.get('quick') !== '1') {
+            quickEntryHandledRef.current = false;
+            return;
+        }
+        if (quickEntryHandledRef.current || loading || isFetching || !patientId || !nutritionistId) return;
+
+        quickEntryHandledRef.current = true;
+        const nextParams = new URLSearchParams(searchParams);
+        nextParams.delete('quick');
+        setSearchParams(nextParams, { replace: true });
+
+        const openDirectly = async () => {
+            if (pendingDrafts.length > 0) {
+                await handleResumePendingDraft(pendingDrafts[0]);
+                return;
+            }
+            if (activePlan?.id) {
+                await handleEdit(activePlan.id);
+                return;
+            }
+            setPendingDraft(null);
+            setEditingPlan(null);
+            setShowForm(true);
+        };
+        void openDirectly();
+    }, [
+        activePlan, handleEdit, handleResumePendingDraft, isFetching, loading,
+        nutritionistId, patientId, pendingDrafts, searchParams, setEditingPlan,
+        setPendingDraft, setSearchParams, setShowForm,
+    ]);
 
     if (loading) {
         return (

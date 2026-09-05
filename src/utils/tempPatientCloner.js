@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/customSupabaseClient';
-import { getPatientProfile, removeEmptyPatient } from '@/lib/supabase/patient-queries';
+import { getPatientProfile } from '@/lib/supabase/patient-queries';
 import { getMealPlans, copyMealPlanToPatient } from '@/lib/supabase/meal-plan-queries';
 
 export const duplicatePatientTemporarily = async (originalPatientId, nutritionistId, options = {}, onProgress = () => {}) => {

@@ -3,13 +3,16 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import {
     getPatientSummary,
-    getPatientActivities
+    getPatientActivities,
+    getPatientHubOperationalContext
 } from '@/lib/supabase/patient-queries';
+import { calculateDiaryAdherence } from '@/lib/supabase/food-diary-queries';
 import {
     getPatientRecordFoundation,
     listPatientLegalGuardians
 } from '@/features/clinical-records/api/record-foundation-queries';
 import { getContextualProfileRequirements } from '@/features/clinical-records/model/progressiveProfileSchema';
+import { buildPatientHubInsights } from '@/features/patient-hub/model/patientHubInsights';
 
 export const getPatientAgeStatus = (birthDate, referenceDate = new Date()) => {
     if (typeof birthDate !== 'string') return 'unknown';
@@ -53,9 +56,10 @@ export const usePatientHub = (patientId) => {
         queryFn: async () => {
             if (!patientId || !user?.id) throw new Error('Credenciais inválidas');
             
-            const [summaryResult, foundationResult] = await Promise.all([
+            const [summaryResult, foundationResult, adherenceResult] = await Promise.all([
                 getPatientSummary(patientId, user.id),
-                getPatientRecordFoundation(patientId)
+                getPatientRecordFoundation(patientId),
+                calculateDiaryAdherence(patientId, 7)
             ]);
             
             if (summaryResult.error) throw summaryResult.error;
@@ -65,6 +69,7 @@ export const usePatientHub = (patientId) => {
 
             const loadedFoundation = foundationResult.error ? null : foundationResult.data;
             const episodeContract = getEpisodeContract(loadedFoundation, data.profile);
+            const operationalResult = await getPatientHubOperationalContext(patientId, user.id, episodeContract.viewedEpisodeId);
             
             let guardians = [];
             if (episodeContract.viewedEpisodeId) {
@@ -79,6 +84,20 @@ export const usePatientHub = (patientId) => {
                 ageBasedProtocol: ageStatus === 'unknown',
                 legalGuardians: guardians
             });
+            const operationalContext = operationalResult.error || !operationalResult.data
+                ? { planStatus: 'unknown', partialErrors: ['contexto do acompanhamento'] }
+                : operationalResult.data;
+            if (adherenceResult.error) {
+                operationalContext.partialErrors = [...(operationalContext.partialErrors || []), 'regularidade do diário'];
+            }
+            const adherence = adherenceResult.error ? null : adherenceResult.data;
+            const insights = buildPatientHubInsights({
+                profileRequirements,
+                operationalContext: operationalContext || {},
+                latestMetrics: data.metrics,
+                modulesStatus: data.modulesStatus,
+                adherence
+            });
 
             return {
                 patientData: data.profile,
@@ -89,7 +108,10 @@ export const usePatientHub = (patientId) => {
                 writableEpisodeId: episodeContract.writableEpisodeId,
                 canWriteEpisode: episodeContract.canWriteEpisode,
                 legalGuardians: guardians,
-                profileRequirements
+                profileRequirements,
+                operationalContext,
+                adherence,
+                insights
             };
         },
         enabled: !!patientId && !!user?.id,
@@ -136,6 +158,9 @@ export const usePatientHub = (patientId) => {
         canWriteEpisode: summaryQuery.data?.canWriteEpisode || false,
         profileRequirements: summaryQuery.data?.profileRequirements || [],
         legalGuardians: summaryQuery.data?.legalGuardians || [],
+        operationalContext: summaryQuery.data?.operationalContext || null,
+        adherence: summaryQuery.data?.adherence || null,
+        insights: summaryQuery.data?.insights || null,
 
         // Funções
         refresh,

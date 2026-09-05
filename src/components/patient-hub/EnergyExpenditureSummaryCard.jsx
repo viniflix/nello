@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calculator, Flame, Activity, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { AlertCircle } from 'lucide-react';
+import { HubPanel, HubMetric } from '@/components/patient-hub/HubPanel';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/lib/customSupabaseClient';
 import { patientRoute } from '@/lib/utils/patientRoutes';
@@ -16,7 +15,6 @@ const EnergyExpenditureSummaryCard = ({ patientId, patient }) => {
     const [loading, setLoading] = useState(true);
     const [hasRequiredData, setHasRequiredData] = useState(false);
     const [calculatedData, setCalculatedData] = useState(null);
-    const [patientBasicData, setPatientBasicData] = useState(null);
     const [syncFlags, setSyncFlags] = useState(null);
 
     useEffect(() => {
@@ -53,7 +51,6 @@ const EnergyExpenditureSummaryCard = ({ patientId, patient }) => {
                 gender: profile.gender
             };
 
-            setPatientBasicData(finalData);
 
             // Verificar se tem todos os dados necessários
             const age = calculateAge(finalData.birth_date);
@@ -101,191 +98,34 @@ const EnergyExpenditureSummaryCard = ({ patientId, patient }) => {
         navigate(url);
     };
 
-    if (loading) {
-        return <CardSkeleton lines={4} />;
-    }
+    if (loading) return <div role="status" aria-label="Carregando gasto energético"><CardSkeleton lines={4} /></div>;
 
-    // Estado: Cálculo salvo existe — mostrar resumo (prioridade sobre "dados incompletos")
-    if (calculatedData) {
-        const isEERProtocol = (calculatedData.tmb_protocol || calculatedData.protocol || '').toString().toLowerCase().includes('eer');
-        const displayGET = calculatedData.get_result ?? calculatedData.get_with_activities ?? calculatedData.get ?? 0;
-        const metaCalories = calculatedData.final_planned_kcal ?? calculatedData.target_calories ?? displayGET;
-        const hasActivities = Array.isArray(calculatedData.mets_activities) && calculatedData.mets_activities.length > 0;
-        const hasVENTA = (calculatedData.venta_target_weight != null || calculatedData.target_weight != null);
-
-        return (
-            <Card
-                className="hover:shadow-md transition-all border-l-4 border-l-[#5f6f52] cursor-pointer"
-                onClick={handleNavigateToFullPage}
-            >
-                <CardHeader className="pb-3">
-                    <div className="flex items-center gap-2 flex-wrap">
-                        <Calculator className="w-5 h-5 text-[#5f6f52]" />
-                        <CardTitle className="text-base">Gasto Energético</CardTitle>
-                        {hasActivities && (
-                            <Badge variant="outline" className="text-xs border-[#5f6f52] text-[#5f6f52]">
-                                +{(calculatedData.mets_activities || calculatedData.activities || []).length} atividades
-                            </Badge>
-                        )}
-                        {hasVENTA && (
-                            <Badge className="text-xs bg-amber-500 hover:bg-amber-600">
-                                Objetivo: {(calculatedData.venta_target_weight ?? calculatedData.target_weight)} kg
-                            </Badge>
-                        )}
-                    </div>
-                    <CardDescription className="text-xs">
-                        Protocolo: {calculatedData.tmb_protocol || calculatedData.protocol || 'TMB'}
-                    </CardDescription>
-                </CardHeader>
-
-                <CardContent className="space-y-4">
-                    {syncFlags?.needs_energy_recalc && (
-                        <Alert className="border-amber-300 bg-amber-50 dark:bg-amber-950/30" onClick={(e) => e.stopPropagation()}>
-                            <AlertCircle className="h-4 w-4 text-amber-700" />
-                            <AlertDescription className="text-amber-800 dark:text-amber-200">
-                                <p className="font-medium">Antropometria atualizada.</p>
-                                <p className="text-sm mt-1">Recomendamos revisar o GET e salvar.</p>
-                                <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="mt-2 border-amber-400 text-amber-800 hover:bg-amber-100 dark:text-amber-200 dark:hover:bg-amber-900/50"
-                                    onClick={(e) => { e.stopPropagation(); handleNavigateToFullPage(); }}
-                                >
-                                    Atualizar dados
-                                </Button>
-                            </AlertDescription>
-                        </Alert>
-                    )}
-                    <div className="grid grid-cols-2 gap-3">
-                        {!isEERProtocol && (
-                            <div className="text-center p-3 bg-orange-50 dark:bg-orange-950/30 rounded-lg border border-orange-200 dark:border-orange-800">
-                                <Flame className="w-4 h-4 text-orange-600 mx-auto mb-1" />
-                                <div className="text-2xl font-bold text-orange-700 dark:text-orange-400">
-                                    {Math.round(calculatedData.tmb_result ?? calculatedData.tmb ?? 0)}
-                                </div>
-                                <div className="text-xs text-muted-foreground">TMB (kcal/dia)</div>
-                            </div>
-                        )}
-                        <div className={`text-center p-3 bg-gradient-to-br from-emerald-600 to-emerald-500 rounded-lg text-white ${isEERProtocol ? 'col-span-2' : ''}`}>
-                            <Activity className="w-4 h-4 mx-auto mb-1 opacity-90" />
-                            <div className="text-2xl font-bold">{Math.round(displayGET)}</div>
-                            <div className="text-xs opacity-90">
-                                {hasActivities ? 'GET + METs' : isEERProtocol ? 'EER' : 'GET'} (kcal/dia)
-                            </div>
-                        </div>
-                    </div>
-                    <div className="text-center p-3 bg-primary/10 rounded-lg border border-primary/20">
-                        <div className="text-xl font-bold text-primary">{Math.round(metaCalories)} kcal</div>
-                        <div className="text-xs text-muted-foreground">{hasVENTA ? 'Meta com VENTA (por dia)' : 'Meta calórica (por dia)'}</div>
-                    </div>
-                    <div className="flex flex-wrap gap-2 justify-center text-xs text-muted-foreground">
-                        <span>FA: ×{(calculatedData.activity_factor ?? calculatedData.activity_level ?? '—')}</span>
-                        {Number(calculatedData.activity_factor ?? calculatedData.activity_level) === 1.2 && <span>Sedentário</span>}
-                        {Number(calculatedData.activity_factor ?? calculatedData.activity_level) === 1.375 && <span>Levemente ativo</span>}
-                        {Number(calculatedData.activity_factor ?? calculatedData.activity_level) === 1.55 && <span>Moderado</span>}
-                        {Number(calculatedData.activity_factor ?? calculatedData.activity_level) === 1.725 && <span>Muito ativo</span>}
-                        {Number(calculatedData.activity_factor ?? calculatedData.activity_level) === 1.9 && <span>Extremamente ativo</span>}
-                    </div>
-                    <Button
-                        onClick={handleNavigateToFullPage}
-                        variant="outline"
-                        size="sm"
-                        className="w-full gap-1"
-                    >
-                        Ver detalhes / Editar
-                        <ArrowRight className="w-3 h-3" />
-                    </Button>
-                </CardContent>
-            </Card>
-        );
-    }
-
-    // Estado: Sem dados suficientes para calcular (e não tem cálculo salvo)
-    if (!hasRequiredData) {
-        return (
-            <Card
-                className="hover:shadow-md transition-all border-dashed border-2 border-amber-300 bg-amber-50/30 cursor-pointer"
-                onClick={handleNavigateToFullPage}
-            >
-                <CardHeader className="pb-3">
-                    <div className="flex items-center gap-2">
-                        <Calculator className="w-5 h-5 text-amber-600" />
-                        <CardTitle className="text-base">Gasto Energético</CardTitle>
-                    </div>
-                </CardHeader>
-                <CardContent>
-                    <div className="space-y-4">
-                        {syncFlags?.needs_energy_recalc && (
-                            <Alert className="border-amber-300 bg-amber-50 dark:bg-amber-950/30" onClick={(e) => e.stopPropagation()}>
-                                <AlertCircle className="h-4 w-4 text-amber-700" />
-                                <AlertDescription className="text-amber-800 dark:text-amber-200">
-                                    <p className="font-medium">Antropometria atualizada.</p>
-                                    <p className="text-sm mt-1">Recomendamos revisar o GET e salvar.</p>
-                                    <Button size="sm" variant="outline" className="mt-2 border-amber-400 text-amber-800" onClick={(e) => { e.stopPropagation(); handleNavigateToFullPage(); }}>Atualizar dados</Button>
-                                </AlertDescription>
-                            </Alert>
-                        )}
-                        <Alert className="border-amber-300 bg-amber-50/50">
-                            <AlertCircle className="h-4 w-4 text-amber-600" />
-                            <AlertDescription className="text-sm">
-                                <strong>Dados incompletos</strong>
-                                <p className="mt-1 text-muted-foreground text-xs">
-                                    Para calcular, é necessário peso, altura, idade e sexo.
-                                </p>
-                            </AlertDescription>
-                        </Alert>
-
-                        <Button
-                            onClick={handleNavigateToFullPage}
-                            className="w-full gap-2"
-                            variant="outline"
-                        >
-                            <Calculator className="w-4 h-4" />
-                            Calcular Gasto Energético
-                            <ArrowRight className="w-4 h-4 ml-auto" />
-                        </Button>
-                    </div>
-                </CardContent>
-            </Card>
-        );
-    }
-
-    // Estado: Tem dados mas nunca calculou
-    return (
-        <Card
-            className="hover:shadow-md transition-all border-dashed border-2 border-[#a9b388] bg-[#fefae0]/30 cursor-pointer"
-            onClick={handleNavigateToFullPage}
-        >
-            <CardHeader className="pb-3">
-                <div className="flex items-center gap-2">
-                    <Calculator className="w-5 h-5 text-[#5f6f52]" />
-                    <CardTitle className="text-base">Gasto Energético</CardTitle>
+    const protocol = calculatedData?.tmb_protocol || calculatedData?.protocol || '';
+    const isEER = protocol.toLowerCase().includes('eer');
+    const get = calculatedData?.get_result ?? calculatedData?.get_with_activities ?? calculatedData?.get;
+    const target = calculatedData?.final_planned_kcal ?? calculatedData?.target_calories ?? get;
+    const hasVENTA = calculatedData?.venta_target_weight != null || calculatedData?.target_weight != null;
+    const activities = calculatedData?.mets_activities || calculatedData?.activities || [];
+    const display = value => value == null || !Number.isFinite(Number(value)) ? '—' : Math.round(Number(value)).toLocaleString('pt-BR');
+    return <HubPanel title="Gasto energético"
+        description={calculatedData ? `Protocolo: ${protocol || 'Não informado'}` : 'Estimativas e planejamento energético'}
+        action={<Button variant="outline" size="sm" onClick={handleNavigateToFullPage}>{calculatedData ? 'Editar cálculo' : 'Calcular gasto'}</Button>}>
+        <div className="flex flex-col gap-3">
+            {syncFlags?.needs_energy_recalc && <Alert><AlertCircle className="h-4 w-4" /><AlertDescription>Antropometria atualizada. Revise o cálculo energético.</AlertDescription></Alert>}
+            {calculatedData ? <>
+                <div className="grid grid-cols-2 gap-2">
+                    {!isEER && <HubMetric label="TMB" value={display(calculatedData.tmb_result ?? calculatedData.tmb)} detail="kcal/dia" />}
+                    <HubMetric label={isEER ? 'EER' : activities.length ? 'GET + METs' : 'GET'} value={display(get)} detail="kcal/dia" />
+                    <HubMetric label={hasVENTA ? 'Meta com VENTA' : 'Meta calórica'} value={display(target)} detail="kcal/dia" />
                 </div>
-            </CardHeader>
-
-            <CardContent>
-                <div className="text-center py-6">
-                    <div className="w-12 h-12 rounded-full bg-[#fefae0] flex items-center justify-center mx-auto mb-3">
-                        <Flame className="w-6 h-6 text-[#c4661f]" />
-                    </div>
-                    <p className="text-sm font-medium text-foreground mb-2">
-                        Calcular TMB e GET
-                    </p>
-                    <p className="text-xs text-muted-foreground mb-4">
-                        Dados disponíveis. Calcule o gasto energético total.
-                    </p>
-                    <Button
-                        onClick={handleNavigateToFullPage}
-                        className="gap-2"
-                    >
-                        <Calculator className="w-4 h-4" />
-                        Calcular Agora
-                        <ArrowRight className="w-4 h-4" />
-                    </Button>
+                <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                    <span>Fator de atividade: {calculatedData.activity_factor ?? calculatedData.activity_level ?? '—'}</span>
+                    {activities.length > 0 && <span>· {activities.length} atividades</span>}
+                    {hasVENTA && <span>· Peso-alvo: {calculatedData.venta_target_weight ?? calculatedData.target_weight} kg</span>}
                 </div>
-            </CardContent>
-        </Card>
-    );
+            </> : <p className="text-sm leading-relaxed text-muted-foreground">{hasRequiredData ? 'Dados disponíveis. Abra o cálculo para planejar o gasto energético.' : 'Para calcular, confira peso, altura, idade e sexo no cadastro e na avaliação.'}</p>}
+        </div>
+    </HubPanel>;
 };
 
 export default EnergyExpenditureSummaryCard;

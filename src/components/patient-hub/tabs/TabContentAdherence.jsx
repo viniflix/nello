@@ -1,129 +1,95 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Target, TrendingDown, TrendingUp, Scale, Trophy, ArrowRight, Calendar, Flame, Award, Star, MessageSquare, Send, ExternalLink, Loader2 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ArrowRight, ExternalLink, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
+import { HubMetric, HubPanel } from '@/components/patient-hub/HubPanel';
 import { getActiveGoal, getDaysRemaining, getProgressStatus } from '@/lib/supabase/goals-queries';
 import { patientRoute } from '@/lib/utils/patientRoutes';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
-import {
-    getMessageTemplates,
-    dispatchMessageTemplate,
-    previewTemplate,
-    TEMPLATE_CONTEXTS
-} from '@/lib/supabase/message-templates-queries';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
-import { CardSkeleton, SimpleListSkeleton } from '@/components/ui/custom-skeletons';
+import { dispatchMessageTemplate, getMessageTemplates, previewTemplate, TEMPLATE_CONTEXTS } from '@/lib/supabase/message-templates-queries';
 
-const ICON_MAP = {
-    trophy: Trophy,
-    award: Award,
-    target: Target,
-    flame: Flame,
-    star: Star,
-    trending_up: TrendingUp,
-};
+const formatDate = value => value && !Number.isNaN(new Date(value).getTime())
+    ? new Date(value).toLocaleDateString('pt-BR')
+    : 'Data não informada';
 
-const TabContentAdherence = ({ patientId, patientData, modulesStatus = {} }) => {
+export default function TabContentAdherence({ patientId, patientData }) {
     const patient = patientData || { id: patientId };
     const navigate = useNavigate();
     const { user } = useAuth();
     const { toast } = useToast();
-    const [activeGoal, setActiveGoal] = useState(null);
-    const [loading, setLoading] = useState(true);
+    const [goal, setGoal] = useState(null);
+    const [goalState, setGoalState] = useState('loading');
     const [achievements, setAchievements] = useState([]);
-    const [achievementsLoading, setAchievementsLoading] = useState(true);
-
-    // Comunicação contextual (mensagens por template)
+    const [achievementsState, setAchievementsState] = useState('loading');
     const [templates, setTemplates] = useState([]);
-    const [templatesLoading, setTemplatesLoading] = useState(true);
+    const [templatesState, setTemplatesState] = useState('loading');
     const [selectedTemplateId, setSelectedTemplateId] = useState('');
+    const [preview, setPreview] = useState(null);
     const [dispatching, setDispatching] = useState(false);
-    const [previewData, setPreviewData] = useState(null);
 
-    useEffect(() => {
+    const loadGoal = useCallback(async () => {
         if (!patientId) {
-            setLoading(false);
-            setActiveGoal(null);
+            setGoal(null);
+            setGoalState('ready');
             return;
         }
-        loadActiveGoal();
+        setGoalState('loading');
+        try {
+            const { data, error } = await getActiveGoal(patientId);
+            if (error) throw error;
+            setGoal(data || null);
+            setGoalState('ready');
+        } catch {
+            setGoal(null);
+            setGoalState('error');
+        }
     }, [patientId]);
 
-    useEffect(() => {
-        const fetchTemplates = async () => {
-            if (!user?.id) return;
-            setTemplatesLoading(true);
-            try {
-                const { data } = await getMessageTemplates({
-                    nutritionistId: user.id,
-                    isActive: true,
-                    limit: 50
-                });
-                setTemplates(data || []);
-            } finally {
-                setTemplatesLoading(false);
-            }
-        };
-        fetchTemplates();
+    const loadAchievements = useCallback(async () => {
+        if (!patientId) {
+            setAchievements([]);
+            setAchievementsState('ready');
+            return;
+        }
+        setAchievementsState('loading');
+        const { data, error } = await supabase
+            .from('user_achievements')
+            .select('achieved_at, achievements(name, description, icon_name)')
+            .eq('user_id', patientId)
+            .order('achieved_at', { ascending: false })
+            .limit(5);
+        setAchievements(error ? [] : (data || []));
+        setAchievementsState(error ? 'error' : 'ready');
+    }, [patientId]);
+
+    const loadTemplates = useCallback(async () => {
+        if (!user?.id) {
+            setTemplates([]);
+            setTemplatesState('ready');
+            return;
+        }
+        setTemplatesState('loading');
+        const { data, error } = await getMessageTemplates({ nutritionistId: user.id, isActive: true, limit: 50 });
+        setTemplates(error ? [] : (data || []));
+        setTemplatesState(error ? 'error' : 'ready');
     }, [user?.id]);
 
-    useEffect(() => {
-        const fetchAchievements = async () => {
-            if (!patientId) {
-                setAchievementsLoading(false);
-                return;
-            }
-            setAchievementsLoading(true);
-            const { data, error } = await supabase
-                .from('user_achievements')
-                .select('achieved_at, achievements(name, description, icon_name)')
-                .eq('user_id', patientId)
-                .order('achieved_at', { ascending: false })
-                .limit(5);
-            if (!error) {
-                setAchievements(data || []);
-            } else {
-                setAchievements([]);
-            }
-            setAchievementsLoading(false);
-        };
-        fetchAchievements();
-    }, [patientId]);
+    useEffect(() => { void loadGoal(); }, [loadGoal]);
+    useEffect(() => { void loadAchievements(); }, [loadAchievements]);
+    useEffect(() => { void loadTemplates(); }, [loadTemplates]);
 
-    const loadActiveGoal = async () => {
-        if (!patientId) return;
-        setLoading(true);
-        try {
-            const { data } = await getActiveGoal(patientId);
-            setActiveGoal(data);
-        } catch (error) {
-            console.error('Erro ao carregar meta ativa:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleTemplateSelect = (id) => {
+    const selectTemplate = id => {
         setSelectedTemplateId(id);
-        const tpl = templates.find(t => String(t.id) === id);
-        if (tpl) {
-            setPreviewData(previewTemplate({
-                titleTemplate: tpl.title_template || '',
-                bodyTemplate: tpl.body_template
-            }));
-        } else {
-            setPreviewData(null);
-        }
+        const template = templates.find(item => String(item.id) === id);
+        setPreview(template ? previewTemplate({ titleTemplate: template.title_template || '', bodyTemplate: template.body_template }) : null);
     };
 
-    const handleDispatchMessage = async () => {
+    const sendMessage = async () => {
         if (!selectedTemplateId || !patientId || !user?.id) return;
         setDispatching(true);
         try {
@@ -132,387 +98,72 @@ const TabContentAdherence = ({ patientId, patientData, modulesStatus = {} }) => 
                 patientId,
                 triggerEvent: 'manual_adherence_tab'
             });
-            if (error) throw error;
-            if (data?.ok === false) throw new Error(data.reason || 'Erro ao enviar');
-
-            toast({ title: 'Mensagem enviada!', description: 'O paciente receberá a mensagem no app.', variant: 'default' });
+            if (error || data?.ok === false) throw error || new Error(data?.reason || 'Não foi possível enviar a mensagem.');
             setSelectedTemplateId('');
-            setPreviewData(null);
-        } catch (err) {
-            toast({
-                title: 'Erro ao enviar mensagem',
-                description: err?.message || 'Tente novamente. Se o problema continuar, verifique se os modelos de mensagem estão configurados.',
-                variant: 'destructive'
-            });
+            setPreview(null);
+            toast({ title: 'Mensagem enviada', description: 'O paciente receberá a mensagem no aplicativo.' });
+        } catch (error) {
+            toast({ title: 'Erro ao enviar mensagem', description: error?.message || 'Tente novamente.', variant: 'destructive' });
         } finally {
             setDispatching(false);
         }
     };
 
-    const getGoalTypeIcon = (type) => {
-        const icons = {
-            weight_loss: TrendingDown,
-            weight_gain: TrendingUp,
-            weight_maintenance: Scale,
-            custom: Target
-        };
-        return icons[type] || Target;
-    };
+    const progress = Math.max(0, Math.min(100, Number(goal?.progress_percentage) || 0));
+    const daysRemaining = goal ? getDaysRemaining(goal.target_date) : null;
+    const progressStatus = goal ? getProgressStatus(goal) : null;
+    const weightRemaining = goal?.current_weight != null && goal?.target_weight != null
+        ? Math.abs(Number(goal.current_weight) - Number(goal.target_weight))
+        : null;
 
-    const GoalsCard = () => {
-        if (loading) {
-            return (
-                <Card className="h-full">
-                    <CardContent className="p-0 h-full">
-                        <CardSkeleton />
-                    </CardContent>
-                </Card>
-            );
-        }
+    return <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
+        <HubPanel
+            title="Meta ativa"
+            description="Objetivo e progresso registrados para o paciente"
+            action={<Button size="sm" onClick={() => navigate(patientRoute(patient, 'goals'))}>{goal ? 'Abrir meta' : 'Criar meta'}<ArrowRight className="ml-1.5 h-3.5 w-3.5" /></Button>}
+        >
+            {goalState === 'loading' ? <div role="status" aria-label="Carregando meta" className="space-y-3"><Skeleton className="h-5 w-2/3" /><Skeleton className="h-2 w-full" /><div className="grid grid-cols-2 gap-2"><Skeleton className="h-20" /><Skeleton className="h-20" /></div></div>
+                : goalState === 'error' ? <div className="space-y-3"><p className="text-sm text-slate-600">Não foi possível carregar a meta.</p><Button size="sm" variant="outline" onClick={() => void loadGoal()}>Recarregar</Button></div>
+                    : !goal ? <p className="text-sm leading-relaxed text-muted-foreground">Nenhuma meta ativa foi definida.</p>
+                        : <div className="space-y-4">
+                            <div><p className="text-[13px] font-semibold text-slate-900">{goal.title || 'Meta nutricional'}</p><div className="mt-2 flex items-center justify-between text-xs text-slate-500"><span>Progresso</span><span className="font-semibold text-slate-700">{Math.round(progress)}%</span></div><Progress value={progress} className="mt-1.5 h-1.5" /></div>
+                            <div className="grid grid-cols-2 gap-2">
+                                <HubMetric label="Peso atual" value={goal.current_weight == null ? '—' : `${Number(goal.current_weight).toFixed(1)} kg`} detail={progressStatus?.label || 'Sem classificação'} />
+                                <HubMetric label="Meta" value={goal.target_weight == null ? '—' : `${Number(goal.target_weight).toFixed(1)} kg`} detail={weightRemaining == null ? 'Sem distância calculada' : `Faltam ${weightRemaining.toFixed(1)} kg`} />
+                            </div>
+                            <div className="grid gap-1 text-xs leading-relaxed text-slate-500 sm:grid-cols-2"><p>Prazo: <span className="font-medium text-slate-700">{daysRemaining == null ? 'Não informado' : daysRemaining > 0 ? `${daysRemaining} dias` : 'Prazo expirado'}</span></p><p>Início: <span className="font-medium text-slate-700">{formatDate(goal.start_date)}</span></p>{goal.daily_calorie_goal != null && <p>Meta diária: <span className="font-medium text-slate-700">{Math.round(goal.daily_calorie_goal)} kcal</span></p>}</div>
+                        </div>}
+        </HubPanel>
 
-        // Se não tem meta ativa, mostrar card de criação
-        if (!activeGoal) {
-            return (
-                <Card
-                    className="border-dashed border-2 border-[#a9b388] bg-[#fefae0]/30 dark:bg-muted/10 hover:shadow-md transition-all cursor-pointer h-full"
-                    onClick={() => navigate(patientRoute(patient, 'goals'))}
-                >
-                    <CardContent className="py-8 text-center">
-                        <div className="w-12 h-12 rounded-full bg-[#fefae0] flex items-center justify-center mx-auto mb-3">
-                            <Target className="w-6 h-6 text-[#5f6f52]" />
-                        </div>
-                        <h3 className="text-base font-semibold text-foreground mb-2">
-                            Metas Nutricionais
-                        </h3>
-                        <p className="text-sm text-muted-foreground mb-4 max-w-sm mx-auto">
-                            Nenhuma meta ativa. Defina um objetivo nutricional para o paciente
-                        </p>
-                        <span className="inline-flex items-center gap-2 text-sm font-medium text-[#5f6f52]">
-                            <Target className="w-4 h-4" />
-                            Criar Meta
-                            <ArrowRight className="w-3 h-3" />
-                        </span>
-                    </CardContent>
-                </Card>
-            );
-        }
+        <HubPanel
+            title="Conquistas"
+            description="Marcos obtidos a partir dos registros e metas"
+            action={<Button size="sm" variant="outline" onClick={() => navigate(patientRoute(patient, 'achievements'))}>Ver histórico<ArrowRight className="ml-1.5 h-3.5 w-3.5" /></Button>}
+        >
+            {achievementsState === 'loading' ? <div role="status" aria-label="Carregando conquistas" className="space-y-3"><Skeleton className="h-12 w-full" /><Skeleton className="h-12 w-full" /></div>
+                : achievementsState === 'error' ? <div className="space-y-3"><p className="text-sm text-slate-600">Não foi possível carregar as conquistas.</p><Button size="sm" variant="outline" onClick={() => void loadAchievements()}>Recarregar</Button></div>
+                    : achievements.length === 0 ? <p className="text-sm leading-relaxed text-muted-foreground">O paciente ainda não desbloqueou conquistas.</p>
+                        : <ul className="divide-y divide-slate-100">{achievements.slice(0, 3).map((item, index) => <li key={`${item.achieved_at}-${index}`} className="flex items-start justify-between gap-3 py-3 first:pt-0 last:pb-0"><div className="min-w-0"><p className="break-words text-[13px] font-semibold text-slate-900">{item.achievements?.name || 'Conquista'}</p><p className="mt-1 text-xs leading-relaxed text-slate-500">{item.achievements?.description || 'Marco de acompanhamento alcançado.'}</p></div><span className="shrink-0 text-[11px] text-slate-500">{formatDate(item.achieved_at)}</span></li>)}</ul>}
+        </HubPanel>
 
-        // Card com meta ativa
-        const GoalIcon = getGoalTypeIcon(activeGoal.goal_type);
-        const daysRemaining = getDaysRemaining(activeGoal.target_date);
-        const progressStatus = getProgressStatus(activeGoal);
-        const weightRemaining = Math.abs(activeGoal.current_weight - activeGoal.target_weight);
-
-        return (
-            <Card
-                className="border-l-4 border-l-[#5f6f52] dark:border-l-[#a9b388] hover:shadow-xl transition-all bg-gradient-to-br from-[#fefae0]/20 to-[#fefae0]/30 dark:from-muted/20 dark:to-muted/30 cursor-pointer h-full"
-                onClick={() => navigate(patientRoute(patient, 'goals'))}
+        <div className="min-w-0 lg:col-span-2">
+            <HubPanel
+                title="Mensagem ao paciente"
+                description="Envie uma comunicação já aprovada a partir de um modelo"
+                action={<Button size="sm" variant="ghost" onClick={() => navigate('/nutritionist/message-templates')}><ExternalLink className="mr-1.5 h-3.5 w-3.5" />Gerenciar modelos</Button>}
             >
-                <CardHeader className="pb-3">
-                    <div className="flex items-center gap-2">
-                        <GoalIcon className="w-5 h-5 text-[#5f6f52]" />
-                        <CardTitle className="text-base">Meta Ativa</CardTitle>
-                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300 text-xs">
-                            Em andamento
-                        </Badge>
-                    </div>
-                </CardHeader>
-
-                <CardContent>
-                    {/* Título e progresso */}
-                    <div className="mb-3">
-                        <h3 className="font-semibold text-foreground mb-2">{activeGoal.title}</h3>
-                        <div className="mb-2">
-                            <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
-                                <span>Progresso</span>
-                                <span className="font-semibold text-[#5f6f52]">
-                                    {activeGoal.progress_percentage?.toFixed(0) || 0}%
-                                </span>
-                            </div>
-                            <Progress value={activeGoal.progress_percentage || 0} className="h-2" />
-                        </div>
-                        {progressStatus && (
-                            <Badge variant="outline" className={`text-xs ${progressStatus.color}`}>
-                                {progressStatus.label}
-                            </Badge>
-                        )}
-                    </div>
-
-                    {/* Estatísticas */}
-                    <div className="grid grid-cols-2 gap-2 mb-3">
-                        <div className="bg-[#fefae0] dark:bg-muted/30 border border-[#a9b388] dark:border-[#a9b388]/50 rounded p-2 text-center">
-                            <div className="text-lg font-bold text-foreground">
-                                {activeGoal.current_weight?.toFixed(1)}
-                            </div>
-                            <div className="text-xs text-muted-foreground">Peso Atual</div>
-                        </div>
-                        <div className="bg-[#fefae0] dark:bg-muted/30 border border-[#5f6f52] dark:border-[#a9b388]/50 rounded p-2 text-center">
-                            <div className="text-lg font-bold text-[#5f6f52]">
-                                {activeGoal.target_weight?.toFixed(1)}
-                            </div>
-                            <div className="text-xs text-muted-foreground">Meta</div>
-                        </div>
-                    </div>
-
-                    {/* Info adicional */}
-                    <div className="space-y-1 text-xs text-muted-foreground">
-                        <div className="flex items-center justify-between">
-                            <span>Faltam:</span>
-                            <span className="font-semibold text-foreground">{weightRemaining.toFixed(1)} kg</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                            <span className="flex items-center gap-1">
-                                <Calendar className="w-3 h-3" />
-                                Prazo:
-                            </span>
-                            <span className="font-semibold text-foreground">
-                                {daysRemaining > 0 ? `${daysRemaining} dias` : 'Prazo expirado'}
-                            </span>
-                        </div>
-                        {activeGoal.daily_calorie_goal && (
-                            <div className="flex items-center justify-between">
-                                <span className="flex items-center gap-1">
-                                    <Flame className="w-3 h-3" />
-                                    Meta diária:
-                                </span>
-                                <span className="font-semibold text-foreground">
-                                    {Math.round(activeGoal.daily_calorie_goal)} kcal
-                                </span>
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="text-xs pt-3 mt-3 border-t flex items-center justify-between">
-                        <span className="text-muted-foreground">Meta criada em {new Date(activeGoal.start_date).toLocaleDateString('pt-BR')}</span>
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 text-[#5f6f52] hover:bg-[#5f6f52]/10"
-                            onClick={() => navigate(patientRoute(patient, 'goals'))}
-                        >
-                            Abrir <ArrowRight className="w-3 h-3 ml-1" />
-                        </Button>
-                    </div>
-                </CardContent>
-            </Card>
-        );
-    };
-
-    const AchievementsCard = () => {
-        const getIcon = (iconName) => ICON_MAP[iconName] || Award;
-
-        if (achievementsLoading) {
-            return (
-                <Card className="h-full">
-                    <CardContent className="p-0 h-full">
-                        <CardSkeleton />
-                    </CardContent>
-                </Card>
-            );
-        }
-
-        // Estado vazio: mesmo padrão do card de Metas (opaco, borda pontilhada, centralizado, CTA)
-        if (achievements.length === 0) {
-            return (
-                <Card
-                    className="border-dashed border-2 border-amber-300/70 bg-amber-50/30 hover:shadow-md transition-all cursor-pointer h-full"
-                    onClick={() => navigate(patientRoute(patient, 'achievements'))}
-                >
-                    <CardContent className="py-8 text-center">
-                        <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-3">
-                            <Trophy className="w-6 h-6 text-amber-600" />
-                        </div>
-                        <h3 className="text-base font-semibold text-foreground mb-2">
-                            Conquistas
-                        </h3>
-                        <p className="text-sm text-muted-foreground mb-4 max-w-sm mx-auto">
-                            O paciente ainda não desbloqueou conquistas. Elas são concedidas ao registrar refeições e atingir metas.
-                        </p>
-                        <span className="inline-flex items-center gap-2 text-sm font-medium text-amber-700">
-                            <Trophy className="w-4 h-4" />
-                            Ver conquistas
-                            <ArrowRight className="w-3 h-3" />
-                        </span>
-                    </CardContent>
-                </Card>
-            );
-        }
-
-        // Estado preenchido: borda lateral, título no topo, 3 últimas conquistas lado a lado (título + data)
-        const latestThree = achievements.slice(0, 3);
-
-        return (
-            <Card
-                className="border-l-4 border-l-amber-500 hover:shadow-xl transition-all cursor-pointer h-full bg-gradient-to-br from-amber-50/30 to-amber-50/10"
-                onClick={() => navigate(patientRoute(patient, 'achievements'))}
-            >
-                <CardHeader className="pb-2">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                            <Trophy className="w-5 h-5 text-amber-600" />
-                            <CardTitle className="text-base">Conquistas</CardTitle>
-                        </div>
-                        <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300 text-xs">
-                            {achievements.length} desbloqueada{achievements.length !== 1 ? 's' : ''}
-                        </Badge>
-                    </div>
-                </CardHeader>
-                <CardContent>
-                    <div className="grid grid-cols-3 gap-2 mb-3">
-                        {latestThree.map((ua, idx) => {
-                            const ach = ua.achievements;
-                            const Icon = getIcon(ach?.icon_name);
-                            return (
-                                <div
-                                    key={idx}
-                                    className="flex flex-col items-center justify-center p-2 rounded-lg bg-amber-50/70 dark:bg-muted/30 border border-amber-200/80 dark:border-amber-500/20 text-center min-h-[72px]"
-                                >
-                                    <div className="p-1.5 bg-amber-500 rounded-full flex-shrink-0 mb-1">
-                                        <Icon className="w-3.5 h-3.5 text-white" />
-                                    </div>
-                                    <p className="text-xs font-medium text-foreground truncate w-full" title={ach?.name || 'Conquista'}>
-                                        {ach?.name || 'Conquista'}
-                                    </p>
-                                    <p className="text-[10px] text-muted-foreground">
-                                        {ua.achieved_at ? format(new Date(ua.achieved_at), 'dd/MM/yy', { locale: ptBR }) : '—'}
-                                    </p>
-                                </div>
-                            );
-                        })}
-                    </div>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="w-full gap-2 text-amber-700 hover:bg-amber-100"
-                        onClick={(e) => { e.stopPropagation(); navigate(patientRoute(patient, 'achievements')); }}
-                    >
-                        Ver todas as conquistas
-                        <ArrowRight className="w-3 h-3" />
-                    </Button>
-                </CardContent>
-            </Card>
-        );
-    };
-
-    return (
-        <div className="space-y-6">
-            <div>
-                <h3 className="text-xl font-bold text-foreground mb-1">Adesão ao Tratamento</h3>
-                <p className="text-sm text-muted-foreground">
-                    Metas, prescrições e sistema de conquistas
-                </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <GoalsCard />
-                <AchievementsCard />
-            </div>
-
-            {/* Enviar mensagem ao paciente (templates) */}
-            <Card className="border-l-4 border-l-[#5f6f52]">
-                <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between gap-3">
-                        <div>
-                            <CardTitle className="text-lg flex items-center gap-2">
-                                <MessageSquare className="w-5 h-5 text-[#5f6f52]" />
-                                Enviar mensagem ao paciente
-                            </CardTitle>
-                            <p className="text-sm text-muted-foreground mt-1">
-                                Use modelos prontos para lembrete, parabéns por meta, pós-consulta e mais. Ideal para manter o paciente engajado.
-                            </p>
-                        </div>
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className="shrink-0 gap-1 text-xs text-[#5f6f52] hover:bg-[#5f6f52]/10"
-                            onClick={() => navigate('/nutritionist/message-templates')}
-                        >
-                            <ExternalLink className="w-3 h-3" />
-                            Criar/editar modelos
-                        </Button>
-                    </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    {templatesLoading ? (
-                        <div className="py-2">
-                            <SimpleListSkeleton count={1} />
-                        </div>
-                    ) : templates.length === 0 ? (
-                        <div className="text-center py-4 rounded-lg border border-dashed bg-muted/20">
-                            <p className="text-sm text-muted-foreground mb-2">
-                                Você ainda não criou nenhum modelo de mensagem.
-                            </p>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => navigate('/nutritionist/message-templates')}
-                                className="gap-1"
-                            >
-                                <MessageSquare className="w-4 h-4" />
-                                Criar meu primeiro modelo
-                            </Button>
-                        </div>
-                    ) : (
-                        <>
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-foreground">Escolha o modelo</label>
-                                <Select name="adherence-template" value={selectedTemplateId} onValueChange={handleTemplateSelect}>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Selecione qual mensagem enviar..." />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {TEMPLATE_CONTEXTS.map(ctx => {
-                                            const group = templates.filter(t => t.context === ctx.value);
-                                            if (group.length === 0) return null;
-                                            return (
-                                                <React.Fragment key={ctx.value}>
-                                                    <div className="px-2 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                                                        {ctx.label}
-                                                    </div>
-                                                    {group.map(tpl => (
-                                                        <SelectItem key={tpl.id} value={String(tpl.id)}>
-                                                            {tpl.name}
-                                                        </SelectItem>
-                                                    ))}
-                                                </React.Fragment>
-                                            );
-                                        })}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-
-                            {previewData && (
-                                <div className="rounded-lg border bg-muted/30 p-3 space-y-1">
-                                    <p className="text-xs font-medium text-muted-foreground">
-                                        Pré-visualização (na mensagem real, o nome do paciente e a data serão preenchidos automaticamente)
-                                    </p>
-                                    {previewData.title && (
-                                        <p className="text-sm font-semibold">{previewData.title}</p>
-                                    )}
-                                    <p className="text-sm text-muted-foreground whitespace-pre-wrap line-clamp-4">
-                                        {previewData.body}
-                                    </p>
-                                </div>
-                            )}
-
-                            <Button
-                                className="w-full gap-2 bg-[#5f6f52] hover:bg-[#4a5a3e]"
-                                disabled={!selectedTemplateId || dispatching}
-                                onClick={handleDispatchMessage}
-                            >
-                                {dispatching ? (
-                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                ) : (
-                                    <Send className="w-4 h-4" />
-                                )}
-                                Enviar mensagem ao paciente
-                            </Button>
-                        </>
-                    )}
-                </CardContent>
-            </Card>
+                {templatesState === 'loading' ? <div role="status" aria-label="Carregando modelos" className="space-y-3"><Skeleton className="h-10 w-full" /><Skeleton className="h-9 w-40" /></div>
+                    : templatesState === 'error' ? <div className="space-y-3"><p className="text-sm text-slate-600">Não foi possível carregar os modelos.</p><Button size="sm" variant="outline" onClick={() => void loadTemplates()}>Recarregar</Button></div>
+                        : templates.length === 0 ? <div className="space-y-3"><p className="text-sm leading-relaxed text-muted-foreground">Nenhum modelo de mensagem está ativo.</p><Button size="sm" variant="outline" onClick={() => navigate('/nutritionist/message-templates')}>Criar modelo</Button></div>
+                            : <div className="grid items-end gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
+                                <div className="min-w-0 space-y-2"><label className="text-[13px] font-semibold text-slate-700">Modelo</label><Select name="adherence-template" value={selectedTemplateId} onValueChange={selectTemplate}><SelectTrigger><SelectValue placeholder="Selecione uma mensagem" /></SelectTrigger><SelectContent>{TEMPLATE_CONTEXTS.map(context => {
+                                    const group = templates.filter(template => template.context === context.value);
+                                    if (!group.length) return null;
+                                    return <React.Fragment key={context.value}><div className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">{context.label}</div>{group.map(template => <SelectItem key={template.id} value={String(template.id)}>{template.name}</SelectItem>)}</React.Fragment>;
+                                })}</SelectContent></Select>{preview && <div className="rounded-lg border border-[#d8d5d0] bg-[#efeeec] p-3 shadow-inner"><p className="text-xs font-semibold text-slate-700">{preview.title || 'Pré-visualização'}</p><p className="mt-1 line-clamp-3 whitespace-pre-wrap text-xs leading-relaxed text-slate-500">{preview.body}</p></div>}</div>
+                                <Button disabled={!selectedTemplateId || dispatching} onClick={() => void sendMessage()}><Send className="mr-1.5 h-4 w-4" />{dispatching ? 'Enviando…' : 'Enviar mensagem'}</Button>
+                            </div>}
+            </HubPanel>
         </div>
-    );
-};
-
-export default TabContentAdherence;
+    </div>;
+}

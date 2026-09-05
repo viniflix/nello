@@ -19,6 +19,7 @@ export default function AppointmentDialog({
     services = [],
     nutritionistId,
     preSelectedDate,
+    initialPatientId,
     onSave
 }) {
     const [formData, setFormData] = useState({
@@ -98,9 +99,12 @@ export default function AppointmentDialog({
                 setPatientSearchTerm(appointment.unregistered_patient_name);
             }
         } else {
+            const initialPatient = initialPatientId
+                ? patients.find((patient) => patient.id === initialPatientId)
+                : null;
             // Reset form
             setFormData({
-                patient_id: '',
+                patient_id: initialPatient?.id || '',
                 unregistered_patient_name: '',
                 appointment_time_date: preSelectedDate ? format(preSelectedDate, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
                 appointment_time_hour: '',
@@ -113,9 +117,9 @@ export default function AppointmentDialog({
                 custom_price: '',
                 custom_description: ''
             });
-            setPatientSearchTerm('');
+            setPatientSearchTerm(initialPatient?.name || '');
         }
-    }, [appointment, open, preSelectedDate, patients]);
+    }, [appointment, open, preSelectedDate, patients, initialPatientId]);
 
     // Restaurar pointer-events ao fechar (evita página travada quando Popover modal está dentro de Dialog)
     useEffect(() => {
@@ -448,4 +452,3 @@ export default function AppointmentDialog({
         </Dialog>
     );
 }
-

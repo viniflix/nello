@@ -156,3 +156,28 @@ body,
     overflow-wrap: break-word;
   }
 }
+
+/* Contrato visual do Hub do Paciente. Mantém componentes clínicos legados
+   funcionais, mas evita que suas antigas superfícies coloridas vazem para o Hub. */
+.patient-hub-tab [class*="bg-gradient-to"] {
+  background-image: none !important;
+  background-color: #fff !important;
+}
+.patient-hub-tab [class*="border-l-4"] {
+  border-left-width: 1px !important;
+  border-color: #d8d5d0 !important;
+}
+.patient-hub-tab [class*="bg-[#fefae0]"],
+.patient-hub-tab [class*="bg-muted/50"] {
+  background-color: #efeeec !important;
+  box-shadow: inset 0 1px 2px rgb(15 23 42 / 0.06);
+}
+.patient-hub-tab > div > div:first-child > h3 {
+  font-family: var(--font-heading, inherit);
+  font-size: 1.125rem;
+  line-height: 1.4;
+}
+.patient-hub-tab .shadow-xl,
+.patient-hub-tab .hover\:shadow-xl:hover {
+  box-shadow: 0 4px 14px rgb(15 23 42 / 0.07) !important;
+}

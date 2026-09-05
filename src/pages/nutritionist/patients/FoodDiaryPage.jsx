@@ -26,8 +26,11 @@ import {
 } from '@/lib/supabase/food-diary-queries';
 import { cn } from '@/lib/utils';
 import { patientHubRoute } from '@/lib/utils/patientRoutes';
+import { useToast } from '@/components/ui/use-toast';
+import { toPortugueseError } from '@/lib/utils/errorMessages';
 
 const FoodDiaryPage = () => {
+    const { toast } = useToast();
     const { patientId, paramValue } = useResolvedPatientId();
     const navigate = useNavigate();
 
