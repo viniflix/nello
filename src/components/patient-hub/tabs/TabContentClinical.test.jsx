@@ -73,7 +73,8 @@ describe('TabContentClinical C2 flow', () => {
     });
     render(<TabContentClinical {...props} />);
 
-    fireEvent.click(await screen.findByRole('button', { name: /nova evolu/i }));
+    expect(await screen.findAllByRole('button', { name: /nova evolu/i })).toHaveLength(1);
+    fireEvent.click(screen.getByRole('button', { name: /nova evolu/i }));
     fireEvent.click(screen.getByRole('button', { name: /confirmar template/i }));
 
     await waitFor(() => expect(evolutionQueries.createClinicalEvolutionDraft).toHaveBeenCalledWith(

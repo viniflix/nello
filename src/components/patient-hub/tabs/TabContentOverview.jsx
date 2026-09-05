@@ -44,7 +44,7 @@ function Section({ title, description, action, children, className = '' }) {
     );
 }
 
-function RecommendationInfo({ insight, methodology }) {
+function RecommendationInfo({ insight }) {
     const reasons = insight?.reasons || [];
     return (
         <div className="group relative">
@@ -59,7 +59,7 @@ function RecommendationInfo({ insight, methodology }) {
                         {reasons.map((reason) => <li key={reason}>• {reason}</li>)}
                     </ul>
                 ) : <p className="mt-2 text-slate-200">Não há evidências adicionais disponíveis.</p>}
-                <p className="mt-2 border-t border-white/15 pt-2 text-slate-400">{methodology} A decisão final é sempre do profissional.</p>
+                <p className="mt-2 border-t border-white/15 pt-2 text-slate-400">Dados considerados: perfil, agenda, plano, avaliações e check-ins disponíveis.</p>
             </div>
         </div>
     );
@@ -84,7 +84,7 @@ function RecommendedAction({ insights, onAction }) {
                     <div className="min-w-0">
                         <div className="flex items-center gap-1">
                             <p className={`text-[11px] font-bold uppercase tracking-[0.09em] ${isSuccess ? 'text-emerald-700' : 'text-[#9a531f]'}`}>Próxima ação recomendada</p>
-                            <RecommendationInfo insight={insight} methodology={insights.methodology} />
+                            <RecommendationInfo insight={insight} />
                         </div>
                         <p className="mt-0.5 text-base font-semibold leading-6 text-slate-900 sm:text-lg">{insight.title}</p>
                         <p className="mt-1 text-[13px] leading-5 text-slate-600 sm:text-sm">{insight.description}</p>
@@ -158,7 +158,7 @@ function AppointmentCard({ context, onAction }) {
                         <p className="mt-1 text-xs text-slate-500">{appointment.appointment_type || 'Consulta'} · {appointment.duration || 60} min</p>
                         <Badge variant="outline" className="mt-3 border-sky-200 bg-sky-50 text-sky-700">{appointment.status || 'Agendada'}</Badge>
                     </>
-                ) : <p className="text-sm leading-5 text-slate-600">Agende uma consulta sem precisar procurar novamente pelo paciente.</p>}
+                ) : <p className="text-sm leading-5 text-slate-600">Nenhuma consulta futura está agendada.</p>}
                 <Button variant="outline" size="sm" onClick={() => onAction({ type: 'schedule' })} className="mt-4 w-full border-[#c9d2c3] text-[#526047]">{appointment ? 'Abrir agenda' : 'Agendar consulta'}</Button>
             </div>
         </Section>
@@ -174,7 +174,7 @@ function Signals({ insights, adherence, context, onAction }) {
         insights.signals.slice(0, 3).forEach((signal) => items.push({ icon: AlertCircle, label: signal.title, value: signal.description, action: signal.action }));
     }
     return (
-        <Section title="Pontos para acompanhar" description="Resumo calculado a partir dos registros disponíveis">
+        <Section title="Pontos para acompanhar" description="Resumo dos registros recentes">
             <div className="divide-y divide-slate-100">
                 {items.length ? items.slice(0, 3).map(({ icon: Icon, label, value, action }) => (
                     <button key={`${label}-${value}`} type="button" onClick={() => onAction(action)} className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-slate-50 sm:px-5">

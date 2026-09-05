@@ -64,6 +64,6 @@ describe('buildPatientHubInsights', () => {
     });
 
     expect(result.primary.id).toBe('review-overview');
-    expect(result.methodology).toMatch(/explicável/i);
+    expect(result.methodology).toMatch(/registros disponíveis/i);
   });
 });

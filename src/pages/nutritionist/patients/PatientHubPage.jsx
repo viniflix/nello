@@ -13,6 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { SimpleListSkeleton } from '@/components/ui/custom-skeletons';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePatientHub } from '@/hooks/usePatientHub';
+import { useOnlinePresence } from '@/hooks/useOnlinePresence';
 import { useResolvedPatientId } from '@/hooks/useResolvedPatientId';
 import { isUuid } from '@/lib/utils/patientRoutes';
 import PatientProfileSummary from '@/components/patient-hub/PatientProfileSummary';
@@ -112,6 +113,7 @@ export default function PatientHubPage() {
     const [isEditProfileModalOpen, setIsEditProfileModalOpen] = useState(false);
     const [isDuplicateModalOpen, setIsDuplicateModalOpen] = useState(false);
     const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+    const { isUserOnline } = useOnlinePresence();
 
     const {
         loading: hubLoading, error: hubError, patientData, latestMetrics, modulesStatus,
@@ -184,6 +186,7 @@ export default function PatientHubPage() {
                         patientData={patientData}
                         latestMetrics={latestMetrics}
                         operationalContext={operationalContext}
+                        isOnline={isUserOnline(patientId)}
                         onEditProfile={() => setIsEditProfileModalOpen(true)}
                         onOpenChat={() => navigate(`/nutritionist/chat/${patientId}`)}
                         onScheduleAppointment={openSchedule}

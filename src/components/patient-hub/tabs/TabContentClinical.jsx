@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, Droplet, FileEdit, FileText, Plus } from 'lucide-react';
+import { ArrowRight, Droplet, FileEdit, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert } from '@/components/ui/alert';
@@ -160,13 +160,13 @@ export default function TabContentClinical({ patientId, patientData, viewedEpiso
         </HubPanel>
 
         <section className="space-y-3" aria-labelledby="clinical-evolutions-title">
-            <div className="flex flex-wrap items-end justify-between gap-3"><div><h3 id="clinical-evolutions-title" className="font-heading text-lg font-semibold leading-snug text-slate-900">Evoluções clínicas</h3><p className="mt-1 text-xs leading-relaxed text-muted-foreground">Registros do episódio de cuidado atual</p></div>{writableEpisodeId && <Button size="sm" onClick={() => setShowTemplateSelector(true)}><FileText className="mr-1.5 h-4 w-4" />Nova evolução</Button>}</div>
+            <div><h3 id="clinical-evolutions-title" className="font-heading text-lg font-semibold leading-snug text-slate-900">Evoluções clínicas</h3><p className="mt-1 text-xs leading-relaxed text-muted-foreground">Registros do episódio de cuidado atual</p></div>
             {recordsLoading ? <div role="status" aria-label="Carregando evoluções" className="space-y-3 rounded-xl border border-[#d8d5d0] bg-white p-4"><Skeleton className="h-16 w-full" /><Skeleton className="h-16 w-full" /></div>
                 : recordsError ? <Alert variant="destructive"><div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between"><span>Não foi possível carregar as evoluções. {recordsError}</span><Button type="button" variant="outline" size="sm" onClick={() => void loadRecords()}>Tentar novamente</Button></div></Alert>
                     : <ClinicalRecordsList records={records} onSelectRecord={setSelectedRecord} onCreateDraft={() => setShowTemplateSelector(true)} canWriteEpisode={Boolean(writableEpisodeId)} />}
         </section>
 
-        {viewedEpisodeId && <section className="space-y-3"><div><h3 className="font-heading text-lg font-semibold leading-snug text-slate-900">Anexos clínicos</h3><p className="mt-1 text-xs leading-relaxed text-muted-foreground">Documentos vinculados ao episódio atual</p></div><ClinicalAttachmentsPanel patientId={patientId} episodeId={viewedEpisodeId} canUpload={Boolean(writableEpisodeId)} /></section>}
+        {viewedEpisodeId && <ClinicalAttachmentsPanel patientId={patientId} episodeId={viewedEpisodeId} canUpload={Boolean(writableEpisodeId)} />}
 
         <EvolutionTemplateSelector open={showTemplateSelector} onOpenChange={setShowTemplateSelector} onSelectTemplate={createDraft} />
     </div>;

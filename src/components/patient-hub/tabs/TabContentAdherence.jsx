@@ -149,7 +149,7 @@ export default function TabContentAdherence({ patientId, patientData }) {
         <div className="min-w-0 lg:col-span-2">
             <HubPanel
                 title="Mensagem ao paciente"
-                description="Envie uma comunicação já aprovada a partir de um modelo"
+                description="Use um modelo de mensagem ativo"
                 action={<Button size="sm" variant="ghost" onClick={() => navigate('/nutritionist/message-templates')}><ExternalLink className="mr-1.5 h-3.5 w-3.5" />Gerenciar modelos</Button>}
             >
                 {templatesState === 'loading' ? <div role="status" aria-label="Carregando modelos" className="space-y-3"><Skeleton className="h-10 w-full" /><Skeleton className="h-9 w-40" /></div>

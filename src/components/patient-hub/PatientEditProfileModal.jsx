@@ -86,10 +86,7 @@ export default function PatientEditProfileModal({
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>Editar perfil do paciente</DialogTitle>
-          <DialogDescription>
-            Complete os dados progressivamente conforme eles se tornarem
-            necessários.
-          </DialogDescription>
+          <DialogDescription>Atualize os dados cadastrais e de contato.</DialogDescription>
         </DialogHeader>
         <div className="flex items-center gap-4 rounded-lg border bg-muted/30 p-4">
         <button

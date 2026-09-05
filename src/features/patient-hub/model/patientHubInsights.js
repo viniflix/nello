@@ -66,7 +66,7 @@ export const buildPatientHubInsights = ({
       priority: 100,
       tone: 'warning',
       title: 'Completar dados essenciais do paciente',
-      description: 'Existem informações obrigatórias pendentes antes de registrar novas decisões clínicas.',
+      description: 'Alguns dados obrigatórios do perfil ainda estão pendentes.',
       actionLabel: 'Completar perfil',
       action: { type: 'edit-profile' },
       reasons: profileRequirements.map((requirement) => `Campo pendente: ${requirement}`),
@@ -79,7 +79,7 @@ export const buildPatientHubInsights = ({
       priority: 90,
       tone: 'attention',
       title: 'Continuar o plano alimentar em rascunho',
-      description: 'O rascunho pode ser retomado diretamente, sem reiniciar a prescrição.',
+      description: 'Há um plano em rascunho pronto para continuar.',
       actionLabel: 'Continuar plano',
       action: { type: 'meal-plan', mode: 'quick' },
       reasons: [
@@ -104,7 +104,7 @@ export const buildPatientHubInsights = ({
       priority: 80,
       tone: 'attention',
       title: 'Revisar o plano alimentar',
-      description: 'O plano está ativo, mas sua prescrição ainda está marcada como em revisão.',
+      description: 'O plano ativo ainda está com status “Em revisão”.',
       actionLabel: 'Revisar plano',
       action: { type: 'meal-plan', mode: 'quick' },
       reasons: [activePlan.name ? `Plano: ${activePlan.name}` : null, 'Status da prescrição: em revisão'],
@@ -155,7 +155,7 @@ export const buildPatientHubInsights = ({
         priority: 65,
         tone: 'info',
         title: 'Revisar o check-in mais recente',
-        description: 'Há uma resposta recente disponível para contextualizar o acompanhamento.',
+        description: 'Há um check-in recente aguardando revisão.',
         actionLabel: 'Abrir check-in',
         action: { type: 'tab', tab: 'checkins' },
         reasons: [
@@ -172,7 +172,7 @@ export const buildPatientHubInsights = ({
       priority: 40,
       tone: 'info',
       title: 'Preparar a próxima consulta',
-      description: 'Revise os registros recentes e organize os pontos que precisam de acompanhamento.',
+      description: 'Consulte os registros recentes antes do atendimento.',
       actionLabel: 'Abrir clínico',
       action: { type: 'tab', tab: 'clinical' },
       reasons: [
@@ -206,6 +206,6 @@ export const buildPatientHubInsights = ({
     primary: ordered[0],
     signals: ordered.slice(0, 3),
     generatedAt: now.toISOString(),
-    methodology: 'Priorização explicável baseada em regras e dados estruturados do prontuário.',
+    methodology: 'Baseada nos registros disponíveis no prontuário.',
   };
 };

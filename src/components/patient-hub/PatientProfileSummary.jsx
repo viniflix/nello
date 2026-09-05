@@ -69,7 +69,7 @@ function Metric({ icon: Icon, label, value, detail }) {
 
 const PatientProfileSummary = ({
     patientData, latestMetrics, operationalContext, onEditProfile, onOpenChat,
-    onScheduleAppointment, onOpenMealPlan, profileRequirements = [],
+    onScheduleAppointment, onOpenMealPlan, profileRequirements = [], isOnline = false,
 }) => {
     const age = getAge(patientData?.birth_date);
     const imc = getImc(latestMetrics?.weight, latestMetrics?.height);
@@ -88,15 +88,22 @@ const PatientProfileSummary = ({
             <CardContent className="p-0">
                 <div className="flex flex-col gap-4 p-4 lg:flex-row lg:items-center lg:justify-between lg:p-5">
                     <div className="flex min-w-0 items-stretch gap-4 sm:gap-5">
-                        <div className="relative flex h-24 w-24 shrink-0 self-center items-center justify-center overflow-hidden rounded-2xl bg-[#65765a] text-xl font-bold text-white shadow-[inset_0_1px_2px_rgba(255,255,255,0.2)] sm:h-28 sm:w-28 sm:text-2xl">
-                            {patientData?.avatar_url ? <img src={patientData.avatar_url} alt={`Foto de ${patientData.name}`} className="h-full w-full object-cover" /> : <User className="h-11 w-11 text-white/85" />}
-                            <Button variant="secondary" size="icon" onClick={onEditProfile} aria-label="Editar perfil" title="Editar perfil" className="absolute right-1.5 top-1.5 h-7 w-7 rounded-full border border-white/80 bg-white/95 text-slate-500 shadow-sm hover:bg-white hover:text-[#526047]"><Pencil className="h-3.5 w-3.5" /></Button>
-                            {patientData?.is_active !== false && <span className="absolute -bottom-1 -right-1 h-5 w-5 rounded-full border-[3px] border-white bg-emerald-500" />}
+                        <div className="relative h-24 w-24 shrink-0 self-center sm:h-28 sm:w-28">
+                            <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-2xl bg-[#65765a] text-xl font-bold text-white shadow-[inset_0_1px_2px_rgba(255,255,255,0.2)] sm:text-2xl">
+                                {patientData?.avatar_url ? <img src={patientData.avatar_url} alt={`Foto de ${patientData.name}`} className="h-full w-full object-cover" /> : <User className="h-11 w-11 text-white/85" />}
+                            </div>
+                            <Button variant="secondary" size="icon" onClick={onEditProfile} aria-label="Editar perfil" title="Editar perfil" className="absolute -right-2 -top-2 h-8 w-8 rounded-full border-2 border-white bg-white text-slate-500 shadow-md hover:bg-white hover:text-[#526047]"><Pencil className="h-3.5 w-3.5" /></Button>
+                            <span
+                                role="status"
+                                aria-label={`Paciente ${isOnline ? 'online' : 'offline'}`}
+                                title={isOnline ? 'Paciente online' : 'Paciente offline'}
+                                className={`absolute -bottom-1.5 -right-1.5 h-5 w-5 rounded-full border-[3px] border-white shadow-sm ${isOnline ? 'bg-emerald-500' : 'bg-slate-300'}`}
+                            />
                         </div>
 
-                        <div className="flex min-w-0 flex-col justify-center">
+                        <div role="button" tabIndex={0} onClick={onEditProfile} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onEditProfile?.(); } }} aria-label={`Editar informações de ${patientData?.name || 'paciente'}`} className="group -m-2 flex min-w-0 cursor-pointer flex-col justify-center rounded-xl p-2 text-left outline-none transition-colors hover:bg-[#f6f5f3] focus-visible:ring-2 focus-visible:ring-[#718065] focus-visible:ring-offset-2">
                             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                                <h1 className="truncate font-heading text-[22px] font-bold tracking-[0.025em] text-[#263125] sm:text-[28px]">{patientData?.name || 'Paciente'}</h1>
+                                <h1 className="truncate font-heading text-[22px] font-bold tracking-[0.025em] text-[#263125] transition-colors group-hover:text-[#526047] sm:text-[28px]">{patientData?.name || 'Paciente'}</h1>
                                 <Badge className={patientData?.is_active === false ? 'border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-100' : 'border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50'}>{patientData?.is_active === false ? 'Inativo' : 'Ativo'}</Badge>
                                 {patientData?.patient_invite_code && <Badge variant="outline" className="border-sky-200 bg-sky-50 text-[10px] text-sky-700">Sem conta</Badge>}
                             </div>

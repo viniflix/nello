@@ -33,7 +33,7 @@ export default function ProgressivePatientProfile({ patient = {}, requirements =
   };
 
   return <Card>
-    <CardHeader><CardTitle>Perfil progressivo</CardTitle><p className="text-sm text-muted-foreground">Pedimos somente o necessário para identificar e acompanhar o paciente com segurança.</p></CardHeader>
+    <CardHeader><CardTitle>Dados do paciente</CardTitle><p className="text-sm text-muted-foreground">Informações de identificação, contato e endereço.</p></CardHeader>
     <CardContent><form onSubmit={submit} className="space-y-5">
       {requirements.includes('birth_date') && <p role="status" className="flex gap-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900"><AlertCircle className="h-4 w-4 shrink-0" />A data de nascimento é necessária para este contexto clínico.</p>}
       <fieldset disabled={readOnly} className="grid gap-4 sm:grid-cols-2"><legend className="mb-3 font-semibold">Identificação</legend>

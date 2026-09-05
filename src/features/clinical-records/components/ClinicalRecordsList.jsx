@@ -157,7 +157,7 @@ const ClinicalRecordsList = ({ records, onSelectRecord, onCreateDraft, canWriteE
           </div>
         </div>
 
-        {canWriteEpisode ? (
+        {canWriteEpisode && (records.length > 0 || searchTerm || statusFilter !== 'all') ? (
           <Button onClick={onCreateDraft} className="w-full sm:w-auto">
             <FileText className="mr-2 h-4 w-4" aria-hidden="true" />
             Nova Evolução
@@ -176,7 +176,7 @@ const ClinicalRecordsList = ({ records, onSelectRecord, onCreateDraft, canWriteE
           </p>
           {canWriteEpisode && !searchTerm && statusFilter === 'all' ? (
             <Button variant="outline" onClick={onCreateDraft} className="mt-4">
-              Criar primeira evolução
+              Nova evolução
             </Button>
           ) : null}
         </div>
