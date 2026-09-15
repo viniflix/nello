@@ -7,6 +7,8 @@
  * @module energy-calculations
  */
 
+import { calculateDri2023, dri2023Breakdown, driPaCoefficient, validEnergyBiometry, normalizeEnergySex } from './dri-energy';
+
 // ============================================================================
 // PROTOCOLOS DE CÁLCULO DE BMR (Basal Metabolic Rate)
 // ============================================================================
@@ -21,15 +23,14 @@
  * @param {string} gender - 'male' ou 'female'
  * @returns {number} BMR em kcal/dia
  */
+export const HARRIS_1919 = {
+  male: [66.473, 13.7516, 5.0033, 6.755],
+  female: [655.0955, 9.5634, 1.8496, 4.6756],
+};
 export const calculateHarrisBenedict = (weight, height, age, gender) => {
-  const w = parseFloat(weight);
-  const h = parseFloat(height);
-  const a = parseFloat(age);
-  if (isNaN(w) || isNaN(h) || isNaN(a) || w <= 0 || h <= 0 || a <= 0) return null;
-  const isMale = /^(male|masculino|m)$/i.test(String(gender || '').trim());
-  return isMale
-    ? 66.5 + (13.75 * w) + (5.003 * h) - (6.75 * a)
-    : 655.1 + (9.563 * w) + (1.85 * h) - (4.676 * a);
+  if (!validEnergyBiometry({ weight, height, age, gender })) return null;
+  const [c, w, h, a] = HARRIS_1919[normalizeEnergySex(gender)];
+  return c + w * Number(weight) + h * Number(height) - a * Number(age);
 };
 
 /**
@@ -314,7 +315,7 @@ export const calculateActivityExpenditure = (met, weightKg, durationMin, freqVal
 export const sumMetsActivitiesKcal = (activities, weightKg) => {
   if (!Array.isArray(activities) || !weightKg) return { totalKcal: 0, items: [] };
   const items = activities.map((a) => {
-    const kcal = a.kcal != null ? a.kcal : calculateMetKcal(a.met, weightKg, a.duration_min || 0);
+    const kcal = calculateMetKcal(a.met, weightKg, a.duration_min || 0);
     return { ...a, kcal };
   });
   const totalKcal = items.reduce((acc, i) => acc + (i.kcal || 0), 0);
@@ -332,11 +333,8 @@ export const sumMetsActivitiesKcal = (activities, weightKg) => {
 export const sumMetsActivitiesAverageDaily = (activities, weightKg) => {
   if (!Array.isArray(activities) || !weightKg) return { totalAverageDailyKcal: 0, items: [] };
   const items = activities.map((a) => {
-    if (a.average_daily_kcal != null && a.kcal_per_session != null) {
-      return { ...a, kcal_per_session: a.kcal_per_session, average_daily_kcal: a.average_daily_kcal };
-    }
-    const freqType = a.frequency_type ?? 'weekly';
-    const freqValue = a.frequency_value ?? 0;
+    const freqType = a.frequency_type ?? 'daily';
+    const freqValue = a.frequency_value ?? (a.frequency_type == null ? 1 : 0);
     const { kcalPerSession, averageDailyKcal } = calculateActivityExpenditure(
       a.met,
       weightKg,
@@ -344,7 +342,7 @@ export const sumMetsActivitiesAverageDaily = (activities, weightKg) => {
       freqValue,
       freqType
     );
-    const avgDaily = (freqType && freqValue > 0) ? averageDailyKcal : kcalPerSession;
+    const avgDaily = averageDailyKcal;
     return { ...a, kcal_per_session: kcalPerSession, average_daily_kcal: avgDaily };
   });
   const totalAverageDailyKcal = items.reduce((acc, i) => acc + (i.average_daily_kcal || 0), 0);
@@ -429,7 +427,7 @@ export const calculateAllProtocols = (data) => {
   const { weight, height, age, gender } = data;
   
   // Validação básica
-  if (!weight || !height || !age || !gender) {
+  if (!validEnergyBiometry(data)) {
     return [];
   }
 
@@ -438,7 +436,7 @@ export const calculateAllProtocols = (data) => {
     {
       id: 'harris',
       name: 'Harris-Benedict (1919)',
-      description: 'Clássico. Bom para população geral.',
+      description: 'Uso clínico: pacientes acamados ou ambulantes e fator de injúria.',
       bmr: calculateHarrisBenedict(weight, height, age, gender),
       category: 'general'
     },
@@ -458,12 +456,19 @@ export const calculateAllProtocols = (data) => {
     },
     {
       id: 'eer_iom',
-      name: 'EER/IOM (2005)',
+      name: 'DRIs / EER-IOM (2005)',
       description: 'GET direto (não usa TMB×FA). Inclui coeficiente de atividade.',
       isEer: true,
       bmr: null,
-      get: calculateEerIom(weight, heightNum, age, 1.25, gender),
+      get: Number(age) >= 19 ? calculateEerIom(weight, heightNum, age, driPaCoefficient(data.driActivity || 'inactive', gender), gender) : null,
       category: 'clinical'
+    },
+    {
+      id: 'dri_2023', name: 'DRIs / EER (2023)',
+      description: 'Necessidade energética de adultos ≥19 anos. Atividade incluída na equação.',
+      isEer: true, bmr: null,
+      get: calculateDri2023(data, data.driActivity || 'inactive'),
+      category: 'general'
     }
   ];
 
@@ -504,7 +509,7 @@ export const getProtocolInfo = (protocolId) => {
     harris: {
       id: 'harris',
       name: 'Harris-Benedict (1919)',
-      description: 'Clássico. Bom para população geral.',
+      description: 'Uso clínico: acamado ou ambulante, com fator de injúria.',
       category: 'general',
       requiresLeanMass: false
     },
@@ -524,11 +529,16 @@ export const getProtocolInfo = (protocolId) => {
     },
     eer_iom: {
       id: 'eer_iom',
-      name: 'EER/IOM (2005)',
+      name: 'DRIs / EER-IOM (2005)',
       description: 'GET direto (Estimated Energy Requirement).',
       category: 'clinical',
       requiresLeanMass: false,
       isEer: true
+    },
+    dri_2023: {
+      id: 'dri_2023', name: 'DRIs / EER (2023)',
+      description: 'GET direto por categoria de atividade para adultos ≥19 anos.',
+      category: 'general', requiresLeanMass: false, isEer: true
     }
   };
 
@@ -553,6 +563,7 @@ export const getProtocolInfo = (protocolId) => {
  * @returns {Object|null} Objeto com breakdown da fórmula ou null se dados insuficientes
  */
 export const getFormulaBreakdown = (method, data) => {
+  if (method === 'dri_2023') return dri2023Breakdown(data, data.driActivity || 'inactive');
   const { weight, height, age, gender, leanMass } = data;
 
   // Normalizar gênero
@@ -562,10 +573,8 @@ export const getFormulaBreakdown = (method, data) => {
     case 'harris': {
       if (!weight || !height || !age || !gender) return null;
 
-      const constant = isMale ? 66.5 : 655.1;
-      const weightCoeff = isMale ? 13.75 : 9.563;
-      const heightCoeff = isMale ? 5.003 : 1.850;
-      const ageCoeff = isMale ? 6.75 : 4.676;
+      const [constant, weightCoeff, heightCoeff, ageCoeff] = HARRIS_1919[normalizeEnergySex(gender)] || [];
+      if (!validEnergyBiometry(data)) return null;
 
       const weightTerm = weightCoeff * weight;
       const heightTerm = heightCoeff * height;
@@ -574,16 +583,17 @@ export const getFormulaBreakdown = (method, data) => {
       const result = constant + weightTerm + heightTerm - ageTerm;
 
       return {
+        sourceUrl: 'https://pubmed.ncbi.nlm.nih.gov/16576330/',
         formulaName: `Harris-Benedict (${isMale ? 'Masculino' : 'Feminino'})`,
         equationStr: isMale
-          ? '66.5 + (13.75 × P) + (5.003 × A) - (6.75 × I)'
-          : '655.1 + (9.563 × P) + (1.850 × A) - (4.676 × I)',
-        appliedStr: `${constant.toFixed(3)} + (${weightCoeff.toFixed(3)} × ${weight}) + (${heightCoeff.toFixed(3)} × ${height}) - (${ageCoeff.toFixed(3)} × ${age})`,
+          ? '66.473 + (13.7516 × P) + (5.0033 × A) - (6.755 × I)'
+          : '655.0955 + (9.5634 × P) + (1.8496 × A) - (4.6756 × I)',
+        appliedStr: `${String(constant)} + (${String(weightCoeff)} × ${weight}) + (${String(heightCoeff)} × ${height}) - (${String(ageCoeff)} × ${age})`,
         steps: [
-          { label: 'Constante', value: constant.toFixed(3) },
-          { label: 'Peso', value: `${weightCoeff.toFixed(3)} × ${weight} = ${weightTerm.toFixed(2)}` },
-          { label: 'Altura', value: `${heightCoeff.toFixed(3)} × ${height} = ${heightTerm.toFixed(2)}` },
-          { label: 'Idade', value: `${ageCoeff.toFixed(3)} × ${age} = ${ageTerm.toFixed(2)}` },
+          { label: 'Constante', value: String(constant) },
+          { label: 'Peso', value: `${String(weightCoeff)} × ${weight} = ${weightTerm.toFixed(2)}` },
+          { label: 'Altura', value: `${String(heightCoeff)} × ${height} = ${heightTerm.toFixed(2)}` },
+          { label: 'Idade', value: `${String(ageCoeff)} × ${age} = ${ageTerm.toFixed(2)}` },
           { label: 'Resultado', value: `${result.toFixed(0)} kcal` }
         ],
         baseData: { weight, height, age, gender: isMale ? 'Masculino' : 'Feminino' }
@@ -675,14 +685,17 @@ export const getFormulaBreakdown = (method, data) => {
     }
 
     case 'fao_1985': {
-      if (!weight || !age || !gender) return null;
+      if (!validEnergyBiometry(data)) return null;
+      const [coefficient, constant] = isMale
+        ? (age < 30 ? [15.3, 679] : age < 60 ? [11.6, 879] : [13.5, 487])
+        : (age < 30 ? [14.7, 496] : age < 60 ? [8.7, 829] : [10.5, 596]);
       const result = calculateFaoOms1985(weight, height, age, gender);
-      const band = age < 30 ? '18-30' : age < 60 ? '30-60' : '>60';
+      const band = age < 30 ? '18–<30' : age < 60 ? '30–<60' : '≥60';
       return {
         formulaName: `FAO/OMS 1985 (${isMale ? 'M' : 'F'}, ${band} anos)`,
-        equationStr: 'Equações por faixa etária e sexo (WHO/FAO/UNU 1985)',
-        appliedStr: `Faixa ${band}, ${isMale ? 'masculino' : 'feminino'}`,
-        steps: [{ label: 'TMB', value: `${result.toFixed(0)} kcal` }],
+        equationStr: `${coefficient} × peso (kg) + ${constant}`,
+        appliedStr: `${coefficient} × ${weight} + ${constant} = ${result.toFixed(2)} kcal/dia`,
+        steps: [{ label: 'TMB', value: `${result.toFixed(2)} kcal` }],
         baseData: { weight, height, age, gender: isMale ? 'Masculino' : 'Feminino' }
       };
     }
@@ -701,15 +714,18 @@ export const getFormulaBreakdown = (method, data) => {
     }
 
     case 'eer_iom': {
-      if (!weight || !height || !age || !gender) return null;
-      const pa = 1.25;
+      if (!validEnergyBiometry(data, 19)) return null;
+      const pa = driPaCoefficient(data.driActivity || 'inactive', gender);
       const result = calculateEerIom(weight, height, age, pa, gender);
       return {
-        formulaName: 'EER/IOM (2005) - GET direto',
+        formulaName: 'DRIs / EER-IOM (2005) - GET direto',
+        sourceUrl: 'https://www.nationalacademies.org/read/10490/chapter/2',
         equationStr: isMale
           ? '662 - (9.53×I) + PA×[(15.91×P) + (539.6×A_m)]'
           : '354 - (6.91×I) + PA×[(9.36×P) + (726×A_m)]',
-        appliedStr: `PA=${pa} (Ativo)`,
+        appliedStr: isMale
+          ? `662 − (9.53 × ${age}) + ${pa} × [(15.91 × ${weight}) + (539.6 × ${height / 100})] = ${result.toFixed(2)} kcal/dia`
+          : `354 − (6.91 × ${age}) + ${pa} × [(9.36 × ${weight}) + (726 × ${height / 100})] = ${result.toFixed(2)} kcal/dia`,
         steps: [{ label: 'GET', value: `${result.toFixed(0)} kcal/dia` }],
         baseData: { weight, height, age, gender: isMale ? 'Masculino' : 'Feminino' }
       };

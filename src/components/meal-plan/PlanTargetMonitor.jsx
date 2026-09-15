@@ -1,3 +1,4 @@
+import EnergyFormulaDetails from '@/components/energy/EnergyFormulaDetails';
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Target, AlertCircle, CheckCircle2, Info, Calculator } from 'lucide-react';
@@ -112,11 +113,14 @@ const PlanTargetMonitor = ({
         if (!energyCalculation) return null;
 
         const protocolMap = {
-            'harris': 'Harris-Benedict (1984)',
-            'harris-benedict': 'Harris-Benedict (1984)',
+            'harris': 'Harris-Benedict (1919)',
+            'harris-benedict': 'Harris-Benedict (1919)',
             'mifflin': 'Mifflin-St Jeor',
             'mifflin-st-jeor': 'Mifflin-St Jeor',
             'fao': 'FAO/WHO',
+            'fao_1985': 'FAO/OMS (1985)',
+            'eer_iom': 'DRIs / EER-IOM (2005)',
+            'dri_2023': 'DRIs / EER (2023)',
             'fao-who': 'FAO/WHO',
             'cunningham': 'Cunningham (Atletas)',
             'tinsley': 'Tinsley (Bodybuilding)'
@@ -125,6 +129,8 @@ const PlanTargetMonitor = ({
         return {
             protocol: protocolMap[protocol] || protocol,
             tmb: energyCalculation.tmb_result ?? energyCalculation.tmb,
+            isHarris: ['harris', 'harris-benedict'].includes(protocol),
+            isDri: ['eer_iom', 'dri_2023'].includes(protocol),
             activityLevel: energyCalculation.activity_factor ?? energyCalculation.activity_level,
             get: energyCalculation.get_result ?? energyCalculation.get,
             goalCalories: energyCalculation.final_planned_kcal ?? energyCalculation.get_with_activities ?? energyCalculation.get ?? energyCalculation.get_result
@@ -221,15 +227,16 @@ const PlanTargetMonitor = ({
                                                         <div className="space-y-3">
                                                             {[
                                                                 { label: 'Protocolo', val: breakdown.protocol, bold: true },
-                                                                { label: 'TMB', val: `${Math.round(breakdown.tmb)} kcal` },
-                                                                { label: 'Atividade', val: `x${breakdown.activityLevel}` },
-                                                                { label: 'GET Base', val: `${Math.round(breakdown.get)} kcal` }
+                                                                { label: 'TMB', val: breakdown.isDri ? 'Não se aplica (GET direto)' : `${Math.round(breakdown.tmb)} kcal` },
+                                                                { label: breakdown.isHarris ? 'Mobilidade / injúria' : 'Atividade', val: breakdown.isHarris ? `×${energyCalculation.input_snapshot?.mobility_factor ?? '—'} / ×${energyCalculation.injury_factor ?? 1}` : breakdown.isDri ? 'Incluída na equação' : `×${breakdown.activityLevel}` },
+                                                                { label: 'GET Total', val: `${Math.round(breakdown.get)} kcal` }
                                                             ].map(item => (
                                                                 <div key={item.label} className="flex justify-between items-center text-xs pb-2 border-b border-border/40 last:border-0 last:pb-0">
                                                                     <span className="text-muted-foreground font-medium">{item.label}</span>
                                                                     <span className={cn("text-foreground", item.bold ? "font-bold" : "font-semibold")}>{item.val}</span>
                                                                 </div>
                                                             ))}
+                                                            <EnergyFormulaDetails plan={energyCalculation.output_snapshot?.calculation_details} />
                                                             <div className="pt-2">
                                                                 <div className="flex justify-between items-center bg-muted/40 p-2.5 rounded-xl border border-border/50">
                                                                     <span className="text-xs font-black uppercase tracking-wider text-muted-foreground">Meta Final</span>

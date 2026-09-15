@@ -24,6 +24,7 @@ const CHART_COLORS = {
  */
 export default function EnergyExpenditureResultsPanel({
   tmbResult = 0,
+  isHarris = false,
   getBase = 0,
   metsAverageDaily = 0,
   etaEnabled = false,
@@ -42,12 +43,12 @@ export default function EnergyExpenditureResultsPanel({
     } else {
       if (tmbResult > 0) slices.push({ name: 'TMB', value: Math.round(tmbResult), key: 'tmb' });
       const rotina = getBase - tmbResult;
-      if (rotina > 0) slices.push({ name: 'Rotina (FA × injúria)', value: Math.round(rotina), key: 'rotina' });
+      if (rotina > 0) slices.push({ name: isHarris ? 'Mobilidade clínica e injúria' : 'Atividade', value: Math.round(rotina), key: 'rotina' });
     }
     if (metsAverageDaily > 0) slices.push({ name: 'Exercícios (média diária)', value: Math.round(metsAverageDaily), key: 'exercicios' });
     if (etaValue > 0) slices.push({ name: 'ETA', value: Math.round(etaValue), key: 'eta' });
     return slices;
-  }, [isEer, tmbResult, getBase, metsAverageDaily, etaValue]);
+  }, [isEer, isHarris, tmbResult, getBase, metsAverageDaily, etaValue]);
 
   const hasChartData = chartData.length > 0 && chartData.some((d) => d.value > 0);
 
@@ -59,7 +60,7 @@ export default function EnergyExpenditureResultsPanel({
           Composição do Gasto Energético
         </CardTitle>
         <CardDescription>
-          Distribuição do GET (TMB, rotina, exercícios e ETA). Abaixo, aplicação do VENTA para a meta final.
+          Composição do GET pelo protocolo selecionado e aplicação do VENTA para a meta final.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">

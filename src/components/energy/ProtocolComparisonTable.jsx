@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Check, Scale } from "lucide-react";
 import CalculationInfoTooltip from './CalculationInfoTooltip';
 import { getFormulaBreakdown } from '@/lib/utils/energy-calculations';
+import { calculateEnergyPlan } from '@/lib/utils/energy-planning';
 
 /**
  * ProtocolComparisonTable Component
@@ -18,7 +19,7 @@ import { getFormulaBreakdown } from '@/lib/utils/energy-calculations';
  * @param {Function} onSelect - Callback quando um protocolo é selecionado
  * @param {Object} [patientData] - Dados do paciente para breakdown (weight, height, age, gender, leanMass)
  */
-export function ProtocolComparisonTable({ protocols, activityFactor, selectedProtocolId, onSelect, patientData }) {
+export function ProtocolComparisonTable({ protocols, activityFactor, selectedProtocolId, onSelect, patientData, planInput = {} }) {
   if (!protocols || protocols.length === 0) return null;
 
   const protocolsWithBmr = protocols.filter((p) => p.bmr != null && p.bmr > 0);
@@ -34,7 +35,7 @@ export function ProtocolComparisonTable({ protocols, activityFactor, selectedPro
           Comparativo Científico
         </h3>
         <span className="text-xs text-muted-foreground">
-          Fator de Atividade: <strong className="text-foreground">x{activityFactor || 1.0}</strong>
+          GET conforme fatores específicos de cada protocolo
         </span>
       </div>
       
@@ -54,7 +55,8 @@ export function ProtocolComparisonTable({ protocols, activityFactor, selectedPro
               const hasBmr = protocol.bmr != null && protocol.bmr > 0;
               if (!isEer && !hasBmr) return null;
 
-              const tdee = isEer ? Math.round(protocol.get) : Math.round(protocol.bmr * (activityFactor || 1.0));
+              const plan = calculateEnergyPlan({ ...patientData, ...planInput, activityFactor, protocol: protocol.id, targetWeight: null, timeframeDays: null });
+              const tdee = plan.valid ? Math.round(plan.getResult) : '—';
               const isSelected = selectedProtocolId === protocol.id;
               const diffFromAvg = averageBmr > 0 && protocol.bmr
                 ? Math.round(((protocol.bmr - averageBmr) / averageBmr) * 100)

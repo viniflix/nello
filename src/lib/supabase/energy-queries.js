@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/customSupabaseClient';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
+import { calculateEnergyPlan, ENERGY_ENGINE_VERSION } from '@/lib/utils/energy-planning';
 
 const fetchLatestEnergyCalculation = async (patientId) => {
   return supabase
@@ -233,12 +234,24 @@ export const getInitialBiometryForEnergy = async (patientId) => {
  */
 export const saveEnergyCalculation = async (data) => {
   try {
+    const plan = calculateEnergyPlan({
+      weight: data.weight, height: data.height, age: data.age, gender: data.gender,
+      protocol: data.tmb_protocol, activityFactor: data.activity_factor,
+      injuryFactor: data.injury_factor, clinicalMobility: data.clinical_mobility,
+      driActivity: data.dri_activity, lifeStage: data.life_stage,
+      targetWeight: data.venta_target_weight, timeframeDays: data.venta_timeframe_days,
+    });
+    if (!plan.valid) throw new Error(plan.errors.join(' '));
+    data = { ...data, tmb_result: plan.tmbResult, get_result: plan.getResult,
+      final_planned_kcal: plan.finalPlannedKcal, activity_factor: plan.activityFactor,
+      injury_factor: plan.injuryFactor, venta_adjustment_kcal: plan.ventaAdjustmentKcal };
     // Colunas novas + legadas (protocol, activity_level, tmb, get) para compatibilidade com schema existente
     const protocolCodes = {
-      harris: 'energy.harris_benedict_revised',
+      harris: 'energy.harris_benedict_1919_clinical',
       mifflin: 'energy.mifflin_st_jeor',
       fao_1985: 'energy.fao_who_1985',
       eer_iom: 'energy.eer_iom_2005',
+      dri_2023: 'energy.dri_eer_2023',
       cunningham: 'energy.cunningham_1980',
       tinsley: 'energy.tinsley_2018'
     };
@@ -250,13 +263,24 @@ export const saveEnergyCalculation = async (data) => {
       body_fat_percentage: data.body_fat_percentage ?? null,
       activity_factor: data.activity_factor,
       injury_factor: data.injury_factor ?? 1,
+      injury_factor_id: plan.isHarris ? data.injury_factor_id : null,
+      clinical_mobility: plan.isHarris ? data.clinical_mobility : null,
+      mobility_factor: plan.mobilityFactor,
+      dri_activity: plan.isDri ? data.dri_activity : null,
+      life_stage: plan.isDri ? data.life_stage : null,
+      pa_coefficient: plan.paCoefficient,
+      mets_included_in_get: false,
+      eta_enabled: false,
+      venta_target_weight: data.venta_target_weight ?? null,
+      venta_timeframe_days: data.venta_timeframe_days ?? null,
       mets_activities: Array.isArray(data.mets_activities) ? data.mets_activities : []
     };
     const outputSnapshot = {
       tmb_kcal: data.tmb_result,
       get_kcal: data.get_result,
       planned_kcal: data.final_planned_kcal,
-      venta_adjustment_kcal: data.venta_adjustment_kcal ?? null
+      venta_adjustment_kcal: data.venta_adjustment_kcal ?? null,
+      calculation_details: plan
     };
     const row = {
       patient_id: data.patient_id,
@@ -283,7 +307,7 @@ export const saveEnergyCalculation = async (data) => {
       get: data.get_result ?? null,
       protocol_code: protocolCodes[data.tmb_protocol] || `energy.${data.tmb_protocol}`,
       protocol_version: 1,
-      source_snapshot: { implementation_key: data.tmb_protocol, catalog_version: 1 },
+      source_snapshot: { implementation_key: data.tmb_protocol, catalog_version: 1, engine_version: ENERGY_ENGINE_VERSION },
       input_snapshot: inputSnapshot,
       output_snapshot: outputSnapshot,
       confirmed_by: data.nutritionist_id || null,

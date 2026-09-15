@@ -20,7 +20,9 @@ import ActivityLevelSelector from '@/components/energy/ActivityLevelSelector';
 import WeightProjectionCard from '@/components/energy/WeightProjectionCard';
 import MetsActivitiesForm from '@/components/energy/MetsActivitiesForm';
 import EnergyExpenditureResultsPanel from '@/components/energy/EnergyExpenditureResultsPanel';
-import { Checkbox } from '@/components/ui/checkbox';
+import { calculateEnergyPlan, restoreEnergyInputs } from '@/lib/utils/energy-planning';
+import { DRI_ACTIVITY_LEVELS, driPaCoefficient } from '@/lib/utils/dri-energy';
+import EnergyFormulaDetails from '@/components/energy/EnergyFormulaDetails';
 import {
   getLatestAnamnesisForEnergy,
   getActiveGoalForEnergy,
@@ -35,14 +37,7 @@ import {
 } from '@/lib/supabase/energy-queries';
 import {
   calculateAllProtocols,
-  calculateGET,
-  sumMetsActivitiesKcal,
   sumMetsActivitiesAverageDaily,
-  calculateVentaAdjustment,
-  applyVentaToGet,
-  calculateEerIom,
-  activityFactorToEerPa,
-  calculateETA
 } from '@/lib/utils/energy-calculations';
 import { INJURY_FACTORS, getInjuryFactorValue } from '@/lib/constants/injury-factors';
 
@@ -50,7 +45,8 @@ const TMB_PROTOCOLS = [
   { id: 'mifflin', label: 'Mifflin-St Jeor' },
   { id: 'harris', label: 'Harris-Benedict (1919)' },
   { id: 'fao_1985', label: 'FAO/OMS' },
-  { id: 'eer_iom', label: 'EER/IOM (2005)' }
+  { id: 'eer_iom', label: 'DRIs / EER-IOM (2005)' },
+  { id: 'dri_2023', label: 'DRIs / EER (2023)' }
 ];
 
 export default function EnergyExpenditurePage() {
@@ -79,7 +75,10 @@ export default function EnergyExpenditurePage() {
   const [selectedProtocol, setSelectedProtocol] = useState('');
   const [ventaTargetWeight, setVentaTargetWeight] = useState('');
   const [ventaTimeframeDays, setVentaTimeframeDays] = useState('');
-  const [etaEnabled, setEtaEnabled] = useState(false);
+  const [clinicalMobility, setClinicalMobility] = useState('');
+  const [driActivity, setDriActivity] = useState('inactive');
+  const [lifeStage, setLifeStage] = useState('');
+  const [requiresReview, setRequiresReview] = useState(false);
 
   const [suggestedActivity, setSuggestedActivity] = useState(null);
   const [suggestedGoal, setSuggestedGoal] = useState(null);
@@ -88,8 +87,6 @@ export default function EnergyExpenditurePage() {
   // Sprint E: Clinical flags hook (source of truth para level de atividade)
   const { flags: clinicalFlags } = useClinicalFlags(patientId);
 
-  const [protocols, setProtocols] = useState([]);
-  const [selectedProtocolData, setSelectedProtocolData] = useState(null);
   const [showProtocolComparison, setShowProtocolComparison] = useState(false);
   const [activeTab, setActiveTab] = useState('biometry');
 
@@ -112,72 +109,20 @@ export default function EnergyExpenditurePage() {
     }
   }, [patientSlug, paramValue, navigate]);
 
-  // Recalcular protocolos quando biometria mudar
-  useEffect(() => {
-    const w = parseFloat(weight);
-    const h = parseFloat(height);
-    const a = parseInt(age, 10);
-    const g = gender;
-    const lm = leanMass ? parseFloat(leanMass) : null;
-    if (!Number.isFinite(w) || !Number.isFinite(h) || !Number.isFinite(a) || !g) {
-      setProtocols([]);
-      setSelectedProtocolData(null);
-      return;
-    }
-    const data = { weight: w, height: h, age: a, gender: g, leanMass: lm };
-    const calculated = calculateAllProtocols(data);
-    setProtocols(calculated);
-    const current = calculated.find((p) => p.id === selectedProtocol);
-    if (current) setSelectedProtocolData(current);
-    else setSelectedProtocolData(null);
-  }, [weight, height, age, gender, leanMass, selectedProtocol]);
-
-  const weightNum = parseFloat(weight) || 0;
-  const heightNum = parseFloat(height) || 0;
-  const ageNum = parseInt(age, 10) || 0;
-  const tmbResult = selectedProtocolData?.bmr ?? null;
-  const isEer = selectedProtocolData?.isEer === true;
-
-  const injuryFactor = getInjuryFactorValue(injuryFactorId);
-  const getBase = useMemo(() => {
-    if (isEer && selectedProtocolData?.get != null) {
-      const pa = activityFactorToEerPa(activityFactor, gender);
-      return calculateEerIom(weightNum, heightNum, ageNum, pa, gender);
-    }
-    const bmr = tmbResult ?? 0;
-    return calculateGET(bmr, activityFactor, injuryFactor);
-  }, [isEer, selectedProtocolData?.get, tmbResult, weightNum, heightNum, ageNum, activityFactor, injuryFactor, gender]);
-
-  const hasFrequency = metsActivities.some((a) => a.frequency_type != null);
-  const { totalAverageDailyKcal: metsAverageDaily } = useMemo(
-    () => (hasFrequency ? sumMetsActivitiesAverageDaily(metsActivities, weightNum) : { totalAverageDailyKcal: 0 }),
-    [metsActivities, weightNum, hasFrequency]
-  );
-  const { totalKcal: metsTotalKcalLegacy } = useMemo(
-    () => (hasFrequency ? { totalKcal: 0 } : sumMetsActivitiesKcal(metsActivities, weightNum)),
-    [metsActivities, weightNum, hasFrequency]
-  );
-  const metsTotalKcal = hasFrequency ? metsAverageDaily : metsTotalKcalLegacy;
-
-  const etaKcal = useMemo(
-    () => (etaEnabled && tmbResult != null && tmbResult > 0 ? calculateETA(tmbResult) : 0),
-    [etaEnabled, tmbResult]
-  );
-  const getResult = getBase + metsTotalKcal + etaKcal;
-
-  const ventaAdjustment = useMemo(() => {
-    const tw = parseFloat(ventaTargetWeight);
-    const days = parseInt(ventaTimeframeDays, 10);
-    if (!Number.isFinite(weightNum) || !Number.isFinite(tw) || !Number.isFinite(days) || days <= 0)
-      return null;
-    return calculateVentaAdjustment(weightNum, tw, days);
-  }, [weightNum, ventaTargetWeight, ventaTimeframeDays]);
-
-  const ventaAdjustmentKcal = ventaAdjustment?.dailyAdjustmentKcal ?? null;
-  const finalPlannedKcal = useMemo(() => {
-    if (ventaAdjustmentKcal != null) return applyVentaToGet(getResult, ventaAdjustmentKcal);
-    return getResult;
-  }, [getResult, ventaAdjustmentKcal]);
+  const weightNum = Number(weight) || 0;
+  const patientData = useMemo(() => ({
+    weight: Number(weight), height: Number(height), age: Number(age), gender,
+    leanMass: leanMass ? Number(leanMass) : null, driActivity,
+  }), [weight, height, age, gender, leanMass, driActivity]);
+  const protocols = useMemo(() => calculateAllProtocols(patientData), [patientData]);
+  const selectedProtocolData = protocols.find(p => p.id === selectedProtocol);
+  const planInput = { ...patientData, protocol: selectedProtocol, activityFactor,
+    injuryFactor: getInjuryFactorValue(injuryFactorId), clinicalMobility, lifeStage,
+    targetWeight: ventaTargetWeight, timeframeDays: ventaTimeframeDays };
+  const plan = calculateEnergyPlan(planInput);
+  const { tmbResult, getBase, getResult, finalPlannedKcal, ventaAdjustmentKcal } = plan;
+  const isEer = ['eer_iom', 'dri_2023'].includes(selectedProtocol);
+  const isHarris = selectedProtocol === 'harris';
 
   async function loadPatientData() {
     if (!patientId) return;
@@ -266,11 +211,16 @@ export default function EnergyExpenditurePage() {
 
       const { data: saved } = await getLatestEnergyCalculation(patientId);
       if (saved) {
-        if (saved.tmb_protocol) setSelectedProtocol(saved.tmb_protocol);
+        if (saved.tmb_protocol || saved.protocol) setSelectedProtocol(saved.tmb_protocol || saved.protocol);
+        const restored = restoreEnergyInputs(saved);
+        setClinicalMobility(restored.clinicalMobility);
+        setDriActivity(restored.driActivity || 'inactive');
+        setLifeStage(restored.lifeStage);
+        setRequiresReview(restored.requiresReview);
         if (saved.activity_factor != null) setActivityFactor(Number(saved.activity_factor));
         if (saved.injury_factor != null) {
           const found = INJURY_FACTORS.find((f) => Math.abs(f.value - Number(saved.injury_factor)) < 0.01);
-          setInjuryFactorId(found ? found.id : 'none');
+          setInjuryFactorId(saved.input_snapshot?.injury_factor_id || (found ? found.id : 'none'));
         }
         if (Array.isArray(saved.mets_activities) && saved.mets_activities.length)
           setMetsActivities(saved.mets_activities);
@@ -298,6 +248,7 @@ export default function EnergyExpenditurePage() {
     if (!selectedProtocolData) {
       throw new Error('Selecione um protocolo TMB.');
     }
+    if (!plan.valid) throw new Error(plan.errors.join(' '));
     const payload = {
       patient_id: patientId,
       nutritionist_id: user?.id || null,
@@ -308,24 +259,14 @@ export default function EnergyExpenditurePage() {
       body_fat_percentage: bodyFatPct ? parseFloat(bodyFatPct) : null,
       tmb_protocol: selectedProtocol,
       tmb_result: selectedProtocolData?.bmr ?? null,
-      activity_factor: activityFactor,
-      injury_factor: getInjuryFactorValue(injuryFactorId),
-      mets_activities: metsActivities.map((act) => {
-        const hasFreq = act.frequency_type != null;
-        const { items: [item] = [] } = hasFreq
-          ? sumMetsActivitiesAverageDaily([act], w)
-          : sumMetsActivitiesKcal([act], w);
-        return {
-          id: act.id,
-          name: act.name,
-          met: Number(act.met),
-          duration_min: Number(act.duration_min),
-          frequency_value: act.frequency_value != null ? Number(act.frequency_value) : undefined,
-          frequency_type: act.frequency_type,
-          kcal_per_session: item?.kcal_per_session ?? item?.kcal,
-          average_daily_kcal: item?.average_daily_kcal ?? item?.kcal
-        };
-      }),
+      activity_factor: plan.activityFactor,
+      injury_factor: plan.injuryFactor,
+      clinical_mobility: isHarris ? clinicalMobility : null,
+      injury_factor_id: isHarris ? injuryFactorId : 'none',
+      dri_activity: isEer ? driActivity : null,
+      life_stage: isEer ? lifeStage : null,
+      mets_activities: sumMetsActivitiesAverageDaily(metsActivities, w).items,
+      calculation_details: plan,
       get_result: getResult,
       venta_target_weight: ventaTargetWeight ? parseFloat(ventaTargetWeight) : null,
       venta_timeframe_days: ventaTimeframeDays ? parseInt(ventaTimeframeDays, 10) : null,
@@ -377,17 +318,6 @@ export default function EnergyExpenditurePage() {
     if (src === 'profile') return <Badge variant="outline" className="text-xs ml-2"><User className="w-3 h-3 mr-1" />Perfil</Badge>;
     return null;
   };
-
-  const patientData = useMemo(
-    () => ({
-      weight: weightNum,
-      height: parseFloat(height) || 0,
-      age: parseInt(age, 10) || 0,
-      gender: gender || '',
-      leanMass: leanMass ? parseFloat(leanMass) : null
-    }),
-    [weight, height, age, gender, leanMass, weightNum]
-  );
 
   if (resolveLoading || loading) {
     return (
@@ -473,11 +403,11 @@ export default function EnergyExpenditurePage() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="leanMass" className="flex items-center">Massa magra (kg) {getDataSourceBadge('leanMass')}</Label>
-                    <Input id="leanMass" type="number" step="0.1" min={0} value={leanMass} onChange={(e) => { setLeanMass(e.target.value); setDataSource((p) => ({ ...p, leanMass: 'manual' })); }} placeholder="Desbloqueia Cunningham/Tinsley" />
+                    <Input id="leanMass" type="number" step="0.1" min={0} value={leanMass} onChange={(e) => { setLeanMass(e.target.value); setDataSource((p) => ({ ...p, leanMass: 'manual' })); }} placeholder="Opcional" />
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label>Protocolo TMB</Label>
+                  <Label>Protocolo energético (TMB ou DRIs)</Label>
                   <Select value={selectedProtocol} onValueChange={(v) => setSelectedProtocol(v)}>
                     <SelectTrigger><SelectValue placeholder="Selecione o protocolo" /></SelectTrigger>
                     <SelectContent>
@@ -510,8 +440,9 @@ export default function EnergyExpenditurePage() {
                             protocols={protocols}
                             activityFactor={activityFactor}
                             selectedProtocolId={selectedProtocol}
-                            onSelect={(protocol) => { setSelectedProtocol(protocol.id); setSelectedProtocolData(protocol); }}
+                            onSelect={(protocol) => setSelectedProtocol(protocol.id)}
                             patientData={patientData}
+                            planInput={planInput}
                           />
                         </CardContent>
                       </Card>
@@ -523,181 +454,61 @@ export default function EnergyExpenditurePage() {
 
             <div className="flex justify-end">
               <Button
-                onClick={async () => {
-                  const w = parseFloat(weight);
-                  const h = parseFloat(height);
-                  const a = parseInt(age, 10);
-                  if (!Number.isFinite(w) || !Number.isFinite(h) || !Number.isFinite(a) || !gender || !selectedProtocolData) {
-                    toast({ title: 'Dados incompletos', description: 'Preencha peso, altura, idade, sexo e protocolo.', variant: 'destructive' });
-                    return;
-                  }
-                  setSaving(true);
-                  try {
-                    await saveCurrentState();
-                    setActiveTab('factors');
-                    toast({ title: 'Salvo', description: 'Biometria e TMB salvos. Preencha fatores e atividades.' });
-                  } catch (err) {
-                    toast({ title: 'Erro', description: err?.message || 'Não foi possível salvar.', variant: 'destructive' });
-                  } finally {
-                    setSaving(false);
-                  }
-                }}
+                onClick={() => setActiveTab('factors')}
                 disabled={saving}
                 className="gap-2"
               >
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                Salvar e prosseguir
+                Prosseguir
                 <ChevronRight className="w-4 h-4" />
               </Button>
             </div>
           </TabsContent>
 
           <TabsContent value="factors" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2"><TrendingUp className="w-5 h-5" />Fator de atividade</CardTitle>
-                <CardDescription>Sedentário 1.2 a Muito ativo 1.9</CardDescription>
-              </CardHeader>
-              <CardContent>
+            {requiresReview && <Alert><AlertDescription>Cálculo anterior à correção. Revise os fatores e confirme os novos resultados antes de salvar.</AlertDescription></Alert>}
+            {isHarris ? (
+              <Card><CardHeader><CardTitle>Harris-Benedict — contexto clínico</CardTitle>
+                <CardDescription>Somente acamados ou ambulantes. GET = TMB × mobilidade clínica × injúria. Sem fator geral de exercícios.</CardDescription></CardHeader>
+                <CardContent className="space-y-4">
+                  <Label>Condição do paciente</Label>
+                  <Select value={clinicalMobility} onValueChange={setClinicalMobility}><SelectTrigger aria-label="Condição do paciente"><SelectValue placeholder="Selecione a condição" /></SelectTrigger><SelectContent>
+                    <SelectItem value="bedridden">Acamado (×1,2)</SelectItem><SelectItem value="ambulatory">Ambulante (×1,3)</SelectItem>
+                  </SelectContent></Select>
+                  <Label>Fator de injúria / estresse clínico</Label>
+                  <Select value={injuryFactorId} onValueChange={setInjuryFactorId}><SelectTrigger aria-label="Fator de injúria"><SelectValue /></SelectTrigger><SelectContent>
+                    {INJURY_FACTORS.map(f => <SelectItem key={f.id} value={f.id}>{f.label} (×{f.value})</SelectItem>)}
+                  </SelectContent></Select>
+                  <p className="text-xs text-muted-foreground">Coeficientes clínicos aproximados; selecione conforme avaliação individual. Sem injúria: ×1.</p>
+                </CardContent></Card>
+            ) : isEer ? (
+              <Card><CardHeader><CardTitle>DRIs — nível de atividade física</CardTitle><CardDescription>Adultos a partir de 19 anos. A atividade entra uma única vez na equação do GET.</CardDescription></CardHeader><CardContent className="space-y-4">
+                <Select value={driActivity} onValueChange={setDriActivity}><SelectTrigger aria-label="Atividade nas DRIs"><SelectValue /></SelectTrigger><SelectContent>
+                  {DRI_ACTIVITY_LEVELS.map(item => <SelectItem key={item.id} value={item.id}>{item.label}{selectedProtocol === 'eer_iom' ? ' (PA ' + driPaCoefficient(item.id, gender) + ')' : ''}</SelectItem>)}
+                </SelectContent></Select>
+                <p className="text-xs text-muted-foreground">{selectedProtocol === 'dri_2023' ? 'PAL: inativo 1,00–<1,53; pouco ativo 1,53–<1,68; ativo 1,68–<1,85; muito ativo 1,85–<2,50. A categoria seleciona os coeficientes da fórmula; não multiplica o resultado.' : 'PAL: sedentário 1,00–<1,40; pouco ativo 1,40–<1,60; ativo 1,60–<1,90; muito ativo 1,90–<2,50. PA é o coeficiente específico por sexo, aplicado aos termos de peso e altura.'}</p>
+                <Select value={lifeStage} onValueChange={setLifeStage}><SelectTrigger aria-label="Aplicabilidade das DRIs"><SelectValue placeholder="Confirme a fase de vida" /></SelectTrigger><SelectContent>
+                  <SelectItem value="adult">Adulto, fora de gestação e lactação</SelectItem>
+                  <SelectItem value="pregnancy">Gestação — requer equação específica</SelectItem>
+                  <SelectItem value="lactation">Lactação — requer equação específica</SelectItem>
+                </SelectContent></Select>
+              </CardContent></Card>
+            ) : (
+              <Card><CardHeader><CardTitle>Fator de atividade</CardTitle><CardDescription>GET = TMB × fator de atividade, aplicado uma vez.</CardDescription></CardHeader><CardContent>
                 <ActivityLevelSelector value={activityFactor} onChange={setActivityFactor} />
-                {suggestedActivity && (
-                  <div className="mt-3 flex items-center gap-2 p-2.5 rounded-lg bg-blue-50 border border-blue-100">
-                    <span className="text-xs text-blue-600 font-medium">💡 Sugestão automática:</span>
-                    <Badge variant="outline" className="text-xs bg-white border-blue-200 text-blue-700">{suggestedActivity}</Badge>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Fator de injúria / estresse clínico</CardTitle>
-                <CardDescription>Condições que alteram o gasto energético</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Select value={injuryFactorId} onValueChange={setInjuryFactorId}>
-                  <SelectTrigger className="max-w-sm">
-                    <SelectValue placeholder="Selecione o fator de injúria" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {INJURY_FACTORS.map((f) => (
-                      <SelectItem key={f.id} value={f.id}>
-                        {f.label} {f.value !== 1 ? `(×${f.value})` : ''}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </CardContent>
-            </Card>
-
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="eta"
-                checked={etaEnabled}
-                onCheckedChange={(checked) => setEtaEnabled(!!checked)}
-              />
-              <label htmlFor="eta" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                Adicionar ETA (Efeito Térmico dos Alimentos, ~10% da TMB)
-              </label>
+                {suggestedActivity && <p className="text-xs text-muted-foreground mt-3">Sugestão da anamnese: {suggestedActivity}</p>}
+              </CardContent></Card>
+            )}
+            {!isHarris && <details className="rounded-lg border p-4"><summary className="cursor-pointer text-sm font-medium">Exercícios por METs — referência</summary>
+              <p className="text-sm text-muted-foreground my-3">A atividade física e o efeito térmico dos alimentos já estão contemplados no GET. Os METs ficam registrados para consulta e não são somados novamente.</p>
+              <MetsActivitiesForm activities={metsActivities} onChange={setMetsActivities} weightKg={weightNum} />
+            </details>}
+            {selectedProtocol && !plan.valid && <Alert variant="destructive"><AlertDescription>{plan.errors.join(' ')}</AlertDescription></Alert>}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {!isEer && <Card><CardHeader><CardTitle>TMB</CardTitle></CardHeader><CardContent>{Math.round(tmbResult || 0)} kcal/dia</CardContent></Card>}
+              <Card><CardHeader><CardTitle>Gasto Energético Total (GET)</CardTitle></CardHeader><CardContent>{plan.valid ? Math.round(getResult) : '—'} kcal/dia</CardContent></Card>
             </div>
-
-            <MetsActivitiesForm activities={metsActivities} onChange={setMetsActivities} weightKg={weightNum} />
-
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold tracking-tight">Resultados Metabólicos (Base)</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <Card className="bg-card shadow-sm border-border/60 hover:border-border transition-colors">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">
-                      1. Taxa Metabólica Basal
-                    </CardTitle>
-                    <CardDescription className="text-xs">
-                      Mínimo de energia para manter o corpo vivo em repouso.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-2xl font-bold text-foreground">
-                      {isEer ? 'N/A' : Math.round(tmbResult || 0)} <span className="text-sm font-medium text-muted-foreground">kcal</span>
-                    </p>
-                  </CardContent>
-                </Card>
-
-                <Card className="bg-card shadow-sm border-border/60 hover:border-border transition-colors">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">
-                      2. TMB + Fator de Atividade
-                    </CardTitle>
-                    <CardDescription className="text-xs">
-                      Gasto considerando apenas o fator de atividade e rotina diária.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-2xl font-bold text-foreground">
-                      {Math.round(isEer ? getBase : (tmbResult || 0) * activityFactor)} <span className="text-sm font-medium text-muted-foreground">kcal</span>
-                    </p>
-                  </CardContent>
-                </Card>
-
-                <Card className="bg-card shadow-sm border-border/60 hover:border-border transition-colors">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">
-                      3. TMB + Fator de Injúria
-                    </CardTitle>
-                    <CardDescription className="text-xs">
-                      Gasto considerando apenas o fator de estresse clínico/injúria atual.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-2xl font-bold text-foreground">
-                      {Math.round(isEer ? getBase : (tmbResult || 0) * injuryFactor)} <span className="text-sm font-medium text-muted-foreground">kcal</span>
-                    </p>
-                  </CardContent>
-                </Card>
-
-                <Card className="bg-primary/5 shadow-sm border-primary/20">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-primary">
-                      4. Gasto Energético Total
-                    </CardTitle>
-                    <CardDescription className="text-xs">
-                      Gasto basal combinado (rotina + estresse clínico).
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-3xl font-bold text-primary">
-                      {Math.round(getBase)} <span className="text-sm font-medium opacity-80">kcal</span>
-                    </p>
-                  </CardContent>
-                </Card>
-              </div>
-
-              <Card className="bg-muted/30 mt-4">
-                <CardContent className="pt-6">
-                  <div className="flex flex-wrap items-center justify-between gap-4">
-                    <div>
-                      <p className="text-sm text-muted-foreground">GET Base</p>
-                      <p className="text-xl font-bold">{Math.round(getBase)} kcal/dia</p>
-                    </div>
-                    {metsTotalKcal > 0 && (
-                      <div className="text-right">
-                        <p className="text-sm text-muted-foreground">+ Atividades (média diária)</p>
-                        <p className="text-lg font-semibold text-primary">+{Math.round(metsTotalKcal)} kcal</p>
-                      </div>
-                    )}
-                    {etaKcal > 0 && (
-                      <div className="text-right">
-                        <p className="text-sm text-muted-foreground">+ ETA</p>
-                        <p className="text-lg font-semibold">+{Math.round(etaKcal)} kcal</p>
-                      </div>
-                    )}
-                    <div className="text-right">
-                      <p className="text-sm text-muted-foreground">GET Total (com atividades e ETA)</p>
-                      <p className="text-2xl font-bold text-primary">{Math.round(getResult)} kcal/dia</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+            <EnergyFormulaDetails plan={plan} />
 
             <div className="flex justify-end">
               <Button
@@ -724,6 +535,7 @@ export default function EnergyExpenditurePage() {
           </TabsContent>
 
           <TabsContent value="venta" className="space-y-6">
+            {!plan.valid && <Alert variant="destructive"><AlertDescription>{plan.errors.join(' ')}</AlertDescription></Alert>}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2"><Target className="w-5 h-5" />Planejamento (VENTA)</CardTitle>
@@ -749,12 +561,14 @@ export default function EnergyExpenditurePage() {
               </CardContent>
             </Card>
 
+            <EnergyFormulaDetails plan={plan} />
             <EnergyExpenditureResultsPanel
               tmbResult={tmbResult}
               getBase={getBase}
-              metsAverageDaily={metsTotalKcal}
-              etaEnabled={etaEnabled}
-              etaKcal={etaKcal}
+              metsAverageDaily={0}
+              etaEnabled={false}
+              etaKcal={0}
+              isHarris={isHarris}
               ventaAdjustmentKcal={ventaAdjustmentKcal}
               finalPlannedKcal={finalPlannedKcal}
             />
@@ -769,7 +583,7 @@ export default function EnergyExpenditurePage() {
               </CardContent>
             </Card>
 
-            <Button onClick={handleSave} disabled={saving} size="lg" className="w-full gap-2">
+            <Button onClick={handleSave} disabled={saving || !plan.valid} size="lg" className="w-full gap-2">
               {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> Salvando...</> : <><Save className="w-4 h-4" /> Salvar Gastos Energéticos</>}
             </Button>
           </TabsContent>

@@ -1,3 +1,5 @@
+import { getProtocolInfo } from '@/lib/utils/energy-calculations';
+import EnergyFormulaDetails from '@/components/energy/EnergyFormulaDetails';
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertCircle } from 'lucide-react';
@@ -101,28 +103,31 @@ const EnergyExpenditureSummaryCard = ({ patientId, patient }) => {
     if (loading) return <div role="status" aria-label="Carregando gasto energético"><CardSkeleton lines={4} /></div>;
 
     const protocol = calculatedData?.tmb_protocol || calculatedData?.protocol || '';
-    const isEER = protocol.toLowerCase().includes('eer');
+    const isEER = protocol.toLowerCase().includes('eer') || protocol === 'dri_2023';
+    const isHarris = ['harris', 'harris-benedict'].includes(protocol);
     const get = calculatedData?.get_result ?? calculatedData?.get_with_activities ?? calculatedData?.get;
     const target = calculatedData?.final_planned_kcal ?? calculatedData?.target_calories ?? get;
     const hasVENTA = calculatedData?.venta_target_weight != null || calculatedData?.target_weight != null;
     const activities = calculatedData?.mets_activities || calculatedData?.activities || [];
     const display = value => value == null || !Number.isFinite(Number(value)) ? '—' : Math.round(Number(value)).toLocaleString('pt-BR');
     return <HubPanel title="Gasto energético"
-        description={calculatedData ? `Protocolo: ${protocol || 'Não informado'}` : 'Estimativas e planejamento energético'}
+        description={calculatedData ? `Protocolo: ${getProtocolInfo(protocol)?.name || protocol || 'Não informado'}` : 'Estimativas e planejamento energético'}
         action={<Button variant="outline" size="sm" onClick={handleNavigateToFullPage}>{calculatedData ? 'Editar cálculo' : 'Calcular gasto'}</Button>}>
         <div className="flex flex-col gap-3">
             {syncFlags?.needs_energy_recalc && <Alert><AlertCircle className="h-4 w-4" /><AlertDescription>Antropometria atualizada. Revise o cálculo energético.</AlertDescription></Alert>}
             {calculatedData ? <>
                 <div className="grid grid-cols-2 gap-2">
                     {!isEER && <HubMetric label="TMB" value={display(calculatedData.tmb_result ?? calculatedData.tmb)} detail="kcal/dia" />}
-                    <HubMetric label={isEER ? 'EER' : activities.length ? 'GET + METs' : 'GET'} value={display(get)} detail="kcal/dia" />
+                    <HubMetric label={isEER ? 'EER / GET' : 'GET'} value={display(get)} detail="kcal/dia" />
                     <HubMetric label={hasVENTA ? 'Meta com VENTA' : 'Meta calórica'} value={display(target)} detail="kcal/dia" />
                 </div>
                 <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-                    <span>Fator de atividade: {calculatedData.activity_factor ?? calculatedData.activity_level ?? '—'}</span>
+                    {isHarris ? <span>Mobilidade clínica: ×{calculatedData.input_snapshot?.mobility_factor ?? '—'} · Injúria: ×{calculatedData.injury_factor ?? 1}</span> : isEER ? <span>Atividade incluída na equação DRIs</span> : <span>Fator de atividade: {calculatedData.activity_factor ?? calculatedData.activity_level ?? '—'}</span>}
                     {activities.length > 0 && <span>· {activities.length} atividades</span>}
                     {hasVENTA && <span>· Peso-alvo: {calculatedData.venta_target_weight ?? calculatedData.target_weight} kg</span>}
                 </div>
+                <EnergyFormulaDetails plan={calculatedData.output_snapshot?.calculation_details} />
+                {calculatedData.source_snapshot?.engine_version !== 2 && <p className="text-xs text-amber-700">Cálculo histórico. Revise os fatores na calculadora atualizada.</p>}
             </> : <p className="text-sm leading-relaxed text-muted-foreground">{hasRequiredData ? 'Dados disponíveis. Abra o cálculo para planejar o gasto energético.' : 'Para calcular, confira peso, altura, idade e sexo no cadastro e na avaliação.'}</p>}
         </div>
     </HubPanel>;
