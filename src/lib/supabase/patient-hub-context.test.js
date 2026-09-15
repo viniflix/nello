@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { getPatientHubOperationalContext } from './patient-queries';
+import { getActivityCtaRoute, getPatientHubOperationalContext } from './patient-queries';
 const mocks = vi.hoisted(() => ({ from: vi.fn(), records: vi.fn() }));
 vi.mock('@/lib/customSupabaseClient', () => ({ supabase: { from: mocks.from } }));
 vi.mock('@/features/clinical-records/api/evolution-queries', () => ({ listClinicalRecordsByEpisode: mocks.records }));
@@ -34,5 +34,14 @@ describe('contexto clínico do Hub', () => {
         const result = await getPatientHubOperationalContext('patient', 'nutritionist', 'episode');
         expect(result.data.partialErrors).toContain('registro clínico mais recente');
         expect(result.data.latestClinicalRecord).toBeNull();
+    });
+});
+
+describe('rotas do feed de atividades', () => {
+    it('leva mensagens para a rota de chat registrada no router', () => {
+        expect(getActivityCtaRoute({ type: 'message', patient_id: 'patient-1' })).toEqual({
+            label: 'Abrir chat',
+            route: '/nutritionist/chat/patient-1',
+        });
     });
 });

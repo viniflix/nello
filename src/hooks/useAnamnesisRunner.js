@@ -3,6 +3,7 @@ import { supabase } from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
 import { STANDARD_ANAMNESIS_FIELDS } from '@/lib/constants/standard-anamnesis-fields';
+import { logSupabaseError } from '@/lib/supabase/query-helpers';
 
 function getFallbackSections() {
     const categoriesMap = {
@@ -77,6 +78,7 @@ export function useAnamnesisRunner(patientId) {
                     .from('anamnesis_records')
                     .select('*, template:template_id(*)')
                     .eq('id', actualId)
+                    .eq('patient_id', patientId)
                     .single();
                 if (error) throw error;
                 // Usar template_snapshot se disponível (imutabilidade clínica)
@@ -98,7 +100,7 @@ export function useAnamnesisRunner(patientId) {
                     .from('anamnesis_records')
                     .select('content')
                     .eq('patient_id', patientId)
-                    .in('status', ['completed', 'validated'])
+                    .in('status', ['submitted', 'validated'])
                     .order('created_at', { ascending: false })
                     .limit(1);
                 if (error) throw error;
@@ -137,6 +139,7 @@ export function useAnamnesisRunner(patientId) {
                 .from('anamnesis_templates')
                 .select('*')
                 .eq('id', templateId)
+                .eq('nutritionist_id', user.id)
                 .single();
             if (tErr) throw tErr;
 
@@ -180,6 +183,9 @@ export function useAnamnesisRunner(patientId) {
                 .from('anamnesis_records')
                 .update(updatePayload)
                 .eq('id', recordId)
+                .eq('patient_id', patientId)
+                .eq('nutritionist_id', user.id)
+                .in('status', ['draft', 'pending_patient'])
                 .select()
                 .single();
             if (error) throw error;
@@ -235,7 +241,10 @@ export function useAnamnesisRunner(patientId) {
                 toast({ title: 'Rascunho salvo', description: 'O progresso foi salvo automaticamente.' });
             }
         },
-        onError: (err) => toast({ title: 'Erro', description: err.message, variant: 'destructive' }),
+        onError: (err) => {
+            logSupabaseError('Atualizar anamnese profissional', err);
+            toast({ title: 'Não foi possível salvar', description: 'Atualize a página e tente novamente.', variant: 'destructive' });
+        },
     });
 
     // ── 7. Deletar record ────────────────────────────────────────

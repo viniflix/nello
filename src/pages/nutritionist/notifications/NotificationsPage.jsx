@@ -10,6 +10,7 @@ import { ptBR } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useChat } from '@/contexts/ChatContext';
+import { safeInternalPath } from '@/lib/utils/navigation';
 
 
 const NotificationCard = ({ notification, onMarkAsRead, user }) => {
@@ -23,12 +24,17 @@ const NotificationCard = ({ notification, onMarkAsRead, user }) => {
 
         switch (type) {
             case 'new_weekly_summary':
+                {
+                const patientId = content?.patient_id || content?.patientId;
                 details = {
                     title: 'Novo Resumo Semanal',
                     description: 'Seu nutricionista adicionou observações sobre seu progresso.',
-                    action: () => navigate('/patient/records'),
+                    action: () => user?.profile?.user_type === 'nutritionist'
+                        ? navigate(patientId ? `/nutritionist/patients/${patientId}/hub` : '/nutritionist/patients')
+                        : navigate('/patient/progresso'),
                 };
                 break;
+                }
             case 'appointment_reminder':
                 const time = new Date(content.appointment_time).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
                 details = {
@@ -44,9 +50,9 @@ const NotificationCard = ({ notification, onMarkAsRead, user }) => {
                     action: () => {
                         const fromId = content.from_id;
                         if (user?.profile?.user_type === 'nutritionist') {
-                            navigate(`/chat/nutritionist/${fromId}`)
+                            navigate(fromId ? `/nutritionist/chat/${fromId}` : '/nutritionist/chat');
                         } else {
-                            navigate('/chat/patient');
+                            navigate('/patient/chat');
                         }
                         markChatAsRead(fromId);
                     },
@@ -60,21 +66,29 @@ const NotificationCard = ({ notification, onMarkAsRead, user }) => {
                 };
                 break;
             case 'new_achievement':
+                {
+                const patientId = content?.patient_id || content?.patientId;
                 icon = <Award className="w-5 h-5 text-yellow-500" />;
                 details = {
-                    title: `Conquista: ${content.name}`,
-                    description: content.description,
-                    action: () => navigate('/patient/profile', { state: { tab: 'achievements' } }),
+                    title: `Conquista: ${content?.name || 'Novo marco'}`,
+                    description: content?.description || 'Uma nova conquista foi registrada.',
+                    action: () => user?.profile?.user_type === 'nutritionist'
+                        ? navigate(patientId ? `/nutritionist/patients/${patientId}/achievements` : '/nutritionist/patients')
+                        : navigate('/patient/conquistas'),
                 };
                 break;
+                }
             case 'anamnesis_completed':
+                {
+                const destination = safeInternalPath(notification.link_url, null);
                 icon = <ClipboardCheck className="w-5 h-5 text-green-600" />;
                 details = {
                     title: notification.title || 'Anamnese Respondida',
                     description: notification.message || 'Um paciente respondeu um questionário via link externo.',
-                    action: () => notification.link_url ? navigate(notification.link_url) : null,
+                    action: () => destination ? navigate(destination) : null,
                 };
                 break;
+                }
             default:
                 break;
         }

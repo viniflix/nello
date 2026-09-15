@@ -84,7 +84,7 @@ const GroupSection = ({ title, subtitle, icon: Icon, iconClass, children, count 
 export default function TemplatesList() {
     const navigate = useNavigate();
     const { useTemplates, deleteTemplate, seedBaseTemplates } = useAnamnesisTemplates();
-    const { data: templates, isLoading } = useTemplates();
+    const { data: templates, isLoading, isError, refetch } = useTemplates();
     const [searchTerm, setSearchTerm] = React.useState('');
     const [previewTemplate, setPreviewTemplate] = React.useState(null);
 
@@ -144,6 +144,12 @@ export default function TemplatesList() {
                     <CardSkeleton />
                     <CardSkeleton />
                     <CardSkeleton />
+                </div>
+            ) : isError ? (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-8 text-center">
+                    <h3 className="text-lg font-medium text-amber-900">Não foi possível carregar os formulários</h3>
+                    <p className="mt-1 text-sm text-amber-800">Isso não significa que seus templates foram removidos.</p>
+                    <Button type="button" variant="outline" className="mt-4" onClick={() => refetch()}>Tentar novamente</Button>
                 </div>
             ) : filtered.length > 0 ? (
                 <div className="space-y-8">

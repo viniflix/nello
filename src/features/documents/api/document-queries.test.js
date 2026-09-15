@@ -6,6 +6,7 @@ import {
   getMyDocumentIdentity,
   saveMyDocumentIdentity,
   signDocumentArtifact,
+  verifyDocumentAuthenticity,
 } from './document-queries';
 
 vi.mock('@/infrastructure/supabase/client', () => ({
@@ -69,5 +70,21 @@ describe('canonical document contracts', () => {
       p_plan_id: 42,
       p_visibility: 'shared_with_patient',
     });
+  });
+});
+
+describe('public document verification', () => {
+  it('rejects malformed public codes without querying the database', async () => {
+    await expect(verifyDocumentAuthenticity('not-a-uuid')).resolves.toEqual({
+      data: { found: false },
+      error: null,
+    });
+    expect(supabase.rpc).not.toHaveBeenCalled();
+  });
+
+  it('normalizes a valid code before calling the verification RPC', async () => {
+    const code = '8c1a43d1-7d51-4e2f-86c5-2bd4f672d752';
+    await verifyDocumentAuthenticity(`  ${code}  `);
+    expect(supabase.rpc).toHaveBeenCalledWith('verify_document_authenticity', { p_code: code });
   });
 });

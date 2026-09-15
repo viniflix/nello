@@ -448,6 +448,7 @@ export default function AddMealPage() {
           <Button
             variant="ghost"
             size="icon"
+            aria-label="Voltar ao plano alimentar"
             onClick={() => navigate('/patient/diario')}
           >
             <ArrowLeft className="w-5 h-5" />
@@ -535,6 +536,7 @@ export default function AddMealPage() {
                         <Button
                           variant="ghost"
                           size="icon"
+                          aria-label={`Remover ${food.food_name}`}
                           onClick={() => handleRemoveFood(food.id)}
                         >
                           <Trash2 className="w-4 h-4 text-destructive" />

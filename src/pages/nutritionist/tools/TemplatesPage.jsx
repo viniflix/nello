@@ -160,7 +160,7 @@ const NutritionCard = React.memo(({ template, type, onDelete, toast }) => {
 const CheckinsSection = () => {
   const navigate = useNavigate();
   const { useTemplates: useCheckinTemplates } = useCheckins();
-  const { data: templates, isLoading } = useCheckinTemplates();
+  const { data: templates, isLoading, isError, refetch } = useCheckinTemplates();
 
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -212,7 +212,15 @@ const CheckinsSection = () => {
         </div>
       )}
 
-      {!isLoading && (!filteredTemplates || filteredTemplates.length === 0) && (
+      {!isLoading && isError && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-8 text-center">
+          <h3 className="text-lg font-medium text-amber-900">Não foi possível carregar os check-ins</h3>
+          <p className="mt-1 text-sm text-amber-800">Isso é uma falha de carregamento, não significa que seus formulários foram removidos.</p>
+          <Button type="button" variant="outline" className="mt-4" onClick={() => refetch()}>Tentar novamente</Button>
+        </div>
+      )}
+
+      {!isLoading && !isError && (!filteredTemplates || filteredTemplates.length === 0) && (
         <div className="bg-white rounded-xl border border-dashed border-slate-300 p-12 text-center flex flex-col items-center">
           <CheckSquare className="w-12 h-12 text-slate-300 mb-4" />
           <h3 className="text-lg font-medium text-slate-700 mb-1">
@@ -231,7 +239,7 @@ const CheckinsSection = () => {
         </div>
       )}
 
-      {!isLoading && filteredTemplates && filteredTemplates.length > 0 && (
+      {!isLoading && !isError && filteredTemplates && filteredTemplates.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredTemplates.map((template) => (
             <Card key={template.id} className="flex flex-col border-slate-200 shadow-sm hover:shadow-md hover:border-emerald-200 transition-all duration-200">

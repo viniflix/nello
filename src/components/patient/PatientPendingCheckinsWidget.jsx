@@ -3,12 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { useCheckins } from '@/hooks/useCheckins';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CheckSquare, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
+import { CheckSquare, ArrowRight, AlertCircle } from 'lucide-react';
 import { CardSkeleton } from '@/components/ui/custom-skeletons';
 
 const PatientPendingCheckinsWidget = () => {
   const { usePendingCheckins } = useCheckins();
-  const { data: pendingCheckins, isLoading } = usePendingCheckins();
+  const { data: pendingCheckins, isLoading, isError, refetch } = usePendingCheckins();
   const navigate = useNavigate();
 
   if (isLoading) {
@@ -16,6 +16,20 @@ const PatientPendingCheckinsWidget = () => {
       <div className="mb-6">
         <CardSkeleton />
       </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <Card className="mb-6 border-amber-200 bg-amber-50/60">
+        <CardContent className="flex flex-col items-start gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="font-semibold text-amber-900">Não foi possível verificar seus check-ins.</p>
+            <p className="text-sm text-amber-800">Tente carregar novamente para não perder uma solicitação pendente.</p>
+          </div>
+          <Button type="button" variant="outline" onClick={() => refetch()}>Tentar novamente</Button>
+        </CardContent>
+      </Card>
     );
   }
 

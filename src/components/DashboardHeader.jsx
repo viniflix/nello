@@ -21,6 +21,7 @@ import {
 import { supabase } from '@/lib/customSupabaseClient';
 import { useToast } from '@/components/ui/use-toast';
 import { useChat } from '@/contexts/ChatContext';
+import { safeInternalPath } from '@/lib/utils/navigation';
 
 const getNutritionistLinks = () => {
   return [
@@ -62,7 +63,7 @@ const formatNotificationTime = (createdAt) => {
 const getNotificationMeta = (notification) => {
   const fallbackMessage = notification?.content?.message || notification?.message || 'Você recebeu uma atualização.';
   const fallbackTitle = notification?.title || 'Nova notificação';
-  const fallbackPath = notification?.link_url || '/nutritionist';
+  const fallbackPath = safeInternalPath(notification?.link_url, '/nutritionist');
 
   const typeMap = {
     appointment_scheduled: {

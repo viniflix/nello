@@ -360,6 +360,7 @@ export default function PatientDiaryPage() {
               <Button
                 variant="ghost"
                 size="sm"
+                aria-label="Ver plano alimentar"
                 onClick={() => setPlanDialogOpen(true)}
                 className="text-muted-foreground hover:text-foreground"
               >
@@ -370,6 +371,7 @@ export default function PatientDiaryPage() {
             <Button
               variant="ghost"
               size="sm"
+              aria-label="Configurar lembretes"
               onClick={() => setPreferencesDialogOpen(true)}
               className="text-muted-foreground hover:text-foreground"
             >
@@ -379,6 +381,7 @@ export default function PatientDiaryPage() {
             <Button
               variant="ghost"
               size="icon"
+              aria-label="Abrir notificações"
               onClick={() => setShowNotifications(true)}
               className="relative"
             >
@@ -401,6 +404,7 @@ export default function PatientDiaryPage() {
                 <Button
                   variant="ghost"
                   size="icon"
+                  aria-label="Ir para o dia anterior"
                   onClick={goToPreviousDay}
                   className="flex-shrink-0"
                 >
@@ -435,6 +439,7 @@ export default function PatientDiaryPage() {
                 <Button
                   variant="ghost"
                   size="icon"
+                  aria-label="Ir para o próximo dia"
                   onClick={goToNextDay}
                   className="flex-shrink-0"
                   disabled={isSameDay(selectedDate, new Date())}
@@ -644,6 +649,7 @@ export default function PatientDiaryPage() {
                                   <Button
                                     variant="ghost"
                                     size="icon"
+                                    aria-label={`Ações da refeição ${translateMealType(mealType)}`}
                                     className="h-8 w-8"
                                   >
                                     <MoreHorizontal className="w-4 h-4" />

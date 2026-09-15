@@ -39,7 +39,7 @@ const AppRouter = () => {
               
               {/* Rotas de redirecionamento */}
               <Route path="/" element={<Navigate to={getHomePath(user)} replace />} />
-              {/* Removido o catch-all Navigate para evitar redirecionamento indevido no F5 */}
+              <Route path="*" element={<Navigate to={getHomePath(user)} replace />} />
             </Routes>
           </Suspense>
         </div>

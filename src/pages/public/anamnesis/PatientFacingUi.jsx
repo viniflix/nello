@@ -19,6 +19,7 @@ import { useAnamnesisAttachments } from '@/hooks/useAnamnesisAttachments';
 import { AnamnesisWizard } from '@/components/anamnesis/AnamnesisWizard';
 import { isFieldVisible } from '@/lib/utils/conditionalLogic';
 import { Card, CardContent } from '@/components/ui/card';
+import { isUuid } from '@/lib/utils/patientRoutes';
 
 // Tipos de erro mapeados da RPC — cada um com tela própria
 const ERROR_SCREENS = {
@@ -92,6 +93,12 @@ export default function PatientFacingUi() {
 
     useEffect(() => {
         const fetchAnamnesis = async () => {
+            if (!isUuid(token)) {
+                setErrorCode('TOKEN_NOT_FOUND');
+                setLoading(false);
+                return;
+            }
+
             try {
                 const { data, error: rpcError } = await supabase.rpc('get_anamnesis_by_token', {
                     p_token: token,
@@ -113,7 +120,10 @@ export default function PatientFacingUi() {
                     setIsCompleted(true);
                 }
             } catch (err) {
-                console.error(err);
+                console.error(
+                    'Falha ao carregar anamnese pública:',
+                    String(err?.code || err?.name || 'unknown_error')
+                );
                 setErrorCode('GENERIC');
             } finally {
                 setLoading(false);

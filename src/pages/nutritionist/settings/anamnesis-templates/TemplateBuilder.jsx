@@ -10,6 +10,7 @@ import { Switch } from '@/components/ui/switch';
 import { useAnamnesisTemplates } from '@/hooks/useAnamnesisTemplates';
 import { useToast } from '@/components/ui/use-toast';
 import { FormSkeleton } from '@/components/ui/custom-skeletons';
+import { cloneAnamnesisSections, validateAnamnesisTemplate } from '@/lib/validations/formContracts';
 
 const FIELD_TYPES = [
   { value: 'text', label: 'Texto Curto' },
@@ -52,11 +53,7 @@ export default function TemplateBuilder() {
                 if (Array.isArray(data.sections)) loadedSections = data.sections;
                 else if (data.sections?.sections) loadedSections = data.sections.sections;
 
-                const processSections = isDefault ? loadedSections.map(s => ({
-                    ...s,
-                    id: crypto.randomUUID(),
-                    fields: s.fields.map(f => ({ ...f, id: crypto.randomUUID() }))
-                })) : loadedSections;
+                const processSections = isDefault ? cloneAnamnesisSections(loadedSections) : loadedSections;
                 
                 setSections(processSections);
                 setIsLoading(false);
@@ -74,8 +71,9 @@ export default function TemplateBuilder() {
     }, [templateId, getTemplate, navigate, toast]);
 
     const handleSave = async () => {
-        if (!title.trim()) {
-            toast({ title: 'Erro', description: 'Dê um nome ao formulário.', variant: 'destructive' });
+        const validationError = validateAnamnesisTemplate({ title, sections });
+        if (validationError) {
+            toast({ title: 'Revise o formulário', description: validationError, variant: 'destructive' });
             return;
         }
         setIsSaving(true);
@@ -372,7 +370,6 @@ export default function TemplateBuilder() {
                                                         conditional_logic: { field_id: '', operator: 'equals', value: '' } 
                                                     });
                                                 } else {
-                                                    const { conditional_logic, ...rest } = activeFieldData;
                                                     updateField(activeSectionId, activeFieldId, { conditional_logic: null });
                                                 }
                                             }}

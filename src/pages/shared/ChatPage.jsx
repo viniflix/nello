@@ -104,13 +104,14 @@ const AudioPlayer = ({ src }) => {
 
         audio.addEventListener('loadeddata', setAudioData);
         audio.addEventListener('timeupdate', setAudioTime);
-        audio.addEventListener('ended', () => setIsPlaying(false));
+        const handleEnded = () => setIsPlaying(false);
+        audio.addEventListener('ended', handleEnded);
 
         return () => {
             if (audio) {
                 audio.removeEventListener('loadeddata', setAudioData);
                 audio.removeEventListener('timeupdate', setAudioTime);
-                audio.removeEventListener('ended', () => setIsPlaying(false));
+                audio.removeEventListener('ended', handleEnded);
             }
         };
     }, []);
@@ -125,7 +126,13 @@ const AudioPlayer = ({ src }) => {
     return (
         <div className="flex items-center gap-2 w-64">
             <audio ref={audioRef} src={src} preload="metadata"></audio>
-            <Button size="icon" variant="ghost" className="rounded-full" onClick={togglePlay}>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="rounded-full"
+              aria-label={isPlaying ? 'Pausar áudio' : 'Reproduzir áudio'}
+              onClick={togglePlay}
+            >
                 {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
             </Button>
             <div className="w-full h-1 bg-muted rounded-full cursor-pointer" onClick={(e) => {
@@ -167,7 +174,12 @@ const MediaViewer = ({ mediaPath, messageText, onImageClick }) => {
                 .createSignedUrl(cleanPath, 3600); // 1 hora de validade para melhor UX
 
             if (error) {
-                console.error(`Erro ao criar URL assinada para o bucket ${BUCKET_NAME} e caminho ${cleanPath}:`, error);
+                // O caminho pode conter identificadores e nomes de arquivo do paciente.
+                // A indisponibilidade permanece visível na UI sem enviar esses dados ao
+                // console/Sentry em produção.
+                if (import.meta.env.DEV) {
+                    console.warn('Falha ao carregar mídia do chat.', error?.name || error?.statusCode || 'storage_error');
+                }
                 setSignedUrl('');
             } else {
                 setSignedUrl(data.signedUrl);
@@ -477,7 +489,13 @@ const ChatPage = ({ propRecipientId, isEmbedded = false, initialDraft = '' }) =>
       {/* Cabeçalho - fixo no topo do container */}
       <header className="shrink-0 bg-white border-b p-4 flex items-center shadow-md z-30">
         {!isEmbedded && (
-          <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="mr-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Voltar"
+            onClick={() => navigate(-1)}
+            className="mr-2"
+          >
             <ArrowLeft className="w-5 h-5" />
           </Button>
         )}
@@ -572,6 +590,7 @@ const ChatPage = ({ propRecipientId, isEmbedded = false, initialDraft = '' }) =>
                 <Button
                   variant="ghost"
                   size="icon"
+                  aria-label="Remover anexo"
                   className="absolute -top-3 -right-3 bg-white rounded-full h-6 w-6 shadow-md"
                   onClick={() => {
                     setMediaFile(null);
@@ -596,6 +615,7 @@ const ChatPage = ({ propRecipientId, isEmbedded = false, initialDraft = '' }) =>
                 type="button"
                 variant="ghost"
                 size="icon"
+                aria-label="Anexar arquivo"
                 onClick={() => fileInputRef.current.click()}
                 disabled={isSending}
               >
@@ -611,6 +631,7 @@ const ChatPage = ({ propRecipientId, isEmbedded = false, initialDraft = '' }) =>
                   id="new-message"
                   name="new-message"
                   type="text"
+                  aria-label="Mensagem"
                   value={newMessage}
                   onChange={(e) => {
                   setNewMessage(e.target.value);
@@ -627,6 +648,7 @@ const ChatPage = ({ propRecipientId, isEmbedded = false, initialDraft = '' }) =>
                   type="button"
                   variant="ghost"
                   size="icon"
+                  aria-label={isRecording ? 'Parar gravação' : 'Gravar áudio'}
                   onClick={isRecording ? stopRecording : startRecording}
                   disabled={isSending}
                 >
@@ -636,6 +658,7 @@ const ChatPage = ({ propRecipientId, isEmbedded = false, initialDraft = '' }) =>
                 <Button
                   type="submit"
                   size="icon"
+                  aria-label={isSending ? 'Enviando mensagem' : 'Enviar mensagem'}
                   disabled={isSending || (newMessage.trim() === '' && !mediaFile)}
                   className=""
                 >

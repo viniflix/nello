@@ -7,7 +7,7 @@ import { ClinicalAlertsPanel } from '@/components/anamnesis/ClinicalAlertsPanel'
 import { FileUploadField } from '@/components/anamnesis/FileUploadField';
 import { exportAnamnesisAsPdf } from '@/lib/utils/exportAnamnesisAsPdf';
 import { isFieldVisible } from '@/lib/utils/conditionalLogic';
-import { Save, ArrowLeft, Loader2, CheckCircle, Clock, FileDown, ShieldCheck, Link2, Lock, Trash2 } from 'lucide-react';
+import { Save, ArrowLeft, Loader2, CheckCircle, Clock, FileDown, ShieldCheck, Link2, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -104,7 +104,7 @@ export default function PatientAnamnesisForm() {
         });
     }, []);
 
-    const usePreviousAnswer = (fieldId) => {
+    const applyPreviousAnswer = (fieldId) => {
         if (previousProfile?.[fieldId] !== undefined) {
             handleChange(fieldId, previousProfile[fieldId]);
             toast({ description: 'Resposta anterior aplicada.', duration: 2000 });
@@ -116,7 +116,7 @@ export default function PatientAnamnesisForm() {
         if (!template) return true;
         for (const section of template.sections || []) {
             for (const field of section.fields || []) {
-                if (field.required) {
+                if (field.required && isFieldVisible(field, content)) {
                     const val = content[field.id];
                     if (val === undefined || val === null || val === '' || (Array.isArray(val) && val.length === 0)) {
                         toast({ title: 'Atenção', description: `O campo "${field.label}" é obrigatório.`, variant: 'destructive' });
@@ -179,7 +179,7 @@ export default function PatientAnamnesisForm() {
                         <div className="flex items-center gap-1.5 bg-blue-50 text-blue-700 px-2 py-1 rounded-lg text-xs shrink-0">
                             <Clock className="w-3 h-3" />
                             <span>Já respondido antes</span>
-                            <button onClick={() => usePreviousAnswer(field.id)} className="font-bold hover:underline ml-1">
+                            <button onClick={() => applyPreviousAnswer(field.id)} className="font-bold hover:underline ml-1">
                                 Puxar
                             </button>
                         </div>

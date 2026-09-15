@@ -222,6 +222,7 @@ export default function PatientHomePage() {
           <Button
             variant="ghost"
             size="icon"
+            aria-label="Abrir notificações"
             onClick={() => setShowNotifications(true)}
             className="relative -mt-1"
           >

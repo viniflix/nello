@@ -1307,7 +1307,7 @@ export const getActivityCtaRoute = (activity) => {
         case 'energy_expenditure': return { label: 'Ver gastos energéticos', route: `/nutritionist/patients/${patientSegment}/energy-expenditure` };
         case 'progress_photo': return { label: 'Ver fotos de progresso', route: `/nutritionist/patients/${patientSegment}/photos` };
         case 'appointment': return { label: 'Ver agenda', route: '/nutritionist/agenda' };
-        case 'message': return { label: 'Abrir chat', route: `/chat/nutritionist/${activity.patient_id}` };
+        case 'message': return { label: 'Abrir chat', route: `/nutritionist/chat/${activity.patient_id}` };
         case 'achievement': return { label: 'Ver metas', route: `/nutritionist/patients/${patientSegment}/goals` };
         default: return { label: 'Ver paciente', route: `/nutritionist/patients/${patientSegment}/hub` };
     }

@@ -35,6 +35,8 @@ function scrubString(value) {
     .replace(/Bearer\s+[A-Za-z0-9._~-]+/gi, 'Bearer [REDACTED]')
     .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, '[EMAIL]')
     .replace(/(\/patients\/)[^/?#\s]+/gi, '$1:patient')
+    .replace(/(\/f\/)[^/?#\s]+/gi, '$1:token')
+    .replace(/(\/verificar-documento\/)[^/?#\s]+/gi, '$1:code')
     .replace(/\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b/g, '[CPF]')
     .replace(/\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/gi, '[UUID]')
     .replace(/(https?:\/\/[^\s?#]+)[?#][^\s]*/gi, '$1?[REDACTED]');

@@ -1,5 +1,6 @@
 import { supabase } from '@/infrastructure/supabase/client';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
+import { isUuid } from '@/lib/utils/patientRoutes';
 
 const callRpc = async (rpcName, payload, errorContext) => {
   try {
@@ -140,8 +141,15 @@ export const listDocumentArtifacts = (patientId, episodeId) => callRpc(
   'Erro ao listar documentos clínicos',
 );
 
-export const verifyDocumentAuthenticity = (code) => callRpc(
-  'verify_document_authenticity',
-  { p_code: code },
-  'Erro ao verificar autenticidade documental',
-);
+export const verifyDocumentAuthenticity = (code) => {
+  const normalizedCode = typeof code === 'string' ? code.trim() : '';
+  if (!isUuid(normalizedCode)) {
+    return Promise.resolve({ data: { found: false }, error: null });
+  }
+
+  return callRpc(
+    'verify_document_authenticity',
+    { p_code: normalizedCode },
+    'Erro ao verificar autenticidade documental',
+  );
+};

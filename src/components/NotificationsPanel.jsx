@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useToast } from './ui/use-toast';
 import { useChat } from '@/contexts/ChatContext';
+import { safeInternalPath } from '@/lib/utils/navigation';
 
 const getMessageSenderId = (notification) => {
   const fromId = notification?.content?.from_id;
@@ -65,21 +66,26 @@ export const getNotificationMeta = (notification, userType) => {
       ctaPath: userType === 'nutritionist' ? '/nutritionist/agenda' : '/patient'
     },
     goal_achieved: { title: 'Meta Alcançada', ctaLabel: 'Ver progresso', ctaPath: '/patient/progresso' },
-    new_achievement: { title: 'Nova Conquista', ctaLabel: 'Ver conquistas', ctaPath: '/patient/profile' },
-    new_weekly_summary: { title: 'Resumo Semanal', ctaLabel: 'Ver resumo', ctaPath: '/patient/records' },
+    new_achievement: { title: 'Nova Conquista', ctaLabel: 'Ver conquistas', ctaPath: '/patient/conquistas' },
+    new_weekly_summary: { title: 'Resumo Semanal', ctaLabel: 'Ver resumo', ctaPath: '/patient/progresso' },
     nutritionist_note: {
       title: userType === 'nutritionist' ? 'Nova orientação' : 'Orientação do Nutricionista',
       ctaLabel: 'Abrir chat',
       ctaPath: userType === 'nutritionist' ? '/nutritionist/chat' : '/patient/chat'
     },
-    daily_log_reminder: { title: 'Lembrete Diário', ctaLabel: 'Registrar refeição', ctaPath: '/patient/add-food' },
-    measurement_reminder: { title: 'Atualizar Medidas', ctaLabel: 'Abrir perfil', ctaPath: '/patient/profile' },
+    daily_log_reminder: {
+      title: 'Lembrete Diário',
+      description: 'Não se esqueça de registrar suas refeições hoje!',
+      ctaLabel: 'Registrar refeição',
+      ctaPath: '/patient/add-food'
+    },
+    measurement_reminder: { title: 'Atualizar Medidas', ctaLabel: 'Abrir perfil', ctaPath: '/patient/perfil' },
     clinical_record_corrected: { title: 'Registro clínico corrigido', ctaLabel: 'Ver registro', ctaPath: '/patient/registros-clinicos' },
     clinical_record_invalidated: { title: 'Registro clínico invalidado', ctaLabel: 'Ver registro', ctaPath: '/patient/registros-clinicos' },
-    success: { title: genericTitle || 'Sucesso', ctaLabel: 'Ver detalhes', ctaPath: notification?.link_url || '/patient' },
-    info: { title: genericTitle || 'Informação', ctaLabel: 'Ver detalhes', ctaPath: notification?.link_url || '/patient' },
-    warning: { title: genericTitle || 'Atenção', ctaLabel: 'Ver detalhes', ctaPath: notification?.link_url || '/patient' },
-    error: { title: genericTitle || 'Alerta', ctaLabel: 'Ver detalhes', ctaPath: notification?.link_url || '/patient' }
+    success: { title: genericTitle || 'Sucesso', ctaLabel: 'Ver detalhes', ctaPath: safeInternalPath(notification?.link_url, '/patient') },
+    info: { title: genericTitle || 'Informação', ctaLabel: 'Ver detalhes', ctaPath: safeInternalPath(notification?.link_url, '/patient') },
+    warning: { title: genericTitle || 'Atenção', ctaLabel: 'Ver detalhes', ctaPath: safeInternalPath(notification?.link_url, '/patient') },
+    error: { title: genericTitle || 'Alerta', ctaLabel: 'Ver detalhes', ctaPath: safeInternalPath(notification?.link_url, '/patient') }
   };
 
   if (notification.type === 'new_message') {
@@ -99,13 +105,15 @@ export const getNotificationMeta = (notification, userType) => {
   const base = typedMap[notification.type] || {
     title: genericTitle,
     ctaLabel: 'Ver detalhes',
-    ctaPath: notification?.link_url || (userType === 'nutritionist' ? '/nutritionist' : '/patient')
+    ctaPath: safeInternalPath(notification?.link_url, userType === 'nutritionist' ? '/nutritionist' : '/patient')
   };
   const isClinicalAmendment = ['clinical_record_corrected', 'clinical_record_invalidated'].includes(notification.type);
 
   return {
     ...base,
-    description: isClinicalAmendment ? 'Seu registro clínico recebeu uma atualização.' : genericMessage
+    description: isClinicalAmendment
+      ? 'Seu registro clínico recebeu uma atualização.'
+      : (base.description || genericMessage)
   };
 };
 
@@ -126,7 +134,8 @@ const NotificationsPanel = ({ isOpen, setIsOpen }) => {
       .from('notifications')
       .select('*')
       .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(50);
 
     if (error) {
       console.error(error);
@@ -235,7 +244,7 @@ const NotificationsPanel = ({ isOpen, setIsOpen }) => {
             <div className="mt-3 flex gap-2">
               {hasUnread && (
                 <Button variant="outline" size="sm" onClick={handleMarkAllAsRead} className="flex-1">
-                  <Check className="mr-2 h-4 w-4" /> Marcar Todas
+                  <Check className="mr-2 h-4 w-4" /> Marcar exibidas
                 </Button>
               )}
               {hasRead && (

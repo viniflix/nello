@@ -44,4 +44,14 @@ describe('sanitizeAnalyticsProperties', () => {
       },
     });
   });
+
+  it('redacts public form and document tokens by route shape', () => {
+    expect(sanitizeAnalyticsProperties({
+      form_url: 'https://nello.example/f/legacy-secret-token?source=email',
+      document_url: '/verificar-documento/public-secret-code',
+    })).toEqual({
+      form_url: 'https://nello.example/f/:token',
+      document_url: '/verificar-documento/:code',
+    });
+  });
 });

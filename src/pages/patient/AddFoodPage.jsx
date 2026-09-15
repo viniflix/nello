@@ -76,7 +76,7 @@ const AddFoodPage = () => {
                 const { data, error } = await supabase.from('meals').select('*, meal_items(*)').eq('id', mealId).single();
                 if (error || !data) {
                     toast({ title: "Erro", description: "Refeição não encontrada.", variant: "destructive" });
-                    navigate('/patient/records');
+                    navigate('/patient/diario');
                 } else {
                     setOriginalMeal(JSON.parse(JSON.stringify(data))); // Deep copy for history
                     setMealDetails({ time: data.meal_time, type: data.meal_type, notes: data.notes || '' });
@@ -207,7 +207,7 @@ const AddFoodPage = () => {
                     });
                 }
 
-                navigate('/patient/records');
+                navigate('/patient/diario');
             }
         };
 
@@ -234,7 +234,7 @@ const AddFoodPage = () => {
         <div className="min-h-screen bg-background">
             <header className="sticky top-0 z-10 bg-background/80 backdrop-blur-md">
                 <div className="max-w-4xl mx-auto px-4 h-16 flex items-center">
-                    <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="mr-2"><ArrowLeft className="w-5 h-5" /></Button>
+                    <Button variant="ghost" size="icon" aria-label="Voltar" onClick={() => navigate(-1)} className="mr-2"><ArrowLeft className="w-5 h-5" /></Button>
                     <h1 className="text-xl font-bold text-foreground">{mealId ? 'Editar Refeição' : 'Adicionar Refeição'}</h1>
                 </div>
             </header>
@@ -304,7 +304,7 @@ const AddFoodPage = () => {
                                         <div key={item.id} className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
                                             <div><p className="font-medium">{item.food_name}</p><p className="text-sm text-muted-foreground">{Math.round(item.quantity)}g</p></div>
                                             <div className="text-right"><p className="font-semibold text-destructive">{Math.round(item.calories)} kcal</p><p className="text-xs text-muted-foreground">P:{item.protein.toFixed(1)}g G:{item.fat.toFixed(1)}g C:{item.carbs.toFixed(1)}g</p></div>
-                                            <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(item.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+                                            <Button variant="ghost" size="icon" aria-label={`Remover ${item.food_name}`} onClick={() => handleRemoveItem(item.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
                                         </div>
                                     )) : <p className="text-muted-foreground text-center py-4">Nenhum item adicionado.</p>}
                                 </div></CardContent>
@@ -325,7 +325,7 @@ const AddFoodPage = () => {
                                         <div className="flex justify-between text-sm"><span className="text-muted-foreground">Gorduras</span><span className="font-medium">{mealTotals.fat.toFixed(1)} g</span></div>
                                         <div className="flex justify-between text-sm"><span className="text-muted-foreground">Carboidratos</span><span className="font-medium">{mealTotals.carbs.toFixed(1)} g</span></div>
                                     </div>
-                                    <Button className="w-full mt-4" disabled={loading} onClick={handleSaveMeal}>
+                                    <Button className="w-full mt-4" disabled={loading || mealItems.length === 0} onClick={handleSaveMeal}>
                                         <Save className="w-4 h-4 mr-2" />{loading ? 'Salvando...' : (mealId ? 'Atualizar Refeição' : 'Salvar no Diário')}
                                     </Button>
                                 </CardContent>

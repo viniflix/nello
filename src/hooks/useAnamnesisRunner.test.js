@@ -10,6 +10,9 @@ const mocks = vi.hoisted(() => ({
   }),
   from: vi.fn(),
   insert: vi.fn(),
+  update: vi.fn(),
+  recordEq: vi.fn(),
+  recordIn: vi.fn(),
   invalidateQueries: vi.fn(),
 }));
 
@@ -36,8 +39,11 @@ describe('useAnamnesisRunner creation episode contract', () => {
     };
     const recordBuilder = {
       insert: mocks.insert.mockReturnThis(),
+      update: mocks.update.mockReturnThis(),
       select: vi.fn().mockReturnThis(),
-      single: vi.fn().mockResolvedValue({ data: { id: 'record-1' }, error: null }),
+      eq: mocks.recordEq.mockReturnThis(),
+      in: mocks.recordIn.mockReturnThis(),
+      single: vi.fn().mockResolvedValue({ data: { id: 'record-1', status: 'draft' }, error: null }),
     };
     mocks.from.mockImplementation((table) => table === 'anamnesis_templates' ? templateBuilder : recordBuilder);
   });
@@ -52,5 +58,15 @@ describe('useAnamnesisRunner creation episode contract', () => {
       care_episode_id: 'episode-1',
       template_id: 'template-1',
     }));
+  });
+
+  it('updates only an open record owned by the selected patient and nutritionist', async () => {
+    renderHook(() => useAnamnesisRunner('patient-1'));
+    await mocks.mutationOptions[1].mutationFn({ recordId: 'record-1', content: { field: 'value' }, status: 'validated' });
+
+    expect(mocks.recordEq).toHaveBeenCalledWith('id', 'record-1');
+    expect(mocks.recordEq).toHaveBeenCalledWith('patient_id', 'patient-1');
+    expect(mocks.recordEq).toHaveBeenCalledWith('nutritionist_id', 'nutritionist-1');
+    expect(mocks.recordIn).toHaveBeenCalledWith('status', ['draft', 'pending_patient']);
   });
 });

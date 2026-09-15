@@ -187,6 +187,7 @@ export default function PatientEditProfilePage() {
           <Button
             variant="ghost"
             size="icon"
+            aria-label="Voltar ao perfil"
             onClick={() => navigate('/patient/perfil')}
           >
             <ArrowLeft className="w-5 h-5" />

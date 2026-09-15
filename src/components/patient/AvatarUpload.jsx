@@ -163,6 +163,8 @@ export default function AvatarUpload({ size = 'large', showChangeButton = true }
 
         {showChangeButton && (
           <button
+            type="button"
+            aria-label="Alterar foto do perfil"
             onClick={handleFileSelect}
             disabled={uploading}
             className="absolute bottom-0 right-0 p-2 bg-primary text-white rounded-full shadow-lg hover:bg-primary/90 transition-colors disabled:opacity-50"

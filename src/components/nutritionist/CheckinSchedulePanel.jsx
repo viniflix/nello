@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useCheckins } from '@/hooks/useCheckins';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -27,12 +27,14 @@ const CheckinSchedulePanel = ({ patientId }) => {
   
   const [selectedTemplate, setSelectedTemplate] = useState('');
   const [channel, setChannel] = useState('in_app');
+  const activeTemplates = useMemo(() => templates.filter((template) => template.is_active !== false), [templates]);
 
   const handleLink = async (e) => {
     e.preventDefault();
     if (!selectedTemplate) return;
     
-    const tmplObj = templates?.find(t => t.id === selectedTemplate);
+    const tmplObj = activeTemplates.find(t => t.id === selectedTemplate);
+    if (!tmplObj) return;
     let nextSend = new Date();
     // O primeiro envio ocorre no dia seguinte; a recorrência permanece definida no template.
     nextSend.setDate(nextSend.getDate() + 1);
@@ -94,8 +96,8 @@ const CheckinSchedulePanel = ({ patientId }) => {
                   <SelectContent>
                     {isLoadingTemplates && <div className="px-2 py-2"><Skeleton className="h-5 w-full" /></div>}
                     {!isLoadingTemplates && templatesError && <div className="space-y-2 px-2 py-2 text-xs text-destructive"><p>Não foi possível carregar os formulários.</p><Button type="button" size="sm" variant="outline" onClick={() => refetchTemplates()}>Tentar novamente</Button></div>}
-                    {!isLoadingTemplates && !templatesError && templates.length === 0 && <p className="px-2 py-2 text-xs text-muted-foreground">Nenhum formulário criado.</p>}
-                    {templates?.map(t => (
+                    {!isLoadingTemplates && !templatesError && activeTemplates.length === 0 && <p className="px-2 py-2 text-xs text-muted-foreground">Nenhum formulário ativo.</p>}
+                    {activeTemplates.map(t => (
                       <SelectItem key={t.id} value={t.id}>{t.name} ({t.frequency})</SelectItem>
                     ))}
                   </SelectContent>

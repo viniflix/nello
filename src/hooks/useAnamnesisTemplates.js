@@ -3,6 +3,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
+import { validateAnamnesisTemplate } from '@/lib/validations/formContracts';
+import { logSupabaseError } from '@/lib/supabase/query-helpers';
 
 export function useAnamnesisTemplates() {
   const { user } = useAuth();
@@ -30,13 +32,15 @@ export function useAnamnesisTemplates() {
       .from('anamnesis_templates')
       .select('*')
       .eq('id', templateId)
+      .or(`nutritionist_id.eq.${user.id},is_system_default.eq.true`)
       .single();
     if (error) throw error;
     return data;
-  }, []);
+  }, [user?.id]);
 
   const createTemplate = useMutation({
     mutationFn: async ({ title, description, sections }) => {
+      if (validateAnamnesisTemplate({ title, sections })) throw new Error('INVALID_ANAMNESIS_TEMPLATE');
       const { data, error } = await supabase
         .from('anamnesis_templates')
         .insert({
@@ -58,12 +62,14 @@ export function useAnamnesisTemplates() {
       toast({ title: "Sucesso!", description: "Template criado com sucesso." });
     },
     onError: (error) => {
-      toast({ title: "Erro", description: error.message, variant: "destructive" });
+      logSupabaseError('Criar template de anamnese', error);
+      toast({ title: "Não foi possível criar", description: "Revise o formulário e tente novamente.", variant: "destructive" });
     }
   });
 
   const updateTemplate = useMutation({
     mutationFn: async ({ id, title, description, sections }) => {
+      if (validateAnamnesisTemplate({ title, sections })) throw new Error('INVALID_ANAMNESIS_TEMPLATE');
       const { data, error } = await supabase
         .from('anamnesis_templates')
         .update({
@@ -87,7 +93,8 @@ export function useAnamnesisTemplates() {
       toast({ title: "Sucesso!", description: "Template atualizado." });
     },
     onError: (error) => {
-      toast({ title: "Erro", description: error.message, variant: "destructive" });
+      logSupabaseError('Atualizar template de anamnese', error);
+      toast({ title: "Não foi possível atualizar", description: "O formulário não foi salvo. Tente novamente.", variant: "destructive" });
     }
   });
 

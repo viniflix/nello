@@ -11,7 +11,6 @@ const FIELD_TYPES = [
   { value: 'number', label: 'Número' },
   { value: 'text', label: 'Texto Livre' },
   { value: 'multiple_choice', label: 'Múltipla Escolha' },
-  { value: 'photo', label: 'Foto' }
 ];
 
 export default function CheckinTemplateBuilder({ fields, setFields }) {
@@ -116,7 +115,7 @@ export default function CheckinTemplateBuilder({ fields, setFields }) {
                 )}
               </div>
 
-              <Button type="button" variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => removeField(index)}>
+              <Button type="button" variant="ghost" size="icon" aria-label={`Remover pergunta ${index + 1}`} className="text-destructive hover:bg-destructive/10" onClick={() => removeField(index)}>
                 <Trash2 className="w-4 h-4" />
               </Button>
             </div>

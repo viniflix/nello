@@ -18,4 +18,14 @@ describe('D2 clinical protocol decisions', () => {
       p_code: 'energy.mifflin_st_jeor', p_version: 1, p_decision: 'restricted', p_reason: 'Usar somente após avaliação individual.',
     });
   });
+  it.each([
+    { code: '', version: 1, decision: 'accepted', reason: 'Justificativa válida.' },
+    { code: 'energy.test', version: 0, decision: 'accepted', reason: 'Justificativa válida.' },
+    { code: 'energy.test', version: 1, decision: 'unknown', reason: 'Justificativa válida.' },
+    { code: 'energy.test', version: 1, decision: 'accepted', reason: 'curta' },
+  ])('rejects an invalid decision before calling the RPC', async (payload) => {
+    const result = await recordClinicalProtocolDecision(payload);
+    expect(result.error?.message).toBe('INVALID_PROTOCOL_DECISION');
+    expect(supabase.rpc).not.toHaveBeenCalled();
+  });
 });

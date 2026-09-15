@@ -8,10 +8,17 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Slider } from '@/components/ui/slider';
 import { FormSkeleton } from '@/components/ui/custom-skeletons';
+import { isUuid } from '@/lib/utils/patientRoutes';
+import { findMissingRequiredField, isFormValuePresent } from '@/lib/validations/formContracts';
+import { useToast } from '@/components/ui/use-toast';
+
+const CHECKIN_NOT_FOUND_MESSAGE = 'Check-in não encontrado.';
+const CHECKIN_LOAD_ERROR_MESSAGE = 'Não foi possível carregar este check-in.';
 
 const CheckinResponsePage = () => {
   const { sessionId } = useParams();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const { submitCheckin } = useCheckins();
   
   const [session, setSession] = useState(null);
@@ -26,6 +33,13 @@ const CheckinResponsePage = () => {
   useEffect(() => {
     const fetchSessionData = async () => {
       setLoading(true);
+
+      if (!isUuid(sessionId)) {
+        setError(CHECKIN_NOT_FOUND_MESSAGE);
+        setLoading(false);
+        return;
+      }
+
       try {
         const { data: sessionData, error: sessionError } = await supabase
           .from('checkin_sessions')
@@ -49,6 +63,11 @@ const CheckinResponsePage = () => {
           return;
         }
 
+        if (sessionData.expires_at && new Date(sessionData.expires_at).getTime() <= Date.now()) {
+          setError('Este check-in expirou. Solicite um novo envio ao seu nutricionista.');
+          return;
+        }
+
         const { data: fieldsData, error: fieldsError } = await supabase
           .from('checkin_fields')
           .select('*')
@@ -56,6 +75,11 @@ const CheckinResponsePage = () => {
           .order('order_index', { ascending: true });
 
         if (fieldsError) throw fieldsError;
+
+        if (!fieldsData?.length) {
+          setError('Este check-in ainda não possui perguntas disponíveis.');
+          return;
+        }
 
         setSession(sessionData);
         setFields(fieldsData || []);
@@ -67,16 +91,24 @@ const CheckinResponsePage = () => {
         setResponses(initialResp);
 
       } catch (err) {
-        setError(err.message);
+        if (import.meta.env.DEV) {
+          console.error('Falha ao carregar check-in:', err?.code || err?.name || 'unknown');
+        }
+        setError(CHECKIN_LOAD_ERROR_MESSAGE);
       } finally {
         setLoading(false);
       }
     };
     
-    if (sessionId) fetchSessionData();
+    fetchSessionData();
   }, [sessionId]);
 
   const handleNext = () => {
+    const field = fields[currentStep];
+    if (field?.is_required && !isFormValuePresent(responses[field.id])) {
+      toast({ title: 'Resposta obrigatória', description: `Responda “${field.label}” para continuar.`, variant: 'destructive' });
+      return;
+    }
     if (currentStep < fields.length - 1) setCurrentStep(s => s + 1);
   };
 
@@ -89,40 +121,23 @@ const CheckinResponsePage = () => {
   };
 
   const handleSubmit = async () => {
+    const missing = findMissingRequiredField(fields, responses);
+    if (missing) {
+      const missingIndex = fields.findIndex((field) => field.id === missing.id);
+      setCurrentStep(Math.max(0, missingIndex));
+      toast({ title: 'Resposta obrigatória', description: `Responda “${missing.label}” antes de concluir.`, variant: 'destructive' });
+      return;
+    }
     setIsSubmitting(true);
     try {
-      let scoreTotal = 0;
-      let scoreMax = 0;
-
-      fields.forEach(field => {
-        scoreMax += (field.score_weight || 1) * 10;
-        const answer = responses[field.id];
-        let normalizedValue = 0;
-
-        if (field.field_type === 'scale_1_10') {
-          normalizedValue = parseInt(answer?.[0] || answer) || 0;
-        } else if (field.field_type === 'yes_no') {
-          normalizedValue = answer === 'yes' ? 10 : 0;
-        } else {
-          normalizedValue = answer ? 10 : 0;
-        }
-
-        scoreTotal += (field.score_weight || 1) * normalizedValue;
-      });
-
-      const adherencePct = scoreMax > 0 ? (scoreTotal / scoreMax) * 100 : 100;
-
       await submitCheckin.mutateAsync({
         sessionId,
-        responses,
-        scoreTotal,
-        scoreMax,
-        adherencePct
+        responses
       });
 
       setIsCompleted(true);
-    } catch (err) {
-      console.error(err);
+    } catch {
+      // A mutação exibe uma mensagem neutra e mantém o formulário disponível para nova tentativa.
     } finally {
       setIsSubmitting(false);
     }
@@ -182,7 +197,7 @@ const CheckinResponsePage = () => {
           <div className="absolute inset-0 bg-black/10 mix-blend-multiply" />
           <div className="relative z-10">
             <div className="flex items-center justify-between mb-6">
-              <Button variant="ghost" size="icon" className="text-white hover:bg-white/20" onClick={() => navigate(-1)}>
+              <Button variant="ghost" size="icon" aria-label="Voltar" className="text-white hover:bg-white/20" onClick={() => navigate(-1)}>
                 <ArrowLeft className="w-5 h-5" />
               </Button>
               {branding?.logo_url ? (

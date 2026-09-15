@@ -9,6 +9,7 @@ import { useCheckins } from '@/hooks/useCheckins';
 import { useToast } from '@/components/ui/use-toast';
 import { FormSkeleton } from '@/components/ui/custom-skeletons';
 import CheckinTemplateBuilder from '@/components/nutritionist/CheckinTemplateBuilder';
+import { validateCheckinTemplate } from '@/lib/validations/formContracts';
 
 export default function CheckinEditorPage() {
     const navigate = useNavigate();
@@ -49,9 +50,10 @@ export default function CheckinEditorPage() {
     }, [templateId, getTemplate, navigate, toast]);
 
     const handleSave = async (e) => {
-        e.preventDefault();
-        if (!name.trim()) {
-            toast({ title: 'Erro', description: 'Dê um nome ao check-in.', variant: 'destructive' });
+        e?.preventDefault();
+        const validationError = validateCheckinTemplate({ name, fields, channel });
+        if (validationError) {
+            toast({ title: 'Revise o check-in', description: validationError, variant: 'destructive' });
             return;
         }
         setIsSaving(true);
@@ -130,7 +132,7 @@ export default function CheckinEditorPage() {
                                 <SelectTrigger><SelectValue /></SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="in_app">App Nello (Notificação)</SelectItem>
-                                    <SelectItem value="whatsapp">WhatsApp (Requer integração)</SelectItem>
+                            <SelectItem value="whatsapp" disabled>WhatsApp (indisponível)</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>

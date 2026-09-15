@@ -339,15 +339,10 @@ export default function PatientProfilePage() {
                 variant="ghost"
                 className="w-full justify-between h-auto py-3"
                 onClick={() => {
-                  // Try to navigate, show toast if route doesn't exist
-                  try {
-                    navigate('/patient/questionnaires');
-                  } catch {
-                    toast({
-                      title: 'Em breve',
-                      description: 'Esta funcionalidade estará disponível em breve.'
-                    });
-                  }
+                  toast({
+                    title: 'Em breve',
+                    description: 'Esta funcionalidade estará disponível em breve.'
+                  });
                 }}
               >
                 <span className="flex items-center gap-3">

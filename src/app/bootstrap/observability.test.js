@@ -57,4 +57,16 @@ describe('scrubSentryEvent', () => {
     });
     expect(event.user.email).toBe('patient@example.com');
   });
+
+  it('redacts public access tokens even when they are not UUIDs', () => {
+    const sanitized = scrubSentryEvent({
+      request: {
+        url: 'https://nello.example/f/legacy-secret-token?source=email',
+        document_url: 'https://nello.example/verificar-documento/public-secret-code',
+      },
+    });
+
+    expect(sanitized.request.url).toBe('https://nello.example/f/:token?[REDACTED]');
+    expect(sanitized.request.document_url).toBe('https://nello.example/verificar-documento/:code');
+  });
 });

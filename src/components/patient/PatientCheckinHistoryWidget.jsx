@@ -1,18 +1,32 @@
 import React from 'react';
 import { useCheckins } from '@/hooks/useCheckins';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { CheckSquare, Activity, ChevronRight } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { CheckSquare, Activity } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const PatientCheckinHistoryWidget = ({ patientId }) => {
   const { useCheckinHistory } = useCheckins();
-  const { data: history, isLoading } = useCheckinHistory(patientId);
+  const { data: history, isLoading, isError, refetch } = useCheckinHistory(patientId);
 
   if (isLoading) {
     return (
       <div className="flex justify-center p-8 mt-8">
         <Activity className="w-6 h-6 animate-spin text-muted-foreground" />
       </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <Card className="mt-8 border-amber-200 bg-amber-50/60">
+        <CardContent className="flex flex-col items-start gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="font-semibold text-amber-900">Não foi possível carregar o histórico de check-ins.</p>
+            <p className="text-sm text-amber-800">Os registros continuam preservados; tente novamente.</p>
+          </div>
+          <Button type="button" variant="outline" onClick={() => refetch()}>Tentar novamente</Button>
+        </CardContent>
+      </Card>
     );
   }
 
