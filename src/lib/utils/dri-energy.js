@@ -1,7 +1,7 @@
 // NASEM 2023, adult EER equations; height in cm, weight in kg, age in years.
 export const DRI_SOURCE_URL = 'https://www.canada.ca/en/health-canada/services/food-nutrition/healthy-eating/dietary-reference-intakes/tables/equations-estimate-energy-requirement.html';
 export const DRI_ACTIVITY_LEVELS = [
-  { id: 'inactive', label: 'Inativo' },
+  { id: 'inactive', label: 'Sedentário (inativo)' },
   { id: 'low_active', label: 'Pouco ativo' },
   { id: 'active', label: 'Ativo' },
   { id: 'very_active', label: 'Muito ativo' },
@@ -38,7 +38,14 @@ export function driPaCoefficient(activity, gender) {
   return (sex === 'male' ? [1, 1.11, 1.25, 1.48] : [1, 1.12, 1.27, 1.45])[index];
 }
 
-export function calculateDri2023(data, activity = 'inactive') {
+export function driActivityOptionLabel(activity, protocol, gender) {
+  const item = DRI_ACTIVITY_LEVELS.find(level => level.id === activity);
+  if (!item) return '';
+  const pa = protocol === 'eer_iom' ? driPaCoefficient(activity, gender) : null;
+  return pa == null ? item.label : `${item.label} (PA ${pa.toLocaleString('pt-BR')})`;
+}
+
+export function calculateDri2023(data, activity) {
   if (!validEnergyBiometry(data, 19)) return null;
   const coefficients = DRI_2023_COEFFICIENTS[normalizeEnergySex(data.gender)]?.[activity];
   if (!coefficients) return null;
@@ -46,7 +53,7 @@ export function calculateDri2023(data, activity = 'inactive') {
   return constant - age * Number(data.age) + height * Number(data.height) + weight * Number(data.weight);
 }
 
-export function dri2023Breakdown(data, activity = 'inactive') {
+export function dri2023Breakdown(data, activity) {
   const result = calculateDri2023(data, activity);
   if (result == null) return null;
   const [c, a, h, w] = DRI_2023_COEFFICIENTS[normalizeEnergySex(data.gender)][activity];

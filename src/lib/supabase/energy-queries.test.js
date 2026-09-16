@@ -1,4 +1,4 @@
-import { saveEnergyCalculation } from './energy-queries';
+import { getInitialBiometryForEnergy, saveEnergyCalculation } from './energy-queries';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({ insert: vi.fn(), from: vi.fn() }));
 vi.mock('@/lib/customSupabaseClient', () => ({ supabase: { from: mocks.from } }));
@@ -15,6 +15,19 @@ beforeEach(() => {
   mocks.insert.mockImplementation(row => ({ select: () => ({ single: async () => ({ data: row, error: null }) }) }));
 });
 describe('energy persistence', () => {
+  it('keeps successful biometry sources when the profile request fails', async () => {
+    const profileError = { message: 'profile unavailable' };
+    mocks.from.mockImplementation(table => {
+      const query = { select: () => query, eq: () => query, order: () => query, limit: () => query,
+        single: async () => ({ data: null, error: profileError }),
+        maybeSingle: async () => ({ data: table === 'growth_records' ? { weight: 70, height: 175 } : { content: { sexo: ' Feminino ', idade: 30 } }, error: null }),
+      };
+      return query;
+    });
+    const { data, error } = await getInitialBiometryForEnergy('patient');
+    expect(error).toBe(profileError);
+    expect(data).toMatchObject({ weight: 70, height: 175, age: 30, gender: 'F', _sources: { gender: 'anamnesis' } });
+  });
   it('recalculates authoritative results and preserves precise formula and clinical context', async () => {
     const { data, error } = await saveEnergyCalculation(payload);
     expect(error).toBeNull();

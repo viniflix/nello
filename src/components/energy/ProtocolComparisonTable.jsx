@@ -51,7 +51,7 @@ export function ProtocolComparisonTable({ protocols, activityFactor, selectedPro
           </TableHeader>
           <TableBody>
             {protocols.map((protocol) => {
-              const isEer = protocol.isEer && protocol.get != null && protocol.get > 0;
+              const isEer = protocol.isEer === true;
               const hasBmr = protocol.bmr != null && protocol.bmr > 0;
               if (!isEer && !hasBmr) return null;
 

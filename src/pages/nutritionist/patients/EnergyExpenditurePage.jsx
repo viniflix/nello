@@ -21,7 +21,8 @@ import WeightProjectionCard from '@/components/energy/WeightProjectionCard';
 import MetsActivitiesForm from '@/components/energy/MetsActivitiesForm';
 import EnergyExpenditureResultsPanel from '@/components/energy/EnergyExpenditureResultsPanel';
 import { calculateEnergyPlan, restoreEnergyInputs } from '@/lib/utils/energy-planning';
-import { DRI_ACTIVITY_LEVELS, driPaCoefficient } from '@/lib/utils/dri-energy';
+import { restoreEnergyBiometry } from '@/lib/utils/energy-inputs';
+import DriActivitySelector from '@/components/energy/DriActivitySelector';
 import EnergyFormulaDetails from '@/components/energy/EnergyFormulaDetails';
 import {
   getLatestAnamnesisForEnergy,
@@ -50,7 +51,12 @@ const TMB_PROTOCOLS = [
 ];
 
 export default function EnergyExpenditurePage() {
-  const { patientId, loading: resolveLoading, error: resolveError, paramValue } = useResolvedPatientId();
+  const resolvedPatient = useResolvedPatientId();
+  return <EnergyExpenditureForm key={resolvedPatient.patientId || resolvedPatient.paramValue} resolvedPatient={resolvedPatient} />;
+}
+
+function EnergyExpenditureForm({ resolvedPatient }) {
+  const { patientId, loading: resolveLoading, error: resolveError, paramValue } = resolvedPatient;
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
@@ -76,7 +82,7 @@ export default function EnergyExpenditurePage() {
   const [ventaTargetWeight, setVentaTargetWeight] = useState('');
   const [ventaTimeframeDays, setVentaTimeframeDays] = useState('');
   const [clinicalMobility, setClinicalMobility] = useState('');
-  const [driActivity, setDriActivity] = useState('inactive');
+  const [driActivity, setDriActivity] = useState('');
   const [lifeStage, setLifeStage] = useState('');
   const [requiresReview, setRequiresReview] = useState(false);
 
@@ -136,7 +142,11 @@ export default function EnergyExpenditurePage() {
       setPatientName(profile?.name || 'Paciente');
       setPatientSlug(profile?.slug || null);
 
-      const { data: biometry } = await getInitialBiometryForEnergy(patientId);
+      const [{ data: currentBiometry, error: biometryError }, { data: saved }] = await Promise.all([
+        getInitialBiometryForEnergy(patientId), getLatestEnergyCalculation(patientId)
+      ]);
+      const biometry = restoreEnergyBiometry(currentBiometry, saved);
+      if (biometryError) toast({ title: 'Confira a biometria', description: 'Parte dos dados não pôde ser carregada. Confira os campos e a origem indicada antes de salvar.', variant: 'destructive' });
       if (biometry) {
         if (biometry.weight != null) setWeight(String(biometry.weight));
         if (biometry.height != null) setHeight(String(biometry.height));
@@ -209,12 +219,11 @@ export default function EnergyExpenditurePage() {
         }
       }
 
-      const { data: saved } = await getLatestEnergyCalculation(patientId);
       if (saved) {
         if (saved.tmb_protocol || saved.protocol) setSelectedProtocol(saved.tmb_protocol || saved.protocol);
         const restored = restoreEnergyInputs(saved);
         setClinicalMobility(restored.clinicalMobility);
-        setDriActivity(restored.driActivity || 'inactive');
+        setDriActivity(restored.driActivity);
         setLifeStage(restored.lifeStage);
         setRequiresReview(restored.requiresReview);
         if (saved.activity_factor != null) setActivityFactor(Number(saved.activity_factor));
@@ -275,6 +284,7 @@ export default function EnergyExpenditurePage() {
     };
     const { error } = await saveEnergyCalculation(payload);
     if (error) throw error;
+    setRequiresReview(false);
     await logActivityEvent({
       eventName: 'energy.calculation.updated',
       sourceModule: 'energy',
@@ -315,6 +325,7 @@ export default function EnergyExpenditurePage() {
     const src = dataSource[field];
     if (src === 'anthropometry') return <Badge variant="secondary" className="text-xs ml-2"><Database className="w-3 h-3 mr-1" />Antropometria</Badge>;
     if (src === 'anamnesis') return <Badge variant="secondary" className="text-xs ml-2">Anamnese</Badge>;
+    if (src === 'saved') return <Badge variant="outline" className="text-xs ml-2">Último cálculo — confira</Badge>;
     if (src === 'profile') return <Badge variant="outline" className="text-xs ml-2"><User className="w-3 h-3 mr-1" />Perfil</Badge>;
     return null;
   };
@@ -409,7 +420,7 @@ export default function EnergyExpenditurePage() {
                 <div className="space-y-2">
                   <Label>Protocolo energético (TMB ou DRIs)</Label>
                   <Select value={selectedProtocol} onValueChange={(v) => setSelectedProtocol(v)}>
-                    <SelectTrigger><SelectValue placeholder="Selecione o protocolo" /></SelectTrigger>
+                    <SelectTrigger aria-label="Protocolo energético"><SelectValue placeholder="Selecione o protocolo" /></SelectTrigger>
                     <SelectContent>
                       {TMB_PROTOCOLS.map((p) => (
                         <SelectItem key={p.id} value={p.id}>{p.label}</SelectItem>
@@ -483,10 +494,7 @@ export default function EnergyExpenditurePage() {
                 </CardContent></Card>
             ) : isEer ? (
               <Card><CardHeader><CardTitle>DRIs — nível de atividade física</CardTitle><CardDescription>Adultos a partir de 19 anos. A atividade entra uma única vez na equação do GET.</CardDescription></CardHeader><CardContent className="space-y-4">
-                <Select value={driActivity} onValueChange={setDriActivity}><SelectTrigger aria-label="Atividade nas DRIs"><SelectValue /></SelectTrigger><SelectContent>
-                  {DRI_ACTIVITY_LEVELS.map(item => <SelectItem key={item.id} value={item.id}>{item.label}{selectedProtocol === 'eer_iom' ? ' (PA ' + driPaCoefficient(item.id, gender) + ')' : ''}</SelectItem>)}
-                </SelectContent></Select>
-                <p className="text-xs text-muted-foreground">{selectedProtocol === 'dri_2023' ? 'PAL: inativo 1,00–<1,53; pouco ativo 1,53–<1,68; ativo 1,68–<1,85; muito ativo 1,85–<2,50. A categoria seleciona os coeficientes da fórmula; não multiplica o resultado.' : 'PAL: sedentário 1,00–<1,40; pouco ativo 1,40–<1,60; ativo 1,60–<1,90; muito ativo 1,90–<2,50. PA é o coeficiente específico por sexo, aplicado aos termos de peso e altura.'}</p>
+                <DriActivitySelector value={driActivity} onChange={setDriActivity} protocol={selectedProtocol} gender={gender} onEditBiometry={() => setActiveTab('biometry')} />
                 <Select value={lifeStage} onValueChange={setLifeStage}><SelectTrigger aria-label="Aplicabilidade das DRIs"><SelectValue placeholder="Confirme a fase de vida" /></SelectTrigger><SelectContent>
                   <SelectItem value="adult">Adulto, fora de gestação e lactação</SelectItem>
                   <SelectItem value="pregnancy">Gestação — requer equação específica</SelectItem>
@@ -508,7 +516,7 @@ export default function EnergyExpenditurePage() {
               {!isEer && <Card><CardHeader><CardTitle>TMB</CardTitle></CardHeader><CardContent>{Math.round(tmbResult || 0)} kcal/dia</CardContent></Card>}
               <Card><CardHeader><CardTitle>Gasto Energético Total (GET)</CardTitle></CardHeader><CardContent>{plan.valid ? Math.round(getResult) : '—'} kcal/dia</CardContent></Card>
             </div>
-            <EnergyFormulaDetails plan={plan} />
+            {plan.valid && <EnergyFormulaDetails plan={plan} />}
 
             <div className="flex justify-end">
               <Button
@@ -524,7 +532,7 @@ export default function EnergyExpenditurePage() {
                     setSaving(false);
                   }
                 }}
-                disabled={saving}
+                disabled={saving || !plan.valid}
                 className="gap-2"
               >
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
@@ -552,17 +560,17 @@ export default function EnergyExpenditurePage() {
                     <Input id="ventaDays" type="number" min={1} value={ventaTimeframeDays} onChange={(e) => setVentaTimeframeDays(e.target.value)} placeholder="Ex: 90" />
                   </div>
                 </div>
-                <WeightProjectionCard
+                {plan.valid && <WeightProjectionCard
                   ventaTargetWeight={ventaTargetWeight ? parseFloat(ventaTargetWeight) : undefined}
                   ventaTimeframeDays={ventaTimeframeDays ? parseInt(ventaTimeframeDays, 10) : undefined}
                   currentWeight={weightNum}
                   getResult={getResult}
-                />
+                />}
               </CardContent>
             </Card>
 
-            <EnergyFormulaDetails plan={plan} />
-            <EnergyExpenditureResultsPanel
+            {plan.valid && <EnergyFormulaDetails plan={plan} />}
+            {plan.valid && <EnergyExpenditureResultsPanel
               tmbResult={tmbResult}
               getBase={getBase}
               metsAverageDaily={0}
@@ -571,13 +579,13 @@ export default function EnergyExpenditurePage() {
               isHarris={isHarris}
               ventaAdjustmentKcal={ventaAdjustmentKcal}
               finalPlannedKcal={finalPlannedKcal}
-            />
+            />}
 
             <Card className="border-2 border-primary/20 bg-primary/5">
               <CardContent className="pt-6">
                 <div className="text-center">
                   <p className="text-sm text-muted-foreground mb-2">Meta calórica final (VET)</p>
-                  <p className="text-5xl font-bold text-primary">{Math.round(finalPlannedKcal)} <span className="text-3xl font-normal">kcal</span></p>
+                  <p className="text-5xl font-bold text-primary">{plan.valid ? Math.round(finalPlannedKcal) : '—'} <span className="text-3xl font-normal">kcal</span></p>
                   <p className="text-sm text-muted-foreground mt-2">por dia</p>
                 </div>
               </CardContent>

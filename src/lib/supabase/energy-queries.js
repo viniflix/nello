@@ -1,3 +1,4 @@
+import { normalizeEnergyInput } from '@/lib/utils/energy-inputs';
 import { supabase } from '@/lib/customSupabaseClient';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
 import { calculateEnergyPlan, ENERGY_ENGINE_VERSION } from '@/lib/utils/energy-planning';
@@ -82,9 +83,8 @@ function extractBiometryFromContent(obj, acc) {
     if (key === 'data_nascimento' || key === 'birth_date') {
       if (acc.birth_date == null) acc.birth_date = v;
     }
-    if (key === 'sexo' || key === 'gender') {
-      const g = String(v).toLowerCase();
-      if (acc.gender == null) acc.gender = g === 'male' || g === 'masculino' || g === 'm' ? 'M' : g === 'female' || g === 'feminino' || g === 'f' ? 'F' : v;
+    if (key === 'sexo' || key === 'gender' || key === 'sex') {
+      if (acc.gender == null) acc.gender = normalizeEnergyInput('gender', v);
     }
     if (key === 'body_fat_percentage' || key === 'gordura') {
       const n = Number(v);
@@ -124,7 +124,8 @@ export const getInitialBiometryForEnergy = async (patientId) => {
     ]);
 
     const profile = profileRes.data;
-    if (profileRes.error) throw profileRes.error;
+    const loadError = profileRes.error || grRes.error || anamnesisRes.error || null;
+    if (loadError) logSupabaseError('Biometria carregada parcialmente', loadError);
 
     if (profile?.birth_date) {
       const birth = new Date(profile.birth_date);
@@ -132,11 +133,10 @@ export const getInitialBiometryForEnergy = async (patientId) => {
       let age = today.getFullYear() - birth.getFullYear();
       const monthDiff = today.getMonth() - birth.getMonth();
       if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) age--;
-      out.age = age;
+      if (Number.isFinite(age) && age >= 0) out.age = age;
     }
     if (profile?.gender) {
-      const g = String(profile.gender).toLowerCase();
-      out.gender = g === 'male' || g === 'masculino' || g === 'm' ? 'M' : g === 'female' || g === 'feminino' || g === 'f' ? 'F' : profile.gender;
+      out.gender = normalizeEnergyInput('gender', profile.gender);
     }
     if (profile?.weight != null) out.weight = Number(profile.weight);
     if (profile?.height != null) out.height = Number(profile.height);
@@ -185,15 +185,15 @@ export const getInitialBiometryForEnergy = async (patientId) => {
     if (fromAnamnesis.weight != null && sources.weight == null) sources.weight = 'anamnesis';
     if (fromAnamnesis.height != null && sources.height == null) sources.height = 'anamnesis';
     if (fromAnamnesis.age != null || fromAnamnesis.birth_date != null) sources.age = sources.age || 'anamnesis';
-    if (fromAnamnesis.gender != null && sources.gender == null) sources.gender = 'anamnesis';
+    if (fromAnamnesis.gender != null && !normalizeEnergyInput('gender', profile?.gender)) sources.gender = 'anamnesis';
     if (fromAnamnesis.body_fat_percentage != null && sources.body_fat_percentage == null) sources.body_fat_percentage = 'anamnesis';
     if (fromAnamnesis.lean_mass_kg != null && sources.lean_mass_kg == null) sources.lean_mass_kg = 'anamnesis';
     if (profile?.weight != null && sources.weight == null) sources.weight = 'profile';
     if (profile?.height != null && sources.height == null) sources.height = 'profile';
     if (profile?.birth_date != null && sources.age == null) sources.age = 'profile';
-    if (profile?.gender != null && sources.gender == null) sources.gender = 'profile';
+    if (normalizeEnergyInput('gender', profile?.gender)) sources.gender = 'profile';
 
-    return { data: { ...out, _sources: sources }, error: null };
+    return { data: { ...out, _sources: sources }, error: loadError };
   } catch (error) {
     logSupabaseError('Erro ao buscar biometria para energia', error);
     return {

@@ -40,7 +40,7 @@ export function calculateEnergyPlan(data) {
   return {
     valid: errors.length === 0, errors, isHarris, isDri,
     tmbResult: protocol?.bmr ?? null, getBase: getResult, getResult,
-    activityFactor, mobilityFactor, injuryFactor, paCoefficient: isDri && data.protocol === 'eer_iom' ? driPaCoefficient(data.driActivity || 'inactive', data.gender) : null,
+    activityFactor, mobilityFactor, injuryFactor, paCoefficient: isDri && data.protocol === 'eer_iom' ? driPaCoefficient(data.driActivity, data.gender) : null,
     ventaAdjustmentKcal: venta?.dailyAdjustmentKcal ?? null, finalPlannedKcal,
     formula, totalEquation, appliedTotal,
     finalEquation: `VET = ${getResult.toFixed(2)} − (${adjustment.toFixed(2)}) = ${finalPlannedKcal.toFixed(2)} kcal/dia`,
@@ -51,7 +51,7 @@ export function restoreEnergyInputs(saved) {
   const input = saved?.input_snapshot || {};
   return {
     clinicalMobility: input.clinical_mobility || '',
-    driActivity: input.dri_activity || '',
+    driActivity: DRI_ACTIVITY_LEVELS.some(item => item.id === input.dri_activity) ? input.dri_activity : '',
     lifeStage: input.life_stage || '',
     injuryFactorId: input.injury_factor_id || null,
     requiresReview: !!saved && saved.source_snapshot?.engine_version !== ENERGY_ENGINE_VERSION,

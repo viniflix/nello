@@ -169,14 +169,14 @@ export const EER_PA_COEFFICIENTS = {
  * @returns {number} GET em kcal/dia (não TMB)
  */
 export const calculateEerIom = (weight, heightCm, age, paCoefficient, gender) => {
-  const w = parseFloat(weight);
-  const h = parseFloat(heightCm);
-  const a = parseFloat(age);
-  if (isNaN(w) || isNaN(h) || isNaN(a) || w <= 0 || h <= 0 || a <= 0) return null;
-  const heightM = h / 100;
-  const paParam = parseFloat(paCoefficient);
-  const pa = isNaN(paParam) || paParam <= 0 ? 1.0 : paParam;
-  const isMale = /^(male|masculino|m)$/i.test(String(gender || '').trim());
+  if (!validEnergyBiometry({ weight, height: heightCm, age, gender }, 19)) return null;
+  const w = Number(weight);
+  const heightM = Number(heightCm) / 100;
+  const a = Number(age);
+  const pa = Number(paCoefficient);
+  const sex = normalizeEnergySex(gender);
+  if (!Object.keys(EER_PA_COEFFICIENTS[sex]).some(value => Number(value) === pa)) return null;
+  const isMale = sex === 'male';
   if (isMale) {
     return 662 - (9.53 * a) + pa * ((15.91 * w) + (539.6 * heightM));
   }
@@ -460,14 +460,14 @@ export const calculateAllProtocols = (data) => {
       description: 'GET direto (não usa TMB×FA). Inclui coeficiente de atividade.',
       isEer: true,
       bmr: null,
-      get: Number(age) >= 19 ? calculateEerIom(weight, heightNum, age, driPaCoefficient(data.driActivity || 'inactive', gender), gender) : null,
+      get: Number(age) >= 19 ? calculateEerIom(weight, heightNum, age, driPaCoefficient(data.driActivity, gender), gender) : null,
       category: 'clinical'
     },
     {
       id: 'dri_2023', name: 'DRIs / EER (2023)',
       description: 'Necessidade energética de adultos ≥19 anos. Atividade incluída na equação.',
       isEer: true, bmr: null,
-      get: calculateDri2023(data, data.driActivity || 'inactive'),
+      get: calculateDri2023(data, data.driActivity),
       category: 'general'
     }
   ];
@@ -563,7 +563,7 @@ export const getProtocolInfo = (protocolId) => {
  * @returns {Object|null} Objeto com breakdown da fórmula ou null se dados insuficientes
  */
 export const getFormulaBreakdown = (method, data) => {
-  if (method === 'dri_2023') return dri2023Breakdown(data, data.driActivity || 'inactive');
+  if (method === 'dri_2023') return dri2023Breakdown(data, data.driActivity);
   const { weight, height, age, gender, leanMass } = data;
 
   // Normalizar gênero
@@ -715,8 +715,9 @@ export const getFormulaBreakdown = (method, data) => {
 
     case 'eer_iom': {
       if (!validEnergyBiometry(data, 19)) return null;
-      const pa = driPaCoefficient(data.driActivity || 'inactive', gender);
+      const pa = driPaCoefficient(data.driActivity, gender);
       const result = calculateEerIom(weight, height, age, pa, gender);
+      if (result == null) return null;
       return {
         formulaName: 'DRIs / EER-IOM (2005) - GET direto',
         sourceUrl: 'https://www.nationalacademies.org/read/10490/chapter/2',
