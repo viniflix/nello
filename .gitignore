@@ -14,6 +14,10 @@ dist-ssr/
 *.local
 .codex-local/
 
+# Temporary workspace files
+/[Tt][Ee][Mm][Pp]/
+/[Tt][Mm][Pp]/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
