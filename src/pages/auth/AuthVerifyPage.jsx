@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/lib/customSupabaseClient';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
+import { safeAuthRedirect } from '@/lib/utils/authRedirect';
 
 /**
  * AuthVerifyPage
@@ -19,19 +20,11 @@ export default function AuthVerifyPage() {
         const handleVerify = async () => {
             const token = searchParams.get('token_hash') || searchParams.get('token');
             const type = searchParams.get('type'); // 'invite', 'signup', 'recovery', etc.
-            const defaultTarget = type === 'recovery' ? '/update-password?mode=recovery' : '/login';
+            const defaultTarget = type === 'recovery' ? '/update-password?mode=recovery'
+                : type === 'invite' ? '/update-password?mode=invite' : '/login';
             const redirectTo = searchParams.get('redirect_to') || defaultTarget;
             
-            // Extract the pathname from redirectTo if it's a full URL on our domain
-            let targetPath = redirectTo;
-            try {
-                const url = new URL(redirectTo);
-                if (url.origin === window.location.origin) {
-                    targetPath = url.pathname + url.search + url.hash;
-                }
-            } catch (e) {
-                // Not a valid URL, use as is
-            }
+            const targetPath = safeAuthRedirect(redirectTo, window.location.origin, defaultTarget);
 
             if (!token || !type) {
                 console.error('[AuthVerify] Missing token or type');
@@ -56,7 +49,6 @@ export default function AuthVerifyPage() {
                     });
                     navigate('/login');
                 } else {
-                    console.log('[AuthVerify] Success, redirecting to:', targetPath);
                     // Supabase verifies and establishes a session.
                     // Now redirect to the intended destination.
                     navigate(targetPath, { replace: true });
