@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Search, Plus, Trash2, Save, ArrowLeft, Award } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -16,7 +16,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { calculateNutrition, foodPer100Grams } from '@/lib/utils/nutrition-calculations';
 import { savePatientDiaryMeal } from '@/lib/supabase/food-diary-queries';
 import { format } from 'date-fns';
-import { getFoodMeasures } from '@/lib/supabase/foodService';
+import { getFoodMeasures, searchFoodsPaginated } from '@/lib/supabase/foodService';
 import { formatNutrient } from '@/lib/utils';
 
 const getMealType = (time) => {
@@ -40,6 +40,11 @@ const AddFoodPage = () => {
     const [foods, setFoods] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [showResults, setShowResults] = useState(false);
+    const [searching, setSearching] = useState(false);
+    const [searchError, setSearchError] = useState(false);
+    const [hasMoreFoods, setHasMoreFoods] = useState(false);
+    const [foodPage, setFoodPage] = useState(0);
+    const searchGeneration = useRef(0);
     const [mealItems, setMealItems] = useState([]);
     const [selectedFood, setSelectedFood] = useState(null);
     const [measure, setMeasure] = useState('grams');
@@ -52,25 +57,7 @@ const AddFoodPage = () => {
     const [conversions, setConversions] = useState([]);
     const [measureType, setMeasureType] = useState('direct'); // 'direct' or 'household'
 
-    const fetchFoods = useCallback(async () => {
-        if (!user || !user.profile) return;
-        const nutritionistId = user?.profile?.nutritionist_id;
-    
-        const { data, error } = await supabase
-            .from('foods')
-            .select('*')
-            .or(`nutritionist_id.is.null,nutritionist_id.eq.${nutritionistId}`)
-            .limit(1000); // OTIMIZADO: Limita a 1000 alimentos mais comuns
-          
-        if (error) {
-          toast({ title: "Erro", description: "Não foi possível carregar os alimentos.", variant: "destructive" });
-        } else {
-          setFoods(data || []);
-        }
-    }, [user, toast]);
-    
     useEffect(() => {
-        fetchFoods();
         if (mealId) {
             const fetchMeal = async () => {
                 const { data, error } = await supabase.from('meals').select('*, meal_items(*)').eq('id', mealId).single();
@@ -93,14 +80,51 @@ const AddFoodPage = () => {
             };
             fetchMeal();
         }
-    }, [mealId, navigate, toast, fetchFoods]);
+    }, [mealId, navigate, toast]);
 
-    const filteredFoods = useMemo(() => {
-        if (!searchTerm) return [];
-        return foods.filter(food =>
-            food.name.toLowerCase().includes(searchTerm.toLowerCase())
-        ).slice(0, 5);
-    }, [searchTerm, foods]);
+    useEffect(() => {
+        const generation = ++searchGeneration.current;
+        setFoods([]);
+        setFoodPage(0);
+        setHasMoreFoods(false);
+        setSearchError(false);
+        if (!showResults || searchTerm.trim().length < 2) {
+            setSearching(false);
+            return;
+        }
+        setSearching(true);
+        const timer = setTimeout(async () => {
+            try {
+                const result = await searchFoodsPaginated(searchTerm, 0);
+                if (generation !== searchGeneration.current) return;
+                setFoods(result.data);
+                setHasMoreFoods(result.hasMore);
+            } catch {
+                if (generation === searchGeneration.current) setSearchError(true);
+            } finally {
+                if (generation === searchGeneration.current) setSearching(false);
+            }
+        }, 250);
+        return () => clearTimeout(timer);
+    }, [searchTerm, showResults]);
+
+    const loadMoreFoods = async () => {
+        if (searching || !hasMoreFoods) return;
+        const generation = searchGeneration.current;
+        setSearching(true);
+        try {
+            const nextPage = foodPage + 1;
+            const result = await searchFoodsPaginated(searchTerm, nextPage);
+            if (generation !== searchGeneration.current) return;
+            setFoods(previous => [...previous, ...result.data]);
+            setFoodPage(nextPage);
+            setHasMoreFoods(result.hasMore);
+        } catch {
+            if (generation === searchGeneration.current) setSearchError(true);
+        } finally {
+            if (generation === searchGeneration.current) setSearching(false);
+        }
+    };
 
     const calculateNutrients = (food, grams) => {
         if(!food || !grams) return { calories: 0, protein: 0, fat: 0, carbs: 0 };
@@ -230,12 +254,16 @@ const AddFoodPage = () => {
                                         </div>
                                         {showResults && searchTerm && (
                                             <div className="mt-2 border rounded-lg bg-card max-h-48 overflow-y-auto z-20 absolute w-full shadow-lg">
-                                                {filteredFoods.length > 0 ? filteredFoods.map(food => (
+                                                {foods.map(food => (
                                                     <div key={food.id} className="p-3 border-b cursor-pointer hover:bg-muted" onClick={() => handleSelectFood(food)}>
                                                         <p className="font-medium">{food.name}</p>
                                                         <p className="text-xs text-muted-foreground">{formatNutrient(food.calories)} kcal por 100g</p>
                                                     </div>
-                                                )) : <div className="p-3 text-center text-muted-foreground">Nenhum alimento encontrado.</div>}
+                                                ))}
+                                                {searching && <div className="p-3 text-center text-muted-foreground">Buscando alimentos...</div>}
+                                                {searchError && <div className="p-3 text-center text-destructive">Busca indisponível. Tente novamente.</div>}
+                                                {!searching && !searchError && foods.length === 0 && <div className="p-3 text-center text-muted-foreground">{searchTerm.trim().length < 2 ? 'Digite ao menos 2 letras.' : 'Nenhum alimento encontrado.'}</div>}
+                                                {hasMoreFoods && !searching && <Button type="button" variant="ghost" className="w-full" onClick={loadMoreFoods}>Ver mais alimentos</Button>}
                                             </div>
                                         )}
                                     </div>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useToast } from '@/components/ui/use-toast';
 import { format, isToday, isTomorrow, isThisWeek, isThisMonth, startOfDay, addDays, subDays, isSameDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
@@ -7,11 +7,16 @@ import { createAppointmentWithFinance, updateAppointment } from '@/lib/supabase/
 import { getServices } from '@/lib/supabase/financial-queries';
 import { toPortugueseError } from '@/lib/utils/errorMessages';
 import { exportAgendaToPdf } from '@/lib/pdfUtils';
+import { fetchAppointmentsInPeriod } from '@/lib/supabase/agenda-list-queries';
 
 export function useAgendaController({ user }) {
     const { toast } = useToast();
     
     const [appointments, setAppointments] = useState([]);
+    const [summaryAppointments, setSummaryAppointments] = useState([]);
+    const [summaryReady, setSummaryReady] = useState(false);
+    const [agendaRevision, setAgendaRevision] = useState(0);
+    const loadSequence = useRef(0);
     const [patients, setPatients] = useState([]);
     const [services, setServices] = useState([]);
     const [selectedDate, setSelectedDate] = useState(null); // null = todos os dias
@@ -23,12 +28,18 @@ export function useAgendaController({ user }) {
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
     const [appointmentToDelete, setAppointmentToDelete] = useState(null);
     const [mobileCalendarOpen, setMobileCalendarOpen] = useState(false); // Modal do calendário mobile
+    const [calendarMonth, setCalendarMonth] = useState(startOfMonth(new Date()));
+    const [calendarAppointments, setCalendarAppointments] = useState([]);
     const [exportDialogOpen, setExportDialogOpen] = useState(false); // Modal de exportação PDF
     const [exportPeriodType, setExportPeriodType] = useState('week'); // 'week' ou 'month'
     const [exportWeekStart, setExportWeekStart] = useState(startOfWeek(new Date(), { locale: ptBR }));
     const [exportMonth, setExportMonth] = useState(new Date());
     const [askToRegisterPatient, setAskToRegisterPatient] = useState({ isOpen: false, name: '' });
     const [anamnesisModal, setAnamnesisModal] = useState({ open: false, patientId: null, patientName: '' });
+
+    useEffect(() => {
+        if (selectedDate) setCalendarMonth(startOfMonth(selectedDate));
+    }, [selectedDate]);
 
     const normalizeAppointment = useCallback((appointment) => {
         const startValue = appointment?.start_time || appointment?.appointment_time || null;
@@ -47,15 +58,65 @@ export function useAgendaController({ user }) {
 
     const loadData = useCallback(async () => {
         if (!user) return;
+        const sequence = ++loadSequence.current;
         setLoading(true);
-        const { data: apptsData, error: apptsError } = await supabase
-            .from('appointments')
-            .select('*, patient:user_profiles!appointments_patient_id_fkey(name, id)')
-            .eq('nutritionist_id', user.id)
-            .limit(1000);
+        const now = new Date();
+        const start = selectedDate ? startOfDay(selectedDate)
+            : filterView === 'today' ? startOfDay(now)
+            : filterView === 'week' ? startOfWeek(now, { locale: ptBR })
+            : filterView === 'month' ? startOfMonth(now) : startOfDay(now);
+        const end = selectedDate ? addDays(start, 1)
+            : filterView === 'today' ? addDays(start, 1)
+            : filterView === 'week' ? addDays(startOfDay(endOfWeek(now, { locale: ptBR })), 1)
+            : filterView === 'month' ? new Date(now.getFullYear(), now.getMonth() + 1, 1) : null;
+        try {
+            const apptsData = await fetchAppointmentsInPeriod(user.id, start, end);
+            if (sequence === loadSequence.current) setAppointments(apptsData.map(normalizeAppointment));
+        } catch (error) {
+            if (sequence === loadSequence.current) toast({ title: 'Erro', description: toPortugueseError(error, 'Não foi possível carregar a agenda.'), variant: 'destructive' });
+        } finally {
+            if (sequence === loadSequence.current) setLoading(false);
+        }
+    }, [user, toast, normalizeAppointment, selectedDate, filterView]);
 
-        if (apptsError) toast({ title: "Erro", description: apptsError.message, variant: "destructive" });
-        else setAppointments((apptsData || []).map(normalizeAppointment));
+    useEffect(() => {
+        let cancelled = false;
+        if (!user?.id) return;
+        fetchAppointmentsInPeriod(user.id, calendarMonth, new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 1), 'id, appointment_time', 'agenda_calendar')
+            .then(rows => { if (!cancelled) setCalendarAppointments(rows); })
+            .catch(error => { if (!cancelled) console.error('Falha ao carregar contagem do calendário', error); });
+        return () => { cancelled = true; };
+    }, [user?.id, calendarMonth, agendaRevision]);
+
+    useEffect(() => {
+        if (!user?.id) return;
+        let cancelled = false;
+        setSummaryReady(false);
+        const now = new Date();
+        const weekStart = startOfWeek(now, { locale: ptBR });
+        const monthStart = startOfMonth(now);
+        const weekEnd = addDays(startOfDay(endOfWeek(now, { locale: ptBR })), 1);
+        const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+        fetchAppointmentsInPeriod(
+            user.id,
+            weekStart < monthStart ? weekStart : monthStart,
+            weekEnd > monthEnd ? weekEnd : monthEnd,
+            'id, appointment_time',
+            'agenda_summary'
+        ).then(rows => {
+            if (!cancelled) {
+                setSummaryAppointments(rows);
+                setSummaryReady(true);
+            }
+        })
+            .catch(error => { if (!cancelled) console.error('Falha ao carregar resumo da agenda', error); });
+        return () => { cancelled = true; };
+    }, [user?.id, agendaRevision]);
+
+    useEffect(() => {
+        if (!user?.id) return;
+        let cancelled = false;
+        const loadReferenceData = async () => {
 
         let patientsList = [];
         let loadError = null;
@@ -102,18 +163,19 @@ export function useAgendaController({ user }) {
             console.error('Error fetching patients:', e);
         }
 
-        setPatients(patientsList);
+        if (!cancelled) setPatients(patientsList);
 
         try {
             const servicesData = await getServices(user.id);
-            setServices(servicesData || []);
+            if (!cancelled) setServices(servicesData || []);
         } catch (error) {
             console.error('Error loading services:', error);
-            setServices([]);
+            if (!cancelled) setServices([]);
         }
-
-        setLoading(false);
-    }, [user, toast, normalizeAppointment]);
+        };
+        loadReferenceData();
+        return () => { cancelled = true; };
+    }, [user?.id, toast]);
 
     useEffect(() => {
         loadData();
@@ -125,7 +187,9 @@ export function useAgendaController({ user }) {
         const startTime = new Date(appointment_time);
         const endTime = new Date(startTime.getTime() + duration * 60000);
 
-        const hasConflict = appointments.some(appt => {
+        try {
+        const nearbyAppointments = await fetchAppointmentsInPeriod(user.id, new Date(startTime.getTime() - 24 * 60 * 60 * 1000), endTime, undefined, 'agenda_conflict');
+        const hasConflict = nearbyAppointments.some(appt => {
             if (appointmentData.id && appt.id === appointmentData.id) return false;
 
             const apptStart = new Date(appt.appointment_time);
@@ -143,7 +207,6 @@ export function useAgendaController({ user }) {
             return;
         }
 
-        try {
             if (appointmentData.id) {
                 await updateAppointment(appointmentData.id, {
                     nutritionist_id: user.id,
@@ -193,6 +256,7 @@ export function useAgendaController({ user }) {
             setIsFormOpen(false);
             setEditingAppointment(null);
             loadData();
+            setAgendaRevision(revision => revision + 1);
         } catch (error) {
             console.error('Error saving appointment:', error);
             const errMsg = error?.message || error?.details || (typeof error === 'string' ? error : '');
@@ -218,6 +282,7 @@ export function useAgendaController({ user }) {
         } else {
             toast({ title: "Sucesso!", description: "Agendamento deletado com sucesso." });
             loadData();
+            setAgendaRevision(revision => revision + 1);
         }
         setDeleteConfirmOpen(false);
         setAppointmentToDelete(null);
@@ -270,12 +335,12 @@ export function useAgendaController({ user }) {
 
     const appointmentsByDay = useMemo(() => {
         const counts = {};
-        appointments.forEach(a => {
+        calendarAppointments.forEach(a => {
             const dateKey = format(new Date(a.appointment_time), 'yyyy-MM-dd');
             counts[dateKey] = (counts[dateKey] || 0) + 1;
         });
         return counts;
-    }, [appointments]);
+    }, [calendarAppointments]);
 
     const getDayColorClass = (date) => {
         const dateKey = format(date, 'yyyy-MM-dd');
@@ -386,20 +451,14 @@ export function useAgendaController({ user }) {
                 endDate = endOfWeek(exportWeekStart, { locale: ptBR });
                 periodLabel = `Semana de ${format(startDate, 'dd/MM')} a ${format(endDate, 'dd/MM/yyyy')}`;
 
-                filteredExport = appointments.filter(a => {
-                    const apptDate = new Date(a.appointment_time);
-                    return apptDate >= startDate && apptDate <= endDate;
-                }).sort((a, b) => new Date(a.appointment_time) - new Date(b.appointment_time));
+                filteredExport = await fetchAppointmentsInPeriod(user.id, startDate, addDays(startOfDay(endDate), 1), undefined, 'agenda_export');
             } else {
                 startDate = startOfMonth(exportMonth);
                 endDate = endOfMonth(exportMonth);
                 periodLabel = format(exportMonth, "MMMM 'de' yyyy", { locale: ptBR });
                 periodLabel = periodLabel.charAt(0).toUpperCase() + periodLabel.slice(1);
 
-                filteredExport = appointments.filter(a => {
-                    const apptDate = new Date(a.appointment_time);
-                    return apptDate >= startDate && apptDate <= endDate;
-                }).sort((a, b) => new Date(a.appointment_time) - new Date(b.appointment_time));
+                filteredExport = await fetchAppointmentsInPeriod(user.id, startDate, new Date(endDate.getFullYear(), endDate.getMonth() + 1, 1), undefined, 'agenda_export');
             }
 
             if (filteredExport.length === 0) {
@@ -436,6 +495,8 @@ export function useAgendaController({ user }) {
 
     return {
         appointments,
+        summaryAppointments,
+        summaryReady,
         patients,
         services,
         selectedDate,
@@ -447,6 +508,7 @@ export function useAgendaController({ user }) {
         deleteConfirmOpen,
         appointmentToDelete,
         mobileCalendarOpen,
+        calendarMonth,
         exportDialogOpen,
         exportPeriodType,
         exportWeekStart,
@@ -465,6 +527,7 @@ export function useAgendaController({ user }) {
         setDeleteConfirmOpen,
         setAppointmentToDelete,
         setMobileCalendarOpen,
+        setCalendarMonth,
         setExportDialogOpen,
         setExportPeriodType,
         setExportWeekStart,

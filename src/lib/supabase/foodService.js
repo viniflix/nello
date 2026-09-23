@@ -1,11 +1,11 @@
 import { supabase } from '@/lib/customSupabaseClient';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
+import { Events, track } from '@/infrastructure/analytics/posthog';
 
 /**
  * Food Service - Centralized food search with pagination
  * 
- * Uses search_foods RPC for optimized server-side search
- * Falls back to direct query with .range() if RPC is unavailable
+ * Uses the foods view with server-side filtering and bounded pages.
  */
 
 const ITEMS_PER_PAGE = 20;
@@ -44,42 +44,46 @@ export async function getFoodMeasures(foodId) {
  * @param {string} searchTerm - Search query
  * @param {number} page - Page number (0-indexed)
  * @param {string} source - Optional source filter
- * @param {boolean} includeMeasures - Se true, inclui food_measures (mais lento)
- * @returns {Promise<{data: Array, hasMore: boolean, total: number}>}
+ * @returns {Promise<{data: Array, hasMore: boolean, total: null}>}
  */
-export async function searchFoodsPaginated(searchTerm, page = 0, source = null, includeMeasures = false) {
+export async function searchFoodsPaginated(searchTerm, page = 0, source = null) {
   if (!searchTerm || searchTerm.trim().length < 2) {
     return { data: [], hasMore: false, total: 0 };
   }
 
-  const offset = page * ITEMS_PER_PAGE;
+  const offset = Math.max(0, Math.floor(Number(page) || 0)) * ITEMS_PER_PAGE;
   const limit = ITEMS_PER_PAGE;
+  // PostgreSQL LIKE wildcards must be literal when typed by a user.
+  const literalTerm = searchTerm.trim().slice(0, 120).replace(/[\\%_]/g, '\\$&');
   // view foods não tem relação direta com food_measures; use getFoodMeasures(id) quando precisar
   const selectFields = 'id, name, group, description, source, calories, protein, carbs, fat, fiber, sodium, portion_size';
+  const started = performance.now();
 
   try {
     let query = supabase
       .from('foods')
-      .select(selectFields, { count: 'exact' })
+      .select(selectFields)
       .eq('is_active', true)
-      .ilike('name', `%${searchTerm.trim()}%`)
+      .ilike('name', `%${literalTerm}%`)
       .order('name', { ascending: true })
-      .range(offset, offset + limit - 1);
+      .order('id', { ascending: true })
+      .range(offset, offset + limit);
 
     if (source) {
       query = query.eq('source', source);
     }
 
-    const { data, error, count } = await query;
+    const { data, error } = await query;
 
     if (error) {
       throw error;
     }
 
+    track(Events.DATA_LOAD_TIMING, { operation: 'food_search_page', duration_ms: Math.round(performance.now() - started), result_count: (data || []).length, page: Math.floor(offset / limit) });
     return {
-      data: data || [],
-      hasMore: (offset + limit) < (count || 0),
-      total: count || 0
+      data: (data || []).slice(0, limit),
+      hasMore: (data || []).length > limit,
+      total: null
     };
   } catch (error) {
     logSupabaseError('Error searching foods', error);

@@ -40,18 +40,37 @@ const FOOD_FIELDS = `
     folate
 `;
 
+const fetchAllRows = async (buildQuery, pageSize = 500) => {
+    const rows = [];
+    for (let offset = 0; ; offset += pageSize) {
+        const { data, error } = await buildQuery(offset, pageSize);
+        if (error) throw error;
+        rows.push(...(data || []));
+        if (!data || data.length < pageSize) return rows;
+    }
+};
+
+const fetchByIdsInPages = async (ids, buildQuery) => {
+    const rows = [];
+    for (let start = 0; start < ids.length; start += 200) {
+        const chunk = ids.slice(start, start + 200);
+        rows.push(...await fetchAllRows((offset, pageSize) => buildQuery(chunk, offset, pageSize)));
+    }
+    return rows;
+};
+
 const getFoodsMapByIds = async (foodIds) => {
     const ids = [...new Set((foodIds || []).filter(Boolean).map(String))];
     if (ids.length === 0) return {};
 
-    const { data, error } = await supabase
-        .from('foods')
-        .select(FOOD_FIELDS)
-        .in('id', ids);
+    const chunks = [];
+    for (let offset = 0; offset < ids.length; offset += 400) {
+        const { data, error } = await supabase.from('foods').select(FOOD_FIELDS).in('id', ids.slice(offset, offset + 400));
+        if (error) throw error;
+        chunks.push(...(data || []));
+    }
 
-    if (error) throw error;
-
-    return (data || []).reduce((acc, food) => {
+    return chunks.reduce((acc, food) => {
         acc[String(food.id)] = food;
         return acc;
     }, {});
@@ -195,22 +214,18 @@ export const createMealPlan = async (planData) => {
  */
 export const getMealPlans = async (patientId, onlyActive = false) => {
     try {
-        let query = supabase
-            .from('meal_plans')
-            .select('*')
-            .eq('patient_id', patientId)
-            .eq('is_draft', false)    // Never show draft plans in the list
-            .eq('is_template', false) // Never show templates in the plan list
-            .order('created_at', { ascending: false });
-
-        if (onlyActive) {
-            query = query.eq('is_active', true);
-        }
-
-        const { data, error } = await query;
-
-        if (error) throw error;
-        return { data: data || [], error: null };
+        const data = await fetchAllRows((offset, pageSize) => {
+            let query = supabase.from('meal_plans').select('*')
+                .eq('patient_id', patientId)
+                .eq('is_draft', false)
+                .eq('is_template', false)
+                .order('created_at', { ascending: false })
+                .order('id', { ascending: false })
+                .range(offset, offset + pageSize - 1);
+            if (onlyActive) query = query.eq('is_active', true);
+            return query;
+        });
+        return { data, error: null };
     } catch (error) {
         logSupabaseError('Erro ao buscar planos alimentares', error);
         return { data: [], error };
@@ -222,29 +237,29 @@ export const getMealPlans = async (patientId, onlyActive = false) => {
  * @param {number} planId - ID do plano
  * @returns {Promise<{data: object, error: object}>}
  */
-export const getMealPlanById = async (planId) => {
+export const getMealPlansByIds = async (planIds, existingPlans = null) => {
     try {
-        // Buscar plano
-        const { data: plan, error: planError } = await supabase
-            .from('meal_plans')
-            .select('*')
-            .eq('id', planId)
-            .single();
-
-        if (planError) throw planError;
+        if (!planIds.length) return { data: [], error: null };
+        let plans = existingPlans;
+        if (!plans) {
+            plans = [];
+            for (let offset = 0; offset < planIds.length; offset += 400) {
+                const { data, error } = await supabase.from('meal_plans').select('*').in('id', planIds.slice(offset, offset + 400));
+                if (error) throw error;
+                plans.push(...(data || []));
+            }
+        }
+        if (plans.length !== planIds.length) throw new Error('Um ou mais planos não foram encontrados.');
 
         // Buscar refeições do plano
-        const { data: meals, error: mealsError } = await supabase
-            .from('meal_plan_meals')
-            .select('*')
-            .eq('meal_plan_id', planId)
-            .order('order_index', { ascending: true });
-
-        if (mealsError) throw mealsError;
+        const meals = await fetchByIdsInPages(planIds, (ids, offset, pageSize) => supabase
+            .from('meal_plan_meals').select('*').in('meal_plan_id', ids)
+            .order('order_index', { ascending: true }).order('id', { ascending: true })
+            .range(offset, offset + pageSize - 1));
 
         if (!meals || meals.length === 0) {
             return {
-                data: { ...plan, meals: [] },
+                data: plans.map(plan => ({ ...plan, meals: [] })),
                 error: null
             };
         }
@@ -252,13 +267,10 @@ export const getMealPlanById = async (planId) => {
         const mealIds = meals.map(m => m.id);
 
         // 1. Batch Fetch: Todos os alimentos de todas as refeições do plano
-        const { data: allFoods, error: allFoodsError } = await supabase
-            .from('meal_plan_foods')
-            .select('*')
-            .in('meal_plan_meal_id', mealIds)
-            .order('order_index', { ascending: true });
-
-        if (allFoodsError) throw allFoodsError;
+        const allFoods = await fetchByIdsInPages(mealIds, (ids, offset, pageSize) => supabase
+            .from('meal_plan_foods').select('*').in('meal_plan_meal_id', ids)
+            .order('order_index', { ascending: true }).order('id', { ascending: true })
+            .range(offset, offset + pageSize - 1));
 
         // Agrupar alimentos por meal_plan_meal_id
         const foodsByMealId = (allFoods || []).reduce((acc, food) => {
@@ -332,11 +344,12 @@ export const getMealPlanById = async (planId) => {
         let subFoodIds = [];
 
         if (allMealPlanFoodIds.length > 0) {
-            const { data: subs, error: subsError } = await supabase
+            const subs = await fetchByIdsInPages(allMealPlanFoodIds, (ids, offset, pageSize) => supabase
                 .from('meal_plan_food_substitutions')
-                .select('meal_plan_food_id, substitute_food_id, quantity, unit')
-                .in('meal_plan_food_id', allMealPlanFoodIds);
-            if (subsError) throw subsError;
+                .select('id, meal_plan_food_id, substitute_food_id, quantity, unit')
+                .in('meal_plan_food_id', ids)
+                .order('id', { ascending: true })
+                .range(offset, offset + pageSize - 1));
             
             if (subs && subs.length > 0) {
                 subFoodIds = subs.map(s => s.substitute_food_id);
@@ -392,16 +405,21 @@ export const getMealPlanById = async (planId) => {
         });
 
         return {
-            data: {
+            data: plans.map(plan => ({
                 ...plan,
-                meals: mealsWithFoods
-            },
+                meals: mealsWithFoods.filter(meal => meal.meal_plan_id === plan.id)
+            })),
             error: null
         };
     } catch (error) {
         logSupabaseError('Erro ao buscar plano alimentar', error);
-        return { data: null, error };
+        return { data: [], error };
     }
+};
+
+export const getMealPlanById = async (planId) => {
+    const result = await getMealPlansByIds([planId]);
+    return { data: result.data?.[0] || null, error: result.error };
 };
 
 /**
@@ -428,7 +446,8 @@ export const getActiveMealPlan = async (patientId) => {
 
         // Se encontrou um plano, buscar com detalhes completos
         if (data) {
-            return getMealPlanById(data.id);
+            const result = await getMealPlansByIds([data.id], [data]);
+            return { data: result.data?.[0] || null, error: result.error };
         }
 
         return { data: null, error: null };
@@ -1640,27 +1659,20 @@ export const getDraftMealPlan = async (patientId, nutritionistId) => {
  */
 export const getDraftMealPlans = async (patientId, nutritionistId) => {
     try {
-        // Passo 1: encontra os IDs de todos os rascunhos (ordenados por update desc)
-        const { data: draftMetas, error } = await supabase
-            .from('meal_plans')
-            .select('id')
+        const draftMetas = await fetchAllRows((offset, pageSize) => supabase
+            .from('meal_plans').select('*')
             .eq('patient_id', patientId)
             .eq('nutritionist_id', nutritionistId)
             .eq('is_draft', true)
-            .order('updated_at', { ascending: false });
-
-        if (error) throw error;
+            .order('updated_at', { ascending: false })
+            .order('id', { ascending: false })
+            .range(offset, offset + pageSize - 1));
         if (!draftMetas || draftMetas.length === 0) return { data: [], error: null };
 
-        // Passo 2: busca o plano COMPLETO para cada um (para recovery no form ou count de itens)
-        const draftsPromises = draftMetas.map(meta => getMealPlanById(meta.id));
-        const results = await Promise.all(draftsPromises);
-        const failed = results.find(res => res.error);
-        if (failed) throw failed.error;
-
-        const drafts = results
-            .filter(res => res.data && !res.error)
-            .map(res => res.data);
+        const result = await getMealPlansByIds(draftMetas.map(meta => meta.id), draftMetas);
+        if (result.error) throw result.error;
+        const planMap = new Map(result.data.map(plan => [plan.id, plan]));
+        const drafts = draftMetas.map(meta => planMap.get(meta.id)).filter(Boolean);
 
         return { data: drafts, error: null };
     } catch (error) {

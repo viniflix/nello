@@ -10,10 +10,12 @@ const mockSingle = vi.fn();
 const mockMaybeSingle = vi.fn();
 const mockSelect = vi.fn();
 const mockEq = vi.fn();
+const mockIn = vi.fn();
 const mockInsert = vi.fn();
 const mockUpdate = vi.fn();
 const mockDelete = vi.fn();
 const mockOrder = vi.fn();
+const mockRange = vi.fn();
 const mockLimit = vi.fn();
 const mockFrom = vi.fn();
 
@@ -21,10 +23,12 @@ const mockFrom = vi.fn();
 const chainable = {
     select: mockSelect,
     eq: mockEq,
+    in: mockIn,
     insert: mockInsert,
     update: mockUpdate,
     delete: mockDelete,
     order: mockOrder,
+    range: mockRange,
     limit: mockLimit,
     single: mockSingle,
     maybeSingle: mockMaybeSingle,
@@ -45,6 +49,7 @@ vi.mock('@/lib/customSupabaseClient', () => ({
 // ─── Import after mock ────────────────────────────────────────────────────────
 const {
     getDraftMealPlan,
+    getDraftMealPlans,
     setActiveMealPlan,
     promoteDraftToActive,
     deleteDraftMealPlan,
@@ -65,6 +70,8 @@ describe('D6-D8 — plano clínico atômico e auditável', () => {
     it('envia estratégia, dias e motivo para o versionamento transacional do servidor', async () => {
         mockRpc.mockResolvedValue({ data: { status: 'success', version_number: 2 }, error: null });
         mockSingle.mockResolvedValue({ data: { id: 42, plan_mode: 'qualitative', meals: [] }, error: null });
+        mockIn.mockResolvedValueOnce({ data: [{ id: 42, plan_mode: 'qualitative' }], error: null });
+        mockRange.mockResolvedValueOnce({ data: [], error: null });
 
         const result = await updateFullMealPlan(42, {
             name: 'Plano flexível', start_date: '2026-08-13', active_days: ['monday'],
@@ -256,7 +263,7 @@ describe('getDraftMealPlan', () => {
     });
 
     it('deve retornar null se não existir rascunho para o paciente', async () => {
-        mockMaybeSingle.mockResolvedValue({ data: null, error: null });
+        mockRange.mockResolvedValue({ data: [], error: null });
 
         const result = await getDraftMealPlan('patient-001', 'nutritionist-001');
 
@@ -264,32 +271,29 @@ describe('getDraftMealPlan', () => {
         expect(result.error).toBeNull();
     });
 
-    it('deve buscar o plano COMPLETO (com refeições) quando rascunho existe', async () => {
-        // Passo 1: maybeSingle retorna apenas o ID do draft
-        mockMaybeSingle.mockResolvedValueOnce({ data: { id: 99 }, error: null });
+    it('monta vários rascunhos completos com uma consulta por tabela', async () => {
+        mockRange
+            .mockResolvedValueOnce({ data: [{ id: 99, name: 'Primeiro' }, { id: 100, name: 'Segundo' }], error: null })
+            .mockResolvedValueOnce({ data: [
+                { id: 1, meal_plan_id: 99, name: 'Café' },
+                { id: 2, meal_plan_id: 100, name: 'Almoço' },
+            ], error: null })
+            .mockResolvedValueOnce({ data: [], error: null });
 
-        // Passo 2: getMealPlanById deve ser chamado — retorna plano completo
-        const fullPlan = {
-            id: 99,
-            name: 'Rascunho',
-            meals: [
-                { id: 1, name: 'Café da manhã', foods: [{ id: 10, food_id: 5 }] }
-            ]
-        };
-        // getMealPlanById faz sua própria query encadeada
-        mockSingle.mockResolvedValue({ data: fullPlan, error: null });
+        const result = await getDraftMealPlans('patient-001', 'nutritionist-001');
 
-        const result = await getDraftMealPlan('patient-001', 'nutritionist-001');
-
-        // Garante que a query inicial buscou apenas o id
-        expect(mockSelect).toHaveBeenCalledWith('id');
-        // E que o resultado final tem as refeições
-        expect(result.data).toBeDefined();
+        expect(result.error).toBeNull();
+        expect(result.data.map(plan => [plan.id, plan.meals[0]?.name])).toEqual([
+            [99, 'Café'], [100, 'Almoço'],
+        ]);
+        expect(mockFrom.mock.calls.map(([table]) => table)).toEqual([
+            'meal_plans', 'meal_plan_meals', 'meal_plan_foods',
+        ]);
     });
 
     it('deve retornar erro propagado do banco', async () => {
         const dbError = new Error('DB timeout');
-        mockMaybeSingle.mockResolvedValue({ data: null, error: dbError });
+        mockRange.mockResolvedValue({ data: null, error: dbError });
 
         const result = await getDraftMealPlan('patient-001', 'nutritionist-001');
 

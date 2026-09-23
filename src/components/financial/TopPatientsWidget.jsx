@@ -23,47 +23,12 @@ export default function TopPatientsWidget({ nutritionistId, refreshKey = 0 }) {
         setLoading(true);
         setLoadFailed(false);
         try {
-            // Fetch all paid income transactions
-            const transactions = [];
-            for (let offset = 0; ; offset += 1000) {
-                const { data, error } = await supabase
-                    .from('financial_transactions')
-                    .select(`
-                        id, patient_id, amount, net_amount,
-                        patient:user_profiles!financial_transactions_patient_id_fkey(id, name, avatar_url, cpf)
-                    `)
-                    .eq('nutritionist_id', nutritionistId)
-                    .eq('type', 'income')
-                    .eq('status', 'paid')
-                    .not('patient_id', 'is', null)
-                    .order('id', { ascending: true })
-                    .range(offset, offset + 999);
-                if (error) throw error;
-                transactions.push(...(data || []));
-                if (!data || data.length < 1000) break;
-            }
-
-            // Group by patient_id and sum amounts
-            const patientTotals = {};
-            transactions.forEach(transaction => {
-                if (!transaction.patient_id) return;
-                
-                const patientId = transaction.patient_id;
-                if (!patientTotals[patientId]) {
-                    patientTotals[patientId] = {
-                        patient: transaction.patient,
-                        total: 0
-                    };
-                }
-                patientTotals[patientId].total += parseFloat(transaction.net_amount ?? transaction.amount ?? 0);
-            });
-
-            // Convert to array, sort by total, and take top 3
-            const sorted = Object.values(patientTotals)
-                .sort((a, b) => b.total - a.total)
-                .slice(0, 3);
-
-            setTopPatients(sorted);
+            const { data, error } = await supabase.rpc('get_top_financial_patients', { p_limit: 3 });
+            if (error) throw error;
+            setTopPatients((data || []).map(row => ({
+                patient: { id: row.patient_id, name: row.patient_name, avatar_url: row.avatar_url },
+                total: Number(row.total) || 0,
+            })));
         } catch (error) {
             console.warn('Top patients query failed', { code: error?.code || 'unknown' });
             setTopPatients([]);

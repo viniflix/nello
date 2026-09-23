@@ -47,6 +47,7 @@ import { generateReceipt } from '@/lib/pdf/receiptGenerator';
 import { exportFinancialReport } from '@/lib/utils/exportUtils';
 import { getClinicSettings } from '@/lib/supabase/profile-queries';
 import { toPortugueseError } from '@/lib/utils/errorMessages';
+import { Events, track } from '@/infrastructure/analytics/posthog';
 import { summarizeFinancialTransactions, buildFinancialCashFlow, buildFinancialExpenseDistribution, formatFinancialDecimal } from '@/lib/utils/financial-math';
 
 export default function FinancialPage() {
@@ -95,30 +96,19 @@ export default function FinancialPage() {
         }
     }, [user?.id]);
 
-    // Load each month once; all cards, charts and exports share these exact rows.
+    // Only transactions depend on the selected month.
     const loadData = useCallback(async () => {
         if (!user?.id) return;
         const request = ++loadRequest.current;
+        const started = performance.now();
         setLoading(true);
         setLoadError(false);
         setMonthRows([]);
         try {
-            const [rowsResult, projectionResult, patientsResult, servicesResult] = await Promise.allSettled([
-                getFinancialMonthRows(user.id, selectedMonth),
-                getProjectedCashFlow(user.id, new Date()),
-                getPatientsForAutocomplete(user.id),
-                getServices(user.id),
-            ]);
+            const rows = await getFinancialMonthRows(user.id, selectedMonth);
             if (request !== loadRequest.current) return;
-            if (rowsResult.status === 'rejected') throw rowsResult.reason;
-            setMonthRows(rowsResult.value);
-            setProjectedCashFlow(projectionResult.status === 'fulfilled' ? projectionResult.value : []);
-            if (patientsResult.status === 'fulfilled') setPatients(patientsResult.value);
-            if (servicesResult.status === 'fulfilled') setServices(servicesResult.value);
-            setRankingRevision((revision) => revision + 1);
-            if (projectionResult.status === 'rejected' || patientsResult.status === 'rejected' || servicesResult.status === 'rejected') {
-                toast({ title: 'Dados complementares indisponíveis', description: 'Os lançamentos foram carregados. Tente atualizar para recuperar projeção, pacientes ou serviços.', variant: 'destructive' });
-            }
+            setMonthRows(rows);
+            track(Events.DATA_LOAD_TIMING, { operation: 'financial_month', duration_ms: Math.round(performance.now() - started), result_count: rows.length });
         } catch (error) {
             if (request !== loadRequest.current) return;
             console.error('Falha ao carregar lançamentos financeiros', { code: error?.code || 'unknown' });
@@ -129,10 +119,32 @@ export default function FinancialPage() {
         }
     }, [user?.id, selectedMonth, toast]);
 
+    const loadAuxiliaryData = useCallback(async () => {
+        if (!user?.id) return;
+        const [projection, patientsResult, servicesResult] = await Promise.allSettled([
+            getProjectedCashFlow(user.id, new Date()),
+            getPatientsForAutocomplete(user.id),
+            getServices(user.id),
+        ]);
+        if (projection.status === 'fulfilled') setProjectedCashFlow(projection.value);
+        if (patientsResult.status === 'fulfilled') setPatients(patientsResult.value);
+        if (servicesResult.status === 'fulfilled') setServices(servicesResult.value);
+        if ([projection, patientsResult, servicesResult].some(result => result.status === 'rejected')) {
+            toast({ title: 'Dados complementares indisponíveis', description: 'Tente atualizar para recuperar projeção, pacientes ou serviços.', variant: 'destructive' });
+        }
+    }, [user?.id, toast]);
+
     useEffect(() => {
         loadData();
         return () => { loadRequest.current += 1; };
     }, [loadData]);
+
+    useEffect(() => { loadAuxiliaryData(); }, [loadAuxiliaryData]);
+
+    const refreshAfterMutation = async () => {
+        await Promise.all([loadData(), loadAuxiliaryData()]);
+        setRankingRevision(revision => revision + 1);
+    };
 
     // Handlers
     const handleNewTransaction = () => {
@@ -177,7 +189,7 @@ export default function FinancialPage() {
 
             setIsDialogOpen(false);
             setEditingTransaction(null);
-            loadData();
+            await refreshAfterMutation();
         } catch (error) {
             console.error('Error saving transaction:', error);
             toast({
@@ -196,7 +208,7 @@ export default function FinancialPage() {
                 description: "Transação deletada com sucesso."
             });
             setDeleteConfirm(null);
-            loadData();
+            await refreshAfterMutation();
         } catch (error) {
             console.error('Error deleting transaction:', error);
             toast({
@@ -211,7 +223,7 @@ export default function FinancialPage() {
         try {
             await updateTransactionStatus(id, 'paid');
             setPaymentConfirm(null);
-            await loadData();
+            await refreshAfterMutation();
             toast({ title: 'Recebimento confirmado' });
         } catch (error) {
             toast({ title: 'Não foi possível confirmar', description: toPortugueseError(error), variant: 'destructive' });
@@ -222,7 +234,7 @@ export default function FinancialPage() {
         try {
             await refundTransaction(id);
             setRefundConfirm(null);
-            await loadData();
+            await refreshAfterMutation();
             toast({ title: 'Estorno registrado' });
         } catch (error) {
             toast({ title: 'Não foi possível registrar o estorno', description: toPortugueseError(error), variant: 'destructive' });

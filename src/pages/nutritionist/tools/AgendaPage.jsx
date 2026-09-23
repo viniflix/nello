@@ -27,7 +27,8 @@ export default function AgendaPage() {
     const routeActionHandledRef = useRef(false);
     
     const {
-        appointments,
+        summaryAppointments,
+        summaryReady,
         patients,
         services,
         selectedDate,
@@ -39,6 +40,7 @@ export default function AgendaPage() {
         deleteConfirmOpen,
         appointmentToDelete,
         mobileCalendarOpen,
+        calendarMonth,
         exportDialogOpen,
         exportPeriodType,
         exportWeekStart,
@@ -57,6 +59,7 @@ export default function AgendaPage() {
         setDeleteConfirmOpen,
         setAppointmentToDelete,
         setMobileCalendarOpen,
+        setCalendarMonth,
         setExportDialogOpen,
         setExportPeriodType,
         setExportWeekStart,
@@ -227,6 +230,8 @@ export default function AgendaPage() {
                         <div className="flex justify-center py-4">
                             <Calendar
                                 mode="single"
+                                month={calendarMonth}
+                                onMonthChange={setCalendarMonth}
                                 selected={selectedDate}
                                 onSelect={handleMobileCalendarSelect}
                                 className="rounded-md border"
@@ -532,6 +537,8 @@ export default function AgendaPage() {
                                 <div className="w-full flex justify-center">
                                     <Calendar
                                         mode="single"
+                                        month={calendarMonth}
+                                        onMonthChange={setCalendarMonth}
                                         selected={selectedDate}
                                         onSelect={handleCalendarSelect}
                                         className="w-fit"
@@ -590,28 +597,28 @@ export default function AgendaPage() {
                             </CardHeader>
                             <CardContent className="space-y-3">
                                 {(() => {
-                                    const todayCount = appointments.filter(a => isToday(new Date(a.appointment_time))).length;
-                                    const weekCount = appointments.filter(a => isThisWeek(new Date(a.appointment_time), { locale: ptBR })).length;
-                                    const monthCount = appointments.filter(a => isThisMonth(new Date(a.appointment_time))).length;
+                                    const todayCount = summaryAppointments.filter(a => isToday(new Date(a.appointment_time))).length;
+                                    const weekCount = summaryAppointments.filter(a => isThisWeek(new Date(a.appointment_time), { locale: ptBR })).length;
+                                    const monthCount = summaryAppointments.filter(a => isThisMonth(new Date(a.appointment_time))).length;
 
                                     return (
                                         <>
                                             <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                                                 <span className="text-sm text-muted-foreground">Hoje</span>
                                                 <span className={getCountColor(todayCount)}>
-                                                    {todayCount}
+                                                    {summaryReady ? todayCount : '—'}
                                                 </span>
                                             </div>
                                             <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                                                 <span className="text-sm text-muted-foreground">Esta Semana</span>
                                                 <span className={getCountColor(weekCount)}>
-                                                    {weekCount}
+                                                    {summaryReady ? weekCount : '—'}
                                                 </span>
                                             </div>
                                             <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                                                 <span className="text-sm text-muted-foreground">Este Mês</span>
                                                 <span className={getCountColor(monthCount)}>
-                                                    {monthCount}
+                                                    {summaryReady ? monthCount : '—'}
                                                 </span>
                                             </div>
                                         </>
