@@ -15,12 +15,25 @@ beforeEach(() => {
   mocks.insert.mockImplementation(row => ({ select: () => ({ single: async () => ({ data: row, error: null }) }) }));
 });
 describe('energy persistence', () => {
+  it('treats an absent optional profile as empty while retaining biometry', async () => {
+    mocks.from.mockImplementation(table => {
+      const query = { select: () => query, eq: () => query, order: () => query, limit: () => query,
+        maybeSingle: async () => ({ data: table === 'growth_records' ? { weight: 70, height: 175 } : null, error: null }),
+      };
+      return query;
+    });
+    const { data, error } = await getInitialBiometryForEnergy('patient');
+    expect(error).toBeNull();
+    expect(data).toMatchObject({ weight: 70, height: 175 });
+  });
   it('keeps successful biometry sources when the profile request fails', async () => {
     const profileError = { message: 'profile unavailable' };
     mocks.from.mockImplementation(table => {
       const query = { select: () => query, eq: () => query, order: () => query, limit: () => query,
         single: async () => ({ data: null, error: profileError }),
-        maybeSingle: async () => ({ data: table === 'growth_records' ? { weight: 70, height: 175 } : { content: { sexo: ' Feminino ', idade: 30 } }, error: null }),
+        maybeSingle: async () => table === 'user_profiles'
+          ? ({ data: null, error: profileError })
+          : ({ data: table === 'growth_records' ? { weight: 70, height: 175 } : { content: { sexo: ' Feminino ', idade: 30 } }, error: null }),
       };
       return query;
     });

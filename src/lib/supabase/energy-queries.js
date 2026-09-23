@@ -118,7 +118,7 @@ export const getInitialBiometryForEnergy = async (patientId) => {
     const fromAnamnesis = { weight: null, height: null, age: null, birth_date: null, gender: null, body_fat_percentage: null, lean_mass_kg: null };
 
     const [profileRes, grRes, anamnesisRes] = await Promise.all([
-      supabase.from('user_profiles').select('birth_date, gender, weight, height').eq('id', patientId).single(),
+      supabase.from('user_profiles').select('birth_date, gender, weight, height').eq('id', patientId).maybeSingle(),
       supabase.from('growth_records').select('weight, height, results, record_date').eq('patient_id', patientId).eq('status', 'active').eq('is_latest_revision', true).order('record_date', { ascending: false }).limit(1).maybeSingle(),
       supabase.from('anamnesis_records').select('content').eq('patient_id', patientId).order('date', { ascending: false }).limit(1).maybeSingle()
     ]);

@@ -48,5 +48,17 @@ describe('captureOperationalError', () => {
     }));
     expect(JSON.stringify(track.mock.calls)).not.toContain('patient data');
     expect(JSON.stringify(track.mock.calls)).not.toContain('private hint');
+    const captured = Sentry.captureException.mock.calls[0][0];
+    expect(captured.message).not.toContain('patient data');
+    expect(captured.message).not.toContain('permission denied for table');
+    expect(captured.cause).toBeUndefined();
+  });
+
+  it('identifies network failures without forwarding raw error text', () => {
+    captureOperationalError({ message: 'Failed to fetch: patient@example.com' }, {
+      operation: 'load_feed', module: 'feed', source: 'supabase',
+    });
+    expect(Sentry.captureException.mock.calls[0][0].message).toContain('network_failure');
+    expect(Sentry.captureException.mock.calls[0][0].message).not.toContain('patient@example.com');
   });
 });

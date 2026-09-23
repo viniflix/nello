@@ -9,9 +9,17 @@ import {
 const recentErrors = new Map();
 const DEDUPLICATION_WINDOW_MS = 5000;
 
+function safeFailureReason(error) {
+  const message = typeof error?.message === 'string' ? error.message : '';
+  if (error?.name === 'AbortError') return 'request_aborted';
+  if (/failed to fetch|networkerror|network request failed|load failed/i.test(message)) return 'network_failure';
+  if (error?.code === 'PGRST116') return 'record_missing';
+  return 'unclassified';
+}
+
 function normalizeError(error, operation = 'operation') {
   const code = error?.code ? `[${String(error.code)}] ` : '';
-  const normalized = new Error(`${code}${operation} failed`);
+  const normalized = new Error(`${code}${operation} failed (${safeFailureReason(error)})`);
   normalized.name = error?.name || 'OperationalError';
   return normalized;
 }
@@ -60,6 +68,7 @@ export function captureOperationalError(error, context = {}) {
   const module = String(context.module || 'unknown').slice(0, 80);
   const source = String(context.source || 'application').slice(0, 40);
   const errorCode = error?.code ? String(error.code).slice(0, 40) : 'unknown';
+  const failureReason = safeFailureReason(error);
   const status = safeStatus(error);
   const route = typeof window !== 'undefined' ? window.location.pathname : 'server';
   const id = correlationId();
@@ -73,6 +82,7 @@ export function captureOperationalError(error, context = {}) {
     module,
     source,
     error_code: errorCode,
+    failure_reason: failureReason,
     http_status: status,
     route,
   };
@@ -85,6 +95,7 @@ export function captureOperationalError(error, context = {}) {
       'error.source': source,
       'error.module': module,
       'error.code': errorCode,
+      'error.reason': failureReason,
       'http.status_code': status || 'unknown',
     });
     scope.setContext('operation', properties);

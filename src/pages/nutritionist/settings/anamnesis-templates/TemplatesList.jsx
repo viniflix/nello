@@ -275,7 +275,7 @@ export default function TemplatesList() {
                                                             {field.options.map((opt, oIdx) => (
                                                                 <li key={oIdx} className="flex items-center gap-2 text-slate-600 text-xs">
                                                                     <div className="w-1.5 h-1.5 rounded-full bg-slate-300" />
-                                                                    {opt}
+                                                                    {typeof opt === 'string' ? opt : opt?.label || opt?.value || 'Opção sem nome'}
                                                                 </li>
                                                             ))}
                                                         </ul>
