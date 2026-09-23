@@ -202,7 +202,8 @@ export default function NutritionistFoodsPage() {
         const measures = await getFoodMeasures(food.id);
         foodWithMeasures = { ...food, food_measures: measures };
       } catch {
-        foodWithMeasures = { ...food, food_measures: [] };
+        toast({ title: 'Erro ao carregar medidas', description: 'Tente novamente antes de editar o alimento.', variant: 'destructive' });
+        return;
       }
     }
     setSelectedFood(foodWithMeasures);

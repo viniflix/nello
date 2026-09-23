@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/dialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { searchFoodsPaginated } from '@/lib/supabase/foodService';
+import { searchFoodsPaginated, getFoodMeasures } from '@/lib/supabase/foodService';
 import { useDebounce } from '@/hooks/useDebounce';
 import FoodMeasureManager from '@/components/nutritionist/FoodMeasureManager';
 import SmartFoodForm from '@/components/nutrition/SmartFoodForm';
@@ -195,9 +195,14 @@ export default function NutritionistFoodsPage() {
     };
   }, [loadMore]);
 
-  const handleEditFood = (food) => {
-    setSelectedFood(food);
-    setEditDialogOpen(true);
+  const handleEditFood = async (food) => {
+    try {
+      const measures = await getFoodMeasures(food.id);
+      setSelectedFood({ ...food, food_measures: measures });
+      setEditDialogOpen(true);
+    } catch {
+      toast({ title: 'Erro ao carregar medidas', description: 'Tente novamente antes de editar o alimento.', variant: 'destructive' });
+    }
   };
 
   const handleDialogClose = () => {

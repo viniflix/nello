@@ -71,7 +71,7 @@ const FoodDetailsDialog = ({ food, open, onOpenChange }) => {
         if (open && food?.id && (!food.food_measures || food.food_measures.length === 0)) {
             getFoodMeasures(food.id).then((measures) => {
                 setDisplayFood(prev => prev?.id === food.id ? { ...prev, food_measures: measures } : prev);
-            });
+            }).catch((error) => console.error('Falha ao carregar medidas do alimento:', error));
         }
     }, [open, food?.id]);
 

@@ -10,7 +10,6 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/components/ui/use-toast';
-import { createFood } from '@/lib/supabase/foodService';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { toPortugueseError } from '@/lib/utils/errorMessages';
@@ -131,6 +130,7 @@ const SmartFoodForm = forwardRef(function SmartFoodForm({
             if (initialData.food_measures && Array.isArray(initialData.food_measures)) {
                 setHouseholdMeasures(
                     initialData.food_measures.map(measure => ({
+                        id: measure.id,
                         label: measure.measure_label,
                         grams: measure.quantity_grams
                     }))
@@ -817,68 +817,55 @@ const SmartFoodForm = forwardRef(function SmartFoodForm({
                 is_active: true
             };
 
-            let createdFood;
-
+            if (initialData && !['custom', 'CUSTOM'].includes(initialData.source)) {
+                throw new Error('Apenas alimentos personalizados podem ser editados');
+            }
+            const foodPayload = {
+                name: foodData.name, brand: foodData.description, base_qty: 100, base_unit: 'g',
+                energy_kcal: foodData.calories, protein_g: foodData.protein,
+                carbohydrate_g: foodData.carbs, lipid_g: foodData.fat,
+                fiber_g: foodData.fiber, sodium_mg: foodData.sodium,
+                sugar_g: foodData.sugar, saturated_fat_g: foodData.saturated_fat,
+                trans_fat_g: foodData.trans_fat, monounsaturated_fat_g: foodData.monounsaturated_fat,
+                polyunsaturated_fat_g: foodData.polyunsaturated_fat,
+                cholesterol_mg: foodData.cholesterol, calcium_mg: foodData.calcium,
+                iron_mg: foodData.iron, magnesium_mg: foodData.magnesium,
+                phosphorus_mg: foodData.phosphorus, potassium_mg: foodData.potassium,
+                zinc_mg: foodData.zinc, vitamin_a_mcg: foodData.vitamin_a,
+                vitamin_c_mg: foodData.vitamin_c, vitamin_d_mcg: foodData.vitamin_d,
+                vitamin_e_mg: foodData.vitamin_e, vitamin_b12_mcg: foodData.vitamin_b12,
+                folate_mcg: foodData.folate
+            };
+            // A busca lista apenas parte dos micronutrientes. Preserve os valores
+            // existentes que não vieram no alimento carregado para edição.
             if (initialData) {
-                // Alimentos custom: atualizar nutritionist_foods (view foods é read-only)
-                if (initialData.source === 'custom' || initialData.source === 'CUSTOM') {
-                    const updatePayload = {
-                        name: foodData.name,
-                        brand: foodData.description || null,
-                        base_qty: foodData.portion_size ?? 100,
-                        energy_kcal: foodData.calories ?? 0,
-                        protein_g: foodData.protein ?? 0,
-                        carbohydrate_g: foodData.carbs ?? 0,
-                        lipid_g: foodData.fat ?? 0,
-                        fiber_g: foodData.fiber ?? 0,
-                        sodium_mg: foodData.sodium ?? null
-                    };
-                    const { data, error } = await supabase
-                        .from('nutritionist_foods')
-                        .update(updatePayload)
-                        .eq('id', initialData.id)
-                        .select('id, name, brand, base_qty, energy_kcal, protein_g, carbohydrate_g, lipid_g, fiber_g, sodium_mg')
-                        .single();
-                    if (error) throw error;
-                    createdFood = {
-                        id: data.id, name: data.name, description: data.brand, source: 'custom',
-                        portion_size: data.base_qty, calories: data.energy_kcal, protein: data.protein_g,
-                        carbs: data.carbohydrate_g, fat: data.lipid_g, fiber: data.fiber_g, sodium: data.sodium_mg
-                    };
-                } else {
-                    throw new Error('Apenas alimentos custom podem ser editados');
+                const optionalSources = {
+                    sugar_g: 'sugar', saturated_fat_g: 'saturated_fat', trans_fat_g: 'trans_fat',
+                    monounsaturated_fat_g: 'monounsaturated_fat', polyunsaturated_fat_g: 'polyunsaturated_fat',
+                    cholesterol_mg: 'cholesterol', calcium_mg: 'calcium', iron_mg: 'iron',
+                    magnesium_mg: 'magnesium', phosphorus_mg: 'phosphorus', potassium_mg: 'potassium',
+                    zinc_mg: 'zinc', vitamin_a_mcg: 'vitamin_a', vitamin_c_mg: 'vitamin_c',
+                    vitamin_d_mcg: 'vitamin_d', vitamin_e_mg: 'vitamin_e', vitamin_b12_mcg: 'vitamin_b12',
+                    folate_mcg: 'folate'
+                };
+                for (const [column, source] of Object.entries(optionalSources)) {
+                    if (foodPayload[column] === null && !Object.prototype.hasOwnProperty.call(initialData, source)) {
+                        delete foodPayload[column];
+                    }
                 }
-            } else {
-                const { data, error } = await createFood(foodData);
-                if (error) throw error;
-                if (!data) throw new Error('Alimento criado mas não retornado');
-                createdFood = data;
             }
-
-            if (householdMeasures.length > 0) {
-                const isCustom = createdFood.source === 'custom' || createdFood.source === 'CUSTOM';
-                if (initialData) {
-                    await supabase
-                        .from('food_measures')
-                        .delete()
-                        .or(`reference_food_id.eq.${createdFood.id},nutritionist_food_id.eq.${createdFood.id}`);
-                }
-
-                const measuresToInsert = householdMeasures.map(measure => ({
-                    reference_food_id: isCustom ? null : createdFood.id,
-                    nutritionist_food_id: isCustom ? createdFood.id : null,
+            const { data, error } = await supabase.rpc('save_custom_food_with_measures', {
+                p_food_id: initialData?.id || null,
+                p_food: foodPayload,
+                p_measures: householdMeasures.map(measure => ({
+                    ...(measure.id ? { id: measure.id } : {}),
                     label: measure.label,
-                    weight_in_grams: measure.grams
-                }));
-
-                const { error: measuresError } = await supabase
-                    .from('food_measures')
-                    .insert(measuresToInsert);
-
-                if (measuresError) {
-                    console.warn('Erro ao criar medidas caseiras:', measuresError);
-                }
-            }
+                    grams: Number(measure.grams)
+                }))
+            });
+            if (error) throw error;
+            if (!data?.id) throw new Error('O alimento não foi confirmado pelo servidor');
+            const createdFood = { ...foodData, id: data.id, source: 'custom' };
 
             toast({
                 title: initialData ? 'Alimento atualizado!' : 'Alimento criado!',

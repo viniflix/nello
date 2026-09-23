@@ -117,8 +117,13 @@ const AddFoodPage = () => {
         setMeasureType('direct');
         setQuantity('');
         
-        const measures = await getFoodMeasures(food.id);
-        setConversions(measures.map(m => ({ measure_name: m.label, grams_equivalent: m.weight_in_grams ?? m.grams })));
+        try {
+            const measures = await getFoodMeasures(food.id);
+            setConversions(measures.map(m => ({ measure_name: m.label, grams_equivalent: m.weight_in_grams ?? m.grams })));
+        } catch {
+            setConversions([]);
+            toast({ title: 'Medidas indisponíveis', description: 'Não foi possível carregar as medidas caseiras. Tente novamente ou informe a quantidade em gramas.', variant: 'destructive' });
+        }
     };
 
     const getGrams = () => {

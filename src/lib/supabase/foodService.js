@@ -35,7 +35,7 @@ export async function getFoodMeasures(foodId) {
     }));
   } catch (error) {
     logSupabaseError('Error fetching food measures', error);
-    return [];
+    throw error;
   }
 }
 
@@ -165,4 +165,3 @@ export async function createFood(foodData) {
     return { data: null, error };
   }
 }
-

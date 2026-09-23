@@ -1,5 +1,10 @@
 const ERROR_TRANSLATIONS = [
   { test: /invalid login credentials/i, message: 'E-mail ou senha inválidos.' },
+  { test: /MEASURE_IN_USE/i, message: 'Esta medida já está em um plano alimentar. Preserve o peso usado ou crie uma nova medida.' },
+  { test: /MEASURE_NOT_OWNED|FOOD_NOT_OWNED/i, message: 'Este alimento ou medida não pertence à sua conta.' },
+  { test: /INVALID_FOOD|INVALID_NUTRIENT|INVALID_MEASURE|DUPLICATE_MEASURE/i, message: 'Revise os dados nutricionais e as medidas caseiras informadas.' },
+  { test: /ANAMNESIS_FILE_ACCESS_DENIED/i, message: 'Este formulário não aceita mais alterações em anexos.' },
+  { test: /ANAMNESIS_FILE_(INVALID|PATH_INVALID|FIELD_INVALID|LIMIT_OR_DUPLICATE)/i, message: 'O anexo não atende aos requisitos deste formulário.' },
   { test: /email not confirmed/i, message: 'Confirme seu e-mail antes de entrar.' },
   { test: /user already registered/i, message: 'Já existe uma conta com este e-mail.' },
   { test: /invalid email/i, message: 'E-mail inválido.' },

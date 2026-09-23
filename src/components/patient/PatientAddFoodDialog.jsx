@@ -191,7 +191,7 @@ const PatientAddFoodDialog = ({
                 const measures = await getFoodMeasures(food.id);
                 setSelectedFood(prev => prev ? { ...prev, food_measures: measures } : null);
             } catch {
-                setSelectedFood(prev => prev ? { ...prev, food_measures: [] } : null);
+                setErrors(prev => ({ ...prev, unit: 'Não foi possível carregar as medidas caseiras. Tente novamente ou use gramas.' }));
             }
         }
     };

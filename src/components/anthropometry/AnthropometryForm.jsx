@@ -323,6 +323,30 @@ const AnthropometryForm = ({
             newErrors.form = 'Preencha ao menos uma seção (básico, circunferências, dobras, diâmetros ou fotos).';
         }
 
+        const sectionLimits = [
+            ['circumferences', 'Circunferência', 10, 300],
+            ['skinfolds', 'Dobra cutânea', 1, 120],
+            ['bone_diameters', 'Diâmetro ósseo', 1, 40],
+            ['bioimpedance', 'Bioimpedância', 0, 1000],
+        ];
+        for (const [section, label, defaultMin, defaultMax] of sectionLimits) {
+            for (const [field, rawValue] of Object.entries(formData[section] || {})) {
+                if (rawValue === '' || rawValue === null || rawValue === undefined) continue;
+                const value = Number(rawValue);
+                const min = section === 'bioimpedance'
+                    ? ({ percent_gordura: 2, percent_massa_magra: 20, gordura_visceral: 1 }[field] ?? defaultMin)
+                    : defaultMin;
+                const max = section === 'bioimpedance'
+                    ? ({ percent_gordura: 75, percent_massa_magra: 98, gordura_visceral: 40 }[field] ?? defaultMax)
+                    : defaultMax;
+                if (!Number.isFinite(value) || value < min || value > max) {
+                    newErrors.form = `${label} (${field.replaceAll('_', ' ')}): informe um valor entre ${min} e ${max}. Campos não medidos devem ficar vazios.`;
+                    break;
+                }
+            }
+            if (newErrors.form && hasAnySectionData) break;
+        }
+
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };

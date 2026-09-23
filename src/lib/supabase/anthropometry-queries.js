@@ -150,35 +150,26 @@ export const createAnthropometryRecord = async (recordData) => {
             confirmed_at: created_by_user_id ? new Date().toISOString() : null
         };
 
-        let { data, error } = await supabase
+        if (created_by_user_id) {
+            const { data: episode, error: episodeError } = await supabase
+                .from('care_episodes')
+                .select('id')
+                .eq('patient_id', patient_id)
+                .eq('nutritionist_id', created_by_user_id)
+                .eq('status', 'active')
+                .maybeSingle();
+            if (episodeError) throw episodeError;
+            if (!episode) {
+                throw new Error('O paciente está sem atendimento ativo. Confirme um novo vínculo com ele antes de registrar a antropometria.');
+            }
+            insertData.care_episode_id = episode.id;
+        }
+
+        const { data, error } = await supabase
             .from('growth_records')
             .insert([insertData])
             .select()
             .single();
-
-        if (error && isMissingColumnError(error)) {
-            const fallbackData = {
-                patient_id: insertData.patient_id,
-                weight: insertData.weight,
-                height: insertData.height,
-                record_date: insertData.record_date,
-                notes: insertData.notes || null
-            };
-            if (insertData.supersedes_record_id && !String(error?.message || '').toLowerCase().includes('supersedes_record_id')) {
-                fallbackData.supersedes_record_id = insertData.supersedes_record_id;
-            }
-            if (insertData.change_reason && !String(error?.message || '').toLowerCase().includes('change_reason')) {
-                fallbackData.change_reason = insertData.change_reason;
-            }
-            if (insertData.created_by_user_id && !String(error?.message || '').toLowerCase().includes('created_by_user_id')) {
-                fallbackData.created_by_user_id = insertData.created_by_user_id;
-            }
-            ({ data, error } = await supabase
-                .from('growth_records')
-                .insert([fallbackData])
-                .select()
-                .single());
-        }
 
         if (error) throw error;
 

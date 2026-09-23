@@ -107,7 +107,9 @@ export default function PatientFacingUi() {
 
     const { uploadAttachment, deleteAttachment, getSignedUrl } = useAnamnesisAttachments(
         record?.id,
-        record?.patient_id
+        record?.patient_id,
+        token,
+        (attachments) => setRecord((previous) => previous ? { ...previous, attachments } : previous)
     );
 
     useEffect(() => {
@@ -212,6 +214,10 @@ export default function PatientFacingUi() {
     };
 
     const handleSave = async (status = 'draft', isAutoSave = false) => {
+        if (uploadAttachment.isPending || deleteAttachment.isPending) {
+            if (!isAutoSave) toast({ title: 'Aguarde o anexo', description: 'Conclua o envio ou a remoção do arquivo antes de enviar o questionário.', variant: 'destructive' });
+            return;
+        }
         if (status === 'submitted' && !validateFields()) return;
         const flushed = await autosave.flush();
         if (!flushed) {
