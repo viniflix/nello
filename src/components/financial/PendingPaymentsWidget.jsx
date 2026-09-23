@@ -146,7 +146,7 @@ export default function PendingPaymentsWidget({ nutritionistId, onUpdate }) {
 
     return (
         <>
-            <Card className="mb-6 border-2 border-orange-200 dark:border-orange-800 bg-orange-50/50 dark:bg-orange-950/20 overflow-hidden">
+            <Card id="pending-payments" className="mb-6 border-2 border-orange-200 dark:border-orange-800 bg-orange-50/50 dark:bg-orange-950/20 overflow-hidden">
                 <CardHeader className="pb-3">
                     <div className="flex items-center gap-2 min-w-0">
                         <AlertCircle className="w-5 h-5 text-orange-600 dark:text-orange-400 shrink-0" />
@@ -155,13 +155,14 @@ export default function PendingPaymentsWidget({ nutritionistId, onUpdate }) {
                         </CardTitle>
                     </div>
                     <CardDescription className="text-orange-700 dark:text-orange-300 text-xs md:text-sm">
-                        Consultas realizadas aguardando confirmação de pagamento
+                        Receitas ainda não recebidas, inclusive as com vencimento futuro.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
                     <div className="space-y-3">
                         {pendingPayments.map((transaction) => {
-                            const daysOverdue = getDaysOverdue(transaction.transaction_date);
+                            const dueDate = transaction.due_date || transaction.transaction_date;
+                            const daysOverdue = getDaysOverdue(dueDate);
                             const isOverdue = daysOverdue > 0;
 
                             return (
@@ -186,7 +187,7 @@ export default function PendingPaymentsWidget({ nutritionistId, onUpdate }) {
                                             </span>
                                             <span>•</span>
                                             <span>
-                                                {formatTransactionDate(transaction.transaction_date)}
+                                                Vence {formatTransactionDate(dueDate)}
                                             </span>
                                             <span>•</span>
                                             <span className="font-semibold text-orange-600 dark:text-orange-400">
@@ -207,7 +208,7 @@ export default function PendingPaymentsWidget({ nutritionistId, onUpdate }) {
                                         <Button
                                             size="sm"
                                             variant="outline"
-                                            onClick={() => setRescheduleDialog({ id: transaction.id, date: transaction.transaction_date })}
+                                            onClick={() => setRescheduleDialog({ id: transaction.id, date: dueDate })}
                                             className="flex-1 sm:flex-initial"
                                         >
                                             <Calendar className="w-4 h-4 mr-1.5" />

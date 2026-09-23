@@ -8,7 +8,7 @@ import { ptBR } from 'date-fns/locale';
  * @param {string} format - Export format ('csv' or 'xlsx' - CSV only for now)
  * @returns {void}
  */
-export function exportFinancialReport(records, format = 'csv') {
+export function exportFinancialReport(records, outputFormat = 'csv') {
     if (!records || records.length === 0) {
         throw new Error('Nenhum registro para exportar');
     }
@@ -27,14 +27,19 @@ export function exportFinancialReport(records, format = 'csv') {
             'Nome do Paciente': record.patient?.name || '-',
             'CPF do Paciente': record.patient?.cpf ? formatCPF(record.patient.cpf) : '-',
             'Valor (R$)': parseFloat(record.amount || 0).toFixed(2),
+            'Valor líquido (R$)': parseFloat(record.net_amount ?? record.amount ?? 0).toFixed(2),
             'Status': getStatusLabel(record.status),
+            'Data do Pagamento': record.paid_at
+                ? formatDate(new Date(record.paid_at + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR }) : '-',
+            'Data do Estorno': record.refunded_at
+                ? formatDate(new Date(record.refunded_at + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR }) : '-',
             'Data de Vencimento': record.due_date 
                 ? formatDate(new Date(record.due_date + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR })
                 : '-'
         };
     });
 
-    if (format === 'csv') {
+    if (outputFormat === 'csv') {
         // Generate CSV
         const csv = Papa.unparse(exportData, {
             delimiter: ';', // Semicolon for Excel compatibility in Brazil
@@ -49,13 +54,13 @@ export function exportFinancialReport(records, format = 'csv') {
         const link = document.createElement('a');
         const url = URL.createObjectURL(blob);
         link.setAttribute('href', url);
-        link.setAttribute('download', `relatorio_financeiro_${format(new Date(), 'yyyy-MM-dd')}.csv`);
+        link.setAttribute('download', `relatorio_financeiro_${formatDate(new Date(), 'yyyy-MM-dd')}.csv`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
     } else {
-        throw new Error(`Formato ${format} não suportado. Use 'csv'.`);
+        throw new Error(`Formato ${outputFormat} não suportado. Use 'csv'.`);
     }
 }
 
@@ -76,7 +81,8 @@ function getStatusLabel(status) {
     const labels = {
         'paid': 'Pago',
         'pending': 'Pendente',
-        'overdue': 'Vencido'
+        'overdue': 'Vencido',
+        'refunded': 'Estornado'
     };
     return labels[status] || status;
 }

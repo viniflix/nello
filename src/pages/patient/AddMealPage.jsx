@@ -16,7 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { translateMealType } from '@/utils/mealTranslations';
 import { formatQuantityWithUnit } from '@/lib/utils/measureTranslations';
 import PatientAddFoodDialog from '@/components/patient/PatientAddFoodDialog';
-import { mealItemFoodIds } from '@/lib/supabase/food-diary-queries';
+import { savePatientDiaryMeal } from '@/lib/supabase/food-diary-queries';
 
 /**
  * AddMealPage - Nova página reformulada de registro de refeição
@@ -44,6 +44,7 @@ export default function AddMealPage() {
   // Estado da refeição
   const [mealType, setMealType] = useState(initialMealType);
   const [mealDateTime, setMealDateTime] = useState(format(new Date(), 'HH:mm')); // Sempre hora atual
+  const [mealDate, setMealDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [notes, setNotes] = useState('');
   const [addedFoods, setAddedFoods] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -86,6 +87,7 @@ export default function AddMealPage() {
 
       // Preencher estados com dados existentes
       setMealType(mealData.meal_type);
+      setMealDate(mealData.meal_date);
       setMealDateTime(mealData.meal_time || format(new Date(), 'HH:mm'));
       setNotes(mealData.notes || '');
 
@@ -230,188 +232,28 @@ export default function AddMealPage() {
     fat: acc.fat + (parseFloat(food.fat) || 0)
   }), { calories: 0, protein: 0, carbs: 0, fat: 0 });
 
-  // Salvar refeição
+  // Salvar refeição e todos os alimentos em uma única transação.
   const handleSave = async () => {
+    if (saving) return;
     if (addedFoods.length === 0) {
-      toast({
-        title: 'Erro',
-        description: 'Adicione pelo menos um alimento',
-        variant: 'destructive'
-      });
+      toast({ title: 'Erro', description: 'Adicione pelo menos um alimento', variant: 'destructive' });
       return;
     }
-
     setSaving(true);
-
     try {
-      const today = format(new Date(), 'yyyy-MM-dd');
-
-      if (editMode && mealId) {
-        // MODO DE EDIÇÃO - Atualizar refeição existente
-
-        // Atualizar dados da refeição
-        const { error: mealError } = await supabase
-          .from('meals')
-          .update({
-            meal_type: mealType,
-            meal_time: mealDateTime,
-            notes: notes,
-            total_calories: totals.calories,
-            total_protein: totals.protein,
-            total_carbs: totals.carbs,
-            total_fat: totals.fat
-          })
-          .eq('id', mealId);
-
-        if (mealError) throw mealError;
-
-        // Deletar itens antigos
-        const { error: deleteError } = await supabase
-          .from('meal_items')
-          .delete()
-          .eq('meal_id', mealId);
-
-        if (deleteError) throw deleteError;
-
-        // Inserir novos itens (meal_items usa reference_food_id/nutritionist_food_id)
-        const mealItems = addedFoods.map(food => {
-          const ids = mealItemFoodIds(food.food_id, food.food_source || 'reference');
-          return {
-            meal_id: mealId,
-            ...ids,
-            name: food.food_name,
-            quantity: parseFloat(food.quantity) || 0,
-            unit: food.unit || 'gram',
-            calories: parseFloat(food.calories) || 0,
-            protein: parseFloat(food.protein) || 0,
-            carbs: parseFloat(food.carbs) || 0,
-            fat: parseFloat(food.fat) || 0
-          };
-        });
-
-        const { error: itemsError } = await supabase
-          .from('meal_items')
-          .insert(mealItems);
-
-        if (itemsError) throw itemsError;
-
-        // =====================================================
-        // AUDITORIA: Registrar ação de UPDATE
-        // =====================================================
-        // IMPORTANTE PARA MÓDULO FUTURO:
-        // - Feed mostrará "Paciente X editou Café da Manhã"
-        // - Timeline exibirá diff: alterações em alimentos, quantidades
-        // - Histórico completo de versões da refeição
-        await supabase.rpc('log_meal_action', {
-          p_patient_id: user.id,
-          p_meal_id: mealId,
-          p_action: 'update',
-          p_meal_type: mealType,
-          p_meal_date: format(new Date(), 'yyyy-MM-dd'),
-          p_meal_time: mealDateTime,
-          p_details: {
-            total_calories: totals.calories,
-            total_protein: totals.protein,
-            total_carbs: totals.carbs,
-            total_fat: totals.fat,
-            items: addedFoods.map(f => ({
-              food_id: f.food_id,
-              name: f.food_name,
-              quantity: f.quantity,
-              unit: f.unit
-            }))
-          }
-        });
-
-        toast({
-          title: 'Sucesso!',
-          description: 'Refeição atualizada com sucesso'
-        });
-      } else {
-        // MODO DE CRIAÇÃO - Criar nova refeição
-
-        const { data: meal, error: mealError } = await supabase
-          .from('meals')
-          .insert({
-            patient_id: user.id,
-            meal_type: mealType,
-            meal_date: today,
-            meal_time: mealDateTime,
-            notes: notes,
-            total_calories: totals.calories,
-            total_protein: totals.protein,
-            total_carbs: totals.carbs,
-            total_fat: totals.fat
-          })
-          .select()
-          .single();
-
-        if (mealError) throw mealError;
-
-        // Adicionar itens da refeição (meal_items usa reference_food_id/nutritionist_food_id)
-        const mealItems = addedFoods.map(food => {
-          const ids = mealItemFoodIds(food.food_id, food.food_source || 'reference');
-          return {
-            meal_id: meal.id,
-            ...ids,
-            name: food.food_name,
-            quantity: parseFloat(food.quantity) || 0,
-            unit: food.unit || 'gram',
-            calories: parseFloat(food.calories) || 0,
-            protein: parseFloat(food.protein) || 0,
-            carbs: parseFloat(food.carbs) || 0,
-            fat: parseFloat(food.fat) || 0
-          };
-        });
-
-        const { error: itemsError } = await supabase
-          .from('meal_items')
-          .insert(mealItems);
-
-        if (itemsError) throw itemsError;
-
-        // =====================================================
-        // AUDITORIA: Registrar ação de CREATE
-        // =====================================================
-        // IMPORTANTE PARA MÓDULO FUTURO:
-        // - Feed mostrará "Paciente X registrou Café da Manhã"
-        // - Dashboard do nutricionista exibe atividade em tempo real
-        // - Notificação push/email para nutricionista (se configurado)
-        await supabase.rpc('log_meal_action', {
-          p_patient_id: user.id,
-          p_meal_id: meal.id,
-          p_action: 'create',
-          p_meal_type: mealType,
-          p_meal_date: today,
-          p_meal_time: mealDateTime,
-          p_details: {
-            total_calories: totals.calories,
-            total_protein: totals.protein,
-            total_carbs: totals.carbs,
-            total_fat: totals.fat,
-            items: addedFoods.map(f => ({
-              food_id: f.food_id,
-              name: f.food_name,
-              quantity: f.quantity,
-              unit: f.unit
-            }))
-          }
-        });
-
-        toast({
-          title: 'Sucesso!',
-          description: 'Refeição registrada com sucesso'
-        });
-      }
-
+      await savePatientDiaryMeal({
+        mealId: editMode ? mealId : null,
+        mealDate,
+        mealTime: mealDateTime,
+        mealType,
+        notes,
+        foods: addedFoods,
+      });
+      toast({ title: 'Sucesso!', description: editMode ? 'Refeição atualizada com sucesso' : 'Refeição registrada com sucesso' });
       navigate('/patient/diario');
     } catch (error) {
       console.error('Erro ao salvar:', error);
-      toast({
-        title: 'Erro ao salvar',
-        description: toPortugueseError(error),
-        variant: 'destructive'
-      });
+      toast({ title: 'Erro ao salvar', description: toPortugueseError(error), variant: 'destructive' });
     } finally {
       setSaving(false);
     }

@@ -54,6 +54,7 @@ export default function TransactionDialog({
         description: '',
         amount: '',
         transaction_date: format(new Date(), 'yyyy-MM-dd'),
+        paid_at: format(new Date(), 'yyyy-MM-dd'),
         isPaid: true,
         due_date: '',
         isInstallment: false,
@@ -77,6 +78,7 @@ export default function TransactionDialog({
                 transaction_date: transaction.transaction_date 
                     ? format(new Date(transaction.transaction_date + 'T00:00:00'), 'yyyy-MM-dd')
                     : format(new Date(), 'yyyy-MM-dd'),
+                paid_at: transaction.paid_at || format(new Date(), 'yyyy-MM-dd'),
                 isPaid: transaction.status === 'paid',
                 due_date: transaction.due_date 
                     ? format(new Date(transaction.due_date + 'T00:00:00'), 'yyyy-MM-dd')
@@ -98,6 +100,7 @@ export default function TransactionDialog({
                 description: '',
                 amount: '',
                 transaction_date: format(new Date(), 'yyyy-MM-dd'),
+                paid_at: format(new Date(), 'yyyy-MM-dd'),
                 isPaid: true,
                 due_date: '',
                 isInstallment: false,
@@ -218,6 +221,8 @@ export default function TransactionDialog({
         if (!formData.description || !formData.amount || !formData.category) {
             return;
         }
+        const feePercentage = ['credit', 'debit'].includes(formData.payment_method) && formData.fee_percentage
+            ? parseFloat(formData.fee_percentage) : null;
 
         // Upload attachment if new file selected
         let attachmentUrl = formData.attachment_url;
@@ -244,9 +249,10 @@ export default function TransactionDialog({
                 amount: parseFloat(formData.amount),
                 transaction_date: formData.transaction_date,
                 status: formData.isPaid ? 'paid' : 'pending',
+                paid_at: formData.isPaid ? formData.paid_at : null,
                 due_date: !formData.isPaid && formData.due_date ? formData.due_date : null,
                 payment_method: formData.payment_method,
-                fee_percentage: formData.fee_percentage ? parseFloat(formData.fee_percentage) : null,
+                fee_percentage: feePercentage,
                 attachment_url: attachmentUrl
             };
             onSave(payload);
@@ -269,9 +275,10 @@ export default function TransactionDialog({
                     amount: installmentAmount,
                     transaction_date: format(installmentDate, 'yyyy-MM-dd'),
                     status: i === 0 && formData.isPaid ? 'paid' : 'pending',
+                    paid_at: i === 0 && formData.isPaid ? formData.paid_at : null,
                     due_date: format(installmentDate, 'yyyy-MM-dd'),
                     payment_method: formData.payment_method,
-                    fee_percentage: formData.fee_percentage ? parseFloat(formData.fee_percentage) : null,
+                    fee_percentage: feePercentage,
                     attachment_url: i === 0 ? attachmentUrl : null // Only attach to first installment
                 });
             }
@@ -286,9 +293,10 @@ export default function TransactionDialog({
                 amount: parseFloat(formData.amount),
                 transaction_date: formData.transaction_date,
                 status: formData.isPaid ? 'paid' : 'pending',
+                paid_at: formData.isPaid ? formData.paid_at : null,
                 due_date: !formData.isPaid && formData.due_date ? formData.due_date : null,
                 payment_method: formData.payment_method,
-                fee_percentage: formData.fee_percentage ? parseFloat(formData.fee_percentage) : null,
+                fee_percentage: feePercentage,
                 attachment_url: attachmentUrl
             };
             onSave(payload);
@@ -502,9 +510,16 @@ export default function TransactionDialog({
                         <Switch
                             id="isPaid"
                             checked={formData.isPaid}
+                            disabled={transaction?.status === 'paid'}
                             onCheckedChange={(checked) => setFormData(prev => ({ ...prev, isPaid: checked }))}
                         />
                     </div>
+                    {transaction?.status === 'paid' && <p className="text-xs text-muted-foreground">Para desfazer um pagamento confirmado, use “Registrar estorno” no histórico.</p>}
+                    {formData.isPaid && <div>
+                        <Label htmlFor="paid_at">Data do pagamento *</Label>
+                        <DateInputWithCalendar id="paid_at" name="paid_at" required value={formData.paid_at}
+                            onChange={(value) => setFormData(prev => ({ ...prev, paid_at: value }))} />
+                    </div>}
 
                     {/* Due Date (if not paid and not installment) */}
                     {!formData.isPaid && !formData.isInstallment && (

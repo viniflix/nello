@@ -21,6 +21,9 @@ function formatCurrencyForReceipt(value) {
  * @returns {Promise<void>}
  */
 export async function generateReceipt(transaction, nutritionistProfile, patientProfile) {
+    if (transaction?.status !== 'paid' || !transaction?.paid_at) {
+        throw new Error('Recibo disponível apenas para pagamentos confirmados.');
+    }
     try {
     const doc = new jsPDF('p', 'mm', 'a4');
     const pageWidth = doc.internal.pageSize.getWidth();
@@ -75,7 +78,7 @@ export async function generateReceipt(transaction, nutritionistProfile, patientP
         if (address.city) addressLine += addressLine ? `, ${address.city}` : address.city;
         if (address.state) addressLine += addressLine ? ` - ${address.state}` : address.state;
         if (address.zip) addressLine += addressLine ? `, CEP: ${address.zip}` : `CEP: ${address.zip}`;
-        
+
         if (addressLine) {
             doc.text(`Endereço: ${addressLine}`, margin, yPos);
             yPos += 6;
@@ -114,8 +117,8 @@ export async function generateReceipt(transaction, nutritionistProfile, patientP
     const amount = parseFloat(transaction.amount || 0);
     const amountText = formatCurrencyForReceipt(amount).replace('R$', '').trim();
     const description = transaction.description || 'Serviço de nutrição';
-    const transactionDate = transaction.transaction_date 
-        ? format(new Date(transaction.transaction_date + 'T00:00:00'), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
+    const transactionDate = transaction.paid_at
+        ? format(new Date(transaction.paid_at + 'T00:00:00'), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
         : format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
 
     const receiptText = `Recebi de ${patientName}${patientCPF} a importância de ${amountText} (${numberToWords(amount)}) referente a ${description}.`;
@@ -123,7 +126,7 @@ export async function generateReceipt(transaction, nutritionistProfile, patientP
     // Split text into lines if too long
     const maxWidth = pageWidth - (margin * 2);
     const lines = doc.splitTextToSize(receiptText, maxWidth);
-    
+
     lines.forEach((line, index) => {
         doc.text(line, margin, yPos);
         yPos += 6;
@@ -132,7 +135,7 @@ export async function generateReceipt(transaction, nutritionistProfile, patientP
     yPos += 10;
 
     // Date
-    doc.text(`Data: ${transactionDate}`, margin, yPos);
+    doc.text(`Data do pagamento: ${transactionDate}`, margin, yPos);
     yPos += 15;
 
     // Signature Line
@@ -152,15 +155,15 @@ export async function generateReceipt(transaction, nutritionistProfile, patientP
 
     // Generate filename
     const fileName = `recibo_${patientName.replace(/\s+/g, '_')}_${format(new Date(), 'yyyy-MM-dd')}.pdf`;
-    
+
     // Save PDF
     doc.save(fileName);
     } catch (error) {
     const patientName = patientProfile?.name || 'Paciente';
     const amount = parseFloat(transaction?.amount || 0);
     const description = transaction?.description || 'Serviço de nutrição';
-    const transactionDate = transaction?.transaction_date
-        ? format(new Date(transaction.transaction_date + 'T00:00:00'), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
+    const transactionDate = transaction?.paid_at
+        ? format(new Date(transaction.paid_at + 'T00:00:00'), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
         : format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
     const fileName = `recibo_${patientName.replace(/\s+/g, '_')}_${format(new Date(), 'yyyy-MM-dd')}.pdf`;
 
@@ -172,7 +175,7 @@ export async function generateReceipt(transaction, nutritionistProfile, patientP
             `Paciente: ${patientName}`,
             `Descrição: ${description}`,
             `Valor: ${formatCurrencyForReceipt(amount)}`,
-            `Data: ${transactionDate}`,
+            `Data do pagamento: ${transactionDate}`,
         ],
     });
     }

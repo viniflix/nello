@@ -16,6 +16,41 @@ export const mealItemFoodIds = (foodId, source) => {
     };
 };
 
+/** One database transaction owns the meal, its items, computed totals and audit log. */
+export async function savePatientDiaryMeal({ mealId = null, mealDate, mealTime, mealType, notes = '', foods }) {
+    if (!Array.isArray(foods) || foods.length === 0) throw new Error('Adicione pelo menos um alimento.');
+    const numericMealId = mealId == null ? null : Number(mealId);
+    if (numericMealId !== null && (!Number.isSafeInteger(numericMealId) || numericMealId <= 0)) {
+        throw new Error('Refeição inválida.');
+    }
+    const items = foods.map((food) => {
+        const item = {
+            food_id: food.food_id,
+            food_source: String(food.food_source || 'reference').toLowerCase() === 'custom' ? 'custom' : 'reference',
+            name: food.food_name || food.name,
+            quantity: Number(food.quantity),
+            unit: food.unit || 'gram',
+            calories: Number(food.calories),
+            protein: Number(food.protein),
+            carbs: Number(food.carbs),
+            fat: Number(food.fat),
+        };
+        if (!item.food_id || !item.name ||
+            ['quantity', 'calories', 'protein', 'carbs', 'fat'].some((key) => !Number.isFinite(item[key])) ||
+            item.quantity <= 0 || ['calories', 'protein', 'carbs', 'fat'].some((key) => item[key] < 0)) {
+            throw new Error('Revise os valores dos alimentos antes de salvar.');
+        }
+        return item;
+    });
+    const { data, error } = await supabase.rpc('save_patient_diary_meal', {
+        p_meal_id: numericMealId,
+        p_payload: { meal_date: mealDate, meal_time: mealTime, meal_type: mealType, notes },
+        p_items: items,
+    });
+    if (error) throw error;
+    return data;
+}
+
 const DEFAULT_REMINDER_PREFERENCES = {
     daily_log_enabled: true,
     measurement_enabled: true,

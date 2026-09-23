@@ -26,6 +26,7 @@ export default function TopPatientsWidget({ nutritionistId }) {
                 .select(`
                     patient_id,
                     amount,
+                    net_amount,
                     patient:user_profiles!financial_transactions_patient_id_fkey(
                         id,
                         name,
@@ -55,7 +56,7 @@ export default function TopPatientsWidget({ nutritionistId }) {
                         total: 0
                     };
                 }
-                patientTotals[patientId].total += parseFloat(transaction.amount || 0);
+                patientTotals[patientId].total += parseFloat(transaction.net_amount ?? transaction.amount ?? 0);
             });
 
             // Convert to array, sort by total, and take top 3

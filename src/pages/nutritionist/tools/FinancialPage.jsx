@@ -32,22 +32,22 @@ import TopPatientsWidget from '@/components/financial/TopPatientsWidget';
 
 // Queries
 import {
-    getFinancialSummary,
-    getTransactions,
+    getFinancialMonthRows,
     saveTransaction,
     saveMultipleTransactions,
     deleteTransaction,
-    getCashFlowData,
-    getExpenseDistribution,
     getProjectedCashFlow,
     getPatientsForAutocomplete,
-    getServices
+    getServices,
+    updateTransactionStatus,
+    refundTransaction
 } from '@/lib/supabase/financial-queries';
 import { exportFinancialsToPdf } from '@/lib/pdfUtils';
 import { generateReceipt } from '@/lib/pdf/receiptGenerator';
 import { exportFinancialReport } from '@/lib/utils/exportUtils';
 import { getClinicSettings } from '@/lib/supabase/profile-queries';
 import { toPortugueseError } from '@/lib/utils/errorMessages';
+import { summarizeFinancialTransactions, buildFinancialCashFlow, buildFinancialExpenseDistribution } from '@/lib/utils/financial-math';
 
 export default function FinancialPage() {
     const { user } = useAuth();
@@ -55,20 +55,31 @@ export default function FinancialPage() {
     
     // State
     const [selectedMonth, setSelectedMonth] = useState(new Date());
-    const [summary, setSummary] = useState({ income: 0, expenses: 0, netResult: 0, overdue: 0 });
-    const [transactions, setTransactions] = useState([]);
+    const [monthRows, setMonthRows] = useState([]);
     const [patients, setPatients] = useState([]);
     const [services, setServices] = useState([]);
-    const [cashFlowData, setCashFlowData] = useState([]);
-    const [expenseDistribution, setExpenseDistribution] = useState([]);
     const [projectedCashFlow, setProjectedCashFlow] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [isServicesManagerOpen, setIsServicesManagerOpen] = useState(false);
     const [editingTransaction, setEditingTransaction] = useState(null);
     const [deleteConfirm, setDeleteConfirm] = useState(null);
+    const [paymentConfirm, setPaymentConfirm] = useState(null);
+    const [refundConfirm, setRefundConfirm] = useState(null);
     const [filters, setFilters] = useState({ type: null, status: null, search: null });
     const [monthlyGoal, setMonthlyGoal] = useState(10000); // R$ 10.000,00 (editable)
+    const monthStartKey = format(startOfMonth(selectedMonth), 'yyyy-MM-dd');
+    const monthEndKey = format(new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 1, 0), 'yyyy-MM-dd');
+    const summary = useMemo(() => summarizeFinancialTransactions(monthRows, monthStartKey, monthEndKey, format(new Date(), 'yyyy-MM-dd')), [monthRows, monthStartKey, monthEndKey]);
+    const cashFlowData = useMemo(() => buildFinancialCashFlow(monthRows, monthStartKey, monthEndKey), [monthRows, monthStartKey, monthEndKey]);
+    const expenseDistribution = useMemo(() => buildFinancialExpenseDistribution(monthRows, monthStartKey, monthEndKey), [monthRows, monthStartKey, monthEndKey]);
+    const transactions = useMemo(() => monthRows.filter((row) =>
+        (!filters.type || row.type === filters.type) &&
+        (!filters.status || (filters.status === 'overdue'
+            ? ['pending', 'overdue'].includes(row.status) && (row.status === 'overdue' || row.due_date < format(new Date(), 'yyyy-MM-dd'))
+            : row.status === filters.status)) &&
+        (!filters.search || String(row.description || '').toLocaleLowerCase('pt-BR').includes(filters.search.toLocaleLowerCase('pt-BR')))
+    ).sort((a, b) => String(b.transaction_date).localeCompare(String(a.transaction_date)) || b.id - a.id), [monthRows, filters]);
     
     // Load monthly goal from clinic settings
     useEffect(() => {
@@ -81,61 +92,28 @@ export default function FinancialPage() {
         }
     }, [user?.id]);
 
-    // Load all data
+    // Load each month once; all cards, charts and exports share these exact rows.
     const loadData = useCallback(async () => {
         if (!user?.id) return;
-        
         setLoading(true);
         try {
-            const monthStart = startOfMonth(selectedMonth);
-            
-            // Load summary (pass nutritionistId for RLS)
-            const summaryData = await getFinancialSummary(monthStart, user.id);
-            setSummary(summaryData);
-
-            // Load transactions
-            const year = selectedMonth.getFullYear();
-            const month = selectedMonth.getMonth() + 1;
-            const transactionsData = await getTransactions(
-                user.id,
-                { ...filters, month, year },
-                { page: 1, pageSize: 100 },
-                { field: 'transaction_date', order: 'desc' }
-            );
-            setTransactions(transactionsData.data);
-
-            // Load charts data
-            const [cashFlow, expenses, projection] = await Promise.all([
-                getCashFlowData(user.id, monthStart, 'day'),
-                getExpenseDistribution(user.id, monthStart),
-                getProjectedCashFlow(user.id, new Date())
+            const [rows, projection, patientRows, serviceRows] = await Promise.all([
+                getFinancialMonthRows(user.id, selectedMonth),
+                getProjectedCashFlow(user.id, new Date()),
+                getPatientsForAutocomplete(user.id),
+                getServices(user.id),
             ]);
-            setCashFlowData(cashFlow);
-            setExpenseDistribution(expenses);
+            setMonthRows(rows);
             setProjectedCashFlow(projection);
-
-            // Load patients (only once)
-            if (patients.length === 0) {
-                const patientsData = await getPatientsForAutocomplete(user.id);
-                setPatients(patientsData);
-            }
-
-            // Load services (only once)
-            if (services.length === 0) {
-                const servicesData = await getServices(user.id);
-                setServices(servicesData);
-            }
+            setPatients(patientRows);
+            setServices(serviceRows);
         } catch (error) {
             console.error('Error loading financial data:', error);
-            toast({
-                title: "Erro",
-                description: "Não foi possível carregar os dados financeiros.",
-                variant: "destructive"
-            });
+            toast({ title: 'Erro', description: 'Não foi possível carregar os dados financeiros.', variant: 'destructive' });
         } finally {
             setLoading(false);
         }
-    }, [user, selectedMonth, filters, patients.length, toast]);
+    }, [user?.id, selectedMonth, toast]);
 
     useEffect(() => {
         loadData();
@@ -214,19 +192,44 @@ export default function FinancialPage() {
         }
     };
 
+    const handleConfirmPayment = async (id) => {
+        try {
+            await updateTransactionStatus(id, 'paid');
+            setPaymentConfirm(null);
+            await loadData();
+            toast({ title: 'Recebimento confirmado' });
+        } catch (error) {
+            toast({ title: 'Não foi possível confirmar', description: toPortugueseError(error), variant: 'destructive' });
+        }
+    };
+
+    const handleRefund = async (id) => {
+        try {
+            await refundTransaction(id);
+            setRefundConfirm(null);
+            await loadData();
+            toast({ title: 'Estorno registrado' });
+        } catch (error) {
+            toast({ title: 'Não foi possível registrar o estorno', description: toPortugueseError(error), variant: 'destructive' });
+        }
+    };
+
     const handleExportCSV = () => {
-        const csvData = transactions.map(t => ({
-            Data: format(new Date(t.transaction_date + 'T00:00:00'), 'dd/MM/yyyy'),
+        const csvData = monthRows.map(t => ({
+            Competência: format(new Date(t.transaction_date + 'T00:00:00'), 'dd/MM/yyyy'),
             Tipo: t.type === 'income' ? 'Receita' : 'Despesa',
             Descrição: t.description,
             Categoria: t.category || '-',
             Paciente: t.patient?.name || '-',
-            Valor: t.amount.toFixed(2),
-            Status: t.status === 'paid' ? 'Pago' : t.status === 'pending' ? 'Pendente' : 'Vencido'
+            Valor: Number(t.amount).toFixed(2),
+            ValorLíquido: Number(t.net_amount ?? t.amount).toFixed(2),
+            Status: t.status === 'paid' ? 'Pago' : t.status === 'refunded' ? 'Estornado' : t.status === 'pending' ? 'Pendente' : 'Vencido',
+            Pagamento: t.paid_at ? format(new Date(t.paid_at + 'T00:00:00'), 'dd/MM/yyyy') : '-',
+            Estorno: t.refunded_at ? format(new Date(t.refunded_at + 'T00:00:00'), 'dd/MM/yyyy') : '-'
         }));
         
-        const csv = Papa.unparse(csvData);
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const csv = Papa.unparse(csvData, { delimiter: ';' });
+        const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement("a");
         const url = URL.createObjectURL(blob);
         link.setAttribute("href", url);
@@ -234,6 +237,7 @@ export default function FinancialPage() {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+        URL.revokeObjectURL(url);
         
         toast({
             title: "Exportado!",
@@ -243,7 +247,7 @@ export default function FinancialPage() {
 
     const handleExportReport = () => {
         try {
-            exportFinancialReport(transactions, 'csv');
+            exportFinancialReport(monthRows, 'csv');
             toast({
                 title: "Exportado!",
                 description: "Relatório completo exportado para contador."
@@ -306,7 +310,7 @@ export default function FinancialPage() {
 
     const handleExportPDF = async () => {
         try {
-            await exportFinancialsToPdf(transactions, summary, format(selectedMonth, 'MMMM yyyy'));
+            await exportFinancialsToPdf(monthRows, summary, format(selectedMonth, 'MMMM yyyy'));
             toast({
                 title: "Exportado!",
                 description: "Arquivo PDF gerado com sucesso."
@@ -407,7 +411,7 @@ export default function FinancialPage() {
                                         </div>
                                         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
                                             <div className="min-w-0">
-                                                <span className="text-muted-foreground">Receita Atual: </span>
+                                                <span className="text-muted-foreground">Recebido no mês: </span>
                                                 <span className="font-semibold text-primary break-all">
                                                     R$ {summary.income.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                                 </span>
@@ -468,6 +472,8 @@ export default function FinancialPage() {
                                 onEdit={handleEditTransaction}
                                 onDelete={(id) => setDeleteConfirm(id)}
                                 onGenerateReceipt={handleGenerateReceipt}
+                                onConfirmPayment={setPaymentConfirm}
+                                onRefund={setRefundConfirm}
                                 filters={filters}
                                 onFiltersChange={setFilters}
                             />
@@ -504,6 +510,18 @@ export default function FinancialPage() {
             />
 
             {/* Delete Confirmation */}
+            <AlertDialog open={!!paymentConfirm} onOpenChange={(open) => !open && setPaymentConfirm(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader><AlertDialogTitle>Confirmar recebimento</AlertDialogTitle><AlertDialogDescription>O valor entrará no caixa de hoje. Confirme apenas após receber o pagamento.</AlertDialogDescription></AlertDialogHeader>
+                    <AlertDialogFooter><AlertDialogCancel>Voltar</AlertDialogCancel><AlertDialogAction onClick={() => handleConfirmPayment(paymentConfirm)}>Confirmar</AlertDialogAction></AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+            <AlertDialog open={!!refundConfirm} onOpenChange={(open) => !open && setRefundConfirm(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader><AlertDialogTitle>Registrar estorno integral</AlertDialogTitle><AlertDialogDescription>O estorno será deduzido do caixa de hoje e manterá o histórico do pagamento original.</AlertDialogDescription></AlertDialogHeader>
+                    <AlertDialogFooter><AlertDialogCancel>Voltar</AlertDialogCancel><AlertDialogAction onClick={() => handleRefund(refundConfirm)}>Registrar estorno</AlertDialogAction></AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
             <AlertDialog open={!!deleteConfirm} onOpenChange={(open) => !open && setDeleteConfirm(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>

@@ -19,6 +19,10 @@ vi.mock('react-router-dom', async (importOriginal) => {
 vi.mock('@/hooks/useCheckins', () => ({
   useCheckins: () => ({ submitCheckin: { mutateAsync: vi.fn() } }),
 }));
+vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ user: { id: 'patient-1' } }) }));
+vi.mock('@/hooks/useShadowDraft', () => ({
+  useShadowDraft: () => ({ status: 'idle', recovery: null, queue: vi.fn(), flush: vi.fn(), discard: vi.fn(), restore: vi.fn(), discardRecovery: vi.fn() }),
+}));
 vi.mock('@/lib/customSupabaseClient', () => ({
   supabase: { from: mocks.from },
 }));

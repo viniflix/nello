@@ -62,10 +62,13 @@ export const exportFinancialsToPdf = async (transactions, summary, period) => {
         fileName: `relatorio_financeiro_${period}.pdf`,
         lines: [
             `Período: ${period}`,
-            `Receitas: R$ ${(summary?.income || 0).toFixed(2)}`,
-            `Despesas: R$ ${(summary?.expenses || 0).toFixed(2)}`,
-            `Saldo: R$ ${(summary?.netResult || ((summary?.income || 0) - (summary?.expenses || 0))).toFixed(2)}`,
-            ...transactions.map((t) => `${t.transaction_date || ''} | ${t.type || ''} | ${t.description || ''} | R$ ${(t.amount || 0).toFixed(2)}`),
+            `Caixa recebido liquido: R$ ${(summary?.income || 0).toFixed(2)}`,
+            `Despesas pagas: R$ ${(summary?.expenses || 0).toFixed(2)}`,
+            `Saldo de caixa: R$ ${(summary?.netResult ?? 0).toFixed(2)}`,
+            `Receitas lancadas (inclui pendentes): R$ ${(summary?.expectedIncome || 0).toFixed(2)}`,
+            `A receber: R$ ${(summary?.pendingIncome || 0).toFixed(2)}`,
+            `Vencido: R$ ${(summary?.overdue || 0).toFixed(2)}`,
+            ...transactions.map((t) => `${t.transaction_date || ''} | ${t.paid_at || '-'} | ${t.refunded_at || '-'} | ${t.status || ''} | ${t.type || ''} | ${t.description || ''} | R$ ${Number(t.amount || 0).toFixed(2)}`),
         ],
     }, async () => {
     const doc = new jsPDF();
@@ -80,29 +83,34 @@ export const exportFinancialsToPdf = async (transactions, summary, period) => {
     // Calculate values safely
     const income = summary?.income || 0;
     const expenses = summary?.expenses || 0;
-    const netResult = summary?.netResult || (income - expenses);
+    const netResult = summary?.netResult ?? (income - expenses);
 
     autoTable(doc, {
         startY: 45,
         head: [['Resumo', 'Valor']],
         body: [
-            ['Receitas', `R$ ${income.toFixed(2)}`],
-            ['Despesas', `R$ ${expenses.toFixed(2)}`],
-            ['Saldo', `R$ ${netResult.toFixed(2)}`],
+            ['Caixa recebido líquido', `R$ ${income.toFixed(2)}`],
+            ['Despesas pagas', `R$ ${expenses.toFixed(2)}`],
+            ['Saldo de caixa', `R$ ${netResult.toFixed(2)}`],
+            ['Receitas lançadas (com pendentes)', `R$ ${(summary?.expectedIncome || 0).toFixed(2)}`],
+            ['A receber', `R$ ${(summary?.pendingIncome || 0).toFixed(2)}`],
+            ['Vencido', `R$ ${(summary?.overdue || 0).toFixed(2)}`],
         ],
         theme: 'striped'
     });
 
-    const tableColumn = ["Data", "Tipo", "Descrição", "Categoria", "Valor (R$)"];
+    const tableColumn = ["Competência", "Pagamento", "Estorno", "Tipo", "Status", "Descrição", "Valor (R$)"];
     const tableRows = [];
 
     transactions.forEach(t => {
-        const amount = t.amount || 0;
+        const amount = Number(t.amount || 0);
         const transactionData = [
             new Date(t.transaction_date + 'T00:00:00').toLocaleDateString('pt-BR'),
+            t.paid_at ? new Date(t.paid_at + 'T00:00:00').toLocaleDateString('pt-BR') : '-',
+            t.refunded_at ? new Date(t.refunded_at + 'T00:00:00').toLocaleDateString('pt-BR') : '-',
             t.type === 'income' ? 'Receita' : 'Despesa',
+            t.status === 'paid' ? 'Pago' : t.status === 'refunded' ? 'Estornado' : t.status === 'overdue' ? 'Vencido' : 'Pendente',
             t.description || '',
-            t.category || (t.income_source === 'patient_payment' ? 'Pag. Paciente' : 'Outra'),
             amount.toFixed(2)
         ];
         tableRows.push(transactionData);

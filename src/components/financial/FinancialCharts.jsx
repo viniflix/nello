@@ -14,7 +14,7 @@ const COLORS = {
 export default function FinancialCharts({ cashFlowData, expenseDistribution, projectedCashFlow, loading }) {
     const formattedCashFlow = useMemo(() => {
         if (!cashFlowData || cashFlowData.length === 0) return [];
-        
+
         return cashFlowData.map(item => ({
             ...item,
             date: format(parseISO(item.date), 'dd/MM', { locale: ptBR })
@@ -28,7 +28,7 @@ export default function FinancialCharts({ cashFlowData, expenseDistribution, pro
 
     const formattedProjection = useMemo(() => {
         if (!projectedCashFlow || projectedCashFlow.length === 0) return [];
-        
+
         return projectedCashFlow.map(item => ({
             ...item,
             date: format(parseISO(item.date), 'dd/MM', { locale: ptBR })
@@ -41,7 +41,7 @@ export default function FinancialCharts({ cashFlowData, expenseDistribution, pro
             <Card className="min-w-0 overflow-hidden bg-card shadow-card-dark">
                 <CardHeader className="pb-3">
                     <CardTitle className="font-heading text-base lg:text-lg font-semibold text-primary">Fluxo de Caixa</CardTitle>
-                    <CardDescription>Receitas vs Despesas por período</CardDescription>
+                    <CardDescription>Pagamentos e despesas efetivos por data; estornos são deduzidos.</CardDescription>
                 </CardHeader>
                 <CardContent className="min-w-0">
                     {loading ? (
@@ -55,8 +55,8 @@ export default function FinancialCharts({ cashFlowData, expenseDistribution, pro
                     ) : (
                         <ResponsiveContainer width="100%" height={300}>
                             <BarChart data={formattedCashFlow}>
-                                <XAxis 
-                                    dataKey="date" 
+                                <XAxis
+                                    dataKey="date"
                                     tick={{ fontSize: 12 }}
                                     angle={-45}
                                     textAnchor="end"
@@ -66,24 +66,24 @@ export default function FinancialCharts({ cashFlowData, expenseDistribution, pro
                                     tick={{ fontSize: 12 }}
                                     tickFormatter={(value) => `R$ ${(value / 1000).toFixed(0)}k`}
                                 />
-                                <Tooltip 
+                                <Tooltip
                                     formatter={(value) => `R$ ${value.toFixed(2)}`}
-                                    contentStyle={{ 
+                                    contentStyle={{
                                         backgroundColor: 'hsl(var(--card))',
                                         border: '1px solid hsl(var(--border))',
                                         borderRadius: '6px'
                                     }}
                                 />
                                 <Legend />
-                                <Bar 
-                                    dataKey="income" 
-                                    name="Receitas" 
+                                <Bar
+                                    dataKey="income"
+                                    name="Recebimentos"
                                     fill={COLORS.income}
                                     radius={[4, 4, 0, 0]}
                                 />
-                                <Bar 
-                                    dataKey="expenses" 
-                                    name="Despesas" 
+                                <Bar
+                                    dataKey="expenses"
+                                    name="Despesas pagas"
                                     fill={COLORS.expense}
                                     radius={[4, 4, 0, 0]}
                                 />
@@ -97,7 +97,7 @@ export default function FinancialCharts({ cashFlowData, expenseDistribution, pro
             <Card className="min-w-0 overflow-hidden bg-card shadow-card-dark">
                 <CardHeader className="pb-3">
                     <CardTitle className="font-heading text-base lg:text-lg font-semibold text-primary">Análise Financeira</CardTitle>
-                    <CardDescription>Distribuição de despesas e projeção de caixa</CardDescription>
+                    <CardDescription>Despesas pagas por categoria e projeção condicional das pendências.</CardDescription>
                 </CardHeader>
                 <CardContent className="min-w-0">
                     <Tabs defaultValue="expenses" className="w-full">
@@ -128,15 +128,15 @@ export default function FinancialCharts({ cashFlowData, expenseDistribution, pro
                                             dataKey="value"
                                         >
                                             {formattedExpenses.map((entry, index) => (
-                                                <Cell 
-                                                    key={`cell-${index}`} 
-                                                    fill={COLORS.pie[index % COLORS.pie.length]} 
+                                                <Cell
+                                                    key={`cell-${index}`}
+                                                    fill={COLORS.pie[index % COLORS.pie.length]}
                                                 />
                                             ))}
                                         </Pie>
-                                        <Tooltip 
+                                        <Tooltip
                                             formatter={(value) => `R$ ${value.toFixed(2)}`}
-                                            contentStyle={{ 
+                                            contentStyle={{
                                                 backgroundColor: 'hsl(var(--card))',
                                                 border: '1px solid hsl(var(--border))',
                                                 borderRadius: '6px'
@@ -158,8 +158,8 @@ export default function FinancialCharts({ cashFlowData, expenseDistribution, pro
                             ) : (
                                 <ResponsiveContainer width="100%" height={300}>
                                     <LineChart data={formattedProjection}>
-                                        <XAxis 
-                                            dataKey="date" 
+                                        <XAxis
+                                            dataKey="date"
                                             tick={{ fontSize: 12 }}
                                             angle={-45}
                                             textAnchor="end"
@@ -169,19 +169,19 @@ export default function FinancialCharts({ cashFlowData, expenseDistribution, pro
                                             tick={{ fontSize: 12 }}
                                             tickFormatter={(value) => `R$ ${(value / 1000).toFixed(0)}k`}
                                         />
-                                        <Tooltip 
+                                        <Tooltip
                                             formatter={(value) => `R$ ${value.toFixed(2)}`}
-                                            contentStyle={{ 
+                                            contentStyle={{
                                                 backgroundColor: 'hsl(var(--card))',
                                                 border: '1px solid hsl(var(--border))',
                                                 borderRadius: '6px'
                                             }}
                                         />
                                         <Legend />
-                                        <Line 
-                                            type="monotone" 
-                                            dataKey="balance" 
-                                            name="Saldo Projetado" 
+                                        <Line
+                                            type="monotone"
+                                            dataKey="balance"
+                                            name="Saldo Projetado"
                                             stroke={COLORS.income}
                                             strokeWidth={2}
                                             dot={{ r: 3 }}

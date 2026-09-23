@@ -14,6 +14,13 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useShadowDraft } from '@/hooks/useShadowDraft';
 import { ShadowRecovery, ShadowSaveStatus } from '@/components/ui/shadow-save-status';
 
+const WEEKDAYS = [
+    { value: 1, label: 'Segunda-feira' }, { value: 2, label: 'Terça-feira' },
+    { value: 3, label: 'Quarta-feira' }, { value: 4, label: 'Quinta-feira' },
+    { value: 5, label: 'Sexta-feira' }, { value: 6, label: 'Sábado' },
+    { value: 7, label: 'Domingo' },
+];
+
 export default function CheckinEditorPage() {
     const navigate = useNavigate();
     const { templateId } = useParams();
@@ -27,6 +34,7 @@ export default function CheckinEditorPage() {
     const [name, setNameState] = useState('');
     const [description, setDescriptionState] = useState('');
     const [frequency, setFrequencyState] = useState('weekly');
+    const [sendDay, setSendDayState] = useState(1);
     const [sendTime, setSendTimeState] = useState('09:00');
     const [channel, setChannelState] = useState('in_app');
     
@@ -37,13 +45,18 @@ export default function CheckinEditorPage() {
     const shadow = useShadowDraft({ ownerId: user?.id, draftKey: `checkin-template:${templateId || 'new'}`, enabled: Boolean(user?.id) });
     const setName = (value) => { touchedRef.current = true; setNameState(value); };
     const setDescription = (value) => { touchedRef.current = true; setDescriptionState(value); };
-    const setFrequency = (value) => { touchedRef.current = true; setFrequencyState(value); };
+    const setFrequency = (value) => {
+        touchedRef.current = true;
+        setFrequencyState(value);
+        if (value !== 'monthly' && sendDay > 7) setSendDayState(1);
+    };
+    const setSendDay = (value) => { touchedRef.current = true; setSendDayState(value); };
     const setSendTime = (value) => { touchedRef.current = true; setSendTimeState(value); };
     const setChannel = (value) => { touchedRef.current = true; setChannelState(value); };
     const setFields = (value) => { touchedRef.current = true; setFieldsState(value); };
     useEffect(() => {
-        if (touchedRef.current && !isLoading && shadow.ready) shadow.queue({ name, description, frequency, sendTime, channel, fields });
-    }, [name, description, frequency, sendTime, channel, fields, isLoading, shadow.ready, shadow.queue]);
+        if (touchedRef.current && !isLoading && shadow.ready) shadow.queue({ name, description, frequency, sendDay, sendTime, channel, fields });
+    }, [name, description, frequency, sendDay, sendTime, channel, fields, isLoading, shadow.ready, shadow.queue]);
     const restoreShadow = () => {
         const value = shadow.restore();
         if (!value) return;
@@ -51,6 +64,7 @@ export default function CheckinEditorPage() {
         setNameState(value.name || '');
         setDescriptionState(value.description || '');
         setFrequencyState(value.frequency || 'weekly');
+        setSendDayState(Number(value.sendDay) || 1);
         setSendTimeState(value.sendTime || '09:00');
         setChannelState(value.channel || 'in_app');
         setFieldsState(value.fields || []);
@@ -62,6 +76,7 @@ export default function CheckinEditorPage() {
                 setNameState(data.name || '');
                 setDescriptionState(data.description || '');
                 setFrequencyState(data.frequency || 'weekly');
+                setSendDayState(Number(data.send_days?.[0]) || 1);
                 setSendTimeState(data.send_time ? data.send_time.substring(0, 5) : '09:00');
                 setChannelState(data.channel || 'in_app');
                 if (data.checkin_fields && data.checkin_fields.length > 0) {
@@ -82,9 +97,14 @@ export default function CheckinEditorPage() {
             toast({ title: 'Revise o check-in', description: validationError, variant: 'destructive' });
             return;
         }
+        if ((frequency === 'monthly' && (!Number.isInteger(sendDay) || sendDay < 1 || sendDay > 28)) ||
+            (['weekly', 'biweekly'].includes(frequency) && (!Number.isInteger(sendDay) || sendDay < 1 || sendDay > 7))) {
+            toast({ title: 'Dia inválido', description: 'Escolha um dia válido para a frequência selecionada.', variant: 'destructive' });
+            return;
+        }
         setIsSaving(true);
         try {
-            const templateData = { name, description, frequency, send_time: sendTime, send_days: [1], channel };
+            const templateData = { name, description, frequency, send_time: sendTime, send_days: [frequency === 'daily' ? 1 : sendDay], channel };
             if (templateId) {
                 await updateTemplate.mutateAsync({ id: templateId, template: templateData, fields });
             } else {
@@ -156,11 +176,23 @@ export default function CheckinEditorPage() {
                                 </SelectContent>
                             </Select>
                         </div>
+                        {(frequency === 'weekly' || frequency === 'biweekly') && <div className="space-y-2">
+                            <Label className="font-semibold">Dia de envio</Label>
+                            <Select value={String(Math.min(sendDay, 7))} onValueChange={(value) => setSendDay(Number(value))}>
+                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                <SelectContent>{WEEKDAYS.map((day) => <SelectItem key={day.value} value={String(day.value)}>{day.label}</SelectItem>)}</SelectContent>
+                            </Select>
+                        </div>}
+                        {frequency === 'monthly' && <div className="space-y-2">
+                            <Label htmlFor="checkin-month-day" className="font-semibold">Dia do mês (1 a 28)</Label>
+                            <Input id="checkin-month-day" type="number" min="1" max="28" value={sendDay} onChange={(event) => setSendDay(Number(event.target.value))} />
+                        </div>}
                     </div>
                     <div className="space-y-4">
                         <div className="space-y-2">
                             <Label className="font-semibold">Horário de Envio</Label>
                             <Input type="time" required value={sendTime} onChange={e => setSendTime(e.target.value)} />
+                            <p className="text-xs text-muted-foreground">O horário segue o fuso informado ao vincular o check-in ao paciente.</p>
                         </div>
                         <div className="space-y-2">
                             <Label className="font-semibold">Canal de Disparo</Label>

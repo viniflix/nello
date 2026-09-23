@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Edit, Trash2, Search, X, Printer } from 'lucide-react';
+import { Edit, Trash2, Search, X, Printer, CheckCircle2, RotateCcw } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { formatCurrency } from '@/lib/utils';
@@ -13,13 +13,15 @@ import { formatCurrency } from '@/lib/utils';
 const STATUS_COLORS = {
     paid: 'success',
     pending: 'warning',
-    overdue: 'destructive'
+    overdue: 'destructive',
+    refunded: 'secondary'
 };
 
 const STATUS_LABELS = {
     paid: 'Pago',
     pending: 'Pendente',
-    overdue: 'Vencido'
+    overdue: 'Vencido',
+    refunded: 'Estornado'
 };
 
 const TYPE_LABELS = {
@@ -33,6 +35,8 @@ export default function TransactionList({
     onEdit, 
     onDelete,
     onGenerateReceipt,
+    onConfirmPayment,
+    onRefund,
     filters,
     onFiltersChange 
 }) {
@@ -96,6 +100,7 @@ export default function TransactionList({
                             <SelectItem value="paid">Pago</SelectItem>
                             <SelectItem value="pending">Pendente</SelectItem>
                             <SelectItem value="overdue">Vencido</SelectItem>
+                            <SelectItem value="refunded">Estornado</SelectItem>
                         </SelectContent>
                     </Select>
                     {hasActiveFilters && (
@@ -110,6 +115,7 @@ export default function TransactionList({
                     )}
                 </div>
 
+                <p className="mb-3 text-xs text-muted-foreground">Inclui lançamentos com competência, pagamento ou estorno no mês selecionado.</p>
                 {/* Table */}
                 {loading ? (
                     <div className="text-center py-8 text-muted-foreground">
@@ -124,7 +130,8 @@ export default function TransactionList({
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead className="w-[100px]">Data</TableHead>
+                                    <TableHead className="w-[100px]">Competência</TableHead>
+                                    <TableHead className="w-[100px]">Pagamento</TableHead>
                                     <TableHead>Descrição</TableHead>
                                     <TableHead className="w-[120px]">Categoria</TableHead>
                                     <TableHead className="w-[150px]">Paciente</TableHead>
@@ -139,6 +146,7 @@ export default function TransactionList({
                                         <TableCell className="font-medium">
                                             {format(new Date(transaction.transaction_date + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR })}
                                         </TableCell>
+                                        <TableCell>{transaction.paid_at ? format(new Date(transaction.paid_at + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR }) : '-'}</TableCell>
                                         <TableCell className="max-w-[200px] truncate">
                                             {transaction.description}
                                         </TableCell>
@@ -161,11 +169,18 @@ export default function TransactionList({
                                         </TableCell>
                                         <TableCell>
                                             <Badge variant={STATUS_COLORS[transaction.status] || 'default'}>
-                                                {STATUS_LABELS[transaction.status] || transaction.status}
+                                                {transaction.status === 'refunded' ? `Estornado ${transaction.refunded_at || ''}` :
+                                                    transaction.status === 'pending' && transaction.due_date && transaction.due_date < format(new Date(), 'yyyy-MM-dd')
+                                                        ? 'Vencido' : STATUS_LABELS[transaction.status] || transaction.status}
                                             </Badge>
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex justify-end gap-2">
+                                                {transaction.type === 'income' && ['pending', 'overdue'].includes(transaction.status) && onConfirmPayment && (
+                                                    <Button variant="ghost" size="icon" onClick={() => onConfirmPayment(transaction.id)} className="h-8 w-8 text-primary" title="Confirmar recebimento" aria-label="Confirmar recebimento">
+                                                        <CheckCircle2 className="h-4 w-4" />
+                                                    </Button>
+                                                )}
                                                 {transaction.type === 'income' && transaction.status === 'paid' && onGenerateReceipt && (
                                                     <Button
                                                         variant="ghost"
@@ -177,6 +192,12 @@ export default function TransactionList({
                                                         <Printer className="h-4 w-4" />
                                                     </Button>
                                                 )}
+                                                {transaction.status === 'paid' && onRefund && (
+                                                    <Button variant="ghost" size="icon" onClick={() => onRefund(transaction.id)} className="h-8 w-8" title="Registrar estorno" aria-label="Registrar estorno">
+                                                        <RotateCcw className="h-4 w-4" />
+                                                    </Button>
+                                                )}
+                                                {transaction.status !== 'refunded' && (
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
@@ -186,6 +207,8 @@ export default function TransactionList({
                                                 >
                                                     <Edit className="h-4 w-4" />
                                                 </Button>
+                                                )}
+                                                {!['paid', 'refunded'].includes(transaction.status) && (
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
@@ -195,6 +218,7 @@ export default function TransactionList({
                                                 >
                                                     <Trash2 className="h-4 w-4" />
                                                 </Button>
+                                                )}
                                             </div>
                                         </TableCell>
                                     </TableRow>

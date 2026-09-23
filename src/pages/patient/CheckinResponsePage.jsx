@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useCheckins } from '@/hooks/useCheckins';
 import { supabase } from '@/lib/customSupabaseClient';
@@ -11,6 +11,9 @@ import { FormSkeleton } from '@/components/ui/custom-skeletons';
 import { isUuid } from '@/lib/utils/patientRoutes';
 import { findMissingRequiredField, isFormValuePresent } from '@/lib/validations/formContracts';
 import { useToast } from '@/components/ui/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
+import { useShadowDraft } from '@/hooks/useShadowDraft';
+import { ShadowRecovery, ShadowSaveStatus } from '@/components/ui/shadow-save-status';
 
 const CHECKIN_NOT_FOUND_MESSAGE = 'Check-in não encontrado.';
 const CHECKIN_LOAD_ERROR_MESSAGE = 'Não foi possível carregar este check-in.';
@@ -19,7 +22,10 @@ const CheckinResponsePage = () => {
   const { sessionId } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   const { submitCheckin } = useCheckins();
+  const shadow = useShadowDraft({ ownerId: user?.id, draftKey: `checkin-response:${sessionId}`, enabled: Boolean(user?.id && isUuid(sessionId)) });
+  const touchedRef = useRef(false);
   
   const [session, setSession] = useState(null);
   const [fields, setFields] = useState([]);
@@ -29,6 +35,19 @@ const CheckinResponsePage = () => {
   const [responses, setResponses] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
+
+  const restoreShadow = () => {
+    const candidate = shadow.recovery?.payload;
+    if (!candidate?.responses || !session || candidate.expiresAt !== session.expires_at) {
+      void shadow.discardRecovery();
+      return;
+    }
+    const saved = shadow.restore();
+    if (!saved?.responses) return;
+    const allowed = new Set(fields.map((field) => field.id));
+    setResponses((current) => ({ ...current, ...Object.fromEntries(Object.entries(saved.responses).filter(([id]) => allowed.has(id))) }));
+    touchedRef.current = true;
+  };
 
   useEffect(() => {
     const fetchSessionData = async () => {
@@ -106,6 +125,12 @@ const CheckinResponsePage = () => {
     fetchSessionData();
   }, [sessionId]);
 
+  useEffect(() => {
+    if (shadow.ready && (isCompleted || error?.includes('expirou'))) {
+      void shadow.discard();
+    }
+  }, [shadow.ready, shadow.discard, isCompleted, error]);
+
   const handleNext = () => {
     const field = fields[currentStep];
     if (field?.is_required && !isFormValuePresent(responses[field.id])) {
@@ -120,7 +145,10 @@ const CheckinResponsePage = () => {
   };
 
   const handleResponseChange = (fieldId, value) => {
-    setResponses(prev => ({ ...prev, [fieldId]: value }));
+    touchedRef.current = true;
+    const next = { ...responses, [fieldId]: value };
+    setResponses(next);
+    if (session) shadow.queue({ responses: next, expiresAt: session.expires_at });
   };
 
   const handleSubmit = async () => {
@@ -137,7 +165,7 @@ const CheckinResponsePage = () => {
         sessionId,
         responses
       });
-
+      await shadow.discard();
       setIsCompleted(true);
     } catch {
       // A mutação exibe uma mensagem neutra e mantém o formulário disponível para nova tentativa.
@@ -224,6 +252,10 @@ const CheckinResponsePage = () => {
         </div>
 
         {/* Question Area */}
+        <div className="px-6 pt-4 sm:px-10 space-y-2">
+          <ShadowRecovery recovery={shadow.recovery} onRestore={restoreShadow} onDiscard={() => { void shadow.discardRecovery(); }} />
+          {(touchedRef.current || shadow.recovery) && <ShadowSaveStatus status={shadow.status} onRetry={shadow.flush} />}
+        </div>
         <div className="flex-1 p-6 sm:p-10 flex flex-col justify-center animate-in slide-in-from-right-8 duration-300 relative">
           <h2 className="text-2xl sm:text-3xl font-extrabold text-center text-foreground mb-10 leading-snug">
             {currentField?.label}

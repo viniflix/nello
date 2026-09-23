@@ -14,7 +14,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { calculateNutrition } from '@/lib/utils/nutrition-calculations';
-import { mealItemFoodIds } from '@/lib/supabase/food-diary-queries';
+import { savePatientDiaryMeal } from '@/lib/supabase/food-diary-queries';
+import { format } from 'date-fns';
 import { getFoodMeasures } from '@/lib/supabase/foodService';
 import { formatNutrient } from '@/lib/utils';
 
@@ -35,7 +36,7 @@ const AddFoodPage = () => {
     const { toast } = useToast();
     const navigate = useNavigate();
     const { mealId } = useParams();
-    const [originalMeal, setOriginalMeal] = useState(null);
+    const [mealDate, setMealDate] = useState(format(new Date(), 'yyyy-MM-dd'));
     const [foods, setFoods] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [showResults, setShowResults] = useState(false);
@@ -43,14 +44,13 @@ const AddFoodPage = () => {
     const [selectedFood, setSelectedFood] = useState(null);
     const [measure, setMeasure] = useState('grams');
     const [quantity, setQuantity] = useState('');
-    const [mealDetails, setMealDetails] = useState({ time: new Date().toTimeString().slice(0, 5), type: '', notes: '' });
+    const [mealDetails, setMealDetails] = useState(() => {
+        const time = new Date().toTimeString().slice(0, 5);
+        return { time, type: getMealType(time), notes: '' };
+    });
     const [loading, setLoading] = useState(false);
     const [conversions, setConversions] = useState([]);
     const [measureType, setMeasureType] = useState('direct'); // 'direct' or 'household'
-
-    useEffect(() => {
-        setMealDetails(prev => ({...prev, type: getMealType(prev.time)}));
-    }, [mealDetails.time]);
 
     const fetchFoods = useCallback(async () => {
         if (!user || !user.profile) return;
@@ -78,7 +78,7 @@ const AddFoodPage = () => {
                     toast({ title: "Erro", description: "Refeição não encontrada.", variant: "destructive" });
                     navigate('/patient/diario');
                 } else {
-                    setOriginalMeal(JSON.parse(JSON.stringify(data))); // Deep copy for history
+                    setMealDate(data.meal_date);
                     setMealDetails({ time: data.meal_time, type: data.meal_type, notes: data.notes || '' });
                     const items = data.meal_items.map(item => ({
                         ...item,
@@ -168,66 +168,34 @@ const AddFoodPage = () => {
     }), { calories: 0, protein: 0, fat: 0, carbs: 0 }), [mealItems]);
 
     const handleSaveMeal = async () => {
+        if (loading) return;
         if (mealItems.length === 0) {
-            toast({ title: "Refeição vazia", description: "Adicione pelo menos um alimento.", variant: "destructive" });
+            toast({ title: 'Refeição vazia', description: 'Adicione pelo menos um alimento.', variant: 'destructive' });
             return;
         }
         setLoading(true);
-
-        const mealPayload = {
-            patient_id: user.id, meal_date: new Date().toISOString().split('T')[0], meal_time: mealDetails.time,
-            meal_type: mealDetails.type, notes: mealDetails.notes, total_calories: mealTotals.calories,
-            total_protein: mealTotals.protein, total_fat: mealTotals.fat, total_carbs: mealTotals.carbs,
-        };
-
-        const saveAndCheckAchievements = async (meal_id) => {
-            const itemsPayload = mealItems.map(item => {
-                const ids = mealItemFoodIds(item.food_id, item.food_source || 'reference');
-                return { meal_id, ...ids, name: item.name, quantity: item.quantity, calories: item.calories, protein: item.protein, fat: item.fat, carbs: item.carbs };
+        try {
+            await savePatientDiaryMeal({
+                mealId: mealId || null,
+                mealDate,
+                mealTime: mealDetails.time,
+                mealType: mealDetails.type,
+                notes: mealDetails.notes,
+                foods: mealItems,
             });
-            const { error: itemsError } = await supabase.from('meal_items').insert(itemsPayload);
-            
-            if (itemsError) {
-                toast({ title: "Erro", description: `Não foi possível salvar os itens: ${itemsError.message}`, variant: "destructive" });
-            } else {
-                toast({ title: "Sucesso!", description: `Refeição salva.` });
-                
-                const { data: newAchievements, error: rpcError } = await supabase.rpc('check_and_grant_achievements', { p_user_id: user.id });
-                if (rpcError) {
-                    console.error("Error checking achievements:", rpcError);
-                } else if (newAchievements && newAchievements.length > 0) {
-                    newAchievements.forEach((ach, index) => {
-                        setTimeout(() => {
-                           toast({
-                                title: "🎉 Conquista Desbloqueada!",
-                                description: ach.name,
-                                duration: 5000,
-                            });
-                        }, 500 * (index + 1));
-                    });
-                }
-
-                navigate('/patient/diario');
-            }
-        };
-
-        if (mealId) {
-             const { error: mealError } = await supabase.from('meals').update(mealPayload).eq('id', mealId);
-             if(mealError) {
-                toast({ title: "Erro", description: `Não foi possível atualizar a refeição: ${mealError.message}`, variant: "destructive" });
-                setLoading(false); return;
-             }
-             await supabase.from('meal_items').delete().eq('meal_id', mealId);
-             await saveAndCheckAchievements(mealId);
-        } else {
-            const { data: newMeal, error: mealError } = await supabase.from('meals').insert(mealPayload).select().single();
-            if(mealError) {
-                toast({ title: "Erro", description: `Não foi possível salvar a refeição: ${mealError.message}`, variant: "destructive" });
-                setLoading(false); return;
-            }
-            await saveAndCheckAchievements(newMeal.id);
+            toast({ title: 'Sucesso!', description: 'Refeição salva.' });
+            const { data: achievements, error: achievementError } = await supabase.rpc('check_and_grant_achievements', { p_user_id: user.id });
+            if (achievementError) console.error('Error checking achievements:', achievementError);
+            else (achievements || []).forEach((achievement) => {
+                toast({ title: '🎉 Conquista Desbloqueada!', description: achievement.name, duration: 5000 });
+            });
+            navigate('/patient/diario');
+        } catch (error) {
+            console.error('Erro ao salvar refeição:', error);
+            toast({ title: 'Erro ao salvar', description: 'A refeição anterior foi preservada. Revise os dados e tente novamente.', variant: 'destructive' });
+        } finally {
+            setLoading(false);
         }
-        setLoading(false);
     };
 
     return (
@@ -315,7 +283,7 @@ const AddFoodPage = () => {
                                 <CardHeader><CardTitle>Resumo da Refeição</CardTitle></CardHeader>
                                 <CardContent className="space-y-4">
                                     <div className="grid grid-cols-2 gap-4">
-                                        <div><Label htmlFor="meal-time">Horário</Label><TimeInput id="meal-time" value={mealDetails.time} onChange={(value) => setMealDetails({ ...mealDetails, time: value })} /></div>
+                                        <div><Label htmlFor="meal-time">Horário</Label><TimeInput id="meal-time" value={mealDetails.time} onChange={(value) => setMealDetails({ ...mealDetails, time: value, type: getMealType(value) })} /></div>
                                         <div><Label htmlFor="meal-type">Tipo</Label><Select value={mealDetails.type} onValueChange={value => setMealDetails({...mealDetails, type: value})}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{mealTypes.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent></Select></div>
                                     </div>
                                     <div><Label htmlFor="meal-notes">Observações</Label><Textarea id="meal-notes" placeholder="Ex: senti muita fome, comi antes do treino..." value={mealDetails.notes} onChange={e => setMealDetails({...mealDetails, notes: e.target.value})} /></div>

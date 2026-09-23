@@ -1,123 +1,54 @@
 import { supabase } from '@/lib/customSupabaseClient';
 import { format, startOfMonth, endOfMonth, addDays, parseISO, startOfDay } from 'date-fns';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
+import { summarizeFinancialTransactions, buildFinancialCashFlow, buildFinancialExpenseDistribution } from '@/lib/utils/financial-math';
 
-/**
- * Get financial summary for a specific month/year
- * @param {Date} monthDate - Date object representing the month/year to query
- * @param {string} nutritionistId - Nutritionist UUID (required for RLS)
- * @returns {Promise<{income: number, expenses: number, netResult: number, overdue: number}>}
- */
-export async function getFinancialSummary(monthDate, nutritionistId) {
-    if (!nutritionistId) {
-        throw new Error('nutritionistId is required for getFinancialSummary');
-    }
-    
-    const start = startOfMonth(monthDate);
-    const end = endOfMonth(monthDate);
-    
-    // Try to select net_amount, but fallback to amount if column doesn't exist
-    const { data, error } = await supabase
-        .from('financial_transactions')
-        .select('type, amount, status')
-        .eq('nutritionist_id', nutritionistId)
-        .gte('transaction_date', format(start, 'yyyy-MM-dd'))
-        .lte('transaction_date', format(end, 'yyyy-MM-dd'));
-
-    if (error) {
-        logSupabaseError('Error fetching financial summary', error);
-        throw error;
-    }
-
-    // Calculate gross and net income (use amount for both if net_amount doesn't exist)
-    const income = (data || [])
-        .filter(t => t.type === 'income')
-        .reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
-
-    // For now, netIncome = income (net_amount column may not exist yet)
-    const netIncome = income;
-
-    const expenses = (data || [])
-        .filter(t => t.type === 'expense')
-        .reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
-
-    const overdue = (data || [])
-        .filter(t => t.status === 'overdue')
-        .reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
-
-    return {
-        income,
-        netIncome,
-        expenses,
-        netResult: netIncome - expenses,
-        overdue
+/** Fetch every row touching the month by competence, payment or refund date. */
+export async function getFinancialMonthRows(nutritionistId, monthDate) {
+    if (!nutritionistId) throw new Error('nutritionistId is required');
+    const start = format(startOfMonth(monthDate), 'yyyy-MM-dd');
+    const end = format(endOfMonth(monthDate), 'yyyy-MM-dd');
+    const select = '*, patient:user_profiles!financial_transactions_patient_id_fkey(id,name,cpf)';
+    const fetchColumn = async (column) => {
+        const rows = [];
+        for (let offset = 0; ; offset += 1000) {
+            const { data, error } = await supabase.from('financial_transactions')
+                .select(select).eq('nutritionist_id', nutritionistId)
+                .gte(column, start).lte(column, end)
+                .order('id', { ascending: true }).range(offset, offset + 999);
+            if (error) throw error;
+            rows.push(...(data || []));
+            if (!data || data.length < 1000) break;
+        }
+        return rows;
     };
+    const groups = await Promise.all(['transaction_date', 'paid_at', 'refunded_at'].map(fetchColumn));
+    return [...new Map(groups.flat().map((row) => [row.id, row])).values()];
 }
 
-/**
- * Get transactions with filters, pagination, and sorting
- * @param {string} nutritionistId - Nutritionist UUID
- * @param {Object} filters - { type, status, search, month, year }
- * @param {Object} pagination - { page, pageSize }
- * @param {Object} sorting - { field, order: 'asc' | 'desc' }
- * @returns {Promise<{data: Array, total: number}>}
- */
+export async function getFinancialSummary(monthDate, nutritionistId) {
+    const rows = await getFinancialMonthRows(nutritionistId, monthDate);
+    return summarizeFinancialTransactions(
+        rows, format(startOfMonth(monthDate), 'yyyy-MM-dd'),
+        format(endOfMonth(monthDate), 'yyyy-MM-dd'), format(new Date(), 'yyyy-MM-dd')
+    );
+}
+
 export async function getTransactions(nutritionistId, filters = {}, pagination = {}, sorting = {}) {
-    let query = supabase
-        .from('financial_transactions')
-        .select(`
-            *,
-            patient:user_profiles!financial_transactions_patient_id_fkey(
-                id,
-                name
-            )
-        `, { count: 'exact' })
-        .eq('nutritionist_id', nutritionistId);
-
-    // Apply filters
-    if (filters.type) {
-        query = query.eq('type', filters.type);
-    }
-
-    if (filters.status) {
-        query = query.eq('status', filters.status);
-    }
-
-    if (filters.search) {
-        query = query.ilike('description', `%${filters.search}%`);
-    }
-
-    if (filters.month && filters.year) {
-        const start = startOfMonth(new Date(filters.year, filters.month - 1, 1));
-        const end = endOfMonth(new Date(filters.year, filters.month - 1, 1));
-        query = query
-            .gte('transaction_date', format(start, 'yyyy-MM-dd'))
-            .lte('transaction_date', format(end, 'yyyy-MM-dd'));
-    }
-
-    // Apply sorting
-    const sortField = sorting.field || 'transaction_date';
-    const sortOrder = sorting.order || 'desc';
-    query = query.order(sortField, { ascending: sortOrder === 'asc' });
-
-    // Apply pagination
-    if (pagination.page && pagination.pageSize) {
-        const from = (pagination.page - 1) * pagination.pageSize;
-        const to = from + pagination.pageSize - 1;
-        query = query.range(from, to);
-    }
-
-    const { data, error, count } = await query;
-
-    if (error) {
-        logSupabaseError('Error fetching transactions', error);
-        throw error;
-    }
-
-    return {
-        data: data || [],
-        total: count || 0
-    };
+    const monthDate = filters.month && filters.year ? new Date(filters.year, filters.month - 1, 1) : new Date();
+    const rows = await getFinancialMonthRows(nutritionistId, monthDate);
+    const search = String(filters.search || '').trim().toLocaleLowerCase('pt-BR');
+    const filtered = rows.filter((row) =>
+        (!filters.type || row.type === filters.type) &&
+        (!filters.status || row.status === filters.status) &&
+        (!search || String(row.description || '').toLocaleLowerCase('pt-BR').includes(search))
+    );
+    const field = ['transaction_date', 'paid_at', 'refunded_at', 'amount'].includes(sorting.field) ? sorting.field : 'transaction_date';
+    const direction = sorting.order === 'asc' ? 1 : -1;
+    filtered.sort((a, b) => direction * String(a[field] ?? '').localeCompare(String(b[field] ?? '')) || direction * (a.id - b.id));
+    const page = Math.max(1, pagination.page || 1);
+    const pageSize = pagination.pageSize || filtered.length;
+    return { data: filtered.slice((page - 1) * pageSize, page * pageSize), total: filtered.length };
 }
 
 /**
@@ -189,95 +120,21 @@ export async function deleteTransaction(transactionId) {
     }
 }
 
-/**
- * Get cash flow data for chart (daily or weekly aggregation)
- * @param {string} nutritionistId - Nutritionist UUID
- * @param {Date} monthDate - Month to query
- * @param {string} aggregation - 'day' or 'week'
- * @returns {Promise<Array>}
- */
+/** Cash flow and paid expense distribution follow paid_at/refunded_at. */
 export async function getCashFlowData(nutritionistId, monthDate, aggregation = 'day') {
-    const start = startOfMonth(monthDate);
-    const end = endOfMonth(monthDate);
-
-    const { data, error } = await supabase
-        .from('financial_transactions')
-        .select('transaction_date, type, amount')
-        .eq('nutritionist_id', nutritionistId)
-        .gte('transaction_date', format(start, 'yyyy-MM-dd'))
-        .lte('transaction_date', format(end, 'yyyy-MM-dd'))
-        .order('transaction_date', { ascending: true });
-
-    if (error) {
-        logSupabaseError('Error fetching cash flow data', error);
-        throw error;
-    }
-
-    // Group by day or week
-    const grouped = {};
-    data.forEach(transaction => {
-        const date = new Date(transaction.transaction_date);
-        let key;
-        
-        if (aggregation === 'week') {
-            const weekStart = new Date(date);
-            weekStart.setDate(date.getDate() - date.getDay()); // Sunday
-            key = format(weekStart, 'yyyy-MM-dd');
-        } else {
-            key = format(date, 'yyyy-MM-dd');
-        }
-
-        if (!grouped[key]) {
-            grouped[key] = { date: key, income: 0, expenses: 0 };
-        }
-
-        if (transaction.type === 'income') {
-            grouped[key].income += parseFloat(transaction.amount || 0);
-        } else {
-            grouped[key].expenses += parseFloat(transaction.amount || 0);
-        }
-    });
-
-    return Object.values(grouped).sort((a, b) => a.date.localeCompare(b.date));
+    const rows = await getFinancialMonthRows(nutritionistId, monthDate);
+    return buildFinancialCashFlow(
+        rows, format(startOfMonth(monthDate), 'yyyy-MM-dd'),
+        format(endOfMonth(monthDate), 'yyyy-MM-dd'), aggregation
+    );
 }
 
-/**
- * Get expense distribution by category
- * @param {string} nutritionistId - Nutritionist UUID
- * @param {Date} monthDate - Month to query
- * @returns {Promise<Array>}
- */
 export async function getExpenseDistribution(nutritionistId, monthDate) {
-    const start = startOfMonth(monthDate);
-    const end = endOfMonth(monthDate);
-
-    const { data, error } = await supabase
-        .from('financial_transactions')
-        .select('category, amount')
-        .eq('nutritionist_id', nutritionistId)
-        .eq('type', 'expense')
-        .gte('transaction_date', format(start, 'yyyy-MM-dd'))
-        .lte('transaction_date', format(end, 'yyyy-MM-dd'));
-
-    if (error) {
-        logSupabaseError('Error fetching expense distribution', error);
-        throw error;
-    }
-
-    // Group by category
-    const grouped = {};
-    data.forEach(transaction => {
-        const category = transaction.category || 'outros';
-        if (!grouped[category]) {
-            grouped[category] = 0;
-        }
-        grouped[category] += parseFloat(transaction.amount || 0);
-    });
-
-    return Object.entries(grouped).map(([name, value]) => ({
-        name: name.charAt(0).toUpperCase() + name.slice(1).replace('_', ' '),
-        value: value
-    }));
+    const rows = await getFinancialMonthRows(nutritionistId, monthDate);
+    return buildFinancialExpenseDistribution(
+        rows, format(startOfMonth(monthDate), 'yyyy-MM-dd'),
+        format(endOfMonth(monthDate), 'yyyy-MM-dd')
+    );
 }
 
 /**
@@ -291,13 +148,12 @@ export async function getProjectedCashFlow(nutritionistId, startDate) {
     const today = startOfDay(startDate);
     const endDate = addDays(today, 30);
     
-    // Get current balance (sum of all paid transactions)
-    // Use amount only (net_amount may not exist)
+    // Reconcile the projection with the same net cash used by the dashboard.
     const { data: paidTransactions, error: paidError } = await supabase
         .from('financial_transactions')
-        .select('type, amount')
+        .select('type, amount, net_amount, status')
         .eq('nutritionist_id', nutritionistId)
-        .eq('status', 'paid');
+        .in('status', ['paid', 'refunded']);
 
     if (paidError) {
         logSupabaseError('Error fetching paid transactions for balance', paidError);
@@ -307,11 +163,12 @@ export async function getProjectedCashFlow(nutritionistId, startDate) {
     // Calculate current balance (income - expenses)
     let currentBalance = 0;
     (paidTransactions || []).forEach(transaction => {
-        const value = parseFloat(transaction.amount || 0);
+        const value = parseFloat(transaction.type === 'income' ? transaction.net_amount ?? transaction.amount : transaction.amount || 0);
+        const refund = transaction.status === 'refunded' ? parseFloat(transaction.amount || 0) : 0;
         if (transaction.type === 'income') {
-            currentBalance += value;
+            currentBalance += value - refund;
         } else {
-            currentBalance -= value;
+            currentBalance -= value - refund;
         }
     });
 
@@ -319,18 +176,18 @@ export async function getProjectedCashFlow(nutritionistId, startDate) {
     // First, get transactions with due_date in range
     const { data: pendingWithDueDate, error: pendingError1 } = await supabase
         .from('financial_transactions')
-        .select('type, amount, due_date, transaction_date')
+        .select('type, amount, net_amount, due_date, transaction_date')
         .eq('nutritionist_id', nutritionistId)
-        .eq('status', 'pending')
+        .in('status', ['pending', 'overdue'])
         .gte('due_date', format(today, 'yyyy-MM-dd'))
         .lte('due_date', format(endDate, 'yyyy-MM-dd'));
 
     // Get transactions without due_date but with transaction_date in range
     const { data: pendingWithoutDueDate, error: pendingError2 } = await supabase
         .from('financial_transactions')
-        .select('type, amount, due_date, transaction_date')
+        .select('type, amount, net_amount, due_date, transaction_date')
         .eq('nutritionist_id', nutritionistId)
-        .eq('status', 'pending')
+        .in('status', ['pending', 'overdue'])
         .is('due_date', null)
         .gte('transaction_date', format(today, 'yyyy-MM-dd'))
         .lte('transaction_date', format(endDate, 'yyyy-MM-dd'));
@@ -354,7 +211,7 @@ export async function getProjectedCashFlow(nutritionistId, startDate) {
             transactionsByDate[date] = { income: 0, expenses: 0 };
         }
         
-        const value = parseFloat(transaction.amount || 0);
+        const value = parseFloat(transaction.type === 'income' ? transaction.net_amount ?? transaction.amount : transaction.amount || 0);
         if (transaction.type === 'income') {
             transactionsByDate[date].income += value;
         } else {
@@ -515,8 +372,6 @@ export async function saveMultipleTransactions(transactions) {
  * @returns {Promise<Array>}
  */
 export async function getPendingPayments(nutritionistId) {
-    const today = format(new Date(), 'yyyy-MM-dd');
-    
     const { data, error } = await supabase
         .from('financial_transactions')
         .select(`
@@ -528,9 +383,8 @@ export async function getPendingPayments(nutritionistId) {
         `)
         .eq('nutritionist_id', nutritionistId)
         .eq('type', 'income')
-        .eq('status', 'pending')
-        .lte('transaction_date', today)
-        .order('transaction_date', { ascending: true });
+        .in('status', ['pending', 'overdue'])
+        .order('due_date', { ascending: true, nullsFirst: false });
 
     if (error) {
         logSupabaseError('Error fetching pending payments', error);
@@ -547,10 +401,12 @@ export async function getPendingPayments(nutritionistId) {
  * @returns {Promise<Object>}
  */
 export async function updateTransactionStatus(transactionId, status) {
+    if (status !== 'paid') throw new Error('Use o formulário para editar um lançamento.');
     const { data, error } = await supabase
         .from('financial_transactions')
-        .update({ status })
+        .update({ status, paid_at: format(new Date(), 'yyyy-MM-dd') })
         .eq('id', transactionId)
+        .in('status', ['pending', 'overdue'])
         .select()
         .single();
 
@@ -562,6 +418,13 @@ export async function updateTransactionStatus(transactionId, status) {
     return data;
 }
 
+export async function refundTransaction(transactionId, refundDate = format(new Date(), 'yyyy-MM-dd')) {
+    const { error } = await supabase.rpc('refund_financial_transaction', {
+        p_id: transactionId, p_refunded_at: refundDate,
+    });
+    if (error) throw error;
+}
+
 /**
  * Reschedule transaction date
  * @param {number} transactionId - Transaction ID
@@ -571,11 +434,9 @@ export async function updateTransactionStatus(transactionId, status) {
 export async function rescheduleTransaction(transactionId, newDate) {
     const { data, error } = await supabase
         .from('financial_transactions')
-        .update({ 
-            transaction_date: newDate,
-            due_date: newDate
-        })
+        .update({ due_date: newDate, status: 'pending' })
         .eq('id', transactionId)
+        .in('status', ['pending', 'overdue'])
         .select()
         .single();
 
