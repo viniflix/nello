@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, Target, Settings, FileSpreadsheet, Download, ChevronDown } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -60,6 +60,9 @@ export default function FinancialPage() {
     const [services, setServices] = useState([]);
     const [projectedCashFlow, setProjectedCashFlow] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState(false);
+    const [rankingRevision, setRankingRevision] = useState(0);
+    const loadRequest = useRef(0);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [isServicesManagerOpen, setIsServicesManagerOpen] = useState(false);
     const [editingTransaction, setEditingTransaction] = useState(null);
@@ -95,28 +98,40 @@ export default function FinancialPage() {
     // Load each month once; all cards, charts and exports share these exact rows.
     const loadData = useCallback(async () => {
         if (!user?.id) return;
+        const request = ++loadRequest.current;
         setLoading(true);
+        setLoadError(false);
+        setMonthRows([]);
         try {
-            const [rows, projection, patientRows, serviceRows] = await Promise.all([
+            const [rowsResult, projectionResult, patientsResult, servicesResult] = await Promise.allSettled([
                 getFinancialMonthRows(user.id, selectedMonth),
                 getProjectedCashFlow(user.id, new Date()),
                 getPatientsForAutocomplete(user.id),
                 getServices(user.id),
             ]);
-            setMonthRows(rows);
-            setProjectedCashFlow(projection);
-            setPatients(patientRows);
-            setServices(serviceRows);
+            if (request !== loadRequest.current) return;
+            if (rowsResult.status === 'rejected') throw rowsResult.reason;
+            setMonthRows(rowsResult.value);
+            setProjectedCashFlow(projectionResult.status === 'fulfilled' ? projectionResult.value : []);
+            if (patientsResult.status === 'fulfilled') setPatients(patientsResult.value);
+            if (servicesResult.status === 'fulfilled') setServices(servicesResult.value);
+            setRankingRevision((revision) => revision + 1);
+            if (projectionResult.status === 'rejected' || patientsResult.status === 'rejected' || servicesResult.status === 'rejected') {
+                toast({ title: 'Dados complementares indisponíveis', description: 'Os lançamentos foram carregados. Tente atualizar para recuperar projeção, pacientes ou serviços.', variant: 'destructive' });
+            }
         } catch (error) {
-            console.error('Error loading financial data:', error);
+            if (request !== loadRequest.current) return;
+            console.error('Falha ao carregar lançamentos financeiros', { code: error?.code || 'unknown' });
+            setLoadError(true);
             toast({ title: 'Erro', description: 'Não foi possível carregar os dados financeiros.', variant: 'destructive' });
         } finally {
-            setLoading(false);
+            if (request === loadRequest.current) setLoading(false);
         }
     }, [user?.id, selectedMonth, toast]);
 
     useEffect(() => {
         loadData();
+        return () => { loadRequest.current += 1; };
     }, [loadData]);
 
     // Handlers
@@ -355,7 +370,7 @@ export default function FinancialPage() {
                             </Button>
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                    <Button variant="outline" className="w-full sm:w-auto border-primary text-primary hover:bg-primary hover:text-white">
+                                    <Button variant="outline" disabled={loading || loadError} className="w-full sm:w-auto border-primary text-primary hover:bg-primary hover:text-white">
                                         <Download className="w-4 h-4 mr-2" />
                                         <span className="hidden sm:inline">Exportar</span>
                                         <span className="sm:hidden">Exportar</span>
@@ -398,6 +413,8 @@ export default function FinancialPage() {
                             className="w-full sm:w-auto"
                         />
                     </div>
+
+                    {loadError && <div role="alert" className="mb-6 rounded-lg border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">Não foi possível carregar os lançamentos deste mês. <Button variant="outline" size="sm" className="ml-2" onClick={loadData}>Tentar novamente</Button></div>}
 
                     {/* Financial Goal Bar - Above KPIs */}
                     <div className="mb-4">
@@ -479,7 +496,7 @@ export default function FinancialPage() {
                             />
                         </div>
                         <div className="min-w-0 lg:col-span-3">
-                            <TopPatientsWidget nutritionistId={user?.id} />
+                            <TopPatientsWidget nutritionistId={user?.id} refreshKey={rankingRevision} />
                         </div>
                     </div>
                 </motion.div>

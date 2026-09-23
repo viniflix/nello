@@ -149,6 +149,7 @@ const NutritionistActivityFeed = () => {
     const { toast } = useToast();
     const [loading, setLoading] = useState(true);
     const [feedItems, setFeedItems] = useState([]);
+    const [loadError, setLoadError] = useState(false);
     const [actionLoadingId, setActionLoadingId] = useState(null);
     const [feedFilter, setFeedFilter] = useState('all');
     const [patientSearch, setPatientSearch] = useState('');
@@ -163,6 +164,7 @@ const NutritionistActivityFeed = () => {
     const fetchFeed = useCallback(async () => {
             if (!user?.id) return;
             setLoading(true);
+            setLoadError(false);
 
             try {
                 const today = new Date();
@@ -185,10 +187,10 @@ const NutritionistActivityFeed = () => {
                 if (activitiesRes.error) throw activitiesRes.error;
                 if (lowAdherenceRes.error) throw lowAdherenceRes.error;
                 if (pendingRes.error) throw pendingRes.error;
-                if (appointmentsRes.error) console.warn('[Feed] Erro consultas:', appointmentsRes.error);
+                if (appointmentsRes.error) console.warn('[Feed] Erro consultas:', appointmentsRes.error?.code || 'unknown');
                 if (patientsRes.error) throw patientsRes.error;
-                if (priorityRulesRes?.error) console.warn('[Feed] Erro regras:', priorityRulesRes.error);
-                if (feedStateRes?.error) console.warn('[Feed] Erro estados:', feedStateRes.error);
+                if (priorityRulesRes?.error) console.warn('[Feed] Erro regras:', priorityRulesRes.error?.code || 'unknown');
+                if (feedStateRes?.error) console.warn('[Feed] Erro estados:', feedStateRes.error?.code || 'unknown');
 
                 const patients = patientsRes.data || [];
                 const patientIds = patients.map((p) => p.id).filter(Boolean);
@@ -209,7 +211,7 @@ const NutritionistActivityFeed = () => {
                 try {
                     pendingPayments = await getPendingPayments(user.id);
                 } catch (e) {
-                    console.warn('[Feed] Erro ao carregar pagamentos pendentes:', e);
+                    console.warn('[Feed] Erro ao carregar pagamentos pendentes:', e?.code || 'unknown');
                 }
 
                 const priorityRules = priorityRulesRes?.data || [];
@@ -380,8 +382,8 @@ const NutritionistActivityFeed = () => {
 
                 setFeedItems(sorted);
             } catch (error) {
-                console.error('Erro ao carregar feed:', error);
-                setFeedItems([]);
+                console.error('Erro ao carregar feed:', error?.code || 'unknown');
+                setLoadError(true);
             } finally {
                 setLoading(false);
                 setRefreshing(false);
@@ -566,6 +568,10 @@ const NutritionistActivityFeed = () => {
                 </CardContent>
             </Card>
         );
+    }
+
+    if (loadError) {
+        return <Card className="bg-card shadow-card-dark rounded-xl"><CardHeader><CardTitle>Feed de Atividades</CardTitle></CardHeader><CardContent className="space-y-3"><p role="alert" className="text-sm text-destructive">Não foi possível carregar o feed.</p><Button variant="outline" onClick={handleRefresh}>Tentar novamente</Button></CardContent></Card>;
     }
 
     return (

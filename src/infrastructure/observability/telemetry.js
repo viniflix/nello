@@ -11,9 +11,15 @@ const DEDUPLICATION_WINDOW_MS = 5000;
 
 function safeFailureReason(error) {
   const message = typeof error?.message === 'string' ? error.message : '';
+  const code = String(error?.code || '');
   if (error?.name === 'AbortError') return 'request_aborted';
   if (/failed to fetch|networkerror|network request failed|load failed/i.test(message)) return 'network_failure';
-  if (error?.code === 'PGRST116') return 'record_missing';
+  if (code === 'PGRST116') return 'record_missing';
+  if (code === '42501' || Number(error?.status) === 403) return 'access_denied';
+  if (code === '22P02' || code === '22023' || Number(error?.status) === 400) return 'invalid_input';
+  if (code === '23503') return 'missing_reference';
+  if (code === '23505') return 'conflict';
+  if (code === 'P0001') return 'business_rule_rejected';
   return 'unclassified';
 }
 

@@ -4206,8 +4206,10 @@ export type Database = {
           calories: number
           carbs: number
           fat: number
+          grams: number | null
           id: number
           meal_id: number
+          measure_id: string | null
           name: string
           nutritionist_food_id: string | null
           protein: number
@@ -4219,8 +4221,10 @@ export type Database = {
           calories: number
           carbs: number
           fat: number
+          grams?: number | null
           id?: never
           meal_id: number
+          measure_id?: string | null
           name: string
           nutritionist_food_id?: string | null
           protein: number
@@ -4232,8 +4236,10 @@ export type Database = {
           calories?: number
           carbs?: number
           fat?: number
+          grams?: number | null
           id?: never
           meal_id?: number
+          measure_id?: string | null
           name?: string
           nutritionist_food_id?: string | null
           protein?: number
@@ -4242,6 +4248,13 @@ export type Database = {
           unit?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "meal_items_measure_id_fkey"
+            columns: ["measure_id"]
+            isOneToOne: false
+            referencedRelation: "food_measures"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "meal_items_meal_id_fkey"
             columns: ["meal_id"]

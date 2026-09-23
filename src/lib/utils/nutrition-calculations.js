@@ -18,6 +18,22 @@ export function calculateCaloriesFromMacros(protein = 0, carbs = 0, fat = 0) {
   return (protein * 4) + (carbs * 4) + (fat * 9);
 }
 
+/** Custom food macros are stored per portion_size; reference foods are per 100 g. */
+export function foodPer100Grams(food) {
+  if (food?.source !== 'custom') return food;
+  const portion = Number(food.portion_size);
+  if (!Number.isFinite(portion) || portion <= 0) return null;
+  const factor = 100 / portion;
+  return {
+    ...food,
+    protein: Number(food.protein || 0) * factor,
+    carbs: Number(food.carbs || 0) * factor,
+    fat: Number(food.fat || 0) * factor,
+    fiber: food.fiber == null ? null : Number(food.fiber) * factor,
+    sodium: food.sodium == null ? null : Number(food.sodium) * factor,
+  };
+}
+
 /**
  * Calcula valores nutricionais para uma quantidade específica de alimento
  * Sempre recalcula calorias baseado nos macros

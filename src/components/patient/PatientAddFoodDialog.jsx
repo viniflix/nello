@@ -24,6 +24,7 @@ import { supabase } from '@/lib/customSupabaseClient';
 import { searchFoodsPaginated, getFoodMeasures } from '@/lib/supabase/foodService';
 import { useDebounce } from '@/hooks/useDebounce';
 import { formatNutrient } from '@/lib/utils';
+import { foodPer100Grams } from '@/lib/utils/nutrition-calculations';
 
 /**
  * PatientAddFoodDialog - Modal para adicionar/editar alimento
@@ -50,6 +51,8 @@ const PatientAddFoodDialog = ({
     const [calculatedNutrition, setCalculatedNutrition] = useState(null);
     const [realWeight, setRealWeight] = useState(null); // Display calculated weight
     const [errors, setErrors] = useState({});
+    const [measureMissing, setMeasureMissing] = useState(false);
+    const [measureLoading, setMeasureLoading] = useState(false);
 
     // Estados para busca de alimentos com paginação
     const [searchTerm, setSearchTerm] = useState('');
@@ -64,24 +67,30 @@ const PatientAddFoodDialog = ({
     const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
     useEffect(() => {
+        let cancelled = false;
         if (initialFood && mode === 'edit') {
+            setMeasureMissing(!initialFood.measure_id && !['g', 'gram', 'grams', 'ml'].includes(String(initialFood.unit || 'g').toLowerCase()));
+            setMeasureLoading(Boolean(initialFood.measure_id));
             setSelectedFood(initialFood);
             setQuantity(initialFood.quantity?.toString() || '');
-            // If unit is not 'g', try to find the measure
-            if (initialFood.unit && initialFood.unit !== 'g') {
-                // Try to match with food_measures
-                const measure = initialFood.food_measures?.find(m => m.measure_label === initialFood.unit);
-                if (measure) {
-                    setSelectedMeasure(measure);
-                    setSelectedUnit(measure.id.toString());
-                } else {
-                    setSelectedUnit('g');
-                }
+            if (initialFood.measure_id) {
+                void getFoodMeasures(initialFood.id).then((measures) => {
+                    if (cancelled) return;
+                    const measure = measures.find((item) => item.id === initialFood.measure_id);
+                    if (measure) {
+                        setSelectedMeasure(measure);
+                        setSelectedUnit(measure.id.toString());
+                    } else setMeasureMissing(true);
+                    setSelectedFood((current) => current?.id === initialFood.id ? { ...current, food_measures: measures } : current);
+                }).catch(() => { if (!cancelled) setMeasureMissing(true); })
+                    .finally(() => { if (!cancelled) setMeasureLoading(false); });
             } else {
                 setSelectedUnit('g');
+                setSelectedMeasure(null);
             }
             setNotes(initialFood.notes || '');
         }
+        return () => { cancelled = true; };
     }, [initialFood, mode]);
 
     // Buscar alimentos com paginação
@@ -167,6 +176,8 @@ const PatientAddFoodDialog = ({
     }, [loadMore]);
 
     const handleFoodSelect = async (food) => {
+        setMeasureMissing(false);
+        setMeasureLoading(false);
         setSelectedFood(food);
         setSearchTerm('');
         setSearchResults([]);
@@ -212,7 +223,7 @@ const PatientAddFoodDialog = ({
         const { calculateNutrition: calcNutrition } = await import('@/lib/utils/nutrition-calculations');
         
         // Calcular nutrição (recalcula calorias baseado nos macros)
-        const nutrition = calcNutrition(selectedFood, totalGrams);
+        const nutrition = calcNutrition(foodPer100Grams(selectedFood), totalGrams);
 
         setCalculatedNutrition(nutrition);
         setRealWeight(totalGrams);
@@ -254,6 +265,10 @@ const PatientAddFoodDialog = ({
         if (!selectedUnit) {
             newErrors.unit = 'Selecione uma medida';
         }
+        if (measureLoading) newErrors.unit = 'Aguarde o carregamento da medida.';
+        if (measureMissing) newErrors.unit = 'A medida original está indisponível. Remova o alimento e adicione novamente.';
+        if (selectedFood?.source === 'custom' && !foodPer100Grams(selectedFood)) newErrors.food = 'A porção base deste alimento é inválida.';
+        if (!Number.isFinite(realWeight) || realWeight <= 0 || !calculatedNutrition) newErrors.quantity = 'Aguarde o cálculo da quantidade.';
 
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
@@ -269,12 +284,15 @@ const PatientAddFoodDialog = ({
             food_name: selectedFood.name,
             quantity: parseFloat(quantity),
             unit: selectedUnit === 'g' ? 'g' : (selectedMeasure?.measure_label || 'g'),
+            grams: realWeight,
+            measure_id: selectedUnit === 'g' ? null : selectedMeasure?.id || null,
             measure: selectedMeasure, // Objeto measure completo (from food_measures)
             // Base values para recálculo futuro
             base_calories: selectedFood.calories || 0,
             base_protein: selectedFood.protein || 0,
             base_carbs: selectedFood.carbs || 0,
             base_fat: selectedFood.fat || 0,
+            base_portion_size: selectedFood.portion_size || 100,
             // Valores calculados
             calories: calculatedNutrition?.calories || 0,
             protein: calculatedNutrition?.protein || 0,
@@ -293,6 +311,8 @@ const PatientAddFoodDialog = ({
     };
 
     const handleClose = () => {
+        setMeasureMissing(false);
+        setMeasureLoading(false);
         setSelectedFood(null);
         setQuantity('');
         setSelectedUnit('g');

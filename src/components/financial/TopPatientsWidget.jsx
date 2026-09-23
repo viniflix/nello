@@ -3,45 +3,44 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Trophy, Medal, Award } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { formatCurrency } from '@/lib/utils';
 import { supabase } from '@/lib/customSupabaseClient';
 
-export default function TopPatientsWidget({ nutritionistId }) {
+export default function TopPatientsWidget({ nutritionistId, refreshKey = 0 }) {
     const [topPatients, setTopPatients] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [loadFailed, setLoadFailed] = useState(false);
 
     useEffect(() => {
         if (nutritionistId) {
             loadTopPatients();
         }
-    }, [nutritionistId]);
+    }, [nutritionistId, refreshKey]);
 
     const loadTopPatients = async () => {
         if (!nutritionistId) return;
         setLoading(true);
+        setLoadFailed(false);
         try {
             // Fetch all paid income transactions
-            const { data: transactions, error } = await supabase
-                .from('financial_transactions')
-                .select(`
-                    patient_id,
-                    amount,
-                    net_amount,
-                    patient:user_profiles!financial_transactions_patient_id_fkey(
-                        id,
-                        name,
-                        avatar_url,
-                        cpf
-                    )
-                `)
-                .eq('nutritionist_id', nutritionistId)
-                .eq('type', 'income')
-                .eq('status', 'paid')
-                .not('patient_id', 'is', null);
-
-            if (error) {
-                console.error('Error loading top patients:', error);
-                return;
+            const transactions = [];
+            for (let offset = 0; ; offset += 1000) {
+                const { data, error } = await supabase
+                    .from('financial_transactions')
+                    .select(`
+                        id, patient_id, amount, net_amount,
+                        patient:user_profiles!financial_transactions_patient_id_fkey(id, name, avatar_url, cpf)
+                    `)
+                    .eq('nutritionist_id', nutritionistId)
+                    .eq('type', 'income')
+                    .eq('status', 'paid')
+                    .not('patient_id', 'is', null)
+                    .order('id', { ascending: true })
+                    .range(offset, offset + 999);
+                if (error) throw error;
+                transactions.push(...(data || []));
+                if (!data || data.length < 1000) break;
             }
 
             // Group by patient_id and sum amounts
@@ -66,7 +65,9 @@ export default function TopPatientsWidget({ nutritionistId }) {
 
             setTopPatients(sorted);
         } catch (error) {
-            console.error('Error loading top patients:', error);
+            console.warn('Top patients query failed', { code: error?.code || 'unknown' });
+            setTopPatients([]);
+            setLoadFailed(true);
         } finally {
             setLoading(false);
         }
@@ -136,7 +137,7 @@ export default function TopPatientsWidget({ nutritionistId }) {
         );
     }
 
-    if (topPatients.length === 0) {
+    if (loadFailed || topPatients.length === 0) {
         return (
             <Card>
                 <CardHeader>
@@ -150,8 +151,9 @@ export default function TopPatientsWidget({ nutritionistId }) {
                 </CardHeader>
                 <CardContent>
                     <div className="text-center py-4 text-muted-foreground">
-                        Nenhum dado disponível
+                        {loadFailed ? 'Não foi possível carregar o ranking.' : 'Nenhum dado disponível'}
                     </div>
+                    {loadFailed && <Button variant="outline" className="w-full" onClick={loadTopPatients}>Tentar novamente</Button>}
                 </CardContent>
             </Card>
         );
@@ -212,4 +214,3 @@ export default function TopPatientsWidget({ nutritionistId }) {
         </Card>
     );
 }
-

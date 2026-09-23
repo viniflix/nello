@@ -22,6 +22,8 @@ import { useNavigate } from 'react-router-dom';
 const PatientUpdatesWidget = () => {
     const [allUpdates, setAllUpdates] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState(false);
+    const [retryKey, setRetryKey] = useState(0);
     const [searchTerm, setSearchTerm] = useState('');
     const [activeFilter, setActiveFilter] = useState('all'); // 'all', 'meal', 'weight', 'edit'
     const { user } = useAuth();
@@ -38,14 +40,16 @@ const PatientUpdatesWidget = () => {
             if (!user?.id) return;
 
             setLoading(true);
+            setLoadError(false);
 
             try {
                 // Buscar pacientes do nutricionista (com slug para URLs legíveis)
-                const { data: patientsData } = await supabase
+                const { data: patientsData, error: patientsError } = await supabase
                     .from('user_profiles')
                     .select('id, name, slug')
                     .eq('nutritionist_id', user.id)
                     .eq('user_type', 'patient');
+                if (patientsError) throw patientsError;
 
                 if (!patientsData || patientsData.length === 0) {
                     setAllUpdates([]);
@@ -76,6 +80,8 @@ const PatientUpdatesWidget = () => {
                         .order('created_at', { ascending: false })
                         .limit(100)
                 ]);
+                if (mealAuditData.error) throw mealAuditData.error;
+                if (weightData.error) throw weightData.error;
 
                 // Processar AUDITORIA DE REFEIÇÕES (CREATE, UPDATE, DELETE)
                 if (mealAuditData.data) {
@@ -138,15 +144,15 @@ const PatientUpdatesWidget = () => {
                 setAllUpdates(activities);
 
             } catch (error) {
-                console.error('Erro ao buscar atualizações:', error);
-                setAllUpdates([]);
+                console.error('Erro ao buscar atualizações:', error?.code || 'unknown');
+                setLoadError(true);
             }
 
             setLoading(false);
         };
 
         fetchUpdates();
-    }, [user]);
+    }, [user?.id, retryKey]);
 
     const getIcon = (type) => {
         switch (type) {
@@ -194,6 +200,10 @@ const PatientUpdatesWidget = () => {
                 </CardContent>
             </Card>
         );
+    }
+
+    if (loadError) {
+        return <Card className="bg-card shadow-card-dark rounded-xl"><CardHeader><CardTitle>Registros Recentes</CardTitle></CardHeader><CardContent className="space-y-3"><p role="alert" className="text-sm text-destructive">Não foi possível carregar os registros.</p><Button variant="outline" onClick={() => setRetryKey((value) => value + 1)}>Tentar novamente</Button></CardContent></Card>;
     }
 
     return (

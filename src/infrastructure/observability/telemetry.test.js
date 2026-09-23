@@ -61,4 +61,18 @@ describe('captureOperationalError', () => {
     expect(Sentry.captureException.mock.calls[0][0].message).toContain('network_failure');
     expect(Sentry.captureException.mock.calls[0][0].message).not.toContain('patient@example.com');
   });
+
+  it('classifies authorization and clinical rule failures by safe codes', () => {
+    captureOperationalError({ code: '42501', message: 'Private patient details' }, {
+      operation: 'save_measurement', module: 'clinical', source: 'supabase',
+    });
+    captureOperationalError({ code: 'P0001', message: 'Private patient details' }, {
+      operation: 'save_measurement', module: 'clinical', source: 'supabase',
+    });
+    expect(Sentry.captureException.mock.calls.map(([error]) => error.message)).toEqual([
+      '[42501] save_measurement failed (access_denied)',
+      '[P0001] save_measurement failed (business_rule_rejected)',
+    ]);
+    expect(JSON.stringify(track.mock.calls)).not.toContain('Private patient details');
+  });
 });

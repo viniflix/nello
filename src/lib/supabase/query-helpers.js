@@ -12,13 +12,18 @@ export const isExpectedRequestCancellation = (error, signal) => {
 };
 
 export const logSupabaseError = (context, error) => {
-  const msg = error?.message || String(error);
-  console.error(`[Supabase] ${context}:`, msg, error?.code ? { code: error.code } : '');
-  return captureOperationalError(error, {
+  const correlationId = captureOperationalError(error, {
     operation: context,
     module: 'supabase_query',
     source: 'supabase',
   });
+  console.error('[Supabase] Operação falhou', {
+    operation: context,
+    code: error?.code || 'unknown',
+    status: error?.status || error?.statusCode || null,
+    correlationId,
+  });
+  return correlationId;
 };
 
 export const normalizeEventName = (eventName, fallback = 'unknown.event') => {

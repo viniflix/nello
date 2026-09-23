@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { calculateNutrition } from '@/lib/utils/nutrition-calculations';
+import { calculateNutrition, foodPer100Grams } from '@/lib/utils/nutrition-calculations';
 import { savePatientDiaryMeal } from '@/lib/supabase/food-diary-queries';
 import { format } from 'date-fns';
 import { getFoodMeasures } from '@/lib/supabase/foodService';
@@ -84,6 +84,8 @@ const AddFoodPage = () => {
                         ...item,
                         food_id: item.reference_food_id || item.nutritionist_food_id,
                         food_source: item.nutritionist_food_id ? 'custom' : (item.reference_food_id ? 'reference' : null),
+                        grams: item.grams ?? item.quantity,
+                        measure_id: item.measure_id || null,
                         food_name: item.name
                     }));
                     setMealItems(items);
@@ -104,7 +106,7 @@ const AddFoodPage = () => {
         if(!food || !grams) return { calories: 0, protein: 0, fat: 0, carbs: 0 };
         
         // Calcular nutrição (recalcula calorias baseado nos macros)
-        return calculateNutrition(food, grams);
+        return calculateNutrition(foodPer100Grams(food), grams);
     };
 
     const handleSelectFood = async (food) => {
@@ -146,7 +148,7 @@ const AddFoodPage = () => {
             return;
         }
         const grams = getGrams();
-        if (grams <= 0) {
+        if (grams <= 0 || (selectedFood.source === 'custom' && !foodPer100Grams(selectedFood))) {
              toast({ title: "Erro", description: "Não foi possível converter a medida para gramas.", variant: "destructive" });
              return;
         }
@@ -155,6 +157,7 @@ const AddFoodPage = () => {
         const newItem = {
             id: Date.now(), food_id: selectedFood.id, food_source: selectedFood.source, name: selectedFood.name, food_name: selectedFood.name,
             quantity: grams, calories: nutrients.calories, protein: nutrients.protein, fat: nutrients.fat, carbs: nutrients.carbs,
+            grams,
         };
         setMealItems(prev => [...prev, newItem]);
         setSelectedFood(null); setSearchTerm(''); setQuantity(''); setConversions([]); setMeasureType('direct');

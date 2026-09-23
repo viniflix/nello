@@ -12,6 +12,7 @@ import { useProfile } from '@/hooks/useProfile';
 import { getMyProfessionalVerification } from '@/lib/supabase/verification-queries';
 import { redeemPatientInvite } from '@/features/auth/authFlows';
 import { Events, track } from '@/infrastructure/analytics/posthog';
+import { clearPrivateDraftStorage } from '@/lib/utils/privateDraftStorage';
 
 const AuthLoadingFallback = () => (
   <div className="flex min-h-screen items-center justify-center bg-background">
@@ -114,6 +115,7 @@ export function AuthProvider({ children }) {
   }, [profile, user?.id, isProfileError, isOffline]);
 
   const signOut = useCallback(async () => {
+    try { clearPrivateDraftStorage(); } catch { /* Browser storage may be unavailable; the server session is still revoked. */ }
     setUser(null);
     clearObservabilityUser();
     queryClient.clear(); // Limpa cache global ao sair

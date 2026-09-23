@@ -17,6 +17,7 @@ import { translateMealType } from '@/utils/mealTranslations';
 import { formatQuantityWithUnit } from '@/lib/utils/measureTranslations';
 import PatientAddFoodDialog from '@/components/patient/PatientAddFoodDialog';
 import { savePatientDiaryMeal } from '@/lib/supabase/food-diary-queries';
+import { calculateNutrition, foodPer100Grams } from '@/lib/utils/nutrition-calculations';
 
 /**
  * AddMealPage - Nova página reformulada de registro de refeição
@@ -108,15 +109,19 @@ export default function AddMealPage() {
             id: item.id || Date.now() + index,
             food_id: foodId,
             food_source: foodSource,
+            source: foodSource,
             food_name: item.name,
             quantity: item.quantity,
             unit: item.unit || 'gram', // Carregar unidade salva
+            grams: item.grams ?? item.quantity,
+            measure_id: item.measure_id || null,
             measure: null, // Será preenchido se necessário
             // Usar base_* do alimento original (per 100g)
             base_calories: foodData?.calories || 0,
             base_protein: foodData?.protein || 0,
             base_carbs: foodData?.carbs || 0,
             base_fat: foodData?.fat || 0,
+            base_portion_size: foodData?.portion_size || 100,
             // Manter valores calculados que foram salvos
             calories: item.calories,
             protein: item.protein,
@@ -158,9 +163,13 @@ export default function AddMealPage() {
       protein: food.base_protein,
       carbs: food.base_carbs,
       fat: food.base_fat,
+      source: food.food_source,
+      portion_size: food.base_portion_size,
       // Dados atuais para pré-preencher
       quantity: food.quantity,
       unit: food.unit,
+      grams: food.grams,
+      measure_id: food.measure_id,
       measure: food.measure,
       notes: food.notes,
       // ID do item na lista para atualizar
@@ -199,21 +208,27 @@ export default function AddMealPage() {
     if (isNaN(qty) || qty <= 0) return;
 
     // Recalcular nutrientes
-    const { calculateNutrition } = await import('@/lib/supabase/meal-plan-queries');
     const foodData = {
-      calories: food.base_calories,
+      source: food.food_source,
+      portion_size: food.base_portion_size || 100,
       protein: food.base_protein,
       carbs: food.base_carbs,
       fat: food.base_fat
     };
 
-    const nutrition = await calculateNutrition(foodData, qty, food.unit);
+    const gramsPerUnit = Number(food.grams || food.quantity) / Number(food.quantity);
+    if (!Number.isFinite(gramsPerUnit) || gramsPerUnit <= 0) return;
+    const grams = qty * gramsPerUnit;
+    const per100 = foodPer100Grams(foodData);
+    if (!per100) return;
+    const nutrition = calculateNutrition(per100, grams);
 
     setAddedFoods(prev => prev.map(f => {
       if (f.id === id) {
         return {
           ...f,
           quantity: qty,
+          grams,
           calories: nutrition.calories,
           protein: nutrition.protein,
           carbs: nutrition.carbs,

@@ -49,7 +49,7 @@ export function useMealPlan(patientId, nutritionistId) {
         loadPlans,
         // Utility to manually invalidate the cache and force a refetch
         invalidatePlans: () => {
-            queryClient.invalidateQueries(['mealPlans', patientId, nutritionistId]);
+            return queryClient.invalidateQueries({ queryKey: ['mealPlans', patientId, nutritionistId], exact: true });
         }
     };
 }
