@@ -30,7 +30,7 @@ const ERROR_SCREENS = {
         iconClass: 'text-red-500',
         bgClass: 'bg-red-50',
         title: 'Link Inválido',
-        message: 'Este link não existe ou foi removido. Solicite um novo link ao seu nutricionista.',
+        message: 'Este link não existe, foi removido ou já foi utilizado. Solicite um novo link ao seu nutricionista se precisar responder novamente.',
     },
     TOKEN_EXPIRED: {
         icon: Clock,
@@ -127,7 +127,12 @@ export default function PatientFacingUi() {
 
                 // RPC retorna objeto de erro tipado
                 if (data.error) {
-                    setErrorCode(data.error);
+                    let completedHere = false;
+                    try {
+                        completedHere = data.error === 'TOKEN_NOT_FOUND'
+                            && window.sessionStorage.getItem(`nello_public_anamnesis:submitted:${token}`) === '1';
+                    } catch { /* A tela de link inválido continua disponível sem sessionStorage. */ }
+                    setErrorCode(completedHere ? 'ALREADY_COMPLETED' : data.error);
                     return;
                 }
 
@@ -262,6 +267,8 @@ export default function PatientFacingUi() {
 
             if (status === 'submitted') {
                 autosave.discard();
+                try { window.sessionStorage.setItem(`nello_public_anamnesis:submitted:${token}`, '1'); }
+                catch { /* O envio foi confirmado pelo servidor; storage local é opcional. */ }
                 setIsCompleted(true);
                 toast({
                     title: 'Questionário enviado!',
