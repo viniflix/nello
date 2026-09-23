@@ -287,18 +287,7 @@ export const getMealPlanById = async (planId) => {
             .in('meal_plan_meal_id', mealIds)
             .order('order_index', { ascending: true });
 
-        if (allFoodsError) {
-            logSupabaseError('Erro ao buscar alimentos do plano', allFoodsError);
-            const mealsEmptyFoods = meals.map(m => ({
-                ...m,
-                calories: m.total_calories || 0,
-                protein: m.total_protein || 0,
-                carbs: m.total_carbs || 0,
-                fat: m.total_fat || 0,
-                foods: []
-            }));
-            return { data: { ...plan, meals: mealsEmptyFoods }, error: null };
-        }
+        if (allFoodsError) throw allFoodsError;
 
         // Agrupar alimentos por meal_plan_meal_id
         const foodsByMealId = (allFoods || []).reduce((acc, food) => {
@@ -313,38 +302,42 @@ export const getMealPlanById = async (planId) => {
 
         const numericIds = allUnits.filter(u => /^\d+$/.test(String(u))).map(u => Number(u));
         if (numericIds.length > 0) {
-            const { data: measures } = await supabase
+            const { data: measures, error: measuresError } = await supabase
                 .from('household_measures')
                 .select('id, name, code, grams_equivalent')
                 .in('id', numericIds);
+            if (measuresError) throw measuresError;
             (measures || []).forEach(m => { measuresMap[m.id] = { ...m, source: 'system' }; });
         }
 
         const systemCodes = allUnits.filter(u => u && !/^\d+$/.test(String(u)) && !String(u).startsWith('custom_') && u !== 'gram');
         if (systemCodes.length > 0) {
-            const { data: measures } = await supabase
+            const { data: measures, error: measuresError } = await supabase
                 .from('household_measures')
                 .select('id, name, code, grams_equivalent')
                 .in('code', systemCodes);
+            if (measuresError) throw measuresError;
             (measures || []).forEach(m => { measuresMap[m.code] = { ...m, source: 'system' }; });
         }
 
         const customCodes = allUnits.filter(u => u && String(u).startsWith('custom_'));
         if (customCodes.length > 0) {
-            const { data: customMeasures } = await supabase
+            const { data: customMeasures, error: customMeasuresError } = await supabase
                 .from('nutritionist_custom_measures')
                 .select('id, name, code, grams_equivalent, category, description')
                 .in('code', customCodes);
+            if (customMeasuresError) throw customMeasuresError;
             (customMeasures || []).forEach(m => { measuresMap[m.code] = { ...m, source: 'custom' }; });
         }
 
         const isUuid = (str) => /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(String(str));
         const foodMeasureIds = allUnits.filter(u => u && isUuid(u));
         if (foodMeasureIds.length > 0) {
-            const { data: foodMeasures } = await supabase
+            const { data: foodMeasures, error: foodMeasuresError } = await supabase
                 .from('food_measures')
                 .select('id, label, weight_in_grams')
                 .in('id', foodMeasureIds);
+            if (foodMeasuresError) throw foodMeasuresError;
             (foodMeasures || []).forEach(m => {
                 measuresMap[m.id] = {
                     id: m.id,
@@ -368,10 +361,11 @@ export const getMealPlanById = async (planId) => {
         let subFoodIds = [];
 
         if (allMealPlanFoodIds.length > 0) {
-            const { data: subs } = await supabase
+            const { data: subs, error: subsError } = await supabase
                 .from('meal_plan_food_substitutions')
                 .select('meal_plan_food_id, substitute_food_id, quantity, unit')
                 .in('meal_plan_food_id', allMealPlanFoodIds);
+            if (subsError) throw subsError;
             
             if (subs && subs.length > 0) {
                 subFoodIds = subs.map(s => s.substitute_food_id);

@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { summarizeMicronutrients } from '@/lib/utils/micronutrientCoverage';
+import { formatNutrient } from '@/lib/utils';
 
 /**
  * Valores DRI (Dietary Reference Intake) para adultos
@@ -129,8 +130,8 @@ export function MicronutrientsCard({ plan }) {
         return (
             <TableRow key={nutrient}>
                 <TableCell className="font-medium">{driInfo.name}</TableCell>
-                <TableCell className="text-right">{coverage.known ? `${partial ? '≥ ' : ''}${value.toFixed(1)}${partial ? ' (parcial)' : ''}` : 'Não informado'}</TableCell>
-                <TableCell className="text-right">{driInfo.value}</TableCell>
+                <TableCell className="text-right">{coverage.known ? `${partial ? '≥ ' : ''}${formatNutrient(value)}${partial ? ' (parcial)' : ''}` : 'Não informado'}</TableCell>
+                <TableCell className="text-right">{formatNutrient(driInfo.value)}</TableCell>
                 <TableCell className="text-center">{driInfo.unit}</TableCell>
                 <TableCell className="text-right">
                     {percentage == null ? '—' : `${percentage.toFixed(0)}%`}

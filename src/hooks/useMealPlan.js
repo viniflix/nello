@@ -8,6 +8,7 @@ export function useMealPlan(patientId, nutritionistId) {
         data,
         isLoading,
         isFetching,
+        error,
         refetch: loadPlans
     } = useQuery({
         queryKey: ['mealPlans', patientId, nutritionistId],
@@ -41,6 +42,7 @@ export function useMealPlan(patientId, nutritionistId) {
         pendingDrafts: data?.pendingDrafts || [],
         loading: isLoading, // Only true on initial load with no cache
         isFetching, // True whenever a background request is in flight
+        error,
         loadPlans,
         // Utility to manually invalidate the cache and force a refetch
         invalidatePlans: () => {

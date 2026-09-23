@@ -819,6 +819,7 @@ const MealPlanForm = ({
                                 planId={initialData?.id}
                                 referenceValues={referenceValues}
                                 onReferenceUpdate={loadReferenceValues}
+                                plan={{ meals }}
                             />
                         </div>
                     </div>

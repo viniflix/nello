@@ -24,4 +24,13 @@ describe('micronutrient coverage', () => {
     const result = summarizeMicronutrients(planWith({ food: { source: 'USDA', vitamin_b12: 4 }, quantity: 2, unit: 'measure', measure: { weight_in_grams: 25 } }), ['vitamin_b12']);
     expect(result.vitamin_b12).toEqual({ value: 2, known: 1, unknown: 0 });
   });
+  it('keeps an unresolved measure unknown instead of inferring grams from calories or 100 g', () => {
+    const result = summarizeMicronutrients(planWith({ food: { source: 'USDA', calories: 200, calcium: 100 }, quantity: 2,
+      unit: 'cup', calories: 400 }), ['calcium']);
+    expect(result.calcium).toEqual({ value: 0, known: 0, unknown: 1 });
+  });
+  it('reads food details from legacy foods property while editing a meal', () => {
+    const result = summarizeMicronutrients(planWith({ foods: { source: 'TACO', calcium: 100 }, quantity: 25, unit: 'gram' }), ['calcium']);
+    expect(result.calcium).toEqual({ value: 25, known: 1, unknown: 0 });
+  });
 });

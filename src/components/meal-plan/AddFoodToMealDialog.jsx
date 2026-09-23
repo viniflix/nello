@@ -14,6 +14,7 @@ import {
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import FoodSelector from './FoodSelector';
 import { PremiumPortionSelector } from '@/components/nutrition';
+import { formatNutrient } from '@/lib/utils';
 
 const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName, initialData = null }) => {
     const [selectedFood, setSelectedFood] = useState(null);
@@ -139,10 +140,10 @@ const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName, initialData = n
                                             {selectedFood.group} • {selectedFood.source}
                                         </div>
                                         <div className="text-xs text-muted-foreground mt-1">
-                                            Base 100g: {selectedFood.calories} kcal |
-                                            P: {selectedFood.protein}g |
-                                            C: {selectedFood.carbs}g |
-                                            G: {selectedFood.fat}g
+                                            Base 100g: {formatNutrient(selectedFood.calories)} kcal |
+                                            P: {formatNutrient(selectedFood.protein)}g |
+                                            C: {formatNutrient(selectedFood.carbs)}g |
+                                            G: {formatNutrient(selectedFood.fat)}g
                                         </div>
                                     </div>
                                     <Button

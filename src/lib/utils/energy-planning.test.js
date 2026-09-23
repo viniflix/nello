@@ -69,6 +69,17 @@ describe('one energy pipeline from biometry to VET', () => {
     expect(female.formula.appliedStr).toContain('1.27 ×');
     expect(female.tmbResult).toBeNull();
   });
+  it('reconciles P1 EER 2005: the first manual column used Harris times activity', () => {
+    const p1 = { ...patient, weight: 102, height: 181, age: 47, gender: 'M', protocol: 'eer_iom', lifeStage: 'adult' };
+    const expected = { inactive: 2813.586, low_active: 3099.53056, active: 3463.46, very_active: 4061.34408 };
+    for (const [driActivity, kcal] of Object.entries(expected)) {
+      const plan = calculateEnergyPlan({ ...p1, driActivity });
+      expect(plan.valid).toBe(true);
+      expect(plan.getResult).toBeCloseTo(kcal, 4);
+    }
+    expect(2057.293 * 1.2).toBeCloseTo(2468.7516, 4);
+    expect(2057.293 * 1.375).toBeCloseTo(2828.777875, 4);
+  });
   it.each([
     ['M', 'inactive', 2552.67], ['M', 'low_active', 2754.87],
     ['M', 'active', 2934.62], ['M', 'very_active', 3226.67],

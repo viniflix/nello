@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Flame, Target, BarChart3, Beaker, PieChart as PieChartIcon, ArrowRight } from 'lucide-react';
 import ReferenceValuesModal from './ReferenceValuesModal';
 import { summarizeMicronutrients } from '@/lib/utils/micronutrientCoverage';
+import { formatNutrient } from '@/lib/utils';
 
 const COMPACT_DRI = {
     fiber: { value: 25, unit: 'g', name: 'Fibras', icon: '🌾' },
@@ -99,7 +100,7 @@ const MacrosChart = ({ protein, carbs, fat, calories, patientId, patientSlugOrId
                         />
                     )}
                     {/* Center Text */}
-                    <text x={centerX} y={centerY + 4} textAnchor="middle" className="text-3xl font-bold fill-foreground">{calories.toFixed(0)}</text>
+                    <text x={centerX} y={centerY + 4} textAnchor="middle" className="text-3xl font-bold fill-foreground">{formatNutrient(calories)}</text>
                     <text x={centerX} y={centerY + 20} textAnchor="middle" className="text-[10px] font-semibold fill-muted-foreground uppercase tracking-widest">Kcal</text>
                 </svg>
             </div>
@@ -120,7 +121,7 @@ const MacrosChart = ({ protein, carbs, fat, calories, patientId, patientSlugOrId
                             <span className="text-[10px] font-medium text-white/90 leading-none">{m.label}</span>
                         </div>
                         <div className="flex items-baseline gap-0.5">
-                            <span className="text-sm font-bold text-white">{m.value.toFixed(1)}</span>
+                            <span className="text-sm font-bold text-white">{formatNutrient(m.value)}</span>
                             <span className="text-[10px] font-medium text-white/70">g</span>
                         </div>
                     </div>
@@ -163,8 +164,8 @@ const MacrosChart = ({ protein, carbs, fat, calories, patientId, patientSlugOrId
                                     <span>{dri.name}</span>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    <span className="font-bold text-foreground">{coverage.known ? `${coverage.unknown ? '≥ ' : ''}${value.toFixed(1)} ${dri.unit}${coverage.unknown ? ' (parcial)' : ''}` : 'Não informado'}</span>
-                                    {complete && <span className="text-[10px] text-muted-foreground">/ {dri.value}{dri.unit}</span>}
+                                    <span className="font-bold text-foreground">{coverage.known ? `${coverage.unknown ? '≥ ' : ''}${formatNutrient(value)} ${dri.unit}${coverage.unknown ? ' (parcial)' : ''}` : 'Não informado'}</span>
+                                    {complete && <span className="text-[10px] text-muted-foreground">/ {formatNutrient(dri.value)}{dri.unit}</span>}
                                 </div>
                             </div>
                             <div className="h-1.5 bg-muted rounded-full overflow-hidden">

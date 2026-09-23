@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/components/ui/use-toast';
 import {
@@ -51,7 +52,7 @@ const MealPlanPage = () => {
     const quickEntryHandledRef = useRef(false);
 
     const [nutritionistId, setNutritionistId] = useState(null);
-    const { plans, activePlan, pendingDrafts, loading, isFetching, loadPlans, invalidatePlans } = useMealPlan(patientId, nutritionistId);
+    const { plans, activePlan, pendingDrafts, loading, isFetching, error: plansError, loadPlans, invalidatePlans } = useMealPlan(patientId, nutritionistId);
 
     const {
         submitting, setSubmitting,
@@ -180,6 +181,15 @@ const MealPlanPage = () => {
                 </div>
             </div>
         );
+    }
+
+    if (plansError && !isFetching) {
+        return <div className="container mx-auto max-w-6xl px-4 py-8">
+            <Alert variant="destructive"><AlertDescription className="flex flex-wrap items-center justify-between gap-3">
+                Não foi possível carregar o plano completo. Confira a conexão e tente novamente.
+                <Button type="button" variant="outline" onClick={() => loadPlans()}>Tentar novamente</Button>
+            </AlertDescription></Alert>
+        </div>;
     }
 
     if (showForm) {
