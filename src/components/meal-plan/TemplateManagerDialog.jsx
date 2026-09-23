@@ -16,6 +16,7 @@ import { useTemplates } from '@/hooks/useTemplates';
 import { cloneDietTemplateToPatient, getDietTemplateWithMeals, getUnavailableTemplateFoods } from '@/lib/supabase/template-queries';
 import { getMealPlanById } from '@/lib/supabase/meal-plan-queries';
 import { getLatestEnergyCalculation } from '@/lib/supabase/energy-queries';
+import { energyCalculationNeedsVentaReview } from '@/lib/utils/energy-planning';
 
 const DAY_LABELS = {
     monday: 'Seg', tuesday: 'Ter', wednesday: 'Qua',
@@ -104,7 +105,7 @@ export default function TemplateManagerDialog({
     useEffect(() => {
         if (!open || !patientId) return;
         getLatestEnergyCalculation(patientId).then(({ data }) => {
-            setEnergyTarget(data?.final_planned_kcal || null);
+            setEnergyTarget(energyCalculationNeedsVentaReview(data) ? null : data?.final_planned_kcal || null);
         });
     }, [open, patientId]);
 

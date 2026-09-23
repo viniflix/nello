@@ -1,3 +1,5 @@
+import { parseFiniteEnergyNumber } from './energy-numbers';
+
 // NASEM 2023, adult EER equations; height in cm, weight in kg, age in years.
 export const DRI_SOURCE_URL = 'https://www.canada.ca/en/health-canada/services/food-nutrition/healthy-eating/dietary-reference-intakes/tables/equations-estimate-energy-requirement.html';
 export const DRI_ACTIVITY_LEVELS = [
@@ -27,9 +29,11 @@ export const normalizeEnergySex = gender => {
   return null;
 };
 export const validEnergyBiometry = ({ weight, height, age, gender }, minimumAge = 18) =>
-  [weight, height, age].every(v => v !== '' && v != null && Number.isFinite(Number(v))) &&
-  Number(weight) >= 1 && Number(weight) <= 300 && Number(height) >= 50 && Number(height) <= 255 &&
-  Number(age) >= minimumAge && Number(age) <= 120 && Number.isInteger(Number(age)) && !!normalizeEnergySex(gender);
+  [weight, height, age].every(v => parseFiniteEnergyNumber(v) != null) &&
+  parseFiniteEnergyNumber(weight) >= 1 && parseFiniteEnergyNumber(weight) <= 300 &&
+  parseFiniteEnergyNumber(height) >= 50 && parseFiniteEnergyNumber(height) <= 255 &&
+  parseFiniteEnergyNumber(age) >= minimumAge && parseFiniteEnergyNumber(age) <= 120 &&
+  Number.isInteger(parseFiniteEnergyNumber(age)) && !!normalizeEnergySex(gender);
 
 export function driPaCoefficient(activity, gender) {
   const index = DRI_ACTIVITY_LEVELS.findIndex(item => item.id === activity);

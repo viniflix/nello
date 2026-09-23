@@ -8,6 +8,7 @@
  */
 
 import { calculateDri2023, dri2023Breakdown, driPaCoefficient, validEnergyBiometry, normalizeEnergySex } from './dri-energy';
+import { parseFiniteEnergyNumber } from './energy-numbers';
 
 // ============================================================================
 // PROTOCOLOS DE CÁLCULO DE BMR (Basal Metabolic Rate)
@@ -63,8 +64,8 @@ export const calculateMifflinStJeor = (weight, height, age, gender) => {
  * @returns {number|null} BMR em kcal/dia, ou null se leanMassKg não fornecido
  */
 export const calculateCunningham = (leanMassKg) => {
-  const lMass = parseFloat(leanMassKg);
-  if (isNaN(lMass) || lMass <= 0) return null;
+  const lMass = parseFiniteEnergyNumber(leanMassKg);
+  if (lMass == null || lMass <= 0 || lMass > 300) return null;
   return 500 + (22 * lMass);
 };
 
@@ -78,8 +79,9 @@ export const calculateCunningham = (leanMassKg) => {
  * @returns {number|null} BMR em kcal/dia, ou null se leanMassKg não fornecido
  */
 export const calculateTinsley = (weight, leanMassKg) => {
-  const lMass = parseFloat(leanMassKg);
-  if (isNaN(lMass) || lMass <= 0) return null;
+  const totalWeight = parseFiniteEnergyNumber(weight);
+  const lMass = parseFiniteEnergyNumber(leanMassKg);
+  if (totalWeight == null || totalWeight <= 0 || lMass == null || lMass <= 0 || lMass > totalWeight) return null;
   return 284 + (25.9 * lMass);
 };
 
@@ -250,7 +252,8 @@ export const calculateGET = (bmr, activityFactor, injuryFactor = 1.0) => {
   const af = Number(activityFactor);
   const inj = Number(injuryFactor);
   if (![b, af, inj].every(Number.isFinite) || b <= 0 || af <= 0 || inj <= 0) return null;
-  return b * af * inj;
+  const result = b * af * inj;
+  return Number.isFinite(result) ? result : null;
 };
 
 // ============================================================================
@@ -377,10 +380,10 @@ export const KCAL_PER_KG_BODY_CHANGE = 7700;
  * @returns {{ totalKcal: number, dailyAdjustmentKcal: number, isDeficit: boolean } | null} null se dados inválidos
  */
 export const calculateVentaAdjustment = (currentWeightKg, targetWeightKg, timeframeDays) => {
-  const cw = parseFloat(currentWeightKg);
-  const tw = parseFloat(targetWeightKg);
-  const td = parseFloat(timeframeDays);
-  if (isNaN(cw) || isNaN(tw) || isNaN(td) || td <= 0) {
+  const cw = parseFiniteEnergyNumber(currentWeightKg);
+  const tw = parseFiniteEnergyNumber(targetWeightKg);
+  const td = parseFiniteEnergyNumber(timeframeDays);
+  if (cw == null || cw < 1 || cw > 300 || tw == null || tw < 1 || tw > 300 || td == null || !Number.isInteger(td) || td <= 0) {
     return null;
   }
   const totalKcal = (cw - tw) * KCAL_PER_KG_BODY_CHANGE;
@@ -399,11 +402,11 @@ export const calculateVentaAdjustment = (currentWeightKg, targetWeightKg, timefr
  * @returns {number} Meta calórica final (VET) em kcal/dia
  */
 export const applyVentaToGet = (getKcal, ventaDailyAdjustmentKcal) => {
-  const gk = parseFloat(getKcal);
-  if (isNaN(gk) || gk <= 0) return gk || 0;
-  const adj = parseFloat(ventaDailyAdjustmentKcal);
-  const finalAdj = isNaN(adj) ? 0 : adj;
-  return gk - finalAdj; // déficit (adj > 0) reduz; superávit (adj < 0) aumenta
+  const gk = parseFiniteEnergyNumber(getKcal);
+  const adj = parseFiniteEnergyNumber(ventaDailyAdjustmentKcal);
+  if (gk == null || gk <= 0 || adj == null) return null;
+  const planned = gk - adj; // déficit (adj > 0) reduz; superávit (adj < 0) aumenta
+  return Number.isFinite(planned) ? planned : null;
 };
 
 // ============================================================================
@@ -452,6 +455,16 @@ export const calculateAllProtocols = (data) => {
       description: 'Equações por faixa etária (18-30, 30-60, >60) e sexo.',
       bmr: calculateFaoOms1985(weight, height, age, gender),
       category: 'general'
+    },
+    {
+      id: 'cunningham', name: 'Cunningham (1980)',
+      description: 'Estimativa por massa magra medida; requer avaliação de aplicabilidade para atletas.',
+      bmr: calculateCunningham(data.leanMass), category: 'athlete'
+    },
+    {
+      id: 'tinsley', name: 'Tinsley (2018)',
+      description: 'Estimativa por massa magra medida; requer avaliação de aplicabilidade para atletas.',
+      bmr: calculateTinsley(weight, data.leanMass), category: 'athlete'
     },
     {
       id: 'eer_iom',

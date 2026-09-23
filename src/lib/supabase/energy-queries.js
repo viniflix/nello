@@ -2,6 +2,7 @@ import { normalizeEnergyInput, readAnthropometryEnergyValues } from '@/lib/utils
 import { supabase } from '@/lib/customSupabaseClient';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
 import { calculateEnergyPlan, ENERGY_ENGINE_VERSION } from '@/lib/utils/energy-planning';
+import { parseFiniteEnergyNumber } from '@/lib/utils/energy-numbers';
 
 const fetchLatestEnergyCalculation = async (patientId) => {
   return supabase
@@ -236,8 +237,29 @@ export const getInitialBiometryForEnergy = async (patientId) => {
  */
 export const saveEnergyCalculation = async (data) => {
   try {
+    const numeric = (value, label, optional = false) => {
+      if (optional && (value == null || value === '')) return null;
+      const parsed = parseFiniteEnergyNumber(value);
+      if (parsed == null) throw new Error(`${label} deve ser um número finito válido.`);
+      return parsed;
+    };
+    data = { ...data,
+      weight: numeric(data.weight, 'Peso'), height: numeric(data.height, 'Altura'),
+      age: numeric(data.age, 'Idade'), lean_mass_kg: numeric(data.lean_mass_kg, 'Massa magra', true),
+      body_fat_percentage: numeric(data.body_fat_percentage, 'Gordura corporal', true),
+      venta_target_weight: numeric(data.venta_target_weight, 'Peso-alvo', true),
+      venta_timeframe_days: numeric(data.venta_timeframe_days, 'Prazo', true),
+    };
+    if (data.body_fat_percentage != null && (data.body_fat_percentage < 0 || data.body_fat_percentage > 100)) throw new Error('Gordura corporal deve estar entre 0 e 100%.');
+    const activities = data.mets_activities ?? [];
+    if (!Array.isArray(activities) || activities.some(item => !item || typeof item !== 'object' ||
+      ['met', 'duration_min', 'frequency_value', 'kcal_per_session', 'average_daily_kcal'].some(key =>
+        item[key] != null && (parseFiniteEnergyNumber(item[key]) == null || parseFiniteEnergyNumber(item[key]) < 0)))) {
+      throw new Error('Atividades MET contêm valores inválidos.');
+    }
     const plan = calculateEnergyPlan({
       weight: data.weight, height: data.height, age: data.age, gender: data.gender,
+      leanMass: data.lean_mass_kg,
       protocol: data.tmb_protocol, activityFactor: data.activity_factor,
       injuryFactor: data.injury_factor, injuryFactorId: data.injury_factor_id, clinicalMobility: data.clinical_mobility,
       driActivity: data.dri_activity, lifeStage: data.life_stage,
@@ -245,6 +267,9 @@ export const saveEnergyCalculation = async (data) => {
     });
     if (plan.isHarris && !data.injury_factor_id) throw new Error('Selecione a condição de injúria, inclusive Nenhum.');
     if (!plan.valid) throw new Error(plan.errors.join(' '));
+    if (plan.requiresVentaConfirmation && data.venta_confirmed !== true) throw new Error('Confirme a avaliação clínica da meta de peso antes de salvar.');
+    const reviewReason = typeof data.venta_review_reason === 'string' ? data.venta_review_reason.trim() : '';
+    if (plan.ventaRiskLevel === 'high' && reviewReason.length < 10) throw new Error('Informe uma justificativa clínica para a meta de peso sinalizada.');
     data = { ...data, tmb_result: plan.tmbResult, get_result: plan.getResult,
       final_planned_kcal: plan.finalPlannedKcal, activity_factor: plan.activityFactor,
       injury_factor: plan.injuryFactor, venta_adjustment_kcal: plan.ventaAdjustmentKcal };
@@ -264,6 +289,7 @@ export const saveEnergyCalculation = async (data) => {
       age_years: data.age,
       sex: data.gender,
       body_fat_percentage: data.body_fat_percentage ?? null,
+      lean_mass_kg: data.lean_mass_kg,
       activity_factor: data.activity_factor,
       injury_factor: data.injury_factor ?? 1,
       injury_factor_id: plan.isHarris ? data.injury_factor_id : null,
@@ -276,6 +302,10 @@ export const saveEnergyCalculation = async (data) => {
       eta_enabled: false,
       venta_target_weight: data.venta_target_weight ?? null,
       venta_timeframe_days: data.venta_timeframe_days ?? null,
+      venta_review: plan.requiresVentaConfirmation ? {
+        policy_version: 1, risk_level: plan.ventaRiskLevel, risk_reasons: plan.ventaRiskReasons,
+        confirmed: true, clinical_reason: reviewReason || null,
+      } : null,
       mets_activities: Array.isArray(data.mets_activities) ? data.mets_activities : []
     };
     const outputSnapshot = {

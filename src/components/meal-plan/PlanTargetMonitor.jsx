@@ -1,5 +1,6 @@
 import EnergyFormulaDetails from '@/components/energy/EnergyFormulaDetails';
 import { harrisEquationLabel } from '@/lib/utils/harris-history';
+import { energyCalculationNeedsVentaReview } from '@/lib/utils/energy-planning';
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Target, AlertCircle, CheckCircle2, Info, Calculator } from 'lucide-react';
@@ -34,9 +35,10 @@ const PlanTargetMonitor = ({
 }) => {
     const navigate = useNavigate();
     const patientSegment = patientSlugOrId ?? patientId;
+    const needsVentaReview = energyCalculationNeedsVentaReview(energyCalculation);
 
     // Se não houver meta calculada, mostrar botão para definir
-    if (!targetCalories || targetCalories <= 0) {
+    if (needsVentaReview || !targetCalories || targetCalories <= 0) {
         return (
             <Card className="border-dashed border-2 border-amber-200 bg-amber-50 shadow-sm">
                 <CardContent className="p-6">
@@ -47,7 +49,7 @@ const PlanTargetMonitor = ({
                             </div>
                             <div>
                                 <h4 className="text-sm font-black text-amber-900 uppercase tracking-tight">Monitoramento Indisponível</h4>
-                                <p className="text-xs text-amber-700/80 font-medium">O gasto energético (GET) não foi calculado para este paciente.</p>
+                                <p className="text-xs text-amber-700/80 font-medium">{needsVentaReview ? 'A meta VENTA histórica precisa de confirmação clínica antes de ser usada no plano.' : 'O gasto energético (GET) não foi calculado para este paciente.'}</p>
                             </div>
                         </div>
                         <Button
@@ -57,7 +59,7 @@ const PlanTargetMonitor = ({
                             className="bg-amber-600 hover:bg-amber-700 text-white font-bold h-12 px-6 rounded-xl shadow-md transition-all active:scale-95"
                         >
                             <Target className="w-4 h-4 mr-2" />
-                            Definir Gasto Energético
+                            {needsVentaReview ? 'Revisar cálculo energético' : 'Definir Gasto Energético'}
                         </Button>
                     </div>
                 </CardContent>

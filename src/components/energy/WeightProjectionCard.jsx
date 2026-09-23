@@ -132,7 +132,7 @@ export default function WeightProjectionCard({
                       <div className="mt-2 pt-2 border-t border-primary/20">
                         <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
                           <Target className="w-3.5 h-3.5" />
-                          Valor calórico final recomendado
+                          VET estimado; confirme a adequação clínica
                         </p>
                         <p className="text-xl font-bold text-primary">{Math.round(finalKcal)} kcal/dia</p>
                       </div>

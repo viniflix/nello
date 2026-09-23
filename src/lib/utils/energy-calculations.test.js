@@ -7,7 +7,7 @@ describe('D4 versioned energy calculation contracts', () => {
   });
   it('offers the basal and DRI protocols retained in the current clinical selector', () => {
     const protocols = calculateAllProtocols({ weight: 80, height: 180, age: 30, gender: 'M', leanMass: 60 });
-    expect(protocols.map(({ id }) => id)).toEqual(['harris', 'mifflin', 'fao_1985', 'eer_iom', 'dri_2023']);
+    expect(protocols.map(({ id }) => id)).toEqual(['harris', 'mifflin', 'fao_1985', 'cunningham', 'tinsley', 'eer_iom', 'dri_2023']);
     expect(protocols.some(({ recommended }) => recommended)).toBe(false);
   });
 });
@@ -19,6 +19,9 @@ describe('Mathematical Shielding (Edge Cases & Validation)', () => {
     expect(calculateCunningham(-10)).toBeNull();
     expect(calculateTinsley(80, "texto")).toBeNull();
     expect(calculateTinsley(80, 0)).toBeNull();
+    expect(calculateCunningham('60abc')).toBeNull();
+    expect(calculateCunningham(Infinity)).toBeNull();
+    expect(calculateTinsley(80, 81)).toBeNull();
   });
 
   it('coerces valid strings to numbers for calculations', () => {

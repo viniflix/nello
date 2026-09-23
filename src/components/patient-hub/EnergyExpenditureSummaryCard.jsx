@@ -1,6 +1,6 @@
 import { getProtocolInfo } from '@/lib/utils/energy-calculations';
 import { harrisEquationLabel } from '@/lib/utils/harris-history';
-import { ENERGY_ENGINE_VERSION } from '@/lib/utils/energy-planning';
+import { ENERGY_ENGINE_VERSION, energyCalculationNeedsVentaReview } from '@/lib/utils/energy-planning';
 import EnergyFormulaDetails from '@/components/energy/EnergyFormulaDetails';
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -108,7 +108,8 @@ const EnergyExpenditureSummaryCard = ({ patientId, patient }) => {
     const isEER = protocol.toLowerCase().includes('eer') || protocol === 'dri_2023';
     const isHarris = ['harris', 'harris-benedict'].includes(protocol);
     const get = calculatedData?.get_result ?? calculatedData?.get_with_activities ?? calculatedData?.get;
-    const target = calculatedData?.final_planned_kcal ?? calculatedData?.target_calories ?? get;
+    const needsVentaReview = energyCalculationNeedsVentaReview(calculatedData);
+    const target = needsVentaReview ? null : calculatedData?.final_planned_kcal ?? calculatedData?.target_calories ?? get;
     const hasVENTA = calculatedData?.venta_target_weight != null || calculatedData?.target_weight != null;
     const activities = calculatedData?.mets_activities || calculatedData?.activities || [];
     const display = value => value == null || !Number.isFinite(Number(value)) ? '—' : Math.round(Number(value)).toLocaleString('pt-BR');
@@ -117,6 +118,7 @@ const EnergyExpenditureSummaryCard = ({ patientId, patient }) => {
         action={<Button variant="outline" size="sm" onClick={handleNavigateToFullPage}>{calculatedData ? 'Editar cálculo' : 'Calcular gasto'}</Button>}>
         <div className="flex flex-col gap-3">
             {syncFlags?.needs_energy_recalc && <Alert><AlertCircle className="h-4 w-4" /><AlertDescription>Antropometria atualizada. Revise o cálculo energético.</AlertDescription></Alert>}
+            {needsVentaReview && <Alert className="border-amber-300 bg-amber-50"><AlertCircle className="h-4 w-4" /><AlertDescription>Meta VENTA histórica sem confirmação clínica. Recalcule e confirme antes de usar no plano alimentar.</AlertDescription></Alert>}
             {calculatedData ? <>
                 <div className="grid grid-cols-2 gap-2">
                     {!isEER && <HubMetric label="TMB" value={display(calculatedData.tmb_result ?? calculatedData.tmb)} detail="kcal/dia" />}

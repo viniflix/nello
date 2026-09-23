@@ -22,6 +22,7 @@ import MetsActivitiesForm from '@/components/energy/MetsActivitiesForm';
 import EnergyExpenditureResultsPanel from '@/components/energy/EnergyExpenditureResultsPanel';
 import { calculateEnergyPlan, restoreEnergyInputs } from '@/lib/utils/energy-planning';
 import { restoreEnergyBiometry } from '@/lib/utils/energy-inputs';
+import { parseFiniteEnergyNumber } from '@/lib/utils/energy-numbers';
 import DriActivitySelector from '@/components/energy/DriActivitySelector';
 import EnergyFormulaDetails from '@/components/energy/EnergyFormulaDetails';
 import {
@@ -46,6 +47,8 @@ const TMB_PROTOCOLS = [
   { id: 'mifflin', label: 'Mifflin-St Jeor' },
   { id: 'harris', label: 'Harris-Benedict (1919)' },
   { id: 'fao_1985', label: 'FAO/OMS' },
+  { id: 'cunningham', label: 'Cunningham (massa magra)' },
+  { id: 'tinsley', label: 'Tinsley (massa magra)' },
   { id: 'eer_iom', label: 'DRIs / EER-IOM (2005)' },
   { id: 'dri_2023', label: 'DRIs / EER (2023)' }
 ];
@@ -154,6 +157,8 @@ function EnergyExpenditureForm({ resolvedPatient }) {
   const [selectedProtocol, setSelectedProtocol] = useState('');
   const [ventaTargetWeight, setVentaTargetWeight] = useState('');
   const [ventaTimeframeDays, setVentaTimeframeDays] = useState('');
+  const [ventaConfirmedFor, setVentaConfirmedFor] = useState('');
+  const [ventaReviewReason, setVentaReviewReason] = useState('');
   const [clinicalMobility, setClinicalMobility] = useState('');
   const [driActivity, setDriActivity] = useState('');
   const [lifeStage, setLifeStage] = useState('');
@@ -190,15 +195,17 @@ function EnergyExpenditureForm({ resolvedPatient }) {
 
   const weightNum = Number(weight) || 0;
   const patientData = useMemo(() => ({
-    weight: Number(weight), height: Number(height), age: Number(age), gender,
-    leanMass: leanMass ? Number(leanMass) : null, driActivity,
+    weight: parseFiniteEnergyNumber(weight), height: parseFiniteEnergyNumber(height), age: parseFiniteEnergyNumber(age), gender,
+    leanMass: leanMass ? parseFiniteEnergyNumber(leanMass) : null, driActivity,
   }), [weight, height, age, gender, leanMass, driActivity]);
   const protocols = useMemo(() => calculateAllProtocols(patientData), [patientData]);
   const selectedProtocolData = protocols.find(p => p.id === selectedProtocol);
-  const planInput = { ...patientData, protocol: selectedProtocol, activityFactor,
+  const planInput = { ...patientData, leanMass: leanMass || null, protocol: selectedProtocol, activityFactor,
     injuryFactor: getInjuryFactorValue(injuryFactorId), injuryFactorId, clinicalMobility, lifeStage,
     targetWeight: ventaTargetWeight, timeframeDays: ventaTimeframeDays };
   const plan = calculateEnergyPlan(planInput);
+  const ventaSignature = JSON.stringify(planInput);
+  const ventaConfirmed = !plan.requiresVentaConfirmation || ventaConfirmedFor === ventaSignature;
   const { tmbResult, getBase, getResult, finalPlannedKcal, ventaAdjustmentKcal } = plan;
   const isEer = ['eer_iom', 'dri_2023'].includes(selectedProtocol);
   const isHarris = selectedProtocol === 'harris';
@@ -332,9 +339,9 @@ function EnergyExpenditureForm({ resolvedPatient }) {
   }
 
   const saveCurrentState = async () => {
-    const w = parseFloat(weight);
-    const h = parseFloat(height);
-    const a = parseInt(age, 10);
+    const w = parseFiniteEnergyNumber(weight);
+    const h = parseFiniteEnergyNumber(height);
+    const a = parseFiniteEnergyNumber(age);
     if (!Number.isFinite(w) || !Number.isFinite(h) || !Number.isFinite(a) || !gender) {
       throw new Error('Preencha peso, altura, idade e sexo.');
     }
@@ -342,6 +349,7 @@ function EnergyExpenditureForm({ resolvedPatient }) {
       throw new Error('Selecione um protocolo TMB.');
     }
     if (!plan.valid) throw new Error(plan.errors.join(' '));
+    if (!ventaConfirmed) throw new Error('Confirme a avaliação clínica da meta de peso.');
     const payload = {
       patient_id: patientId,
       nutritionist_id: user?.id || null,
@@ -349,7 +357,8 @@ function EnergyExpenditureForm({ resolvedPatient }) {
       weight: w,
       age: a,
       gender: gender,
-      body_fat_percentage: bodyFatPct ? parseFloat(bodyFatPct) : null,
+      body_fat_percentage: bodyFatPct || null,
+      lean_mass_kg: leanMass || null,
       tmb_protocol: selectedProtocol,
       tmb_result: selectedProtocolData?.bmr ?? null,
       activity_factor: plan.activityFactor,
@@ -361,8 +370,10 @@ function EnergyExpenditureForm({ resolvedPatient }) {
       mets_activities: sumMetsActivitiesAverageDaily(metsActivities, w).items,
       calculation_details: plan,
       get_result: getResult,
-      venta_target_weight: ventaTargetWeight ? parseFloat(ventaTargetWeight) : null,
-      venta_timeframe_days: ventaTimeframeDays ? parseInt(ventaTimeframeDays, 10) : null,
+      venta_target_weight: ventaTargetWeight ? parseFiniteEnergyNumber(ventaTargetWeight) : null,
+      venta_timeframe_days: ventaTimeframeDays ? parseFiniteEnergyNumber(ventaTimeframeDays) : null,
+      venta_confirmed: ventaConfirmed,
+      venta_review_reason: ventaReviewReason,
       venta_adjustment_kcal: ventaAdjustmentKcal,
       final_planned_kcal: finalPlannedKcal
     };
@@ -596,7 +607,7 @@ function EnergyExpenditureForm({ resolvedPatient }) {
           <TabsContent value="factors" className="mt-0">
             <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
               <section className="min-w-0 space-y-4">
-            {requiresReview && <Alert className="border-amber-300 bg-amber-50 text-amber-950"><AlertCircle className="h-4 w-4" /><AlertDescription><strong>Revise este cálculo.</strong> Ele foi criado antes da correção dos fatores. Confirme as informações abaixo antes de salvar.</AlertDescription></Alert>}
+            {requiresReview && <Alert className="border-amber-300 bg-amber-50 text-amber-950"><AlertCircle className="h-4 w-4" /><AlertDescription><strong>Revise este cálculo histórico.</strong> Confira fórmula, biometria, fatores e meta de peso antes de salvar uma nova avaliação.</AlertDescription></Alert>}
             {isHarris ? (
               <Card className="rounded-2xl border-0 shadow-card"><CardHeader className="border-b p-4 sm:p-6"><CardTitle className="flex items-center gap-3 text-lg sm:text-xl"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-50 text-primary"><Activity className="h-5 w-5" /></span>2. Contexto clínico</CardTitle>
                 <CardDescription className="sm:pl-[52px]">Neste fluxo Harris-Benedict, escolha a mobilidade clínica para calcular o GET. O exercício não é multiplicado novamente.</CardDescription></CardHeader>
@@ -638,24 +649,13 @@ function EnergyExpenditureForm({ resolvedPatient }) {
             <div className="flex flex-col-reverse gap-3 border-t pt-4 sm:flex-row sm:justify-between">
               <Button type="button" variant="outline" size="lg" onClick={() => setActiveTab('biometry')} className="gap-2"><ChevronLeft className="h-4 w-4" />Voltar aos dados</Button>
               <Button
-                onClick={async () => {
-                  setSaving(true);
-                  try {
-                    await saveCurrentState();
-                    setActiveTab('venta');
-                    toast({ title: 'Salvo', description: 'Fatores e atividades salvos. Revise o planejamento (VENTA).' });
-                  } catch (err) {
-                    toast({ title: 'Erro', description: err?.message || 'Não foi possível salvar.', variant: 'destructive' });
-                  } finally {
-                    setSaving(false);
-                  }
-                }}
+                onClick={() => setActiveTab('venta')}
                 disabled={saving || !plan.valid}
                 size="lg"
                 className="gap-2"
               >
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                Salvar e prosseguir
+                Prosseguir para a meta
                 <ChevronRight className="w-4 h-4" />
               </Button>
             </div>
@@ -690,6 +690,17 @@ function EnergyExpenditureForm({ resolvedPatient }) {
                   currentWeight={weightNum}
                   getResult={getResult}
                 />}
+                {plan.valid && plan.requiresVentaConfirmation && <Alert className={plan.ventaRiskLevel === 'high' ? 'border-destructive/50' : ''}>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription className="space-y-3">
+                    <p className="font-semibold">{plan.ventaRiskLevel === 'high' ? 'Meta exige revisão clínica reforçada' : 'Revise a meta antes de salvar'}</p>
+                    <p>Ajuste: {Math.abs(plan.ventaAdjustmentKcal).toLocaleString('pt-BR', { maximumFractionDigits: 2 })} kcal/dia; mudança projetada: {plan.weeklyWeightChangeKg.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} kg/semana; VET: {plan.finalPlannedKcal.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} kcal/dia.</p>
+                    {plan.ventaRiskReasons.map(reason => <p key={reason}>{reason}</p>)}
+                    <p className="text-xs">A projeção linear de 7.700 kcal/kg é apenas uma aproximação; a mudança real de peso varia com a adaptação metabólica e o contexto clínico.</p>
+                    {plan.ventaRiskLevel === 'high' && <div className="space-y-1"><Label htmlFor="ventaReviewReason">Justificativa clínica (obrigatória)</Label><Input id="ventaReviewReason" value={ventaReviewReason} onChange={event => setVentaReviewReason(event.target.value)} placeholder="Descreva a avaliação individual" /></div>}
+                    <label className="flex items-start gap-2 text-sm"><input type="checkbox" className="mt-1" checked={ventaConfirmed} onChange={event => setVentaConfirmedFor(event.target.checked ? ventaSignature : '')} /><span>Confirmei a meta, o prazo e o VET para este paciente.</span></label>
+                  </AlertDescription>
+                </Alert>}
               </CardContent>
             </Card>
 
@@ -716,7 +727,7 @@ function EnergyExpenditureForm({ resolvedPatient }) {
 
             <div className="flex flex-col-reverse gap-3 border-t pt-4 sm:flex-row sm:justify-between">
               <Button type="button" variant="outline" size="lg" onClick={() => setActiveTab('factors')} className="gap-2"><ChevronLeft className="h-4 w-4" />Voltar aos fatores</Button>
-              <Button onClick={handleSave} disabled={saving || !plan.valid} size="lg" className="gap-2 sm:min-w-56">
+              <Button onClick={handleSave} disabled={saving || !plan.valid || !ventaConfirmed || (plan.ventaRiskLevel === 'high' && ventaReviewReason.trim().length < 10)} size="lg" className="gap-2 sm:min-w-56">
                 {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> Salvando...</> : <><Save className="w-4 h-4" /> Salvar cálculo</>}
               </Button>
             </div>

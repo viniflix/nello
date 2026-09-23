@@ -1,4 +1,5 @@
 import { normalizeEnergySex } from './dri-energy';
+import { parseFiniteEnergyNumber } from './energy-numbers';
 
 const ranges = { weight: [1, 300], height: [50, 255], age: [0, 120], body_fat_percentage: [0, 100], lean_mass_kg: [0, 300] };
 const snapshotKeys = { weight: 'weight_kg', height: 'height_cm', age: 'age_years', gender: 'sex', body_fat_percentage: 'body_fat_percentage', lean_mass_kg: 'lean_mass_kg' };
@@ -9,9 +10,9 @@ export function normalizeEnergyInput(field, value) {
     return sex === 'male' ? 'M' : sex === 'female' ? 'F' : null;
   }
   if (value == null || String(value).trim() === '') return null;
-  const number = Number(value);
+  const number = parseFiniteEnergyNumber(value);
   const [min, max] = ranges[field];
-  if (!Number.isFinite(number) || number < min || number > max || (field === 'age' && !Number.isInteger(number))) return null;
+  if (number == null || number < min || number > max || (field === 'age' && !Number.isInteger(number))) return null;
   return number;
 }
 

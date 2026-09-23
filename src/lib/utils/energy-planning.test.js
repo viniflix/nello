@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { calculateEnergyPlan, restoreEnergyInputs } from './energy-planning';
+import { calculateEnergyPlan, energyCalculationNeedsVentaReview, restoreEnergyInputs } from './energy-planning';
 import { calculateDri2023 } from './dri-energy';
 import { sumMetsActivitiesAverageDaily, calculateAllProtocols, getFormulaBreakdown } from './energy-calculations';
 import { INJURY_FACTORS, getInjuryFactorValue } from '@/lib/constants/injury-factors';
@@ -99,7 +99,34 @@ describe('one energy pipeline from biometry to VET', () => {
     const plan = calculateEnergyPlan({ ...patient, protocol: 'mifflin', targetWeight: 68, timeframeDays: 70 });
     expect(plan.ventaAdjustmentKcal).toBe(220);
     expect(plan.finalPlannedKcal).toBe(2335.5625);
+    expect(plan.requiresVentaConfirmation).toBe(true);
+    expect(plan.ventaRiskLevel).toBe('review');
     expect(calculateEnergyPlan({ ...patient, protocol: 'mifflin', targetWeight: 72, timeframeDays: 70 }).finalPlannedKcal).toBe(2775.5625);
+  });
+  it('supports athlete equations only with valid lean mass, including comma decimals', () => {
+    const athlete = { ...patient, protocol: 'cunningham', leanMass: '60,5' };
+    expect(calculateEnergyPlan(athlete).tmbResult).toBe(1831);
+    expect(calculateEnergyPlan({ ...athlete, protocol: 'tinsley' }).tmbResult).toBeCloseTo(1850.95, 6);
+    for (const leanMass of ['', '60junk', 'Infinity', Infinity, 71]) {
+      expect(calculateEnergyPlan({ ...athlete, leanMass }).valid).toBe(false);
+    }
+    expect(calculateEnergyPlan({ ...patient, protocol: 'mifflin', leanMass: 71 }).valid).toBe(false);
+  });
+  it('flags extreme VENTA plans and preserves calculated values for clinical review', () => {
+    const plan = calculateEnergyPlan({ ...patient, protocol: 'mifflin', targetWeight: 61, timeframeDays: 30 });
+    expect(plan.valid).toBe(true);
+    expect(plan.ventaRiskLevel).toBe('high');
+    expect(plan.ventaRiskReasons.length).toBeGreaterThan(0);
+    expect(plan.finalPlannedKcal).toBeCloseTo(245.5625, 6);
+    expect(calculateEnergyPlan({ ...patient, protocol: 'mifflin', targetWeight: '69,5', timeframeDays: '30' }).valid).toBe(true);
+    expect(calculateEnergyPlan({ ...patient, protocol: 'mifflin', targetWeight: '69junk', timeframeDays: 30 }).valid).toBe(false);
+  });
+  it('withholds legacy VENTA targets until a confirmed replacement is saved', () => {
+    const saved = { weight: 104, venta_target_weight: 95, venta_timeframe_days: 45, final_planned_kcal: 1805.66 };
+    expect(energyCalculationNeedsVentaReview(saved)).toBe(true);
+    expect(energyCalculationNeedsVentaReview({ ...saved, input_snapshot: { venta_review: { confirmed: false } } })).toBe(true);
+    expect(energyCalculationNeedsVentaReview({ ...saved, input_snapshot: { venta_review: { confirmed: true } } })).toBe(false);
+    expect(energyCalculationNeedsVentaReview({ weight: 104, final_planned_kcal: 3345 })).toBe(false);
   });
   it.each([{ weight: 0 }, { height: 1.75 }, { age: 17 }, { gender: 'unknown' }, { weight: Infinity }, { age: 30.5 }, { targetWeight: 0, timeframeDays: 30 }, { targetWeight: 40, timeframeDays: 1 }])('rejects invalid inputs and nonpositive targets: %j', invalid => {
     expect(calculateEnergyPlan({ ...patient, protocol: 'mifflin', ...invalid }).valid).toBe(false);
@@ -113,7 +140,7 @@ describe('one energy pipeline from biometry to VET', () => {
   });
   it('restores clinical and DRI selections and flags old records for review', () => {
     expect(restoreEnergyInputs({}).requiresReview).toBe(true);
-    expect(restoreEnergyInputs({ source_snapshot: { engine_version: 4 }, input_snapshot: { clinical_mobility: 'ambulatory', dri_activity: 'low_active', life_stage: 'adult', injury_factor_id: 'infection' } })).toEqual({ clinicalMobility: 'ambulatory', driActivity: 'low_active', lifeStage: 'adult', injuryFactorId: 'infection', requiresReview: false });
+    expect(restoreEnergyInputs({ source_snapshot: { engine_version: 5 }, input_snapshot: { clinical_mobility: 'ambulatory', dri_activity: 'low_active', life_stage: 'adult', injury_factor_id: 'infection' } })).toEqual({ clinicalMobility: 'ambulatory', driActivity: 'low_active', lifeStage: 'adult', injuryFactorId: 'infection', requiresReview: false });
     expect(restoreEnergyInputs({ tmb_protocol: 'harris', injury_factor: 1.4, source_snapshot: { engine_version: 2 } })).toMatchObject({ injuryFactorId: '', requiresReview: true });
     expect(restoreEnergyInputs({ tmb_protocol: 'harris', injury_factor: 1.4, source_snapshot: { engine_version: 3 }, input_snapshot: { injury_factor_id: 'surgery' } })).toMatchObject({ injuryFactorId: '', requiresReview: true });
   });
