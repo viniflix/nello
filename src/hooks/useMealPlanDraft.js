@@ -157,7 +157,8 @@ export function useMealPlanDraft({ patientId, nutritionistId, enabled = false })
             const { error: batchError } = await addFoodsToMeal(newMeal.id, mealData.foods);
             if (batchError) {
                 console.error('[useMealPlanDraft] Erro ao salvar alimentos no rascunho:', batchError);
-                await deleteMealFromPlan(newMeal.id);
+                const { error: cleanupError } = await deleteMealFromPlan(newMeal.id);
+                if (cleanupError) console.error('[useMealPlanDraft] Falha ao limpar refeição incompleta:', cleanupError);
                 setSaveStatus('error');
                 return null;
             }
@@ -216,7 +217,8 @@ export function useMealPlanDraft({ patientId, nutritionistId, enabled = false })
                 const { error: batchError } = await addFoodsToMeal(newMeal.id, mealData.foods);
                 if (batchError) {
                     console.error('[useMealPlanDraft] Erro ao salvar alimentos ao atualizar refeição:', batchError);
-                    await deleteMealFromPlan(newMeal.id);
+                    const { error: cleanupError } = await deleteMealFromPlan(newMeal.id);
+                    if (cleanupError) console.error('[useMealPlanDraft] Falha ao limpar refeição incompleta:', cleanupError);
                     setSaveStatus('error');
                     return null; // a refeição antiga permanece intacta
                 }
@@ -226,7 +228,12 @@ export function useMealPlanDraft({ patientId, nutritionistId, enabled = false })
 
             // PASSO 3: AGORA deleta a antiga (nova está garantida)
             if (oldDbId) {
-                await deleteMealFromPlan(oldDbId);
+                const { error: deleteError } = await deleteMealFromPlan(oldDbId);
+                if (deleteError) {
+                    console.error('[useMealPlanDraft] Falha ao substituir refeição antiga:', deleteError);
+                    setSaveStatus('error');
+                    return null;
+                }
             }
 
             setSaveStatus('saved');

@@ -51,6 +51,8 @@ const {
     addMealToPlan,
     updateFullMealPlan,
     archiveMealPlan,
+    createMealPlan,
+    copyMealPlanToPatient,
 } = await import('@/lib/supabase/meal-plan-queries');
 
 describe('D6-D8 — plano clínico atômico e auditável', () => {
@@ -89,6 +91,28 @@ describe('D6-D8 — plano clínico atômico e auditável', () => {
         });
         expect(mockUpdate).not.toHaveBeenCalled();
         expect(mockDelete).not.toHaveBeenCalled();
+    });
+
+    it('cria o plano e troca o ativo na mesma transação do servidor', async () => {
+        mockRpc.mockResolvedValue({ data: 77, error: null });
+        mockSingle.mockResolvedValue({ data: { id: 77, is_active: false }, error: null });
+        const result = await createMealPlan({ patient_id: 'patient', nutritionist_id: 'nutritionist', name: 'Novo plano', is_active: false });
+        expect(result.data.id).toBe(77);
+        expect(mockRpc).toHaveBeenCalledWith('create_meal_plan_atomic', {
+            p_plan_data: expect.objectContaining({ name: 'Novo plano', is_active: false }),
+        });
+        expect(mockUpdate).not.toHaveBeenCalled();
+        expect(mockInsert).not.toHaveBeenCalled();
+    });
+
+    it('não cria um plano parcial quando a cópia atômica falha', async () => {
+        mockRpc.mockResolvedValue({ data: null, error: new Error('source_plan_food_unavailable') });
+        const result = await copyMealPlanToPatient(42, 'patient');
+        expect(result.data).toBeNull();
+        expect(mockRpc).toHaveBeenCalledWith('copy_meal_plan_to_patient_atomic', {
+            p_source_plan_id: 42, p_target_patient_id: 'patient', p_name: null,
+        });
+        expect(mockInsert).not.toHaveBeenCalled();
     });
 });
 

@@ -158,56 +158,27 @@ export const simulateMealPlanPortionAdjustment = (meals = [], scaleFactor = 1, o
 
 /**
  * Cria um novo plano alimentar
- * IMPORTANTE: Desativa automaticamente outros planos ativos do mesmo paciente
+ * Cria um plano inativo; a ativação ocorre após salvar e confirmar o conteúdo.
  * @param {object} planData - Dados do plano
  * @returns {Promise<{data: object, error: object}>}
  */
 export const createMealPlan = async (planData) => {
     try {
-        const {
-            patient_id,
-            nutritionist_id,
-            name,
-            description,
-            active_days,
-            start_date,
-            end_date,
-            is_active = true,
-            plan_mode = 'hybrid'
-        } = planData;
-
-        // Desativar outros planos ativos do mesmo paciente apenas se o novo plano for ativo
-        if (is_active) {
-            const { error: deactivateError } = await supabase
-                .from('meal_plans')
-                .update({ is_active: false })
-                .eq('patient_id', patient_id)
-                .eq('is_active', true);
-
-            if (deactivateError) {
-                console.warn('Erro ao desativar planos anteriores:', deactivateError);
-                // Não lançar erro, apenas avisar
-            }
-        }
-
-        // Criar novo plano de acordo com is_active
-        const { data, error } = await supabase
-            .from('meal_plans')
-            .insert([{
-                patient_id,
-                nutritionist_id,
-                name,
-                description: description || null,
-                active_days: active_days || ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
-                start_date: start_date || getTodayIsoDate(),
-                end_date: end_date || null,
-                is_active: is_active,
-                plan_mode,
-                prescription_status: 'draft'
-            }])
-            .select()
-            .single();
-
+        const { data: planId, error: createError } = await supabase.rpc('create_meal_plan_atomic', {
+            p_plan_data: {
+                patient_id: planData.patient_id,
+                nutritionist_id: planData.nutritionist_id,
+                name: planData.name,
+                description: planData.description || null,
+                active_days: planData.active_days || ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
+                start_date: planData.start_date || getTodayIsoDate(),
+                end_date: planData.end_date || null,
+                is_active: false,
+                plan_mode: planData.plan_mode || 'hybrid',
+            },
+        });
+        if (createError) throw createError;
+        const { data, error } = await supabase.from('meal_plans').select('*').eq('id', planId).single();
         if (error) throw error;
         return { data, error: null };
     } catch (error) {
@@ -720,7 +691,9 @@ export const addFoodsToMeal = async (mealId, foods = []) => {
         });
 
         if (allSubstitutes.length > 0) {
-            await supabase.from('meal_plan_food_substitutions').insert(allSubstitutes);
+            const { error: substitutesError } = await supabase
+                .from('meal_plan_food_substitutions').insert(allSubstitutes);
+            if (substitutesError) throw substitutesError;
         }
 
         return { data: dbFoods, error: null };
@@ -774,7 +747,8 @@ export const addFoodToMeal = async (foodData) => {
 
         // Salvar substituições se fornecidas
         if (substitutes && substitutes.length > 0) {
-            await saveFoodSubstitutions(data.id, substitutes);
+            const { error: substitutesError } = await saveFoodSubstitutions(data.id, substitutes);
+            if (substitutesError) throw substitutesError;
         }
 
         const foodsMap = await getFoodsMapByIds([data?.food_id]);
@@ -815,7 +789,8 @@ export const updateFoodInMeal = async (foodId, updates) => {
 
         // Atualizar substituições se fornecidas
         if (substitutes !== undefined) {
-            await saveFoodSubstitutions(foodId, substitutes);
+            const { error: substitutesError } = await saveFoodSubstitutions(foodId, substitutes);
+            if (substitutesError) throw substitutesError;
         }
 
         const foodsMap = await getFoodsMapByIds([data?.food_id]);
@@ -1106,116 +1081,31 @@ export const calculateNutrition = async (food, quantity, unit) => {
  */
 export const copyMealPlanToPatient = async (planId, targetPatientId) => {
     try {
-        // Buscar plano original com todos os detalhes
-        const { data: originalPlan, error: planError } = await getMealPlanById(planId);
-        if (planError) throw planError;
-
-        // Criar novo plano para o paciente alvo
-        const { data: newPlan, error: createError } = await createMealPlan({
-            patient_id: targetPatientId,
-            nutritionist_id: originalPlan.nutritionist_id,
-            name: originalPlan.name,
-            description: originalPlan.description,
-            active_days: originalPlan.active_days,
-            start_date: getTodayIsoDate()
+        const { data: copiedId, error } = await supabase.rpc('copy_meal_plan_to_patient_atomic', {
+            p_source_plan_id: planId,
+            p_target_patient_id: targetPatientId,
+            p_name: null,
         });
-
-        if (createError) throw createError;
-
-        // Copiar refeições e alimentos
-        for (const meal of originalPlan.meals || []) {
-            const { data: newMeal, error: mealError } = await addMealToPlan({
-                meal_plan_id: newPlan.id,
-                name: meal.name,
-                meal_type: meal.meal_type,
-                meal_time: meal.meal_time,
-                notes: meal.notes,
-                order_index: meal.order_index
-            });
-
-            if (mealError) throw mealError;
-
-            // Copiar alimentos
-            for (const food of meal.foods || []) {
-                await addFoodToMeal({
-                    meal_plan_meal_id: newMeal.id,
-                    food_id: food.food_id,
-                    quantity: food.quantity,
-                    unit: food.unit,
-                    calories: food.calories,
-                    protein: food.protein,
-                    carbs: food.carbs,
-                    fat: food.fat,
-                    notes: food.notes,
-                    order_index: food.order_index
-                });
-            }
-        }
-
-        // Buscar plano completo criado
-        return getMealPlanById(newPlan.id);
+        if (error) throw error;
+        return getMealPlanById(copiedId);
     } catch (error) {
         logSupabaseError('Erro ao copiar plano para paciente', error);
         return { data: null, error };
     }
 };
 
-/**
- * Duplica um plano alimentar completo
- * @param {number} planId - ID do plano a copiar
- * @param {string} newName - Nome do novo plano
- * @returns {Promise<{data: object, error: object}>}
- */
+/** Duplica um plano para o mesmo paciente como rascunho para revisão. */
 export const copyMealPlan = async (planId, newName) => {
     try {
-        // Buscar plano original com todos os detalhes
-        const { data: originalPlan, error: planError } = await getMealPlanById(planId);
-        if (planError) throw planError;
-
-        // Criar novo plano
-        const { data: newPlan, error: createError } = await createMealPlan({
-            patient_id: originalPlan.patient_id,
-            nutritionist_id: originalPlan.nutritionist_id,
-            name: newName,
-            description: originalPlan.description,
-            active_days: originalPlan.active_days,
-            start_date: getTodayIsoDate()
+        const { data: originalPlan, error: sourceError } = await getMealPlanById(planId);
+        if (sourceError) throw sourceError;
+        const { data: copiedId, error } = await supabase.rpc('copy_meal_plan_to_patient_atomic', {
+            p_source_plan_id: planId,
+            p_target_patient_id: originalPlan.patient_id,
+            p_name: newName,
         });
-
-        if (createError) throw createError;
-
-        // Copiar refeições e alimentos
-        for (const meal of originalPlan.meals || []) {
-            const { data: newMeal, error: mealError } = await addMealToPlan({
-                meal_plan_id: newPlan.id,
-                name: meal.name,
-                meal_type: meal.meal_type,
-                meal_time: meal.meal_time,
-                notes: meal.notes,
-                order_index: meal.order_index
-            });
-
-            if (mealError) throw mealError;
-
-            // Copiar alimentos
-            for (const food of meal.foods || []) {
-                await addFoodToMeal({
-                    meal_plan_meal_id: newMeal.id,
-                    food_id: food.food_id,
-                    quantity: food.quantity,
-                    unit: food.unit,
-                    calories: food.calories,
-                    protein: food.protein,
-                    carbs: food.carbs,
-                    fat: food.fat,
-                    notes: food.notes,
-                    order_index: food.order_index
-                });
-            }
-        }
-
-        // Buscar plano completo criado
-        return getMealPlanById(newPlan.id);
+        if (error) throw error;
+        return getMealPlanById(copiedId);
     } catch (error) {
         logSupabaseError('Erro ao copiar plano alimentar', error);
         return { data: null, error };
@@ -1346,7 +1236,7 @@ export const updateFullMealPlan = async (planId, planData) => {
                 description: planData.description,
                 start_date: planData.start_date,
                 end_date: planData.end_date || null,
-                is_active: planData.is_active ?? true,
+                is_active: planData.is_active ?? false,
                 is_draft: planData.is_draft ?? false,
                 daily_calories: planData.daily_calories || 0,
                 daily_protein: planData.daily_protein || 0,
@@ -1562,63 +1452,35 @@ export const deleteReferenceValues = async (planId) => {
  */
 export const savePlanAsTemplate = async (planId, templateName, tags = []) => {
     try {
-        const { data: authData } = await supabase.auth.getUser();
+        const { data: authData, error: authError } = await supabase.auth.getUser();
+        if (authError) throw authError;
         const userId = authData?.user?.id;
         if (!userId) throw new Error('Usuário não autenticado.');
-
-        // 1. Buscar plano original com refeições e alimentos
         const { data: originalPlan, error: planError } = await getMealPlanById(planId);
         if (planError) throw planError;
-
-        // 2. Criar registro em diet_templates
-        const { data: template, error: templateError } = await supabase
-            .from('diet_templates')
-            .insert({
-                user_id: userId,
-                name: templateName.trim(),
-                description: originalPlan.description || null,
-                tags: tags.length > 0 ? tags : [],
-            })
-            .select('id, name')
-            .single();
-
-        if (templateError) throw templateError;
-
-        // 3. Inserir refeições e alimentos em diet_template_meals / diet_template_foods
-        for (let mealIdx = 0; mealIdx < (originalPlan.meals || []).length; mealIdx++) {
-            const meal = originalPlan.meals[mealIdx];
-
-            const { data: savedMeal, error: mealError } = await supabase
-                .from('diet_template_meals')
-                .insert({
-                    template_id: template.id,
-                    name: meal.name,
-                    time: meal.meal_time || null,
-                    order_index: meal.order_index ?? mealIdx,
-                })
-                .select('id')
-                .single();
-
-            if (mealError) throw mealError;
-
-            const foods = meal.foods || [];
-            if (foods.length > 0) {
-                const { error: foodsError } = await supabase
-                    .from('diet_template_foods')
-                    .insert(foods.map((food, fIdx) => ({
-                        meal_id: savedMeal.id,
-                        food_id: food.food_id,
-                        quantity: food.quantity,
-                        unit: food.unit,
-                        observation: food.notes || food.observation || '',
-                        order_index: food.order_index ?? fIdx,
-                    })));
-
-                if (foodsError) throw foodsError;
-            }
-        }
-
-        return { data: template, error: null };
+        if (originalPlan.nutritionist_id !== userId) throw new Error('Plano indisponível para este profissional.');
+        if (!(originalPlan.meals || []).length) throw new Error('O plano não possui refeições para salvar como modelo.');
+        const meals = (originalPlan.meals || []).map((meal, index) => ({
+            name: meal.name,
+            time: meal.meal_time || null,
+            order_index: meal.order_index ?? index,
+            foods: (meal.foods || []).map((food, foodIndex) => ({
+                food_id: food.food_id,
+                quantity: food.quantity,
+                unit: food.unit,
+                observation: food.notes || food.observation || '',
+                order_index: food.order_index ?? foodIndex,
+            })),
+        }));
+        const { data: templateId, error } = await supabase.rpc('create_diet_template', {
+            p_user_id: userId,
+            p_name: templateName.trim(),
+            p_description: originalPlan.description || null,
+            p_tags: tags,
+            p_meals: meals,
+        });
+        if (error) throw error;
+        return { data: { id: templateId, name: templateName.trim() }, error: null };
     } catch (error) {
         logSupabaseError('Erro ao salvar plano como template de dieta', error);
         return { data: null, error };
@@ -1645,154 +1507,6 @@ export const getTemplates = async (nutritionistId) => {
     } catch (error) {
         logSupabaseError('Erro ao buscar templates', error);
         return { data: [], error };
-    }
-};
-
-/**
- * Aplica um template a um paciente, criando um novo plano
- * @param {number} templateId - ID do template
- * @param {string} patientId - ID do paciente
- * @param {string} startDate - Data de início (opcional, padrão: hoje)
- * @param {number} scaleFactor - Fator de escala para ajustar quantidades (padrão: 1.0)
- * @param {number[]} selectedMealIds - Array de IDs das refeições a importar (opcional, padrão: todas)
- * @returns {Promise<{data: object, error: object}>}
- */
-export const applyTemplateToPatient = async (templateId, patientId, startDate = null, scaleFactor = 1.0, selectedMealIds = null) => {
-    try {
-        // Buscar template completo
-        const { data: template, error: templateError } = await getMealPlanById(templateId);
-        if (templateError) throw templateError;
-
-        if (!template.is_template) {
-            throw new Error('O plano selecionado não é um template');
-        }
-
-        // Desativar outros planos ativos do paciente
-        const { error: deactivateError } = await supabase
-            .from('meal_plans')
-            .update({ is_active: false })
-            .eq('patient_id', patientId)
-            .eq('is_active', true);
-
-        if (deactivateError) {
-            console.warn('Erro ao desativar planos anteriores:', deactivateError);
-        }
-
-        // Criar novo plano para o paciente (clonando o template)
-        const targetStartDate = startDate || getTodayIsoDate();
-        
-        const { data: newPlan, error: createError } = await supabase
-            .from('meal_plans')
-            .insert([{
-                patient_id: patientId,
-                nutritionist_id: template.nutritionist_id,
-                name: template.name,
-                description: template.description || null,
-                active_days: template.active_days,
-                start_date: targetStartDate,
-                end_date: null,
-                is_active: true,
-                is_template: false
-            }])
-            .select()
-            .single();
-
-        if (createError) throw createError;
-
-        // Filtrar refeições se selectedMealIds foi fornecido
-        const mealsToImport = selectedMealIds && selectedMealIds.length > 0
-            ? (template.meals || []).filter(meal => selectedMealIds.includes(meal.id))
-            : (template.meals || []);
-
-        if (mealsToImport.length === 0) {
-            throw new Error('Nenhuma refeição selecionada para importar');
-        }
-
-        // Copiar refeições e alimentos (aplicando scaleFactor se necessário)
-        // 2. Preparar e inserir refeições em lote
-        const mealsToInsert = mealsToImport.map((meal, index) => ({
-            meal_plan_id: newPlan.id,
-            name: meal.name,
-            meal_type: meal.meal_type,
-            meal_time: normalizeMealTime(meal.meal_time),
-            notes: meal.notes,
-            order_index: meal.order_index ?? index
-        }));
-
-        const { data: dbMeals, error: mealsError } = await supabase
-            .from('meal_plan_meals')
-            .insert(mealsToInsert)
-            .select('id, order_index');
-
-        if (mealsError) throw mealsError;
-
-        // 3. Preparar e inserir alimentos em lote
-        const allFoodsToInsert = [];
-        mealsToImport.forEach((meal, mealIdx) => {
-            const dbMeal = dbMeals.find(dm => dm.order_index === (meal.order_index ?? mealIdx));
-            if (!dbMeal) return;
-
-            (meal.foods || []).forEach((food, foodIdx) => {
-                const scaledQuantity = Math.round((parseFloat(food.quantity) || 0) * scaleFactor * 100) / 100;
-                
-                allFoodsToInsert.push({
-                    meal_plan_meal_id: dbMeal.id,
-                    food_id: food.food_id,
-                    quantity: scaledQuantity,
-                    unit: food.unit,
-                    calories: Math.round((parseFloat(food.calories) || 0) * scaleFactor * 100) / 100,
-                    protein: Math.round((parseFloat(food.protein) || 0) * scaleFactor * 100) / 100,
-                    carbs: Math.round((parseFloat(food.carbs) || 0) * scaleFactor * 100) / 100,
-                    fat: Math.round((parseFloat(food.fat) || 0) * scaleFactor * 100) / 100,
-                    notes: food.notes,
-                    patient_description: food.patient_description,
-                    order_index: food.order_index ?? foodIdx,
-                    _original_ui_meal_idx: mealIdx,
-                    _original_ui_food_idx: foodIdx
-                });
-            });
-        });
-
-        if (allFoodsToInsert.length > 0) {
-            const cleanFoods = allFoodsToInsert.map(({ _original_ui_meal_idx, _original_ui_food_idx, ...f }) => f);
-            const { data: dbFoods, error: foodsError } = await supabase
-                .from('meal_plan_foods')
-                .insert(cleanFoods)
-                .select('id, meal_plan_meal_id, order_index');
-
-            if (foodsError) throw foodsError;
-
-            // 4. Preparar e inserir substituições em lote
-            const allSubstitutesToInsert = [];
-            dbFoods.forEach((dbFood, dbFoodIdx) => {
-                const mapping = allFoodsToInsert[dbFoodIdx];
-                const originalFood = mealsToImport[mapping._original_ui_meal_idx]?.foods[mapping._original_ui_food_idx];
-
-                if (originalFood && originalFood.substitutes && Array.isArray(originalFood.substitutes)) {
-                    originalFood.substitutes.forEach(sub => {
-                        allSubstitutesToInsert.push({
-                            meal_plan_food_id: dbFood.id,
-                            substitute_food_id: sub.id || sub.food_id,
-                            quantity: sub.quantity || null,
-                            unit: sub.unit || null
-                        });
-                    });
-                }
-            });
-
-            if (allSubstitutesToInsert.length > 0) {
-                const { error: subsError } = await supabase
-                    .from('meal_plan_food_substitutions')
-                    .insert(allSubstitutesToInsert);
-                if (subsError) throw subsError;
-            }
-        }
-
-        // Buscar plano completo criado
-        return getMealPlanById(newPlan.id);
-    } catch (error) {
-        logSupabaseError('Erro ao aplicar template ao paciente', error);
-        return { data: null, error };
     }
 };
 
@@ -2117,10 +1831,11 @@ export const saveDraftAsPlan = async (draftId) => {
 export const saveFoodSubstitutions = async (mealPlanFoodId, substitutes = []) => {
     try {
         // 1. Limpar substituições existentes
-        await supabase
+        const { error: deleteError } = await supabase
             .from('meal_plan_food_substitutions')
             .delete()
             .eq('meal_plan_food_id', mealPlanFoodId);
+        if (deleteError) throw deleteError;
 
         if (!substitutes || substitutes.length === 0) return { data: [], error: null };
 

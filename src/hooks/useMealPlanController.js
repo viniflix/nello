@@ -255,10 +255,17 @@ export function useMealPlanController({
             const finalPlanData = { ...planData, name: resolvedName };
 
             if (planId) {
-                const result = await updateFullMealPlan(planId, finalPlanData);
+                const existingPlan = plans.find((plan) => plan.id === planId);
+                const result = await updateFullMealPlan(planId, {
+                    ...finalPlanData,
+                    is_active: Boolean(existingPlan?.is_active)
+                });
                 if (result.error) throw result.error;
             } else if (finalPlanData.draftId) {
-                const syncResult = await updateFullMealPlan(finalPlanData.draftId, finalPlanData);
+                const syncResult = await updateFullMealPlan(finalPlanData.draftId, {
+                    ...finalPlanData,
+                    is_active: false
+                });
                 if (syncResult.error) throw syncResult.error;
 
                 const result = await promoteDraftToActive(finalPlanData.draftId, patientId);
@@ -272,12 +279,19 @@ export function useMealPlanController({
                     active_days: finalPlanData.active_days,
                     start_date: finalPlanData.start_date,
                     end_date: finalPlanData.end_date || null,
+                    is_active: false,
                     plan_mode: finalPlanData.plan_mode || 'hybrid'
                 });
                 if (result.error) throw result.error;
 
-                const updateResult = await updateFullMealPlan(result.data.id, finalPlanData);
+                const updateResult = await updateFullMealPlan(result.data.id, {
+                    ...finalPlanData,
+                    is_active: false
+                });
                 if (updateResult.error) throw updateResult.error;
+
+                const activationResult = await setActiveMealPlan(result.data.id);
+                if (activationResult.error) throw activationResult.error;
             }
 
             toast({
@@ -408,7 +422,7 @@ export function useMealPlanController({
         try {
             const result = await copyMealPlanToPatient(planToCopy.id, targetPatientId);
             if (result.error) throw result.error;
-            toast({ title: 'Sucesso', description: `Plano copiado para o paciente com sucesso`, variant: 'success' });
+            toast({ title: 'Cópia salva', description: 'Plano copiado como rascunho para revisão antes da ativação.', variant: 'success' });
             setCopyModelDialogOpen(false);
             setPlanToCopy(null);
         } catch (error) {

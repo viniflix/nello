@@ -154,6 +154,7 @@ describe('useMealPlanDraft — saveMeal', () => {
         mockCreateDraft.mockResolvedValue({ data: { id: 10 }, error: null });
         mockAddMeal.mockResolvedValue({ data: { id: 201 }, error: null });
         mockAddFoodsToMeal.mockResolvedValue({ error: new Error('batch failed') });
+        mockDeleteMeal.mockResolvedValue({ error: null });
 
         const { result } = renderHook(() =>
             useMealPlanDraft({ ...defaultParams, enabled: false })
