@@ -42,8 +42,6 @@ import {
     updateTransactionStatus,
     refundTransaction
 } from '@/lib/supabase/financial-queries';
-import { exportFinancialsToPdf } from '@/lib/pdfUtils';
-import { generateReceipt } from '@/lib/pdf/receiptGenerator';
 import { exportFinancialReport } from '@/lib/utils/exportUtils';
 import { getClinicSettings } from '@/lib/supabase/profile-queries';
 import { toPortugueseError } from '@/lib/utils/errorMessages';
@@ -319,6 +317,7 @@ export default function FinancialPage() {
             }
 
             // Generate receipt
+            const { generateReceipt } = await import('@/lib/pdf/receiptGenerator');
             await generateReceipt(transaction, nutritionistProfile, patientProfile);
             
             toast({
@@ -337,6 +336,7 @@ export default function FinancialPage() {
 
     const handleExportPDF = async () => {
         try {
+            const { exportFinancialsToPdf } = await import('@/lib/pdfUtils');
             await exportFinancialsToPdf(monthRows, summary, format(selectedMonth, 'MMMM yyyy'));
             toast({
                 title: "Exportado!",

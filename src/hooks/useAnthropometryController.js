@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
-import jsPDF from 'jspdf';
 import {
     getAnthropometryRecords,
     getAnthropometryChartData,
@@ -13,6 +12,7 @@ import {
 import { getActiveGoal } from '@/lib/supabase/goals-queries';
 import { getLatestAnamnesis } from '@/lib/supabase/anamnesis-queries';
 import { isSameMeasurementRevision } from '@/lib/utils/anthropometry-history';
+import { Events, track } from '@/infrastructure/analytics/posthog';
 
 export const useAnthropometryController = ({ patientId, user, resolveLoading, resolveError }) => {
     const { toast } = useToast();
@@ -331,6 +331,8 @@ export const useAnthropometryController = ({ patientId, user, resolveLoading, re
     }, [loadData, resolveLoading]);
 
     const handleSubmit = async (data, recordId = null) => {
+        const started = performance.now();
+        track(Events.UI_ACTION_OUTCOME, { operation: 'anthropometry_save', outcome: 'started' });
         setSubmitting(true);
 
         try {
@@ -359,6 +361,7 @@ export const useAnthropometryController = ({ patientId, user, resolveLoading, re
             }
 
             if (result.error) throw result.error;
+            track(Events.UI_ACTION_OUTCOME, { operation: 'anthropometry_save', outcome: 'succeeded', duration_ms: Math.round(performance.now() - started) });
 
             toast({
                 title: 'Sucesso',
@@ -372,6 +375,7 @@ export const useAnthropometryController = ({ patientId, user, resolveLoading, re
             setFormExpanded(false);
             await loadData();
         } catch (err) {
+            track(Events.UI_ACTION_OUTCOME, { operation: 'anthropometry_save', outcome: 'failed', duration_ms: Math.round(performance.now() - started) });
             console.error('Erro ao salvar registro:', err);
             toast({
                 title: 'Erro',
@@ -487,9 +491,10 @@ export const useAnthropometryController = ({ patientId, user, resolveLoading, re
         );
     };
 
-    const handleExportComparisonPdf = () => {
+    const handleExportComparisonPdf = async () => {
         if (!selectedRecord || !compareRecord || !comparison) return;
 
+        const { default: jsPDF } = await import('jspdf');
         const doc = new jsPDF();
         const title = 'Comparativo Antropométrico';
         const patientLabel = patientName || `Paciente ${patientId}`;

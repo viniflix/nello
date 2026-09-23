@@ -42,6 +42,7 @@ import {
   sumMetsActivitiesAverageDaily,
 } from '@/lib/utils/energy-calculations';
 import { INJURY_FACTORS, getInjuryFactorValue } from '@/lib/constants/injury-factors';
+import { Events, track } from '@/infrastructure/analytics/posthog';
 
 const TMB_PROTOCOLS = [
   { id: 'mifflin', label: 'Mifflin-St Jeor' },
@@ -391,13 +392,17 @@ function EnergyExpenditureForm({ resolvedPatient }) {
   };
 
   const handleSave = async () => {
+    const started = performance.now();
+    track(Events.UI_ACTION_OUTCOME, { operation: 'energy_save', outcome: 'started' });
     setSaving(true);
     try {
       await saveCurrentState();
+      track(Events.UI_ACTION_OUTCOME, { operation: 'energy_save', outcome: 'succeeded', duration_ms: Math.round(performance.now() - started) });
       toast({ title: 'Salvo!', description: 'Planejamento energético salvo com sucesso.' });
       const patient = { id: patientId, slug: patientSlug || paramValue };
       navigate(patientHubRoute(patient, 'nutrition'));
     } catch (err) {
+      track(Events.UI_ACTION_OUTCOME, { operation: 'energy_save', outcome: 'failed', duration_ms: Math.round(performance.now() - started) });
       console.error(err);
       toast({ title: 'Erro', description: err?.message || 'Não foi possível salvar o cálculo.', variant: 'destructive' });
     } finally {

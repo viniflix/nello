@@ -6,7 +6,6 @@ import { ptBR } from 'date-fns/locale';
 import { createAppointmentWithFinance, updateAppointment } from '@/lib/supabase/agenda-queries';
 import { getServices } from '@/lib/supabase/financial-queries';
 import { toPortugueseError } from '@/lib/utils/errorMessages';
-import { exportAgendaToPdf } from '@/lib/pdfUtils';
 import { fetchAppointmentsInPeriod } from '@/lib/supabase/agenda-list-queries';
 
 export function useAgendaController({ user }) {
@@ -470,6 +469,7 @@ export function useAgendaController({ user }) {
                 return;
             }
 
+            const { exportAgendaToPdf } = await import('@/lib/pdfUtils');
             await exportAgendaToPdf(
                 filteredExport,
                 exportPeriodType,

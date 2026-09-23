@@ -20,10 +20,9 @@ import {
 } from '@/lib/supabase/meal-plan-queries';
 import { getLatestEnergyCalculation } from '@/lib/supabase/energy-queries';
 import { getPatientModuleSyncFlags, clearPatientModuleSyncFlags } from '@/lib/supabase/anthropometry-queries';
-import { generateShoppingList } from '@/lib/pdf/shoppingListGenerator';
-import { exportMealPlanToPdf } from '@/lib/pdfUtils';
 import { translateMealType } from '@/utils/mealTranslations';
 import { formatQuantityWithUnit } from '@/lib/utils/measureTranslations';
+import { Events, track } from '@/infrastructure/analytics/posthog';
 
 export function useMealPlanController({
     patientId,
@@ -207,11 +206,17 @@ export function useMealPlanController({
         const targetDraft = draft || (pendingDrafts.length > 0 ? pendingDrafts[0] : null);
         if (!targetDraft) return;
 
-        const { data: fullDraft } = await getMealPlanById(targetDraft.id);
-
-        setEditingPlan(null);
-        setPendingDraft(fullDraft || targetDraft); 
-        setShowForm(true);
+        try {
+            const { data: fullDraft, error } = await getMealPlanById(targetDraft.id);
+            if (error) throw error;
+            if (!fullDraft) throw new Error('Rascunho não encontrado.');
+            setEditingPlan(null);
+            setPendingDraft(fullDraft);
+            setShowForm(true);
+        } catch (error) {
+            console.error('Erro ao abrir rascunho:', error);
+            toast({ title: 'Erro ao abrir rascunho', description: 'Tente novamente antes de editar o plano alimentar.', variant: 'destructive' });
+        }
     };
 
     const handleMarkMealPlanAsReviewed = async () => {
@@ -249,6 +254,8 @@ export function useMealPlanController({
     };
 
     const handleSubmit = async (planData, planId = null) => {
+        const started = performance.now();
+        track(Events.UI_ACTION_OUTCOME, { operation: 'meal_plan_apply', outcome: 'started' });
         setSubmitting(true);
         try {
             const resolvedName = resolveUniquePlanName(planData.name, plans, planId);
@@ -294,6 +301,7 @@ export function useMealPlanController({
                 if (activationResult.error) throw activationResult.error;
             }
 
+            track(Events.UI_ACTION_OUTCOME, { operation: 'meal_plan_apply', outcome: 'succeeded', duration_ms: Math.round(performance.now() - started) });
             toast({
                 title: 'Sucesso',
                 description: planId ? 'Plano atualizado com sucesso' : 'Plano aplicado com sucesso',
@@ -311,6 +319,7 @@ export function useMealPlanController({
             await loadPlans();
             return true;
         } catch (error) {
+            track(Events.UI_ACTION_OUTCOME, { operation: 'meal_plan_apply', outcome: 'failed', duration_ms: Math.round(performance.now() - started) });
             console.error('Erro ao salvar plano:', error);
             toast({
                 title: 'Erro ao salvar plano',
@@ -441,6 +450,7 @@ export function useMealPlanController({
         try {
             const result = await getMealPlanById(activePlan.id);
             if (result.error) throw result.error;
+            const { generateShoppingList } = await import('@/lib/pdf/shoppingListGenerator');
             await generateShoppingList(result.data, patientName);
             toast({ title: 'Lista de Compras gerada!', description: 'O PDF foi baixado com sucesso.' });
         } catch (error) {
@@ -455,6 +465,7 @@ export function useMealPlanController({
             setExportDialogOpen(false);
             const result = await getMealPlanById(activePlan.id);
             if (result.error) throw result.error;
+            const { exportMealPlanToPdf } = await import('@/lib/pdfUtils');
             await exportMealPlanToPdf(
                 result.data,
                 patientName,

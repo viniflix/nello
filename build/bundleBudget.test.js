@@ -21,4 +21,12 @@ describe('evaluateBundle', () => {
       { path: 'dist/assets/main.js', size: 995_348 },
     ])).toEqual([]);
   });
+
+  it('enforces a tighter budget for the initial script', () => {
+    expect(evaluateBundle([
+      { path: 'dist/assets/index-abc.js', size: 1_100_001 },
+    ], ['dist/assets/index-abc.js'])).toEqual([
+      'dist/assets/index-abc.js exceeds the 1100000 byte entry JavaScript budget (1100001 bytes)',
+    ]);
+  });
 });

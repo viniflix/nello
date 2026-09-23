@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/customSupabaseClient';
 import { format } from 'date-fns';
 import { toPortugueseError } from '@/lib/utils/errorMessages';
+import { Events, track } from '@/infrastructure/analytics/posthog';
 
 /** Indica se o erro é de schema/migração (tabela ou RPC não existe) - não exibir toast nesses casos */
 export const isSchemaOrMigrationError = (error) => {
@@ -64,6 +65,7 @@ export function useDashboardController({ user, toast }) {
 
   const fetchStats = useCallback(async () => {
     if (!user || !user.id) return;
+    const started = performance.now();
     setStatsLoading(true);
     try {
       const patientData = await supabase
@@ -147,6 +149,7 @@ export function useDashboardController({ user, toast }) {
 
       setActive24hSeries(activeSeries);
       setAdherence24hSeries(adherenceSeries);
+      track(Events.DATA_LOAD_TIMING, { operation: 'dashboard_stats', duration_ms: Math.round(performance.now() - started), result_count: patientData.length });
 
     } catch (error) {
       console.error('Erro ao carregar estatísticas:', error);
@@ -158,6 +161,7 @@ export function useDashboardController({ user, toast }) {
 
   const fetchAppointments = useCallback(async () => {
     if (!user || !user.id) return;
+    const started = performance.now();
     setAppointmentsLoading(true);
     try {
       const today = new Date().toISOString();
@@ -172,7 +176,10 @@ export function useDashboardController({ user, toast }) {
       if (error) throw error;
       setAppointments(data || []);
 
-      const todayDateOnly = new Date().toISOString().split('T')[0];
+      const localDayStart = new Date();
+      localDayStart.setHours(0, 0, 0, 0);
+      const nextLocalDay = new Date(localDayStart);
+      nextLocalDay.setDate(nextLocalDay.getDate() + 1);
       const [{ count: totalUpcomingCount, error: totalError }, { count: todayCount, error: todayError }] = await Promise.all([
         supabase
           .from('appointments')
@@ -183,8 +190,8 @@ export function useDashboardController({ user, toast }) {
           .from('appointments')
           .select('*', { count: 'exact', head: true })
           .eq('nutritionist_id', user.id)
-          .gte('start_time', `${todayDateOnly}T00:00:00`)
-          .lte('start_time', `${todayDateOnly}T23:59:59`)
+          .gte('start_time', localDayStart.toISOString())
+          .lt('start_time', nextLocalDay.toISOString())
       ]);
 
       if (totalError) throw totalError;
@@ -192,6 +199,7 @@ export function useDashboardController({ user, toast }) {
 
       setAppointmentsTotalCount(totalUpcomingCount || 0);
       setAppointmentsTodayCount(todayCount || 0);
+      track(Events.DATA_LOAD_TIMING, { operation: 'dashboard_appointments', duration_ms: Math.round(performance.now() - started), result_count: totalUpcomingCount || 0 });
     } catch (error) {
       console.error('Erro ao carregar agendamentos:', error);
       if (!isSchemaOrMigrationError(error)) {
@@ -204,24 +212,28 @@ export function useDashboardController({ user, toast }) {
 
   const fetchNoShowStats = useCallback(async () => {
     if (!user?.id) return;
+    const started = performance.now();
     setNoShowLoading(true);
     try {
       const nowIso = new Date().toISOString();
       const sinceIso = new Date(Date.now() - noShowPeriodDays * 24 * 60 * 60 * 1000).toISOString();
 
-      const { data, error } = await supabase
-        .from('appointments')
-        .select('status')
-        .eq('nutritionist_id', user.id)
-        .gte('start_time', sinceIso)
-        .lte('start_time', nowIso);
-
-      if (error) throw error;
-
-      const rows = data || [];
-      const noShowCount = rows.filter((row) => row.status === 'no_show').length;
-      const completedCount = rows.filter((row) => row.status === 'completed').length;
-      const canceledCount = rows.filter((row) => row.status === 'canceled' || row.status === 'cancelled').length;
+      const countByStatus = async (statuses) => {
+        const { count, error } = await supabase
+          .from('appointments')
+          .select('id', { count: 'exact', head: true })
+          .eq('nutritionist_id', user.id)
+          .gte('start_time', sinceIso)
+          .lte('start_time', nowIso)
+          .in('status', statuses);
+        if (error) throw error;
+        return count || 0;
+      };
+      const [noShowCount, completedCount, canceledCount] = await Promise.all([
+        countByStatus(['no_show']),
+        countByStatus(['completed']),
+        countByStatus(['canceled', 'cancelled']),
+      ]);
       const eligibleCount = noShowCount + completedCount;
       const noShowRate = eligibleCount > 0 ? Math.round((noShowCount / eligibleCount) * 100) : 0;
 
@@ -232,6 +244,7 @@ export function useDashboardController({ user, toast }) {
         eligibleCount,
         noShowRate
       });
+      track(Events.DATA_LOAD_TIMING, { operation: 'dashboard_no_show', duration_ms: Math.round(performance.now() - started), result_count: noShowCount + completedCount + canceledCount });
     } catch (error) {
       console.error('Erro ao carregar métricas de no-show:', error);
       if (!isSchemaOrMigrationError(error)) {

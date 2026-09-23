@@ -14,8 +14,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { translateMealType } from '@/utils/mealTranslations';
 import { formatQuantityWithUnit } from '@/lib/utils/measureTranslations';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 
 /**
  * MealPlanViewDialog - Dialog para visualizar plano alimentar completo e exportar para PDF
@@ -51,6 +49,10 @@ export default function MealPlanViewDialog({ open, onOpenChange, mealPlan, patie
    * Exportar plano alimentar para PDF com identidade visual Nello
    */
   const handleExportPDF = async () => {
+    const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+      import('jspdf'),
+      import('jspdf-autotable'),
+    ]);
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.width;
     const pageHeight = doc.internal.pageSize.height;

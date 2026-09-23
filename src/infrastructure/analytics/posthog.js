@@ -100,6 +100,7 @@ export function track(event, properties = {}) {
 export const Events = {
   OPERATION_FAILED: 'operation_failed',
   DATA_LOAD_TIMING: 'data_load_timing',
+  UI_ACTION_OUTCOME: 'ui_action_outcome',
   AUTH_LOGIN_FAILED: 'auth_login_failed',
   AUTH_PASSWORD_RECOVERY_REQUESTED: 'auth_password_recovery_requested',
   AUTH_PASSWORD_UPDATED: 'auth_password_updated',
