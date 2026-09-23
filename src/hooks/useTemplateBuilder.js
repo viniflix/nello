@@ -16,6 +16,7 @@ export function useTemplateBuilder(type, templateId = null) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [isLoadingTemplate, setIsLoadingTemplate] = useState(Boolean(templateId));
+  const [loadedUpdatedAt, setLoadedUpdatedAt] = useState(null);
   const isEditMode = Boolean(templateId);
 
   const [formData, setFormData] = useState({
@@ -76,7 +77,7 @@ export function useTemplateBuilder(type, templateId = null) {
         const { data: mealData, error } = await supabase
           .from('meal_templates')
           .select(`
-            id, name, description, tags,
+            id, name, description, tags, updated_at,
             meal_template_foods (
               id, food_id, quantity, unit, observation, order_index
             )
@@ -85,6 +86,7 @@ export function useTemplateBuilder(type, templateId = null) {
           .single();
 
         if (error) throw error;
+        setLoadedUpdatedAt(mealData.updated_at);
 
         // Fetch food details
         const foodIds = (mealData.meal_template_foods || []).map(f => f.food_id);
@@ -118,7 +120,7 @@ export function useTemplateBuilder(type, templateId = null) {
         const { data: recipeData, error } = await supabase
           .from('recipes')
           .select(`
-            id, name, description, preparation_method, yield_quantity, yield_unit,
+            id, name, description, preparation_method, yield_quantity, yield_unit, updated_at,
             recipe_ingredients (
               id, food_id, quantity, unit
             )
@@ -127,6 +129,7 @@ export function useTemplateBuilder(type, templateId = null) {
           .single();
 
         if (error) throw error;
+        setLoadedUpdatedAt(recipeData.updated_at);
 
         // Fetch food details
         const foodIds = (recipeData.recipe_ingredients || []).map(f => f.food_id);
@@ -195,64 +198,34 @@ export function useTemplateBuilder(type, templateId = null) {
   };
 
   const saveMealTemplate = async () => {
-    const { data: template, error } = await supabase
-      .from('meal_templates')
-      .insert({
-        user_id: user.id,
-        name: formData.name.trim(),
-        description: formData.description.trim() || null,
-        tags: formData.tags,
-      })
-      .select()
-      .single();
-
+    const { error } = await supabase.rpc('save_meal_template', {
+      p_id: null,
+      p_expected_updated_at: null,
+      p_name: formData.name.trim(),
+      p_description: formData.description.trim() || null,
+      p_tags: formData.tags || [],
+      p_foods: formData.foods.map(({ food_id, quantity, unit, observation }) => ({
+        food_id, quantity, unit, observation: observation || '',
+      })),
+    });
     if (error) throw error;
-
-    if (formData.foods?.length > 0) {
-      const { error: foodsError } = await supabase
-        .from('meal_template_foods')
-        .insert(formData.foods.map((food, fIdx) => ({
-          meal_template_id: template.id,
-          food_id: food.food_id,
-          quantity: food.quantity,
-          unit: food.unit,
-          observation: food.observation || '',
-          order_index: fIdx,
-        })));
-      if (foodsError) throw foodsError;
-    }
 
     toast({ title: 'Sucesso', description: 'Refeição salva com sucesso!' });
     navigate('/nutritionist/templates');
   };
 
   const saveRecipe = async () => {
-    const { data: recipe, error } = await supabase
-      .from('recipes')
-      .insert({
-        user_id: user.id,
-        name: formData.name.trim(),
-        description: formData.description.trim() || null,
-        preparation_method: formData.preparation_method || null,
-        yield_quantity: formData.yield_quantity,
-        yield_unit: formData.yield_unit,
-      })
-      .select()
-      .single();
-
+    const { error } = await supabase.rpc('save_recipe_template', {
+      p_id: null,
+      p_expected_updated_at: null,
+      p_name: formData.name.trim(),
+      p_description: formData.description.trim() || null,
+      p_preparation_method: formData.preparation_method || null,
+      p_yield_quantity: formData.yield_quantity,
+      p_yield_unit: formData.yield_unit,
+      p_ingredients: formData.ingredients.map(({ food_id, quantity, unit }) => ({ food_id, quantity, unit })),
+    });
     if (error) throw error;
-
-    if (formData.ingredients?.length > 0) {
-      const { error: ingError } = await supabase
-        .from('recipe_ingredients')
-        .insert(formData.ingredients.map(ing => ({
-          recipe_id: recipe.id,
-          food_id: ing.food_id,
-          quantity: ing.quantity,
-          unit: ing.unit,
-        })));
-      if (ingError) throw ingError;
-    }
 
     toast({ title: 'Sucesso', description: 'Receita criada com sucesso!' });
     navigate('/nutritionist/templates');
@@ -291,60 +264,34 @@ export function useTemplateBuilder(type, templateId = null) {
   };
 
   const updateMealTemplate = async () => {
-    const { error } = await supabase
-      .from('meal_templates')
-      .update({ name: formData.name.trim(), description: formData.description.trim() || null, tags: formData.tags, updated_at: new Date().toISOString() })
-      .eq('id', templateId)
-      .eq('user_id', user.id);
-
+    const { error } = await supabase.rpc('save_meal_template', {
+      p_id: templateId,
+      p_expected_updated_at: loadedUpdatedAt,
+      p_name: formData.name.trim(),
+      p_description: formData.description.trim() || null,
+      p_tags: formData.tags || [],
+      p_foods: formData.foods.map(({ food_id, quantity, unit, observation }) => ({
+        food_id, quantity, unit, observation: observation || '',
+      })),
+    });
     if (error) throw error;
-
-    // Substituir alimentos: delete all + insert
-    await supabase.from('meal_template_foods').delete().eq('meal_template_id', templateId);
-    if (formData.foods?.length > 0) {
-      await supabase.from('meal_template_foods').insert(
-        formData.foods.map((f, idx) => ({
-          meal_template_id: templateId,
-          food_id: f.food_id,
-          quantity: f.quantity,
-          unit: f.unit,
-          observation: f.observation || '',
-          order_index: idx,
-        }))
-      );
-    }
 
     toast({ title: 'Sucesso', description: 'Refeição atualizada com sucesso!' });
     navigate('/nutritionist/templates');
   };
 
   const updateRecipe = async () => {
-    const { error } = await supabase
-      .from('recipes')
-      .update({
-        name: formData.name.trim(),
-        description: formData.description.trim() || null,
-        preparation_method: formData.preparation_method || null,
-        yield_quantity: formData.yield_quantity,
-        yield_unit: formData.yield_unit,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', templateId)
-      .eq('user_id', user.id);
-
+    const { error } = await supabase.rpc('save_recipe_template', {
+      p_id: templateId,
+      p_expected_updated_at: loadedUpdatedAt,
+      p_name: formData.name.trim(),
+      p_description: formData.description.trim() || null,
+      p_preparation_method: formData.preparation_method || null,
+      p_yield_quantity: formData.yield_quantity,
+      p_yield_unit: formData.yield_unit,
+      p_ingredients: formData.ingredients.map(({ food_id, quantity, unit }) => ({ food_id, quantity, unit })),
+    });
     if (error) throw error;
-
-    await supabase.from('recipe_ingredients').delete().eq('recipe_id', templateId);
-    if (formData.ingredients?.length > 0) {
-      await supabase.from('recipe_ingredients').insert(
-        formData.ingredients.map(ing => ({
-          recipe_id: templateId,
-          food_id: ing.food_id,
-          quantity: ing.quantity,
-          unit: ing.unit,
-        }))
-      );
-    }
 
     toast({ title: 'Sucesso', description: 'Receita atualizada com sucesso!' });
     navigate('/nutritionist/templates');

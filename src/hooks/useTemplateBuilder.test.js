@@ -114,8 +114,40 @@ describe('useTemplateBuilder Hook', () => {
       await result.current.handleSave();
     });
 
-    expect(supabase.from).toHaveBeenCalledWith('meal_templates');
-    expect(supabase.from).toHaveBeenCalledWith('meal_template_foods');
+    expect(supabase.rpc).toHaveBeenCalledWith('save_meal_template', {
+      p_id: null,
+      p_expected_updated_at: null,
+      p_name: 'Refeição Teste',
+      p_description: null,
+      p_tags: [],
+      p_foods: [{ food_id: 'food-1', quantity: 100, unit: 'gram', observation: 'cozido' }],
+    });
+    expect(supabase.from).not.toHaveBeenCalled();
     expect(mockToast).toHaveBeenCalledWith({ title: 'Sucesso', description: 'Refeição salva com sucesso!' });
+  });
+
+  it('keeps editing open and shows the database error when an atomic save fails', async () => {
+    supabase.rpc.mockResolvedValue({ data: null, error: { message: 'invalid_meal_template_food' } });
+    const { result } = renderHook(() => useTemplateBuilder('meal'));
+    act(() => result.current.setFormData(prev => ({ ...prev, name: 'Refeição Teste' })));
+    await act(async () => { await result.current.handleSave(); });
+    expect(mockNavigate).not.toHaveBeenCalled();
+    expect(mockToast).toHaveBeenCalledWith({
+      title: 'Erro ao salvar', description: 'invalid_meal_template_food', variant: 'destructive',
+    });
+  });
+
+  it('saves a recipe and ingredients in one RPC call', async () => {
+    const { result } = renderHook(() => useTemplateBuilder('recipe'));
+    act(() => result.current.setFormData(prev => ({
+      ...prev, name: 'Receita Teste',
+      ingredients: [{ food_id: 'food-1', quantity: 50, unit: 'g' }],
+    })));
+    await act(async () => { await result.current.handleSave(); });
+    expect(supabase.rpc).toHaveBeenCalledWith('save_recipe_template', expect.objectContaining({
+      p_id: null, p_name: 'Receita Teste',
+      p_ingredients: [{ food_id: 'food-1', quantity: 50, unit: 'g' }],
+    }));
+    expect(supabase.from).not.toHaveBeenCalled();
   });
 });
