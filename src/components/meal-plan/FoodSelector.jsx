@@ -117,7 +117,7 @@ const FoodSelector = ({ isOpen, onClose, onSelect, targetGroup, targetCalories, 
 
     return (
         <Dialog open={isOpen} onOpenChange={handleClose}>
-            <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
+            <DialogContent className="flex h-[min(90dvh,700px)] max-h-[calc(100dvh-1rem)] max-w-3xl flex-col overflow-hidden">
                 <DialogHeader className="shrink-0">
                     <DialogTitle>Buscar Alimento</DialogTitle>
                     <DialogDescription>

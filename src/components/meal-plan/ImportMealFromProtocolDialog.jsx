@@ -95,7 +95,7 @@ export default function ImportMealFromProtocolDialog({ open, onOpenChange, nutri
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-3xl max-h-[88vh] overflow-hidden flex flex-col">
+            <DialogContent className="flex h-[min(90dvh,700px)] max-h-[calc(100dvh-1rem)] max-w-3xl flex-col overflow-hidden">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <FileText className="w-5 h-5 text-emerald-600" />
@@ -106,9 +106,9 @@ export default function ImportMealFromProtocolDialog({ open, onOpenChange, nutri
                     </DialogDescription>
                 </DialogHeader>
 
-                <div className="flex flex-1 gap-5 overflow-hidden mt-2 min-h-0">
+                <div className="mt-2 flex min-h-0 flex-1 flex-col gap-3 overflow-hidden sm:flex-row sm:gap-5">
                     {/* Coluna esquerda: lista de protocolos */}
-                    <div className="w-2/5 flex flex-col border-r pr-5 min-h-0">
+                    <div className="flex h-36 min-h-0 w-full shrink-0 flex-col border-b pb-3 sm:h-auto sm:w-2/5 sm:shrink sm:border-b-0 sm:border-r sm:pb-0 sm:pr-5">
                         <div className="relative mb-3 flex-shrink-0">
                             <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
                             <Input
@@ -155,7 +155,7 @@ export default function ImportMealFromProtocolDialog({ open, onOpenChange, nutri
                     </div>
 
                     {/* Coluna direita: refeições do protocolo selecionado */}
-                    <div className="flex-1 flex flex-col min-h-0">
+                    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
                         {!selectedTemplate ? (
                             <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-2">
                                 <FileText className="w-12 h-12 opacity-20" />

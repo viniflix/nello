@@ -215,7 +215,7 @@ const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName, initialData = n
                             <Alert className="bg-primary/5">
                                 <AlertDescription>
                                     <div className="font-semibold mb-2">Valores Nutricionais:</div>
-                                    <div className="grid grid-cols-4 gap-4 text-sm">
+                                    <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4 sm:gap-4">
                                         <div>
                                             <div className="text-muted-foreground text-xs">Calorias</div>
                                             <div className="font-bold text-lg">{Math.round(calculatedNutrition.calories)}</div>

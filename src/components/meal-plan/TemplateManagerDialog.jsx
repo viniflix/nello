@@ -181,7 +181,7 @@ export default function TemplateManagerDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+            <DialogContent className="flex h-[min(90dvh,700px)] max-h-[calc(100dvh-1rem)] max-w-4xl flex-col overflow-hidden">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <FileText className="w-5 h-5 text-emerald-600" />
@@ -192,10 +192,10 @@ export default function TemplateManagerDialog({
                     </DialogDescription>
                 </DialogHeader>
 
-                <div className="flex flex-1 gap-0 overflow-hidden mt-3 min-h-0">
+                <div className="mt-3 flex min-h-0 flex-1 flex-col gap-3 overflow-hidden sm:flex-row sm:gap-0">
 
                     {/* ── Esquerda: Lista ── */}
-                    <div className="w-[42%] flex flex-col border-r pr-5 min-h-0">
+                    <div className="flex h-36 min-h-0 w-full shrink-0 flex-col border-b pb-3 sm:h-auto sm:w-[42%] sm:shrink sm:border-b-0 sm:border-r sm:pb-0 sm:pr-5">
                         <div className="relative mb-3 flex-shrink-0">
                             <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
                             <Input
@@ -256,7 +256,7 @@ export default function TemplateManagerDialog({
                     </div>
 
                     {/* ── Direita: Preview ── */}
-                    <div className="flex-1 flex flex-col pl-5 min-h-0 overflow-hidden">
+                    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden sm:pl-5">
                         {!selectedTemplate ? (
                             <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-2">
                                 <FileText className="w-12 h-12 opacity-15" />
@@ -342,7 +342,7 @@ export default function TemplateManagerDialog({
                                                 <Calendar className="w-4 h-4 text-slate-400" />
                                                 <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Dias Ativos</span>
                                             </div>
-                                            <div className="flex gap-1.5">
+                                            <div className="flex flex-wrap gap-1.5">
                                                 {DAY_ORDER.map(day => {
                                                     const active = selectedTemplate.active_days.includes(day);
                                                     return (

@@ -349,7 +349,7 @@ const DashboardHeader = ({ user, logout }) => {
           <div className="flex items-center space-x-2 md:space-x-4 min-w-0 flex-1">
             {/* Menu Hamburger - Apenas Mobile */}
             <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-              <SheetTrigger asChild className="md:hidden">
+              <SheetTrigger asChild className="lg:hidden">
                 <Button variant="ghost" size="icon">
                   <Menu className="h-5 w-5" />
                 </Button>
@@ -417,7 +417,7 @@ const DashboardHeader = ({ user, logout }) => {
             </Link>
 
             {/* Navegação Principal - Desktop */}
-            <nav className="hidden md:flex items-center space-x-1">
+            <nav className="hidden lg:flex items-center space-x-1">
               {navigationLinks.map((link) => (
                 <NavLink
                   key={link.path}

@@ -361,7 +361,7 @@ export default function TemplatesPage() {
       </div>
 
       {/* Seletor de Grupo */}
-      <div className="flex gap-3 mb-6">
+      <div className="mb-6 grid grid-cols-2 gap-2 sm:gap-3 lg:flex">
         {GROUPS.map(group => {
           const Icon = group.icon;
           const isActive = activeGroup === group.id;
@@ -369,13 +369,13 @@ export default function TemplatesPage() {
             <button
               key={group.id}
               onClick={() => { setActiveGroup(group.id); setSearchTerm(''); }}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all border ${
+              className={`flex min-w-0 items-center justify-center gap-2 rounded-xl border px-2 py-2.5 text-center text-xs font-semibold leading-tight transition-all sm:px-5 sm:text-sm ${
                 isActive
                   ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
                   : 'bg-white text-slate-600 border-slate-200 hover:border-emerald-300 hover:text-emerald-700'
               }`}
             >
-              <Icon className="w-4 h-4" />
+              <Icon className="h-4 w-4 shrink-0" />
               {group.label}
             </button>
           );
@@ -396,7 +396,7 @@ export default function TemplatesPage() {
           </div>
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
             {/* Sub-abas */}
-            <div className="flex space-x-1 bg-slate-100 p-1 rounded-xl w-full md:w-auto">
+            <div className="grid w-full grid-cols-3 gap-1 rounded-xl bg-slate-100 p-1 md:flex md:w-auto">
               {NUTRITION_TABS.map(tab => {
                 const Icon = tab.icon;
                 const isActive = activeNutritionTab === tab.id;
@@ -404,20 +404,20 @@ export default function TemplatesPage() {
                   <button
                     key={tab.id}
                     onClick={() => { setActiveNutritionTab(tab.id); setSearchTerm(''); }}
-                    className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all ${
+                    className={`flex min-w-0 flex-col items-center justify-center gap-1 rounded-lg px-1 py-2 text-center text-xs font-medium leading-tight transition-all sm:flex-row sm:gap-2 sm:text-sm md:flex-none md:px-4 ${
                       isActive ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-600 hover:text-slate-800 hover:bg-slate-200/50'
                     }`}
                   >
-                    <Icon className="w-4 h-4" />
+                    <Icon className="h-4 w-4 shrink-0" />
                     {tab.label}
                   </button>
                 );
               })}
             </div>
 
-            <div className="flex gap-3 w-full md:w-auto">
+            <div className="flex w-full min-w-0 flex-col gap-2 min-[375px]:flex-row md:w-auto md:gap-3">
               {/* Busca */}
-              <div className="relative flex-1 md:w-64">
+              <div className="relative min-w-0 flex-1 md:w-64">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Search className="h-4 w-4 text-slate-400" />
                 </div>
@@ -510,7 +510,7 @@ export default function TemplatesPage() {
           </div>
 
           {/* Sub-abas — mesmo padrão de Nutrição */}
-          <div className="inline-flex space-x-1 bg-slate-100 p-1 rounded-xl w-full md:w-auto mb-6">
+          <div className="mb-6 grid w-full grid-cols-3 gap-1 rounded-xl bg-slate-100 p-1 md:inline-flex md:w-auto">
             {FORMS_TABS.map(tab => {
               const Icon = tab.icon;
               const isActive = activeFormsTab === tab.id;
@@ -518,11 +518,11 @@ export default function TemplatesPage() {
                 <button
                   key={tab.id}
                   onClick={() => setActiveFormsTab(tab.id)}
-                  className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all ${
+                  className={`flex min-w-0 flex-col items-center justify-center gap-1 rounded-lg px-1 py-2 text-center text-xs font-medium leading-tight transition-all sm:flex-row sm:gap-2 sm:text-sm md:flex-none md:px-4 ${
                     isActive ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-600 hover:text-slate-800 hover:bg-slate-200/50'
                   }`}
                 >
-                  <Icon className="w-4 h-4" />
+                  <Icon className="h-4 w-4 shrink-0" />
                   {tab.label}
                 </button>
               );

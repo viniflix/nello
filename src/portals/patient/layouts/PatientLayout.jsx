@@ -79,7 +79,7 @@ export default function PatientLayout() {
   }));
 
   return (
-    <div className="flex flex-col md:flex-row h-[100dvh] md:h-screen overflow-hidden bg-slate-50">
+    <div className="flex h-[100dvh] min-w-0 flex-col overflow-hidden bg-slate-50 md:h-screen md:flex-row">
       {/* SIDEBAR (Desktop apenas) */}
       <aside className="hidden md:flex md:flex-col md:w-64 bg-white border-r border-gray-200 fixed inset-y-0 left-0 z-30">
         <div className="p-6 border-b border-gray-200">
@@ -151,13 +151,13 @@ export default function PatientLayout() {
       </aside>
 
       {/* MAIN CONTENT AREA */}
-      <main className={`flex-1 md:ml-64 ${isChatPage ? 'overflow-hidden' : 'overflow-y-auto'}`}>
+      <main className={`min-h-0 min-w-0 flex-1 md:ml-64 ${isChatPage ? 'overflow-hidden' : 'overflow-y-auto'}`}>
         <Outlet />
       </main>
 
       {/* BOTTOM NAV (Mobile apenas) */}
-      <nav className="md:hidden w-full shrink-0 bg-white border-t border-gray-200 z-50 safe-area-inset-bottom">
-        <div className="flex items-center justify-around h-16 px-2">
+      <nav className="safe-area-inset-bottom z-50 w-full shrink-0 border-t border-gray-200 bg-white md:hidden">
+        <div className="flex h-16 items-center justify-around px-1">
           {navItems.map((item) => {
             const Icon = item.icon;
             return (
@@ -166,7 +166,7 @@ export default function PatientLayout() {
                 to={item.to}
                 end={item.end}
                 className={({ isActive }) =>
-                  `flex flex-col items-center justify-center flex-1 h-full px-2 transition-colors ${
+                  `flex min-w-0 flex-1 flex-col items-center justify-center h-full px-0.5 transition-colors ${
                     isPatientNavItemActive(item, location.pathname, isActive) ? 'text-primary' : 'text-gray-500'
                   }`
                 }
@@ -183,7 +183,7 @@ export default function PatientLayout() {
                         </span>
                       )}
                     </div>
-                    <span className={`text-xs mt-1 ${itemIsActive ? 'font-semibold' : 'font-normal'}`}>
+                    <span className={`mt-1 max-w-full truncate text-[10px] min-[375px]:text-xs ${itemIsActive ? 'font-semibold' : 'font-normal'}`}>
                       {item.label}
                     </span>
                   </>

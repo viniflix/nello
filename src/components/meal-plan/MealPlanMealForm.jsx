@@ -398,7 +398,7 @@ const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null }) => {
                                         {/* Totais */}
                                         <div className="mt-4 p-4 bg-primary/5 rounded-lg">
                                             <div className="font-semibold mb-2">Totais da Refeição:</div>
-                                            <div className="grid grid-cols-4 gap-4 text-sm">
+                                            <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4 sm:gap-4">
                                                 <div>
                                                     <div className="text-muted-foreground">Calorias</div>
                                                     <div className="font-bold text-lg">{totals.calories.toFixed(1)}</div>

@@ -245,8 +245,8 @@ const MealPlanPage = () => {
                 <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
                     <div className="flex-1 min-w-0">
                         <h1 className="text-2xl sm:text-3xl font-bold text-foreground flex items-center gap-2">
-                            <Utensils className="w-6 h-6 sm:w-8 sm:h-8 text-[#5f6f52]" />
-                            <span className="truncate">Planos Alimentares</span>
+                            <Utensils className="h-6 w-6 shrink-0 text-[#5f6f52] sm:h-8 sm:w-8" />
+                            <span className="min-w-0 leading-tight">Planos Alimentares</span>
                         </h1>
                         <p className="text-sm text-muted-foreground mt-1">
                             Gerencie os planos alimentares do paciente

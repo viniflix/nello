@@ -391,7 +391,7 @@ export default function NutritionistDashboard() {
           {/* Coluna Principal - Desktop à esquerda, Mobile no início */}
           <div className="lg:col-span-2 space-y-8 lg:order-first order-1">
             {/* Cards de Estatística - Layout 2x1 no mobile, 3 colunas no desktop */}
-            <div className="grid gap-4 grid-cols-2 lg:grid-cols-3 mb-6">
+            <div className="mb-6 grid grid-cols-1 gap-4 min-[375px]:grid-cols-2 lg:grid-cols-3">
               {/* OTIMIZADO: Mostra skeletons enquanto carrega, depois mostra dados reais */}
               {statsLoading ? (
                 <>
@@ -442,7 +442,7 @@ export default function NutritionistDashboard() {
                   </Card>
 
                   {/* Card 3: Adesão (Laranja) - Mobile: ocupa 2 colunas embaixo, Desktop: posição 2 */}
-                  <Card className="relative overflow-hidden bg-secondary text-white border-0 shadow-card-dark col-span-2 lg:col-span-1 lg:order-2">
+                  <Card className="relative col-span-1 overflow-hidden border-0 bg-secondary text-white shadow-card-dark min-[375px]:col-span-2 lg:order-2 lg:col-span-1">
                     <Sparkline data={adherence24hSeries} />
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                       <CardTitle className="font-heading uppercase text-xs lg:text-sm font-medium text-white/80 tracking-wide leading-tight">

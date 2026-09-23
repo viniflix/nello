@@ -67,12 +67,12 @@ function EnergyProgressNav({ activeTab, onChange, completedSteps }) {
             value={step.id}
             aria-label={`Etapa ${step.number}: ${step.label}`}
             onClick={() => onChange(step.id)}
-            className="min-w-0 gap-2 rounded-xl px-2 py-2.5 text-xs data-[state=active]:bg-primary data-[state=active]:text-white sm:px-4 sm:py-3 sm:text-sm"
+            className="min-w-0 flex-col gap-1 rounded-xl px-1 py-2 text-[11px] data-[state=active]:bg-primary data-[state=active]:text-white sm:flex-row sm:gap-2 sm:px-4 sm:py-3 sm:text-sm"
           >
             <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-current/25 bg-current/10 text-xs font-bold">
               {complete ? <CheckCircle2 className="h-4 w-4" /> : step.number}
             </span>
-            <span className="truncate sm:hidden">{step.short}</span>
+            <span className="sm:hidden">{step.short}</span>
             <span className="hidden truncate sm:inline">{step.label}</span>
           </TabsTrigger>
         );

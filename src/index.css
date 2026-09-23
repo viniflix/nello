@@ -147,6 +147,10 @@ body,
 
 /* Utilitários para layout mobile-friendly (apenas onde aplicados) */
 @layer utilities {
+  .safe-area-inset-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
   /* Conteúdo que não deve vazar em cards/containers */
   .mobile-truncate {
     @apply min-w-0 overflow-hidden text-ellipsis whitespace-nowrap;
