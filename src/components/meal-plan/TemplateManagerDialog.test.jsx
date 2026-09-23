@@ -1,7 +1,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import TemplateManagerDialog from './TemplateManagerDialog';
-import { cloneDietTemplateToPatient } from '@/lib/supabase/template-queries';
+import { cloneDietTemplateToPatient, getDietTemplateWithMeals } from '@/lib/supabase/template-queries';
 import { getMealPlanById } from '@/lib/supabase/meal-plan-queries';
 import { getLatestEnergyCalculation } from '@/lib/supabase/energy-queries';
 
@@ -24,7 +24,11 @@ vi.mock('@/hooks/useTemplates', () => ({
 }));
 
 vi.mock('@/lib/supabase/template-queries', () => ({
-  cloneDietTemplateToPatient: vi.fn()
+  cloneDietTemplateToPatient: vi.fn(),
+  getDietTemplateWithMeals: vi.fn(),
+  getUnavailableTemplateFoods: (meals = []) => meals.flatMap(meal => (meal.foods || [])
+    .filter(item => !item.food || item.food.is_active === false)
+    .map(item => ({ meal: meal.name, name: item.food?.name || 'Alimento removido', id: item.food_id, reason: 'desativado' })))
 }));
 
 vi.mock('@/lib/supabase/meal-plan-queries', () => ({
@@ -43,6 +47,17 @@ describe('TemplateManagerDialog', () => {
     vi.clearAllMocks();
     getLatestEnergyCalculation.mockResolvedValue({ data: null });
     getMealPlanById.mockResolvedValue({ data: null });
+    getDietTemplateWithMeals.mockResolvedValue({ data: { meals: [{ id: 'meal-1', name: 'Almoço', foods: [{ food_id: 'food-1', food: { name: 'Arroz', is_active: true } }], calories: 100, protein: 2, carbs: 20, fat: 1 }] } });
+  });
+
+  it('blocks a protocol with an unavailable food before calling the clone RPC', async () => {
+    getDietTemplateWithMeals.mockResolvedValue({ data: { meals: [{ id: 'meal-1', name: 'Almoço', foods: [{ food_id: 'food-1', food: null }] }] } });
+    render(<TemplateManagerDialog open patientId="p-123" nutritionistId="n-123" onOpenChange={mockOnOpenChange} />);
+    fireEvent.click(screen.getByText('Dieta Hipertrofia').closest('button'));
+    const button = await screen.findByText('Aplicar "Dieta Hipertrofia" ao Paciente');
+    await waitFor(() => expect(button.disabled).toBe(true));
+    expect(screen.getByRole('alert').textContent).toContain('food-1');
+    expect(cloneDietTemplateToPatient).not.toHaveBeenCalled();
   });
 
   it('renders correctly when open', async () => {

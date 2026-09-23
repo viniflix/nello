@@ -22,9 +22,14 @@ export async function cloneDietTemplateToPatient(templateId, patientId, nutritio
       throw new Error(error.message || 'Erro no banco de dados ao importar o protocolo.');
     }
 
+    if (!data) throw new Error('O banco não confirmou a criação do plano.');
+
     return data;
   } catch (err) {
     console.error('Exception in cloneDietTemplateToPatient:', err);
+    if (['template_food_unavailable', 'template_substitute_unavailable', 'template_measure_unavailable'].includes(err?.message)) {
+      throw new Error('O protocolo contém um alimento ou medida indisponível. Corrija-o antes de importar.');
+    }
     throw new Error('Não foi possível importar o protocolo. Tente novamente mais tarde.');
   }
 }
@@ -67,13 +72,36 @@ export async function getFoodsMapByIds(foodIds) {
 
   if (error) {
     console.error('Error fetching food details:', error);
-    return {};
+    throw error;
   }
 
   return (data || []).reduce((acc, food) => {
     acc[food.id] = food;
     return acc;
   }, {});
+}
+
+export function getUnavailableTemplateFoods(meals = []) {
+  return meals.flatMap(meal => [
+    ...(meal.foods || [])
+    .filter(item => !item.food || item.food.is_active === false || item.unavailable_reason)
+    .map(item => ({ meal: meal.name, name: item.food?.name || 'Alimento removido', id: item.food_id,
+      reason: item.unavailable_reason || (item.food?.is_active === false ? 'desativado' : 'removido') })),
+    ...(meal.foods || []).flatMap(item => (item.substitutes || [])
+      .filter(sub => !sub.food || sub.food.is_active === false)
+      .map(sub => ({ meal: meal.name, name: sub.food?.name || 'Substituto removido',
+        id: sub.substitute_food_id, reason: 'substituto indisponível' })))
+  ]);
+}
+
+export async function importDietTemplateMealsToPlan(templateId, planId, mealIds) {
+  const { data, error } = await supabase.rpc('import_diet_template_meals_to_plan', {
+    p_template_id: templateId,
+    p_plan_id: planId,
+    p_meal_ids: mealIds
+  });
+  if (error) throw error;
+  return data;
 }
 
 /**
@@ -106,7 +134,28 @@ export async function getDietTemplateWithMeals(templateId) {
   );
 
   // Step 3: Fetch food details from the 'foods' view
-  const foodsMap = await getFoodsMapByIds(allFoodIds);
+  const templateFoodIds = (template.diet_template_meals || []).flatMap(m =>
+    (m.diet_template_foods || []).map(f => f.id));
+  let substitutions = [];
+  if (templateFoodIds.length) {
+    const { data, error: substitutesError } = await supabase.from('diet_template_food_substitutions')
+      .select('template_food_id, substitute_food_id, quantity, unit').in('template_food_id', templateFoodIds);
+    if (substitutesError) throw substitutesError;
+    substitutions = data || [];
+  }
+  const foodsMap = await getFoodsMapByIds([...allFoodIds, ...substitutions.map(s => s.substitute_food_id)]);
+
+  const measureIds = [...new Set((template.diet_template_meals || [])
+    .flatMap(m => m.diet_template_foods || [])
+    .map(f => String(f.unit || ''))
+    .filter(unit => /^\d+$/.test(unit)))];
+  let measuresMap = {};
+  if (measureIds.length) {
+    const { data: measures, error: measureError } = await supabase.from('household_measures')
+      .select('id, grams_equivalent').in('id', measureIds.map(Number));
+    if (measureError) throw measureError;
+    measuresMap = Object.fromEntries((measures || []).map(m => [String(m.id), m]));
+  }
 
   // Step 4: Normalizar refeições para o formato esperado pelos componentes
   const meals = (template.diet_template_meals || [])
@@ -116,18 +165,31 @@ export async function getDietTemplateWithMeals(templateId) {
         .sort((a, b) => a.order_index - b.order_index)
         .map(f => {
           const foodDetails = foodsMap[f.food_id] || null;
-          const ratio = (f.quantity || 100) / 100;
+          const unit = String(f.unit || '');
+          const gramsPerUnit = unit === 'gram' ? 1 : Number(measuresMap[unit]?.grams_equivalent);
+          const hasMeasure = Number.isFinite(gramsPerUnit) && gramsPerUnit > 0;
+          const hasNutrients = ['calories', 'protein', 'carbs', 'fat'].some(key => Number(foodDetails?.[key]) > 0);
+          const unavailableReason = !Number.isFinite(Number(f.quantity)) || Number(f.quantity) <= 0
+            ? 'quantidade inválida'
+            : foodDetails && ['calories', 'protein', 'carbs', 'fat'].some(key => foodDetails[key] == null)
+              ? 'macronutriente sem informação'
+              : !hasMeasure && hasNutrients ? 'medida sem conversão em gramas' : null;
+          const ratio = hasMeasure ? Number(f.quantity) * gramsPerUnit / 100 : 0;
           return {
             id: f.id,
             food: foodDetails,
             food_id: f.food_id,
             quantity: f.quantity,
             unit: f.unit,
+            measure: measuresMap[unit] || null,
             observation: f.observation,
-            calories: foodDetails ? (foodDetails.calories || 0) * ratio : 0,
-            protein: foodDetails ? (foodDetails.protein || 0) * ratio : 0,
-            carbs: foodDetails ? (foodDetails.carbs || 0) * ratio : 0,
-            fat: foodDetails ? (foodDetails.fat || 0) * ratio : 0,
+            unavailable_reason: unavailableReason,
+            substitutes: substitutions.filter(s => s.template_food_id === f.id)
+              .map(s => ({ ...s, food: foodsMap[s.substitute_food_id] || null })),
+            calories: foodDetails ? (foodDetails.calories ?? 0) * ratio : null,
+            protein: foodDetails ? (foodDetails.protein ?? 0) * ratio : null,
+            carbs: foodDetails ? (foodDetails.carbs ?? 0) * ratio : null,
+            fat: foodDetails ? (foodDetails.fat ?? 0) * ratio : null,
           };
         });
 
@@ -138,6 +200,9 @@ export async function getDietTemplateWithMeals(templateId) {
         order_index: m.order_index,
         foods,
         calories: foods.reduce((sum, f) => sum + (f.calories || 0), 0),
+        protein: foods.reduce((sum, f) => sum + (f.protein || 0), 0),
+        carbs: foods.reduce((sum, f) => sum + (f.carbs || 0), 0),
+        fat: foods.reduce((sum, f) => sum + (f.fat || 0), 0),
       };
     });
 

@@ -13,7 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/components/ui/use-toast';
 import { useTemplates } from '@/hooks/useTemplates';
-import { cloneDietTemplateToPatient } from '@/lib/supabase/template-queries';
+import { cloneDietTemplateToPatient, getDietTemplateWithMeals, getUnavailableTemplateFoods } from '@/lib/supabase/template-queries';
 import { getMealPlanById } from '@/lib/supabase/meal-plan-queries';
 import { getLatestEnergyCalculation } from '@/lib/supabase/energy-queries';
 
@@ -86,6 +86,7 @@ export default function TemplateManagerDialog({
     const [selectedTemplate, setSelectedTemplate] = useState(null);
     const [templateDetail, setTemplateDetail] = useState(null);
     const [loadingDetail, setLoadingDetail] = useState(false);
+    const [detailError, setDetailError] = useState(null);
     const [energyTarget, setEnergyTarget]   = useState(null);
     const [applying, setApplying]           = useState(false);
 
@@ -109,34 +110,34 @@ export default function TemplateManagerDialog({
 
     // Carregar detalhes do template selecionado
     useEffect(() => {
-        if (!selectedTemplate) { setTemplateDetail(null); return; }
+        if (!selectedTemplate) { setTemplateDetail(null); setDetailError(null); return; }
+        let cancelled = false;
         const load = async () => {
             setLoadingDetail(true);
+            setTemplateDetail(null);
+            setDetailError(null);
             try {
-                const { data } = await getMealPlanById(selectedTemplate.id);
-                setTemplateDetail(data);
+                const { data } = await getDietTemplateWithMeals(selectedTemplate.id);
+                if (!cancelled) setTemplateDetail(data);
+            } catch (error) {
+                console.error('Erro ao carregar protocolo:', error);
+                if (!cancelled) setDetailError('Não foi possível carregar o protocolo. Selecione-o novamente.');
             } finally {
-                setLoadingDetail(false);
+                if (!cancelled) setLoadingDetail(false);
             }
         };
         load();
+        return () => { cancelled = true; };
     }, [selectedTemplate]);
 
     const handleApplyTemplate = async () => {
         if (!selectedTemplate || !patientId || !nutritionistId) return;
         setApplying(true);
         try {
-            const hasGhostFoods = (templateDetail?.meals || []).some(m => 
-                (m.foods || []).some(f => !f.food || f.food.is_active === false)
-            );
-
-            if (hasGhostFoods) {
-                toast({ 
-                    title: 'Atenção: Alimento(s) indisponível(is)', 
-                    description: 'Uma ou mais refeições contêm alimentos que não existem mais ou foram desativados. Eles serão importados, mas você deverá substituí-los no plano do paciente.', 
-                    variant: 'destructive',
-                    duration: 8000
-                });
+            const { data: currentTemplate } = await getDietTemplateWithMeals(selectedTemplate.id);
+            setTemplateDetail(currentTemplate);
+            if (!currentTemplate?.meals?.length || getUnavailableTemplateFoods(currentTemplate.meals).length) {
+                throw new Error('O protocolo contém alimentos ou medidas indisponíveis. Corrija-o antes de aplicar.');
             }
 
             const newPlanId = await cloneDietTemplateToPatient(
@@ -146,18 +147,16 @@ export default function TemplateManagerDialog({
                 selectedTemplate.name
             );
             
-            if (!hasGhostFoods) {
-                toast({ title: 'Protocolo Aplicado!', description: `"${selectedTemplate.name}" importado com sucesso.` });
-            }
-            
             if (onTemplateApplied) {
-                const { data: newPlan } = await getMealPlanById(newPlanId);
+                const { data: newPlan, error: planError } = await getMealPlanById(newPlanId);
+                if (planError) console.error('Protocolo criado, mas a leitura do plano falhou:', planError);
                 onTemplateApplied(newPlan || { id: newPlanId });
             }
+            toast({ title: 'Protocolo aplicado!', description: `"${selectedTemplate.name}" importado com sucesso.` });
             onOpenChange(false);
         } catch (error) {
             console.error('Erro ao aplicar template:', error);
-            toast({ title: 'Erro', description: 'Falha ao importar o protocolo.', variant: 'destructive' });
+            toast({ title: 'Erro ao importar', description: error.message || 'Falha ao importar o protocolo.', variant: 'destructive' });
         } finally {
             setApplying(false);
         }
@@ -266,6 +265,8 @@ export default function TemplateManagerDialog({
                             <div className="flex items-center justify-center h-full">
                                 <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
                             </div>
+                        ) : detailError ? (
+                            <p role="alert" className="p-3 text-sm text-red-700">{detailError}</p>
                         ) : (
                             <ScrollArea className="flex-1">
                                 <div className="space-y-4 pr-1">
@@ -392,6 +393,11 @@ export default function TemplateManagerDialog({
                                             </div>
                                         </div>
                                     )}
+                                    {getUnavailableTemplateFoods(templateDetail?.meals || []).length > 0 && (
+                                        <p role="alert" className="rounded-md border border-red-200 bg-red-50 p-2 text-xs text-red-800">
+                                            Corrija ou remova antes de aplicar: {getUnavailableTemplateFoods(templateDetail.meals).map(f => `${f.meal}: ${f.name} (${f.id}; ${f.reason})`).join('; ')}
+                                        </p>
+                                    )}
                                 </div>
                             </ScrollArea>
                         )}
@@ -401,7 +407,7 @@ export default function TemplateManagerDialog({
                             <div className="pt-4 mt-2 border-t flex-shrink-0">
                                 <Button
                                     onClick={handleApplyTemplate}
-                                    disabled={applying || !patientId}
+                                    disabled={applying || loadingDetail || !!detailError || !templateDetail?.meals?.length || getUnavailableTemplateFoods(templateDetail?.meals || []).length > 0 || !patientId}
                                     className="w-full h-11 text-sm font-semibold bg-emerald-600 hover:bg-emerald-700 text-white"
                                 >
                                     {applying ? (

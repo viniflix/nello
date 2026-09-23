@@ -15,7 +15,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/components/ui/use-toast';
 import { useTemplates } from '@/hooks/useTemplates';
-import { getDietTemplateWithMeals } from '@/lib/supabase/template-queries';
+import { getDietTemplateWithMeals, getUnavailableTemplateFoods } from '@/lib/supabase/template-queries';
 
 /**
  * Dialog para importar refeições específicas de um protocolo (template de dieta)
@@ -31,26 +31,32 @@ export default function ImportMealFromProtocolDialog({ open, onOpenChange, nutri
     const [loadingMeals, setLoadingMeals]       = useState(false);
     const [selectedMealIds, setSelectedMealIds] = useState(new Set());
     const [importing, setImporting]             = useState(false);
+    const [loadError, setLoadError]             = useState(null);
 
     useEffect(() => { if (open) { fetchTemplates(); setSelectedTemplate(null); setTemplateMeals([]); setSelectedMealIds(new Set()); setSearchTerm(''); } }, [open, fetchTemplates]);
 
     useEffect(() => {
-        if (!selectedTemplate) { setTemplateMeals([]); setSelectedMealIds(new Set()); return; }
+        if (!selectedTemplate) { setTemplateMeals([]); setSelectedMealIds(new Set()); setLoadError(null); return; }
+        let cancelled = false;
     const load = async () => {
             setLoadingMeals(true);
+            setLoadError(null);
             try {
                 const { data } = await getDietTemplateWithMeals(selectedTemplate.id);
+                if (cancelled) return;
                 const meals = data?.meals || [];
                 setTemplateMeals(meals);
                 // Pré-seleciona todas
                 setSelectedMealIds(new Set(meals.map(m => m.id ?? m.tempId)));
             } catch (err) {
                 console.error('[ImportMealFromProtocolDialog] Error loading template meals:', err.message);
+                if (!cancelled) { setTemplateMeals([]); setSelectedMealIds(new Set()); setLoadError('Não foi possível carregar o protocolo. Selecione-o novamente.'); }
             } finally {
-                setLoadingMeals(false);
+                if (!cancelled) setLoadingMeals(false);
             }
         };
         load();
+        return () => { cancelled = true; };
     }, [selectedTemplate]);
 
     const toggleMeal = (id) => setSelectedMealIds(prev => {
@@ -63,31 +69,27 @@ export default function ImportMealFromProtocolDialog({ open, onOpenChange, nutri
         if (!selectedTemplate || selectedMealIds.size === 0) return;
         setImporting(true);
         try {
-            const mealsToImport = templateMeals.filter(m => selectedMealIds.has(m.id ?? m.tempId));
-            
-            const hasGhostFoods = mealsToImport.some(m => 
-                (m.foods || []).some(f => !f.food || f.food.is_active === false)
-            );
-
-            if (hasGhostFoods) {
-                toast({ 
-                    title: 'Atenção: Alimento(s) indisponível(is)', 
-                    description: 'Uma ou mais refeições contêm alimentos que não existem mais ou foram desativados. Eles serão importados, mas você deverá substituí-los.', 
-                    variant: 'destructive',
-                    duration: 8000
-                });
-            } else {
-                toast({ title: 'Refeições importadas!', description: `${mealsToImport.length} refeição(ões) adicionada(s) ao plano.` });
+            const { data } = await getDietTemplateWithMeals(selectedTemplate.id);
+            const mealsToImport = (data?.meals || []).filter(m => selectedMealIds.has(m.id ?? m.tempId));
+            if (mealsToImport.length !== selectedMealIds.size) throw new Error('O protocolo mudou. Selecione as refeições novamente.');
+            const unavailable = getUnavailableTemplateFoods(mealsToImport);
+            if (unavailable.length) {
+                setTemplateMeals(data.meals);
+                throw new Error('Há alimentos ou medidas indisponíveis. Corrija o protocolo antes de importar.');
             }
-
-            await onImport(mealsToImport);
+            const saved = await onImport(mealsToImport, selectedTemplate.id);
+            if (saved === false) throw new Error('Não foi possível salvar todas as refeições. Tente novamente.');
+            toast({ title: 'Refeições importadas!', description: `${mealsToImport.length} refeição(ões) adicionada(s) ao plano.` });
+            onOpenChange(false);
         } catch (err) {
             toast({ title: 'Erro ao importar', description: err.message, variant: 'destructive' });
         } finally {
             setImporting(false);
-            onOpenChange(false);
         }
     };
+
+    const selectedMeals = templateMeals.filter(m => selectedMealIds.has(m.id ?? m.tempId));
+    const unavailableFoods = getUnavailableTemplateFoods(selectedMeals);
 
     const filtered = (templates || []).filter(t =>
         !searchTerm || t.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -165,6 +167,8 @@ export default function ImportMealFromProtocolDialog({ open, onOpenChange, nutri
                             <div className="flex items-center justify-center h-full">
                                 <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
                             </div>
+                        ) : loadError ? (
+                            <p role="alert" className="text-sm text-red-700">{loadError}</p>
                         ) : templateMeals.length === 0 ? (
                             <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-2">
                                 <p className="text-sm">Este protocolo não tem refeições.</p>
@@ -217,9 +221,9 @@ export default function ImportMealFromProtocolDialog({ open, onOpenChange, nutri
                                                             {meal.calories > 0 && (
                                                                 <span className="text-xs text-slate-500 font-medium">{Math.round(meal.calories)} kcal</span>
                                                             )}
-                                                            {(meal.foods || []).some(f => !f.food || f.food.is_active === false) && (
+                                                            {getUnavailableTemplateFoods([meal]).length > 0 && (
                                                                 <Badge variant="destructive" className="text-[10px] py-0 bg-red-100 text-red-700 border-red-200">
-                                                                    ⚠ Alimento desativado
+                                                                    ⚠ Alimento ou medida indisponível
                                                                 </Badge>
                                                             )}
                                                         </div>
@@ -235,13 +239,17 @@ export default function ImportMealFromProtocolDialog({ open, onOpenChange, nutri
                     </div>
                 </div>
 
+                {unavailableFoods.length > 0 && <div role="alert" className="rounded-md border border-red-200 bg-red-50 p-2 text-xs text-red-800">
+                    Corrija ou remova estes itens no protocolo antes de importar: {unavailableFoods.map(f => `${f.meal}: ${f.name} (${f.id}; ${f.reason})`).join('; ')}
+                </div>}
+
                 <DialogFooter className="pt-4 border-t">
                     <Button variant="outline" onClick={() => onOpenChange(false)} disabled={importing}>
                         Cancelar
                     </Button>
                     <Button
                         onClick={handleImport}
-                        disabled={!selectedTemplate || selectedMealIds.size === 0 || importing}
+                        disabled={!selectedTemplate || selectedMealIds.size === 0 || importing || loadingMeals || !!loadError || unavailableFoods.length > 0}
                         className="bg-emerald-600 hover:bg-emerald-700 text-white"
                     >
                         {importing ? (

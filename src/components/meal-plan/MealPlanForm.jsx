@@ -28,6 +28,7 @@ import MealPlanMealForm from './MealPlanMealForm';
 import MacrosChart from './MacrosChart';
 import ImportMealFromProtocolDialog from './ImportMealFromProtocolDialog';
 import { getReferenceValues, simulateMealPlanPortionAdjustment, getMealPlanById } from '@/lib/supabase/meal-plan-queries';
+import { importDietTemplateMealsToPlan } from '@/lib/supabase/template-queries';
 import { useMealPlanDraft } from '@/hooks/useMealPlanDraft';
 
 const SaveStatusIndicator = ({ status }) => {
@@ -920,22 +921,38 @@ const MealPlanForm = ({
                 open={showImportMealDialog}
                 onOpenChange={setShowImportMealDialog}
                 nutritionistId={nutritionistId}
-                onImport={async (templateMeals) => {
-                    for (const meal of templateMeals) {
-                        await handleAddMeal({
+                onImport={async (templateMeals, templateId) => {
+                    let importedIds = [];
+                    if (!isEditing) {
+                        const existingDraftId = draft.draftId;
+                        const activeDraftId = existingDraftId || await draft.startNewDraft();
+                        if (!activeDraftId) throw new Error('Não foi possível iniciar o rascunho.');
+                        try {
+                            importedIds = await importDietTemplateMealsToPlan(templateId, activeDraftId, templateMeals.map(meal => meal.id));
+                            if (!Array.isArray(importedIds) || importedIds.length !== templateMeals.length) {
+                                throw new Error('A importação não confirmou todas as refeições.');
+                            }
+                        } catch (error) {
+                            if (!existingDraftId) await draft.discardDraft();
+                            throw error;
+                        }
+                    }
+                    setMeals(prev => [...prev, ...templateMeals.map((meal, index) => ({
                             name: meal.name,
-                            meal_type: meal.meal_type,
+                            meal_type: 'other',
                             meal_time: meal.meal_time,
                             notes: meal.notes,
-                            order_index: meals.length,
+                            order_index: prev.length + index,
                             foods: meal.foods || [],
                             calories: meal.calories,
                             protein: meal.protein,
                             carbs: meal.carbs,
                             fat: meal.fat,
-                        });
-                    }
+                            tempId: `import-${meal.id}-${index}-${Date.now()}`,
+                            dbId: importedIds[index] ?? null
+                        }))]);
                     setShowImportMealDialog(false);
+                    return true;
                 }}
             />
 
