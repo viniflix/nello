@@ -6,9 +6,9 @@ import { format, parseISO, addDays, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 const COLORS = {
-    income: '#22c55e', // green-500
-    expense: '#ef4444', // red-500
-    pie: ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#6366f1', '#f97316']
+    income: 'hsl(var(--primary))',
+    expense: 'hsl(var(--destructive))',
+    pie: ['#527b42', '#ed7204', '#7a8c6a', '#a97c54', '#55646a', '#a6b89a', '#bd9f83']
 };
 
 export default function FinancialCharts({ cashFlowData, expenseDistribution, projectedCashFlow, loading }) {
@@ -38,12 +38,12 @@ export default function FinancialCharts({ cashFlowData, expenseDistribution, pro
     return (
         <>
             {/* Cash Flow Chart */}
-            <Card>
-                <CardHeader>
-                    <CardTitle>Fluxo de Caixa</CardTitle>
+            <Card className="min-w-0 overflow-hidden bg-card shadow-card-dark">
+                <CardHeader className="pb-3">
+                    <CardTitle className="font-heading text-base lg:text-lg font-semibold text-primary">Fluxo de Caixa</CardTitle>
                     <CardDescription>Receitas vs Despesas por período</CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="min-w-0">
                     {loading ? (
                         <div className="h-[300px] flex items-center justify-center">
                             <div className="text-muted-foreground">Carregando...</div>
@@ -62,7 +62,7 @@ export default function FinancialCharts({ cashFlowData, expenseDistribution, pro
                                     textAnchor="end"
                                     height={80}
                                 />
-                                <YAxis 
+                                <YAxis width={48}
                                     tick={{ fontSize: 12 }}
                                     tickFormatter={(value) => `R$ ${(value / 1000).toFixed(0)}k`}
                                 />
@@ -94,12 +94,12 @@ export default function FinancialCharts({ cashFlowData, expenseDistribution, pro
             </Card>
 
             {/* Expense Distribution & Projected Cash Flow */}
-            <Card>
-                <CardHeader>
-                    <CardTitle>Análise Financeira</CardTitle>
+            <Card className="min-w-0 overflow-hidden bg-card shadow-card-dark">
+                <CardHeader className="pb-3">
+                    <CardTitle className="font-heading text-base lg:text-lg font-semibold text-primary">Análise Financeira</CardTitle>
                     <CardDescription>Distribuição de despesas e projeção de caixa</CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="min-w-0">
                     <Tabs defaultValue="expenses" className="w-full">
                         <TabsList className="grid w-full grid-cols-2">
                             <TabsTrigger value="expenses">Despesas</TabsTrigger>
@@ -122,9 +122,9 @@ export default function FinancialCharts({ cashFlowData, expenseDistribution, pro
                                             cx="50%"
                                             cy="50%"
                                             labelLine={false}
-                                            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                                            outerRadius={100}
-                                            fill="#8884d8"
+                                            label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
+                                            outerRadius={80}
+                                            fill={COLORS.income}
                                             dataKey="value"
                                         >
                                             {formattedExpenses.map((entry, index) => (
@@ -165,7 +165,7 @@ export default function FinancialCharts({ cashFlowData, expenseDistribution, pro
                                             textAnchor="end"
                                             height={80}
                                         />
-                                        <YAxis 
+                                        <YAxis width={48}
                                             tick={{ fontSize: 12 }}
                                             tickFormatter={(value) => `R$ ${(value / 1000).toFixed(0)}k`}
                                         />
@@ -182,7 +182,7 @@ export default function FinancialCharts({ cashFlowData, expenseDistribution, pro
                                             type="monotone" 
                                             dataKey="balance" 
                                             name="Saldo Projetado" 
-                                            stroke="#3b82f6" 
+                                            stroke={COLORS.income}
                                             strokeWidth={2}
                                             dot={{ r: 3 }}
                                         />

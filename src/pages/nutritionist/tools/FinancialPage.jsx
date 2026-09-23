@@ -328,7 +328,7 @@ export default function FinancialPage() {
 
     return (
         <div className="min-h-screen bg-background overflow-x-hidden">
-            <main className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 min-w-0 overflow-x-hidden">
+            <main className="max-w-7xl mx-auto w-full px-4 md:px-8 pt-4 md:pt-8 pb-8 min-w-0 overflow-x-hidden">
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -336,22 +336,22 @@ export default function FinancialPage() {
                     className="min-w-0"
                 >
                     {/* Header */}
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 md:mb-8 text-center sm:text-left">
                         <div className="min-w-0">
-                            <h1 className="text-2xl md:text-3xl font-bold break-words">Financeiro</h1>
-                            <p className="text-muted-foreground mt-1 text-sm md:text-base">
+                            <h1 className="text-2xl md:text-3xl font-bold font-heading uppercase tracking-wide text-primary break-words">Financeiro</h1>
+                            <p className="text-neutral-600 mt-1 text-sm md:text-base">
                                 Gerencie receitas, despesas e acompanhe o fluxo de caixa
                             </p>
                         </div>
-                        <div className="flex flex-wrap gap-2">
-                            <Button onClick={() => setIsServicesManagerOpen(true)} variant="outline" size="lg">
+                        <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:justify-end">
+                            <Button onClick={() => setIsServicesManagerOpen(true)} variant="outline" className="min-w-0 border-primary text-primary hover:bg-primary hover:text-white">
                                 <Settings className="w-4 h-4 mr-2" />
                                 <span className="hidden sm:inline">Gerenciar Serviços</span>
                                 <span className="sm:hidden">Serviços</span>
                             </Button>
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                    <Button variant="outline" size="lg">
+                                    <Button variant="outline" className="w-full sm:w-auto border-primary text-primary hover:bg-primary hover:text-white">
                                         <Download className="w-4 h-4 mr-2" />
                                         <span className="hidden sm:inline">Exportar</span>
                                         <span className="sm:hidden">Exportar</span>
@@ -373,7 +373,7 @@ export default function FinancialPage() {
                                     </DropdownMenuItem>
                                 </DropdownMenuContent>
                             </DropdownMenu>
-                            <Button onClick={handleNewTransaction} size="lg">
+                            <Button onClick={handleNewTransaction} className="col-span-2 bg-primary hover:bg-primary/90 sm:col-auto">
                                 <Plus className="w-4 h-4 mr-2" />
                                 Nova Transação
                             </Button>
@@ -397,7 +397,7 @@ export default function FinancialPage() {
 
                     {/* Financial Goal Bar - Above KPIs */}
                     <div className="mb-4">
-                        <Card className="border-2 overflow-hidden">
+                        <Card className="overflow-hidden shadow-card-dark">
                             <CardContent className="p-4">
                                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                                     <div className="flex-1 min-w-0 w-full">
@@ -421,8 +421,8 @@ export default function FinancialPage() {
                                             <div className="min-w-0">
                                                 <span className={`font-semibold break-all ${
                                                     monthlyGoal - summary.income > 0 
-                                                        ? 'text-orange-600' 
-                                                        : 'text-green-600'
+                                                        ? 'text-secondary'
+                                                        : 'text-primary'
                                                 }`}>
                                                     {monthlyGoal - summary.income > 0 
                                                         ? `Faltam R$ ${Math.max(0, monthlyGoal - summary.income).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
@@ -450,7 +450,7 @@ export default function FinancialPage() {
                     </div>
 
                     {/* Charts - 50/50 Split */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                    <div className="grid min-w-0 grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
                         <FinancialCharts
                             cashFlowData={cashFlowData}
                             expenseDistribution={expenseDistribution}
@@ -460,8 +460,8 @@ export default function FinancialPage() {
                     </div>
 
                     {/* Transaction List & Top Patients - 70/30 Split */}
-                    <div className="grid grid-cols-1 lg:grid-cols-10 gap-6 mb-6">
-                        <div className="lg:col-span-7">
+                    <div className="grid min-w-0 grid-cols-1 lg:grid-cols-10 gap-6 mb-6">
+                        <div className="min-w-0 lg:col-span-7">
                             <TransactionList
                                 transactions={transactions}
                                 loading={loading}
@@ -472,7 +472,7 @@ export default function FinancialPage() {
                                 onFiltersChange={setFilters}
                             />
                         </div>
-                        <div className="lg:col-span-3">
+                        <div className="min-w-0 lg:col-span-3">
                             <TopPatientsWidget nutritionistId={user?.id} />
                         </div>
                     </div>

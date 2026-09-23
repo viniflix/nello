@@ -196,16 +196,16 @@ export default function MessageTemplatesSection() {
     <>
       {/* Linha 1: Título + Descrição + Botão */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <div>
-          <h2 className="text-xl sm:text-2xl font-bold text-slate-800 flex items-center gap-2">
-            <MessageSquare className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-600" />
+        <div className="min-w-0">
+          <h2 className="font-heading text-lg sm:text-xl font-semibold uppercase tracking-wide text-primary flex items-center gap-2">
+            <MessageSquare className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
             Modelos de Mensagem
           </h2>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">
+          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
             Crie textos prontos com variáveis dinâmicas para agilizar a comunicação com seus pacientes.
           </p>
         </div>
-        <Button onClick={openCreate} className="bg-emerald-600 hover:bg-emerald-700 whitespace-nowrap shrink-0">
+        <Button onClick={openCreate} className="bg-primary hover:bg-primary/90 whitespace-nowrap w-full sm:w-auto sm:shrink-0">
           <Plus className="w-4 h-4 mr-2" /> Novo modelo
         </Button>
       </div>
@@ -214,18 +214,18 @@ export default function MessageTemplatesSection() {
       <div className="flex flex-col sm:flex-row gap-2 mb-5">
         <div className="relative flex-1">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Search className="h-4 w-4 text-slate-400" />
+            <Search className="h-4 w-4 text-muted-foreground" />
           </div>
           <input
             type="text"
             placeholder="Buscar modelos..."
-            className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
+            className="w-full pl-9 pr-4 py-2 bg-card border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
         </div>
         <select
-          className="px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all cursor-pointer"
+          className="px-3 py-2 bg-card border border-border rounded-lg text-sm text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all cursor-pointer"
           value={filterContext}
           onChange={e => setFilterContext(e.target.value)}
         >
@@ -239,22 +239,22 @@ export default function MessageTemplatesSection() {
       {/* Como funciona */}
       <Collapsible open={howItWorksOpen} onOpenChange={setHowItWorksOpen} className="mb-5">
         <div className={`rounded-xl overflow-hidden border-2 transition-all ${
-          howItWorksOpen ? 'border-emerald-300 bg-emerald-50' : 'border-emerald-200 bg-emerald-50/50 hover:border-emerald-300 hover:bg-emerald-50'
+          howItWorksOpen ? 'border-primary/30 bg-primary/10' : 'border-primary/20 bg-primary/5 hover:border-primary/30 hover:bg-primary/10'
         }`}>
           <CollapsibleTrigger asChild>
             <button className="w-full flex items-center justify-between gap-3 p-4 transition-colors cursor-pointer">
               <div className="flex items-center gap-3">
-                <div className="p-1.5 bg-emerald-100 rounded-lg shrink-0">
-                  <HelpCircle className="w-4 h-4 text-emerald-600" />
+                <div className="p-1.5 bg-primary/15 rounded-lg shrink-0">
+                  <HelpCircle className="w-4 h-4 text-primary" />
                 </div>
-                <span className="text-sm font-semibold text-emerald-800">Como funcionam os modelos de mensagem?</span>
+                <span className="text-sm font-semibold text-primary">Como funcionam os modelos de mensagem?</span>
               </div>
-              <ChevronDown className={`w-4 h-4 text-emerald-500 transition-transform duration-200 shrink-0 ${howItWorksOpen ? 'rotate-180' : ''}`} />
+              <ChevronDown className={`w-4 h-4 text-primary transition-transform duration-200 shrink-0 ${howItWorksOpen ? 'rotate-180' : ''}`} />
             </button>
           </CollapsibleTrigger>
           <CollapsibleContent>
-            <div className="px-4 pb-4 pt-3 space-y-2 text-sm text-slate-600 border-t border-emerald-200">
-              <p>Crie textos prontos para enviar aos pacientes sem precisar digitar tudo toda vez. Use <strong>variáveis dinâmicas</strong> como <code className="bg-white border border-slate-200 px-1.5 py-0.5 rounded text-xs font-mono text-emerald-700">{'{{'+'nome_paciente'+'}}'}</code> que são substituídas automaticamente no envio.</p>
+            <div className="px-4 pb-4 pt-3 space-y-2 text-sm text-muted-foreground border-t border-primary/20">
+              <p>Crie textos prontos para enviar aos pacientes sem precisar digitar tudo toda vez. Use <strong>variáveis dinâmicas</strong> como <code className="bg-card border border-border px-1.5 py-0.5 rounded text-xs font-mono text-primary">{'{{'+'nome_paciente'+'}}'}</code> que são substituídas automaticamente no envio.</p>
               <p>No <strong>hub do paciente</strong>, aba Adesão, escolha o modelo e clique em enviar. Os modelos com badge “Padrão” foram criados pelo sistema — duplique-os para personalizar.</p>
             </div>
           </CollapsibleContent>
@@ -264,7 +264,7 @@ export default function MessageTemplatesSection() {
       {/* Loading */}
       {loading && (
         <div className="flex items-center justify-center py-16">
-          <Loader2 className="w-6 h-6 animate-spin text-emerald-500" />
+          <Loader2 className="w-6 h-6 animate-spin text-primary" />
         </div>
       )}
 
@@ -272,19 +272,19 @@ export default function MessageTemplatesSection() {
       {!loading && filtered.length === 0 && (
         <Card>
           <div className="flex flex-col items-center justify-center py-16 text-center gap-3">
-            <MessageSquare className="h-10 w-10 text-slate-300" />
+            <MessageSquare className="h-10 w-10 text-muted-foreground/50" />
             <div>
-              <p className="font-medium text-slate-600">
+              <p className="font-medium text-muted-foreground">
                 {templates.length === 0 ? 'Nenhum modelo criado' : 'Nenhum resultado encontrado'}
               </p>
-              <p className="text-sm text-slate-400 mt-1">
+              <p className="text-sm text-muted-foreground mt-1">
                 {templates.length === 0
                   ? 'Crie modelos para agilizar a comunicação com seus pacientes.'
                   : 'Tente outros filtros ou termos de busca.'}
               </p>
             </div>
             {templates.length === 0 && (
-              <Button size="sm" onClick={openCreate} className="gap-2 mt-1 bg-emerald-600 hover:bg-emerald-700">
+              <Button size="sm" onClick={openCreate} className="gap-2 mt-1 bg-primary hover:bg-primary/90">
                 <Plus className="h-4 w-4" /> Criar primeiro modelo
               </Button>
             )}
@@ -300,41 +300,41 @@ export default function MessageTemplatesSection() {
             return (
               <Card
                 key={`${tpl.nutritionist_id ?? 'default'}-${tpl.id}`}
-                className={cn('border-slate-200 transition-all hover:border-emerald-200 hover:shadow-sm', !tpl.is_active && !isDefault && 'opacity-60')}
+                className={cn('border-border transition-all hover:border-primary/20 hover:shadow-sm', !tpl.is_active && !isDefault && 'opacity-60')}
               >
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
                       {/* Nome + badges */}
                       <div className="flex items-center gap-2 flex-wrap mb-1">
-                        <span className="font-medium text-slate-800 truncate">{tpl.name}</span>
+                        <span className="font-medium text-foreground truncate">{tpl.name}</span>
                         {isDefault && (
-                          <Badge variant="secondary" className="text-xs bg-slate-100 text-slate-500">Padrão</Badge>
+                          <Badge variant="secondary" className="text-xs bg-muted text-muted-foreground">Padrão</Badge>
                         )}
                         {!isDefault && (
                           <Badge
-                            className={cn('text-xs', tpl.is_active ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-500')}
+                            className={cn('text-xs', tpl.is_active ? 'bg-primary/10 text-primary border-primary/20' : 'bg-muted text-muted-foreground')}
                             variant="outline"
                           >
                             {tpl.is_active ? 'Ativo' : 'Inativo'}
                           </Badge>
                         )}
-                        <Badge variant="outline" className="text-xs text-slate-500">{contextLabel(tpl.context)}</Badge>
-                        <Badge variant="outline" className="text-xs text-slate-500">{channelLabel(tpl.channel)}</Badge>
+                        <Badge variant="outline" className="text-xs text-muted-foreground">{contextLabel(tpl.context)}</Badge>
+                        <Badge variant="outline" className="text-xs text-muted-foreground">{channelLabel(tpl.channel)}</Badge>
                       </div>
 
                       {/* Título do template */}
                       {tpl.title_template && (
-                        <p className="text-sm font-medium text-slate-500 mb-0.5">
+                        <p className="text-sm font-medium text-muted-foreground mb-0.5">
                           Título: {tpl.title_template}
                         </p>
                       )}
 
                       {/* Preview do corpo */}
-                      <p className="text-sm text-slate-400 line-clamp-2">{tpl.body_template}</p>
+                      <p className="text-sm text-muted-foreground line-clamp-2">{tpl.body_template}</p>
 
                       {/* Stats */}
-                      <div className="flex items-center gap-3 mt-2 text-xs text-slate-400">
+                      <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
                         <span className="flex items-center gap-1">
                           <Send className="h-3 w-3" /> {tpl.use_count ?? 0} disparos
                         </span>
@@ -376,8 +376,8 @@ export default function MessageTemplatesSection() {
                             title={tpl.is_active ? 'Desativar' : 'Ativar'}
                           >
                             {tpl.is_active
-                              ? <ToggleRight className="h-4 w-4 text-emerald-600" />
-                              : <ToggleLeft className="h-4 w-4 text-slate-400" />}
+                              ? <ToggleRight className="h-4 w-4 text-primary" />
+                              : <ToggleLeft className="h-4 w-4 text-muted-foreground" />}
                           </Button>
                           <Button
                             variant="ghost" size="icon" className="h-8 w-8 text-red-400 hover:text-red-600"
@@ -427,7 +427,7 @@ export default function MessageTemplatesSection() {
                 value={form.template_key}
                 onChange={e => handleFormChange('template_key', e.target.value)}
                 disabled={Boolean(editTarget)}
-                className={cn('font-mono text-sm', formErrors.template_key && 'border-red-400', editTarget && 'bg-slate-50')}
+                className={cn('font-mono text-sm', formErrors.template_key && 'border-red-400', editTarget && 'bg-muted/40')}
               />
               {formErrors.template_key && <p className="text-xs text-red-500">{formErrors.template_key}</p>}
             </div>
@@ -460,7 +460,7 @@ export default function MessageTemplatesSection() {
 
             {/* Título */}
             <div className="space-y-1">
-              <Label>Título da mensagem <span className="text-slate-400 text-xs">(opcional)</span></Label>
+              <Label>Título da mensagem <span className="text-muted-foreground text-xs">(opcional)</span></Label>
               <Input
                 placeholder="Ex: Olá! Lembrete importante"
                 value={form.title_template}
@@ -482,14 +482,14 @@ export default function MessageTemplatesSection() {
             </div>
 
             {/* Variáveis disponíveis */}
-            <div className="rounded-lg border bg-slate-50 p-3 space-y-2">
-              <p className="text-sm font-medium text-slate-700">Variáveis dinâmicas — clique para copiar</p>
+            <div className="rounded-lg border bg-muted/40 p-3 space-y-2">
+              <p className="text-sm font-medium text-foreground">Variáveis dinâmicas — clique para copiar</p>
               <div className="flex flex-wrap gap-2">
                 {AVAILABLE_VARIABLES.map(v => (
                   <button
                     key={v.key} type="button"
                     onClick={() => copyVariable(v.key)}
-                    className="text-xs font-mono bg-white hover:bg-emerald-50 px-2 py-1 rounded border border-slate-200 hover:border-emerald-300 transition-colors"
+                    className="text-xs font-mono bg-card hover:bg-primary/10 px-2 py-1 rounded border border-border hover:border-primary/30 transition-colors"
                     title={v.description}
                   >
                     {v.key}
@@ -500,14 +500,14 @@ export default function MessageTemplatesSection() {
 
             {/* Preview ao vivo */}
             {(form.title_template || form.body_template) && (
-              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 space-y-1">
-                <p className="text-xs font-medium text-slate-400">Pré-visualização com dados fictícios</p>
+              <div className="rounded-lg border border-border bg-muted/40 p-3 space-y-1">
+                <p className="text-xs font-medium text-muted-foreground">Pré-visualização com dados fictícios</p>
                 {form.title_template && (
-                  <p className="text-sm font-semibold text-slate-800">
+                  <p className="text-sm font-semibold text-foreground">
                     {previewTemplate({ titleTemplate: form.title_template, bodyTemplate: '' }).title}
                   </p>
                 )}
-                <p className="text-sm whitespace-pre-wrap text-slate-600">
+                <p className="text-sm whitespace-pre-wrap text-muted-foreground">
                   {previewTemplate({ titleTemplate: '', bodyTemplate: form.body_template }).body}
                 </p>
               </div>
@@ -516,7 +516,7 @@ export default function MessageTemplatesSection() {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setFormOpen(false)} disabled={saving}>Cancelar</Button>
-            <Button onClick={handleSave} disabled={saving} className="gap-2 bg-emerald-600 hover:bg-emerald-700">
+            <Button onClick={handleSave} disabled={saving} className="gap-2 bg-primary hover:bg-primary/90">
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
               {editTarget ? 'Salvar alterações' : 'Criar modelo'}
             </Button>
@@ -531,9 +531,9 @@ export default function MessageTemplatesSection() {
             <DialogTitle>Pré-visualização</DialogTitle>
             <DialogDescription>Como o paciente receberá a mensagem</DialogDescription>
           </DialogHeader>
-          <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 space-y-2">
-            {previewResult.title && <p className="font-semibold text-sm text-slate-800">{previewResult.title}</p>}
-            <p className="text-sm whitespace-pre-wrap text-slate-600">{previewResult.body}</p>
+          <div className="rounded-lg border border-border bg-muted/40 p-4 space-y-2">
+            {previewResult.title && <p className="font-semibold text-sm text-foreground">{previewResult.title}</p>}
+            <p className="text-sm whitespace-pre-wrap text-muted-foreground">{previewResult.body}</p>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setPreviewOpen(false)}>Fechar</Button>

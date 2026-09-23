@@ -55,9 +55,9 @@ export default function TransactionList({
     const hasActiveFilters = filters?.type || filters?.status || filters?.search;
 
     return (
-        <Card className="overflow-hidden">
-            <CardHeader className="pb-2">
-                <CardTitle className="text-base md:text-lg break-words">Histórico de Transações</CardTitle>
+        <Card className="min-w-0 overflow-hidden bg-card shadow-card-dark">
+            <CardHeader className="pb-3">
+                <CardTitle className="font-heading text-base lg:text-lg font-semibold text-primary break-words">Histórico de Transações</CardTitle>
             </CardHeader>
             <CardContent>
                 {/* Filters */}
@@ -153,8 +153,8 @@ export default function TransactionList({
                                         </TableCell>
                                         <TableCell className={`text-right font-semibold ${
                                             transaction.type === 'income' 
-                                                ? 'text-green-600' 
-                                                : 'text-red-600'
+                                                ? 'text-primary'
+                                                : 'text-destructive'
                                         }`}>
                                             {transaction.type === 'income' ? '+' : '-'}
                                             {formatCurrency(transaction.amount)}

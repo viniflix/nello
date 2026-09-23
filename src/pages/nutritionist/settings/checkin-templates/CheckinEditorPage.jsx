@@ -79,26 +79,26 @@ export default function CheckinEditorPage() {
     }
 
     return (
-        <div className="container mx-auto p-4 sm:p-6 max-w-[1000px] min-h-[calc(100vh-80px)] flex flex-col">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 shrink-0">
-                <div className="flex items-center gap-4">
+        <div className="mx-auto flex min-h-[calc(100vh-80px)] w-full max-w-[1000px] min-w-0 flex-col overflow-x-hidden px-4 pt-4 pb-8 md:px-8 md:pt-8">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 md:mb-8 shrink-0">
+                <div className="flex min-w-0 items-center gap-3 sm:gap-4">
                     <Button variant="ghost" size="sm" onClick={() => navigate('/nutritionist/templates?group=forms&ftab=checkins')}>
                         <ArrowLeft className="w-4 h-4 mr-2" />
                         Voltar
                     </Button>
-                    <div>
-                        <h1 className="text-xl font-bold text-slate-800">{templateId ? 'Editar Check-in' : 'Novo Check-in'}</h1>
-                        <p className="text-sm text-slate-500">Configure as perguntas e a recorrência automática.</p>
+                    <div className="min-w-0">
+                        <h1 className="font-heading text-2xl font-bold uppercase tracking-wide text-primary break-words md:text-3xl">{templateId ? 'Editar Check-in' : 'Novo Check-in'}</h1>
+                        <p className="text-sm text-neutral-600 md:text-base">Configure as perguntas e a recorrência automática.</p>
                     </div>
                 </div>
-                <Button className="bg-emerald-600 hover:bg-emerald-700 w-full sm:w-auto" onClick={handleSave} disabled={isSaving || fields.length === 0}>
+                <Button className="bg-primary hover:bg-primary/90 text-primary-foreground w-full sm:w-auto sm:shrink-0" onClick={handleSave} disabled={isSaving || fields.length === 0}>
                     {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
                     Salvar Check-in
                 </Button>
             </div>
 
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col p-6 space-y-8">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-6 border-b border-slate-100">
+            <div className="bg-card rounded-xl border border-border shadow-card-dark flex flex-col p-4 sm:p-6 space-y-8 min-w-0">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-6 border-b border-border">
                     <div className="space-y-4">
                         <div className="space-y-2">
                             <Label className="font-semibold">Nome do Template</Label>
@@ -141,8 +141,8 @@ export default function CheckinEditorPage() {
 
                 <div>
                     <div className="flex items-center gap-2 mb-4">
-                        <Settings2 className="w-5 h-5 text-slate-500" />
-                        <h2 className="text-lg font-bold text-slate-800">Campos do Check-in</h2>
+                        <Settings2 className="w-5 h-5 text-muted-foreground" />
+                        <h2 className="font-heading text-base lg:text-lg font-semibold text-primary">Campos do Check-in</h2>
                     </div>
                     <CheckinTemplateBuilder fields={fields} setFields={setFields} />
                 </div>

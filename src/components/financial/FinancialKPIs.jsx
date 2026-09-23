@@ -10,34 +10,30 @@ export default function FinancialKPIs({ summary, loading }) {
             value: summary?.income || 0,
             netValue: summary?.netIncome || 0,
             icon: ArrowUp,
-            color: 'text-green-600',
-            bgColor: 'bg-green-50 dark:bg-green-950',
-            borderColor: 'border-green-200 dark:border-green-800',
+            color: 'text-primary',
+            bgColor: 'bg-primary/10',
             showNet: true
         },
         {
             title: 'Despesas',
             value: summary?.expenses || 0,
             icon: ArrowDown,
-            color: 'text-red-600',
-            bgColor: 'bg-red-50 dark:bg-red-950',
-            borderColor: 'border-red-200 dark:border-red-800'
+            color: 'text-destructive',
+            bgColor: 'bg-destructive/10'
         },
         {
             title: 'Resultado Líquido',
             value: summary?.netResult || 0,
             icon: TrendingUp,
-            color: summary?.netResult >= 0 ? 'text-blue-600' : 'text-red-600',
-            bgColor: summary?.netResult >= 0 ? 'bg-blue-50 dark:bg-blue-950' : 'bg-red-50 dark:bg-red-950',
-            borderColor: summary?.netResult >= 0 ? 'border-blue-200 dark:border-blue-800' : 'border-red-200 dark:border-red-800'
+            color: summary?.netResult >= 0 ? 'text-primary' : 'text-destructive',
+            bgColor: summary?.netResult >= 0 ? 'bg-primary/10' : 'bg-destructive/10'
         },
         {
             title: 'A Receber (Pendente)',
             value: summary?.overdue || 0,
             icon: AlertCircle,
-            color: 'text-orange-600',
-            bgColor: 'bg-orange-50 dark:bg-orange-950',
-            borderColor: 'border-orange-200 dark:border-orange-800'
+            color: 'text-secondary',
+            bgColor: 'bg-secondary/10'
         }
     ];
 
@@ -46,22 +42,21 @@ export default function FinancialKPIs({ summary, loading }) {
             {kpis.map((kpi, index) => {
                 const Icon = kpi.icon;
                 return (
-                    <Card 
-                        key={index} 
-                        className={`${kpi.bgColor} ${kpi.borderColor} border-2 transition-all hover:shadow-md overflow-hidden min-w-0`}
-                    >
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-xs md:text-sm font-medium text-muted-foreground break-words">
+                    <Card key={index} className="min-w-0 overflow-hidden bg-card shadow-card-dark">
+                        <CardHeader className="flex flex-row items-start justify-between gap-2 space-y-0 pb-2">
+                            <CardTitle className="text-xs md:text-sm font-semibold font-heading uppercase tracking-wide text-primary break-words">
                                 {kpi.title}
                             </CardTitle>
-                            <Icon className={`h-4 w-4 ${kpi.color}`} />
+                            <span className={`shrink-0 rounded-lg p-2 ${kpi.bgColor}`}>
+                                <Icon className={`h-4 w-4 ${kpi.color}`} />
+                            </span>
                         </CardHeader>
                         <CardContent>
                             {loading ? (
                                 <div className="h-8 w-24 bg-muted animate-pulse rounded" />
                             ) : (
                                 <div className="min-w-0">
-                                    <div className={`text-xl md:text-2xl font-bold break-all ${kpi.color}`}>
+                                    <div className={`text-xl md:text-2xl font-bold break-words ${kpi.color}`}>
                                         {formatCurrency(kpi.value)}
                                     </div>
                                     {kpi.showNet && kpi.netValue !== kpi.value && (

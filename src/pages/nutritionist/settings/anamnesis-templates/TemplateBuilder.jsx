@@ -172,18 +172,18 @@ export default function TemplateBuilder() {
     const availableConditionFields = allFields.filter(f => f.id !== activeFieldId && f.label);
 
     return (
-        <div className="container mx-auto p-4 sm:p-6 max-w-[1400px] min-h-[calc(100vh-80px)] lg:h-[calc(100vh-80px)] flex flex-col">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 shrink-0">
-                <div className="flex items-center gap-4">
+        <div className="mx-auto flex min-h-[calc(100vh-80px)] w-full max-w-[1400px] min-w-0 flex-col overflow-x-hidden px-4 pt-4 pb-8 md:px-8 md:pt-8 lg:h-[calc(100vh-80px)]">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 md:mb-8 shrink-0">
+                <div className="flex min-w-0 items-center gap-3 sm:gap-4">
                     <Button variant="ghost" size="sm" onClick={() => navigate('/nutritionist/templates?group=forms&ftab=forms')}>
                         <ArrowLeft className="w-4 h-4 mr-2" />
                         Voltar
                     </Button>
-                    <div>
-                        <h1 className="text-xl font-bold text-slate-800">{templateId && !isSystemDefault ? 'Editar Formulário' : isSystemDefault ? 'Usar como base' : 'Novo Formulário'}</h1>
+                    <div className="min-w-0">
+                        <h1 className="font-heading text-2xl font-bold uppercase tracking-wide text-primary break-words md:text-3xl">{templateId && !isSystemDefault ? 'Editar Formulário' : isSystemDefault ? 'Usar como base' : 'Novo Formulário'}</h1>
                     </div>
                 </div>
-                <Button className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto" onClick={handleSave} disabled={isSaving}>
+                <Button className="bg-primary hover:bg-primary/90 text-primary-foreground w-full sm:w-auto sm:shrink-0" onClick={handleSave} disabled={isSaving}>
                     {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
                     Salvar Template
                 </Button>
@@ -191,8 +191,8 @@ export default function TemplateBuilder() {
 
             <div className="flex flex-col lg:flex-row gap-6 flex-1 min-h-0 pb-6 lg:pb-0">
                 {/* Center Panel - Builder Canvas */}
-                <div className="flex-1 bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col min-w-0 h-[60vh] lg:h-auto">
-                    <div className="p-4 border-b border-slate-100 bg-slate-50 rounded-t-xl shrink-0">
+                <div className="flex-1 bg-card rounded-xl border border-border shadow-sm flex flex-col min-w-0 h-[60vh] lg:h-auto">
+                    <div className="p-4 border-b border-border bg-muted/40 rounded-t-xl shrink-0">
                         <Input 
                             value={title}
                             onChange={e => setTitle(e.target.value)}
@@ -203,20 +203,20 @@ export default function TemplateBuilder() {
                             value={description}
                             onChange={e => setDescription(e.target.value)}
                             placeholder="Descrição opcional..."
-                            className="text-sm text-slate-500 border-none bg-transparent shadow-none px-0 focus-visible:ring-0 h-8"
+                            className="text-sm text-muted-foreground border-none bg-transparent shadow-none px-0 focus-visible:ring-0 h-8"
                         />
                     </div>
                     
-                    <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/50">
+                    <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-muted/50">
                         {sections.map((section, sIdx) => (
                             <div 
                                 key={section.id} 
-                                className={`bg-white rounded-lg border ${activeSectionId === section.id ? 'border-blue-400 ring-1 ring-blue-400' : 'border-slate-200'} transition-all`}
+                                className={`bg-card rounded-lg border ${activeSectionId === section.id ? 'border-primary ring-1 ring-primary' : 'border-border'} transition-all`}
                                 onClick={() => setActiveSectionId(section.id)}
                             >
-                                <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 rounded-t-lg">
+                                <div className="p-4 border-b border-border flex items-center justify-between bg-muted/50 rounded-t-lg">
                                     <div className="flex-1 flex items-center gap-2">
-                                        <GripVertical className="w-4 h-4 text-slate-300 cursor-move" />
+                                        <GripVertical className="w-4 h-4 text-muted-foreground cursor-move" />
                                         <Input 
                                             value={section.title}
                                             onChange={e => updateSection(section.id, { title: e.target.value })}
@@ -224,7 +224,7 @@ export default function TemplateBuilder() {
                                             placeholder="Nome da Seção"
                                         />
                                     </div>
-                                    <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); deleteSection(section.id); }} className="text-slate-400 hover:text-red-500">
+                                    <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); deleteSection(section.id); }} className="text-muted-foreground hover:text-red-500">
                                         <Trash2 className="w-4 h-4" />
                                     </Button>
                                 </div>
@@ -233,53 +233,53 @@ export default function TemplateBuilder() {
                                         <div 
                                             key={field.id}
                                             onClick={(e) => { e.stopPropagation(); setActiveFieldId(field.id); setActiveSectionId(section.id); }}
-                                            className={`relative group p-3 rounded-md border ${activeFieldId === field.id ? 'border-blue-500 bg-blue-50/30' : 'border-slate-200 bg-white hover:border-blue-300'} cursor-pointer flex gap-3`}
+                                            className={`relative group p-3 rounded-md border ${activeFieldId === field.id ? 'border-primary bg-primary/5' : 'border-border bg-card hover:border-primary'} cursor-pointer flex gap-3`}
                                         >
-                                            <div className="flex flex-col gap-1 items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <button onClick={(e) => { e.stopPropagation(); moveField(section.id, fIdx, 'up'); }} className="text-slate-400 hover:text-slate-700 disabled:opacity-30" disabled={fIdx === 0}>
+                                            <div className="flex flex-col gap-1 items-center justify-center opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                                                <button onClick={(e) => { e.stopPropagation(); moveField(section.id, fIdx, 'up'); }} className="text-muted-foreground hover:text-foreground disabled:opacity-30" disabled={fIdx === 0}>
                                                     <ChevronUp className="w-4 h-4" />
                                                 </button>
-                                                <button onClick={(e) => { e.stopPropagation(); moveField(section.id, fIdx, 'down'); }} className="text-slate-400 hover:text-slate-700 disabled:opacity-30" disabled={fIdx === section.fields.length - 1}>
+                                                <button onClick={(e) => { e.stopPropagation(); moveField(section.id, fIdx, 'down'); }} className="text-muted-foreground hover:text-foreground disabled:opacity-30" disabled={fIdx === section.fields.length - 1}>
                                                     <ChevronDown className="w-4 h-4" />
                                                 </button>
                                             </div>
                                             <div className="flex-1">
                                                 <div className="flex items-center gap-2 mb-1">
-                                                    <span className="font-medium text-sm text-slate-800">{field.label || 'Pergunta sem título'}</span>
+                                                    <span className="font-medium text-sm text-foreground">{field.label || 'Pergunta sem título'}</span>
                                                     {field.required && <span className="text-[10px] text-red-500 font-bold">*</span>}
                                                 </div>
-                                                <span className="text-xs text-slate-400 px-2 py-0.5 bg-slate-100 rounded-md">
+                                                <span className="text-xs text-muted-foreground px-2 py-0.5 bg-muted rounded-md">
                                                     {FIELD_TYPES.find(t => t.value === field.type)?.label || field.type}
                                                 </span>
                                             </div>
-                                            <button onClick={(e) => { e.stopPropagation(); deleteField(section.id, field.id); }} className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500 p-2">
+                                            <button onClick={(e) => { e.stopPropagation(); deleteField(section.id, field.id); }} className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100 text-muted-foreground hover:text-red-500 p-2">
                                                 <Trash2 className="w-4 h-4" />
                                             </button>
                                         </div>
                                     ))}
                                     
-                                    <Button variant="outline" size="sm" className="w-full mt-2 border-dashed text-slate-500" onClick={(e) => { e.stopPropagation(); addField(section.id); }}>
+                                    <Button variant="outline" size="sm" className="w-full mt-2 border-dashed text-muted-foreground" onClick={(e) => { e.stopPropagation(); addField(section.id); }}>
                                         <Plus className="w-4 h-4 mr-2" /> Adicionar Pergunta
                                     </Button>
                                 </div>
                             </div>
                         ))}
 
-                        <Button variant="outline" className="w-full border-dashed bg-white text-blue-600 border-blue-200 hover:bg-blue-50" onClick={addSection}>
+                        <Button variant="outline" className="w-full border-dashed bg-card text-primary border-primary/20 hover:bg-primary/10" onClick={addSection}>
                             <Plus className="w-4 h-4 mr-2" /> Adicionar Seção
                         </Button>
                     </div>
                 </div>
 
                 {/* Right Panel - Properties */}
-                <div className="w-full lg:w-[320px] bg-white rounded-xl border border-slate-200 shadow-sm shrink-0 flex flex-col h-[50vh] lg:h-auto mt-4 lg:mt-0">
-                    <div className="p-4 border-b border-slate-100 bg-slate-50/80 rounded-t-xl flex items-center gap-2">
-                        <Settings2 className="w-5 h-5 text-slate-600" />
-                        <h3 className="font-semibold text-slate-800">Propriedades</h3>
+                <div className="w-full lg:w-[320px] bg-card rounded-xl border border-border shadow-sm shrink-0 flex flex-col h-[50vh] lg:h-auto mt-4 lg:mt-0">
+                    <div className="p-4 border-b border-border bg-muted/80 rounded-t-xl flex items-center gap-2">
+                        <Settings2 className="w-5 h-5 text-muted-foreground" />
+                        <h3 className="font-semibold text-foreground">Propriedades</h3>
                     </div>
                     <div className="p-5 flex-1 overflow-y-auto space-y-6">
                         {!activeFieldData ? (
-                            <div className="text-center text-slate-400 text-sm mt-10">
+                            <div className="text-center text-muted-foreground text-sm mt-10">
                                 Clique em uma pergunta para editar suas configurações.
                             </div>
                         ) : (
@@ -309,7 +309,7 @@ export default function TemplateBuilder() {
                                 </div>
 
                                 {['select', 'radio', 'checkbox'].includes(activeFieldData.type) && (
-                                    <div className="space-y-3 pt-2 border-t border-slate-100">
+                                    <div className="space-y-3 pt-2 border-t border-border">
                                         <Label>Opções de Resposta</Label>
                                         {(activeFieldData.options || []).map((opt, oIdx) => (
                                             <div key={oIdx} className="flex gap-2 items-center">
@@ -328,7 +328,7 @@ export default function TemplateBuilder() {
                                                         const newOpts = activeFieldData.options.filter((_, i) => i !== oIdx);
                                                         updateField(activeSectionId, activeFieldId, { options: newOpts });
                                                     }}
-                                                    className="text-slate-400 hover:text-red-500"
+                                                    className="text-muted-foreground hover:text-red-500"
                                                 >
                                                     <Trash2 className="w-4 h-4" />
                                                 </button>
@@ -348,7 +348,7 @@ export default function TemplateBuilder() {
                                     </div>
                                 )}
 
-                                <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+                                <div className="flex items-center justify-between pt-4 border-t border-border">
                                     <Label className="cursor-pointer" htmlFor="req-switch">Obrigatória?</Label>
                                     <Switch 
                                         id="req-switch"
@@ -358,7 +358,7 @@ export default function TemplateBuilder() {
                                 </div>
 
                                 {/* Sprint C: Lógica Condicional */}
-                                <div className="pt-4 border-t border-slate-100 space-y-3">
+                                <div className="pt-4 border-t border-border space-y-3">
                                     <div className="flex items-center justify-between">
                                         <Label className="cursor-pointer" htmlFor="cond-switch">Lógica Condicional</Label>
                                         <Switch 
@@ -377,16 +377,16 @@ export default function TemplateBuilder() {
                                     </div>
 
                                     {activeFieldData.conditional_logic && (
-                                        <div className="space-y-3 bg-blue-50/50 p-3 rounded-lg border border-blue-100">
+                                        <div className="space-y-3 bg-primary/50 p-3 rounded-lg border border-primary/20">
                                             <div className="space-y-1">
-                                                <Label className="text-xs text-slate-500">Mostrar este campo quando:</Label>
+                                                <Label className="text-xs text-muted-foreground">Mostrar este campo quando:</Label>
                                                 <Select 
                                                     value={activeFieldData.conditional_logic.field_id}
                                                     onValueChange={(val) => updateField(activeSectionId, activeFieldId, { 
                                                         conditional_logic: { ...activeFieldData.conditional_logic, field_id: val } 
                                                     })}
                                                 >
-                                                    <SelectTrigger className="h-8 text-xs bg-white"><SelectValue placeholder="Selecione o campo..." /></SelectTrigger>
+                                                    <SelectTrigger className="h-8 text-xs bg-card"><SelectValue placeholder="Selecione o campo..." /></SelectTrigger>
                                                     <SelectContent>
                                                         {availableConditionFields.map(f => (
                                                             <SelectItem key={f.id} value={f.id}>{f.label || 'Sem título'}</SelectItem>
@@ -402,7 +402,7 @@ export default function TemplateBuilder() {
                                                         conditional_logic: { ...activeFieldData.conditional_logic, operator: val } 
                                                     })}
                                                 >
-                                                    <SelectTrigger className="h-8 text-xs bg-white w-[120px]"><SelectValue /></SelectTrigger>
+                                                    <SelectTrigger className="h-8 text-xs bg-card w-[120px]"><SelectValue /></SelectTrigger>
                                                     <SelectContent>
                                                         <SelectItem value="equals">For igual a</SelectItem>
                                                         <SelectItem value="not_equals">For diferente de</SelectItem>
@@ -426,12 +426,12 @@ export default function TemplateBuilder() {
                                 </div>
 
                                 {/* Sprint I: Chave Clínica */}
-                                <div className="pt-4 border-t border-slate-100 space-y-3">
+                                <div className="pt-4 border-t border-border space-y-3">
                                     <div className="space-y-1">
                                         <Label className="flex items-center gap-1.5 text-sm font-medium">
                                             🏷️ Chave Clínica
                                         </Label>
-                                        <p className="text-[11px] text-slate-400 leading-snug">
+                                        <p className="text-[11px] text-muted-foreground leading-snug">
                                             Se preenchida, a resposta será salva como flag clínica no perfil do paciente automaticamente.
                                         </p>
                                     </div>

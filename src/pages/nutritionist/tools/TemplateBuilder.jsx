@@ -84,9 +84,9 @@ export default function TemplateBuilder() {
 
   const getIcon = () => {
     const icons = {
-      diet: <FileText className="w-5 h-5 text-emerald-600" />,
-      meal: <Coffee className="w-5 h-5 text-emerald-600" />,
-      recipe: <UtensilsCrossed className="w-5 h-5 text-emerald-600" />,
+      diet: <FileText className="w-5 h-5 text-primary" />,
+      meal: <Coffee className="w-5 h-5 text-primary" />,
+      recipe: <UtensilsCrossed className="w-5 h-5 text-primary" />,
     };
     return icons[type] || null;
   };
@@ -252,8 +252,8 @@ export default function TemplateBuilder() {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin text-emerald-500 mx-auto mb-3" />
-          <p className="text-slate-500 text-sm">Carregando template...</p>
+          <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-3" />
+          <p className="text-muted-foreground text-sm">Carregando template...</p>
         </div>
       </div>
     );
@@ -262,25 +262,26 @@ export default function TemplateBuilder() {
   const foodList = type === 'meal' ? formData.foods : formData.ingredients;
 
   return (
-    <div className="container mx-auto px-4 py-6 max-w-5xl">
+    <div className="min-h-screen overflow-x-hidden bg-background">
+      <main className="mx-auto w-full max-w-5xl min-w-0 px-4 pt-4 pb-8 md:px-8 md:pt-8">
       <Helmet>
         <title>{getTitle()} - Nello</title>
       </Helmet>
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col gap-4 mb-6 sm:flex-row sm:items-center sm:justify-between md:mb-8">
+        <div className="flex min-w-0 items-center gap-3 sm:gap-4">
           <button
             onClick={() => navigate('/nutritionist/templates')}
-            className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors"
+            className="p-2 text-muted-foreground hover:text-muted-foreground hover:bg-muted rounded-full transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-emerald-50 rounded-lg">{getIcon()}</div>
-            <div>
-              <h1 className="text-2xl font-bold text-slate-800">{getTitle()}</h1>
-              <p className="text-slate-500 text-sm">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="p-2 bg-primary/10 rounded-lg">{getIcon()}</div>
+            <div className="min-w-0">
+              <h1 className="font-heading text-2xl font-bold uppercase tracking-wide text-primary break-words md:text-3xl">{getTitle()}</h1>
+              <p className="text-neutral-600 text-sm md:text-base">
                 {isEditMode ? 'Edite os dados do template e salve as alterações.' : 'Configure os dados do seu novo template.'}
               </p>
             </div>
@@ -289,7 +290,7 @@ export default function TemplateBuilder() {
         <button
           onClick={() => { if (validate()) handleSave(); }}
           disabled={loading}
-          className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-lg shadow-sm flex items-center gap-2 transition-colors font-medium disabled:opacity-50"
+          className="w-full justify-center bg-primary hover:bg-primary/90 text-primary-foreground px-5 py-2.5 rounded-lg shadow-sm flex items-center gap-2 transition-colors font-medium disabled:opacity-50 sm:w-auto sm:shrink-0"
         >
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
           <span>{loading ? 'Salvando...' : (isEditMode ? 'Salvar Alterações' : 'Salvar Template')}</span>
@@ -299,37 +300,37 @@ export default function TemplateBuilder() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Coluna Esquerda: Meta Dados */}
         <div className="md:col-span-1 space-y-6">
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
-            <h3 className="font-semibold text-slate-800 mb-4">Informações Básicas</h3>
+          <div className="bg-card rounded-xl shadow-sm border border-border p-5">
+            <h3 className="font-semibold text-foreground mb-4">Informações Básicas</h3>
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Nome do Template *</label>
+                <label className="block text-sm font-medium text-foreground mb-1">Nome do Template *</label>
                 <input
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
                   placeholder="Ex: Dieta Hipertrofia Masculina"
                   maxLength={100}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Descrição</label>
+                <label className="block text-sm font-medium text-foreground mb-1">Descrição</label>
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
                   rows={3}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 resize-none"
+                  className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary resize-none"
                   placeholder="Descreva o propósito deste template..."
                 />
               </div>
 
               {/* Tags com chips — fix do bug da vírgula */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  <Tag className="w-3.5 h-3.5 inline mr-1 text-slate-400" />
+                <label className="block text-sm font-medium text-foreground mb-1">
+                  <Tag className="w-3.5 h-3.5 inline mr-1 text-muted-foreground" />
                   Tags
                 </label>
 
@@ -339,13 +340,13 @@ export default function TemplateBuilder() {
                     {formData.tags.map((tag, i) => (
                       <span
                         key={i}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs rounded-full font-medium"
+                        className="inline-flex items-center gap-1 px-2.5 py-1 bg-primary/10 text-primary border border-primary/20 text-xs rounded-full font-medium"
                       >
                         {tag}
                         <button
                           type="button"
                           onClick={() => removeTag(i)}
-                          className="text-emerald-400 hover:text-emerald-600 transition-colors leading-none"
+                          className="text-primary hover:text-primary transition-colors leading-none"
                         >
                           <X className="w-3 h-3" />
                         </button>
@@ -360,34 +361,34 @@ export default function TemplateBuilder() {
                   onChange={(e) => handleTagsChange(e.target.value)}
                   onBlur={handleTagsBlur}
                   onKeyDown={handleTagsKeyDown}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm"
+                  className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm"
                   placeholder="hipertrofia, sem-lactose, vegano"
                 />
-                <p className="text-xs text-slate-400 mt-1">Separe com vírgula e pressione Enter para confirmar</p>
+                <p className="text-xs text-muted-foreground mt-1">Separe com vírgula e pressione Enter para confirmar</p>
               </div>
 
               {type === 'recipe' && (
-                <div className="pt-4 border-t border-slate-100">
-                  <h3 className="font-semibold text-slate-800 mb-3">Rendimento</h3>
+                <div className="pt-4 border-t border-border">
+                  <h3 className="font-semibold text-foreground mb-3">Rendimento</h3>
                   <div className="flex gap-3">
                     <div className="flex-1">
-                      <label className="block text-xs font-medium text-slate-700 mb-1">Quantidade</label>
+                      <label className="block text-xs font-medium text-foreground mb-1">Quantidade</label>
                       <input
                         type="number"
                         value={formData.yield_quantity}
                         onChange={(e) => setFormData(prev => ({ ...prev, yield_quantity: e.target.value }))}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg"
+                        className="w-full px-3 py-2 border border-border rounded-lg"
                         min={0.1}
                         step={0.5}
                       />
                     </div>
                     <div className="flex-1">
-                      <label className="block text-xs font-medium text-slate-700 mb-1">Unidade</label>
+                      <label className="block text-xs font-medium text-foreground mb-1">Unidade</label>
                       <input
                         type="text"
                         value={formData.yield_unit}
                         onChange={(e) => setFormData(prev => ({ ...prev, yield_unit: e.target.value }))}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg"
+                        className="w-full px-3 py-2 border border-border rounded-lg"
                         placeholder="Ex: porções"
                       />
                     </div>
@@ -399,12 +400,12 @@ export default function TemplateBuilder() {
 
           {/* Sumário de conteúdo */}
           {type === 'diet' && formData.meals.length > 0 && (
-            <div className="bg-emerald-50 rounded-xl border border-emerald-100 p-4">
-              <p className="text-xs font-bold text-emerald-700 uppercase tracking-wider mb-2">Resumo</p>
-              <p className="text-sm text-emerald-800">
+            <div className="bg-primary/10 rounded-xl border border-primary/20 p-4">
+              <p className="text-xs font-bold text-primary uppercase tracking-wider mb-2">Resumo</p>
+              <p className="text-sm text-primary">
                 <span className="font-bold">{formData.meals.length}</span> refeição(ões)
               </p>
-              <p className="text-sm text-emerald-800">
+              <p className="text-sm text-primary">
                 <span className="font-bold">
                   {formData.meals.reduce((acc, m) => acc + (m.foods?.length || 0), 0)}
                 </span> alimento(s)
@@ -417,21 +418,21 @@ export default function TemplateBuilder() {
         <div className="md:col-span-2 space-y-6">
           {type === 'diet' && (
             <>
-              <div className="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-                <h3 className="font-semibold text-slate-800">Refeições do Plano</h3>
+              <div className="flex justify-between items-center bg-card p-4 rounded-xl shadow-sm border border-border">
+                <h3 className="font-semibold text-foreground">Refeições do Plano</h3>
                 <button
                   onClick={handleAddMeal}
-                  className="text-emerald-600 hover:text-emerald-700 text-sm font-medium flex items-center gap-1 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-lg transition-colors"
+                  className="text-primary hover:text-primary text-sm font-medium flex items-center gap-1 bg-primary/10 hover:bg-primary/15 px-3 py-1.5 rounded-lg transition-colors"
                 >
                   <Plus className="w-4 h-4" /> Adicionar Refeição
                 </button>
               </div>
 
               {formData.meals.length === 0 && (
-                <div className="bg-white rounded-xl border-2 border-dashed border-slate-200 p-10 text-center">
-                  <ChefHat className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-                  <p className="text-slate-500 font-medium mb-1">Nenhuma refeição ainda</p>
-                  <p className="text-sm text-slate-400">Clique em "Adicionar Refeição" para começar</p>
+                <div className="bg-card rounded-xl border-2 border-dashed border-border p-10 text-center">
+                  <ChefHat className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+                  <p className="text-muted-foreground font-medium mb-1">Nenhuma refeição ainda</p>
+                  <p className="text-sm text-muted-foreground">Clique em "Adicionar Refeição" para começar</p>
                 </div>
               )}
 
@@ -461,14 +462,14 @@ export default function TemplateBuilder() {
           )}
 
           {(type === 'meal' || type === 'recipe') && (
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-              <div className="bg-slate-50 p-4 border-b border-slate-200 flex justify-between items-center">
-                <h3 className="font-semibold text-slate-800">
+            <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
+              <div className="bg-muted/40 p-4 border-b border-border flex justify-between items-center">
+                <h3 className="font-semibold text-foreground">
                   {type === 'meal' ? 'Alimentos da Refeição' : 'Ingredientes'}
                 </h3>
                 <button
                   onClick={() => handleOpenAddFood()}
-                  className="text-emerald-600 hover:text-emerald-700 text-sm font-medium flex items-center gap-1 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-lg transition-colors"
+                  className="text-primary hover:text-primary text-sm font-medium flex items-center gap-1 bg-primary/10 hover:bg-primary/15 px-3 py-1.5 rounded-lg transition-colors"
                 >
                   <Plus className="w-4 h-4" />
                   {type === 'recipe' ? 'Adicionar Ingrediente' : 'Adicionar Alimento'}
@@ -477,7 +478,7 @@ export default function TemplateBuilder() {
 
               <div className="p-4">
                 {foodList.length === 0 ? (
-                  <p className="text-sm text-slate-400 text-center py-8 border-2 border-dashed border-slate-100 rounded-lg">
+                  <p className="text-sm text-muted-foreground text-center py-8 border-2 border-dashed border-border rounded-lg">
                     Nenhum item adicionado ainda.
                   </p>
                 ) : (
@@ -498,13 +499,13 @@ export default function TemplateBuilder() {
               </div>
 
               {type === 'recipe' && (
-                <div className="p-4 border-t border-slate-100 bg-slate-50/50">
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Modo de Preparo</label>
+                <div className="p-4 border-t border-border bg-muted/50">
+                  <label className="block text-sm font-medium text-foreground mb-2">Modo de Preparo</label>
                   <textarea
                     value={formData.preparation_method}
                     onChange={(e) => setFormData(prev => ({ ...prev, preparation_method: e.target.value }))}
                     rows={6}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
                     placeholder="Descreva o passo a passo..."
                   />
                 </div>
@@ -527,6 +528,7 @@ export default function TemplateBuilder() {
           initialData={editingFood !== null ? getEditingFoodInitialData() : null}
         />
       )}
+      </main>
     </div>
   );
 }
@@ -538,27 +540,27 @@ const MealCard = React.memo(({
   onEditFood, onRemoveFood, formatFoodUnit
 }) => {
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-      <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 flex justify-between items-center gap-3">
+    <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
+      <div className="bg-muted/40 px-4 py-3 border-b border-border flex justify-between items-center gap-3">
         <div className="flex gap-2 items-center flex-1">
-          <Clock className="w-4 h-4 text-slate-400 shrink-0" />
+          <Clock className="w-4 h-4 text-muted-foreground shrink-0" />
           <input
             type="time"
             value={meal.time}
             onChange={(e) => onUpdateTime(mealIdx, e.target.value)}
-            className="px-2 py-1 border border-slate-200 rounded text-sm bg-white w-28"
+            className="px-2 py-1 border border-border rounded text-sm bg-card w-28"
           />
           <input
             type="text"
             value={meal.name}
             onChange={(e) => onUpdateName(mealIdx, e.target.value)}
-            className="px-2 py-1 border border-slate-200 rounded text-sm bg-white flex-1 font-medium"
+            className="px-2 py-1 border border-border rounded text-sm bg-card flex-1 font-medium"
           />
         </div>
         <div className="flex gap-1 ml-2">
           <button
             onClick={() => onAddFood(mealIdx)}
-            className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded transition-colors"
+            className="p-1.5 text-primary hover:bg-primary/10 rounded transition-colors"
             title="Adicionar Alimento"
           >
             <Plus className="w-4 h-4" />
@@ -577,7 +579,7 @@ const MealCard = React.memo(({
         {meal.foods.length === 0 ? (
           <button
             onClick={() => onAddFood(mealIdx)}
-            className="w-full text-sm text-slate-400 text-center py-4 border-2 border-dashed border-slate-100 rounded-lg hover:border-emerald-200 hover:text-emerald-600 transition-colors"
+            className="w-full text-sm text-muted-foreground text-center py-4 border-2 border-dashed border-border rounded-lg hover:border-primary/20 hover:text-primary transition-colors"
           >
             + Adicionar alimento
           </button>
@@ -605,15 +607,15 @@ const FoodItem = React.memo(({
   food, foodIdx, mealIdx, onEdit, onRemove, formatFoodUnit
 }) => {
   return (
-    <li className="flex justify-between items-center px-3 py-2 hover:bg-slate-50 rounded-lg group border border-transparent hover:border-slate-100 transition-all">
+    <li className="flex justify-between items-center px-3 py-2 hover:bg-muted/40 rounded-lg group border border-transparent hover:border-border transition-all">
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-slate-700 truncate">{food.name}</p>
-        <p className="text-xs text-slate-400">{formatFoodUnit(food)}</p>
+        <p className="text-sm font-medium text-foreground truncate">{food.name}</p>
+        <p className="text-xs text-muted-foreground">{formatFoodUnit(food)}</p>
       </div>
-      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-2">
+      <div className="flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus-within:opacity-100 transition-opacity ml-2">
         <button
           onClick={() => onEdit(mealIdx, foodIdx)}
-          className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded transition-colors"
+          className="p-1.5 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded transition-colors"
           title="Editar"
         >
           <Edit2 className="w-3.5 h-3.5" />

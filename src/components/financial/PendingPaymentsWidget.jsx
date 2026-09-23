@@ -198,7 +198,7 @@ export default function PendingPaymentsWidget({ nutritionistId, onUpdate }) {
                                         <Button
                                             size="sm"
                                             onClick={() => setConfirmDialog(transaction.id)}
-                                            className="flex-1 sm:flex-initial bg-green-600 hover:bg-green-700 text-white"
+                                            className="flex-1 sm:flex-initial bg-primary hover:bg-primary/90 text-primary-foreground"
                                         >
                                             <CheckCircle2 className="w-4 h-4 mr-1.5" />
                                             <span className="hidden sm:inline">Confirmar Pagamento</span>
@@ -245,7 +245,7 @@ export default function PendingPaymentsWidget({ nutritionistId, onUpdate }) {
                         <AlertDialogCancel>Cancelar</AlertDialogCancel>
                         <AlertDialogAction
                             onClick={() => handleConfirmPayment(confirmDialog)}
-                            className="bg-green-600 hover:bg-green-700"
+                            className="bg-primary hover:bg-primary/90"
                         >
                             Confirmar Pagamento
                         </AlertDialogAction>
