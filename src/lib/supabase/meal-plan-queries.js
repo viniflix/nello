@@ -918,7 +918,8 @@ export const recalculateMealNutrition = async (mealId) => {
 
         // Recalcular totais do plano
         if (meal) {
-            await recalculatePlanNutrition(meal.meal_plan_id);
+            const planResult = await recalculatePlanNutrition(meal.meal_plan_id);
+            if (planResult.error) throw planResult.error;
         }
 
         return { data: totals, error: null };
@@ -1654,8 +1655,9 @@ export const getDraftMealPlans = async (patientId, nutritionistId) => {
         // Passo 2: busca o plano COMPLETO para cada um (para recovery no form ou count de itens)
         const draftsPromises = draftMetas.map(meta => getMealPlanById(meta.id));
         const results = await Promise.all(draftsPromises);
-        
-        // Filtra os que deram sucesso
+        const failed = results.find(res => res.error);
+        if (failed) throw failed.error;
+
         const drafts = results
             .filter(res => res.data && !res.error)
             .map(res => res.data);
@@ -1683,6 +1685,7 @@ export const updateDraftMealPlan = async (draftId, planData) => {
                 start_date: planData.start_date || getTodayIsoDate(),
                 end_date: planData.end_date || null,
                 active_days: planData.active_days || ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
+                plan_mode: planData.plan_mode || 'hybrid',
                 updated_at: new Date().toISOString()
             })
             .eq('id', draftId)

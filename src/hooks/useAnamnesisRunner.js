@@ -171,7 +171,7 @@ export function useAnamnesisRunner(patientId) {
             return data;
         },
         onSuccess: () => {
-            queryClient.invalidateQueries(['anamnesis_records', patientId]);
+            queryClient.invalidateQueries({ queryKey: ['anamnesis_records', patientId] });
             toast({ title: 'Rascunho criado', description: 'Você pode começar a preencher a anamnese.' });
         },
         onError: (err) => toast({ title: 'Erro', description: err.message, variant: 'destructive' }),
@@ -195,9 +195,9 @@ export function useAnamnesisRunner(patientId) {
             if (error) throw error;
             return data;
         },
-        onSuccess: async (data) => {
-            queryClient.invalidateQueries(['anamnesis_records', patientId]);
-            queryClient.invalidateQueries(['anamnesis_record', data.id]);
+        onSuccess: async (data, variables) => {
+            queryClient.invalidateQueries({ queryKey: ['anamnesis_records', patientId] });
+            queryClient.invalidateQueries({ queryKey: ['anamnesis_record', data.id] });
 
             // Ao concluir: extrair clinical_flag_keys e salvar no perfil
             if (data.status === 'validated' || data.status === 'submitted') {
@@ -239,10 +239,10 @@ export function useAnamnesisRunner(patientId) {
                         .eq('id', patientId);
                 }
 
-                queryClient.invalidateQueries(['clinical_flags', patientId]);
+                queryClient.invalidateQueries({ queryKey: ['clinical_flags', patientId] });
                 toast({ title: 'Anamnese finalizada!', description: 'Os dados foram registrados no histórico do paciente.' });
             } else {
-                toast({ title: 'Rascunho salvo', description: 'O progresso foi salvo automaticamente.' });
+                if (!variables?.silent) toast({ title: 'Rascunho salvo', description: 'O progresso foi salvo.' });
             }
         },
         onError: (err) => {
@@ -263,8 +263,8 @@ export function useAnamnesisRunner(patientId) {
             if (error) throw error;
         },
         onSuccess: () => {
-            queryClient.invalidateQueries(['anamnesis_records', patientId]);
-            queryClient.invalidateQueries(['patientTimeline', patientId]);
+            queryClient.invalidateQueries({ queryKey: ['anamnesis_records', patientId] });
+            queryClient.invalidateQueries({ queryKey: ['patientTimeline', patientId] });
             toast({ title: 'Anamnese excluída', description: 'O formulário foi excluído com sucesso.' });
         },
         onError: (err) => toast({ title: 'Erro ao excluir', description: err.message, variant: 'destructive' }),
@@ -282,7 +282,7 @@ export function useAnamnesisRunner(patientId) {
             return data;
         },
         onSuccess: (data) => {
-            queryClient.invalidateQueries(['anamnesis_records', patientId]);
+            queryClient.invalidateQueries({ queryKey: ['anamnesis_records', patientId] });
             const url = `${window.location.origin}/f/${data.token}`;
             navigator.clipboard?.writeText(url).catch(() => {});
             toast({

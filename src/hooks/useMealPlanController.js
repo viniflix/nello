@@ -309,6 +309,7 @@ export function useMealPlanController({
             setEditingPlan(null);
             setPendingDraft(null);
             await loadPlans();
+            return true;
         } catch (error) {
             console.error('Erro ao salvar plano:', error);
             toast({
@@ -316,6 +317,7 @@ export function useMealPlanController({
                 description: error?.message || 'Não foi possível salvar o plano alimentar.',
                 variant: 'destructive'
             });
+            return false;
         } finally {
             setSubmitting(false);
         }
@@ -362,6 +364,7 @@ export function useMealPlanController({
             setEditingPlan(null);
             setPendingDraft(null);
             await loadPlans();
+            return true;
         } catch (error) {
             console.error('Erro ao salvar rascunho:', error);
             toast({
@@ -369,6 +372,7 @@ export function useMealPlanController({
                 description: error?.message || 'Não foi possível salvar o rascunho.',
                 variant: 'destructive'
             });
+            return false;
         } finally {
             setSubmitting(false);
         }

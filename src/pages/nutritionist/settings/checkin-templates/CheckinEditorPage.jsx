@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Save, Loader2, Settings2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -10,36 +10,62 @@ import { useToast } from '@/components/ui/use-toast';
 import { FormSkeleton } from '@/components/ui/custom-skeletons';
 import CheckinTemplateBuilder from '@/components/nutritionist/CheckinTemplateBuilder';
 import { validateCheckinTemplate } from '@/lib/validations/formContracts';
+import { useAuth } from '@/contexts/AuthContext';
+import { useShadowDraft } from '@/hooks/useShadowDraft';
+import { ShadowRecovery, ShadowSaveStatus } from '@/components/ui/shadow-save-status';
 
 export default function CheckinEditorPage() {
     const navigate = useNavigate();
     const { templateId } = useParams();
     const { toast } = useToast();
+    const { user } = useAuth();
     const { getTemplate, createTemplate, updateTemplate } = useCheckins();
 
     const [isLoading, setIsLoading] = useState(!!templateId);
     const [isSaving, setIsSaving] = useState(false);
 
-    const [name, setName] = useState('');
-    const [description, setDescription] = useState('');
-    const [frequency, setFrequency] = useState('weekly');
-    const [sendTime, setSendTime] = useState('09:00');
-    const [channel, setChannel] = useState('in_app');
+    const [name, setNameState] = useState('');
+    const [description, setDescriptionState] = useState('');
+    const [frequency, setFrequencyState] = useState('weekly');
+    const [sendTime, setSendTimeState] = useState('09:00');
+    const [channel, setChannelState] = useState('in_app');
     
-    const [fields, setFields] = useState([
+    const [fields, setFieldsState] = useState([
         { label: 'Como você avalia sua adesão à dieta nesta semana?', field_type: 'scale_1_10', options: [], score_weight: 1.0, is_required: true }
     ]);
+    const touchedRef = useRef(false);
+    const shadow = useShadowDraft({ ownerId: user?.id, draftKey: `checkin-template:${templateId || 'new'}`, enabled: Boolean(user?.id) });
+    const setName = (value) => { touchedRef.current = true; setNameState(value); };
+    const setDescription = (value) => { touchedRef.current = true; setDescriptionState(value); };
+    const setFrequency = (value) => { touchedRef.current = true; setFrequencyState(value); };
+    const setSendTime = (value) => { touchedRef.current = true; setSendTimeState(value); };
+    const setChannel = (value) => { touchedRef.current = true; setChannelState(value); };
+    const setFields = (value) => { touchedRef.current = true; setFieldsState(value); };
+    useEffect(() => {
+        if (touchedRef.current && !isLoading && shadow.ready) shadow.queue({ name, description, frequency, sendTime, channel, fields });
+    }, [name, description, frequency, sendTime, channel, fields, isLoading, shadow.ready, shadow.queue]);
+    const restoreShadow = () => {
+        const value = shadow.restore();
+        if (!value) return;
+        touchedRef.current = true;
+        setNameState(value.name || '');
+        setDescriptionState(value.description || '');
+        setFrequencyState(value.frequency || 'weekly');
+        setSendTimeState(value.sendTime || '09:00');
+        setChannelState(value.channel || 'in_app');
+        setFieldsState(value.fields || []);
+    };
 
     useEffect(() => {
         if (templateId) {
             getTemplate(templateId).then(data => {
-                setName(data.name || '');
-                setDescription(data.description || '');
-                setFrequency(data.frequency || 'weekly');
-                setSendTime(data.send_time ? data.send_time.substring(0, 5) : '09:00');
-                setChannel(data.channel || 'in_app');
+                setNameState(data.name || '');
+                setDescriptionState(data.description || '');
+                setFrequencyState(data.frequency || 'weekly');
+                setSendTimeState(data.send_time ? data.send_time.substring(0, 5) : '09:00');
+                setChannelState(data.channel || 'in_app');
                 if (data.checkin_fields && data.checkin_fields.length > 0) {
-                    setFields(data.checkin_fields);
+                    setFieldsState(data.checkin_fields);
                 }
                 setIsLoading(false);
             }).catch(err => {
@@ -64,6 +90,7 @@ export default function CheckinEditorPage() {
             } else {
                 await createTemplate.mutateAsync({ template: templateData, fields });
             }
+            await shadow.discard();
             navigate('/nutritionist/templates?group=forms&ftab=checkins');
         } catch (error) {
             toast({ title: 'Não foi possível salvar', description: error?.message === 'checkin_has_sessions_create_new_template'
@@ -99,6 +126,11 @@ export default function CheckinEditorPage() {
                     {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
                     Salvar Check-in
                 </Button>
+            </div>
+
+            <div className="mb-4 space-y-2">
+                <ShadowRecovery recovery={shadow.recovery} onRestore={restoreShadow} onDiscard={() => { void shadow.discardRecovery(); }} />
+                <ShadowSaveStatus status={shadow.status} onRetry={shadow.flush} />
             </div>
 
             <div className="bg-card rounded-xl border border-border shadow-card-dark flex flex-col p-4 sm:p-6 space-y-8 min-w-0">

@@ -31,6 +31,7 @@ vi.mock('@/lib/supabase/meal-plan-queries', () => ({
 }));
 
 const { useMealPlanDraft } = await import('@/hooks/useMealPlanDraft');
+const { recalculateMealNutrition: mockRecalculateMeal } = await import('@/lib/supabase/meal-plan-queries');
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -96,6 +97,7 @@ describe('useMealPlanDraft — saveMeal', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         mockGetDraft.mockResolvedValue({ data: null, error: null });
+        mockRecalculateMeal.mockResolvedValue({ data: null, error: null });
     });
 
     it('deve retornar null e logar warning se draftId for null', async () => {
@@ -171,6 +173,23 @@ describe('useMealPlanDraft — saveMeal', () => {
         });
 
         // CRÍTICO: status deve ser 'error', não 'saved'
+        expect(result.current.saveStatus).toBe('error');
+    });
+
+    it('não confirma rascunho se o recálculo nutricional falhar', async () => {
+        mockCreateDraft.mockResolvedValue({ data: { id: 10 }, error: null });
+        mockAddMeal.mockResolvedValue({ data: { id: 201 }, error: null });
+        mockAddFoodsToMeal.mockResolvedValue({ data: [], error: null });
+        mockRecalculateMeal.mockResolvedValue({ data: null, error: new Error('totais indisponíveis') });
+        mockDeleteMeal.mockResolvedValue({ error: null });
+        const { result } = renderHook(() => useMealPlanDraft({ ...defaultParams, enabled: false }));
+        await act(async () => { await result.current.startNewDraft(); });
+        let savedId;
+        await act(async () => {
+            savedId = await result.current.saveMeal({ name: 'Almoço', meal_type: 'lunch', foods: [{ food_id: 5, quantity: 100 }] });
+        });
+        expect(savedId).toBeNull();
+        expect(mockDeleteMeal).toHaveBeenCalledWith(201);
         expect(result.current.saveStatus).toBe('error');
     });
 });

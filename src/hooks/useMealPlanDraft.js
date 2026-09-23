@@ -43,7 +43,8 @@ export function useMealPlanDraft({ patientId, nutritionistId, enabled = false })
 
         const checkExistingDraft = async () => {
             setIsInitializing(true);
-            const { data } = await getDraftMealPlan(patientId, nutritionistId);
+            const { data, error } = await getDraftMealPlan(patientId, nutritionistId);
+            if (error) setSaveStatus('error');
             if (data) {
                 setExistingDraft(data);
                 // Não define draftId ainda — aguarda nutricionista escolher "Retomar" ou "Descartar"
@@ -163,7 +164,12 @@ export function useMealPlanDraft({ patientId, nutritionistId, enabled = false })
                 return null;
             }
             // Recalcular totais da refeição e do plano após salvar alimentos
-            await recalculateMealNutrition(newMeal.id);
+            const { error: totalsError } = await recalculateMealNutrition(newMeal.id);
+            if (totalsError) {
+                await deleteMealFromPlan(newMeal.id);
+                setSaveStatus('error');
+                return null;
+            }
         }
 
         setSaveStatus('saved'); // confirmação real: refeição + alimentos persistidos
@@ -175,10 +181,11 @@ export function useMealPlanDraft({ patientId, nutritionistId, enabled = false })
      * @param {number} mealId - ID da refeição no banco (meal_plan_meals.id)
      */
     const removeMeal = useCallback(async (mealId) => {
-        if (!mealId) return;
+        if (!mealId) return false;
         setSaveStatus('saving');
         const { error } = await deleteMealFromPlan(mealId);
         setSaveStatus(error ? 'error' : 'saved');
+        return !error;
     }, []);
 
     /**
@@ -223,7 +230,12 @@ export function useMealPlanDraft({ patientId, nutritionistId, enabled = false })
                     return null; // a refeição antiga permanece intacta
                 }
                 // Recalcular totais da refeição e do plano após salvar alimentos
-                await recalculateMealNutrition(newMeal.id);
+                const { error: totalsError } = await recalculateMealNutrition(newMeal.id);
+                if (totalsError) {
+                    await deleteMealFromPlan(newMeal.id);
+                    setSaveStatus('error');
+                    return null;
+                }
             }
 
             // PASSO 3: AGORA deleta a antiga (nova está garantida)

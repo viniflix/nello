@@ -21,6 +21,8 @@ import { patientAnamnesisListRoute, patientAnamnesisEditRoute } from '@/lib/util
 import { useAuth } from '@/contexts/AuthContext';
 import { FormSkeleton } from '@/components/ui/custom-skeletons';
 import { toPortugueseError } from '@/lib/utils/errorMessages';
+import { useFormAutosave } from '@/hooks/useFormAutosave';
+import { ShadowRecovery, ShadowSaveStatus } from '@/components/ui/shadow-save-status';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -52,6 +54,14 @@ export default function PatientAnamnesisForm() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isExporting, setIsExporting] = useState(false);
     const [isCreating, setIsCreating] = useState(false);
+    const autosave = useFormAutosave({
+        storageKey: user?.id && record?.id ? `nello_anamnesis:${user.id}:${record.id}` : null,
+        enabled: Boolean(record?.id && record.status === 'draft'),
+        serverValue: record?.content || {},
+        save: async (snapshot) => {
+            await updateRecord.mutateAsync({ recordId: record.id, content: snapshot, status: 'draft', silent: true });
+        }
+    });
 
     // Auto-create draft if accessing /new with a templateId
     useEffect(() => {
@@ -69,40 +79,33 @@ export default function PatientAnamnesisForm() {
 
     useEffect(() => {
         if (record?.content) setContent(record.content);
-    }, [record]);
+    // Do not overwrite unsaved typing when a background save refetches this record.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [record?.id]);
 
     const handleDelete = async () => {
         setIsSubmitting(true);
         try {
             await deleteRecord.mutateAsync(record.id);
+            autosave.discard();
             navigate(patientAnamnesisListRoute({ id: patientId, slug: paramValue }));
         } catch (err) {
             setIsSubmitting(false);
         }
     };
 
-    // Auto-save draft every 10s if changed
-    useEffect(() => {
-        if (!record || record.status === 'validated' || record.status === 'submitted') return;
-        const saveTimer = setTimeout(() => {
-            if (JSON.stringify(content) !== JSON.stringify(record.content)) {
-                handleSave('draft', true);
-            }
-        }, 10000);
-        return () => clearTimeout(saveTimer);
-    }, [content, record]);
-
     const handleChange = useCallback((fieldId, value) => {
-        setContent(prev => ({ ...prev, [fieldId]: value }));
-    }, []);
+        const next = { ...content, [fieldId]: value };
+        setContent(next);
+        autosave.queue(next);
+    }, [content, autosave]);
 
     const handleCheckboxChange = useCallback((fieldId, optionValue, checked) => {
-        setContent(prev => {
-            const current = Array.isArray(prev[fieldId]) ? prev[fieldId] : [];
-            if (checked) return { ...prev, [fieldId]: [...current, optionValue] };
-            return { ...prev, [fieldId]: current.filter(v => v !== optionValue) };
-        });
-    }, []);
+        const current = Array.isArray(content[fieldId]) ? content[fieldId] : [];
+        const next = { ...content, [fieldId]: checked ? [...current, optionValue] : current.filter(v => v !== optionValue) };
+        setContent(next);
+        autosave.queue(next);
+    }, [content, autosave]);
 
     const applyPreviousAnswer = (fieldId) => {
         if (previousProfile?.[fieldId] !== undefined) {
@@ -130,11 +133,21 @@ export default function PatientAnamnesisForm() {
 
     const handleSave = async (status = 'draft', isAutoSave = false) => {
         if (status === 'validated' && !validateFields()) return;
+        const flushed = await autosave.flush();
+        if (!flushed) {
+            toast({ title: 'Rascunho não salvo', description: 'Tente novamente antes de finalizar.', variant: 'destructive' });
+            return;
+        }
+        if (status === 'draft') {
+            if (!isAutoSave) toast({ title: 'Rascunho salvo' });
+            return;
+        }
         const isSubmit = status === 'validated';
         if (isSubmit) setIsSubmitting(true);
         else if (!isAutoSave) setIsSaving(true);
         try {
             await updateRecord.mutateAsync({ recordId: record.id, content, status });
+            autosave.discard();
             if (isSubmit) navigate(patientAnamnesisListRoute({ id: patientId, slug: paramValue }));
         } catch (err) {
             console.error('Error saving anamnesis:', err);
@@ -291,7 +304,7 @@ export default function PatientAnamnesisForm() {
     }
 
     const template = record.template;
-    const isReadOnly = record.status === 'completed' || record.status === 'validated';
+    const isReadOnly = ['completed', 'validated', 'submitted', 'pending_patient'].includes(record.status);
 
     return (
         <div className="max-w-4xl mx-auto p-4 md:p-6 space-y-5">
@@ -366,6 +379,11 @@ export default function PatientAnamnesisForm() {
                 </div>
             </div>
 
+            {!isReadOnly && <div className="space-y-2">
+                <ShadowRecovery recovery={autosave.recovery} onRestore={() => { const value = autosave.restore(); if (value) setContent(value); }} onDiscard={autosave.discardRecovery} />
+                <ShadowSaveStatus status={autosave.status} onRetry={autosave.flush} />
+            </div>}
+
             {/* Sprint 8: Painel de Alertas Clínicos */}
             <ClinicalAlertsPanel patientId={patientId} />
 
@@ -380,7 +398,7 @@ export default function PatientAnamnesisForm() {
                         {isReadOnly && (
                             <div className="flex items-center gap-1.5 bg-green-50 text-green-700 border border-green-200 px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0">
                                 <ShieldCheck className="w-4 h-4" />
-                                Concluída — Somente Leitura
+                                {record.status === 'pending_patient' ? 'Aguardando paciente — Somente leitura' : record.status === 'submitted' ? 'Enviada — Somente leitura' : 'Concluída — Somente Leitura'}
                             </div>
                         )}
                     </div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Trash2, X, Edit, ArrowRightLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,8 +27,10 @@ import AddFoodToMealDialog from './AddFoodToMealDialog';
 import { formatQuantityWithUnit } from '@/lib/utils/measureTranslations';
 import SubstitutionDialog from './SubstitutionDialog';
 import { isValidMealTime, normalizeMealTime } from '@/lib/utils/mealTime';
+import { useShadowDraft } from '@/hooks/useShadowDraft';
+import { ShadowRecovery, ShadowSaveStatus } from '@/components/ui/shadow-save-status';
 
-const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null }) => {
+const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null, ownerId, shadowKey }) => {
     const [formData, setFormData] = useState({
         name: '',
         meal_type: '',
@@ -43,6 +45,12 @@ const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null }) => {
     const [substitutingFood, setSubstitutingFood] = useState(null);
     const [errors, setErrors] = useState({});
     const [isSaving, setIsSaving] = useState(false);
+    const touchedRef = useRef(false);
+    const shadow = useShadowDraft({ ownerId, draftKey: shadowKey, enabled: isOpen && Boolean(ownerId && shadowKey) });
+
+    useEffect(() => {
+        if (isOpen && shadow.ready && touchedRef.current) shadow.queue({ formData, foods });
+    }, [isOpen, shadow.ready, shadow.queue, formData, foods]);
 
     const mealTypes = [
         { value: 'breakfast', label: 'Café da Manhã' },
@@ -68,7 +76,16 @@ const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null }) => {
         }
     }, [initialData]);
 
+    const restoreShadow = () => {
+        const value = shadow.restore();
+        if (!value) return;
+        touchedRef.current = true;
+        if (value.formData) setFormData(value.formData);
+        if (Array.isArray(value.foods)) setFoods(value.foods);
+    };
+
     const handleChange = (field, value) => {
+        touchedRef.current = true;
         setFormData(prev => {
             const newData = { ...prev, [field]: value };
 
@@ -86,6 +103,7 @@ const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null }) => {
     };
 
     const handleAddFood = (foodData) => {
+        touchedRef.current = true;
         setFoods(prev => [...prev, { ...foodData, tempId: Date.now() }]);
     };
 
@@ -95,6 +113,7 @@ const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null }) => {
     };
 
     const handleUpdateFood = (updatedFoodData) => {
+        touchedRef.current = true;
         setFoods(prev => prev.map(f =>
             f.tempId === editingFood.tempId
                 ? { ...updatedFoodData, tempId: f.tempId }
@@ -104,6 +123,7 @@ const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null }) => {
     };
 
     const handleRemoveFood = (tempId) => {
+        touchedRef.current = true;
         setFoods(prev => prev.filter(f => f.tempId !== tempId));
     };
 
@@ -113,6 +133,7 @@ const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null }) => {
     };
 
     const handleSaveSubstitutions = (substitutes) => {
+        touchedRef.current = true;
         setFoods(prev => prev.map(f => 
             f.tempId === substitutingFood.tempId 
                 ? { ...f, substitutes } 
@@ -191,6 +212,7 @@ const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null }) => {
                 }));
                 return;
             }
+            await shadow.discard();
             handleClose();
         } catch {
             setErrors((current) => ({
@@ -203,6 +225,7 @@ const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null }) => {
     };
 
     const handleClose = () => {
+        touchedRef.current = false;
         setFormData({
             name: '',
             meal_type: '',
@@ -228,6 +251,11 @@ const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null }) => {
                             Configure a refeição e adicione os alimentos
                         </DialogDescription>
                     </DialogHeader>
+
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                        <ShadowRecovery recovery={shadow.recovery} onRestore={restoreShadow} onDiscard={() => { void shadow.discardRecovery(); }} />
+                        <ShadowSaveStatus status={shadow.status} onRetry={shadow.flush} />
+                    </div>
 
                     <div className="space-y-6">
                         {/* Informações da Refeição */}
@@ -444,6 +472,8 @@ const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null }) => {
 
             {/* Dialog para adicionar/editar alimento */}
             <AddFoodToMealDialog
+                ownerId={ownerId}
+                shadowKey={shadowKey ? `${shadowKey}:food:${editingFood?.tempId || 'new'}` : null}
                 isOpen={showAddFood}
                 onClose={handleFoodDialogClose}
                 onAdd={editingFood ? handleUpdateFood : handleAddFood}

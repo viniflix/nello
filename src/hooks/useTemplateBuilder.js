@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/components/ui/use-toast';
 import { getDietTemplateWithMeals, getFoodsMapByIds } from '@/lib/supabase/template-queries';
+import { useShadowDraft } from '@/hooks/useShadowDraft';
 
 /**
  * Hook para criar e editar templates de nutrição.
@@ -19,7 +20,7 @@ export function useTemplateBuilder(type, templateId = null) {
   const [loadedUpdatedAt, setLoadedUpdatedAt] = useState(null);
   const isEditMode = Boolean(templateId);
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormDataState] = useState({
     name: '',
     description: '',
     tags: [],
@@ -30,6 +31,27 @@ export function useTemplateBuilder(type, templateId = null) {
     yield_unit: 'portion',
     preparation_method: '',
   });
+  const touchedRef = useRef(false);
+  const shadow = useShadowDraft({
+    ownerId: user?.id,
+    draftKey: `protocol:${type}:${templateId || 'new'}`,
+    enabled: Boolean(user?.id && type)
+  });
+  const { ready: shadowReady, queue: queueShadow } = shadow;
+  const setFormData = (next) => {
+    touchedRef.current = true;
+    setFormDataState(next);
+  };
+  useEffect(() => {
+    if (touchedRef.current && !isLoadingTemplate && shadowReady) queueShadow({ formData });
+  }, [formData, isLoadingTemplate, shadowReady, queueShadow]);
+  const restoreShadow = () => {
+    const value = shadow.restore();
+    if (value?.formData) {
+      touchedRef.current = true;
+      setFormDataState(value.formData);
+    }
+  };
 
   // Carregar dados do template em modo de edição
   useEffect(() => {
@@ -47,7 +69,7 @@ export function useTemplateBuilder(type, templateId = null) {
       if (type === 'diet') {
         const { data } = await getDietTemplateWithMeals(id);
         if (data) {
-          setFormData({
+          setFormDataState({
             name: data.name || '',
             description: data.description || '',
             tags: data.tags || [],
@@ -92,7 +114,7 @@ export function useTemplateBuilder(type, templateId = null) {
         const foodIds = (mealData.meal_template_foods || []).map(f => f.food_id);
         const foodsMap = await getFoodsMapByIds(foodIds);
 
-        setFormData({
+        setFormDataState({
           name: mealData.name || '',
           description: mealData.description || '',
           tags: mealData.tags || [],
@@ -135,7 +157,7 @@ export function useTemplateBuilder(type, templateId = null) {
         const foodIds = (recipeData.recipe_ingredients || []).map(f => f.food_id);
         const foodsMap = await getFoodsMapByIds(foodIds);
 
-        setFormData({
+        setFormDataState({
           name: recipeData.name || '',
           description: recipeData.description || '',
           tags: [],
@@ -320,6 +342,7 @@ export function useTemplateBuilder(type, templateId = null) {
         else if (type === 'meal') await saveMealTemplate();
         else if (type === 'recipe') await saveRecipe();
       }
+      await shadow.discard();
     } catch (err) {
       console.error('[useTemplateBuilder] Save error:', err.message);
       toast({ title: 'Erro ao salvar', description: err.message || 'Tente novamente.', variant: 'destructive' });
@@ -329,11 +352,14 @@ export function useTemplateBuilder(type, templateId = null) {
   };
 
   return {
+    ownerId: user?.id,
     loading,
     isLoadingTemplate,
     isEditMode,
     formData,
     setFormData,
     handleSave,
+    shadow,
+    restoreShadow,
   };
 }

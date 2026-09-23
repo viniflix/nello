@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Plus, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -15,8 +15,10 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import FoodSelector from './FoodSelector';
 import { PremiumPortionSelector } from '@/components/nutrition';
 import { formatNutrient } from '@/lib/utils';
+import { useShadowDraft } from '@/hooks/useShadowDraft';
+import { ShadowRecovery, ShadowSaveStatus } from '@/components/ui/shadow-save-status';
 
-const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName, initialData = null }) => {
+const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName, initialData = null, ownerId, shadowKey }) => {
     const [selectedFood, setSelectedFood] = useState(null);
     const [portion, setPortion] = useState({ quantity: 100, measureId: null, measureCode: 'gram' });
     const [notes, setNotes] = useState('');
@@ -24,6 +26,24 @@ const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName, initialData = n
     const [calculatedNutrition, setCalculatedNutrition] = useState(null);
     const [showFoodSelector, setShowFoodSelector] = useState(false);
     const [errors, setErrors] = useState({});
+    const [isApplying, setIsApplying] = useState(false);
+    const touchedRef = useRef(false);
+    const shadow = useShadowDraft({ ownerId, draftKey: shadowKey, enabled: isOpen && Boolean(ownerId && shadowKey) });
+    useEffect(() => {
+        if (isOpen && shadow.ready && touchedRef.current) {
+            shadow.queue({ selectedFood, portion, notes, patientDescription, calculatedNutrition });
+        }
+    }, [isOpen, shadow.ready, shadow.queue, selectedFood, portion, notes, patientDescription, calculatedNutrition]);
+    const restoreShadow = () => {
+        const value = shadow.restore();
+        if (!value) return;
+        touchedRef.current = true;
+        setSelectedFood(value.selectedFood || null);
+        setPortion(value.portion || { quantity: 100, measureId: null, measureCode: 'gram' });
+        setNotes(value.notes || '');
+        setPatientDescription(value.patientDescription || '');
+        setCalculatedNutrition(value.calculatedNutrition || null);
+    };
 
     // Popular campos quando está editando
     useEffect(() => {
@@ -51,6 +71,7 @@ const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName, initialData = n
     }, [initialData]);
 
     const handleFoodSelect = (food) => {
+        touchedRef.current = true;
         setSelectedFood(food);
         setShowFoodSelector(false);
         // Resetar porção ao trocar alimento
@@ -60,6 +81,7 @@ const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName, initialData = n
 
     // Receber nutrição calculada do PortionSelector (fonte única de verdade)
     const handleNutritionChange = (nutrition) => {
+        touchedRef.current = true;
         setCalculatedNutrition(nutrition);
     };
 
@@ -78,7 +100,8 @@ const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName, initialData = n
         return Object.keys(newErrors).length === 0;
     };
 
-    const handleAdd = () => {
+    const handleAdd = async () => {
+        if (isApplying) return;
         if (!validate()) return;
 
         const unitCode = portion.measureCode || portion.measureId || 'gram';
@@ -96,11 +119,21 @@ const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName, initialData = n
             patient_description: patientDescription.trim() || null
         };
 
-        onAdd(foodData);
-        handleClose();
+        setIsApplying(true);
+        try {
+            const saved = await onAdd(foodData);
+            if (saved === false) throw new Error('Não foi possível adicionar o alimento.');
+            await shadow.discard();
+            handleClose();
+        } catch {
+            setErrors((current) => ({ ...current, save: 'Não foi possível adicionar o alimento. O rascunho foi mantido.' }));
+        } finally {
+            setIsApplying(false);
+        }
     };
 
     const handleClose = () => {
+        touchedRef.current = false;
         setSelectedFood(null);
         setPortion({ quantity: 100, measureId: null, measureCode: 'gram', measure: null });
         setNotes('');
@@ -125,6 +158,11 @@ const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName, initialData = n
                             }
                         </DialogDescription>
                     </DialogHeader>
+
+                    {ownerId && shadowKey && <div className="space-y-2">
+                        <ShadowRecovery recovery={shadow.recovery} onRestore={restoreShadow} onDiscard={() => { void shadow.discardRecovery(); }} />
+                        <ShadowSaveStatus status={shadow.status} onRetry={shadow.flush} />
+                    </div>}
 
                     <div className="space-y-4">
                         {/* Seletor de Alimento */}
@@ -181,7 +219,7 @@ const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName, initialData = n
                                     rows={1}
                                     placeholder={selectedFood ? `Ex: ${selectedFood.name}` : "Ex: Banana prata média"}
                                     value={patientDescription}
-                                    onChange={(e) => setPatientDescription(e.target.value)}
+                                    onChange={(e) => { touchedRef.current = true; setPatientDescription(e.target.value); }}
                                     className="pr-20"
                                 />
                                 {patientDescription && (
@@ -189,7 +227,7 @@ const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName, initialData = n
                                         variant="ghost"
                                         size="xs"
                                         className="absolute right-2 top-2 h-7 text-[10px] text-muted-foreground hover:text-primary border hover:bg-primary/5"
-                                        onClick={() => setPatientDescription('')}
+                                        onClick={() => { touchedRef.current = true; setPatientDescription(''); }}
                                     >
                                         Restaurar nome original
                                     </Button>
@@ -202,7 +240,7 @@ const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName, initialData = n
                             <PremiumPortionSelector
                                 food={selectedFood}
                                 value={portion}
-                                onChange={setPortion}
+                                onChange={(value) => { touchedRef.current = true; setPortion(value); }}
                                 showNutrition={false}
                                 onNutritionChange={handleNutritionChange}
                             />
@@ -250,17 +288,18 @@ const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName, initialData = n
                                 rows={2}
                                 placeholder="Ex: sem sal, sem açúcar, etc."
                                 value={notes}
-                                onChange={(e) => setNotes(e.target.value)}
+                                onChange={(e) => { touchedRef.current = true; setNotes(e.target.value); }}
                             />
                         </div>
                     </div>
 
                     <DialogFooter>
-                        <Button variant="outline" onClick={handleClose}>
+                        {errors.save && <p role="alert" className="text-xs text-destructive">{errors.save}</p>}
+                        <Button variant="outline" onClick={handleClose} disabled={isApplying}>
                             <X className="h-4 w-4 mr-2" />
                             Cancelar
                         </Button>
-                        <Button onClick={handleAdd}>
+                        <Button onClick={handleAdd} disabled={isApplying}>
                             <Plus className="h-4 w-4 mr-2" />
                             {initialData ? 'Atualizar' : 'Adicionar'}
                         </Button>

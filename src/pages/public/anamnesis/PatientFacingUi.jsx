@@ -20,6 +20,8 @@ import { AnamnesisWizard } from '@/components/anamnesis/AnamnesisWizard';
 import { isFieldVisible } from '@/lib/utils/conditionalLogic';
 import { Card, CardContent } from '@/components/ui/card';
 import { isUuid } from '@/lib/utils/patientRoutes';
+import { useFormAutosave } from '@/hooks/useFormAutosave';
+import { ShadowRecovery, ShadowSaveStatus } from '@/components/ui/shadow-save-status';
 
 // Tipos de erro mapeados da RPC — cada um com tela própria
 const ERROR_SCREENS = {
@@ -85,6 +87,23 @@ export default function PatientFacingUi() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errorCode, setErrorCode] = useState(null);
     const [isCompleted, setIsCompleted] = useState(false);
+    const autosave = useFormAutosave({
+        storageKey: record?.id ? `nello_public_anamnesis:${record.id}:${token}` : null,
+        enabled: Boolean(record?.id && !isCompleted),
+        serverValue: { content: record?.content || {}, lgpdConsented: record?.lgpd_consented || false },
+        save: async (snapshot) => {
+            const { error } = await supabase.rpc('submit_anamnesis_by_token', {
+                p_token: token,
+                p_content: snapshot.content,
+                p_status: 'draft',
+                p_lgpd_consented: snapshot.lgpdConsented,
+                p_ip: null,
+                p_clinical_flags: null
+            });
+            if (error) throw error;
+            setRecord(prev => ({ ...prev, content: snapshot.content, lgpd_consented: snapshot.lgpdConsented }));
+        }
+    });
 
     const { uploadAttachment, deleteAttachment, getSignedUrl } = useAnamnesisAttachments(
         record?.id,
@@ -133,32 +152,23 @@ export default function PatientFacingUi() {
         if (token) fetchAnamnesis();
     }, [token]);
 
-    // Auto-save draft a cada 10 segundos (só se não completado)
-    useEffect(() => {
-        if (!record || isCompleted) return;
-        const timer = setTimeout(() => {
-            if (JSON.stringify(content) !== JSON.stringify(record.content)) {
-                handleSave('draft', true);
-            }
-        }, 10000);
-        return () => clearTimeout(timer);
-    }, [content, record, isCompleted]);
-
     const handleChange = useCallback((fieldId, value) => {
-        setContent((prev) => ({ ...prev, [fieldId]: value }));
-    }, []);
+        const next = { ...content, [fieldId]: value };
+        setContent(next);
+        autosave.queue({ content: next, lgpdConsented });
+    }, [content, lgpdConsented, autosave]);
 
     const handleCheckboxChange = useCallback((fieldId, optionValue, checked) => {
-        setContent((prev) => {
-            const current = Array.isArray(prev[fieldId]) ? prev[fieldId] : [];
-            return {
-                ...prev,
-                [fieldId]: checked
-                    ? [...current, optionValue]
-                    : current.filter((v) => v !== optionValue),
-            };
-        });
-    }, []);
+        const current = Array.isArray(content[fieldId]) ? content[fieldId] : [];
+        const next = { ...content, [fieldId]: checked ? [...current, optionValue] : current.filter((v) => v !== optionValue) };
+        setContent(next);
+        autosave.queue({ content: next, lgpdConsented });
+    }, [content, lgpdConsented, autosave]);
+
+    const handleConsentChange = (next) => {
+        setLgpdConsented(next);
+        autosave.queue({ content, lgpdConsented: next });
+    };
 
     // Validação agora é feita por seção dentro do AnamnesisWizard
     // A validação completa é mantida como fallback de segurança
@@ -198,6 +208,15 @@ export default function PatientFacingUi() {
 
     const handleSave = async (status = 'draft', isAutoSave = false) => {
         if (status === 'submitted' && !validateFields()) return;
+        const flushed = await autosave.flush();
+        if (!flushed) {
+            toast({ title: 'Respostas não salvas', description: 'Tente novamente antes de enviar.', variant: 'destructive' });
+            return;
+        }
+        if (status === 'draft') {
+            if (!isAutoSave) toast({ title: 'Progresso salvo', description: 'Você pode continuar depois.' });
+            return;
+        }
         if (status === 'submitted') setIsSubmitting(true);
         else if (!isAutoSave) setIsSaving(true);
 
@@ -242,6 +261,7 @@ export default function PatientFacingUi() {
             setRecord((prev) => ({ ...prev, content, status }));
 
             if (status === 'submitted') {
+                autosave.discard();
                 setIsCompleted(true);
                 toast({
                     title: 'Questionário enviado!',
@@ -439,6 +459,14 @@ export default function PatientFacingUi() {
                     )}
                 </div>
 
+                <div className="space-y-2">
+                    <ShadowRecovery recovery={autosave.recovery} onRestore={() => {
+                        const value = autosave.restore();
+                        if (value) { setContent(value.content || {}); setLgpdConsented(Boolean(value.lgpdConsented)); }
+                    }} onDiscard={autosave.discardRecovery} />
+                    <ShadowSaveStatus status={autosave.status} onRetry={autosave.flush} />
+                </div>
+
                 {/* Formulário Paginado (Wizard Mode) */}
                 <AnamnesisWizard
                     recordId={record.id}
@@ -446,7 +474,7 @@ export default function PatientFacingUi() {
                     content={content}
                     renderField={renderField}
                     lgpdConsented={lgpdConsented}
-                    setLgpdConsented={setLgpdConsented}
+                    setLgpdConsented={handleConsentChange}
                     onSaveDraft={() => handleSave('draft')}
                     onSubmit={() => handleSave('submitted')}
                     isSaving={isSaving}

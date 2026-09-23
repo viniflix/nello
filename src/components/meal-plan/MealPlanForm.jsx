@@ -30,6 +30,8 @@ import ImportMealFromProtocolDialog from './ImportMealFromProtocolDialog';
 import { getReferenceValues, simulateMealPlanPortionAdjustment, getMealPlanById } from '@/lib/supabase/meal-plan-queries';
 import { importDietTemplateMealsToPlan } from '@/lib/supabase/template-queries';
 import { useMealPlanDraft } from '@/hooks/useMealPlanDraft';
+import { useShadowDraft } from '@/hooks/useShadowDraft';
+import { ShadowRecovery, ShadowSaveStatus } from '@/components/ui/shadow-save-status';
 
 const SaveStatusIndicator = ({ status }) => {
     if (status === 'saving') return (
@@ -88,6 +90,13 @@ const MealPlanForm = ({
     const [portionMealId, setPortionMealId] = useState('');
     const [portionFoodId, setPortionFoodId] = useState('');
     const [isResuming, setIsResuming] = useState(false);
+    const shadowTouchedRef = useRef(false);
+    const loadedPlanIdRef = useRef(null);
+    const shadow = useShadowDraft({
+        ownerId: nutritionistId,
+        draftKey: patientId ? `meal-plan:${patientId}:${initialData?.id || 'new'}` : null,
+        enabled: Boolean(patientId && nutritionistId)
+    });
 
     // Draft auto-save — only active when creating a new plan (not editing)
     // enabled=false quando já temos um pendingDraft vindo da página mãe (evita double query)
@@ -96,6 +105,20 @@ const MealPlanForm = ({
         nutritionistId,
         enabled: !isEditing && !pendingDraft
     });
+
+    useEffect(() => {
+        if (shadowTouchedRef.current && shadow.ready) {
+            shadow.queue({ formData, meals });
+        }
+    }, [formData, meals, shadow.ready, shadow.queue]);
+
+    const restoreShadow = () => {
+        const recovered = shadow.restore();
+        if (!recovered) return;
+        shadowTouchedRef.current = true;
+        if (recovered.formData) setFormData(recovered.formData);
+        if (Array.isArray(recovered.meals)) setMeals(recovered.meals);
+    };
 
     // Ref para garantir auto-resume executar só uma vez
     const hasAutoResumed = useRef(false);
@@ -124,7 +147,8 @@ const MealPlanForm = ({
 
     // Populate form when editing existing plan
     useEffect(() => {
-        if (initialData) {
+        if (initialData && loadedPlanIdRef.current !== initialData.id) {
+            loadedPlanIdRef.current = initialData.id;
             setFormData({
                 name: initialData.name || '',
                 description: initialData.description || '',
@@ -204,6 +228,8 @@ const MealPlanForm = ({
     };
 
     const handleDiscardDraftAndStartFresh = async () => {
+        await shadow.discard();
+        shadowTouchedRef.current = false;
         if (pendingDraft) {
             await import('@/lib/supabase/meal-plan-queries').then(m => m.deleteDraftMealPlan(pendingDraft.id));
             onDraftDiscarded?.();
@@ -226,6 +252,7 @@ const MealPlanForm = ({
     };
 
     const handleChange = (field, value) => {
+        shadowTouchedRef.current = true;
         const newData = { ...formData, [field]: value };
         setFormData(newData);
         if (errors[field]) setErrors(prev => ({ ...prev, [field]: null }));
@@ -252,6 +279,7 @@ const MealPlanForm = ({
     const handleSelectWeekends = () => handleChange('active_days', ['saturday', 'sunday']);
 
     const handleAddMeal = async (mealData) => {
+        shadowTouchedRef.current = true;
         let activeDraftId = draft.draftId;
 
         // Criação LAZY: se ainda não tem draft, cria agora (na 1ª refeição)
@@ -283,6 +311,7 @@ const MealPlanForm = ({
     };
 
     const handleUpdateMeal = async (updatedMeal) => {
+        shadowTouchedRef.current = true;
         const mealIndex = meals.findIndex(m => m.tempId === editingMeal.tempId);
         let newDbId = editingMeal.dbId;
 
@@ -302,8 +331,10 @@ const MealPlanForm = ({
     };
 
     const handleDeleteMeal = async (meal) => {
+        shadowTouchedRef.current = true;
         if (!isEditing && draft.draftId && meal.dbId) {
-            await draft.removeMeal(meal.dbId);
+            const removed = await draft.removeMeal(meal.dbId);
+            if (!removed) return;
         }
         setMeals(prev => prev.filter(m => m.tempId !== meal.tempId));
     };
@@ -329,7 +360,7 @@ const MealPlanForm = ({
     };
 
     // Button: "Aplicar Plano Alimentar" — promotes draft to active, or updates existing
-    const handleApplyPlan = (e) => {
+    const handleApplyPlan = async (e) => {
         e.preventDefault();
         if (!validate()) return;
 
@@ -343,11 +374,12 @@ const MealPlanForm = ({
             draftId: draft.draftId || null
         };
 
-        onSubmit(planData, initialData?.id);
+        const saved = await onSubmit(planData, initialData?.id);
+        if (saved) await shadow.discard();
     };
 
     // Button: "Salvar como Rascunho" — saves plan without activating
-    const handleSaveAsInactivePlan = (e) => {
+    const handleSaveAsInactivePlan = async (e) => {
         e.preventDefault();
         if (!formData.name.trim()) {
             setErrors({ name: 'Dê um nome ao plano antes de salvar' });
@@ -365,7 +397,8 @@ const MealPlanForm = ({
             saveAsInactive: true
         };
 
-        onSaveDraft?.(planData);
+        const saved = await onSaveDraft?.(planData);
+        if (saved) await shadow.discard();
     };
 
     // Button: "Cancelar" — discards draft and closes form
@@ -373,6 +406,7 @@ const MealPlanForm = ({
         if (!isEditing && draft.draftId) {
             await draft.discardDraft();
         }
+        await shadow.discard();
         onCancel();
     };
 
@@ -422,6 +456,7 @@ const MealPlanForm = ({
 
     const handleApplyPortionAdjustment = () => {
         if (!portionSimulation?.meals?.length) return;
+        shadowTouchedRef.current = true;
         setMeals(portionSimulation.meals);
         setPortionScaleFactor(1);
     };
@@ -493,11 +528,15 @@ const MealPlanForm = ({
                 )}
 
                 {/* Informações Básicas */}
+                <ShadowRecovery recovery={shadow.recovery} onRestore={restoreShadow} onDiscard={() => { void shadow.discardRecovery(); }} />
                 <Card>
                     <CardHeader>
                         <div className="flex items-center justify-between">
                             <CardTitle className="text-lg">Informações do Plano</CardTitle>
-                            {!isEditing && <SaveStatusIndicator status={draft.saveStatus} />}
+                            <div className="flex flex-wrap items-center gap-2">
+                                {!isEditing && draft.saveStatus === 'error' && <SaveStatusIndicator status={draft.saveStatus} />}
+                                <ShadowSaveStatus status={shadow.status} onRetry={shadow.flush} />
+                            </div>
                         </div>
                     </CardHeader>
                     <CardContent className="space-y-4">
@@ -911,6 +950,8 @@ const MealPlanForm = ({
             {/* Dialog de Refeição */}
             <MealPlanMealForm
                 isOpen={showMealForm}
+                ownerId={nutritionistId}
+                shadowKey={patientId ? `meal-plan-meal:${patientId}:${initialData?.id || 'new'}:${editingMeal?.tempId || 'new'}` : null}
                 onClose={() => { setShowMealForm(false); setEditingMeal(null); }}
                 onSave={editingMeal ? handleUpdateMeal : handleAddMeal}
                 initialData={editingMeal}
@@ -922,6 +963,7 @@ const MealPlanForm = ({
                 onOpenChange={setShowImportMealDialog}
                 nutritionistId={nutritionistId}
                 onImport={async (templateMeals, templateId) => {
+                    shadowTouchedRef.current = true;
                     let importedIds = [];
                     if (!isEditing) {
                         const existingDraftId = draft.draftId;

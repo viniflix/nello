@@ -17,6 +17,10 @@ vi.mock('@/contexts/AuthContext', () => ({
   useAuth: vi.fn(),
 }));
 
+vi.mock('@/hooks/useShadowDraft', () => ({
+  useShadowDraft: () => ({ ready: true, status: 'idle', recovery: null, queue: vi.fn(), flush: vi.fn(), discard: vi.fn().mockResolvedValue(true), restore: vi.fn() }),
+}));
+
 vi.mock('react-router-dom', () => ({
   useNavigate: vi.fn(),
 }));

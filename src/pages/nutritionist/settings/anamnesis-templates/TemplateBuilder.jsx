@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Plus, Save, Trash2, GripVertical, Settings2, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,9 @@ import { useAnamnesisTemplates } from '@/hooks/useAnamnesisTemplates';
 import { useToast } from '@/components/ui/use-toast';
 import { FormSkeleton } from '@/components/ui/custom-skeletons';
 import { cloneAnamnesisSections, validateAnamnesisTemplate } from '@/lib/validations/formContracts';
+import { useAuth } from '@/contexts/AuthContext';
+import { useShadowDraft } from '@/hooks/useShadowDraft';
+import { ShadowRecovery, ShadowSaveStatus } from '@/components/ui/shadow-save-status';
 
 const FIELD_TYPES = [
   { value: 'text', label: 'Texto Curto' },
@@ -27,14 +30,31 @@ export default function TemplateBuilder() {
     const navigate = useNavigate();
     const { templateId } = useParams();
     const { toast } = useToast();
+    const { user } = useAuth();
     const { getTemplate, createTemplate, updateTemplate } = useAnamnesisTemplates();
 
     const [isLoading, setIsLoading] = useState(!!templateId);
     const [isSaving, setIsSaving] = useState(false);
 
-    const [title, setTitle] = useState('');
-    const [description, setDescription] = useState('');
-    const [sections, setSections] = useState([]);
+    const [title, setTitleState] = useState('');
+    const [description, setDescriptionState] = useState('');
+    const [sections, setSectionsState] = useState([]);
+    const touchedRef = useRef(false);
+    const shadow = useShadowDraft({ ownerId: user?.id, draftKey: `anamnesis-template:${templateId || 'new'}`, enabled: Boolean(user?.id) });
+    const setTitle = (value) => { touchedRef.current = true; setTitleState(value); };
+    const setDescription = (value) => { touchedRef.current = true; setDescriptionState(value); };
+    const setSections = (value) => { touchedRef.current = true; setSectionsState(value); };
+    useEffect(() => {
+        if (touchedRef.current && !isLoading && shadow.ready) shadow.queue({ title, description, sections });
+    }, [title, description, sections, isLoading, shadow.ready, shadow.queue]);
+    const restoreShadow = () => {
+        const value = shadow.restore();
+        if (!value) return;
+        touchedRef.current = true;
+        setTitleState(value.title || '');
+        setDescriptionState(value.description || '');
+        setSectionsState(value.sections || []);
+    };
     const [isSystemDefault, setIsSystemDefault] = useState(false);
 
     // Field Editor State
@@ -46,8 +66,8 @@ export default function TemplateBuilder() {
             getTemplate(templateId).then(data => {
                 const isDefault = data.is_system_default;
                 setIsSystemDefault(isDefault);
-                setTitle(isDefault ? `${data.title} (Cópia)` : data.title);
-                setDescription(data.description || '');
+                setTitleState(isDefault ? `${data.title} (Cópia)` : data.title);
+                setDescriptionState(data.description || '');
                 // Para clones, removemos os IDs antigos para forçar criação de novos no DB
                 let loadedSections = [];
                 if (Array.isArray(data.sections)) loadedSections = data.sections;
@@ -55,7 +75,7 @@ export default function TemplateBuilder() {
 
                 const processSections = isDefault ? cloneAnamnesisSections(loadedSections) : loadedSections;
                 
-                setSections(processSections);
+                setSectionsState(processSections);
                 setIsLoading(false);
                 if (processSections.length > 0) setActiveSectionId(processSections[0].id);
             }).catch(err => {
@@ -65,7 +85,7 @@ export default function TemplateBuilder() {
         } else {
             // New Template defaults
             const newId = crypto.randomUUID();
-            setSections([{ id: newId, title: 'Nova Seção', fields: [] }]);
+            setSectionsState([{ id: newId, title: 'Nova Seção', fields: [] }]);
             setActiveSectionId(newId);
         }
     }, [templateId, getTemplate, navigate, toast]);
@@ -80,10 +100,12 @@ export default function TemplateBuilder() {
         try {
             if (templateId && !isSystemDefault) {
                 await updateTemplate.mutateAsync({ id: templateId, title, description, sections });
+                await shadow.discard();
                 toast({ title: 'Sucesso', description: 'Formulário atualizado.' });
                 navigate('/nutritionist/templates?group=forms&ftab=forms');
             } else {
                 await createTemplate.mutateAsync({ title, description, sections });
+                await shadow.discard();
                 toast({ title: 'Sucesso', description: 'Novo formulário criado.' });
                 navigate('/nutritionist/templates?group=forms&ftab=forms');
             }
@@ -189,6 +211,11 @@ export default function TemplateBuilder() {
                     {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
                     Salvar Template
                 </Button>
+            </div>
+
+            <div className="mb-4 space-y-2">
+                <ShadowRecovery recovery={shadow.recovery} onRestore={restoreShadow} onDiscard={() => { void shadow.discardRecovery(); }} />
+                <ShadowSaveStatus status={shadow.status} onRetry={shadow.flush} />
             </div>
 
             <div className="flex flex-col lg:flex-row gap-6 flex-1 min-h-0 pb-6 lg:pb-0">

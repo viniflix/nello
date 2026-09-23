@@ -8,12 +8,13 @@ import {
   Trash2, Edit2, Loader2, Tag, X, Clock, ChefHat
 } from 'lucide-react';
 import AddFoodToMealDialog from '@/components/meal-plan/AddFoodToMealDialog';
+import { ShadowRecovery, ShadowSaveStatus } from '@/components/ui/shadow-save-status';
 
 export default function TemplateBuilder() {
   const { type, id } = useParams(); // /new/:type  ou  /edit/:type/:id
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { formData, setFormData, handleSave, loading, isLoadingTemplate, isEditMode } = useTemplateBuilder(type, id || null);
+  const { ownerId, formData, setFormData, handleSave, loading, isLoadingTemplate, isEditMode, shadow, restoreShadow } = useTemplateBuilder(type, id || null);
 
   const [isAddFoodOpen, setIsAddFoodOpen] = useState(false);
   const [activeMealIndex, setActiveMealIndex] = useState(null);
@@ -76,10 +77,12 @@ export default function TemplateBuilder() {
 
   // Sincronizar tagsRaw quando formData.tags carrega (modo edição)
   useEffect(() => {
-    if (formData.tags.length > 0) {
+    if (typeof formData._tagsRaw === 'string') {
+      setTagsRaw(formData._tagsRaw);
+    } else if (formData.tags.length > 0) {
       setTagsRaw(formData.tags.join(', '));
     }
-  }, [formData.tags.length]);
+  }, [formData._tagsRaw, formData.tags.length]);
 
   const getTitle = () => {
     const label = { diet: 'Dieta Padrão', meal: 'Refeição', recipe: 'Receita' }[type] || 'Template';
@@ -106,7 +109,7 @@ export default function TemplateBuilder() {
 
   const handleTagsBlur = () => {
     const parsed = parseTagsFromRaw(tagsRaw);
-    setFormData(prev => ({ ...prev, tags: [...new Set(parsed)] }));
+    setFormData(prev => ({ ...prev, tags: [...new Set(parsed)], _tagsRaw: parsed.join(', ') }));
     // Limpar raw após confirmar
     setTagsRaw(parsed.join(', '));
   };
@@ -122,9 +125,10 @@ export default function TemplateBuilder() {
     // Se a última letra digitada for uma vírgula, confirma a tag imediatamente
     if (val.endsWith(',')) {
       const parsed = parseTagsFromRaw(val);
-      setFormData(prev => ({ ...prev, tags: [...new Set([...prev.tags, ...parsed])] }));
+      setFormData(prev => ({ ...prev, tags: [...new Set([...prev.tags, ...parsed])], _tagsRaw: '' }));
       setTagsRaw('');
     } else {
+      setFormData(prev => ({ ...prev, _tagsRaw: val }));
       setTagsRaw(val);
     }
   };
@@ -133,7 +137,7 @@ export default function TemplateBuilder() {
     setFormData(prev => {
       const newTags = prev.tags.filter((_, i) => i !== idx);
       setTagsRaw(newTags.join(', '));
-      return { ...prev, tags: newTags };
+      return { ...prev, tags: newTags, _tagsRaw: newTags.join(', ') };
     });
   };
 
@@ -299,6 +303,11 @@ export default function TemplateBuilder() {
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
           <span>{loading ? 'Salvando...' : (isEditMode ? 'Salvar Alterações' : 'Salvar Template')}</span>
         </button>
+      </div>
+
+      <div className="mb-4 space-y-2">
+        <ShadowRecovery recovery={shadow.recovery} onRestore={restoreShadow} onDiscard={() => { void shadow.discardRecovery(); }} />
+        <ShadowSaveStatus status={shadow.status} onRetry={shadow.flush} />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -521,6 +530,8 @@ export default function TemplateBuilder() {
 
       {isAddFoodOpen && (
         <AddFoodToMealDialog
+          ownerId={ownerId}
+          shadowKey={`protocol-food:${type}:${id || 'new'}:${activeMealIndex ?? 'root'}:${editingFood?.foodIndex ?? 'new'}`}
           isOpen={isAddFoodOpen}
           onClose={() => { setIsAddFoodOpen(false); setEditingFood(null); setActiveMealIndex(null); }}
           onAdd={handleAddFoodConfirm}
