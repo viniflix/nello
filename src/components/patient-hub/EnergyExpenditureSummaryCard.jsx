@@ -117,7 +117,7 @@ const EnergyExpenditureSummaryCard = ({ patientId, patient }) => {
         description={calculatedData ? `Protocolo: ${harrisEquationLabel(calculatedData) || getProtocolInfo(protocol)?.name || protocol || 'Não informado'}` : 'Estimativas e planejamento energético'}
         action={<Button variant="outline" size="sm" onClick={handleNavigateToFullPage}>{calculatedData ? 'Editar cálculo' : 'Calcular gasto'}</Button>}>
         <div className="flex flex-col gap-3">
-            {syncFlags?.needs_energy_recalc && <Alert><AlertCircle className="h-4 w-4" /><AlertDescription>Antropometria atualizada. Revise o cálculo energético.</AlertDescription></Alert>}
+            {syncFlags?.needs_energy_recalc && <Alert><AlertCircle className="h-4 w-4" /><AlertDescription>Cálculo energético requer revisão clínica.</AlertDescription></Alert>}
             {needsVentaReview && <Alert className="border-amber-300 bg-amber-50"><AlertCircle className="h-4 w-4" /><AlertDescription>Meta VENTA histórica sem confirmação clínica. Recalcule e confirme antes de usar no plano alimentar.</AlertDescription></Alert>}
             {calculatedData ? <>
                 <div className="grid grid-cols-2 gap-2">

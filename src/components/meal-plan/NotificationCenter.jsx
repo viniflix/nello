@@ -122,8 +122,8 @@ const NotificationCenter = ({
             {syncFlags?.needs_meal_plan_review && (
                 <NotificationItem
                     type="warning"
-                    title="Antropometria Atualizada"
-                    description="O perfil antropométrico foi alterado recentemente. O plano alimentar atual pode estar desalinhado com as novas metas corporais."
+                    title="Plano alimentar requer revisão"
+                    description="Confira a avaliação clínica e a meta energética antes de manter este plano alimentar."
                     metadata="Ação Necessária"
                     actions={[
                         {
