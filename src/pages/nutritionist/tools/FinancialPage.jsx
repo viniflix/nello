@@ -47,7 +47,7 @@ import { generateReceipt } from '@/lib/pdf/receiptGenerator';
 import { exportFinancialReport } from '@/lib/utils/exportUtils';
 import { getClinicSettings } from '@/lib/supabase/profile-queries';
 import { toPortugueseError } from '@/lib/utils/errorMessages';
-import { summarizeFinancialTransactions, buildFinancialCashFlow, buildFinancialExpenseDistribution } from '@/lib/utils/financial-math';
+import { summarizeFinancialTransactions, buildFinancialCashFlow, buildFinancialExpenseDistribution, formatFinancialDecimal } from '@/lib/utils/financial-math';
 
 export default function FinancialPage() {
     const { user } = useAuth();
@@ -221,8 +221,8 @@ export default function FinancialPage() {
             Descrição: t.description,
             Categoria: t.category || '-',
             Paciente: t.patient?.name || '-',
-            Valor: Number(t.amount).toFixed(2),
-            ValorLíquido: Number(t.net_amount ?? t.amount).toFixed(2),
+            Valor: formatFinancialDecimal(t.amount),
+            ValorLíquido: formatFinancialDecimal(t.net_amount ?? t.amount),
             Status: t.status === 'paid' ? 'Pago' : t.status === 'refunded' ? 'Estornado' : t.status === 'pending' ? 'Pendente' : 'Vencido',
             Pagamento: t.paid_at ? format(new Date(t.paid_at + 'T00:00:00'), 'dd/MM/yyyy') : '-',
             Estorno: t.refunded_at ? format(new Date(t.refunded_at + 'T00:00:00'), 'dd/MM/yyyy') : '-'

@@ -1,5 +1,25 @@
 import { format, parseISO, startOfWeek } from 'date-fns';
 
+const brazilianDecimal = new Intl.NumberFormat('pt-BR', { useGrouping: false, minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+export function formatFinancialDecimal(value) {
+  return brazilianDecimal.format(Number(value || 0));
+}
+
+/** Assign rounding cents to the first installments so their sum equals the quoted total. */
+export function splitInstallmentAmounts(total, count) {
+  const value = Number(total);
+  if (!Number.isFinite(value) || value <= 0 || Math.abs(Math.round(value * 100) - value * 100) > 1e-7 ||
+      !Number.isInteger(count) || count < 2 || count > 120) {
+    throw new Error('Valor ou número de parcelas inválido.');
+  }
+  const totalCents = Math.round(value * 100);
+  if (totalCents < count) throw new Error('Cada parcela precisa ter ao menos R$ 0,01.');
+  const base = Math.floor(totalCents / count);
+  const remainder = totalCents % count;
+  return Array.from({ length: count }, (_, index) => (base + (index < remainder ? 1 : 0)) / 100);
+}
+
 const cents = (value) => Math.round(Number(value || 0) * 100);
 const money = (value) => Math.round(value) / 100;
 const inMonth = (date, start, end) => Boolean(date && date >= start && date <= end);

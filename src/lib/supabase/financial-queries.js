@@ -147,18 +147,23 @@ export async function getExpenseDistribution(nutritionistId, monthDate) {
 export async function getProjectedCashFlow(nutritionistId, startDate) {
     const today = startOfDay(startDate);
     const endDate = addDays(today, 30);
-    
+    const allPages = async (buildQuery) => {
+        const rows = [];
+        for (let offset = 0; ; offset += 1000) {
+            const { data, error } = await buildQuery().order('id', { ascending: true }).range(offset, offset + 999);
+            if (error) throw error;
+            rows.push(...(data || []));
+            if (!data || data.length < 1000) break;
+        }
+        return rows;
+    };
+
     // Reconcile the projection with the same net cash used by the dashboard.
-    const { data: paidTransactions, error: paidError } = await supabase
+    const paidTransactions = await allPages(() => supabase
         .from('financial_transactions')
         .select('type, amount, net_amount, status')
         .eq('nutritionist_id', nutritionistId)
-        .in('status', ['paid', 'refunded']);
-
-    if (paidError) {
-        logSupabaseError('Error fetching paid transactions for balance', paidError);
-        throw paidError;
-    }
+        .in('status', ['paid', 'refunded']));
 
     // Calculate current balance (income - expenses)
     let currentBalance = 0;
@@ -174,28 +179,23 @@ export async function getProjectedCashFlow(nutritionistId, startDate) {
 
     // Get all pending transactions with due dates
     // First, get transactions with due_date in range
-    const { data: pendingWithDueDate, error: pendingError1 } = await supabase
+    const pendingWithDueDate = await allPages(() => supabase
         .from('financial_transactions')
         .select('type, amount, net_amount, due_date, transaction_date')
         .eq('nutritionist_id', nutritionistId)
         .in('status', ['pending', 'overdue'])
         .gte('due_date', format(today, 'yyyy-MM-dd'))
-        .lte('due_date', format(endDate, 'yyyy-MM-dd'));
+        .lte('due_date', format(endDate, 'yyyy-MM-dd')));
 
     // Get transactions without due_date but with transaction_date in range
-    const { data: pendingWithoutDueDate, error: pendingError2 } = await supabase
+    const pendingWithoutDueDate = await allPages(() => supabase
         .from('financial_transactions')
         .select('type, amount, net_amount, due_date, transaction_date')
         .eq('nutritionist_id', nutritionistId)
         .in('status', ['pending', 'overdue'])
         .is('due_date', null)
         .gte('transaction_date', format(today, 'yyyy-MM-dd'))
-        .lte('transaction_date', format(endDate, 'yyyy-MM-dd'));
-
-    if (pendingError1 || pendingError2) {
-        logSupabaseError('Error fetching pending transactions', pendingError1 || pendingError2);
-        throw pendingError1 || pendingError2;
-    }
+        .lte('transaction_date', format(endDate, 'yyyy-MM-dd')));
 
     const pendingTransactions = [...(pendingWithDueDate || []), ...(pendingWithoutDueDate || [])];
 

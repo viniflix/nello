@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildFinancialCashFlow, buildFinancialExpenseDistribution, summarizeFinancialTransactions } from './financial-math';
+import { buildFinancialCashFlow, buildFinancialExpenseDistribution, summarizeFinancialTransactions, formatFinancialDecimal, splitInstallmentAmounts } from './financial-math';
 
 const start = '2026-09-01';
 const end = '2026-09-30';
@@ -30,5 +30,12 @@ describe('financial cash and competence', () => {
       { date: '2026-09-11', income: 0, expenses: -10 },
     ]);
     expect(buildFinancialExpenseDistribution(rows, start, end)).toEqual([{ name: 'Aluguel', value: 20 }]);
+  });
+
+  it('formats Brazilian monetary exports and divides repeating installments exactly', () => {
+    expect(formatFinancialDecimal(1234.5)).toBe('1234,50');
+    expect(splitInstallmentAmounts(100, 3)).toEqual([33.34, 33.33, 33.33]);
+    expect(splitInstallmentAmounts(0.29, 3)).toEqual([0.1, 0.1, 0.09]);
+    expect(() => splitInstallmentAmounts(0.01, 3)).toThrow();
   });
 });

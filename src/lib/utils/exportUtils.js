@@ -1,6 +1,7 @@
 import Papa from 'papaparse';
 import { format as formatDate } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { formatFinancialDecimal } from './financial-math';
 
 /**
  * Export financial records to CSV format for accountants
@@ -26,8 +27,8 @@ export function exportFinancialReport(records, outputFormat = 'csv') {
             'Descrição': record.description || '-',
             'Nome do Paciente': record.patient?.name || '-',
             'CPF do Paciente': record.patient?.cpf ? formatCPF(record.patient.cpf) : '-',
-            'Valor (R$)': parseFloat(record.amount || 0).toFixed(2),
-            'Valor líquido (R$)': parseFloat(record.net_amount ?? record.amount ?? 0).toFixed(2),
+            'Valor (R$)': formatFinancialDecimal(record.amount),
+            'Valor líquido (R$)': formatFinancialDecimal(record.net_amount ?? record.amount),
             'Status': getStatusLabel(record.status),
             'Data do Pagamento': record.paid_at
                 ? formatDate(new Date(record.paid_at + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR }) : '-',

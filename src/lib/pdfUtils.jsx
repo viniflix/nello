@@ -7,6 +7,7 @@ import MealPlanPDF from '@/components/pdf/MealPlanPDF';
 import { loadLogo } from './pdf/pdfAssets';
 import { generatePdfViaEdge } from './pdf/edgePdfFallback';
 import { summarizeMicronutrients } from './utils/micronutrientCoverage';
+import { formatFinancialDecimal } from './utils/financial-math';
 
 const withEdgePdfFallback = async (options, generateClientPdf) => {
   try {
@@ -62,13 +63,13 @@ export const exportFinancialsToPdf = async (transactions, summary, period) => {
         fileName: `relatorio_financeiro_${period}.pdf`,
         lines: [
             `Período: ${period}`,
-            `Caixa recebido liquido: R$ ${(summary?.income || 0).toFixed(2)}`,
-            `Despesas pagas: R$ ${(summary?.expenses || 0).toFixed(2)}`,
-            `Saldo de caixa: R$ ${(summary?.netResult ?? 0).toFixed(2)}`,
-            `Receitas lancadas (inclui pendentes): R$ ${(summary?.expectedIncome || 0).toFixed(2)}`,
-            `A receber: R$ ${(summary?.pendingIncome || 0).toFixed(2)}`,
-            `Vencido: R$ ${(summary?.overdue || 0).toFixed(2)}`,
-            ...transactions.map((t) => `${t.transaction_date || ''} | ${t.paid_at || '-'} | ${t.refunded_at || '-'} | ${t.status || ''} | ${t.type || ''} | ${t.description || ''} | R$ ${Number(t.amount || 0).toFixed(2)}`),
+            `Caixa recebido liquido: R$ ${formatFinancialDecimal(summary?.income)}`,
+            `Despesas pagas: R$ ${formatFinancialDecimal(summary?.expenses)}`,
+            `Saldo de caixa: R$ ${formatFinancialDecimal(summary?.netResult)}`,
+            `Receitas lancadas (inclui pendentes): R$ ${formatFinancialDecimal(summary?.expectedIncome)}`,
+            `A receber: R$ ${formatFinancialDecimal(summary?.pendingIncome)}`,
+            `Vencido: R$ ${formatFinancialDecimal(summary?.overdue)}`,
+            ...transactions.map((t) => `${t.transaction_date || ''} | ${t.paid_at || '-'} | ${t.refunded_at || '-'} | ${t.status || ''} | ${t.type || ''} | ${t.description || ''} | R$ ${formatFinancialDecimal(t.amount)}`),
         ],
     }, async () => {
     const doc = new jsPDF();
@@ -89,12 +90,12 @@ export const exportFinancialsToPdf = async (transactions, summary, period) => {
         startY: 45,
         head: [['Resumo', 'Valor']],
         body: [
-            ['Caixa recebido líquido', `R$ ${income.toFixed(2)}`],
-            ['Despesas pagas', `R$ ${expenses.toFixed(2)}`],
-            ['Saldo de caixa', `R$ ${netResult.toFixed(2)}`],
-            ['Receitas lançadas (com pendentes)', `R$ ${(summary?.expectedIncome || 0).toFixed(2)}`],
-            ['A receber', `R$ ${(summary?.pendingIncome || 0).toFixed(2)}`],
-            ['Vencido', `R$ ${(summary?.overdue || 0).toFixed(2)}`],
+            ['Caixa recebido líquido', `R$ ${formatFinancialDecimal(income)}`],
+            ['Despesas pagas', `R$ ${formatFinancialDecimal(expenses)}`],
+            ['Saldo de caixa', `R$ ${formatFinancialDecimal(netResult)}`],
+            ['Receitas lançadas (com pendentes)', `R$ ${formatFinancialDecimal(summary?.expectedIncome)}`],
+            ['A receber', `R$ ${formatFinancialDecimal(summary?.pendingIncome)}`],
+            ['Vencido', `R$ ${formatFinancialDecimal(summary?.overdue)}`],
         ],
         theme: 'striped'
     });
@@ -111,7 +112,7 @@ export const exportFinancialsToPdf = async (transactions, summary, period) => {
             t.type === 'income' ? 'Receita' : 'Despesa',
             t.status === 'paid' ? 'Pago' : t.status === 'refunded' ? 'Estornado' : t.status === 'overdue' ? 'Vencido' : 'Pendente',
             t.description || '',
-            amount.toFixed(2)
+            formatFinancialDecimal(amount)
         ];
         tableRows.push(transactionData);
     });

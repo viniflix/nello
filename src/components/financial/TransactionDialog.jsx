@@ -13,6 +13,7 @@ import { getServices } from '@/lib/supabase/financial-queries';
 import { formatCurrency } from '@/lib/utils';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useToast } from '@/components/ui/use-toast';
+import { splitInstallmentAmounts } from '@/lib/utils/financial-math';
 
 const INCOME_CATEGORIES = [
     { value: 'consulta', label: 'Consulta' },
@@ -262,7 +263,13 @@ export default function TransactionDialog({
         // If expense with installments, generate multiple transactions
         if (formData.type === 'expense' && formData.isInstallment && formData.installments > 1) {
             const totalAmount = parseFloat(formData.amount);
-            const installmentAmount = totalAmount / formData.installments;
+            let installmentAmounts;
+            try {
+                installmentAmounts = splitInstallmentAmounts(totalAmount, formData.installments);
+            } catch (error) {
+                toast({ title: 'Parcelamento inválido', description: error.message, variant: 'destructive' });
+                return;
+            }
             const baseDate = parseISO(formData.transaction_date + 'T00:00:00');
             
             const transactions = [];
@@ -272,7 +279,7 @@ export default function TransactionDialog({
                     type: 'expense',
                     category: formData.category,
                     description: `${formData.description} (${i + 1}/${formData.installments})`,
-                    amount: installmentAmount,
+                    amount: installmentAmounts[i],
                     transaction_date: format(installmentDate, 'yyyy-MM-dd'),
                     status: i === 0 && formData.isPaid ? 'paid' : 'pending',
                     paid_at: i === 0 && formData.isPaid ? formData.paid_at : null,
