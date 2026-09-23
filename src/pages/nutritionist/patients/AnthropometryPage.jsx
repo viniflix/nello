@@ -397,6 +397,14 @@ const AnthropometryPage = () => {
                                     </AlertDescription>
                                 </Alert>
                             )}
+                            {selectedRecord.source_snapshot?.correction_key === 'historical_pollock_20260923' && (
+                                <Alert className="border-blue-300 bg-blue-50 dark:bg-blue-950/20">
+                                    <AlertCircle className="h-4 w-4" />
+                                    <AlertDescription>
+                                        Composição recalculada a partir das dobras, peso, idade na avaliação e sexo registrado no histórico clínico. Confira esta revisão antes de usar os valores em uma decisão ou prescrição.
+                                    </AlertDescription>
+                                </Alert>
+                            )}
 
                             {versionTimeline.length > 1 && (
                                 <div className="rounded-md border p-3">

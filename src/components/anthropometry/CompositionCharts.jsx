@@ -15,6 +15,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { isCurrentMeasurement } from '@/lib/utils/anthropometry-history';
 
 /**
  * CompositionCharts - Gráfico de Composição Corporal
@@ -29,7 +30,7 @@ export default function CompositionCharts({ data = [] }) {
     if (!data || data.length === 0) return [];
 
     return data
-      .filter(record => record.weight && record.record_date)
+      .filter(record => isCurrentMeasurement(record) && record.weight && record.record_date)
       .map(record => {
         const date = new Date(record.record_date);
         const weight = parseFloat(record.weight) || 0;

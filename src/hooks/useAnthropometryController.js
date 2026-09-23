@@ -12,6 +12,7 @@ import {
 } from '@/lib/supabase/anthropometry-queries';
 import { getActiveGoal } from '@/lib/supabase/goals-queries';
 import { getLatestAnamnesis } from '@/lib/supabase/anamnesis-queries';
+import { isSameMeasurementRevision } from '@/lib/utils/anthropometry-history';
 
 export const useAnthropometryController = ({ patientId, user, resolveLoading, resolveError }) => {
     const { toast } = useToast();
@@ -121,7 +122,7 @@ export const useAnthropometryController = ({ patientId, user, resolveLoading, re
         if (!record) return null;
         const currentIndex = orderedRecords.findIndex((r) => r.id === record.id);
         if (currentIndex < 0) return null;
-        return orderedRecords[currentIndex + 1] || null;
+        return orderedRecords.slice(currentIndex + 1).find(candidate => !isSameMeasurementRevision(record, candidate)) || null;
     };
 
     const compareObjectFields = (currentObj = {}, compareObj = {}) => {
@@ -391,7 +392,7 @@ export const useAnthropometryController = ({ patientId, user, resolveLoading, re
     const handleViewRecord = (record) => {
         setSelectedRecord(record);
         const currentIndex = orderedRecords.findIndex((r) => r.id === record.id);
-        const previousRecord = currentIndex >= 0 ? orderedRecords[currentIndex + 1] : null;
+        const previousRecord = currentIndex >= 0 ? getPreviousRecord(record) : null;
         setCompareRecordId(previousRecord ? String(previousRecord.id) : '');
         setRecordDetailOpen(true);
     };
@@ -437,7 +438,9 @@ export const useAnthropometryController = ({ patientId, user, resolveLoading, re
         : null;
     const comparison = getRecordComparison(selectedRecord, compareRecord);
     const clinicalIndicator = useMemo(
-        () => getClinicalIndicator(selectedRecord, compareRecord, patientObjective),
+        () => isSameMeasurementRevision(selectedRecord, compareRecord)
+            ? null
+            : getClinicalIndicator(selectedRecord, compareRecord, patientObjective),
         [selectedRecord, compareRecord, patientObjective]
     );
     const fieldLevelComparison = useMemo(() => {
