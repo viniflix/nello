@@ -6,6 +6,7 @@ import React from 'react';
 import MealPlanPDF from '@/components/pdf/MealPlanPDF';
 import { loadLogo } from './pdf/pdfAssets';
 import { generatePdfViaEdge } from './pdf/edgePdfFallback';
+import { summarizeMicronutrients } from './utils/micronutrientCoverage';
 
 const withEdgePdfFallback = async (options, generateClientPdf) => {
   try {
@@ -451,6 +452,8 @@ export const exportMealPlanToPdf = async (mealPlan, patientName, nutritionistNam
         magnesium: 0, potassium: 0, zinc: 0,
         vitamin_a: 0, vitamin_c: 0, vitamin_d: 0
     });
+
+    planTotals.vitamin_d_coverage = summarizeMicronutrients(mealPlan, ['vitamin_d']).vitamin_d;
 
     // Renderizar PDF usando @react-pdf/renderer
     const doc = <MealPlanPDF 

@@ -713,7 +713,9 @@ const MealPlanPDF = ({
                 </View>
                 <View style={styles.bentoItem}>
                   <Text style={styles.bentoLabel}>Vitamina D</Text>
-                  <Text style={styles.bentoValue}>{Math.round(planTotals.vitamin_d || 0)} µg</Text>
+                  <Text style={styles.bentoValue}>{planTotals?.vitamin_d_coverage?.known
+                    ? `${planTotals.vitamin_d_coverage.unknown ? '≥ ' : ''}${planTotals.vitamin_d_coverage.value.toFixed(1)} µg${planTotals.vitamin_d_coverage.unknown ? ' (parcial)' : ''}`
+                    : 'Não informado'}</Text>
                 </View>
               </View>
             </View>

@@ -14,6 +14,7 @@ import {
     TableRow
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { summarizeMicronutrients } from '@/lib/utils/micronutrientCoverage';
 
 /**
  * Valores DRI (Dietary Reference Intake) para adultos
@@ -45,57 +46,13 @@ const DRI_VALUES = {
 /**
  * Calcula totais de micronutrientes do plano
  */
-const calculateMicronutrients = (plan) => {
-    if (!plan || !plan.meals) return {};
-
-    const totals = {};
-
-    // Inicializar todos os micronutrientes com 0
-    Object.keys(DRI_VALUES).forEach(nutrient => {
-        totals[nutrient] = 0;
-    });
-
-    // Somar micronutrientes de todos os alimentos
-    plan.meals.forEach(meal => {
-        if (meal.foods) {
-            meal.foods.forEach(foodItem => {
-                if (foodItem.food) {
-                    let totalGrams = 0;
-                    if (!foodItem.unit || foodItem.unit === 'gram') {
-                        totalGrams = parseFloat(foodItem.quantity) || 0;
-                    } else if (foodItem.measure) {
-                        const measureGrams = parseFloat(foodItem.measure.grams_equivalent || foodItem.measure.weight_in_grams || foodItem.measure.quantity_grams || foodItem.measure.grams) || 0;
-                        totalGrams = (parseFloat(foodItem.quantity) || 0) * measureGrams;
-                    } else {
-                        // Fallback: se tivermos as calorias da porção, aplicamos engenharia reversa
-                        if (parseFloat(foodItem.food.calories) > 0 && foodItem.calories != null) {
-                            totalGrams = (parseFloat(foodItem.calories) / parseFloat(foodItem.food.calories)) * 100;
-                        } else {
-                            totalGrams = (parseFloat(foodItem.quantity) || 0) * 100; // Último caso
-                        }
-                    }
-                    
-                    const multiplier = totalGrams / 100;
-
-                    Object.keys(DRI_VALUES).forEach(nutrient => {
-                        const value = parseFloat(foodItem.food[nutrient]) || 0;
-                        if (value > 0) {
-                            totals[nutrient] += value * multiplier;
-                        }
-                    });
-                }
-            });
-        }
-    });
-
-    return totals;
-};
+const calculateMicronutrients = (plan) => summarizeMicronutrients(plan, Object.keys(DRI_VALUES));
 
 /**
  * Calcula status de adequação
  */
 const getAdequacyStatus = (value, dri, isLimit = false) => {
-    if (!value || !dri) return 'unknown';
+    if (value == null || !dri) return 'unknown';
 
     const percentage = (value / dri) * 100;
 
@@ -162,22 +119,25 @@ export function MicronutrientsCard({ plan }) {
 
     const renderNutrientRow = (nutrient) => {
         const driInfo = DRI_VALUES[nutrient];
-        const value = totals[nutrient] || 0;
-        const status = getAdequacyStatus(value, driInfo.value, driInfo.isLimit);
-        const percentage = driInfo.value ? (value / driInfo.value * 100) : 0;
+        const coverage = totals[nutrient];
+        const complete = coverage.known > 0 && coverage.unknown === 0;
+        const partial = coverage.known > 0 && coverage.unknown > 0;
+        const value = coverage.value;
+        const status = complete ? getAdequacyStatus(value, driInfo.value, driInfo.isLimit) : 'unknown';
+        const percentage = complete && driInfo.value ? (value / driInfo.value * 100) : null;
 
         return (
             <TableRow key={nutrient}>
                 <TableCell className="font-medium">{driInfo.name}</TableCell>
-                <TableCell className="text-right">{value.toFixed(1)}</TableCell>
+                <TableCell className="text-right">{coverage.known ? `${partial ? '≥ ' : ''}${value.toFixed(1)}${partial ? ' (parcial)' : ''}` : 'Não informado'}</TableCell>
                 <TableCell className="text-right">{driInfo.value}</TableCell>
                 <TableCell className="text-center">{driInfo.unit}</TableCell>
                 <TableCell className="text-right">
-                    {percentage.toFixed(0)}%
+                    {percentage == null ? '—' : `${percentage.toFixed(0)}%`}
                 </TableCell>
                 <TableCell className="text-center">
                     <Badge variant={getAdequacyBadge(status, driInfo.isLimit)}>
-                        {getStatusText(status, driInfo.isLimit)}
+                        {complete ? getStatusText(status, driInfo.isLimit) : 'Incompleto'}
                     </Badge>
                 </TableCell>
             </TableRow>
@@ -260,6 +220,7 @@ export function MicronutrientsCard({ plan }) {
                     <p><strong>Abaixo:</strong> Entre 75-99% da recomendação</p>
                     <p><strong>Insuficiente:</strong> Menos de 75% da recomendação</p>
                     <p><strong>Atenção/Excesso (Sódio):</strong> Acima do limite recomendado</p>
+                    <p><strong>Não informado:</strong> a fonte não publicou esse nutriente. Totais parciais não permitem avaliar a adequação. A TACO 4ª edição não informa B12, D, E nem folato.</p>
                     <p className="text-amber-600"><strong>Nota:</strong> Valores DRI são médias para adultos de 19-50 anos. Ajuste conforme necessidades individuais.</p>
                 </div>
             </CardContent>

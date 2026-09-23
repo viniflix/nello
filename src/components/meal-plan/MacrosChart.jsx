@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Flame, Target, BarChart3, Beaker, PieChart as PieChartIcon, ArrowRight } from 'lucide-react';
 import ReferenceValuesModal from './ReferenceValuesModal';
+import { summarizeMicronutrients } from '@/lib/utils/micronutrientCoverage';
 
 const COMPACT_DRI = {
     fiber: { value: 25, unit: 'g', name: 'Fibras', icon: '🌾' },
@@ -16,25 +17,7 @@ const COMPACT_DRI = {
     zinc: { value: 11, unit: 'mg', name: 'Zinco', icon: '⚡' },
 };
 
-const calculateMicros = (plan) => {
-    if (!plan?.meals) return {};
-    const totals = {};
-    Object.keys(COMPACT_DRI).forEach(n => { totals[n] = 0; });
-
-    plan.meals.forEach(meal => {
-        (meal.foods || []).forEach(foodItem => {
-            if (foodItem.food) {
-                Object.keys(COMPACT_DRI).forEach(nutrient => {
-                    const val = parseFloat(foodItem.food[nutrient]) || 0;
-                    if (val > 0) {
-                        totals[nutrient] += val * (foodItem.quantity / 100);
-                    }
-                });
-            }
-        });
-    });
-    return totals;
-};
+const calculateMicros = (plan) => summarizeMicronutrients(plan, Object.keys(COMPACT_DRI));
 
 const MacrosChart = ({ protein, carbs, fat, calories, patientId, patientSlugOrId, planId, readOnly = false, plan = null, activePlanId = null, onReferenceUpdate }) => {
     const navigate = useNavigate();
@@ -147,7 +130,7 @@ const MacrosChart = ({ protein, carbs, fat, calories, patientId, patientSlugOrId
     );
 
     const MicrosView = () => {
-        const hasData = Object.values(microTotals).some(v => v > 0);
+        const hasData = Object.values(microTotals).some(v => v.known > 0 || v.unknown > 0);
 
         if (!plan || !hasData) {
             return (
@@ -162,13 +145,15 @@ const MacrosChart = ({ protein, carbs, fat, calories, patientId, patientSlugOrId
         return (
             <div className="flex flex-col justify-center h-full space-y-0.5">
                 {Object.entries(COMPACT_DRI).map(([key, dri]) => {
-                    const value = microTotals[key] || 0;
-                    const pct = dri.value > 0 ? (value / dri.value) * 100 : 0;
+                    const coverage = microTotals[key];
+                    const value = coverage.value;
+                    const complete = coverage.known > 0 && coverage.unknown === 0;
+                    const pct = complete && dri.value > 0 ? (value / dri.value) * 100 : 0;
                     const cappedPct = Math.min(pct, 100);
 
                     const isLimit = dri.isLimit;
                     const isSafe = isLimit ? pct <= 100 : pct >= 100;
-                    const barColor = isSafe ? 'bg-green-500' : (isLimit ? 'bg-red-500' : 'bg-yellow-500');
+                    const barColor = !complete ? 'bg-slate-300' : isSafe ? 'bg-green-500' : (isLimit ? 'bg-red-500' : 'bg-yellow-500');
 
                     return (
                         <div key={key} className="space-y-1 bg-white border border-border/60 rounded-md p-1.5 px-2">
@@ -178,14 +163,14 @@ const MacrosChart = ({ protein, carbs, fat, calories, patientId, patientSlugOrId
                                     <span>{dri.name}</span>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    <span className="font-bold text-foreground">{value.toFixed(1)} <span className="text-[10px] text-muted-foreground font-normal">{dri.unit}</span></span>
-                                    <span className="text-[10px] text-muted-foreground">/ {dri.value}{dri.unit}</span>
+                                    <span className="font-bold text-foreground">{coverage.known ? `${coverage.unknown ? '≥ ' : ''}${value.toFixed(1)} ${dri.unit}${coverage.unknown ? ' (parcial)' : ''}` : 'Não informado'}</span>
+                                    {complete && <span className="text-[10px] text-muted-foreground">/ {dri.value}{dri.unit}</span>}
                                 </div>
                             </div>
                             <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                                 <div
                                     className={`h-full rounded-full transition-all duration-700 ${barColor}`}
-                                    style={{ width: `${Math.max(cappedPct, 2)}%` }} // Minimum width for visibility
+                                    style={{ width: complete ? `${Math.max(cappedPct, 2)}%` : '100%' }}
                                 />
                             </div>
                         </div>

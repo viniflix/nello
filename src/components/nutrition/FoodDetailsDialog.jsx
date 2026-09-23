@@ -212,6 +212,11 @@ const FoodDetailsDialog = ({ food, open, onOpenChange }) => {
                         {/* TAB: Micros */}
                         {activeTab === 'micros' && (
                             <div className="space-y-3">
+                                {f.source === 'TACO' && (
+                                    <p className="rounded-lg bg-amber-50 p-3 text-xs text-amber-900">
+                                        A TACO 4ª edição não informa B12, vitaminas D e E nem folato. Ausência de dado não significa zero.
+                                    </p>
+                                )}
                                 {/* Minerais */}
                                 {hasMinerals && (
                                     <div className="bg-white rounded-xl border border-slate-200 divide-y divide-slate-100">
