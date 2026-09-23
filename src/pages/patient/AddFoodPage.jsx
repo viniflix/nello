@@ -232,14 +232,14 @@ const AddFoodPage = () => {
 
     return (
         <div className="min-h-screen bg-background">
-            <header className="sticky top-0 z-10 bg-background/80 backdrop-blur-md">
-                <div className="max-w-4xl mx-auto px-4 h-16 flex items-center">
+            <header className="sticky top-0 z-10 border-b border-border bg-background/95 backdrop-blur-md">
+                <div className="mx-auto flex h-16 max-w-4xl items-center px-4 md:px-8">
                     <Button variant="ghost" size="icon" aria-label="Voltar" onClick={() => navigate(-1)} className="mr-2"><ArrowLeft className="w-5 h-5" /></Button>
-                    <h1 className="text-xl font-bold text-foreground">{mealId ? 'Editar Refeição' : 'Adicionar Refeição'}</h1>
+                    <h1 className="patient-page-title text-xl sm:text-2xl">{mealId ? 'Editar Refeição' : 'Adicionar Refeição'}</h1>
                 </div>
             </header>
 
-            <main className="max-w-4xl mx-auto p-4 pb-24">
+            <main className="patient-page-content max-w-4xl pb-24">
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                         <div className="lg:col-span-2 space-y-6">

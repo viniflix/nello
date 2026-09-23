@@ -166,10 +166,10 @@ const CheckinResponsePage = () => {
   if (isCompleted) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center animate-in zoom-in-95 duration-500">
-        <div className="w-24 h-24 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-6 shadow-sm">
+        <div className="mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-primary/10 text-primary shadow-sm">
           <CheckCircle2 className="w-12 h-12" />
         </div>
-        <h1 className="text-3xl font-bold text-foreground mb-3">Check-in Concluído! 🎉</h1>
+        <h1 className="patient-page-title mb-3">Check-in Concluído! 🎉</h1>
         <p className="text-muted-foreground max-w-md mb-8 text-lg">
           Suas respostas foram enviadas para seu nutricionista com sucesso. O acompanhamento contínuo é chave para os resultados!
         </p>
@@ -190,8 +190,8 @@ const CheckinResponsePage = () => {
   const scaleVal = isScale ? (Array.isArray(currentVal) ? currentVal[0] : parseInt(currentVal) || 5) : 0;
 
   return (
-    <div className="min-h-screen bg-muted/30 flex flex-col items-center lg:p-8">
-      <div className="w-full lg:max-w-2xl bg-card lg:rounded-2xl lg:shadow-xl overflow-hidden flex flex-col min-h-screen lg:min-h-[600px] border-border">
+    <div className="flex min-h-screen flex-col items-center bg-background lg:p-8">
+      <div className="flex min-h-screen w-full flex-col overflow-hidden border-border bg-card lg:min-h-[600px] lg:max-w-2xl lg:rounded-2xl lg:border lg:shadow-card">
         {/* Header */}
         <div 
           className="p-6 text-primary-foreground relative overflow-hidden"
@@ -341,7 +341,7 @@ const CheckinResponsePage = () => {
           </Button>
 
           {currentStep < fields.length - 1 ? (
-            <Button onClick={handleNext} className="shadow-md h-12 px-6 rounded-full font-bold" style={{ backgroundColor: brandColor }}>
+            <Button onClick={handleNext} className="h-12 rounded-xl px-6 font-bold shadow-md" style={{ backgroundColor: brandColor }}>
               Próxima Parte
               <ChevronRight className="w-5 h-5 ml-2" />
             </Button>
@@ -349,7 +349,8 @@ const CheckinResponsePage = () => {
             <Button 
               onClick={handleSubmit} 
               disabled={isSubmitting || (currentField?.is_required && (!responses[currentField.id] || responses[currentField.id].length === 0))} 
-              className="bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-600/30 h-12 px-8 rounded-full font-bold text-base transition-all active:scale-95"
+              className="h-12 rounded-xl px-8 text-base font-bold text-white shadow-md transition-all active:scale-95"
+              style={{ backgroundColor: brandColor }}
             >
               {isSubmitting ? <Loader2 className="w-5 h-5 mr-2 text-white animate-spin" /> : <CheckCircle2 className="w-5 h-5 mr-2 text-white" />}
               {isSubmitting ? 'Processando...' : 'Finalizar Check-in'}

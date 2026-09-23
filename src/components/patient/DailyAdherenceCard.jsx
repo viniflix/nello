@@ -99,7 +99,7 @@ const MacroMiniCard = ({ icon: Icon, label, current, goal, unit, iconColor, prog
           {/* Mini barra de progresso - TRACK NEUTRO */}
           <Progress
             value={percentage}
-            className="h-1 bg-slate-200"
+            className="h-1 bg-muted"
             indicatorClassName={progressColor}
           />
         </div>

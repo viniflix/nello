@@ -345,16 +345,16 @@ export default function PatientDiaryPage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
-      <div className="max-w-7xl mx-auto w-full px-4 md:px-8 py-8 space-y-6">
+      <div className="patient-page-content space-y-6">
         {/* Header */}
-        <div className="mb-2 flex items-start justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">Plano Alimentar</h1>
+        <div className="mb-2 flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="patient-page-title">Plano Alimentar</h1>
             <p className="text-muted-foreground mt-1">
               Registre suas refeições do dia
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex w-full items-center justify-end gap-2 sm:w-auto">
             {/* My Plan Button - Secondary, Non-intrusive */}
             {mealPlan && (
               <Button
@@ -362,9 +362,9 @@ export default function PatientDiaryPage() {
                 size="sm"
                 aria-label="Ver plano alimentar"
                 onClick={() => setPlanDialogOpen(true)}
-                className="text-muted-foreground hover:text-foreground"
+                className="h-10 w-10 p-0 text-muted-foreground hover:text-primary sm:h-9 sm:w-auto sm:px-3"
               >
-                <Eye className="w-4 h-4 mr-2" />
+                <Eye className="h-4 w-4 sm:mr-2" />
                 <span className="hidden sm:inline">Ver Plano</span>
               </Button>
             )}
@@ -373,9 +373,9 @@ export default function PatientDiaryPage() {
               size="sm"
               aria-label="Configurar lembretes"
               onClick={() => setPreferencesDialogOpen(true)}
-              className="text-muted-foreground hover:text-foreground"
+              className="h-10 w-10 p-0 text-muted-foreground hover:text-primary sm:h-9 sm:w-auto sm:px-3"
             >
-              <Clock className="w-4 h-4 mr-2" />
+              <Clock className="h-4 w-4 sm:mr-2" />
               <span className="hidden sm:inline">Lembretes</span>
             </Button>
             <Button
@@ -383,9 +383,9 @@ export default function PatientDiaryPage() {
               size="icon"
               aria-label="Abrir notificações"
               onClick={() => setShowNotifications(true)}
-              className="relative"
+              className="relative h-10 w-10 text-muted-foreground hover:text-primary"
             >
-              <Bell className="w-6 h-6 text-gray-700" />
+              <Bell className="h-5 w-5" />
               {unreadCount > 0 && (
                 <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
               )}
@@ -715,9 +715,9 @@ export default function PatientDiaryPage() {
               Registrar Outra Refeição
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="patient-dialog-content">
             <DialogHeader>
-              <DialogTitle>Escolha o Tipo de Refeição</DialogTitle>
+              <DialogTitle className="patient-dialog-title">Escolha o Tipo de Refeição</DialogTitle>
               <DialogDescription>
                 Selecione qual refeição deseja registrar
               </DialogDescription>
@@ -753,9 +753,9 @@ export default function PatientDiaryPage() {
 
       {/* Dialog: Preferências de Lembrete */}
       <Dialog open={preferencesDialogOpen} onOpenChange={setPreferencesDialogOpen}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="patient-dialog-content sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Preferências de Lembrete</DialogTitle>
+            <DialogTitle className="patient-dialog-title">Preferências de Lembrete</DialogTitle>
             <DialogDescription>
               Configure quais lembretes deseja receber e os horários preferidos.
             </DialogDescription>
@@ -846,9 +846,9 @@ export default function PatientDiaryPage() {
 
       {/* AlertDialog de Confirmação de Exclusão */}
       <AlertDialog open={!!mealToDelete} onOpenChange={() => setMealToDelete(null)}>
-        <AlertDialogContent>
+        <AlertDialogContent className="patient-dialog-content w-[calc(100vw-1rem)] max-h-[calc(100dvh-1rem)] overflow-y-auto">
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir Refeição</AlertDialogTitle>
+            <AlertDialogTitle className="patient-dialog-title">Excluir Refeição</AlertDialogTitle>
             <AlertDialogDescription>
               Deseja realmente excluir esta refeição? Esta ação não pode ser desfeita.
             </AlertDialogDescription>

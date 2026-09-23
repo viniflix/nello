@@ -444,9 +444,9 @@ export default function AddMealPage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
-      <div className="max-w-7xl mx-auto w-full px-4 md:px-8 py-8">
+      <div className="patient-page-content">
         {/* Header */}
-        <div className="flex items-center gap-4 mb-6">
+        <div className="mb-6 flex items-start gap-2 sm:items-center sm:gap-4">
           <Button
             variant="ghost"
             size="icon"
@@ -455,8 +455,8 @@ export default function AddMealPage() {
           >
             <ArrowLeft className="w-5 h-5" />
           </Button>
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">
+          <div className="min-w-0">
+            <h1 className="patient-page-title break-words">
               {editMode ? 'Editar' : 'Registrar'} {translateMealType(mealType)}
             </h1>
             <p className="text-muted-foreground mt-1">

@@ -313,9 +313,9 @@ const PatientAddFoodDialog = ({
 
     return (
         <Dialog open={isOpen} onOpenChange={handleClose}>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="patient-dialog-content max-w-2xl max-h-[calc(100dvh-1rem)]">
                 <DialogHeader>
-                    <DialogTitle>
+                    <DialogTitle className="patient-dialog-title">
                         {mode === 'edit' ? 'Editar Alimento' : 'Adicionar Alimento'}
                     </DialogTitle>
                     <DialogDescription>

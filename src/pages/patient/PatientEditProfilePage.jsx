@@ -181,9 +181,9 @@ export default function PatientEditProfilePage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
-      <div className="max-w-3xl mx-auto w-full px-4 md:px-8 py-8">
+      <div className="patient-page-content max-w-3xl">
         {/* Header com botão voltar */}
-        <div className="mb-6 flex items-center gap-4">
+        <div className="mb-6 flex items-start gap-2 sm:items-center sm:gap-4">
           <Button
             variant="ghost"
             size="icon"
@@ -192,8 +192,8 @@ export default function PatientEditProfilePage() {
           >
             <ArrowLeft className="w-5 h-5" />
           </Button>
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">Editar Perfil</h1>
+          <div className="min-w-0">
+            <h1 className="patient-page-title">Editar Perfil</h1>
             <p className="text-muted-foreground mt-1">
               Atualize suas informações pessoais
             </p>

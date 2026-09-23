@@ -74,15 +74,15 @@ export default function ForcePasswordUpdate() {
   };
 
   return (
-    <div className="fixed inset-0 z-[100] bg-slate-50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md shadow-xl border-emerald-100 bg-white">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-background p-4">
+      <Card className="w-full max-w-md rounded-2xl border-border bg-card shadow-xl">
         <CardHeader className="text-center space-y-4">
           <div className="mx-auto w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center">
             <Lock className="w-8 h-8 text-amber-600" />
           </div>
           <div>
-            <CardTitle className="text-2xl font-bold text-slate-800">AÇÃO NECESSÁRIA</CardTitle>
-            <CardDescription className="text-gray-600 mt-2 flex items-start gap-2 text-left bg-amber-50 p-3 rounded-md text-amber-800 border border-amber-200">
+            <CardTitle className="patient-page-title">AÇÃO NECESSÁRIA</CardTitle>
+            <CardDescription className="mt-2 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-left text-amber-800">
               <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
               <span>Por segurança, defina uma senha pessoal antes de continuar.</span>
             </CardDescription>
@@ -109,12 +109,12 @@ export default function ForcePasswordUpdate() {
                   type="button"
                   aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
                   onClick={() => setShowPassword((value) => !value)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-muted-foreground">
                 Use pelo menos {authFlowPolicy.minPasswordLength} caracteres.
               </p>
             </div>
@@ -140,7 +140,7 @@ export default function ForcePasswordUpdate() {
                   type="button"
                   aria-label={showConfirmPassword ? 'Ocultar confirmação' : 'Mostrar confirmação'}
                   onClick={() => setShowConfirmPassword((value) => !value)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
                 >
                   {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>

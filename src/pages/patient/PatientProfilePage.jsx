@@ -133,11 +133,11 @@ export default function PatientProfilePage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
-      <div className="max-w-7xl mx-auto w-full px-4 md:px-8 py-8 space-y-6">
+      <div className="patient-page-content space-y-6">
         {/* Header */}
         <div className="mb-2 flex justify-between items-start">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Perfil</h1>
+            <h1 className="patient-page-title">Perfil</h1>
             <p className="text-muted-foreground mt-1">
               Gerencie sua conta e preferências
             </p>
@@ -346,7 +346,7 @@ export default function PatientProfilePage() {
                 }}
               >
                 <span className="flex items-center gap-3">
-                  <ClipboardList className="w-5 h-5 text-blue-600" />
+                  <ClipboardList className="h-5 w-5 text-primary" />
                   <div className="text-left">
                     <p className="text-sm font-medium">Meus Questionários</p>
                     <p className="text-xs text-muted-foreground">
@@ -425,9 +425,9 @@ export default function PatientProfilePage() {
                         <ChevronRight className="w-4 h-4" />
                       </Button>
                     </AlertDialogTrigger>
-                    <AlertDialogContent>
+                    <AlertDialogContent className="patient-dialog-content w-[calc(100vw-1rem)] max-h-[calc(100dvh-1rem)] overflow-y-auto">
                       <AlertDialogHeader>
-                        <AlertDialogTitle>Encerrar acompanhamento?</AlertDialogTitle>
+                        <AlertDialogTitle className="patient-dialog-title">Encerrar acompanhamento?</AlertDialogTitle>
                         <AlertDialogDescription>
                           A decisão é imediata e não depende de aprovação. O nutricionista será avisado,
                           o histórico será preservado e você poderá aceitar um novo convite depois.
@@ -435,7 +435,7 @@ export default function PatientProfilePage() {
                       </AlertDialogHeader>
                       <AlertDialogFooter>
                         <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleEndCare} disabled={endingCare}>
+                        <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={handleEndCare} disabled={endingCare}>
                           {endingCare ? 'Encerrando...' : 'Confirmar encerramento'}
                         </AlertDialogAction>
                       </AlertDialogFooter>

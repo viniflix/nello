@@ -161,7 +161,7 @@ export default function PatientHomePage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="max-w-7xl mx-auto w-full px-4 md:px-8 py-8"
+        className="patient-page-content"
       >
         {/* Estado Pendente */}
         {linkStatus === 'pending' && (
@@ -212,7 +212,7 @@ export default function PatientHomePage() {
         {/* Header */}
         <div className="mb-8 flex items-start justify-between">
           <div>
-            <h2 className="text-3xl font-bold font-heading uppercase tracking-wide text-primary">
+            <h2 className="patient-page-title">
               Olá, {firstName}! 👋
             </h2>
             <p className="text-neutral-600 mt-1">
@@ -226,7 +226,7 @@ export default function PatientHomePage() {
             onClick={() => setShowNotifications(true)}
             className="relative -mt-1"
           >
-            <Bell className="w-6 h-6 text-gray-700" />
+            <Bell className="h-6 w-6 text-foreground" />
             {unreadCount > 0 && (
               <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
             )}

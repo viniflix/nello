@@ -253,18 +253,18 @@ export default function MealPlanViewDialog({ open, onOpenChange, mealPlan, patie
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="patient-dialog-content max-w-4xl max-h-[calc(100dvh-1rem)]">
         <DialogHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <FileText className="w-6 h-6 text-primary" />
-              <DialogTitle className="text-2xl">Meu Plano Alimentar</DialogTitle>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-2">
+              <FileText className="h-6 w-6 shrink-0 text-primary" />
+              <DialogTitle className="patient-dialog-title">Meu Plano Alimentar</DialogTitle>
             </div>
             <Button
               variant="outline"
               size="sm"
               onClick={handleExportPDF}
-              className="gap-2"
+              className="w-full gap-2 sm:w-auto"
             >
               <Download className="w-4 h-4" />
               Baixar PDF

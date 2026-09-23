@@ -79,11 +79,11 @@ export default function PatientLayout() {
   }));
 
   return (
-    <div className="flex h-[100dvh] min-w-0 flex-col overflow-hidden bg-slate-50 md:h-screen md:flex-row">
+    <div className="flex h-[100dvh] min-w-0 flex-col overflow-hidden bg-background md:flex-row">
       {/* SIDEBAR (Desktop apenas) */}
-      <aside className="hidden md:flex md:flex-col md:w-64 bg-white border-r border-gray-200 fixed inset-y-0 left-0 z-30">
-        <div className="p-6 border-b border-gray-200">
-          <h1 className="text-xl font-bold text-primary">Área do Paciente</h1>
+      <aside className="fixed inset-y-0 left-0 z-30 hidden border-r border-border bg-card md:flex md:w-64 md:flex-col">
+        <div className="border-b border-border p-6">
+          <h1 className="font-heading text-xl font-bold uppercase tracking-wide text-primary">Área do Paciente</h1>
         </div>
 
         <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
@@ -98,7 +98,7 @@ export default function PatientLayout() {
                   `flex items-center gap-3 px-4 py-3 rounded-lg transition-colors relative ${
                     isPatientNavItemActive(item, location.pathname, isActive)
                       ? 'bg-primary text-white'
-                      : 'text-gray-700 hover:bg-gray-100'
+                      : 'text-foreground hover:bg-primary/10'
                   }`
                 }
               >
@@ -125,10 +125,10 @@ export default function PatientLayout() {
 
         {/* Botão de Painel Admin (Apenas se for Admin) */}
         {user?.profile?.is_admin === true && (
-          <div className="p-4 border-t border-gray-200">
+          <div className="border-t border-border p-4">
             <Button
               variant="default"
-              className="w-full justify-start bg-indigo-600 hover:bg-indigo-700 text-white"
+              className="w-full justify-start bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={() => navigate('/admin/dashboard')}
             >
               <Shield className="w-5 h-5 mr-3" />
@@ -138,10 +138,10 @@ export default function PatientLayout() {
         )}
 
         {/* Botão de Sair */}
-        <div className="p-4 border-t border-gray-200">
+        <div className="border-t border-border p-4">
           <Button
             variant="ghost"
-            className="w-full justify-start text-gray-700 hover:bg-gray-100"
+            className="w-full justify-start text-foreground hover:bg-primary/10"
             onClick={signOut}
           >
             <LogOut className="w-5 h-5 mr-3" />
@@ -156,7 +156,7 @@ export default function PatientLayout() {
       </main>
 
       {/* BOTTOM NAV (Mobile apenas) */}
-      <nav className="safe-area-inset-bottom z-50 w-full shrink-0 border-t border-gray-200 bg-white md:hidden">
+      <nav className="safe-area-inset-bottom z-50 w-full shrink-0 border-t border-border bg-card md:hidden">
         <div className="flex h-16 items-center justify-around px-1">
           {navItems.map((item) => {
             const Icon = item.icon;
@@ -167,7 +167,7 @@ export default function PatientLayout() {
                 end={item.end}
                 className={({ isActive }) =>
                   `flex min-w-0 flex-1 flex-col items-center justify-center h-full px-0.5 transition-colors ${
-                    isPatientNavItemActive(item, location.pathname, isActive) ? 'text-primary' : 'text-gray-500'
+                    isPatientNavItemActive(item, location.pathname, isActive) ? 'text-primary' : 'text-muted-foreground'
                   }`
                 }
               >
@@ -199,7 +199,7 @@ export default function PatientLayout() {
       {user?.profile?.is_admin === true && (
         <button
           onClick={() => navigate('/admin/dashboard')}
-          className="md:hidden fixed bottom-20 right-4 z-50 flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white rounded-full px-4 py-2.5 shadow-lg shadow-indigo-500/40 transition-all duration-200"
+          className="fixed bottom-20 right-4 z-50 flex items-center gap-2 rounded-full bg-primary px-4 py-2.5 text-primary-foreground shadow-lg transition-all duration-200 hover:bg-primary/90 active:scale-95 md:hidden"
           aria-label="Acessar Painel Admin"
         >
           <Shield className="w-4 h-4" />

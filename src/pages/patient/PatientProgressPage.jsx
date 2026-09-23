@@ -441,7 +441,7 @@ export default function PatientProgressPage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-background [&_h1]:uppercase [&_h2]:uppercase [&_h3]:uppercase [&_h4]:uppercase">
-      <div className="max-w-7xl mx-auto w-full px-4 md:px-8 py-8">
+      <div className="patient-page-content">
         <header className="mb-6">
           {activeDetail && (
             <Button type="button" variant="ghost" className="mb-3 -ml-3" onClick={() => setActiveDetail(null)}>
@@ -449,12 +449,12 @@ export default function PatientProgressPage() {
             </Button>
           )}
           <div className="flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <h1 className="text-3xl font-bold text-foreground">MEU PROGRESSO</h1>
+            <div className="min-w-0">
+              <h1 className="patient-page-title">MEU PROGRESSO</h1>
               <p className="text-muted-foreground mt-1">Acompanhe sua evolução em um só lugar</p>
             </div>
             {activeDetail && (
-              <Button type="button" onClick={() => setDialogOpen(true)}>
+              <Button type="button" className="w-full sm:w-auto" onClick={() => setDialogOpen(true)}>
                 <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
                 {activeTab === 'peso' && 'REGISTRAR PESO'}
                 {activeTab === 'glicemia' && 'REGISTRAR GLICEMIA'}
@@ -1021,9 +1021,9 @@ export default function PatientProgressPage() {
       </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
+        <DialogContent className="patient-dialog-content">
           <DialogHeader>
-            <DialogTitle className="uppercase">
+            <DialogTitle className="patient-dialog-title">
               {activeTab === 'peso' && 'Registrar Peso'}
               {activeTab === 'glicemia' && 'Registrar Glicemia'}
               {activeTab === 'medidas' && 'Registrar Medidas'}
@@ -1213,7 +1213,7 @@ export default function PatientProgressPage() {
 
       {/* Lightbox foto */}
       <Dialog open={!!lightboxPhoto} onOpenChange={(open) => !open && setLightboxPhoto(null)}>
-        <DialogContent className="max-w-4xl w-[95vw] p-2">
+        <DialogContent className="patient-dialog-content max-w-4xl w-[95vw] p-2">
           {lightboxPhoto && (
             <>
               <Button
@@ -1243,9 +1243,9 @@ export default function PatientProgressPage() {
 
       {/* Confirmar remoção de foto */}
       <AlertDialog open={!!deletePhotoTarget} onOpenChange={(open) => !open && setDeletePhotoTarget(null)}>
-        <AlertDialogContent>
+        <AlertDialogContent className="patient-dialog-content w-[calc(100vw-1rem)] max-h-[calc(100dvh-1rem)] overflow-y-auto">
           <AlertDialogHeader>
-            <AlertDialogTitle>Remover esta foto?</AlertDialogTitle>
+            <AlertDialogTitle className="patient-dialog-title">Remover esta foto?</AlertDialogTitle>
             <AlertDialogDescription>
               A foto será removida do seu progresso. Essa ação não pode ser desfeita.
             </AlertDialogDescription>

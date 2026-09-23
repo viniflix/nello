@@ -31,6 +31,25 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Identidade do portal do paciente: conteúdo compacto no celular e expansão no desktop. */
+@layer components {
+  .patient-page-content {
+    @apply mx-auto w-full max-w-7xl px-4 pb-8 pt-5 sm:pt-8 md:px-8;
+  }
+
+  .patient-page-title {
+    @apply font-heading text-2xl font-bold uppercase tracking-wide text-primary sm:text-3xl;
+  }
+
+  .patient-dialog-content {
+    @apply rounded-2xl border-border bg-card p-4 sm:p-6;
+  }
+
+  .patient-dialog-title {
+    @apply font-heading text-lg font-bold uppercase tracking-wide text-primary sm:text-xl;
+  }
+}
+
 /* 4. Definir nossas variáveis CSS (Tokens) */
 @layer base {
   :root {

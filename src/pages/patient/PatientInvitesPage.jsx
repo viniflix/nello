@@ -61,12 +61,12 @@ export default function PatientInvitesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-muted/30 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
+    <div className="flex min-h-full items-start justify-center bg-background px-4 py-5 sm:items-center sm:py-8">
+      <Card className="w-full max-w-md rounded-2xl border-border bg-card">
         <CardHeader>
           <div className="flex items-center gap-2 text-primary">
             <Ticket className="h-6 w-6" />
-            <CardTitle>Resgatar código de convite</CardTitle>
+            <CardTitle className="patient-dialog-title">Resgatar código de convite</CardTitle>
           </div>
           <CardDescription>
             Se seu nutricionista passou um código de acesso, digite abaixo para vincular sua conta e acessar o acompanhamento.
