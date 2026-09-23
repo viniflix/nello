@@ -2,9 +2,11 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   clearForcedPasswordReset,
   isExpectedLoginRejection,
+  isExpectedPasswordRejection,
   normalizeAuthEmail,
   redeemPatientInvite,
   requestPasswordRecovery,
+  resendEmailConfirmation,
   updateAndVerifyPassword,
   validateNewPassword,
 } from './authFlows';
@@ -116,5 +118,14 @@ describe('authFlows', () => {
     expect(isExpectedLoginRejection({ code: 'email_not_confirmed', status: 400 })).toBe(true);
     expect(isExpectedLoginRejection({ code: 'invalid_credentials', status: 500 })).toBe(false);
     expect(isExpectedLoginRejection({ code: 'over_request_rate_limit', status: 429 })).toBe(false);
+    expect(isExpectedLoginRejection({ message: 'Email not confirmed', status: 400 })).toBe(true);
+    expect(isExpectedPasswordRejection({ code: 'same_password', status: 422 })).toBe(true);
+    expect(isExpectedPasswordRejection({ code: 'weak_password', status: 422 })).toBe(false);
+  });
+
+  it('resends a confirmation for the normalized email', async () => {
+    const resend = vi.fn().mockResolvedValue({ error: null });
+    await resendEmailConfirmation({ auth: { resend } }, ' USER@Example.com ');
+    expect(resend).toHaveBeenCalledWith({ type: 'signup', email: 'user@example.com' });
   });
 });

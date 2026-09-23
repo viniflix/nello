@@ -12,6 +12,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import {
   authFlowPolicy,
   clearForcedPasswordReset,
+  isExpectedPasswordRejection,
   updateAndVerifyPassword,
   validateNewPassword,
 } from '@/features/auth/authFlows';
@@ -107,7 +108,7 @@ export default function UpdatePasswordPage() {
         replace: true,
       });
     } catch (error) {
-      captureOperationalError(error, {
+      if (!isExpectedPasswordRejection(error)) captureOperationalError(error, {
         operation: error.passwordWasUpdated
           ? 'auth.verify_updated_password'
           : 'auth.update_password',

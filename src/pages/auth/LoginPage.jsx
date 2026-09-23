@@ -25,6 +25,7 @@ import {
   isExpectedLoginRejection,
   normalizeAuthEmail,
   requestPasswordRecovery,
+  resendEmailConfirmation,
 } from '@/features/auth/authFlows';
 import { captureOperationalError } from '@/infrastructure/observability/telemetry';
 import { Events, track } from '@/infrastructure/analytics/posthog';
@@ -36,6 +37,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
   const [isAlertOpen, setIsAlertOpen] = useState(false);
+  const [confirmationPending, setConfirmationPending] = useState(false);
 
   const { signIn, user, loading: authLoading } = useAuth();
   const { toast } = useToast();
@@ -71,6 +73,7 @@ export default function LoginPage() {
     const { data, error } = await signIn({ email: normalizeAuthEmail(email), password });
 
     if (error) {
+      setConfirmationPending(error.code === 'email_not_confirmed' || /email not confirmed/i.test(error.message || ''));
       if (!isExpectedLoginRejection(error)) {
         captureOperationalError(error, {
           operation: 'auth.sign_in_with_password',
@@ -85,12 +88,26 @@ export default function LoginPage() {
         variant: "destructive",
       });
     } else if (data.user) {
+       setConfirmationPending(false);
        toast({
         title: "Login realizado com sucesso!",
         description: `Bem-vindo(a) de volta!`,
       });
     }
     setLoading(false);
+  };
+
+  const handleResendConfirmation = async () => {
+    setLoading(true);
+    try {
+      await resendEmailConfirmation(supabase, email);
+      toast({ title: 'Link enviado', description: 'Verifique seu e-mail e confirme a conta antes de entrar.' });
+    } catch (error) {
+      captureOperationalError(error, { operation: 'auth.resend_confirmation', module: 'authentication', source: 'supabase_auth' });
+      toast({ title: 'Erro ao reenviar', description: toPortugueseError(error), variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handlePasswordReset = async () => {
@@ -255,6 +272,12 @@ export default function LoginPage() {
                   )}
                 </Button>
               </form>
+
+              {confirmationPending && (
+                <Button type="button" variant="outline" className="mt-3 w-full" onClick={handleResendConfirmation} disabled={loading}>
+                  Reenviar confirmação de e-mail
+                </Button>
+              )}
 
               <div className="mt-6 text-center border-t border-border pt-6">
                 <p className="text-sm text-muted-foreground">

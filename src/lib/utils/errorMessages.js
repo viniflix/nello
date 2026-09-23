@@ -16,6 +16,10 @@ const ERROR_TRANSLATIONS = [
 ];
 
 export function toPortugueseError(errorOrMessage, fallback = 'Ocorreu um erro. Tente novamente.') {
+  const code = typeof errorOrMessage === 'string' ? '' : String(errorOrMessage?.code || '');
+  if (code === 'email_not_confirmed') return 'Confirme seu e-mail antes de entrar. Você pode reenviar o link de confirmação abaixo.';
+  if (code === 'same_password') return 'A nova senha deve ser diferente da senha atual.';
+  if (code === 'invalid_credentials') return 'E-mail ou senha inválidos.';
   const raw = typeof errorOrMessage === 'string'
     ? errorOrMessage
     : errorOrMessage?.message || '';

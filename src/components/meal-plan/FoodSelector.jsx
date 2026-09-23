@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Search, X, Check, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,6 +18,9 @@ import QuickFoodCreateDialog from './QuickFoodCreateDialog';
 import { getSubstitutionAnalysis } from '@/lib/utils/foodSubstitution';
 import { AlertCircle, FolderSync } from 'lucide-react';
 import { formatNutrient } from '@/lib/utils';
+import { toPortugueseError } from '@/lib/utils/errorMessages';
+import { captureOperationalError } from '@/infrastructure/observability/telemetry';
+import { Events, track } from '@/infrastructure/analytics/posthog';
 
 const FoodSelector = ({ isOpen, onClose, onSelect, targetGroup, targetCalories, originalFood }) => {
     const [searchTerm, setSearchTerm] = useState('');
@@ -27,6 +30,9 @@ const FoodSelector = ({ isOpen, onClose, onSelect, targetGroup, targetCalories, 
     const [sourceFilter, setSourceFilter] = useState(null);
     const [quickCreateOpen, setQuickCreateOpen] = useState(false);
     const [onlySameGroup, setOnlySameGroup] = useState(!!targetGroup);
+    const [searchError, setSearchError] = useState(null);
+    const [retryKey, setRetryKey] = useState(0);
+    const requestId = useRef(0);
 
     const sources = [
         { value: null, label: 'Todos' },
@@ -39,28 +45,23 @@ const FoodSelector = ({ isOpen, onClose, onSelect, targetGroup, targetCalories, 
     ];
 
     useEffect(() => {
-        if (isOpen) {
-            searchFoods();
-        }
-    }, [isOpen, searchTerm, sourceFilter, onlySameGroup]);
-
-    const searchFoods = async () => {
-        // Não buscar se o termo for curto demais
-        if (searchTerm.length < 2) {
+        const currentRequest = ++requestId.current;
+        if (!isOpen || searchTerm.trim().length < 2) {
             setFoods([]);
-            return;
+            setLoading(false);
+            setSearchError(null);
+            return undefined;
         }
-
-        // Evitar chamadas redundantes se já estiver carregando
-        if (loading) return;
-
         setLoading(true);
-        try {
+        setSearchError(null);
+        const timer = setTimeout(async () => {
+          const started = performance.now();
+          try {
             let query = supabase
                 .from('foods')
                 .select('id, name, group, description, source, calories, protein, carbs, fat, fiber, sodium')
                 .eq('is_active', true)
-                .ilike('name', `%${searchTerm}%`)
+                .ilike('name', `%${searchTerm.trim().replace(/[%_\\]/g, '')}%`)
                 .order('name', { ascending: true })
                 .limit(50);
 
@@ -73,16 +74,22 @@ const FoodSelector = ({ isOpen, onClose, onSelect, targetGroup, targetCalories, 
             }
 
             const { data, error } = await query;
-
             if (error) throw error;
-            setFoods(data || []);
-        } catch (error) {
-            console.error('Erro ao buscar alimentos:', error);
-            setFoods([]);
-        } finally {
-            setLoading(false);
-        }
-    };
+            if (requestId.current === currentRequest) setFoods(data || []);
+          } catch (error) {
+            if (requestId.current === currentRequest) {
+              setSearchError(toPortugueseError(error, 'Não foi possível buscar alimentos. Tente novamente.'));
+              captureOperationalError(error, { operation: 'food_selector.search', module: 'meal_plan', source: 'supabase' });
+            }
+          } finally {
+            if (requestId.current === currentRequest) {
+              setLoading(false);
+              track(Events.DATA_LOAD_TIMING, { operation: 'food_search', duration_ms: Math.round(performance.now() - started) });
+            }
+          }
+        }, 300);
+        return () => { clearTimeout(timer); requestId.current += 1; };
+    }, [isOpen, searchTerm, sourceFilter, onlySameGroup, targetGroup, retryKey]);
 
     const handleSelect = () => {
         if (selectedFood) {
@@ -110,9 +117,7 @@ const FoodSelector = ({ isOpen, onClose, onSelect, targetGroup, targetCalories, 
         setSelectedFood(newFood);
         
         // Optionally refresh search to ensure consistency
-        if (searchTerm) {
-            await searchFoods();
-        }
+        if (searchTerm) setRetryKey(value => value + 1);
     };
 
     return (
@@ -183,7 +188,14 @@ const FoodSelector = ({ isOpen, onClose, onSelect, targetGroup, targetCalories, 
                             </div>
                         )}
 
-                        {!loading && searchTerm.length >= 2 && foods.length === 0 && (
+                        {!loading && searchError && (
+                            <div role="alert" className="text-center py-8 space-y-3">
+                                <p className="text-destructive">{searchError}</p>
+                                <Button variant="outline" onClick={() => setRetryKey(value => value + 1)}>Tentar novamente</Button>
+                            </div>
+                        )}
+
+                        {!loading && !searchError && searchTerm.length >= 2 && foods.length === 0 && (
                             <div className="text-center py-8 space-y-4">
                                 <p className="text-muted-foreground">
                                     Nenhum alimento encontrado
@@ -199,7 +211,7 @@ const FoodSelector = ({ isOpen, onClose, onSelect, targetGroup, targetCalories, 
                             </div>
                         )}
 
-                        {!loading && foods.length > 0 && (
+                        {!loading && !searchError && foods.length > 0 && (
                             <div className="space-y-2">
                                 {foods.map((food) => {
                                     const analysis = originalFood ? getSubstitutionAnalysis({

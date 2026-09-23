@@ -35,6 +35,8 @@ const FoodDiaryPage = () => {
     const navigate = useNavigate();
 
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState(null);
+    const [retryKey, setRetryKey] = useState(0);
     const [patientName, setPatientName] = useState('');
     const [activeTab, setActiveTab] = useState('meals');
 
@@ -67,20 +69,22 @@ const FoodDiaryPage = () => {
 
         const loadInitialData = async () => {
             setLoading(true);
+            setLoadError(null);
             try {
                 // Buscar nome do paciente
-                const { data: profile } = await supabase
+                const { data: profile, error: profileError } = await supabase
                     .from('user_profiles')
                     .select('name')
                     .eq('id', patientId)
                     .single();
+                if (profileError) throw profileError;
 
                 if (isMounted && profile) {
                     setPatientName(profile.name);
                 }
 
                 // Buscar data inicial do plano alimentar ativo
-                const { data: activePlan } = await supabase
+                const { data: activePlan, error: planError } = await supabase
                     .from('meal_plans')
                     .select('start_date')
                     .eq('patient_id', patientId)
@@ -88,6 +92,7 @@ const FoodDiaryPage = () => {
                     .order('created_at', { ascending: false })
                     .limit(1)
                     .maybeSingle();
+                if (planError) throw planError;
 
                 const today = new Date().toISOString().split('T')[0];
                 const planStartDate = activePlan?.start_date || today;
@@ -102,22 +107,25 @@ const FoodDiaryPage = () => {
                 }
 
                 // Buscar refeições com as datas definidas
-                const { data: mealsData } = await getPatientMeals(patientId, {
+                const { data: mealsData, error: mealsError } = await getPatientMeals(patientId, {
                     startDate: planStartDate,
                     endDate: today,
                     mealType: ''
                 });
+                if (mealsError) throw mealsError;
                 if (isMounted) setMeals(mealsData || []);
 
                 // Buscar histórico de auditoria completo
-                const { data: auditData } = await getPatientAuditHistory(patientId, {
+                const { data: auditData, error: auditError } = await getPatientAuditHistory(patientId, {
                     startDate: planStartDate,
                     endDate: today
                 });
+                if (auditError) throw auditError;
                 if (isMounted) setAuditHistory(auditData || []);
 
                 // Calcular adesão (últimos 30 dias)
-                const { data: adherence } = await calculateDiaryAdherence(patientId, 30);
+                const { data: adherence, error: adherenceError } = await calculateDiaryAdherence(patientId, 30);
+                if (adherenceError) throw adherenceError;
                 if (isMounted) setAdherenceStats(adherence);
 
                 // Calcular resumo nutricional (últimos 7 dias)
@@ -125,12 +133,14 @@ const FoodDiaryPage = () => {
                 sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
                 const sevenDaysStr = sevenDaysAgo.toISOString().split('T')[0];
 
-                const { data: summary } = await getNutritionalSummary(patientId, sevenDaysStr, today);
+                const { data: summary, error: summaryError } = await getNutritionalSummary(patientId, sevenDaysStr, today);
+                if (summaryError) throw summaryError;
                 if (isMounted) setNutritionalSummary(summary);
 
             } catch (error) {
                 console.error('Erro ao carregar dados:', error);
                 if (isMounted) {
+                    setLoadError(toPortugueseError(error));
                     toast({
                         title: 'Erro ao carregar diário',
                         description: toPortugueseError(error),
@@ -147,7 +157,7 @@ const FoodDiaryPage = () => {
         return () => {
             isMounted = false;
         };
-    }, [patientId, toast]);
+    }, [patientId, toast, retryKey]);
 
     useEffect(() => {
         let isMounted = true;
@@ -155,10 +165,12 @@ const FoodDiaryPage = () => {
         const loadMeals = async () => {
             if (!patientId) return;
             try {
-                const { data: mealsData } = await getPatientMeals(patientId, filters);
+                const { data: mealsData, error: mealsError } = await getPatientMeals(patientId, filters);
+                if (mealsError) throw mealsError;
                 if (isMounted) setMeals(mealsData || []);
 
-                const { data: auditData } = await getPatientAuditHistory(patientId, filters);
+                const { data: auditData, error: auditError } = await getPatientAuditHistory(patientId, filters);
+                if (auditError) throw auditError;
                 if (isMounted) setAuditHistory(auditData || []);
             } catch (error) {
                 console.error('Erro ao buscar refeições:', error);
@@ -219,7 +231,12 @@ const FoodDiaryPage = () => {
         return colors[type] || { bg: 'bg-[#5f6f52]', border: '#5f6f52' };
     };
 
-    return loading ? null : (
+    return loading ? <div className="p-6" role="status">Carregando diário alimentar...</div> : loadError ? (
+        <div className="p-6" role="alert">
+            <p>{loadError}</p>
+            <Button className="mt-3" onClick={() => setRetryKey(value => value + 1)}>Tentar novamente</Button>
+        </div>
+    ) : (
         <div className="flex flex-col min-h-screen bg-background overflow-x-hidden">
             <div className="max-w-7xl mx-auto w-full px-4 md:px-6 py-4 md:py-6 min-w-0">
                 {/* Header */}

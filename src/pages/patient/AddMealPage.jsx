@@ -94,11 +94,13 @@ export default function AddMealPage() {
         itemsData.map(async (item, index) => {
           const foodId = item.reference_food_id || item.nutritionist_food_id;
           const foodSource = item.nutritionist_food_id ? 'custom' : 'reference';
-          const { data: foodData } = await supabase
+          const { data: foodData, error: foodError } = await supabase
             .from('foods')
             .select('*')
             .eq('id', foodId)
             .single();
+
+          if (foodError) throw foodError;
 
           return {
             id: item.id || Date.now() + index,

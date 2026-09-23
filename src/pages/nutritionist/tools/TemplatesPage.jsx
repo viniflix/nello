@@ -120,7 +120,7 @@ const NutritionCard = React.memo(({ template, type, onDelete, toast }) => {
               key={idx}
               className="px-2.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-100 text-xs rounded-full font-medium"
             >
-              {tag}
+              {typeof tag === 'string' ? tag : String(tag?.name || tag?.label || '')}
             </span>
           ))}
           {template.tags.length > 4 && (

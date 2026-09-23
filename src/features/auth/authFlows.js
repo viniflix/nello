@@ -12,7 +12,22 @@ export function normalizeAuthEmail(value) {
 
 export function isExpectedLoginRejection(error) {
   const status = Number(error?.status || error?.statusCode);
-  return status === 400 && EXPECTED_LOGIN_REJECTION_CODES.has(String(error?.code || ''));
+  const code = String(error?.code || '');
+  const message = String(error?.message || '');
+  return status === 400 && (EXPECTED_LOGIN_REJECTION_CODES.has(code)
+    || /invalid login credentials|email not confirmed|user banned/i.test(message));
+}
+
+export function isExpectedPasswordRejection(error) {
+  return Number(error?.status || error?.statusCode) === 422 && (
+    String(error?.code || '') === 'same_password'
+    || /new password should be different|same password/i.test(String(error?.message || ''))
+  );
+}
+
+export async function resendEmailConfirmation(authClient, email) {
+  const { error } = await authClient.auth.resend({ type: 'signup', email: normalizeAuthEmail(email) });
+  if (error) throw error;
 }
 
 export function validateNewPassword(password, confirmation = password) {
