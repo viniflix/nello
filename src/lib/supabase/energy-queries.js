@@ -1,4 +1,4 @@
-import { normalizeEnergyInput } from '@/lib/utils/energy-inputs';
+import { normalizeEnergyInput, readAnthropometryEnergyValues } from '@/lib/utils/energy-inputs';
 import { supabase } from '@/lib/customSupabaseClient';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
 import { calculateEnergyPlan, ENERGY_ENGINE_VERSION } from '@/lib/utils/energy-planning';
@@ -167,8 +167,9 @@ export const getInitialBiometryForEnergy = async (patientId) => {
       if (latestAnthropometry.height != null) out.height = Number(latestAnthropometry.height);
       const res = latestAnthropometry.results;
       if (res && typeof res === 'object') {
-        if (res.body_fat_percentage != null) out.body_fat_percentage = Number(res.body_fat_percentage);
-        if (res.lean_mass_kg != null) out.lean_mass_kg = Number(res.lean_mass_kg);
+        const values = readAnthropometryEnergyValues(res);
+        if (values.body_fat_percentage != null) out.body_fat_percentage = values.body_fat_percentage;
+        if (values.lean_mass_kg != null) out.lean_mass_kg = values.lean_mass_kg;
       }
     }
 
@@ -178,8 +179,9 @@ export const getInitialBiometryForEnergy = async (patientId) => {
       if (latestAnthropometry.height != null) sources.height = 'anthropometry';
       const res = latestAnthropometry.results;
       if (res && typeof res === 'object') {
-        if (res.body_fat_percentage != null) sources.body_fat_percentage = 'anthropometry';
-        if (res.lean_mass_kg != null) sources.lean_mass_kg = 'anthropometry';
+        const values = readAnthropometryEnergyValues(res);
+        if (values.body_fat_percentage != null) sources.body_fat_percentage = 'anthropometry';
+        if (values.lean_mass_kg != null) sources.lean_mass_kg = 'anthropometry';
       }
     }
     if (fromAnamnesis.weight != null && sources.weight == null) sources.weight = 'anamnesis';

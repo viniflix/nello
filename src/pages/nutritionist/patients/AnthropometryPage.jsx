@@ -389,6 +389,15 @@ const AnthropometryPage = () => {
                                 )}
                             </div>
 
+                            {['pollock3', 'pollock7'].includes(selectedRecord.results?.protocol) && !selectedRecord.results?.equation_version && (
+                                <Alert className="border-amber-300 bg-amber-50 dark:bg-amber-950/20">
+                                    <AlertCircle className="h-4 w-4" />
+                                    <AlertDescription>
+                                        Cálculo Pollock anterior à validação desta equação. Confira sexo, idade na data do registro e dobras antes de usar a composição corporal em decisões clínicas. Edite para criar uma nova versão auditável.
+                                    </AlertDescription>
+                                </Alert>
+                            )}
+
                             {versionTimeline.length > 1 && (
                                 <div className="rounded-md border p-3">
                                     <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">

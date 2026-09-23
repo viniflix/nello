@@ -15,6 +15,17 @@ export function normalizeEnergyInput(field, value) {
   return number;
 }
 
+export function readAnthropometryEnergyValues(results) {
+  if (['pollock3', 'pollock7'].includes(results?.protocol) &&
+      (!results?.equation_version || !['male', 'female'].includes(results?.sex_used) || !Number.isInteger(results?.age_years))) {
+    return { body_fat_percentage: null, lean_mass_kg: null };
+  }
+  return {
+    body_fat_percentage: normalizeEnergyInput('body_fat_percentage', results?.body_fat_percent ?? results?.body_fat_percentage),
+    lean_mass_kg: normalizeEnergyInput('lean_mass_kg', results?.lean_mass_kg),
+  };
+}
+
 /** Current source wins; a previous calculation is only a visible fallback. */
 export function restoreEnergyBiometry(current = {}, saved = null) {
   const values = {};

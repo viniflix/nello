@@ -1,11 +1,22 @@
 import { describe, expect, it } from 'vitest';
-import { restoreEnergyBiometry } from './energy-inputs';
+import { readAnthropometryEnergyValues, restoreEnergyBiometry } from './energy-inputs';
 import { calculateEnergyPlan, restoreEnergyInputs } from './energy-planning';
 import { calculateAllProtocols, calculateEerIom, getFormulaBreakdown } from './energy-calculations';
 import { calculateDri2023, driActivityOptionLabel } from './dri-energy';
 
 const patient = { weight: 70, height: 175, age: 30, gender: 'F' };
 describe('DRI missing input regression', () => {
+  it('passes the stored Pollock values to energy formulas without losing body fat', () => {
+    expect(readAnthropometryEnergyValues({ protocol: 'pollock7', equation_version: 1, sex_used: 'female', age_years: 30, body_fat_percent: 25.5, lean_mass_kg: 52.15 })).toEqual({
+      body_fat_percentage: 25.5, lean_mass_kg: 52.15,
+    });
+    expect(readAnthropometryEnergyValues({ protocol: 'pollock7', body_fat_percent: 25.5, lean_mass_kg: 52.15 })).toEqual({
+      body_fat_percentage: null, lean_mass_kg: null,
+    });
+    expect(readAnthropometryEnergyValues({ body_fat_percent: 'invalid', lean_mass_kg: 'NaN' })).toEqual({
+      body_fat_percentage: null, lean_mass_kg: null,
+    });
+  });
   it('does not classify an unknown activity as inactive or calculate an implicit sedentary EER', () => {
     const result = calculateAllProtocols(patient).filter(p => p.isEer);
     expect(result.every(p => p.get === null)).toBe(true);

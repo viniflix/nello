@@ -2,7 +2,7 @@
  * Anthropometry Calculations - Funções científicas para cálculos antropométricos
  * 
  * Baseado em:
- * - Jackson & Pollock (1985) - Body Density
+ * - Jackson & Pollock (1978, homens); Jackson, Pollock & Ward (1980, mulheres)
  * - Siri (1961) - Body Fat %
  * - Heath-Carter (1967) - Somatotype
  * - Frame Size (Wrist circumference)
@@ -18,6 +18,34 @@ export function isMalePatient(genderStr) {
   return /^(male|masculino|m|h|homem|man)$/i.test(String(genderStr).trim());
 }
 
+export function getPollockSex(genderStr) {
+  if (isMalePatient(genderStr)) return 'male';
+  if (/^(female|feminino|f|mulher|woman)$/i.test(String(genderStr || '').trim())) return 'female';
+  return null;
+}
+
+const clinicalNumber = (value) => {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  if (typeof value !== 'string') return null;
+  const clean = value.trim().replace(',', '.');
+  if (!/^\d+(?:\.\d+)?$/.test(clean)) return null;
+  const number = Number(clean);
+  return Number.isFinite(number) ? number : null;
+};
+
+const validPollockAge = (age, isMale) => Number.isInteger(age) && age >= 18 && age <= (isMale ? 61 : 55);
+
+export const POLLOCK_SITES = {
+  pollock3: {
+    male: ['peito', 'abdominal', 'coxa'],
+    female: ['triceps', 'suprailiaca', 'coxa'],
+  },
+  pollock7: {
+    male: ['peito', 'axilar', 'triceps', 'subescapular', 'abdominal', 'suprailiaca', 'coxa'],
+    female: ['peito', 'axilar', 'triceps', 'subescapular', 'abdominal', 'suprailiaca', 'coxa'],
+  },
+};
+
 /**
  * Calcula densidade corporal usando Pollock 3 dobras
  * @param {object} skinfolds - Objeto com as dobras cutâneas (peito, abdominal, coxa, triceps, suprailiaca)
@@ -26,24 +54,24 @@ export function isMalePatient(genderStr) {
  * @returns {number|null} Densidade corporal (g/cm³)
  */
 export function calculateBodyDensityPollock3(skinfolds, age, isMale) {
-  const a = parseFloat(age);
-  if (isNaN(a)) return null;
+  const a = clinicalNumber(age);
+  if (typeof isMale !== 'boolean' || !validPollockAge(a, isMale)) return null;
 
   if (isMale) {
     // Homens: Peitoral, Abdominal, Coxa
-    const c = parseFloat(skinfolds.peito);
-    const ab = parseFloat(skinfolds.abdominal);
-    const th = parseFloat(skinfolds.coxa);
-    if (isNaN(c) || isNaN(ab) || isNaN(th)) return null;
+    const c = clinicalNumber(skinfolds?.peito);
+    const ab = clinicalNumber(skinfolds?.abdominal);
+    const th = clinicalNumber(skinfolds?.coxa);
+    if ([c, ab, th].some(value => value === null || value <= 0)) return null;
 
     const sum = c + ab + th;
     return 1.10938 - (0.0008267 * sum) + (0.0000016 * sum * sum) - (0.0002574 * a);
   } else {
     // Mulheres: Tríceps, Suprailíaca, Coxa
-    const t = parseFloat(skinfolds.triceps);
-    const si = parseFloat(skinfolds.suprailiaca);
-    const th = parseFloat(skinfolds.coxa);
-    if (isNaN(t) || isNaN(si) || isNaN(th)) return null;
+    const t = clinicalNumber(skinfolds?.triceps);
+    const si = clinicalNumber(skinfolds?.suprailiaca);
+    const th = clinicalNumber(skinfolds?.coxa);
+    if ([t, si, th].some(value => value === null || value <= 0)) return null;
 
     const sum = t + si + th;
     return 1.0994921 - (0.0009929 * sum) + (0.0000023 * sum * sum) - (0.0001392 * a);
@@ -64,23 +92,16 @@ export function calculateBodyDensityPollock3(skinfolds, age, isMale) {
  * @returns {number|null} Densidade corporal (g/cm³)
  */
 export function calculateBodyDensityPollock7(chest, axillary, triceps, subscapular, abdominal, suprailiac, thigh, age, isMale) {
-  const c = parseFloat(chest);
-  const ax = parseFloat(axillary);
-  const t = parseFloat(triceps);
-  const s = parseFloat(subscapular);
-  const ab = parseFloat(abdominal);
-  const si = parseFloat(suprailiac);
-  const th = parseFloat(thigh);
-  const a = parseFloat(age);
-  
-  if (isNaN(c) || isNaN(ax) || isNaN(t) || isNaN(s) || isNaN(ab) || isNaN(si) || isNaN(th) || isNaN(a)) return null;
+  const [c, ax, t, s, ab, si, th] = [chest, axillary, triceps, subscapular, abdominal, suprailiac, thigh].map(clinicalNumber);
+  const a = clinicalNumber(age);
+  if ([c, ax, t, s, ab, si, th].some(value => value === null || value <= 0) || typeof isMale !== 'boolean' || !validPollockAge(a, isMale)) return null;
 
   const sum = c + ax + t + s + ab + si + th;
 
   if (isMale) {
-    return 1.112 - (0.00043499 * sum) + (0.00000055 * sum * sum) - (0.00028826 * age);
+    return 1.112 - (0.00043499 * sum) + (0.00000055 * sum * sum) - (0.00028826 * a);
   } else {
-    return 1.097 - (0.00046971 * sum) + (0.00000056 * sum * sum) - (0.00012828 * age);
+    return 1.097 - (0.00046971 * sum) + (0.00000056 * sum * sum) - (0.00012828 * a);
   }
 }
 
@@ -119,11 +140,13 @@ export function calculateBodyDensityDurnin(triceps, biceps, subscapular, suprail
  * @returns {number|null} Densidade corporal (g/cm³)
  */
 export function calculateBodyDensity(skinfolds, age, isMale, protocol = 'pollock7') {
-  if (!age) return null;
+  if (clinicalNumber(age) === null) return null;
 
   if (protocol === 'pollock3') {
+    if (typeof isMale !== 'boolean') return null;
     return calculateBodyDensityPollock3(skinfolds, age, isMale);
   } else if (protocol === 'pollock7') {
+    if (typeof isMale !== 'boolean') return null;
     const { peito, axilar, triceps, subescapular, abdominal, suprailiaca, coxa } = skinfolds;
     return calculateBodyDensityPollock7(peito, axilar, triceps, subescapular, abdominal, suprailiaca, coxa, age, isMale);
   } else if (protocol === 'durnin') {
@@ -140,16 +163,39 @@ export function calculateBodyDensity(skinfolds, age, isMale, protocol = 'pollock
  * @returns {number|null} Percentual de gordura corporal
  */
 export function calculateBodyFatPercent(bodyDensity) {
-  const bd = parseFloat(bodyDensity);
-  if (isNaN(bd) || bd <= 0) return null;
+  const bd = clinicalNumber(bodyDensity);
+  if (bd === null || bd <= 0) return null;
   
-  let bf = ((4.95 / bd) - 4.5) * 100;
-  
-  // Limitar aos bounds aceitáveis para evitar falhas silenciosas
-  if (bf < 2) bf = 2;
-  if (bf > 70) bf = 70;
-  
-  return bf;
+  const bf = ((4.95 / bd) - 4.5) * 100;
+  return bf > 0 && bf < 100 ? bf : null;
+}
+
+export function calculatePollockComposition({ skinfolds, age, sex, weight, protocol }) {
+  const sites = POLLOCK_SITES[protocol]?.[sex];
+  const years = clinicalNumber(age);
+  const kilograms = clinicalNumber(weight);
+  const maxAge = sex === 'male' ? 61 : 55;
+  if (!sites || !Number.isInteger(years) || years < 18 || years > maxAge || kilograms === null || kilograms <= 0) return null;
+
+  const foldValues = sites.map(site => clinicalNumber(skinfolds?.[site]));
+  if (foldValues.some(value => value === null || value <= 0)) return null;
+
+  const bodyDensity = calculateBodyDensity(skinfolds, years, sex === 'male', protocol);
+  const bodyFatPercent = calculateBodyFatPercent(bodyDensity);
+  if (bodyFatPercent === null) return null;
+
+  const fatMass = kilograms * bodyFatPercent / 100;
+  return {
+    body_density: bodyDensity,
+    body_fat_percent: bodyFatPercent,
+    fat_mass_kg: fatMass,
+    lean_mass_kg: kilograms - fatMass,
+    protocol,
+    age_years: years,
+    sex_used: sex,
+    skinfold_sum_mm: foldValues.reduce((sum, value) => sum + value, 0),
+    equation_version: 1,
+  };
 }
 
 /**

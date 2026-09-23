@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Save, X, Calculator, Ruler, Scissors, Image as ImageIcon, AlertCircle, Bone } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,14 +13,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { getLatestAnthropometryRecord } from '@/lib/supabase/anthropometry-queries';
 import { getLatestAnamnesis } from '@/lib/supabase/anamnesis-queries';
 import PhotoGallery from './PhotoGallery';
-import { differenceInYears } from 'date-fns';
+import { differenceInYears, parseISO } from 'date-fns';
 import {
   calculateFrameSize,
   calculateSomatotype,
   getSomatotypeDescription,
   calculateBodyDensity,
   calculateBodyFatPercent,
-  isMalePatient
+  calculatePollockComposition,
+  getPollockSex,
+  POLLOCK_SITES
 } from '@/lib/utils/anthropometry-calculations';
 import { classifyBMI, getBMICuts, calculateBMI } from '@/lib/utils/bmi-classification';
 
@@ -94,13 +96,47 @@ const AnthropometryForm = ({
     const [calculatedBMI, setCalculatedBMI] = useState(null);
     const [idealWeightRange, setIdealWeightRange] = useState(null);
     const [calculatedRCQ, setCalculatedRCQ] = useState(null);
-    const [estimatedBodyFat, setEstimatedBodyFat] = useState(null);
     const [errors, setErrors] = useState({});
     const [protocol, setProtocol] = useState('pollock7');
-    const [compositionResults, setCompositionResults] = useState(null);
     const [frameSize, setFrameSize] = useState(null);
     const [somatotype, setSomatotype] = useState(null);
     const [manualAge, setManualAge] = useState('');
+    const pollockSex = getPollockSex(patientGender);
+    const ageAtRecord = useMemo(() => {
+        if (manualAge !== '') return /^\d+$/.test(manualAge) ? Number(manualAge) : null;
+        if (!patientBirthDate || !formData.record_date) return null;
+        const age = differenceInYears(parseISO(formData.record_date), parseISO(patientBirthDate));
+        return Number.isInteger(age) ? age : null;
+    }, [manualAge, patientBirthDate, formData.record_date]);
+
+    const compositionResults = useMemo(() => {
+        const weight = Number(formData.weight);
+        if (!Number.isFinite(weight) || weight <= 0) return null;
+
+        if (protocol === 'bioimpedance') {
+            const percent = Number(formData.bioimpedance?.percent_gordura);
+            if (!Number.isFinite(percent) || percent <= 0 || percent >= 100) return null;
+            const fatMass = weight * percent / 100;
+            return { body_density: null, body_fat_percent: percent, fat_mass_kg: fatMass,
+                lean_mass_kg: weight - fatMass, protocol };
+        }
+
+        if (!pollockSex || ageAtRecord === null) return null;
+        if (protocol === 'pollock3' || protocol === 'pollock7') {
+            const calculated = calculatePollockComposition({ skinfolds: formData.skinfolds, age: ageAtRecord,
+                sex: pollockSex, weight, protocol });
+            return calculated ? { ...calculated, age_source: manualAge !== '' ? 'manual' : 'birth_date' } : null;
+        }
+        if (protocol === 'durnin') {
+            const density = calculateBodyDensity(formData.skinfolds, ageAtRecord, pollockSex === 'male', protocol);
+            const percent = calculateBodyFatPercent(density);
+            if (percent === null) return null;
+            const fatMass = weight * percent / 100;
+            return { body_density: density, body_fat_percent: percent, fat_mass_kg: fatMass,
+                lean_mass_kg: weight - fatMass, protocol, age_years: ageAtRecord, sex_used: pollockSex };
+        }
+        return null;
+    }, [formData.weight, formData.skinfolds, formData.bioimpedance, protocol, pollockSex, ageAtRecord, manualAge]);
 
     // Buscar último registro antropométrico e dados da anamnese para preencher formulário
     useEffect(() => {
@@ -127,6 +163,8 @@ const AnthropometryForm = ({
     // Preencher formulário se estiver editando
     useEffect(() => {
         if (initialData) {
+            setProtocol(initialData.results?.protocol || 'pollock7');
+            setManualAge(initialData.results?.age_source === 'manual' ? String(initialData.results.age_years) : '');
             setFormData({
                 weight: initialData.weight || '',
                 height: initialData.height || '',
@@ -153,8 +191,7 @@ const AnthropometryForm = ({
             const bmi = parseFloat(weight) / Math.pow(heightM, 2);
             setCalculatedBMI(bmi);
 
-            const age = patientBirthDate ? differenceInYears(new Date(), new Date(patientBirthDate)) : null;
-            const cuts = getBMICuts({ age });
+            const cuts = getBMICuts({ age: ageAtRecord });
             const weightNow = parseFloat(weight);
             setIdealWeightRange(cuts ? {
                 min: cuts.underweight * Math.pow(heightM, 2),
@@ -165,7 +202,7 @@ const AnthropometryForm = ({
             setCalculatedBMI(null);
             setIdealWeightRange(null);
         }
-    }, [formData.weight, formData.height, patientBirthDate]);
+    }, [formData.weight, formData.height, ageAtRecord]);
 
     // Calcular RCQ (Relação Cintura-Quadril)
     useEffect(() => {
@@ -178,76 +215,17 @@ const AnthropometryForm = ({
         }
     }, [formData.circumferences.cintura, formData.circumferences.quadril]);
 
-    // Calcular Composição Corporal usando protocolos científicos
-    useEffect(() => {
-        const weight = parseFloat(formData.weight);
-        const height = parseFloat(formData.height);
-        
-        let age = null;
-        if (manualAge) {
-            age = parseFloat(manualAge);
-        } else if (patientBirthDate) {
-            age = differenceInYears(new Date(), new Date(patientBirthDate));
-        }
-
-        const isMale = isMalePatient(patientGender);
-
-        if (!weight || !height) {
-            setCompositionResults(null);
-            setEstimatedBodyFat(null);
-            return;
-        }
-
-        let bodyDensity = null;
-        let bodyFatPercent = null;
-        let fatMass = null;
-        let leanMass = null;
-
-        // Calcular baseado no protocolo selecionado
-        if (protocol === 'bioimpedance' && formData.bioimpedance?.percent_gordura) {
-            // Usar bioimpedância diretamente
-            bodyFatPercent = parseFloat(formData.bioimpedance.percent_gordura);
-        } else if (age) {
-            bodyDensity = calculateBodyDensity(formData.skinfolds, age, isMale, protocol);
-            if (bodyDensity) {
-                bodyFatPercent = calculateBodyFatPercent(bodyDensity);
-            }
-        }
-
-        // Calcular massa gorda e massa magra
-        if (bodyFatPercent !== null) {
-            fatMass = (weight * bodyFatPercent) / 100;
-            leanMass = weight - fatMass;
-
-            setCompositionResults({
-                body_density: bodyDensity,
-                body_fat_percent: bodyFatPercent,
-                fat_mass_kg: fatMass,
-                lean_mass_kg: leanMass,
-                protocol: protocol
-            });
-
-            setEstimatedBodyFat(bodyFatPercent);
-        } else {
-            setCompositionResults(null);
-            setEstimatedBodyFat(null);
-        }
-    }, [formData.weight, formData.height, formData.skinfolds, formData.bioimpedance, protocol, patientGender, patientBirthDate]);
-
     // Calcular Frame Size (Compleição Óssea)
     useEffect(() => {
         const height = parseFloat(formData.height);
         const wrist = parseFloat(formData.bone_diameters?.punho);
-        const gender = patientGender?.toLowerCase() || '';
-        const isMale = /^(male|masculino|m)$/i.test(String(gender || '').trim());
-
-        if (height && wrist) {
-            const frame = calculateFrameSize(height, wrist, isMale);
+        if (height && wrist && pollockSex) {
+            const frame = calculateFrameSize(height, wrist, pollockSex === 'male');
             setFrameSize(frame);
         } else {
             setFrameSize(null);
         }
-    }, [formData.height, formData.bone_diameters?.punho, patientGender]);
+    }, [formData.height, formData.bone_diameters?.punho, pollockSex]);
 
     // Calcular Somatotipo (Heath-Carter)
     useEffect(() => {
@@ -260,9 +238,6 @@ const AnthropometryForm = ({
         const femurWidth = parseFloat(formData.bone_diameters?.femur);
         const armCirc = formData.circumferences.braco_contraido_e || formData.circumferences.braco_contraido_d;
         const calfCirc = formData.circumferences.panturrilha_e || formData.circumferences.panturrilha_d;
-        const gender = patientGender?.toLowerCase() || '';
-        const isMale = /^(male|masculino|m)$/i.test(String(gender || '').trim());
-
         if (height && weight) {
             const somatotypeResult = calculateSomatotype({
                 height,
@@ -274,7 +249,7 @@ const AnthropometryForm = ({
                 femurWidth,
                 armCirc: parseFloat(armCirc),
                 calfCirc: parseFloat(calfCirc),
-                isMale
+                isMale: pollockSex === 'male'
             });
             setSomatotype(somatotypeResult);
         } else {
@@ -292,7 +267,7 @@ const AnthropometryForm = ({
         formData.circumferences.braco_contraido_d,
         formData.circumferences.panturrilha_e,
         formData.circumferences.panturrilha_d,
-        patientGender
+        pollockSex
     ]);
 
     const handleChange = (e) => {
@@ -438,22 +413,21 @@ const AnthropometryForm = ({
         setCalculatedBMI(null);
         setIdealWeightRange(null);
         setCalculatedRCQ(null);
-        setEstimatedBodyFat(null);
+        setProtocol('pollock7');
+        setManualAge('');
         if (onCancel) onCancel();
     };
 
     // RCQ com diferenciação por sexo (OMS: H<0.90, M<0.85 = baixo risco)
     const getRCQCategory = (rcq) => {
-        if (!rcq) return null;
-        const gender = patientGender?.toLowerCase() || '';
-        const isMale = /^(male|masculino|m)$/i.test(String(gender || '').trim());
-        const threshold = isMale ? 0.90 : 0.85;
+        if (!rcq || !pollockSex) return null;
+        const threshold = pollockSex === 'male' ? 0.90 : 0.85;
         if (rcq < threshold) return { label: 'Baixo risco', color: 'text-green-600' };
         if (rcq < threshold + 0.10) return { label: 'Risco moderado', color: 'text-yellow-600' };
         return { label: 'Alto risco', color: 'text-red-600' };
     };
 
-    const age = patientBirthDate ? differenceInYears(new Date(), new Date(patientBirthDate)) : null;
+    const age = ageAtRecord;
     const imcCategory = calculatedBMI
         ? classifyBMI({ bmi: calculatedBMI, age, sex: patientGender, ethnicity: patientEthnicity })
         : null;
@@ -861,41 +835,35 @@ const AnthropometryForm = ({
                                         <SelectValue placeholder="Selecione o protocolo" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="pollock3">Pollock 3 Dobras (Tríceps, Subescapular, Suprailíaca)</SelectItem>
+                                        <SelectItem value="pollock3">Pollock 3 Dobras (locais conforme sexo)</SelectItem>
                                         <SelectItem value="pollock7">Pollock 7 Dobras (Peito, Axilar, Tríceps, Subescapular, Abdominal, Suprailíaca, Coxa)</SelectItem>
                                         <SelectItem value="durnin">Durnin & Womersley 4 Dobras (Tríceps, Bíceps, Subescapular, Suprailíaca)</SelectItem>
                                         <SelectItem value="bioimpedance">Bioimpedância (Direto)</SelectItem>
                                     </SelectContent>
                                 </Select>
                                 <p className="text-xs text-muted-foreground">
-                                    {protocol === 'pollock3' && 'Requer: Tríceps, Subescapular, Suprailíaca, Idade, Gênero'}
+                                    {protocol === 'pollock3' && (pollockSex === 'male' ? 'Requer: Peito, Abdômen, Coxa, idade e sexo' : pollockSex === 'female' ? 'Requer: Tríceps, Suprailíaca, Coxa, idade e sexo' : 'Informe o sexo do paciente no cadastro para escolher as dobras corretas')}
                                     {protocol === 'pollock7' && 'Requer: Peito, Axilar, Tríceps, Subescapular, Abdominal, Suprailíaca, Coxa, Idade, Gênero'}
                                     {protocol === 'durnin' && 'Requer: Tríceps, Bíceps, Subescapular, Suprailíaca, Idade, Gênero'}
                                     {protocol === 'bioimpedance' && 'Use os valores de bioimpedância diretamente'}
                                 </p>
                             </div>
 
-                            {/* Alerta e Input para Idade caso não exista Data de Nascimento */}
-                            {!patientBirthDate && protocol !== 'bioimpedance' && (
-                                <Alert variant="warning" className="bg-yellow-500/10 text-yellow-500 border-yellow-500/20">
-                                    <AlertCircle className="h-4 w-4" />
-                                    <AlertDescription>
-                                        A data de nascimento não foi encontrada no cadastro. Por favor, insira a idade do paciente para o cálculo.
-                                        <div className="mt-3 max-w-[200px]">
-                                            <Label htmlFor="manualAge">Idade (anos)</Label>
-                                            <Input
-                                                id="manualAge"
-                                                name="manualAge"
-                                                type="number"
-                                                min="0"
-                                                value={manualAge}
-                                                onChange={(e) => setManualAge(e.target.value)}
-                                                className="mt-1"
-                                                placeholder="Ex: 30"
-                                            />
-                                        </div>
-                                    </AlertDescription>
-                                </Alert>
+                            {protocol !== 'bioimpedance' && (
+                                <div className="space-y-2 max-w-xs">
+                                    <Label htmlFor="manualAge">Idade na data do registro (anos)</Label>
+                                    <Input
+                                        id="manualAge"
+                                        name="manualAge"
+                                        type="number"
+                                        min="0"
+                                        step="1"
+                                        value={manualAge}
+                                        onChange={(e) => setManualAge(e.target.value)}
+                                        placeholder={patientBirthDate ? `Calculada: ${ageAtRecord ?? 'indisponível'}` : 'Informe a idade'}
+                                    />
+                                    <p className="text-xs text-muted-foreground">{patientBirthDate ? 'Calculada pela data de nascimento e do registro. Preencha para corrigir.' : 'Obrigatória porque não há data de nascimento cadastrada.'}</p>
+                                </div>
                             )}
 
                             {/* Inputs Dinâmicos baseados no Protocolo */}
@@ -907,14 +875,10 @@ const AnthropometryForm = ({
                                     </h3>
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                                         {/* Pollock 3 */}
-                                        {protocol === 'pollock3' && [
-                                            { key: 'triceps', label: 'Tríceps', required: true },
-                                            { key: 'subescapular', label: 'Subescapular', required: true },
-                                            { key: 'suprailiaca', label: 'Suprailíaca', required: true }
-                                        ].map(({ key, label, required }) => (
+                                        {protocol === 'pollock3' && (POLLOCK_SITES.pollock3[pollockSex] || []).map((key) => (
                                             <div key={key} className="space-y-2">
                                                 <Label htmlFor={`fold_${key}`}>
-                                                    {label} (mm) {required && <span className="text-destructive">*</span>}
+                                                    {({ peito: 'Peito', abdominal: 'Abdômen', coxa: 'Coxa', triceps: 'Tríceps', suprailiaca: 'Suprailíaca' })[key]} (mm) <span className="text-destructive">*</span>
                                                 </Label>
                                                 <Input
                                                     id={`fold_${key}`}
@@ -1082,7 +1046,7 @@ const AnthropometryForm = ({
                                             </div>
                                             <div className="pt-4 border-t border-emerald-200 dark:border-emerald-800">
                                                 <p className="text-xs text-muted-foreground">
-                                                    *Cálculos baseados em {protocol === 'pollock3' ? 'Jackson & Pollock (1985) - 3 dobras' : protocol === 'pollock7' ? 'Jackson & Pollock (1985) - 7 dobras' : protocol === 'durnin' ? 'Durnin & Womersley (1974)' : 'Bioimpedância direta'} e equação de Siri (1961) para conversão de densidade em % de gordura.
+                                                    *Cálculos baseados em {protocol === 'pollock3' || protocol === 'pollock7' ? 'Jackson & Pollock (1978, homens) / Jackson, Pollock & Ward (1980, mulheres)' : protocol === 'durnin' ? 'Durnin & Womersley (1974)' : 'Bioimpedância direta'} e equação de Siri (1961) para conversão de densidade em % de gordura.
                                                 </p>
                                             </div>
                                         </div>
@@ -1103,7 +1067,7 @@ const AnthropometryForm = ({
                                     <AlertCircle className="h-4 w-4 text-amber-600" />
                                     <AlertDescription>
                                         <p className="text-sm text-amber-900 dark:text-amber-100">
-                                            Preencha todas as dobras cutâneas necessárias para o protocolo selecionado e certifique-se de que o paciente tem idade e gênero cadastrados no perfil.
+                                            {(!pollockSex) ? 'Informe o sexo do paciente no cadastro para calcular a composição corporal.' : (protocol === 'pollock3' || protocol === 'pollock7') && (ageAtRecord === null || ageAtRecord < 18 || ageAtRecord > (pollockSex === 'male' ? 61 : 55)) ? `Informe uma idade válida na data do registro (18 a ${pollockSex === 'male' ? 61 : 55} anos para esta equação).` : 'Preencha peso e todas as dobras necessárias com valores positivos. Confira medidas e idade se o resultado continuar indisponível.'}
                                         </p>
                                     </AlertDescription>
                                 </Alert>
