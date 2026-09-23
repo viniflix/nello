@@ -68,13 +68,16 @@ const CheckinResponsePage = () => {
           return;
         }
 
-        const { data: fieldsData, error: fieldsError } = await supabase
-          .from('checkin_fields')
-          .select('*')
-          .eq('template_id', sessionData.template_id)
-          .order('order_index', { ascending: true });
-
-        if (fieldsError) throw fieldsError;
+        let fieldsData = Array.isArray(sessionData.fields_snapshot) ? sessionData.fields_snapshot : [];
+        if (!fieldsData.length) {
+          const { data, error: fieldsError } = await supabase
+            .from('checkin_fields')
+            .select('*')
+            .eq('template_id', sessionData.template_id)
+            .order('order_index', { ascending: true });
+          if (fieldsError) throw fieldsError;
+          fieldsData = data || [];
+        }
 
         if (!fieldsData?.length) {
           setError('Este check-in ainda não possui perguntas disponíveis.');

@@ -115,7 +115,7 @@ export default function CheckinEditorPage() {
                                 <SelectContent>
                                     <SelectItem value="daily">Diariamente</SelectItem>
                                     <SelectItem value="weekly">Semanalmente</SelectItem>
-                                    <SelectItem value="biweekly">A cada 15 dias</SelectItem>
+                                    <SelectItem value="biweekly">A cada 14 dias</SelectItem>
                                     <SelectItem value="monthly">Mensalmente</SelectItem>
                                 </SelectContent>
                             </Select>

@@ -58,4 +58,20 @@ describe('carregamento seguro do check-in', () => {
     expect(await screen.findByText('Este check-in ainda não possui perguntas disponíveis.')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Finalizar Check-in' })).not.toBeInTheDocument();
   });
+
+  it('usa as perguntas preservadas no envio mesmo após edição do template', async () => {
+    mocks.sessionId = '8c1a43d1-7d51-4e2f-86c5-2bd4f672d752';
+    const sessionQuery = {
+      select: vi.fn(() => sessionQuery), eq: vi.fn(() => sessionQuery),
+      single: vi.fn(async () => ({ data: {
+        id: mocks.sessionId, status: 'pending', template_id: 'template-id',
+        fields_snapshot: [{ id: 'field-1', label: 'Pergunta preservada', field_type: 'yes_no', is_required: true }],
+        checkin_templates: { name: 'Check-in' }
+      }, error: null }))
+    };
+    mocks.from.mockReturnValue(sessionQuery);
+    render(<MemoryRouter><CheckinResponsePage /></MemoryRouter>);
+    expect(await screen.findByText('Pergunta preservada')).toBeInTheDocument();
+    expect(mocks.from).toHaveBeenCalledTimes(1);
+  });
 });

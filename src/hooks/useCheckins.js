@@ -2,7 +2,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
-import { calculateCheckinScore, findMissingRequiredField } from '@/lib/validations/formContracts';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
 
 export function useCheckins() {
@@ -173,17 +172,11 @@ export function useCheckins() {
 
   // --- NUTRI: Vincular Template (Criar Schedule) ---
   const linkTemplate = useMutation({
-    mutationFn: async ({ templateId, patientId, nextSendAt, channel }) => {
-      const { error } = await supabase
-        .from('checkin_schedules')
-        .upsert({
-          template_id: templateId,
-          patient_id: patientId,
-          nutritionist_id: user.id,
-          next_send_at: nextSendAt,
-          channel: channel || 'in_app'
-        }, { onConflict: 'template_id,patient_id' }); 
-        
+    mutationFn: async ({ templateId, patientId, channel, timeZone }) => {
+      const { error } = await supabase.rpc('link_checkin_template', {
+        p_template_id: templateId, p_patient_id: patientId,
+        p_channel: channel || 'in_app', p_time_zone: timeZone || 'America/Fortaleza'
+      });
       if (error) throw error;
       return true;
     },
@@ -194,6 +187,20 @@ export function useCheckins() {
     onError: (error) => {
       logSupabaseError('Vincular template de check-in', error);
       toast({ title: "Não foi possível vincular", description: "O agendamento não foi criado. Tente novamente.", variant: "destructive" });
+    }
+  });
+
+  const setScheduleActive = useMutation({
+    mutationFn: async ({ scheduleId, active }) => {
+      const { error } = await supabase.rpc('set_checkin_schedule_active', {
+        p_schedule_id: scheduleId, p_active: active
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['checkinSchedules'] }),
+    onError: (error) => {
+      logSupabaseError('Alterar agendamento de check-in', error);
+      toast({ title: 'Não foi possível alterar o agendamento', variant: 'destructive' });
     }
   });
 
@@ -222,59 +229,11 @@ export function useCheckins() {
   const submitCheckin = useMutation({
     mutationFn: async ({ sessionId, responses }) => {
       if (!user?.id) throw new Error('CHECKIN_AUTH_REQUIRED');
-
-      const { data: session, error: sessionError } = await supabase
-        .from('checkin_sessions')
-        .select('id, patient_id, nutritionist_id, template_id, status, expires_at')
-        .eq('id', sessionId)
-        .eq('patient_id', user.id)
-        .single();
-      if (sessionError || !session) throw sessionError || new Error('CHECKIN_NOT_FOUND');
-      if (session.status !== 'pending') throw new Error('CHECKIN_ALREADY_COMPLETED');
-      if (session.expires_at && new Date(session.expires_at).getTime() <= Date.now()) throw new Error('CHECKIN_EXPIRED');
-
-      const { data: fields, error: fieldsError } = await supabase
-        .from('checkin_fields')
-        .select('id, field_type, is_required, label, score_weight')
-        .eq('template_id', session.template_id)
-        .order('order_index', { ascending: true });
-      if (fieldsError) throw fieldsError;
-      if (!fields?.length) throw new Error('CHECKIN_WITHOUT_FIELDS');
-
-      const missing = findMissingRequiredField(fields, responses);
-      if (missing) throw new Error('CHECKIN_REQUIRED_FIELD_MISSING');
-      const score = calculateCheckinScore(fields, responses);
-      const adherencePct = score.maximum > 0 ? (score.total / score.maximum) * 100 : null;
-      const now = new Date().toISOString();
-
-      const { data: updated, error } = await supabase
-        .from('checkin_sessions')
-        .update({
-          responses,
-          score_total: score.total,
-          score_max: score.maximum,
-          adherence_percentage: adherencePct,
-          status: 'completed',
-          completed_at: now
-        })
-        .eq('id', sessionId)
-        .eq('patient_id', user.id)
-        .eq('status', 'pending')
-        .gt('expires_at', now)
-        .select('id')
-        .maybeSingle();
-        
-      if (error) throw error;
-      if (!updated) throw new Error('CHECKIN_ALREADY_COMPLETED_OR_EXPIRED');
-      
-      const { error: streakError } = await supabase.rpc('increment_checkin_streak', {
-        p_patient_id: user.id,
-        p_nutritionist_id: session.nutritionist_id,
+      const { data: adherencePct, error } = await supabase.rpc('submit_checkin_session', {
+        p_session_id: sessionId, p_responses: responses
       });
-      if (streakError) {
-        logSupabaseError('Check-in concluído, mas a sequência não foi atualizada', streakError);
-      }
-      return { adherencePct, streakUpdated: !streakError };
+      if (error) throw error;
+      return { adherencePct };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pendingCheckins'] });
@@ -314,6 +273,7 @@ export function useCheckins() {
     updateTemplate,
     usePatientSchedules,
     linkTemplate,
+    setScheduleActive,
     usePendingCheckins,
     submitCheckin,
     useCheckinHistory

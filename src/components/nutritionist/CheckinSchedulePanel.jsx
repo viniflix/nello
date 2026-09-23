@@ -10,17 +10,17 @@ import { Skeleton } from '@/components/ui/skeleton';
 const frequencyLabels = {
   daily: 'Diário',
   weekly: 'Semanal',
-  biweekly: 'Quinzenal',
+  biweekly: 'A cada 14 dias',
   monthly: 'Mensal'
 };
 
-const formatDate = (value) => {
+const formatDate = (value, timeZone) => {
   if (!value || Number.isNaN(new Date(value).getTime())) return 'Aguardando programação';
-  return new Date(value).toLocaleDateString('pt-BR');
+  return new Date(value).toLocaleString('pt-BR', { timeZone: timeZone || 'America/Fortaleza', dateStyle: 'short', timeStyle: 'short' });
 };
 
 const CheckinSchedulePanel = ({ patientId }) => {
-  const { usePatientSchedules, useTemplates, linkTemplate } = useCheckins();
+  const { usePatientSchedules, useTemplates, linkTemplate, setScheduleActive } = useCheckins();
   const { data: schedules = [], isLoading: isLoadingSchedules, isError: schedulesError, refetch: refetchSchedules } = usePatientSchedules(patientId);
   const { data: templates = [], isLoading: isLoadingTemplates, isError: templatesError, refetch: refetchTemplates } = useTemplates();
   const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
@@ -35,17 +35,11 @@ const CheckinSchedulePanel = ({ patientId }) => {
     
     const tmplObj = activeTemplates.find(t => t.id === selectedTemplate);
     if (!tmplObj) return;
-    let nextSend = new Date();
-    // O primeiro envio ocorre no dia seguinte; a recorrência permanece definida no template.
-    nextSend.setDate(nextSend.getDate() + 1);
-    const [h, m] = (tmplObj?.send_time || '09:00').split(':');
-    nextSend.setHours(parseInt(h), parseInt(m), 0, 0);
-
     await linkTemplate.mutateAsync({
       templateId: selectedTemplate,
       patientId,
-      nextSendAt: nextSend.toISOString(),
-      channel
+      channel,
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Fortaleza'
     });
     
     setIsLinkModalOpen(false);
@@ -74,8 +68,13 @@ const CheckinSchedulePanel = ({ patientId }) => {
               <p className="break-words text-[13px] font-semibold text-slate-900">{schedule.checkin_templates?.name || 'Check-in'}</p>
               <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500">
                 <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" />{frequencyLabels[schedule.checkin_templates?.frequency] || 'Recorrência definida'}</span>
-                <span className="flex items-center gap-1"><BellRing className="h-3.5 w-3.5" />Próximo: {formatDate(schedule.next_send_at)}</span>
+                <span className="flex items-center gap-1"><BellRing className="h-3.5 w-3.5" />{schedule.is_active ? `Próximo: ${formatDate(schedule.next_send_at, schedule.time_zone)}` : 'Pausado'}</span>
+                {schedule.time_zone && <span>Fuso: {schedule.time_zone}</span>}
               </div>
+              <Button type="button" variant="outline" size="sm" className="mt-2" disabled={setScheduleActive.isPending}
+                onClick={() => setScheduleActive.mutate({ scheduleId: schedule.id, active: !schedule.is_active })}>
+                {schedule.is_active ? 'Pausar' : 'Reativar'}
+              </Button>
             </li>
           ))}
         </ul>}
@@ -85,7 +84,7 @@ const CheckinSchedulePanel = ({ patientId }) => {
             <DialogHeader>
               <DialogTitle>Vincular formulário ao paciente</DialogTitle>
               <DialogDescription>
-                Selecione um formulário. O primeiro envio será agendado para amanhã no horário configurado.
+                Selecione um formulário. O primeiro envio seguirá a frequência, o horário e o fuso deste dispositivo.
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleLink} className="space-y-5 py-4">
