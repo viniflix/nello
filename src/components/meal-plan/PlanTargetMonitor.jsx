@@ -1,4 +1,5 @@
 import EnergyFormulaDetails from '@/components/energy/EnergyFormulaDetails';
+import { harrisEquationLabel } from '@/lib/utils/harris-history';
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Target, AlertCircle, CheckCircle2, Info, Calculator } from 'lucide-react';
@@ -127,7 +128,7 @@ const PlanTargetMonitor = ({
         };
         const protocol = energyCalculation.tmb_protocol || energyCalculation.protocol;
         return {
-            protocol: protocolMap[protocol] || protocol,
+            protocol: harrisEquationLabel(energyCalculation) || protocolMap[protocol] || protocol,
             tmb: energyCalculation.tmb_result ?? energyCalculation.tmb,
             isHarris: ['harris', 'harris-benedict'].includes(protocol),
             isDri: ['eer_iom', 'dri_2023'].includes(protocol),

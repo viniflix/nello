@@ -38,7 +38,8 @@ describe('energy persistence', () => {
     expect(data.protocol_code).toBe('energy.harris_benedict_1919_clinical');
     expect(data.input_snapshot).toMatchObject({ clinical_mobility: 'bedridden', mobility_factor: 1.2, injury_factor_id: 'sepsis', mets_included_in_get: false });
     expect(data.output_snapshot.calculation_details.appliedTotal).toContain('1.2 × 1.4');
-    expect(data.source_snapshot.engine_version).toBe(3);
+    expect(data.source_snapshot.engine_version).toBe(4);
+    expect(data.source_snapshot.equation_version).toBe('harris_benedict_1919_full_precision');
     expect(data.output_snapshot.after_mobility_kcal).toBeCloseTo(2042.415, 6);
   });
   it('saves DRIs without a fictional TMB or external activity multiplier', async () => {

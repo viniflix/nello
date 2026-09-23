@@ -582,8 +582,11 @@ export const getFormulaBreakdown = (method, data) => {
       const result = constant + weightTerm + heightTerm - ageTerm;
 
       return {
-        sourceUrl: 'https://pubmed.ncbi.nlm.nih.gov/16576330/',
+        sourceUrl: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC6935811/',
         formulaName: `Harris-Benedict (${isMale ? 'Masculino' : 'Feminino'})`,
+        equationVersion: 'harris_benedict_1919_full_precision',
+        terms: { constant, weight: weightTerm, height: heightTerm, age: ageTerm, result },
+        resultKcal: result,
         equationStr: isMale
           ? '66.473 + (13.7516 × P) + (5.0033 × A) - (6.755 × I)'
           : '655.0955 + (9.5634 × P) + (1.8496 × A) - (4.6756 × I)',
@@ -593,7 +596,7 @@ export const getFormulaBreakdown = (method, data) => {
           { label: 'Peso', value: `${String(weightCoeff)} × ${weight} = ${weightTerm.toFixed(2)}` },
           { label: 'Altura', value: `${String(heightCoeff)} × ${height} = ${heightTerm.toFixed(2)}` },
           { label: 'Idade', value: `${String(ageCoeff)} × ${age} = ${ageTerm.toFixed(2)}` },
-          { label: 'Resultado', value: `${result.toFixed(0)} kcal` }
+          { label: 'Resultado', value: `${result.toFixed(2)} kcal` }
         ],
         baseData: { weight, height, age, gender: isMale ? 'Masculino' : 'Feminino' }
       };

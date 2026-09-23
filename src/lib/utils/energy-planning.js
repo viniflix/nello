@@ -2,7 +2,7 @@ import { calculateAllProtocols, calculateGET, calculateVentaAdjustment, getFormu
 import { driPaCoefficient, validEnergyBiometry, DRI_ACTIVITY_LEVELS } from './dri-energy';
 import { getInjuryFactorValue, INJURY_FACTORS } from '@/lib/constants/injury-factors';
 
-export const ENERGY_ENGINE_VERSION = 3;
+export const ENERGY_ENGINE_VERSION = 4;
 export const CLINICAL_MOBILITY_FACTORS = { bedridden: 1.2, ambulatory: 1.3 };
 
 /** Single pipeline shared by comparison, result, persistence and audit trail. */
@@ -40,6 +40,9 @@ export function calculateEnergyPlan(data) {
   const finalPlannedKcal = getResult - adjustment;
   if (!Number.isFinite(finalPlannedKcal) || finalPlannedKcal <= 0) errors.push('A meta calórica final precisa ser positiva. Revise o peso-alvo e o prazo.');
   const formula = protocol ? getFormulaBreakdown(data.protocol, data) : null;
+  if (isHarris && formula?.resultKcal != null && Math.abs(formula.resultKcal - protocol.bmr) > 0.000001) {
+    errors.push('A memória da fórmula Harris não confere com a TMB calculada.');
+  }
   const totalEquation = isDri ? 'GET = EER (atividade incluída na equação)' : isHarris ? 'GET = TMB × mobilidade clínica × fator de injúria' : 'GET = TMB × fator de atividade';
   const appliedTotal = isDri ? `GET = ${getResult.toFixed(2)} kcal/dia` : `${protocol?.bmr?.toFixed(2) ?? '—'} × ${isHarris ? `${mobilityFactor} × ${injuryFactor}` : activityFactor} = ${getResult.toFixed(2)} kcal/dia`;
   return {

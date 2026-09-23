@@ -1,4 +1,6 @@
 import { getProtocolInfo } from '@/lib/utils/energy-calculations';
+import { harrisEquationLabel } from '@/lib/utils/harris-history';
+import { ENERGY_ENGINE_VERSION } from '@/lib/utils/energy-planning';
 import EnergyFormulaDetails from '@/components/energy/EnergyFormulaDetails';
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -111,7 +113,7 @@ const EnergyExpenditureSummaryCard = ({ patientId, patient }) => {
     const activities = calculatedData?.mets_activities || calculatedData?.activities || [];
     const display = value => value == null || !Number.isFinite(Number(value)) ? '—' : Math.round(Number(value)).toLocaleString('pt-BR');
     return <HubPanel title="Gasto energético"
-        description={calculatedData ? `Protocolo: ${getProtocolInfo(protocol)?.name || protocol || 'Não informado'}` : 'Estimativas e planejamento energético'}
+        description={calculatedData ? `Protocolo: ${harrisEquationLabel(calculatedData) || getProtocolInfo(protocol)?.name || protocol || 'Não informado'}` : 'Estimativas e planejamento energético'}
         action={<Button variant="outline" size="sm" onClick={handleNavigateToFullPage}>{calculatedData ? 'Editar cálculo' : 'Calcular gasto'}</Button>}>
         <div className="flex flex-col gap-3">
             {syncFlags?.needs_energy_recalc && <Alert><AlertCircle className="h-4 w-4" /><AlertDescription>Antropometria atualizada. Revise o cálculo energético.</AlertDescription></Alert>}
@@ -127,7 +129,7 @@ const EnergyExpenditureSummaryCard = ({ patientId, patient }) => {
                     {hasVENTA && <span>· Peso-alvo: {calculatedData.venta_target_weight ?? calculatedData.target_weight} kg</span>}
                 </div>
                 <EnergyFormulaDetails plan={calculatedData.output_snapshot?.calculation_details} />
-                {calculatedData.source_snapshot?.engine_version !== 2 && <p className="text-xs text-amber-700">Cálculo histórico. Revise os fatores na calculadora atualizada.</p>}
+                {calculatedData.source_snapshot?.engine_version !== ENERGY_ENGINE_VERSION && <p className="text-xs text-amber-700">Cálculo histórico. Confira a versão da fórmula, a biometria e os fatores antes de reutilizar.</p>}
             </> : <p className="text-sm leading-relaxed text-muted-foreground">{hasRequiredData ? 'Dados disponíveis. Abra o cálculo para planejar o gasto energético.' : 'Para calcular, confira peso, altura, idade e sexo no cadastro e na avaliação.'}</p>}
         </div>
     </HubPanel>;

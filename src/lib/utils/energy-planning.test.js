@@ -40,6 +40,20 @@ describe('one energy pipeline from biometry to VET', () => {
   it('female Harris uses the female equation', () => {
     expect(calculateEnergyPlan({ ...patient, protocol: 'harris', gender: 'F' }).tmbResult).toBeCloseTo(1507.9455, 6);
   });
+  it.each([
+    ['P1', 102, 181, 47, 'M', 2057.2485],
+    ['P2', 72, 175, 27, 'M', 1749.7807],
+    ['P3', 88, 177, 36, 'F', 1655.7323],
+  ])('reconstructs spreadsheet %s from each Harris term', (_, weight, height, age, gender, expected) => {
+    const result = calculateEnergyPlan({ ...patient, weight, height, age, gender, protocol: 'harris', injuryFactor: 1.2 });
+    const { constant, weight: weightTerm, height: heightTerm, age: ageTerm, result: traceResult } = result.formula.terms;
+    expect(result.valid).toBe(true);
+    expect(constant + weightTerm + heightTerm - ageTerm).toBeCloseTo(expected, 6);
+    expect(traceResult).toBe(result.tmbResult);
+    expect(result.afterMobilityKcal).toBeCloseTo(expected * 1.2, 5);
+    expect(result.getResult).toBeCloseTo(expected * 1.2 * 1.2, 5);
+    expect(result.formula.equationVersion).toBe('harris_benedict_1919_full_precision');
+  });
   it('Mifflin applies one activity factor, ignores stale injury, MET and ETA', () => {
     const result = calculateEnergyPlan({ ...patient, protocol: 'mifflin', etaEnabled: true, metsActivities: [{ met: 8, duration_min: 60 }] });
     expect(result.tmbResult).toBe(1648.75);
@@ -88,7 +102,7 @@ describe('one energy pipeline from biometry to VET', () => {
   });
   it('restores clinical and DRI selections and flags old records for review', () => {
     expect(restoreEnergyInputs({}).requiresReview).toBe(true);
-    expect(restoreEnergyInputs({ source_snapshot: { engine_version: 3 }, input_snapshot: { clinical_mobility: 'ambulatory', dri_activity: 'low_active', life_stage: 'adult', injury_factor_id: 'infection' } })).toEqual({ clinicalMobility: 'ambulatory', driActivity: 'low_active', lifeStage: 'adult', injuryFactorId: 'infection', requiresReview: false });
+    expect(restoreEnergyInputs({ source_snapshot: { engine_version: 4 }, input_snapshot: { clinical_mobility: 'ambulatory', dri_activity: 'low_active', life_stage: 'adult', injury_factor_id: 'infection' } })).toEqual({ clinicalMobility: 'ambulatory', driActivity: 'low_active', lifeStage: 'adult', injuryFactorId: 'infection', requiresReview: false });
     expect(restoreEnergyInputs({ tmb_protocol: 'harris', injury_factor: 1.4, source_snapshot: { engine_version: 2 } })).toMatchObject({ injuryFactorId: '', requiresReview: true });
     expect(restoreEnergyInputs({ tmb_protocol: 'harris', injury_factor: 1.4, source_snapshot: { engine_version: 3 }, input_snapshot: { injury_factor_id: 'surgery' } })).toMatchObject({ injuryFactorId: '', requiresReview: true });
   });
