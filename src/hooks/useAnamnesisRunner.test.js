@@ -32,8 +32,9 @@ describe('useAnamnesisRunner creation episode contract', () => {
     const templateBuilder = {
       select: vi.fn().mockReturnThis(),
       eq: vi.fn().mockReturnThis(),
+      or: vi.fn().mockReturnThis(),
       single: vi.fn().mockResolvedValue({
-        data: { title: 'Inicial', description: null, sections: [], version: 1 },
+        data: { title: 'Inicial', description: null, sections: [{ id: 's', title: 'Dados', fields: [{ id: 'f', label: 'Queixa', type: 'text' }] }], version: 1 },
         error: null,
       }),
     };

@@ -1,8 +1,10 @@
+import { useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
+import { validateCheckinTemplate } from '@/lib/validations/formContracts';
 
 export function useCheckins() {
   const { user } = useAuth();
@@ -25,46 +27,19 @@ export function useCheckins() {
       if (error) throw error;
       return data || [];
     },
-    enabled: !!user?.id && (user.profile?.user_type === 'nutritionist' || user.user_metadata?.role === 'nutritionist' || user.user_metadata?.user_type === 'nutritionist'),
+    enabled: !!user?.id,
   });
 
   // --- NUTRI: Criar Template ---
   const createTemplate = useMutation({
     mutationFn: async ({ template, fields }) => {
-      const { data: newTemplate, error: tmplError } = await supabase
-        .from('checkin_templates')
-        .insert({ 
-          nutritionist_id: user.id, 
-          name: template.name,
-          description: template.description || '',
-          frequency: template.frequency,
-          send_time: template.send_time,
-          send_days: template.send_days || [1],
-          channel: template.channel || 'in_app'
-        })
-        .select()
-        .single();
-        
-      if (tmplError) throw tmplError;
-      
-      if (fields && fields.length > 0) {
-        const fieldsToInsert = fields.map((f, i) => ({
-          template_id: newTemplate.id,
-          label: f.label,
-          field_type: f.field_type,
-          options: f.options || [],
-          score_weight: f.score_weight ?? 1.0,
-          unit: f.unit || null,
-          is_required: f.is_required !== undefined ? f.is_required : true,
-          order_index: i
-        }));
-        const { error: fError } = await supabase.from('checkin_fields').insert(fieldsToInsert);
-        if (fError) {
-          await supabase.from('checkin_templates').delete().eq('id', newTemplate.id).eq('nutritionist_id', user.id);
-          throw fError;
-        }
-      }
-      return newTemplate;
+      const validationError = validateCheckinTemplate({ name: template.name, fields, channel: template.channel });
+      if (validationError) throw new Error(validationError);
+      const { data, error } = await supabase.rpc('save_checkin_template', {
+        p_id: null, p_template: template, p_fields: fields,
+      });
+      if (error) throw error;
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['checkinTemplates'] });
@@ -77,7 +52,7 @@ export function useCheckins() {
   });
 
   // --- NUTRI: Obter Template Específico ---
-  const getTemplate = async (templateId) => {
+  const getTemplate = useCallback(async (templateId) => {
     const { data, error } = await supabase
       .from('checkin_templates')
       .select(`
@@ -85,6 +60,7 @@ export function useCheckins() {
         checkin_fields (*)
       `)
       .eq('id', templateId)
+      .eq('nutritionist_id', user?.id)
       .single();
     
     if (error) throw error;
@@ -93,53 +69,18 @@ export function useCheckins() {
       data.checkin_fields.sort((a, b) => a.order_index - b.order_index);
     }
     return data;
-  };
+  }, [user?.id]);
 
   // --- NUTRI: Atualizar Template ---
   const updateTemplate = useMutation({
     mutationFn: async ({ id, template, fields }) => {
-      // 1. Atualizar o template principal
-      const { data: updatedTemplate, error: tmplError } = await supabase
-        .from('checkin_templates')
-        .update({ 
-          name: template.name,
-          description: template.description || '',
-          frequency: template.frequency,
-          send_time: template.send_time,
-          send_days: template.send_days || [1],
-          channel: template.channel || 'in_app'
-        })
-        .eq('id', id)
-        .select()
-        .single();
-        
-      if (tmplError) throw tmplError;
-      
-      // 2. Apagar os fields antigos (para simplicidade, já que não precisamos de versionamento forte dos fields de checkin ainda)
-      // Idealmente a longo prazo seria soft delete ou diffing.
-      const { error: delError } = await supabase
-        .from('checkin_fields')
-        .delete()
-        .eq('template_id', id);
-        
-      if (delError) throw delError;
-
-      // 3. Inserir os novos fields
-      if (fields && fields.length > 0) {
-        const fieldsToInsert = fields.map((f, i) => ({
-          template_id: id,
-          label: f.label,
-          field_type: f.field_type,
-          options: f.options || [],
-          score_weight: f.score_weight ?? 1.0,
-          unit: f.unit || null,
-          is_required: f.is_required !== undefined ? f.is_required : true,
-          order_index: i
-        }));
-        const { error: fError } = await supabase.from('checkin_fields').insert(fieldsToInsert);
-        if (fError) throw fError;
-      }
-      return updatedTemplate;
+      const validationError = validateCheckinTemplate({ name: template.name, fields, channel: template.channel });
+      if (validationError) throw new Error(validationError);
+      const { data, error } = await supabase.rpc('save_checkin_template', {
+        p_id: id, p_template: template, p_fields: fields,
+      });
+      if (error) throw error;
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['checkinTemplates'] });
@@ -186,7 +127,9 @@ export function useCheckins() {
     },
     onError: (error) => {
       logSupabaseError('Vincular template de check-in', error);
-      toast({ title: "Não foi possível vincular", description: "O agendamento não foi criado. Tente novamente.", variant: "destructive" });
+      toast({ title: "Não foi possível vincular", description: error?.message?.includes('checkin_patient_account_required')
+        ? 'O paciente precisa ativar sua conta no Nello para receber check-ins no aplicativo.'
+        : 'O agendamento não foi criado. Tente novamente.', variant: "destructive" });
     }
   });
 
@@ -222,7 +165,7 @@ export function useCheckins() {
       if (error) throw error;
       return data || [];
     },
-    enabled: !!user?.id && (user.profile?.user_type === 'patient' || user.user_metadata?.role === 'patient' || user.user_metadata?.user_type === 'patient'),
+    enabled: !!user?.id,
   });
 
   // --- PACIENTE / PUBLIC: Submeter Check-in ---

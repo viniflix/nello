@@ -428,6 +428,7 @@ export function useMealPlanController({
         } catch (error) {
             console.error('Erro ao copiar modelo:', error);
             toast({ title: 'Erro', description: 'Não foi possível copiar o modelo para o paciente', variant: 'destructive' });
+            throw error;
         }
     };
 

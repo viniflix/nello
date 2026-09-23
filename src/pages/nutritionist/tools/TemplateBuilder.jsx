@@ -42,6 +42,10 @@ export default function TemplateBuilder() {
         toast({ title: 'Refeição sem nome', description: 'Dê um nome para todas as refeições.', variant: 'destructive' });
         return false;
       }
+      if (formData.meals.some(m => !Array.isArray(m.foods) || m.foods.length === 0)) {
+        toast({ title: 'Refeição sem alimentos', description: 'Adicione pelo menos um alimento a cada refeição.', variant: 'destructive' });
+        return false;
+      }
     } else if (type === 'meal') {
       if (formData.foods.length === 0) {
         toast({ title: 'Refeição vazia', description: 'Adicione ao menos um alimento.', variant: 'destructive' });

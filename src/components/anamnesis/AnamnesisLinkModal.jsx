@@ -30,7 +30,8 @@ import { supabase } from '@/lib/customSupabaseClient';
 export function AnamnesisLinkModal({ open, onOpenChange, patientId, patientName }) {
     const { toast } = useToast();
     const { createRecord, generateLink, usePatientRecords } = useAnamnesisRunner(patientId);
-    const { templates = [], isLoading: loadingTemplates } = useAnamnesisTemplates() || {};
+    const { useTemplates } = useAnamnesisTemplates();
+    const { data: templates = [], isLoading: loadingTemplates } = useTemplates();
 
     const [step, setStep] = useState('select'); // 'select' | 'link_ready'
     const [selectedTemplateId, setSelectedTemplateId] = useState('');

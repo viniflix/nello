@@ -101,10 +101,10 @@ const CopyModelDialog = ({ isOpen, onClose, planId, planName, onCopy }) => {
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <Send className="h-5 w-5 text-primary" />
-                        Enviar Plano para Paciente
+                        Criar rascunho para paciente
                     </DialogTitle>
                     <DialogDescription>
-                        Selecione o paciente que receberá uma cópia do plano: <strong>{planName}</strong>
+                        Selecione o paciente para criar uma cópia de <strong>{planName}</strong>. Revise e finalize a prescrição antes de liberá-la ao paciente.
                     </DialogDescription>
                 </DialogHeader>
 
@@ -188,7 +188,7 @@ const CopyModelDialog = ({ isOpen, onClose, planId, planName, onCopy }) => {
                     </Button>
                     <Button onClick={handleCopy} disabled={!selectedPatient || copying}>
                         <Send className="h-4 w-4 mr-2" />
-                        {copying ? 'Enviando...' : 'Enviar Plano'}
+                        {copying ? 'Criando...' : 'Criar rascunho'}
                     </Button>
                 </DialogFooter>
             </DialogContent>

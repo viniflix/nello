@@ -139,9 +139,13 @@ export function useAnamnesisRunner(patientId) {
                 .from('anamnesis_templates')
                 .select('*')
                 .eq('id', templateId)
-                .eq('nutritionist_id', user.id)
+                .or(`nutritionist_id.eq.${user.id},is_system_default.eq.true`)
+                .eq('is_active', true)
                 .single();
             if (tErr) throw tErr;
+            if (!Array.isArray(templateData.sections) || templateData.sections.length === 0) {
+                throw new Error('O modelo selecionado está vazio. Escolha um formulário com perguntas.');
+            }
 
             const { data, error } = await supabase
                 .from('anamnesis_records')

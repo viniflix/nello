@@ -87,6 +87,8 @@ export default function TemplateBuilder() {
                 toast({ title: 'Sucesso', description: 'Novo formulário criado.' });
                 navigate('/nutritionist/templates?group=forms&ftab=forms');
             }
+        } catch {
+            // O hook já registra a causa e apresenta o erro; preserva o editor aberto.
         } finally {
             setIsSaving(false);
         }

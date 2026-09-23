@@ -65,6 +65,10 @@ export default function CheckinEditorPage() {
                 await createTemplate.mutateAsync({ template: templateData, fields });
             }
             navigate('/nutritionist/templates?group=forms&ftab=checkins');
+        } catch (error) {
+            toast({ title: 'Não foi possível salvar', description: error?.message === 'checkin_has_sessions_create_new_template'
+                ? 'Este check-in já tem respostas. Crie uma cópia para mudar as perguntas e preservar o histórico.'
+                : 'Revise os campos e tente novamente.', variant: 'destructive' });
         } finally {
             setIsSaving(false);
         }

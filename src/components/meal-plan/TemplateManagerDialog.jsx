@@ -153,7 +153,7 @@ export default function TemplateManagerDialog({
                 if (planError) console.error('Protocolo criado, mas a leitura do plano falhou:', planError);
                 onTemplateApplied(newPlan || { id: newPlanId });
             }
-            toast({ title: 'Protocolo aplicado!', description: `"${selectedTemplate.name}" importado com sucesso.` });
+            toast({ title: 'Rascunho criado', description: `"${selectedTemplate.name}" foi copiado. Revise e finalize a prescrição antes de liberá-la ao paciente.` });
             onOpenChange(false);
         } catch (error) {
             console.error('Erro ao aplicar template:', error);

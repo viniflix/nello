@@ -19,6 +19,22 @@ vi.mock('@/lib/supabase/query-helpers', () => ({ logSupabaseError: vi.fn() }));
 describe('check-in database contracts', () => {
   beforeEach(() => { vi.clearAllMocks(); mocks.mutationOptions.length = 0; });
 
+  it('saves questions together with the template through the atomic RPC', async () => {
+    mocks.rpc.mockResolvedValue({ data: 'template-id', error: null });
+    renderHook(() => useCheckins());
+    const template = { name: 'Acompanhamento semanal', frequency: 'weekly', channel: 'in_app' };
+    const fields = [{ label: 'Como foi sua semana?', field_type: 'text', score_weight: 0 }];
+    await mocks.mutationOptions[0].mutationFn({ template, fields });
+    await mocks.mutationOptions[1].mutationFn({ id: 'template-id', template, fields });
+    expect(mocks.rpc).toHaveBeenNthCalledWith(1, 'save_checkin_template', {
+      p_id: null, p_template: template, p_fields: fields,
+    });
+    expect(mocks.rpc).toHaveBeenNthCalledWith(2, 'save_checkin_template', {
+      p_id: 'template-id', p_template: template, p_fields: fields,
+    });
+    expect(mocks.from).not.toHaveBeenCalled();
+  });
+
   it('links a template with timezone through the authenticated RPC', async () => {
     mocks.rpc.mockResolvedValue({ data: 'schedule-id', error: null });
     renderHook(() => useCheckins());
