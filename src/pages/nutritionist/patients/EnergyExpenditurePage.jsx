@@ -196,7 +196,7 @@ function EnergyExpenditureForm({ resolvedPatient }) {
   const protocols = useMemo(() => calculateAllProtocols(patientData), [patientData]);
   const selectedProtocolData = protocols.find(p => p.id === selectedProtocol);
   const planInput = { ...patientData, protocol: selectedProtocol, activityFactor,
-    injuryFactor: getInjuryFactorValue(injuryFactorId), clinicalMobility, lifeStage,
+    injuryFactor: getInjuryFactorValue(injuryFactorId), injuryFactorId, clinicalMobility, lifeStage,
     targetWeight: ventaTargetWeight, timeframeDays: ventaTimeframeDays };
   const plan = calculateEnergyPlan(planInput);
   const { tmbResult, getBase, getResult, finalPlannedKcal, ventaAdjustmentKcal } = plan;
@@ -314,10 +314,7 @@ function EnergyExpenditureForm({ resolvedPatient }) {
         setLifeStage(restored.lifeStage);
         setRequiresReview(restored.requiresReview);
         if (saved.activity_factor != null) setActivityFactor(Number(saved.activity_factor));
-        if (saved.injury_factor != null) {
-          const found = INJURY_FACTORS.find((f) => Math.abs(f.value - Number(saved.injury_factor)) < 0.01);
-          setInjuryFactorId(saved.input_snapshot?.injury_factor_id || (found ? found.id : 'none'));
-        }
+        setInjuryFactorId(restored.injuryFactorId);
         if (Array.isArray(saved.mets_activities) && saved.mets_activities.length)
           setMetsActivities(saved.mets_activities);
         if (saved.venta_target_weight != null) setVentaTargetWeight(String(saved.venta_target_weight));
@@ -602,17 +599,17 @@ function EnergyExpenditureForm({ resolvedPatient }) {
             {requiresReview && <Alert className="border-amber-300 bg-amber-50 text-amber-950"><AlertCircle className="h-4 w-4" /><AlertDescription><strong>Revise este cálculo.</strong> Ele foi criado antes da correção dos fatores. Confirme as informações abaixo antes de salvar.</AlertDescription></Alert>}
             {isHarris ? (
               <Card className="rounded-2xl border-0 shadow-card"><CardHeader className="border-b p-4 sm:p-6"><CardTitle className="flex items-center gap-3 text-lg sm:text-xl"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-50 text-primary"><Activity className="h-5 w-5" /></span>2. Contexto clínico</CardTitle>
-                <CardDescription className="sm:pl-[52px]">Harris-Benedict é destinada a pacientes acamados ou ambulantes. O exercício não é multiplicado novamente.</CardDescription></CardHeader>
+                <CardDescription className="sm:pl-[52px]">Neste fluxo Harris-Benedict, escolha a mobilidade clínica para calcular o GET. O exercício não é multiplicado novamente.</CardDescription></CardHeader>
                 <CardContent className="space-y-5 p-4 sm:p-6">
                   <div className="space-y-2"><Label>Condição do paciente *</Label>
                   <Select value={clinicalMobility} onValueChange={setClinicalMobility}><SelectTrigger aria-label="Condição do paciente"><SelectValue placeholder="Selecione a condição" /></SelectTrigger><SelectContent>
                     <SelectItem value="bedridden">Acamado (×1,2)</SelectItem><SelectItem value="ambulatory">Ambulante (×1,3)</SelectItem>
                   </SelectContent></Select></div>
                   <div className="space-y-2"><Label>Fator de injúria / estresse clínico *</Label>
-                  <Select value={injuryFactorId} onValueChange={setInjuryFactorId}><SelectTrigger aria-label="Fator de injúria"><SelectValue /></SelectTrigger><SelectContent>
+                  <Select value={injuryFactorId} onValueChange={setInjuryFactorId}><SelectTrigger aria-label="Fator de injúria"><SelectValue placeholder="Selecione a condição" /></SelectTrigger><SelectContent>
                     {INJURY_FACTORS.map(f => <SelectItem key={f.id} value={f.id}>{f.label} (×{f.value})</SelectItem>)}
                   </SelectContent></Select></div>
-                  <div className="rounded-xl bg-primary-50 p-3 text-xs leading-relaxed text-primary-900"><strong>Fórmula aplicada:</strong> TMB × mobilidade clínica × fator de injúria. Sem injúria: ×1.</div>
+                  <div className="rounded-xl bg-primary-50 p-3 text-xs leading-relaxed text-primary-900"><strong>Fórmula aplicada:</strong> TMB × mobilidade clínica × fator de injúria. Sem injúria: ×1. Confira a condição e o coeficiente com o contexto clínico; a estimativa não substitui a avaliação profissional.</div>
                 </CardContent></Card>
             ) : isEer ? (
               <Card className="rounded-2xl border-0 shadow-card"><CardHeader className="border-b p-4 sm:p-6"><CardTitle className="flex items-center gap-3 text-lg sm:text-xl"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-50 text-primary"><Activity className="h-5 w-5" /></span>2. Atividade nas DRIs</CardTitle><CardDescription className="sm:pl-[52px]">Para adultos a partir de 19 anos. A categoria escolhida já faz parte da equação do GET.</CardDescription></CardHeader><CardContent className="space-y-5 p-4 sm:p-6">

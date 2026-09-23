@@ -239,10 +239,11 @@ export const saveEnergyCalculation = async (data) => {
     const plan = calculateEnergyPlan({
       weight: data.weight, height: data.height, age: data.age, gender: data.gender,
       protocol: data.tmb_protocol, activityFactor: data.activity_factor,
-      injuryFactor: data.injury_factor, clinicalMobility: data.clinical_mobility,
+      injuryFactor: data.injury_factor, injuryFactorId: data.injury_factor_id, clinicalMobility: data.clinical_mobility,
       driActivity: data.dri_activity, lifeStage: data.life_stage,
       targetWeight: data.venta_target_weight, timeframeDays: data.venta_timeframe_days,
     });
+    if (plan.isHarris && !data.injury_factor_id) throw new Error('Selecione a condição de injúria, inclusive Nenhum.');
     if (!plan.valid) throw new Error(plan.errors.join(' '));
     data = { ...data, tmb_result: plan.tmbResult, get_result: plan.getResult,
       final_planned_kcal: plan.finalPlannedKcal, activity_factor: plan.activityFactor,
@@ -280,6 +281,7 @@ export const saveEnergyCalculation = async (data) => {
     const outputSnapshot = {
       tmb_kcal: data.tmb_result,
       get_kcal: data.get_result,
+      after_mobility_kcal: plan.afterMobilityKcal,
       planned_kcal: data.final_planned_kcal,
       venta_adjustment_kcal: data.venta_adjustment_kcal ?? null,
       calculation_details: plan
@@ -309,7 +311,7 @@ export const saveEnergyCalculation = async (data) => {
       get: data.get_result ?? null,
       protocol_code: protocolCodes[data.tmb_protocol] || `energy.${data.tmb_protocol}`,
       protocol_version: 1,
-      source_snapshot: { implementation_key: data.tmb_protocol, catalog_version: 1, engine_version: ENERGY_ENGINE_VERSION },
+      source_snapshot: { implementation_key: data.tmb_protocol, catalog_version: 1, injury_catalog_version: 1, engine_version: ENERGY_ENGINE_VERSION },
       input_snapshot: inputSnapshot,
       output_snapshot: outputSnapshot,
       confirmed_by: data.nutritionist_id || null,

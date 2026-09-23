@@ -246,11 +246,10 @@ export const ACTIVITY_FACTORS = [
  * @returns {number} GET em kcal/dia
  */
 export const calculateGET = (bmr, activityFactor, injuryFactor = 1.0) => {
-  const b = parseFloat(bmr);
-  const af = parseFloat(activityFactor);
-  if (isNaN(b) || b <= 0 || isNaN(af) || af <= 0) return 0;
-  const injP = parseFloat(injuryFactor);
-  const inj = isNaN(injP) || injP <= 0 ? 1.0 : injP;
+  const b = Number(bmr);
+  const af = Number(activityFactor);
+  const inj = Number(injuryFactor);
+  if (![b, af, inj].every(Number.isFinite) || b <= 0 || af <= 0 || inj <= 0) return null;
   return b * af * inj;
 };
 

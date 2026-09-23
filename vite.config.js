@@ -236,6 +236,7 @@ export default defineConfig({
 	},
 	test: {
 		globals: true,
+		include: ['{src,build,scripts}/**/*.{test,spec}.{js,jsx,ts,tsx}'],
 		environment: 'jsdom',
 		setupFiles: ['./src/__tests__/setup.js'],
 		alias: {

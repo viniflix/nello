@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { calculateEnergyPlan, restoreEnergyInputs } from './energy-planning';
 import { calculateDri2023 } from './dri-energy';
 import { sumMetsActivitiesAverageDaily, calculateAllProtocols, getFormulaBreakdown } from './energy-calculations';
+import { INJURY_FACTORS, getInjuryFactorValue } from '@/lib/constants/injury-factors';
 
 const patient = { weight: 70, height: 175, age: 30, gender: 'M', activityFactor: 1.55,
   injuryFactor: 1.4, clinicalMobility: 'bedridden', driActivity: 'active', lifeStage: 'adult' };
@@ -18,6 +19,23 @@ describe('one energy pipeline from biometry to VET', () => {
   });
   it('Harris requires clinical mobility and does not silently infer it from exercise', () => {
     expect(calculateEnergyPlan({ ...patient, protocol: 'harris', clinicalMobility: '' }).valid).toBe(false);
+  });
+  it.each(['bedridden', 'ambulatory'])('applies every catalog factor once after %s mobility', clinicalMobility => {
+    const mobility = clinicalMobility === 'bedridden' ? 1.2 : 1.3;
+    for (const factor of INJURY_FACTORS) {
+      const plan = calculateEnergyPlan({ ...patient, protocol: 'harris', clinicalMobility,
+        injuryFactorId: factor.id, injuryFactor: getInjuryFactorValue(factor.id) });
+      expect(plan.valid).toBe(true);
+      expect(plan.afterMobilityKcal).toBeCloseTo(1702.0125 * mobility, 8);
+      expect(plan.getResult).toBeCloseTo(1702.0125 * mobility * factor.value, 8);
+      expect(plan.finalPlannedKcal).toBe(plan.getResult);
+    }
+  });
+  it('rejects unknown, missing and mismatched injury coefficients', () => {
+    expect(getInjuryFactorValue('unknown')).toBeNull();
+    expect(calculateEnergyPlan({ ...patient, protocol: 'harris', injuryFactorId: 'unknown', injuryFactor: null }).valid).toBe(false);
+    expect(calculateEnergyPlan({ ...patient, protocol: 'harris', injuryFactor: null }).valid).toBe(false);
+    expect(calculateEnergyPlan({ ...patient, protocol: 'harris', injuryFactorId: 'surgery', injuryFactor: 1.4 }).valid).toBe(false);
   });
   it('female Harris uses the female equation', () => {
     expect(calculateEnergyPlan({ ...patient, protocol: 'harris', gender: 'F' }).tmbResult).toBeCloseTo(1507.9455, 6);
@@ -70,6 +88,8 @@ describe('one energy pipeline from biometry to VET', () => {
   });
   it('restores clinical and DRI selections and flags old records for review', () => {
     expect(restoreEnergyInputs({}).requiresReview).toBe(true);
-    expect(restoreEnergyInputs({ source_snapshot: { engine_version: 2 }, input_snapshot: { clinical_mobility: 'ambulatory', dri_activity: 'low_active', life_stage: 'adult', injury_factor_id: 'infection' } })).toEqual({ clinicalMobility: 'ambulatory', driActivity: 'low_active', lifeStage: 'adult', injuryFactorId: 'infection', requiresReview: false });
+    expect(restoreEnergyInputs({ source_snapshot: { engine_version: 3 }, input_snapshot: { clinical_mobility: 'ambulatory', dri_activity: 'low_active', life_stage: 'adult', injury_factor_id: 'infection' } })).toEqual({ clinicalMobility: 'ambulatory', driActivity: 'low_active', lifeStage: 'adult', injuryFactorId: 'infection', requiresReview: false });
+    expect(restoreEnergyInputs({ tmb_protocol: 'harris', injury_factor: 1.4, source_snapshot: { engine_version: 2 } })).toMatchObject({ injuryFactorId: '', requiresReview: true });
+    expect(restoreEnergyInputs({ tmb_protocol: 'harris', injury_factor: 1.4, source_snapshot: { engine_version: 3 }, input_snapshot: { injury_factor_id: 'surgery' } })).toMatchObject({ injuryFactorId: '', requiresReview: true });
   });
 });

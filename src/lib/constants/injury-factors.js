@@ -1,6 +1,7 @@
 /**
  * Fatores de injúria/estresse clínico para cálculo do gasto energético.
- * Cada condição multiplica o GET (valor típico na literatura/Dietbox).
+ * Catálogo de fatores usado pelo Nello no protocolo Harris-Benedict.
+ * Os coeficientes exigem revisão clínica antes de qualquer mudança de versão.
  *
  * @typedef {{ id: string, label: string, value: number, description?: string }} InjuryFactor
  */
@@ -31,7 +32,7 @@ export const INJURY_FACTORS = [
  * @returns {number}
  */
 export function getInjuryFactorValue(id) {
-  if (!id) return 1.0;
+  if (id == null || id === '') return null;
   const item = INJURY_FACTORS.find((f) => f.id === id);
-  return item ? item.value : 1.0;
+  return item ? item.value : null;
 }
