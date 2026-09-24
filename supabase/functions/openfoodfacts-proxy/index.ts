@@ -88,13 +88,13 @@ Deno.serve(async (req: Request) => {
   }
   if (!payload) return json(400, { error: 'invalid_request' });
 
-  const { data: allowed, error: quotaError } = await admin.rpc('claim_food_proxy_quota', { p_user_id: user.id });
-  if (quotaError) return json(503, { error: 'service_unavailable' });
-  if (!allowed) return json(429, { error: 'rate_limited' }, { 'Retry-After': '60' });
-
   const key = payload.action === 'search' ? `search:${payload.query.toLowerCase()}` : `product:${payload.productCode}`;
   const hit = cached(key);
   if (hit) return json(200, hit);
+
+  const { data: allowed, error: quotaError } = await admin.rpc('claim_food_proxy_quota', { p_user_id: user.id });
+  if (quotaError) return json(503, { error: 'service_unavailable' });
+  if (!allowed) return json(429, { error: 'rate_limited' }, { 'Retry-After': '60' });
 
   try {
     if (payload.action === 'search') {
