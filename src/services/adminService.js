@@ -1,5 +1,19 @@
 import { supabase } from '@/lib/customSupabaseClient';
 
+export async function listAdminPeople({ search = '', type = 'all', page = 1 } = {}) {
+  const { data, error } = await supabase.rpc('admin_list_people', {
+    p_search: search,
+    p_type: type,
+    p_page: page,
+  });
+  return { data, error };
+}
+
+export async function getAdminWorkflowOverview() {
+  const { data, error } = await supabase.rpc('admin_workflow_overview');
+  return { data, error };
+}
+
 export async function getDashboardStats() {
   try {
     const { data, error } = await supabase.rpc('get_admin_dashboard_stats');

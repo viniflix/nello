@@ -10,6 +10,7 @@ import { useAuth } from '@/contexts/AuthContext';
 const NAV_ITEMS = [
   { section: 'Visão geral', items: [{ name: 'Operação', path: '/admin/dashboard', icon: LayoutDashboard }] },
   { section: 'Operação', items: [
+    { name: 'Jornadas', path: '/admin/operations', icon: Activity },
     { name: 'Uso da plataforma', path: '/admin/study', icon: Activity },
     { name: 'Incidentes', path: '/admin/bugs', icon: Bug },
   ]},

@@ -1,237 +1,46 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { format, differenceInDays } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
-import {
-  Users, Search, Calendar, Activity, ChevronLeft, ChevronRight,
-  ChevronRight as Chevron, Mail
-} from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { ChevronLeft, ChevronRight, Search, Users } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from '@/components/ui/table';
-import { useAuth } from '@/contexts/AuthContext';
-import { useToast } from '@/hooks/use-toast';
-import { getNutritionistsList } from '@/services/adminService';
-
-const formatDate = (dateString) => {
-  if (!dateString) return '—';
-  try {
-    const date = new Date(dateString);
-    const days = differenceInDays(new Date(), date);
-    if (days === 0) return 'Hoje';
-    if (days === 1) return 'Ontem';
-    if (days < 7) return `Há ${days} dias`;
-    return format(date, 'dd MMM yyyy', { locale: ptBR });
-  } catch {
-    return '—';
-  }
-};
+import { listAdminPeople } from '@/services/adminService';
 
 export default function AdminUsersPage() {
-  const { user } = useAuth();
-  const navigate = useNavigate();
-  const { toast } = useToast();
-
-  const [isLoading, setIsLoading] = useState(true);
-  const [usersList, setUsersList] = useState([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
-
-  const isAdmin = user?.profile?.is_admin === true;
+  const [search, setSearch] = useState('');
+  const [query, setQuery] = useState('');
+  const [type, setType] = useState('all');
+  const [page, setPage] = useState(1);
+  const [state, setState] = useState({ loading: true, data: null, error: null });
 
   useEffect(() => {
-    if (user && !isAdmin) {
-      toast({ title: 'Acesso Negado', description: 'Página restrita a administradores.', variant: 'destructive' });
-      navigate('/nutritionist', { replace: true });
-      return;
-    }
-    if (isAdmin) loadUsers();
-  }, [user, isAdmin, navigate, toast]);
+    const timer = setTimeout(() => { setQuery(search.trim()); setPage(1); }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+  useEffect(() => {
+    let active = true;
+    setState((current) => ({ ...current, loading: true }));
+    listAdminPeople({ search: query, type, page }).then(({ data, error }) => {
+      if (active) setState({ loading: false, data, error });
+    });
+    return () => { active = false; };
+  }, [query, type, page]);
 
-  const loadUsers = async () => {
-    setIsLoading(true);
-    try {
-      const { data, error } = await getNutritionistsList();
-      if (error) throw error;
-      setUsersList(data || []);
-    } catch {
-      toast({ title: 'Erro', description: 'Não foi possível carregar a lista.', variant: 'destructive' });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const filteredUsers = usersList.filter(u =>
-    u.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    u.email?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
-  const paginatedUsers = filteredUsers.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
-  const totalPatients = usersList.reduce((acc, u) => acc + (u.patients_count || 0), 0);
-
-  if (!user || !isAdmin) return null;
-
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-        <div className="text-center lg:text-left">
-          <h1 className="text-3xl font-bold text-foreground">Gestão de Usuários</h1>
-          <p className="text-muted-foreground mt-1 text-sm">Nutricionistas cadastrados e seus pacientes vinculados.</p>
-        </div>
-
-        <div className="flex items-center justify-center gap-4 bg-muted/30 p-3 rounded-lg border border-border w-full lg:w-auto">
-          <div className="flex flex-col items-center px-4">
-            <span className="text-2xl font-bold text-primary">{isLoading ? '—' : usersList.length}</span>
-            <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Nutricionistas</span>
-          </div>
-          <div className="w-px h-10 bg-border opacity-50" />
-          <div className="flex flex-col items-center px-4">
-            <span className="text-2xl font-bold text-emerald-500">{isLoading ? '—' : totalPatients}</span>
-            <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Pacientes</span>
-          </div>
-        </div>
-      </motion.div>
-
-      {/* Table */}
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-        <Card>
-          <CardHeader className="pb-4">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Users className="w-5 h-5 text-primary" />
-                Lista de Profissionais
-              </CardTitle>
-              <div className="relative w-full sm:w-72">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar por nome ou email..."
-                  className="pl-9 h-9"
-                  value={searchQuery}
-                  onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-                />
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="p-0 sm:p-6 sm:pt-0">
-            <div className="rounded-md border border-border overflow-hidden">
-              <Table>
-                <TableHeader className="bg-muted/50">
-                  <TableRow>
-                    <TableHead className="min-w-[280px]">Profissional</TableHead>
-                    <TableHead className="min-w-[100px]">Situação</TableHead>
-                    <TableHead className="text-center min-w-[100px]">Pacientes</TableHead>
-                    <TableHead className="min-w-[180px]">Cadastro / Último acesso</TableHead>
-                    <TableHead className="text-right min-w-[100px]">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {isLoading ? (
-                    Array.from({ length: 5 }).map((_, i) => (
-                      <TableRow key={i}>
-                        <TableCell><div className="flex items-center gap-3"><Skeleton className="h-10 w-10 rounded-full" /><div className="space-y-2"><Skeleton className="h-4 w-[140px]" /><Skeleton className="h-3 w-[100px]" /></div></div></TableCell>
-                        <TableCell><Skeleton className="h-5 w-14 rounded-full" /></TableCell>
-                        <TableCell className="text-center"><Skeleton className="h-5 w-8 mx-auto" /></TableCell>
-                        <TableCell><div className="space-y-2"><Skeleton className="h-3 w-[90px]" /><Skeleton className="h-3 w-[80px]" /></div></TableCell>
-                        <TableCell className="text-right"><Skeleton className="h-8 w-12 ml-auto rounded-md" /></TableCell>
-                      </TableRow>
-                    ))
-                  ) : filteredUsers.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={5} className="h-32 text-center text-muted-foreground">
-                        {searchQuery ? `Nenhum resultado para "${searchQuery}"` : 'Nenhum nutricionista cadastrado.'}
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    paginatedUsers.map((u) => (
-                      <TableRow
-                        key={u.id}
-                        className="hover:bg-muted/30 cursor-pointer"
-                        onClick={() => navigate(`/admin/users/${u.id}`)}
-                      >
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            <Avatar className="h-10 w-10 border border-border">
-                              <AvatarImage src={u.avatar_url} alt={u.name} />
-                              <AvatarFallback className="bg-primary/10 text-primary">
-                                {u.name?.charAt(0).toUpperCase() || 'N'}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="flex flex-col min-w-0">
-                              <span className="font-medium text-sm truncate">{u.name || 'Sem nome'}</span>
-                              <span className="text-xs text-muted-foreground truncate flex items-center gap-1">
-                                <Mail className="w-3 h-3" />{u.email}
-                              </span>
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className={u.is_active ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' : 'bg-muted text-muted-foreground'}>
-                            {u.is_active ? 'Ativo' : 'Inativo'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <span className="font-semibold text-foreground">{u.patients_count ?? 0}</span>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex flex-col space-y-1">
-                            <div className="flex items-center text-xs text-muted-foreground">
-                              <Calendar className="w-3 h-3 mr-1.5 opacity-70" />
-                              {formatDate(u.created_at)}
-                            </div>
-                            <div className="flex items-center text-xs text-muted-foreground">
-                              <Activity className="w-3 h-3 mr-1.5 opacity-70" />
-                              {u.last_activity ? formatDate(u.last_activity) : 'Sem registro'}
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 px-2 text-xs"
-                            onClick={(e) => { e.stopPropagation(); navigate(`/admin/users/${u.id}`); }}
-                          >
-                            Ver perfil
-                            <Chevron className="w-3.5 h-3.5 ml-1" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-
-            {/* Pagination */}
-            {!isLoading && filteredUsers.length > itemsPerPage && (
-              <div className="flex items-center justify-between mt-4 px-2">
-                <div className="text-xs text-muted-foreground">
-                  Mostrando <span className="font-medium text-foreground">{(currentPage - 1) * itemsPerPage + 1}</span> a <span className="font-medium text-foreground">{Math.min(currentPage * itemsPerPage, filteredUsers.length)}</span> de <span className="font-medium text-foreground">{filteredUsers.length}</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="h-8 px-2">
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <span className="text-xs font-medium px-2">Pág. {currentPage} de {totalPages}</span>
-                  <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="h-8 px-2">
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </motion.div>
-    </div>
-  );
+  const data = state.data;
+  return <div className="space-y-6">
+    <div><p className="text-sm font-medium text-primary">Pessoas · Nello</p><h1 className="mt-1 text-3xl font-semibold tracking-tight">Cadastros</h1><p className="mt-2 text-sm text-muted-foreground">Diretório de nutricionistas e pacientes. Busca e paginação executadas no servidor.</p></div>
+    <Card className="rounded-2xl"><CardHeader className="gap-4 sm:flex-row sm:items-center sm:justify-between"><CardTitle className="flex items-center gap-2 text-lg"><Users className="h-5 w-5 text-primary" />{data ? `${data.total} pessoas` : 'Pessoas'}</CardTitle>
+      <div className="flex flex-col gap-2 sm:flex-row"><div className="relative"><Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" /><Input aria-label="Buscar pessoas" placeholder="Nome ou email" value={search} onChange={(event) => setSearch(event.target.value)} maxLength={80} className="pl-9 sm:w-64" /></div><select aria-label="Tipo de pessoa" value={type} onChange={(event) => { setType(event.target.value); setPage(1); }} className="h-10 rounded-md border border-input bg-background px-3 text-sm"><option value="all">Todos</option><option value="nutritionist">Nutricionistas</option><option value="patient">Pacientes</option></select></div>
+    </CardHeader><CardContent className="space-y-3">
+      {state.error && <p role="alert" className="text-sm text-destructive">Falha ao carregar pessoas. Atualize a página.</p>}
+      {state.loading ? Array.from({ length: 5 }).map((_, index) => <Skeleton key={index} className="h-16 w-full" />) : data?.items?.length ? data.items.map((person) => <div key={person.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/70 p-4">
+        <div className="min-w-0"><p className="truncate font-medium">{person.name || 'Sem nome'}</p><p className="truncate text-xs text-muted-foreground">{person.email || 'Sem email'}</p></div>
+        <div className="flex items-center gap-2"><Badge variant="outline">{person.user_type === 'nutritionist' ? 'Nutricionista' : 'Paciente'}</Badge><Badge variant={person.is_active === false ? 'secondary' : 'outline'}>{person.is_active === false ? 'Inativo' : 'Ativo'}</Badge>{person.user_type === 'nutritionist' && <Button asChild variant="outline" size="sm"><Link to={`/admin/users/${person.id}`}>Detalhes</Link></Button>}</div>
+        <p className="w-full text-xs text-muted-foreground">Cadastro: {person.created_at ? new Date(person.created_at).toLocaleDateString('pt-BR') : '—'} · Última atividade: {person.last_seen_at ? new Date(person.last_seen_at).toLocaleDateString('pt-BR') : 'sem registro'}</p>
+      </div>) : !state.error && <p className="py-10 text-center text-sm text-muted-foreground">Nenhuma pessoa encontrada neste filtro.</p>}
+      <div className="flex items-center justify-between border-t pt-4 text-sm text-muted-foreground"><span>Página {data?.page || page} · {data?.total ?? '—'} resultados</span><div className="flex gap-2"><Button variant="outline" size="icon" aria-label="Página anterior" disabled={state.loading || page <= 1} onClick={() => setPage((n) => n - 1)}><ChevronLeft className="h-4 w-4" /></Button><Button variant="outline" size="icon" aria-label="Próxima página" disabled={state.loading || page * 20 >= (data?.total || 0)} onClick={() => setPage((n) => n + 1)}><ChevronRight className="h-4 w-4" /></Button></div></div>
+    </CardContent></Card>
+  </div>;
 }

@@ -12,6 +12,7 @@ const AdminUsersPage = route('users', () => import('@/pages/admin/AdminUsersPage
 const AdminFinancialPage = route('financial', () => import('@/pages/admin/AdminFinancialPage.jsx'));
 const AdminNutritionistDetailPage = route('nutritionist-detail', () => import('@/pages/admin/AdminNutritionistDetailPage.jsx'));
 const AdminStudyPage = route('study', () => import('@/pages/admin/AdminStudyPage.jsx'));
+const AdminOperationsPage = route('operations', () => import('@/pages/admin/AdminOperationsPage.jsx'));
 const AdminVerificationsPage = route('verifications', () => import('@/pages/admin/AdminVerificationsPage.jsx'));
 const AdminPrivacyRequestsPage = route('privacy', () => import('@/pages/admin/AdminPrivacyRequestsPage.jsx'));
 
@@ -29,6 +30,7 @@ export const adminRoutes = (
       <Route path="/admin/users/:id" element={<Suspense fallback={<LoadingFallback />}><AdminNutritionistDetailPage /></Suspense>} />
       <Route path="/admin/financial" element={<Suspense fallback={<LoadingFallback />}><AdminFinancialPage /></Suspense>} />
       <Route path="/admin/study" element={<Suspense fallback={<LoadingFallback />}><AdminStudyPage /></Suspense>} />
+      <Route path="/admin/operations" element={<Suspense fallback={<LoadingFallback />}><AdminOperationsPage /></Suspense>} />
       <Route path="/admin/verifications" element={<Suspense fallback={<LoadingFallback />}><AdminVerificationsPage /></Suspense>} />
       <Route path="/admin/privacy" element={<Suspense fallback={<LoadingFallback />}><AdminPrivacyRequestsPage /></Suspense>} />
     </Route>
