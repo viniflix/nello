@@ -31,6 +31,31 @@ export function useMealPlanDraft({ patientId, nutritionistId, enabled = false })
 
     const debounceTimerRef = useRef(null);
     const latestDraftIdRef = useRef(null);
+    const pendingPlanInfoRef = useRef(null);
+    const writeChainRef = useRef(Promise.resolve(true));
+
+    const flushPlanInfo = useCallback(() => {
+        if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+        debounceTimerRef.current = null;
+        const pending = pendingPlanInfoRef.current;
+        if (!pending) return writeChainRef.current;
+        pendingPlanInfoRef.current = null;
+        writeChainRef.current = writeChainRef.current.catch(() => false).then(async () => {
+            try {
+                const { error } = await updateDraftMealPlan(pending.draftId, pending.data);
+                if (error) {
+                    setSaveStatus('error');
+                    return false;
+                }
+                if (!pendingPlanInfoRef.current) setSaveStatus('saved');
+                return true;
+            } catch {
+                setSaveStatus('error');
+                return false;
+            }
+        });
+        return writeChainRef.current;
+    }, []);
 
     // Mantém ref sincronizada com state para closures
     useEffect(() => {
@@ -117,12 +142,9 @@ export function useMealPlanDraft({ patientId, nutritionistId, enabled = false })
         setSaveStatus('saving');
 
         if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
-
-        debounceTimerRef.current = setTimeout(async () => {
-            const { error } = await updateDraftMealPlan(currentDraftId, planData);
-            setSaveStatus(error ? 'error' : 'saved');
-        }, 800);
-    }, []); // latestDraftIdRef ensures we always have the current ID without needing it in deps
+        pendingPlanInfoRef.current = { draftId: currentDraftId, data: planData };
+        debounceTimerRef.current = setTimeout(() => { void flushPlanInfo(); }, 800);
+    }, [flushPlanInfo]);
 
     /**
      * Adiciona uma refeição ao rascunho no banco e retorna o ID gerado.
@@ -261,6 +283,10 @@ export function useMealPlanDraft({ patientId, nutritionistId, enabled = false })
      * Deleta o rascunho atual do banco (ao apertar "Cancelar").
      */
     const discardDraft = useCallback(async () => {
+        if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+        debounceTimerRef.current = null;
+        pendingPlanInfoRef.current = null;
+        await writeChainRef.current.catch(() => false);
         const currentDraftId = latestDraftIdRef.current;
         if (currentDraftId) {
             await deleteDraftMealPlan(currentDraftId);
@@ -284,9 +310,9 @@ export function useMealPlanDraft({ patientId, nutritionistId, enabled = false })
     // Cleanup do debounce ao desmontar
     useEffect(() => {
         return () => {
-            if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+            void flushPlanInfo();
         };
-    }, []);
+    }, [flushPlanInfo]);
 
     return {
         draftId,
@@ -298,6 +324,7 @@ export function useMealPlanDraft({ patientId, nutritionistId, enabled = false })
         discardExistingAndStartNew,
         clearExistingDraft,
         savePlanInfo,
+        flushPlanInfo,
         saveMeal,
         updateMeal,
         removeMeal,

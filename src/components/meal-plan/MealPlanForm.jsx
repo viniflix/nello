@@ -363,6 +363,7 @@ const MealPlanForm = ({
     const handleApplyPlan = async (e) => {
         e.preventDefault();
         if (!validate()) return;
+        if (!isEditing && draft.draftId && !(await draft.flushPlanInfo())) return;
 
         const totals = calculateDailyTotals();
         const planData = {
@@ -385,6 +386,7 @@ const MealPlanForm = ({
             setErrors({ name: 'Dê um nome ao plano antes de salvar' });
             return;
         }
+        if (!isEditing && draft.draftId && !(await draft.flushPlanInfo())) return;
 
         const totals = calculateDailyTotals();
         const planData = {
@@ -534,7 +536,7 @@ const MealPlanForm = ({
                         <div className="flex items-center justify-between">
                             <CardTitle className="text-lg">Informações do Plano</CardTitle>
                             <div className="flex flex-wrap items-center gap-2">
-                                {!isEditing && draft.saveStatus === 'error' && <SaveStatusIndicator status={draft.saveStatus} />}
+                                {!isEditing && ['saving', 'error'].includes(draft.saveStatus) && <SaveStatusIndicator status={draft.saveStatus} />}
                                 <ShadowSaveStatus status={shadow.status} onRetry={shadow.flush} />
                             </div>
                         </div>

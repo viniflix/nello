@@ -93,6 +93,45 @@ describe('useMealPlanDraft — inicialização', () => {
     });
 });
 
+describe('useMealPlanDraft — dados básicos pendentes', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        mockGetDraft.mockResolvedValue({ data: null, error: null });
+        mockUpdateDraft.mockResolvedValue({ data: {}, error: null });
+    });
+
+    it('grava a última edição ao desmontar antes do debounce', async () => {
+        const { result, unmount } = renderHook(() => useMealPlanDraft({ ...defaultParams, enabled: false }));
+        act(() => {
+            result.current.setActiveDraftId(55);
+            result.current.savePlanInfo({ name: 'Plano recente' });
+        });
+        unmount();
+        await vi.waitFor(() => expect(mockUpdateDraft).toHaveBeenCalledWith(55, { name: 'Plano recente' }));
+    });
+
+    it('serializa edições e confirma apenas após a última gravação', async () => {
+        let finishFirst;
+        mockUpdateDraft.mockImplementationOnce(() => new Promise((resolve) => { finishFirst = resolve; }));
+        const { result } = renderHook(() => useMealPlanDraft({ ...defaultParams, enabled: false }));
+        act(() => {
+            result.current.setActiveDraftId(55);
+            result.current.savePlanInfo({ name: 'Primeiro' });
+        });
+        const first = result.current.flushPlanInfo();
+        await vi.waitFor(() => expect(mockUpdateDraft).toHaveBeenCalledTimes(1));
+        act(() => result.current.savePlanInfo({ name: 'Último' }));
+        const last = result.current.flushPlanInfo();
+        expect(mockUpdateDraft).toHaveBeenCalledTimes(1);
+        await act(async () => {
+            finishFirst({ data: {}, error: null });
+            await Promise.all([first, last]);
+        });
+        expect(mockUpdateDraft).toHaveBeenNthCalledWith(2, 55, { name: 'Último' });
+        expect(result.current.saveStatus).toBe('saved');
+    });
+});
+
 describe('useMealPlanDraft — saveMeal', () => {
     beforeEach(() => {
         vi.clearAllMocks();
