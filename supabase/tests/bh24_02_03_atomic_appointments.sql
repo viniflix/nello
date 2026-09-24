@@ -34,6 +34,19 @@ BEGIN
     ) THEN RAISE EXCEPTION 'TEST_ATOMIC_CREATE_FAILED'; END IF;
 
     BEGIN
+      UPDATE public.appointments SET status = 'completed' WHERE id = v_id;
+      RAISE EXCEPTION 'TEST_DIRECT_STATUS_BYPASS_ACCEPTED';
+    EXCEPTION WHEN raise_exception THEN
+      IF SQLERRM <> 'APPOINTMENT_INVALID_TRANSITION' THEN RAISE; END IF;
+    END;
+    BEGIN
+      UPDATE public.financial_transactions SET appointment_id = NULL WHERE id = v_tx_id;
+      RAISE EXCEPTION 'TEST_CHARGE_LINK_DETACHED';
+    EXCEPTION WHEN raise_exception THEN
+      IF SQLERRM <> 'FINANCIAL_APPOINTMENT_LINK_IMMUTABLE' THEN RAISE; END IF;
+    END;
+
+    BEGIN
       PERFORM public.save_appointment_with_finance(
         jsonb_build_object('nutritionist_id', v_owner, 'unregistered_patient_name',
           'Teste transacional rollback', 'start_time', v_new, 'duration', 60,
