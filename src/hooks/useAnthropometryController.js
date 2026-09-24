@@ -13,6 +13,7 @@ import { getActiveGoal } from '@/lib/supabase/goals-queries';
 import { getLatestAnamnesis } from '@/lib/supabase/anamnesis-queries';
 import { isSameMeasurementRevision } from '@/lib/utils/anthropometry-history';
 import { Events, track } from '@/infrastructure/analytics/posthog';
+import { toPortugueseError } from '@/lib/utils/errorMessages';
 
 export const useAnthropometryController = ({ patientId, user, resolveLoading, resolveError }) => {
     const { toast } = useToast();
@@ -378,8 +379,10 @@ export const useAnthropometryController = ({ patientId, user, resolveLoading, re
             track(Events.UI_ACTION_OUTCOME, { operation: 'anthropometry_save', outcome: 'failed', duration_ms: Math.round(performance.now() - started) });
             console.error('Erro ao salvar registro:', err);
             toast({
-                title: 'Erro',
-                description: err.message || 'Não foi possível salvar o registro',
+                title: 'Registro não salvo',
+                description: err?.code === '42501'
+                    ? 'Confirme que o atendimento está ativo e que sua autorização profissional está vigente antes de registrar a avaliação.'
+                    : toPortugueseError(err, 'Revise as medidas informadas e tente novamente.'),
                 variant: 'destructive'
             });
         } finally {
