@@ -32,6 +32,7 @@ import { useNavigate } from 'react-router-dom';
 import { format, formatDistanceToNow, isValid, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/components/ui/use-toast';
+import { Events, track } from '@/infrastructure/analytics/posthog';
 import {
     AlertTriangle,
     Calendar,
@@ -163,6 +164,7 @@ const NutritionistActivityFeed = () => {
 
     const fetchFeed = useCallback(async () => {
             if (!user?.id) return;
+            const started = performance.now();
             setLoading(true);
             setLoadError(false);
 
@@ -198,21 +200,17 @@ const NutritionistActivityFeed = () => {
                 const patientAvatarMap = new Map(patients.map((p) => [p.id, p.avatar_url]).filter(([, v]) => v));
                 const patientSlugMap = new Map(patients.map((p) => [p.id, p.slug]).filter(([, s]) => s));
 
-                let labRiskAlerts = [];
-                let pendingPayments = [];
-                if (patientIds.length) {
-                    const highRiskRes = await getPatientsHighRiskLabAlerts({
+                const [highRiskRes, paymentsRes] = await Promise.all([
+                    patientIds.length ? getPatientsHighRiskLabAlerts({
                         nutritionistId: user.id,
                         patientIds,
                         daysWindow: 120
-                    });
-                    if (!highRiskRes.error) labRiskAlerts = highRiskRes.data || [];
-                }
-                try {
-                    pendingPayments = await getPendingPayments(user.id);
-                } catch (e) {
-                    console.warn('[Feed] Erro ao carregar pagamentos pendentes:', e?.code || 'unknown');
-                }
+                    }) : Promise.resolve({ data: [], error: null }),
+                    getPendingPayments(user.id).then((data) => ({ data, error: null })).catch((error) => ({ data: [], error })),
+                ]);
+                const labRiskAlerts = highRiskRes.error ? [] : highRiskRes.data || [];
+                const pendingPayments = paymentsRes.data || [];
+                if (paymentsRes.error) console.warn('[Feed] Erro ao carregar pagamentos pendentes:', paymentsRes.error?.code || 'unknown');
 
                 const priorityRules = priorityRulesRes?.data || [];
                 const activityItems = (activitiesRes.data || []).map((activity) => {
@@ -381,6 +379,7 @@ const NutritionistActivityFeed = () => {
                 });
 
                 setFeedItems(sorted);
+                track(Events.DATA_LOAD_TIMING, { operation: 'dashboard_feed', duration_ms: Math.round(performance.now() - started), result_count: sorted.length });
             } catch (error) {
                 console.error('Erro ao carregar feed:', error?.code || 'unknown');
                 setLoadError(true);

@@ -9,7 +9,7 @@ import { useAuth } from '@/contexts/AuthContext';
  *   - meal: meal_templates + meal_template_foods
  *   - recipe: recipes + recipe_ingredients
  */
-export function useTemplates(type = 'diet') {
+export function useTemplates(type = 'diet', { enabled = true } = {}) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
@@ -89,7 +89,7 @@ export function useTemplates(type = 'diet') {
       if (fetchError) throw fetchError;
       return data || [];
     },
-    enabled: !!user,
+    enabled: !!user && enabled,
     staleTime: 30000, // 30 segundos
   });
 

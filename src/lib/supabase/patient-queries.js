@@ -469,13 +469,23 @@ export const getPatientActivities = async (patientId, limit = 10) => {
     try {
         const activities = [];
 
+        // These sources are independent. Read them together so the feed waits for
+        // one network round trip rather than seven consecutive round trips.
+        const [mealAuditResult, weightResult, anamnesisResult, energyResult, photoEvents, achievementsResult, appointmentsResult] = await Promise.all([
+            supabase.from('meal_audit_log').select('id, action, meal_type, details, created_at').eq('patient_id', patientId).order('created_at', { ascending: false }).limit(30),
+            supabase.from('growth_records').select('id, weight, height, record_date, created_at').eq('patient_id', patientId).order('record_date', { ascending: false }).limit(20),
+            supabase.from('anamnesis_records').select('id, date, created_at').eq('patient_id', patientId).order('date', { ascending: false }).limit(15),
+            supabase.from('energy_expenditure_calculations').select('id, created_at, final_planned_kcal').eq('patient_id', patientId).order('created_at', { ascending: false }).limit(5),
+            getProgressPhotoEventsFromAudit(patientId).catch((error) => {
+                logSupabaseError('Erro ao buscar auditoria de fotos no activity_log', error);
+                return [];
+            }),
+            supabase.from('user_achievements').select('id, achievement_id, achieved_at, achievements(name)').eq('user_id', patientId).order('achieved_at', { ascending: false }).limit(15),
+            supabase.from('appointments').select('id, start_time, status, notes').eq('patient_id', patientId).order('start_time', { ascending: false }).limit(15),
+        ]);
+
         // Buscar auditoria de refeições (CREATE, UPDATE, DELETE)
-        const { data: mealAuditData } = await supabase
-            .from('meal_audit_log')
-            .select('id, action, meal_type, details, created_at')
-            .eq('patient_id', patientId)
-            .order('created_at', { ascending: false })
-            .limit(30);
+        const { data: mealAuditData } = mealAuditResult;
 
         if (mealAuditData) {
             mealAuditData.forEach((audit) => {
@@ -509,12 +519,7 @@ export const getPatientActivities = async (patientId, limit = 10) => {
         }
 
         // Buscar últimos registros de peso (aumentado para cobrir mais tempo)
-        const { data: weightData } = await supabase
-            .from('growth_records')
-            .select('id, weight, height, record_date, created_at')
-            .eq('patient_id', patientId)
-            .order('record_date', { ascending: false })
-            .limit(20);
+        const { data: weightData } = weightResult;
 
         if (weightData) {
             weightData.forEach((record) => {
@@ -537,12 +542,7 @@ export const getPatientActivities = async (patientId, limit = 10) => {
         }
 
         // Anamnese respondida
-        const { data: anamnesisData } = await supabase
-            .from('anamnesis_records')
-            .select('id, date, created_at')
-            .eq('patient_id', patientId)
-            .order('date', { ascending: false })
-            .limit(15);
+        const { data: anamnesisData } = anamnesisResult;
 
         if (anamnesisData) {
             anamnesisData.forEach((rec) => {
@@ -559,12 +559,7 @@ export const getPatientActivities = async (patientId, limit = 10) => {
         }
 
         // Cálculo energético (último por paciente)
-        const { data: energyData } = await supabase
-            .from('energy_expenditure_calculations')
-            .select('id, created_at, final_planned_kcal')
-            .eq('patient_id', patientId)
-            .order('created_at', { ascending: false })
-            .limit(5);
+        const { data: energyData } = energyResult;
 
         if (energyData) {
             energyData.forEach((calc) => {
@@ -581,14 +576,6 @@ export const getPatientActivities = async (patientId, limit = 10) => {
         }
 
         // Eventos de fotos de progresso (activity_log)
-        let photoEvents = [];
-        try {
-            photoEvents = await getProgressPhotoEventsFromAudit(patientId);
-        } catch (error) {
-            logSupabaseError('Erro ao buscar auditoria de fotos no activity_log', error);
-            photoEvents = [];
-        }
-
         if (photoEvents) {
             photoEvents.forEach((ev) => {
                 const action = ev.event_name === 'progress_photo.added' ? 'adicionou' : ev.event_name === 'progress_photo.edited' ? 'editou' : 'removeu';
@@ -606,12 +593,7 @@ export const getPatientActivities = async (patientId, limit = 10) => {
         }
 
         // Buscar conquistas (aumentado para cobrir mais tempo)
-        const { data: achievementsData } = await supabase
-            .from('user_achievements')
-            .select('id, achievement_id, achieved_at, achievements(name)')
-            .eq('user_id', patientId)
-            .order('achieved_at', { ascending: false })
-            .limit(15);
+        const { data: achievementsData } = achievementsResult;
 
         if (achievementsData) {
             achievementsData.forEach((achievement) => {
@@ -628,12 +610,7 @@ export const getPatientActivities = async (patientId, limit = 10) => {
         }
 
         // Buscar consultas recentes (aumentado para cobrir mais tempo)
-        const { data: appointmentsData } = await supabase
-            .from('appointments')
-            .select('id, start_time, status, notes')
-            .eq('patient_id', patientId)
-            .order('start_time', { ascending: false })
-            .limit(15);
+        const { data: appointmentsData } = appointmentsResult;
 
         if (appointmentsData) {
             appointmentsData.forEach((appointment) => {
@@ -978,7 +955,7 @@ export const getFeedTaskStates = async (nutritionistId) => {
     try {
         const { data, error } = await supabase
             .from('feed_tasks')
-            .select('id, source_type, source_id, status, snooze_until, first_seen_at, created_at, updated_at, priority_score, priority_reason')
+            .select('id, source_type, source_id, patient_id, title, description, status, snooze_until, first_seen_at, last_seen_at, created_at, updated_at, priority_score, priority_reason, metadata')
             .eq('nutritionist_id', nutritionistId);
 
         if (error) throw error;
@@ -1232,7 +1209,7 @@ export const syncFeedTasksFromItems = async (nutritionistId, items = [], existin
                     }
                 }
 
-                return {
+                const payload = {
                     nutritionistId,
                     patientId: item.patientId || null,
                     sourceType: item.sourceType,
@@ -1248,9 +1225,25 @@ export const syncFeedTasksFromItems = async (nutritionistId, items = [], existin
                         cta_route: item.ctaRoute || null
                     }
                 };
+                const lastSeen = existing?.last_seen_at ? new Date(existing.last_seen_at).getTime() : 0;
+                const recentlySeen = Number.isFinite(lastSeen) && Date.now() - lastSeen < 15 * 60 * 1000;
+                const unchanged = existing
+                    && recentlySeen
+                    && String(existing.patient_id || '') === String(payload.patientId || '')
+                    && existing.title === payload.title
+                    && (existing.description || null) === payload.description
+                    && Number(existing.priority_score || 0) === payload.priorityScore
+                    && (existing.priority_reason || null) === payload.priorityReason
+                    && existing.status === payload.status
+                    && (existing.snooze_until || null) === payload.snoozeUntil
+                    && (existing.metadata?.item_type || null) === payload.metadata.item_type
+                    && (existing.metadata?.cta_route || null) === payload.metadata.cta_route;
+                return { payload, existing, unchanged };
             });
 
-        const result = await Promise.all(syncPayloads.map((payload) => upsertFeedTask(payload)));
+        const result = await Promise.all(syncPayloads.map(({ payload, existing, unchanged }) =>
+            unchanged ? Promise.resolve({ data: existing, error: null }) : upsertFeedTask(payload)
+        ));
         const firstError = result.find((entry) => entry?.error)?.error || null;
         return { data: result.map((entry) => entry?.data).filter(Boolean), error: firstError };
     } catch (error) {

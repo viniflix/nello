@@ -77,4 +77,9 @@ describe('useTemplates Hook', () => {
 
     expect(supabase.from).toHaveBeenCalledWith('meal_templates');
   });
+
+  it('does not fetch nutrition templates while another protocol group is open', () => {
+    renderHook(() => useTemplates('diet', { enabled: false }), { wrapper: createWrapper() });
+    expect(supabase.from).not.toHaveBeenCalled();
+  });
 });

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { getMyCareRelationship, syncFeedTasksFromItems, upsertFeedTask } from '@/lib/supabase/patient-queries';
+import { getMyCareRelationship, getPatientActivities, syncFeedTasksFromItems, upsertFeedTask } from '@/lib/supabase/patient-queries';
 import { processPatientReminders } from '@/lib/supabase/food-diary-queries';
 
 const mocks = vi.hoisted(() => ({
@@ -50,6 +50,47 @@ describe('session-safe background queries', () => {
     expect(batch).toMatchObject({ error: null, skipped: true });
     expect(mocks.from).not.toHaveBeenCalled();
     expect(mocks.logSupabaseError).not.toHaveBeenCalled();
+  });
+
+  it('reuses an unchanged feed task without a database write', async () => {
+    mocks.getSession.mockResolvedValue({ data: { session: { user: { id: 'nutritionist-session' } } }, error: null });
+    const existing = {
+      id: 'task-1', source_type: 'pending', source_id: 'pending-1', patient_id: 'patient-1',
+      title: 'Pendência', description: null, priority_score: 2, priority_reason: null,
+      status: 'open', snooze_until: null, last_seen_at: new Date().toISOString(),
+      metadata: { item_type: 'pending', cta_route: '/nutritionist/patients' },
+    };
+
+    const result = await syncFeedTasksFromItems('nutritionist-session', [{
+      sourceType: 'pending', sourceId: 'pending-1', patientId: 'patient-1',
+      type: 'pending', title: 'Pendência', priorityScore: 2,
+      ctaRoute: '/nutritionist/patients',
+    }], [existing]);
+
+    expect(result).toMatchObject({ error: null, data: [existing] });
+    expect(mocks.from).not.toHaveBeenCalled();
+  });
+
+  it('starts every independent patient activity source before waiting for responses', async () => {
+    const tables = ['meal_audit_log', 'growth_records', 'anamnesis_records', 'energy_expenditure_calculations', 'activity_log', 'user_achievements', 'appointments'];
+    const pending = new Map(tables.map((table) => {
+      let resolve;
+      const promise = new Promise((done) => { resolve = done; });
+      return [table, { promise, resolve }];
+    }));
+    mocks.from.mockImplementation((table) => {
+      const chain = {
+        select: () => chain, eq: () => chain, order: () => chain,
+        limit: () => chain, in: () => chain,
+        then: (resolve, reject) => pending.get(table).promise.then(resolve, reject),
+      };
+      return chain;
+    });
+
+    const resultPromise = getPatientActivities('patient-1', 100);
+    expect(mocks.from.mock.calls.map(([table]) => table)).toEqual(tables);
+    for (const { resolve } of pending.values()) resolve({ data: [], error: null });
+    await expect(resultPromise).resolves.toEqual({ data: [], error: null });
   });
 
   it('does not report a no-row write when logout wins the feed persistence race', async () => {

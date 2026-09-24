@@ -334,9 +334,9 @@ export default function TemplatesPage() {
   const { toast } = useToast();
 
   // Nutrição hook — só carrega quando no grupo certo
-  const { templates, loading, deleteTemplate } = useTemplates(
-    activeGroup === 'nutrition' ? activeNutritionTab : 'diet'
-  );
+  const { templates, loading, deleteTemplate } = useTemplates(activeNutritionTab, {
+    enabled: activeGroup === 'nutrition',
+  });
 
   const filteredTemplates = useMemo(
     () => templates.filter(t =>

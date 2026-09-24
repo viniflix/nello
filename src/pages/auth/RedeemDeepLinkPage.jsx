@@ -286,8 +286,10 @@ const RedeemDeepLinkPage = () => {
                 
                 <div className="z-10 max-w-lg space-y-6">
                     <img 
-                        src="https://afyoidxrshkmplxhcyeh.supabase.co/storage/v1/object/public/IDV/nello.png" 
+                        src="/nello-logo.png"
                         alt="Nello" 
+                        width="99"
+                        height="40"
                         className="h-10 w-auto mb-8"
                     />
                     
@@ -328,8 +330,10 @@ const RedeemDeepLinkPage = () => {
                 {/* Mobile Heading */}
                 <div className="lg:hidden mb-8 text-center space-y-4">
                     <img 
-                        src="https://afyoidxrshkmplxhcyeh.supabase.co/storage/v1/object/public/IDV/nello.png" 
+                        src="/nello-logo.png"
                         alt="Nello" 
+                        width="99"
+                        height="40"
                         className="h-10 w-auto mx-auto mb-4"
                     />
                     <h1 className="text-2xl font-black text-foreground max-w-[280px] mx-auto">

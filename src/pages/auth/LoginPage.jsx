@@ -180,8 +180,10 @@ export default function LoginPage() {
               {/* Logo */}
               <div className="flex justify-center">
                 <img
-                  src="https://afyoidxrshkmplxhcyeh.supabase.co/storage/v1/object/public/IDV/nello.png"
+                  src="/nello-logo.png"
                   alt="Nello"
+                  width="158"
+                  height="64"
                   className="h-16 w-auto object-contain"
                   fetchPriority="high"
                   loading="eager"

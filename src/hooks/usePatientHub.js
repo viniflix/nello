@@ -13,6 +13,7 @@ import {
 } from '@/features/clinical-records/api/record-foundation-queries';
 import { getContextualProfileRequirements } from '@/features/clinical-records/model/progressiveProfileSchema';
 import { buildPatientHubInsights } from '@/features/patient-hub/model/patientHubInsights';
+import { Events, track } from '@/infrastructure/analytics/posthog';
 
 export const getPatientAgeStatus = (birthDate, referenceDate = new Date()) => {
     if (typeof birthDate !== 'string') return 'unknown';
@@ -55,6 +56,7 @@ export const usePatientHub = (patientId) => {
         queryKey: ['patient-hub-summary', patientId, user?.id],
         queryFn: async () => {
             if (!patientId || !user?.id) throw new Error('Credenciais inválidas');
+            const started = performance.now();
             
             const [summaryResult, foundationResult, adherenceResult] = await Promise.all([
                 getPatientSummary(patientId, user.id),
@@ -69,13 +71,13 @@ export const usePatientHub = (patientId) => {
 
             const loadedFoundation = foundationResult.error ? null : foundationResult.data;
             const episodeContract = getEpisodeContract(loadedFoundation, data.profile);
-            const operationalResult = await getPatientHubOperationalContext(patientId, user.id, episodeContract.viewedEpisodeId);
-            
-            let guardians = [];
-            if (episodeContract.viewedEpisodeId) {
-                const guardiansResult = await listPatientLegalGuardians(patientId, episodeContract.viewedEpisodeId);
-                if (!guardiansResult.error) guardians = guardiansResult.data || [];
-            }
+            const [operationalResult, guardiansResult] = await Promise.all([
+                getPatientHubOperationalContext(patientId, user.id, episodeContract.viewedEpisodeId),
+                episodeContract.viewedEpisodeId
+                    ? listPatientLegalGuardians(patientId, episodeContract.viewedEpisodeId)
+                    : Promise.resolve({ data: [], error: null }),
+            ]);
+            const guardians = guardiansResult.error ? [] : guardiansResult.data || [];
 
             const profile = loadedFoundation?.patient || data.profile || {};
             const ageStatus = getPatientAgeStatus(profile.birth_date);
@@ -98,6 +100,7 @@ export const usePatientHub = (patientId) => {
                 modulesStatus: data.modulesStatus,
                 adherence
             });
+            track(Events.DATA_LOAD_TIMING, { operation: 'patient_hub_summary', duration_ms: Math.round(performance.now() - started) });
 
             return {
                 patientData: data.profile,
@@ -121,11 +124,13 @@ export const usePatientHub = (patientId) => {
     const activitiesQuery = useQuery({
         queryKey: ['patient-hub-activities', patientId],
         queryFn: async () => {
+            const started = performance.now();
             const { data, error } = await getPatientActivities(patientId, 100);
             if (error) {
                 console.error('Erro ao carregar atividades:', error);
                 return [];
             }
+            track(Events.DATA_LOAD_TIMING, { operation: 'patient_hub_activities', duration_ms: Math.round(performance.now() - started), result_count: data?.length || 0 });
             return data || [];
         },
         enabled: !!patientId && !!summaryQuery.data,
