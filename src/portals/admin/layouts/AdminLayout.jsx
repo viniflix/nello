@@ -7,7 +7,6 @@ const AdminLayout = () => {
   const { user } = useAuth();
 
   if (!user || !user?.profile) return null;
-  if (user?.profile?.is_admin !== true) return null;
 
   return (
     <div className="flex min-h-screen w-full flex-col bg-background">

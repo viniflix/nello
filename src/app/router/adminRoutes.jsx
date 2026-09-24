@@ -2,6 +2,7 @@ import React, { Suspense } from 'react';
 import { Route, Navigate } from 'react-router-dom';
 import { ProtectedRoute } from './routeGuards';
 import AdminLayout from '@/portals/admin/layouts/AdminLayout.jsx';
+import AdminAccessGate from '@/portals/admin/components/AdminAccessGate.jsx';
 import { lazyWithReload } from '@/lib/utils/lazyWithReload';
 
 const route = (key, importer) => lazyWithReload(importer, `admin:${key}`);
@@ -21,7 +22,7 @@ function LoadingFallback() {
 export const adminRoutes = (
   <>
     <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
-    <Route element={<ProtectedRoute requireAdmin={true}><AdminLayout /></ProtectedRoute>}>
+    <Route element={<ProtectedRoute><AdminAccessGate><AdminLayout /></AdminAccessGate></ProtectedRoute>}>
       <Route path="/admin/dashboard" element={<Suspense fallback={<LoadingFallback />}><AdminDashboard /></Suspense>} />
       <Route path="/admin/bugs" element={<Suspense fallback={<LoadingFallback />}><AdminBugReportsPage /></Suspense>} />
       <Route path="/admin/users" element={<Suspense fallback={<LoadingFallback />}><AdminUsersPage /></Suspense>} />
