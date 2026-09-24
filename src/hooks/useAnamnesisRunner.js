@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
 import { STANDARD_ANAMNESIS_FIELDS } from '@/lib/constants/standard-anamnesis-fields';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
+import { publicOrigin } from '@/lib/utils/publicOrigin';
 
 function getFallbackSections() {
     const categoriesMap = {
@@ -283,7 +284,7 @@ export function useAnamnesisRunner(patientId) {
         },
         onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ['anamnesis_records', patientId] });
-            const url = `${window.location.origin}/f/${data.token}`;
+            const url = `${publicOrigin()}/f/${data.token}`;
             navigator.clipboard?.writeText(url).catch(() => {});
             toast({
                 title: 'Link copiado!',

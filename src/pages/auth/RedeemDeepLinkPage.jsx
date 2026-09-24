@@ -19,6 +19,7 @@ import { captureOperationalError } from '@/infrastructure/observability/telemetr
 import { Events, track } from '@/infrastructure/analytics/posthog';
 import { supabase } from '@/lib/customSupabaseClient';
 import { toPortugueseError } from '@/lib/utils/errorMessages';
+import { publicOrigin } from '@/lib/utils/publicOrigin';
 
 const RedeemDeepLinkPage = () => {
     const [searchParams] = useSearchParams();
@@ -121,7 +122,7 @@ const RedeemDeepLinkPage = () => {
             password: formData.password,
             options: {
                 data: profileData,
-                emailRedirectTo: `${window.location.origin}/convite?token=${encodeURIComponent(token)}&confirmed=1`,
+                emailRedirectTo: `${publicOrigin()}/convite?token=${encodeURIComponent(token)}&confirmed=1`,
             }
         });
 

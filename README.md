@@ -46,6 +46,32 @@ Usa o Nello como painel de operacao do SaaS:
 - Relatorios de bugs.
 - Area de estudos/gestao interna.
 
+## Domínio público e migração
+
+O domínio canônico do aplicativo é `https://nellonutri.com.br`. Novos links de
+cadastro, convite, recuperação e formulários são gerados nesse domínio. Em
+desenvolvimento, URLs de `localhost` e `127.0.0.1` permanecem locais. O callback
+de autenticação aceita apenas destinos nos domínios atuais ou na origem local.
+
+Estado externo conferido em 24/09/2026:
+
+- Supabase Auth: Site URL `https://nellonutri.com.br`; nenhum redirect do
+  domínio anterior permanece na allowlist. URLs atuais, localhost e preview
+  continuam cadastradas.
+- Supabase Edge Functions: `create-patient` v15 fixa o callback de convite no
+  domínio canônico; `sentry-proxy` v10 removeu CORS legado. Ambas seguem com
+  JWT obrigatório. Um teste HTTP confirmou CORS 200 para o domínio novo e 403
+  para as duas origens antigas. A variável `OBSERVABILITY_ALLOWED_ORIGINS` não
+  consta entre os secrets do projeto.
+- SMTP personalizado ativo no Supabase, com remetente
+  `Nello <naoresponda@nellonutri.com.br>` e host Resend. Templates de
+  autenticação conferidos no painel sem referências ao domínio antigo.
+
+Cuidados de operação:
+
+Sessões do navegador não migram entre domínios. Usuários precisam entrar
+novamente em `nellonutri.com.br`.
+
 ## Stack
 
 ### Frontend

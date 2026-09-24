@@ -12,6 +12,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { toPortugueseError } from '@/lib/utils/errorMessages';
 import { authFlowPolicy, validateNewPassword } from '@/features/auth/authFlows';
+import { publicOrigin } from '@/lib/utils/publicOrigin';
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -85,7 +86,7 @@ export default function RegisterPage() {
       password: formData.password,
       options: {
         data: profileData,
-        emailRedirectTo: `${window.location.origin}/login`,
+        emailRedirectTo: `${publicOrigin()}/login`,
       }
     });
 

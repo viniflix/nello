@@ -4,6 +4,7 @@ import InputMask from 'react-input-mask';
 import { useAuth } from '@/contexts/AuthContext'; 
 import { supabase } from '@/lib/customSupabaseClient'; 
 import { useToast } from '@/components/ui/use-toast'; 
+import { publicOrigin } from '@/lib/utils/publicOrigin';
 
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"; 
@@ -255,7 +256,7 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded }) => {
             );
         }
         
-        const redirectTo = `${window.location.origin}/update-password?mode=invite`;
+        const redirectTo = `${publicOrigin()}/update-password?mode=invite`;
 
         const body = {
             email: isOffline ? null : clean(formData.email),

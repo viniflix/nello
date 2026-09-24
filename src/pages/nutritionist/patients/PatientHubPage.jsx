@@ -21,6 +21,7 @@ import PatientEditProfileModal from '@/components/patient-hub/PatientEditProfile
 import DuplicatePatientModal from '@/components/nutritionist/DuplicatePatientModal';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useToast } from '@/components/ui/use-toast';
+import { publicOrigin } from '@/lib/utils/publicOrigin';
 
 const TabContentOverview = lazy(() => import('@/components/patient-hub/tabs/TabContentOverview'));
 const TabContentFeed = lazy(() => import('@/components/patient-hub/tabs/TabContentFeed'));
@@ -61,7 +62,7 @@ function PatientInvite({ patientData, nutritionistName }) {
     const { toast } = useToast();
     if (!patientData?.patient_invite_code) return null;
 
-    const invitationUrl = `${window.location.origin}/convite?token=${patientData.patient_invite_code}`;
+    const invitationUrl = `${publicOrigin()}/convite?token=${patientData.patient_invite_code}`;
     const copy = async (type) => {
         const value = type === 'link'
             ? `Olá, aqui é ${nutritionistName || 'seu nutricionista'}! Seu acompanhamento no Nello está pronto. Acesse e crie sua senha: ${invitationUrl}`

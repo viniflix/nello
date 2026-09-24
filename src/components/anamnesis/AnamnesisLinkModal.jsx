@@ -16,6 +16,7 @@ import { Badge } from '@/components/ui/badge';
 import { useAnamnesisRunner } from '@/hooks/useAnamnesisRunner';
 import { useAnamnesisTemplates } from '@/hooks/useAnamnesisTemplates';
 import { useToast } from '@/components/ui/use-toast';
+import { publicOrigin } from '@/lib/utils/publicOrigin';
 import { supabase } from '@/lib/customSupabaseClient';
 
 /**
@@ -63,7 +64,7 @@ export function AnamnesisLinkModal({ open, onOpenChange, patientId, patientName 
                 expiresDays: parseInt(expiresDays, 10) || 7,
             });
 
-            const url = `${window.location.origin}/f/${linkData.token}`;
+            const url = `${publicOrigin()}/f/${linkData.token}`;
             setGeneratedLink(url);
             setStep('link_ready');
         } catch (err) {
@@ -81,7 +82,7 @@ export function AnamnesisLinkModal({ open, onOpenChange, patientId, patientName 
                 recordId: pendingRecord.id,
                 expiresDays: parseInt(expiresDays, 10) || 7,
             });
-            const url = `${window.location.origin}/f/${linkData.token}`;
+            const url = `${publicOrigin()}/f/${linkData.token}`;
             setGeneratedLink(url);
             setStep('link_ready');
         } catch (err) {

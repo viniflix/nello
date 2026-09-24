@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/customSupabaseClient';
 import { getPatientProfile } from '@/lib/supabase/patient-queries';
 import { getMealPlans, copyMealPlanToPatient } from '@/lib/supabase/meal-plan-queries';
+import { publicOrigin } from '@/lib/utils/publicOrigin';
 
 export const duplicatePatientTemporarily = async (originalPatientId, nutritionistId, options = {}, onProgress = () => {}) => {
     const reportProgress = (text, status = 'loading') => {
@@ -30,7 +31,7 @@ export const duplicatePatientTemporarily = async (originalPatientId, nutritionis
                 observations: 'DUPLICATA DE TESTE',
                 address: originalProfile.address
             },
-            redirectTo: `${window.location.origin}/update-password?mode=invite`,
+            redirectTo: `${publicOrigin()}/update-password?mode=invite`,
             defaultPassword: '',
             isOffline: true,
             sendInvite: false

@@ -9,6 +9,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
 import { confirmEmailWithCode, isExpectedConfirmationRejection, resendEmailConfirmation } from '@/features/auth/authFlows';
 import { toPortugueseError } from '@/lib/utils/errorMessages';
+import { publicOrigin } from '@/lib/utils/publicOrigin';
 import { captureOperationalError } from '@/infrastructure/observability/telemetry';
 
 const RESEND_COOLDOWN_MS = 60_000;
@@ -53,7 +54,7 @@ export default function ConfirmSignupPage() {
     setBusy(true);
     setFeedback('');
     try {
-      await resendEmailConfirmation(supabase, email, window.location.origin);
+      await resendEmailConfirmation(supabase, email, publicOrigin());
       setSentAt(Date.now());
       setNow(Date.now());
       setCode('');

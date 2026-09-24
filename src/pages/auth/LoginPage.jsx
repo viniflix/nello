@@ -18,6 +18,7 @@ import {
   AlertDialogAction
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/components/ui/use-toast';
+import { publicOrigin } from '@/lib/utils/publicOrigin';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/customSupabaseClient';
 import { toPortugueseError } from '@/lib/utils/errorMessages';
@@ -111,7 +112,7 @@ export default function LoginPage() {
 
     let error = null;
     try {
-      await requestPasswordRecovery(supabase, resetEmail, window.location.origin);
+      await requestPasswordRecovery(supabase, resetEmail, publicOrigin());
       track(Events.AUTH_PASSWORD_RECOVERY_REQUESTED);
     } catch (recoveryError) {
       error = recoveryError;
