@@ -167,4 +167,3 @@ export async function deleteAppointment(appointmentId) {
         throw error;
     }
 }
-
