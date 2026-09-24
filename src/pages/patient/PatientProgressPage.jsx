@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { format, parseISO } from 'date-fns';
 import { toPortugueseError } from '@/lib/utils/errorMessages';
+import { parseGlycemiaMgDl, GLYCEMIA_MIN_MG_DL, GLYCEMIA_MAX_MG_DL } from '@/lib/utils/glycemia';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Camera, ChevronRight, FileText, Plus, Ruler, Droplet, Scale, Trash2, X } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -292,10 +293,20 @@ export default function PatientProgressPage() {
       return;
     }
 
+    const glycemiaValue = parseGlycemiaMgDl(newGlycemia);
+    if (glycemiaValue === null) {
+      toast({
+        title: 'Confira a glicemia',
+        description: `Informe um número entre ${GLYCEMIA_MIN_MG_DL} e ${GLYCEMIA_MAX_MG_DL} mg/dL. Se o aparelho mostrar LO ou HI, confirme a leitura com sua equipe de saúde.`,
+        variant: 'destructive'
+      });
+      return;
+    }
+
     const { error } = await supabase.from('glycemia_records').insert({
       patient_id: user.id,
       date: new Date(recordDate + 'T12:00:00').toISOString(),
-      value: parseFloat(newGlycemia),
+      value: glycemiaValue,
       condition: newGlycemiaCondition
     });
 
@@ -1098,7 +1109,9 @@ export default function PatientProgressPage() {
                 <Input
                   id="glycemia"
                   type="number"
-                  step="1"
+                  step="any"
+                  min={GLYCEMIA_MIN_MG_DL}
+                  max={GLYCEMIA_MAX_MG_DL}
                   value={newGlycemia}
                   onChange={(e) => setNewGlycemia(e.target.value)}
                   placeholder="Ex: 95"

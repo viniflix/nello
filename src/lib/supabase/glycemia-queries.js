@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/customSupabaseClient';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
+import { parseGlycemiaMgDl } from '@/lib/utils/glycemia';
 
 /**
  * Busca o histórico de glicemia do paciente
@@ -13,14 +14,14 @@ export const getGlycemiaRecords = async (patientId, options = {}) => {
             .from('glycemia_records')
             .select('*')
             .eq('patient_id', patientId)
-            .order('record_date', { ascending: false });
+            .order('date', { ascending: false });
 
         if (options.limit) {
             query = query.limit(options.limit);
         }
         
         if (options.startDate) {
-            query = query.gte('record_date', options.startDate);
+            query = query.gte('date', options.startDate);
         }
 
         const { data, error } = await query;
@@ -40,14 +41,16 @@ export const getGlycemiaRecords = async (patientId, options = {}) => {
  */
 export const insertGlycemiaRecord = async (recordData) => {
     try {
+        const value = parseGlycemiaMgDl(recordData.value ?? recordData.glycemia_value);
+        if (value === null) throw new Error('GLYCEMIA_VALUE_OUT_OF_RANGE');
         const { data, error } = await supabase
             .from('glycemia_records')
             .insert({
                 patient_id: recordData.patient_id,
-                glycemia_value: recordData.glycemia_value,
+                value,
                 condition: recordData.condition || null,
                 notes: recordData.notes || null,
-                record_date: recordData.record_date || new Date().toISOString()
+                date: recordData.date || recordData.record_date || new Date().toISOString()
             })
             .select()
             .single();
