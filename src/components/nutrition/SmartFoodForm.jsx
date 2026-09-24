@@ -587,9 +587,9 @@ const SmartFoodForm = forwardRef(function SmartFoodForm({
 
                 if (error || !data || !data.data) {
                     toast({
-                        title: 'Produto não encontrado',
-                        description: 'Não foi possível encontrar este produto na base de dados.',
-                        variant: 'default'
+                        title: error?.context?.status === 429 ? 'Muitas buscas em pouco tempo' : 'Produto não encontrado',
+                        description: error?.context?.status === 429 ? 'Aguarde até um minuto e tente novamente.' : 'Não foi possível encontrar este produto na base de dados.',
+                        variant: error?.context?.status === 429 ? 'destructive' : 'default'
                     });
                     return;
                 }
@@ -628,18 +628,14 @@ const SmartFoodForm = forwardRef(function SmartFoodForm({
 
             setSearchLoading(true);
             try {
-                console.log('%c[DEBUG API] Chamando Função...', 'color: blue; font-weight: bold;');
                 const { data, error } = await supabase.functions.invoke('openfoodfacts-proxy', {
                     body: { action: 'search', query }
                 });
 
-                console.log('%c[DEBUG API] Resposta Recebida:', 'color: green; font-weight: bold;', data);
-                if (error) console.error('[DEBUG API] Erro Supabase:', error);
-
                 if (error) {
                     toast({
-                        title: 'Erro na busca',
-                        description: 'Não foi possível realizar a busca na base de dados.',
+                        title: error?.context?.status === 429 ? 'Muitas buscas em pouco tempo' : 'Erro na busca',
+                        description: error?.context?.status === 429 ? 'Aguarde até um minuto e tente novamente.' : 'Não foi possível realizar a busca na base de dados.',
                         variant: 'destructive'
                     });
                     return;
@@ -728,8 +724,8 @@ const SmartFoodForm = forwardRef(function SmartFoodForm({
 
             if (error || !data || !data.data) {
                 toast({
-                    title: 'Erro',
-                    description: 'Não foi possível carregar os dados do produto selecionado.',
+                    title: error?.context?.status === 429 ? 'Muitas buscas em pouco tempo' : 'Erro',
+                    description: error?.context?.status === 429 ? 'Aguarde até um minuto e tente novamente.' : 'Não foi possível carregar os dados do produto selecionado.',
                     variant: 'destructive'
                 });
                 return;

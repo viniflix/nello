@@ -135,11 +135,16 @@ export const getDocumentArtifact = (artifactId) => callRpc(
   'Erro ao carregar documento clínico',
 );
 
-export const listDocumentArtifacts = (patientId, episodeId) => callRpc(
-  'list_document_artifacts',
-  { p_patient_id: patientId, p_episode_id: episodeId },
-  'Erro ao listar documentos clínicos',
-);
+export const listDocumentArtifacts = (patientId, episodeId = null) => {
+  if (!isUuid(patientId) || (episodeId != null && !isUuid(episodeId))) {
+    return Promise.resolve({ data: null, error: { code: 'INVALID_DOCUMENT_SCOPE', message: 'document_scope_required' } });
+  }
+  return callRpc(
+    'list_document_artifacts',
+    { p_patient_id: patientId, p_episode_id: episodeId ?? null },
+    'Erro ao listar documentos clínicos',
+  );
+};
 
 export const verifyDocumentAuthenticity = (code) => {
   const normalizedCode = typeof code === 'string' ? code.trim() : '';

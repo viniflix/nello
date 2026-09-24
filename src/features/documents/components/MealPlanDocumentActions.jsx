@@ -9,10 +9,13 @@ import { downloadCanonicalDocumentPdf } from '../pdf/render-canonical-document';
 export default function MealPlanDocumentActions({ plan, patientId }) {
   const { toast } = useToast();
   const [artifact, setArtifact] = useState(null);
+  const [loadError, setLoadError] = useState(false);
   const [working, setWorking] = useState(false);
   const load = useCallback(async () => {
-    if (!plan?.care_episode_id) return;
-    const { data } = await listDocumentArtifacts(patientId, plan.care_episode_id);
+    if (!plan?.care_episode_id || !patientId) { setLoadError(true); return; }
+    const { data, error } = await listDocumentArtifacts(patientId, plan.care_episode_id);
+    if (error) { setLoadError(true); return; }
+    setLoadError(false);
     setArtifact((data || []).find((item) => item.source_type === 'meal_plan' && item.source_key === String(plan.id) && !['invalidated', 'superseded'].includes(item.status)) || null);
   }, [patientId, plan?.care_episode_id, plan?.id]);
   useEffect(() => { void load(); }, [load]);
@@ -34,5 +37,6 @@ export default function MealPlanDocumentActions({ plan, patientId }) {
   };
 
   if (!plan || plan.is_draft) return <Badge variant="outline">Finalize o plano para emitir o documento oficial</Badge>;
+  if (loadError) return <div role="alert" className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">Não foi possível consultar os documentos do plano. Recarregue a página antes de preparar outro.</div>;
   return <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/30 p-3">{working ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSignature className="h-4 w-4 text-primary" />}<span className="mr-auto text-sm font-medium">Documento oficial do plano</span>{!artifact ? <Button size="sm" variant="outline" onClick={() => void run(() => createDocumentArtifactFromMealPlan(plan.id), 'Documento preparado para revisão')}>Preparar</Button> : null}{artifact?.status === 'draft' ? <Button size="sm" variant="outline" onClick={() => void run(() => finalizeDocumentArtifact(artifact.id, artifact.revision), 'Documento finalizado e congelado')}><CheckCircle2 className="mr-2 h-4 w-4" />Finalizar</Button> : null}{artifact?.status === 'finalized' ? <Button size="sm" onClick={() => void run(() => signDocumentArtifact(artifact.id), 'Documento assinado')}><FileSignature className="mr-2 h-4 w-4" />Assinar</Button> : null}{artifact?.status === 'signed' ? <Button size="sm" variant="outline" disabled={working} onClick={() => void download()}><Download className="mr-2 h-4 w-4" />PDF oficial</Button> : null}</div>;
 }

@@ -10,13 +10,21 @@ import { downloadCanonicalDocumentPdf } from '../pdf/render-canonical-document';
 export default function PatientDocumentCard({ record }) {
   const { toast } = useToast();
   const [artifact, setArtifact] = useState(null);
+  const [loadError, setLoadError] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let current = true;
     setLoading(true);
-    void listDocumentArtifacts(record.patient_id, record.care_episode_id).then(({ data }) => {
+    setLoadError(false);
+    void listDocumentArtifacts(record.patient_id, record.care_episode_id).then(({ data, error }) => {
       if (!current) return;
+      if (error) {
+        setArtifact(null);
+        setLoadError(true);
+        setLoading(false);
+        return;
+      }
       setArtifact((data || []).find((candidate) => candidate.source_id === record.id && candidate.status === 'signed') || null);
       setLoading(false);
     });
@@ -24,6 +32,7 @@ export default function PatientDocumentCard({ record }) {
   }, [record.care_episode_id, record.id, record.patient_id]);
 
   if (loading) return <div role="status" className="flex items-center gap-2 rounded-xl border bg-white p-4 text-sm text-slate-500"><Loader2 className="h-4 w-4 animate-spin" />Consultando documento oficial...</div>;
+  if (loadError) return <div role="alert" className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">Não foi possível consultar o documento oficial. Atualize a página e tente novamente.</div>;
   if (!artifact) return null;
 
   const download = async () => {

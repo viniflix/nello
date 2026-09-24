@@ -4,6 +4,7 @@ import {
   createDocumentArtifactFromMealPlan,
   finalizeDocumentArtifact,
   getMyDocumentIdentity,
+  listDocumentArtifacts,
   saveMyDocumentIdentity,
   signDocumentArtifact,
   verifyDocumentAuthenticity,
@@ -42,6 +43,29 @@ describe('document identity contracts', () => {
 });
 
 describe('canonical document contracts', () => {
+  const patientId = '8c1a43d1-7d51-4e2f-86c5-2bd4f672d752';
+  const episodeId = '75398b26-ccf8-48dc-9f17-abba1fb9db7f';
+
+  it('lists authorized documents with and without an episode', async () => {
+    await listDocumentArtifacts(patientId, episodeId);
+    await listDocumentArtifacts(patientId);
+    expect(supabase.rpc).toHaveBeenNthCalledWith(1, 'list_document_artifacts', {
+      p_patient_id: patientId,
+      p_episode_id: episodeId,
+    });
+    expect(supabase.rpc).toHaveBeenNthCalledWith(2, 'list_document_artifacts', {
+      p_patient_id: patientId,
+      p_episode_id: null,
+    });
+  });
+
+  it('never calls the RPC with an omitted or malformed patient scope', async () => {
+    await expect(listDocumentArtifacts(undefined, episodeId)).resolves.toMatchObject({
+      error: { code: 'INVALID_DOCUMENT_SCOPE' },
+    });
+    expect(supabase.rpc).not.toHaveBeenCalled();
+  });
+
   it('creates from a server-authorized clinical source', async () => {
     await createDocumentArtifactFromClinicalRecord('record-1', 'shared_with_patient');
     expect(supabase.rpc).toHaveBeenCalledWith('create_document_artifact_from_clinical_record', {
