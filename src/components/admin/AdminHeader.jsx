@@ -19,6 +19,7 @@ const NAV_ITEMS = [
     { name: 'Verificações', path: '/admin/verifications', icon: BadgeCheck },
   ]},
   { section: 'Governança', items: [
+    { name: 'Segurança', path: '/admin/security', icon: ShieldCheck },
     { name: 'Privacidade', path: '/admin/privacy', icon: ShieldCheck },
     { name: 'Cobrança', path: '/admin/financial', icon: Settings },
   ]},
@@ -148,7 +149,7 @@ export default function AdminHeader() {
                   <button className="px-4 py-2 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent flex items-center gap-1">
                     <SectionIcon className="w-4 h-4" />{group.section}
                   </button>
-                  <div className="absolute top-full left-0 mt-1 w-48 rounded-md border bg-popover shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+                  <div className="absolute top-full left-0 mt-1 w-48 rounded-md border bg-popover shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible group-focus-within:opacity-100 group-focus-within:visible transition-all z-50">
                     <div className="p-1">
                       {group.items.map((item) => {
                         const ItemIcon = item.icon;

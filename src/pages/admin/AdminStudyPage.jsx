@@ -5,7 +5,7 @@ import { ptBR } from 'date-fns/locale';
 import {
   BarChart2, Users, Activity, Target, BookOpen, FileText,
   Calendar, MessageSquare, Award, TrendingUp, TrendingDown,
-  Zap, ExternalLink, RefreshCw, Info, Utensils, Scale,
+  Zap, RefreshCw, Info, Utensils, Scale,
   Clock, AlertCircle, CheckCircle2, PieChart, ShieldAlert,
   Eye, MousePointer, UserCheck, Timer,
   ArrowUpRight, ArrowDownRight, Minus, Minus as MinusIcon
@@ -447,61 +447,6 @@ function AnalyticsPanel({ metrics }) {
         </CardContent>
       </Card>
 
-      {/* PostHog Setup Instructions */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Zap className="w-4 h-4 text-amber-500" />
-            Configurar PostHog para Analytics Avançado
-          </CardTitle>
-          <CardDescription>
-            Ative o tracking comportamental para acessar funis, retenção e gravações
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {[
-              { icon: Target, title: 'Funis de Conversão', desc: 'Cadastro → 1ª refeição → meta criada → meta atingida' },
-              { icon: Users, title: 'Retenção por Coorte', desc: '% de usuários ativos após 7, 14, 30 dias' },
-              { icon: Award, title: 'Gravações de Sessão', desc: 'Analyze UX com gravações anônimas (5.000/mês)' },
-            ].map(({ icon: Icon, title, desc }) => (
-              <div key={title} className="p-4 rounded-lg border bg-muted/30">
-                <Icon className="w-5 h-5 text-primary mb-2" />
-                <p className="font-medium text-sm">{title}</p>
-                <p className="text-xs text-muted-foreground mt-1">{desc}</p>
-              </div>
-            ))}
-          </div>
-
-          <div className="border-t pt-4">
-            <h4 className="font-medium text-sm mb-3">Como ativar (gratuito até 1M eventos/mês)</h4>
-            <ol className="space-y-2 text-sm">
-              {[
-                { n: 1, text: 'Crie conta em posthog.com', link: 'https://posthog.com' },
-                { n: 2, text: 'Crie projeto "Nello" e copie a API Key (phc_...)' },
-                { n: 3, text: 'Adicione ao arquivo .env:' },
-              ].map(({ n, text, link }) => (
-                <li key={n} className="flex items-start gap-2">
-                  <span className="flex-shrink-0 w-5 h-5 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center font-bold">{n}</span>
-                  <span className="text-muted-foreground">
-                    {text}
-                    {link && (
-                      <a href={link} target="_blank" rel="noopener noreferrer" className="ml-2 text-primary hover:underline inline-flex items-center gap-1">
-                        Abrir <ExternalLink className="w-3 h-3" />
-                      </a>
-                    )}
-                  </span>
-                </li>
-              ))}
-            </ol>
-            <div className="bg-muted rounded-md p-3 font-mono text-xs mt-3 border">
-              <span className="text-muted-foreground"># .env</span><br />
-              <span className="text-green-600">VITE_PUBLIC_POSTHOG_KEY</span>=phc_sua_chave<br />
-              <span className="text-green-600">VITE_PUBLIC_POSTHOG_HOST</span>=https://us.i.posthog.com
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }

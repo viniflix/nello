@@ -14,6 +14,11 @@ export async function getAdminWorkflowOverview() {
   return { data, error };
 }
 
+export async function getAdminSecurityOverview() {
+  const { data, error } = await supabase.rpc('admin_security_overview');
+  return { data, error };
+}
+
 export async function getDashboardStats() {
   try {
     const { data, error } = await supabase.rpc('get_admin_dashboard_stats');

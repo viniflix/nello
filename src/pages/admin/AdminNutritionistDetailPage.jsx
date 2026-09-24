@@ -12,7 +12,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/customSupabaseClient';
 
 const formatAge = (dateStr) => {
@@ -39,7 +38,6 @@ const goalLabels = {
 
 export default function AdminNutritionistDetailPage() {
   const { id } = useParams();
-  const { user } = useAuth();
   const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -56,8 +54,6 @@ export default function AdminNutritionistDetailPage() {
     };
     load();
   }, [id]);
-
-  if (!user?.profile?.is_admin) return null;
 
   return (
     <div className="space-y-6">
@@ -100,9 +96,6 @@ export default function AdminNutritionistDetailPage() {
                     <div className="flex flex-wrap items-center justify-center md:justify-start gap-2">
                       <h1 className="text-2xl font-bold text-foreground">{data.name}</h1>
                       <div className="flex gap-2">
-                        {data.is_admin && (
-                          <Badge className="bg-indigo-100 text-indigo-700 border-0">Admin</Badge>
-                        )}
                         <Badge variant={data.is_active ? 'default' : 'secondary'} className="text-xs">
                           {data.is_active ? 'Ativo' : 'Inativo'}
                         </Badge>
