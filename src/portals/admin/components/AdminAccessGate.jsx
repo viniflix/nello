@@ -20,6 +20,7 @@ function AdminMfa({ onVerified }) {
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [loadingFactors, setLoadingFactors] = useState(true);
 
   useEffect(() => {
     let active = true;
@@ -27,7 +28,9 @@ function AdminMfa({ onVerified }) {
       if (!active) return;
       if (listError) setError('Não foi possível consultar seus fatores de autenticação.');
       else setFactor(data?.totp?.find((item) => item.status === 'verified') || null);
-    });
+    }).catch(() => {
+      if (active) setError('Não foi possível consultar seus fatores de autenticação.');
+    }).finally(() => { if (active) setLoadingFactors(false); });
     return () => { active = false; };
   }, []);
 
@@ -35,6 +38,21 @@ function AdminMfa({ onVerified }) {
     setBusy(true);
     setError('');
     try {
+      // Re-read before enrollment: a refresh loses the secret, but leaves the
+      // unconfirmed factor on the server. Never remove a verified factor.
+      const { data: factors, error: listError } = await supabase.auth.mfa.listFactors();
+      if (listError) throw listError;
+      const verified = factors?.totp?.find((item) => item.status === 'verified');
+      if (verified) {
+        setFactor(verified);
+        return;
+      }
+      for (const pending of factors?.all || []) {
+        if (pending.factor_type === 'totp' && pending.status === 'unverified' && pending.friendly_name === 'Nello Admin') {
+          const { error: removeError } = await supabase.auth.mfa.unenroll({ factorId: pending.id });
+          if (removeError) throw removeError;
+        }
+      }
       const { data, error: enrollError } = await supabase.auth.mfa.enroll({
         factorType: 'totp', friendlyName: 'Nello Admin',
       });
@@ -71,7 +89,8 @@ function AdminMfa({ onVerified }) {
   };
 
   const qr = enrollment?.totp?.qr_code;
-  const qrUrl = qr ? `data:image/svg+xml;charset=utf-8,${encodeURIComponent(qr)}` : null;
+  const qrUrl = qr?.startsWith('data:image/svg+xml;') ? qr
+    : qr?.trimStart().startsWith('<svg') ? `data:image/svg+xml;charset=utf-8,${encodeURIComponent(qr)}` : null;
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
@@ -85,7 +104,7 @@ function AdminMfa({ onVerified }) {
           {!factor && !enrollment && (
             <div className="space-y-3">
               <p className="text-sm">Configure a autenticação em duas etapas para esta conta.</p>
-              <Button onClick={enroll} disabled={busy} className="w-full">Configurar autenticador</Button>
+              <Button onClick={enroll} disabled={busy || loadingFactors} className="w-full">Configurar autenticador</Button>
             </div>
           )}
           {enrollment && (
