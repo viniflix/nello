@@ -18,7 +18,6 @@ import { useResolvedPatientId } from '@/hooks/useResolvedPatientId';
 import { isUuid } from '@/lib/utils/patientRoutes';
 import PatientProfileSummary from '@/components/patient-hub/PatientProfileSummary';
 import PatientEditProfileModal from '@/components/patient-hub/PatientEditProfileModal';
-import DuplicatePatientModal from '@/components/nutritionist/DuplicatePatientModal';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useToast } from '@/components/ui/use-toast';
 import { publicOrigin } from '@/lib/utils/publicOrigin';
@@ -112,7 +111,6 @@ export default function PatientHubPage() {
     const { user } = useAuth();
     const [activeTab, setActiveTab] = useState(() => normalizeTab(searchParams.get('tab')));
     const [isEditProfileModalOpen, setIsEditProfileModalOpen] = useState(false);
-    const [isDuplicateModalOpen, setIsDuplicateModalOpen] = useState(false);
     const [isHistoryOpen, setIsHistoryOpen] = useState(false);
     const { isUserOnline } = useOnlinePresence();
 
@@ -176,7 +174,6 @@ export default function PatientHubPage() {
                 <div className="mb-3 flex items-center justify-between gap-2">
                     <Button asChild variant="ghost" size="sm" className="-ml-2 gap-2 text-slate-500"><Link to="/nutritionist/patients"><ArrowLeft className="h-4 w-4" />Pacientes</Link></Button>
                     <div className="flex items-center gap-1">
-                        <Button variant="ghost" size="sm" onClick={() => setIsDuplicateModalOpen(true)} className="gap-1.5 text-xs text-slate-500 hover:bg-white hover:text-slate-800"><Copy className="h-3.5 w-3.5" />Duplicar paciente</Button>
                         <Button variant="ghost" size="icon" onClick={refresh} aria-label="Atualizar dados" title="Atualizar dados" className="h-8 w-8 text-slate-500 hover:bg-white"><RefreshCw className="h-3.5 w-3.5" /></Button>
                     </div>
                 </div>
@@ -219,7 +216,6 @@ export default function PatientHubPage() {
             </main>
 
             <PatientEditProfileModal isOpen={isEditProfileModalOpen} onClose={() => setIsEditProfileModalOpen(false)} patientData={patientData} viewedEpisodeId={viewedEpisodeId} writableEpisodeId={writableEpisodeId} profileRequirements={profileRequirements} legalGuardians={legalGuardians} onSaveSuccess={refresh} />
-            <DuplicatePatientModal isOpen={isDuplicateModalOpen} onClose={() => setIsDuplicateModalOpen(false)} patient={patientData} />
             <Dialog open={isHistoryOpen} onOpenChange={setIsHistoryOpen}>
                 <DialogContent className="max-h-[90dvh] max-w-5xl overflow-y-auto">
                     <DialogHeader><DialogTitle>Histórico do paciente</DialogTitle><DialogDescription>Atividades, envios e registros do diário alimentar.</DialogDescription></DialogHeader>
