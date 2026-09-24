@@ -13,6 +13,7 @@ import StudentSupervisionCard from '@/components/verification/StudentSupervision
 import { PageHeaderSkeleton, FormSkeleton } from '@/components/ui/custom-skeletons';
 import DocumentIdentitySection from '@/features/documents/components/DocumentIdentitySection';
 import ClinicalProtocolCatalogSection from '@/features/clinical-science/components/ClinicalProtocolCatalogSection';
+import AccountEmailChange from '@/components/profile/AccountEmailChange';
 
 const NutritionistProfilePage = () => {
     const { user, updateUserProfile } = useAuth();
@@ -166,6 +167,7 @@ const NutritionistProfilePage = () => {
                                                     <p className="text-sm font-medium">E-mail</p>
                                                     <p className="text-sm text-muted-foreground">{user.email}</p>
                                                 </div>
+                                                <AccountEmailChange currentEmail={user.email} />
                                                 <div className="pt-4 border-t">
                                                     <p className="text-sm text-muted-foreground mb-4">
                                                         Para alterar sua senha, entre em contato com o suporte ou use a funcionalidade de recuperação de senha na página de login.

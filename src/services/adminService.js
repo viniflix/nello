@@ -19,6 +19,11 @@ export async function getAdminSecurityOverview() {
   return { data, error };
 }
 
+export async function getAdminBrandMigrationStatus() {
+  const { data, error } = await supabase.rpc('admin_brand_migration_status');
+  return { data, error };
+}
+
 export async function getDashboardStats() {
   try {
     const { data, error } = await supabase.rpc('get_admin_dashboard_stats');
