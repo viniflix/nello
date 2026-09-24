@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { usePatientFormStore } from '@/stores/usePatientFormStore'; 
 import InputMask from 'react-input-mask'; 
 import { useAuth } from '@/contexts/AuthContext'; 
@@ -140,6 +140,7 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded }) => {
     const [loading, setLoading] = useState(false); 
     const [cepLoading, setCepLoading] = useState(false); 
     const [sendInvite, setSendInvite] = useState(true);
+    const creationRequestId = useRef(crypto.randomUUID());
 
     // Derive isOffline from email content
     const isOffline = !formData.email || formData.email.trim() === '';
@@ -174,6 +175,7 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded }) => {
 
     const handleClose = () => {
         setIsOpen(false);
+        creationRequestId.current = crypto.randomUUID();
         resetForm();
         setStep("1");
         setSendInvite(true);
@@ -259,6 +261,7 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded }) => {
         const redirectTo = `${publicOrigin()}/update-password?mode=invite`;
 
         const body = {
+            requestId: creationRequestId.current,
             email: isOffline ? null : clean(formData.email),
             metadata: metadata,
             redirectTo: redirectTo,
@@ -281,10 +284,10 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded }) => {
                 throw functionError;
             }
 
-            if (isOffline && data?.data?.inviteCode) {
+            if (isOffline && data?.inviteCode) {
                 toast({
                     title: "Paciente offline criado!",
-                    description: `Código de acesso: ${data.data.inviteCode}. Salve este código para o paciente resgatar o perfil depois.`,
+                    description: `Código de acesso: ${data.inviteCode}. Salve este código para o paciente resgatar o perfil depois.`,
                     duration: 10000,
                 });
             } else if (!isOffline && sendInvite) {
@@ -293,6 +296,7 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded }) => {
                 toast({ title: "Sucesso!", description: `Paciente ${formData.name} adicionado.`, variant: "success" });
             }
             
+            creationRequestId.current = crypto.randomUUID();
             resetForm(); 
             onPatientAdded(); // Atualiza a lista na página
             handleClose(); 

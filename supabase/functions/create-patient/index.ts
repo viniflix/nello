@@ -1,4 +1,3 @@
-import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -39,8 +38,14 @@ Deno.serve(async (req) => {
   } catch (_e) {
     return jsonResponse(400, { error: "Invalid JSON body" });
   }
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    return jsonResponse(400, { error: 'Invalid patient request' });
+  }
 
-  const { email, metadata, defaultPassword, isOffline } = body;
+  const { email, metadata, defaultPassword, isOffline, requestId } = body;
+  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) {
+    return jsonResponse(400, { error: 'Invalid patient metadata' });
+  }
 
   // Validation depends on whether it's an offline creation or standard invite
   if (!isOffline && (!email || !metadata || !defaultPassword)) {
@@ -112,56 +117,34 @@ Deno.serve(async (req) => {
   };
 
   if (normalizedMetadata.name) normalizedMetadata.name = validateLength(normalizedMetadata.name, 100);
-  if (email) body.email = validateLength(email, 100);
+  if (typeof normalizedMetadata.name !== 'string' || !normalizedMetadata.name.trim()) {
+    return jsonResponse(400, { error: 'patient_name_required' });
+  }
+  const normalizedEmail = typeof email === 'string' ? validateLength(email.trim().toLowerCase(), 100) : null;
+  if (!isOffline && (!normalizedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail))) {
+    return jsonResponse(400, { error: 'invalid_patient_email' });
+  }
   if (normalizedMetadata.phone) normalizedMetadata.phone = validateLength(normalizedMetadata.phone, 20);
   if (normalizedMetadata.cpf) normalizedMetadata.cpf = validateLength(normalizedMetadata.cpf, 14);
   if (normalizedMetadata.occupation) normalizedMetadata.occupation = validateLength(normalizedMetadata.occupation, 100);
   if (normalizedMetadata.observations) normalizedMetadata.observations = validateLength(normalizedMetadata.observations, 1000);
 
   if (isOffline) {
-    // OFFLINE FLOW: Direct insertion into user_profiles
-    const offlineProfileId = crypto.randomUUID();
-
-    const patientInviteCode = generateSecureInviteCode();
-
-    // Include ALL fields from metadata that should go into user_profiles
-    const { error: insertError } = await supabaseAdmin
-      .from("user_profiles")
-      .insert({
-        id: offlineProfileId,
-        name: normalizedMetadata.name,
-        full_name: normalizedMetadata.name,
-        email: email || null,
-        birth_date: normalizedMetadata.birth_date || null,
-        user_type: "patient",
-        nutritionist_id: normalizedMetadata.nutritionist_id,
-        patient_invite_code: patientInviteCode,
-        is_active: true,
-        phone: normalizedMetadata.phone || null,
-        cpf: normalizedMetadata.cpf || null,
-        gender: normalizedMetadata.gender || null,
-        occupation: normalizedMetadata.occupation || null,
-        civil_status: normalizedMetadata.civil_status || null,
-        observations: normalizedMetadata.observations || null,
-        address: normalizedMetadata.address || null,
-        needs_password_reset: true
-      });
-
-    if (insertError) {
-      console.error("Offline Patient Insertion Error:", insertError);
-      return jsonResponse(500, { error: insertError.message });
+    const operationId = typeof requestId === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestId)
+      ? requestId : crypto.randomUUID();
+    const { data, error } = await supabaseAdmin.rpc('create_offline_patient_atomic', {
+      p_request_id: operationId,
+      p_nutritionist_id: normalizedMetadata.nutritionist_id,
+      p_patient_id: crypto.randomUUID(),
+      p_invite_code: generateSecureInviteCode(),
+      p_email: normalizedEmail,
+      p_profile: normalizedMetadata,
+    });
+    if (error) {
+      console.error('Offline patient transaction failed', { code: error.code });
+      return jsonResponse(500, { error: 'offline_patient_creation_failed', code: error.code });
     }
-
-    // Link the patient to the nutritionist in nutritionist_patients
-    await supabaseAdmin
-      .from("nutritionist_patients")
-      .insert({
-        nutritionist_id: normalizedMetadata.nutritionist_id,
-        patient_id: offlineProfileId,
-        status: 'active'
-      });
-
-    return jsonResponse(200, { userId: offlineProfileId, inviteCode: patientInviteCode });
+    return jsonResponse(200, data);
   }
 
   // STANDARD FLOW: Invite via email
@@ -171,16 +154,16 @@ Deno.serve(async (req) => {
   normalizedMetadata.needs_password_reset = true;
 
   const { data: userData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(
-    email,
+    normalizedEmail!,
     {
       data: normalizedMetadata,
       redirectTo: "https://nellonutri.com.br/update-password?mode=invite",
     }
   );
 
-  if (inviteError) {
-    console.error("Supabase Invite Error:", inviteError);
-    return jsonResponse(500, { error: inviteError.message });
+  if (inviteError || !userData?.user?.id) {
+    console.error('Supabase Invite Error', { status: inviteError?.status });
+    return jsonResponse(502, { error: 'patient_invite_failed' });
   }
 
   // Update newly invited user to set their default password so they can log in via email+senha
@@ -190,7 +173,13 @@ Deno.serve(async (req) => {
   );
 
   if (passwordError) {
-    console.error("Supabase Set Password Error:", passwordError);
+    console.error('Supabase Set Password Error', { status: passwordError.status });
+    const { error: rollbackError } = await supabaseAdmin.auth.admin.deleteUser(userData.user.id);
+    if (rollbackError) {
+      console.error('Invited account requires operational recovery', { status: rollbackError.status });
+      return jsonResponse(503, { error: 'patient_invite_recovery_required' });
+    }
+    return jsonResponse(502, { error: 'patient_invite_not_completed' });
   }
 
   return jsonResponse(200, { userId: userData.user.id });
