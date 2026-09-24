@@ -3,7 +3,7 @@ import { supabase } from '@/lib/customSupabaseClient';
 import { useToast } from '@/components/ui/use-toast';
 import { format, isToday, isTomorrow, isThisWeek, isThisMonth, startOfDay, addDays, subDays, isSameDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { createAppointmentWithFinance, updateAppointment } from '@/lib/supabase/agenda-queries';
+import { createAppointmentWithFinance, updateAppointment, deleteAppointment } from '@/lib/supabase/agenda-queries';
 import { getServices } from '@/lib/supabase/financial-queries';
 import { toPortugueseError } from '@/lib/utils/errorMessages';
 import { fetchAppointmentsInPeriod } from '@/lib/supabase/agenda-list-queries';
@@ -216,7 +216,7 @@ export function useAgendaController({ user }) {
                     duration: duration || 60,
                     appointment_type: appointment_type || 'first_appointment',
                     status: status || 'scheduled'
-                });
+                }, financialData);
                 toast({ title: "Sucesso!", description: "Agendamento atualizado com sucesso." });
             } else {
                 const payload = {
@@ -275,13 +275,13 @@ export function useAgendaController({ user }) {
     const handleDeleteAppointment = async () => {
         if (!appointmentToDelete) return;
 
-        const { error } = await supabase.from('appointments').delete().eq('id', appointmentToDelete.id);
-        if (error) {
-            toast({ title: "Erro", description: "Não foi possível deletar o agendamento.", variant: "destructive" });
-        } else {
+        try {
+            await deleteAppointment(appointmentToDelete.id);
             toast({ title: "Sucesso!", description: "Agendamento deletado com sucesso." });
             loadData();
             setAgendaRevision(revision => revision + 1);
+        } catch (error) {
+            toast({ title: "Erro", description: toPortugueseError(error, "Não foi possível remover. Consultas com pagamento exigem ajuste manual."), variant: "destructive" });
         }
         setDeleteConfirmOpen(false);
         setAppointmentToDelete(null);
