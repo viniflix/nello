@@ -29,12 +29,6 @@ export const saveMyDocumentIdentity = (payload, expectedVersion, reason = 'profi
   'Erro ao salvar identidade documental',
 );
 
-const sha256 = async (file) => {
-  const bytes = await file.arrayBuffer();
-  const digest = await window.crypto.subtle.digest('SHA-256', bytes);
-  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
-};
-
 export const uploadDocumentAsset = async (assetType, file, expectedIdentityVersion) => {
   const intent = await callRpc(
     'create_document_asset_upload_intent',
@@ -58,17 +52,16 @@ export const uploadDocumentAsset = async (assetType, file, expectedIdentityVersi
     });
     if (uploadError) throw uploadError;
 
-    const hash = await sha256(file);
-    return callRpc(
-      'confirm_document_asset_upload',
-      {
-        p_upload_id: uploadId,
-        p_sha256: hash,
-        p_size_bytes: file.size,
-        p_mime_type: file.type,
-      },
-      'Erro ao confirmar ativo documental',
-    );
+    const { data, error } = await supabase.functions.invoke('confirm-document-asset', {
+      body: { uploadId },
+    });
+    if (error) {
+      const response = error.context;
+      let detail;
+      try { detail = await response?.json(); } catch { /* Preserve the original transport error. */ }
+      throw new Error(detail?.error || error.message || 'document_asset_confirmation_failed');
+    }
+    return { data, error: null };
   } catch (error) {
     await callRpc(
       'fail_document_asset_upload',

@@ -41,6 +41,7 @@ const messageFor = (error) => {
   if (message.includes('document_identity_revision_conflict')) return 'A identidade foi alterada em outra sessão. Recarregue os dados antes de salvar.';
   if (message.includes('unsupported_document_asset_mime')) return 'Use uma imagem PNG, JPEG ou WebP.';
   if (message.includes('invalid_document_asset_size')) return 'A imagem ultrapassa o limite permitido.';
+  if (message.includes('uploaded_asset_content_invalid')) return 'O conteúdo da imagem não corresponde ao tipo ou tamanho informado. Escolha outro arquivo.';
   return 'Não foi possível concluir a operação. Tente novamente sem perder os dados preenchidos.';
 };
 
