@@ -30,13 +30,15 @@ vi.mock('@/features/clinical-records/api/record-foundation-queries', () => ({
 vi.mock('@/lib/customSupabaseClient', () => ({
   supabase: {
     from: (table) => {
+      let pageStart = 0;
+      let pageEnd = Number.POSITIVE_INFINITY;
       const builder = {
         select: () => builder,
         eq: () => builder,
         order: () => builder,
         limit: () => builder,
-        range: () => builder,
-        then: (resolve) => resolve({ data: mocks.rows[table] || [], error: null }),
+        range: (start, end) => { pageStart = start; pageEnd = end; return builder; },
+        then: (resolve) => resolve({ data: (mocks.rows[table] || []).slice(pageStart, pageEnd + 1), error: null }),
       };
       return builder;
     },
@@ -83,6 +85,23 @@ describe('PatientProgressPage', () => {
 
   it('formats the compact chart tooltip in Portuguese with an explicit unit', () => {
     expect(formatWeightTooltip(77.9)).toEqual(['77,9 kg', 'Peso']);
+  });
+
+  it('loads older measurements in a second page without losing the first page', async () => {
+    const original = mocks.rows.growth_records;
+    mocks.rows.growth_records = Array.from({ length: 101 }, (_, index) => ({
+      id: `weight-${index}`, record_date: index === 100 ? '2026-07-11' : '2026-07-10', weight: 50 + index,
+    }));
+    try {
+      render(<MemoryRouter><PatientProgressPage /></MemoryRouter>);
+      const loadMore = await screen.findByRole('button', { name: 'Carregar registros anteriores' });
+      fireEvent.click(loadMore);
+      await waitFor(() => expect(screen.queryByRole('button', { name: 'Carregar registros anteriores' })).not.toBeInTheDocument());
+      fireEvent.click(screen.getByRole('button', { name: /ver detalhes de peso/i }));
+      expect(screen.getByText('150.0 kg')).toBeInTheDocument();
+    } finally {
+      mocks.rows.growth_records = original;
+    }
   });
 
   it('does not expose private or draft clinical records in the timeline', async () => {
