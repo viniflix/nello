@@ -89,8 +89,10 @@ function AdminMfa({ onVerified }) {
   };
 
   const qr = enrollment?.totp?.qr_code;
-  const qrUrl = qr?.startsWith('data:image/svg+xml;') ? qr
-    : qr?.trimStart().startsWith('<svg') ? `data:image/svg+xml;charset=utf-8,${encodeURIComponent(qr)}` : null;
+  // Older SDKs prefix raw SVG with a data URL without escaping '#' in colors.
+  const svg = qr?.startsWith('data:image/svg+xml;') ? qr.slice(qr.indexOf(',') + 1) : qr;
+  const qrUrl = svg?.trimStart().startsWith('<svg') ? `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
+    : qr?.startsWith('data:image/svg+xml;') ? qr : null;
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
