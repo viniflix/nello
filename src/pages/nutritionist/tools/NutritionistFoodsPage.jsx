@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Search, Edit, Loader2, Database, ShieldAlert, Plus, Package } from 'lucide-react';
+import { Search, Edit, Loader2, Database, Plus, Package } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,7 +13,6 @@ import {
     DialogTitle,
     DialogFooter
 } from '@/components/ui/dialog';
-import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { searchFoodsPaginated, getFoodMeasures } from '@/lib/supabase/foodService';
 import { useDebounce } from '@/hooks/useDebounce';
@@ -32,48 +30,8 @@ import { formatNutrient } from '@/lib/utils';
  * - Editar medidas caseiras de cada alimento
  */
 export default function NutritionistFoodsPage() {
-  const { user } = useAuth();
-  const navigate = useNavigate();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
-
-  // Security check: Only admins can access this page
-  const isAdmin = user?.profile?.is_admin === true;
-
-  useEffect(() => {
-    if (user && !isAdmin) {
-      toast({
-        title: 'Acesso Negado',
-        description: 'Esta página é restrita a administradores.',
-        variant: 'destructive'
-      });
-      navigate('/nutritionist', { replace: true });
-    }
-  }, [user, isAdmin, navigate, toast]);
-
-  // Don't render if not admin
-  if (!user || !isAdmin) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Card className="max-w-md">
-          <CardContent className="pt-6">
-            <div className="flex flex-col items-center text-center space-y-4">
-              <ShieldAlert className="w-12 h-12 text-destructive" />
-              <div>
-                <h2 className="text-xl font-semibold">Acesso Negado</h2>
-                <p className="text-sm text-muted-foreground mt-2">
-                  Esta página é restrita a administradores.
-                </p>
-              </div>
-              <Button onClick={() => navigate('/nutritionist')}>
-                Voltar ao Dashboard
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
   const [foods, setFoods] = useState([]);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(0);

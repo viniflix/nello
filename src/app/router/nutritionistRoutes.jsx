@@ -1,6 +1,7 @@
 import React from 'react';
 import { Route, Navigate } from 'react-router-dom';
 import { ProtectedRoute } from './routeGuards';
+import AdminAccessGate from '@/portals/admin/components/AdminAccessGate.jsx';
 import NutritionistLayout from '@/portals/nutritionist/layouts/NutritionistLayout.jsx';
 import { lazyWithReload } from '@/lib/utils/lazyWithReload';
 
@@ -87,8 +88,8 @@ export const nutritionistRoutes = (
         <Route 
             path="/nutritionist/foods" 
             element={
-                <ProtectedRoute userType="nutritionist" requireAdmin={true}>
-                    <NutritionistFoodsPage />
+                <ProtectedRoute userType="nutritionist">
+                    <AdminAccessGate><NutritionistFoodsPage /></AdminAccessGate>
                 </ProtectedRoute>
             } 
         />

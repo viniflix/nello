@@ -20,6 +20,7 @@ const renderGate = () => render(
 describe('AdminAccessGate', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    mocks.user = { id: 'operator-1', profile: { user_type: 'nutritionist', is_admin: true } };
     mocks.listFactors.mockResolvedValue({ data: { all: [], totp: [] }, error: null });
     mocks.unenroll.mockResolvedValue({ error: null });
     mocks.rpc.mockResolvedValue({ data: { eligible: true, authorized: false }, error: null });
@@ -95,6 +96,46 @@ describe('AdminAccessGate', () => {
     mocks.rpc.mockResolvedValue({ data: { eligible: true, authorized: true }, error: null });
     renderGate();
     expect(await screen.findByText('Dados administrativos')).toBeInTheDocument();
+  });
+
+  it('autoriza operador reconhecido no banco mesmo sem flag visual no perfil', async () => {
+    mocks.user = { id: 'operator-1', profile: { user_type: 'nutritionist', is_admin: false } };
+    mocks.rpc.mockResolvedValue({ data: { eligible: true, authorized: true }, error: null });
+    renderGate();
+    expect(await screen.findByText('Dados administrativos')).toBeInTheDocument();
+  });
+
+  it('fecha o painel após revogação detectada ao retornar à aba', async () => {
+    mocks.rpc.mockResolvedValueOnce({ data: { eligible: true, authorized: true }, error: null })
+      .mockResolvedValueOnce({ data: false, error: null })
+      .mockResolvedValue({ data: { eligible: false, authorized: false }, error: null });
+    renderGate();
+    expect(await screen.findByText('Dados administrativos')).toBeInTheDocument();
+    fireEvent.focus(window);
+    await waitFor(() => expect(screen.queryByText('Dados administrativos')).not.toBeInTheDocument());
+    await waitFor(() => expect(mocks.rpc).toHaveBeenCalledTimes(3));
+    expect(mocks.rpc).toHaveBeenNthCalledWith(2, 'check_is_admin');
+  });
+
+  it('revalida acesso sem inflar a trilha de login quando continua autorizado', async () => {
+    mocks.rpc.mockResolvedValueOnce({ data: { eligible: true, authorized: true }, error: null })
+      .mockResolvedValue({ data: true, error: null });
+    renderGate();
+    expect(await screen.findByText('Dados administrativos')).toBeInTheDocument();
+    fireEvent.focus(window);
+    await waitFor(() => expect(mocks.rpc).toHaveBeenCalledTimes(2));
+    expect(mocks.rpc).toHaveBeenNthCalledWith(2, 'check_is_admin');
+    expect(screen.getByText('Dados administrativos')).toBeInTheDocument();
+  });
+
+  it('não mostra dados do operador anterior durante troca de conta', async () => {
+    mocks.rpc.mockResolvedValueOnce({ data: { eligible: true, authorized: true }, error: null })
+      .mockImplementation(() => new Promise(() => {}));
+    const view = renderGate();
+    expect(await screen.findByText('Dados administrativos')).toBeInTheDocument();
+    mocks.user = { id: 'patient-2', profile: { user_type: 'patient', is_admin: false } };
+    view.rerender(<MemoryRouter><AdminAccessGate><div>Dados administrativos</div></AdminAccessGate></MemoryRouter>);
+    expect(screen.queryByText('Dados administrativos')).not.toBeInTheDocument();
   });
 
   it('falha fechado quando a verificação de acesso fica indisponível', async () => {

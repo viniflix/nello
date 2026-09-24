@@ -57,7 +57,7 @@ export const AuthWrapper = ({ children }) => {
 };
 
 // Componente de rota protegida
-export const ProtectedRoute = ({ children, userType, requireAdmin = false, allowAnyUserType = false }) => {
+export const ProtectedRoute = ({ children, userType, allowAnyUserType = false }) => {
   const { user, loading, initializing, isOffline } = useAuth();
   const location = useLocation();
 
@@ -87,13 +87,6 @@ export const ProtectedRoute = ({ children, userType, requireAdmin = false, allow
   }
 
   const userRole = user?.profile?.user_type;
-  const isAdmin = user?.profile?.is_admin === true;
-
-  // Admin-only routes: require admin flag
-  if (requireAdmin && !isAdmin) {
-    return <Navigate to={getHomePath(user)} replace />;
-  }
-
   // Regular routes: check user_type
   if (!hasRequiredUserType(user.profile, userType, allowAnyUserType)) {
     return <Navigate to={getHomePath(user)} replace />;

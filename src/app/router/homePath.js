@@ -14,7 +14,8 @@ export function resolveAuthenticatedPath(user, requestedPath) {
   if (!requestedPath) return homePath;
 
   if (requestedPath.startsWith('/admin')) {
-    return user.profile.is_admin === true ? requestedPath : homePath;
+    // The server-backed AdminAccessGate decides eligibility after login.
+    return requestedPath;
   }
 
   const portalPrefix = user.profile.user_type === 'nutritionist' ? '/nutritionist' : '/patient';

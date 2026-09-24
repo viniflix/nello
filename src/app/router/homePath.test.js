@@ -49,6 +49,11 @@ describe('resolveAuthenticatedPath', () => {
     expect(resolveAuthenticatedPath(nutritionistAdmin, '/admin/dashboard')).toBe('/admin/dashboard');
   });
 
+  it('preserva destino admin para operador sem flag visual; o gate confere no servidor', () => {
+    const operator = { profile: { user_type: 'nutritionist', is_admin: false } };
+    expect(resolveAuthenticatedPath(operator, '/admin/dashboard')).toBe('/admin/dashboard');
+  });
+
   it('does not send a patient to the nutritionist portal', () => {
     const patient = { profile: { user_type: 'patient', is_admin: false } };
     expect(resolveAuthenticatedPath(patient, '/nutritionist')).toBe('/patient');

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { KeyRound, Loader2, ShieldCheck } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -8,7 +8,12 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 
-async function fetchAccess() {
+async function fetchAccess(quiet = false) {
+  if (quiet) {
+    const { data: stillAuthorized, error: checkError } = await supabase.rpc('check_is_admin');
+    if (checkError) throw checkError;
+    if (stillAuthorized === true) return { eligible: true, authorized: true };
+  }
   const { data, error } = await supabase.rpc('admin_access_status');
   if (error) throw error;
   return data;
@@ -139,25 +144,54 @@ export default function AdminAccessGate({ children }) {
   const { user, isOffline } = useAuth();
   const [access, setAccess] = useState(null);
   const [error, setError] = useState(false);
+  const userId = user?.id;
+  const requestId = useRef(0);
+  const statusRef = useRef(null);
 
   const refresh = useCallback(async () => {
+    const request = ++requestId.current;
+    setAccess(null);
     const status = await fetchAccess();
-    setAccess(status);
-    setError(false);
-  }, []);
+    if (request === requestId.current) {
+      statusRef.current = status;
+      setAccess({ userId, status });
+      setError(false);
+    }
+  }, [userId]);
 
   useEffect(() => {
     let active = true;
+    let hasChecked = false;
+    statusRef.current = null;
     setAccess(null);
     setError(false);
-    fetchAccess().then((status) => { if (active) setAccess(status); })
-      .catch(() => { if (active) setError(true); });
-    return () => { active = false; };
-  }, [user?.id]);
+    const check = (hideWhileChecking = false) => {
+      const request = ++requestId.current;
+      if (hideWhileChecking) setAccess(null);
+      const quiet = hasChecked;
+      hasChecked = true;
+      fetchAccess(quiet).then((status) => { if (active && request === requestId.current) { statusRef.current = status; setAccess({ userId, status }); setError(false); } })
+        .catch(() => { if (active && request === requestId.current) { statusRef.current = null; setAccess(null); setError(true); } });
+    };
+    check();
+    const onFocus = () => check(true);
+    const onVisibility = () => { if (document.visibilityState === 'visible') check(true); };
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisibility);
+    const interval = window.setInterval(() => { if (statusRef.current?.authorized) check(); }, 30000);
+    return () => {
+      active = false;
+      requestId.current += 1;
+      statusRef.current = null;
+      window.clearInterval(interval);
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [userId]);
 
   if (isOffline || error) return <div role="alert" className="p-8 text-center text-sm text-destructive">A conexão segura com o painel não pôde ser validada. Atualize a página quando estiver online.</div>;
-  if (!access) return <div className="flex min-h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
-  if (!access.eligible) return <Navigate to={getHomePath(user)} replace />;
-  if (!access.authorized) return <AdminMfa onVerified={refresh} />;
+  if (!access || access.userId !== userId) return <div className="flex min-h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+  if (!access.status.eligible) return <Navigate to={getHomePath(user)} replace />;
+  if (!access.status.authorized) return <AdminMfa onVerified={refresh} />;
   return children;
 }
