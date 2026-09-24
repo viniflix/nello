@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   clearForcedPasswordReset,
+  confirmationRetryAfterMs,
   isExpectedLoginRejection,
   isExpectedConfirmationRejection,
   confirmEmailWithCode,
@@ -139,5 +140,11 @@ describe('authFlows', () => {
     expect(verifyOtp).toHaveBeenCalledTimes(1);
     expect(isExpectedConfirmationRejection({ code: 'over_email_send_rate_limit', status: 429 })).toBe(true);
     expect(isExpectedConfirmationRejection({ code: 'unexpected_failure', status: 500 })).toBe(false);
+  });
+
+  it('uses provider retry delay for resend rate limits with a bounded fallback', () => {
+    expect(confirmationRetryAfterMs({ context: { headers: { get: () => '120' } } })).toBe(120_000);
+    expect(confirmationRetryAfterMs({ status: 429 })).toBe(60_000);
+    expect(confirmationRetryAfterMs({ headers: { 'retry-after': '99999' } })).toBe(600_000);
   });
 });

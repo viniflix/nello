@@ -31,6 +31,16 @@ export function isExpectedConfirmationRejection(error) {
   return status === 429 || ['over_email_send_rate_limit', 'otp_expired', 'otp_disabled', 'invalid_token'].includes(code);
 }
 
+export function confirmationRetryAfterMs(error, fallbackMs = 60_000) {
+  const headers = error?.context?.headers || error?.headers;
+  const raw = typeof headers?.get === 'function' ? headers.get('Retry-After') : headers?.['retry-after'];
+  const seconds = Number(raw);
+  if (Number.isFinite(seconds) && seconds > 0) return Math.min(seconds * 1000, 10 * 60_000);
+  const date = Date.parse(raw);
+  if (Number.isFinite(date) && date > Date.now()) return Math.min(date - Date.now(), 10 * 60_000);
+  return fallbackMs;
+}
+
 export async function resendEmailConfirmation(authClient, email, origin) {
   const normalizedEmail = normalizeAuthEmail(email);
   if (!normalizedEmail) throw new Error('Informe um e-mail válido.');

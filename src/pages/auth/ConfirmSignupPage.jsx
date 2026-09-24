@@ -7,12 +7,22 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
-import { confirmEmailWithCode, isExpectedConfirmationRejection, resendEmailConfirmation } from '@/features/auth/authFlows';
+import { confirmEmailWithCode, confirmationRetryAfterMs, isExpectedConfirmationRejection, normalizeAuthEmail, resendEmailConfirmation } from '@/features/auth/authFlows';
 import { toPortugueseError } from '@/lib/utils/errorMessages';
 import { publicOrigin } from '@/lib/utils/publicOrigin';
 import { captureOperationalError } from '@/infrastructure/observability/telemetry';
 
 const RESEND_COOLDOWN_MS = 60_000;
+const COOLDOWN_STORAGE_KEY = 'nello_confirmation_resend';
+
+const readCooldown = (email, sentAt) => {
+  let until = Number(sentAt || 0) + RESEND_COOLDOWN_MS;
+  try {
+    const saved = JSON.parse(sessionStorage.getItem(COOLDOWN_STORAGE_KEY) || 'null');
+    if (saved?.email === normalizeAuthEmail(email)) until = Math.max(until, Number(saved.until) || 0);
+  } catch { /* Session storage may be unavailable. */ }
+  return until;
+};
 
 export default function ConfirmSignupPage() {
   const location = useLocation();
@@ -21,10 +31,18 @@ export default function ConfirmSignupPage() {
   const [email, setEmail] = useState(location.state?.email || '');
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
-  const [sentAt, setSentAt] = useState(location.state?.sentAt || 0);
+  const [cooldownUntil, setCooldownUntil] = useState(() => readCooldown(location.state?.email, location.state?.sentAt));
   const [now, setNow] = useState(Date.now());
   const [feedback, setFeedback] = useState('');
-  const secondsLeft = Math.max(0, Math.ceil((sentAt + RESEND_COOLDOWN_MS - now) / 1000));
+  const secondsLeft = Math.max(0, Math.ceil((cooldownUntil - now) / 1000));
+
+  const startCooldown = (durationMs) => {
+    const until = Date.now() + durationMs;
+    setCooldownUntil(until);
+    setNow(Date.now());
+    try { sessionStorage.setItem(COOLDOWN_STORAGE_KEY, JSON.stringify({ email: normalizeAuthEmail(email), until })); }
+    catch { /* In-memory cooldown remains active. */ }
+  };
 
   useEffect(() => {
     if (!secondsLeft) return undefined;
@@ -55,18 +73,19 @@ export default function ConfirmSignupPage() {
     setFeedback('');
     try {
       await resendEmailConfirmation(supabase, email, publicOrigin());
-      setSentAt(Date.now());
-      setNow(Date.now());
+      startCooldown(RESEND_COOLDOWN_MS);
       setCode('');
       toast({ title: 'Novo código enviado', description: 'Use somente o código mais recente. Confira também a caixa de spam.' });
     } catch (error) {
-      if (isExpectedConfirmationRejection(error)) {
-        setSentAt(Date.now());
-        setNow(Date.now());
+      if (Number(error?.status || error?.statusCode) === 429) {
+        startCooldown(confirmationRetryAfterMs(error));
+        setFeedback('Muitas tentativas de envio. Aguarde o tempo indicado antes de pedir outro código.');
+      } else if (isExpectedConfirmationRejection(error)) {
+        setFeedback(toPortugueseError(error, 'Código não reenviado. Confira o e-mail e tente novamente.'));
       } else {
         captureOperationalError(error, { operation: 'auth.resend_confirmation', module: 'authentication', source: 'supabase_auth' });
+        setFeedback(toPortugueseError(error, 'Não foi possível reenviar o código. Tente novamente.'));
       }
-      setFeedback(toPortugueseError(error, 'Não foi possível reenviar o código. Tente novamente.'));
     } finally {
       setBusy(false);
     }
