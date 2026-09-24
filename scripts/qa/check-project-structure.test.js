@@ -37,6 +37,26 @@ describe('checkProjectStructure', () => {
     ]);
   });
 
+  it('rejects local documentation, agent state, reports and environment files', () => {
+    const root = createRoot();
+    const result = checkProjectStructure(root, [
+      'docs/Atual/PLANO.md',
+      '.codex/config.toml',
+      '.agent/agents/debugger.md',
+      'output/report.pdf',
+      '.env.example',
+      'config/.env.staging',
+    ]);
+    expect(result.errors).toEqual([
+      'Local-only file must not be tracked: docs/Atual/PLANO.md',
+      'Local-only file must not be tracked: .codex/config.toml',
+      'Local-only file must not be tracked: .agent/agents/debugger.md',
+      'Local-only file must not be tracked: output/report.pdf',
+      'Local-only file must not be tracked: .env.example',
+      'Local-only file must not be tracked: config/.env.staging',
+    ]);
+  });
+
   it('reports missing required directories', () => {
     const root = createRoot();
     rmSync(join(root, 'public'), { recursive: true });

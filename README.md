@@ -6,7 +6,7 @@ A proposta central e reduzir o trabalho operacional do nutricionista e aumentar 
 
 ## Estado atual em uma frase
 
-O produto ja tem uma base ampla em React/Vite/Supabase, com rotas reais para nutricionista, paciente e admin; os modulos principais existem, mas algumas areas ainda estao em consolidacao, especialmente templates de nutricao, fundacao tecnica, performance do plano alimentar e a evolucao do motor de anamnese/check-ins.
+O produto tem uma base ampla em React/Vite/Supabase e passou por 20 ondas de correcoes. Continua em testes publicos com nutricionistas selecionados; a validacao clinica de registros historicos, os testes completos por persona e a medicao de desempenho em uso real permanecem em andamento.
 
 ## Personas e experiencias
 

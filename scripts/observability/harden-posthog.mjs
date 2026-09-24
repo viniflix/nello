@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-const envPath = resolve(process.cwd(), '.codex-local', 'observability.env');
+const envPath = resolve(process.cwd(), '.codex', 'local', 'observability.env');
 const localEnv = existsSync(envPath)
   ? Object.fromEntries(
       readFileSync(envPath, 'utf8')

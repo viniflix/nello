@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-const ENV_FILE = resolve(process.cwd(), '.codex-local', 'observability.env');
+const ENV_FILE = resolve(process.cwd(), '.codex', 'local', 'observability.env');
 
 function loadLocalEnv(path = ENV_FILE) {
   if (!existsSync(path)) return {};
@@ -104,7 +104,7 @@ async function querySentry() {
 
 async function querySentryViaSupabase() {
   const appEnv = loadLocalEnv(resolve(process.cwd(), '.env'));
-  const accountsPath = resolve(process.cwd(), '.codex-local', 'test-accounts.local.json');
+  const accountsPath = resolve(process.cwd(), '.codex', 'local', 'test-accounts.local.json');
   if (!existsSync(accountsPath)) {
     throw new Error('SENTRY_READ_TOKEN is empty and no local test account is available.');
   }

@@ -6,6 +6,7 @@ import { resolve } from 'node:path';
 const REQUIRED_PATHS = ['src', 'public', 'package.json'];
 const TEMPORARY_ROOT_FILE = /^(scratch|temp|tmp)[-_].+\.(?:js|mjs|cjs|ts)$/i;
 const LEGACY_SERVICE_ALLOWLIST = new Set(['src/services/adminService.js']);
+const LOCAL_ONLY_PREFIXES = ['docs/', '.codex/', '.codex-local/', '.agent/', '.agents/', '.superpowers/', 'output/', 'tmp/', 'scratch/'];
 
 export function checkProjectStructure(rootDir, trackedFiles, sourceFiles = []) {
   const errors = [];
@@ -20,7 +21,9 @@ export function checkProjectStructure(rootDir, trackedFiles, sourceFiles = []) {
     const isSqlMigration = file.endsWith('.sql')
       && (file.includes('/migrations/') || /(^|\/)\w*migration\w*\.sql$/i.test(file));
 
-    if (file.startsWith('dist/')) {
+    if (LOCAL_ONLY_PREFIXES.some((prefix) => file.startsWith(prefix)) || /(^|\/)\.env(?:\.|$)/.test(file)) {
+      errors.push(`Local-only file must not be tracked: ${file}`);
+    } else if (file.startsWith('dist/')) {
       errors.push(`Generated build output must not be tracked: ${file}`);
     } else if (!file.includes('/') && TEMPORARY_ROOT_FILE.test(file)) {
       errors.push(`Temporary root file must not be tracked: ${file}`);

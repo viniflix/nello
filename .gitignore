@@ -12,7 +12,16 @@ node_modules/
 dist/
 dist-ssr/
 *.local
-.codex-local/
+# Local-only project knowledge, agent settings, private diagnostics and outputs.
+/docs/
+/.codex/
+/.codex-local/
+/.agent/
+/.agents/
+/.superpowers/
+/output/
+/tmp/
+/scratch/
 
 # Temporary workspace files
 /[Tt][Ee][Mm][Pp]/
@@ -31,10 +40,7 @@ dist-ssr/
 
 # Environment Variables
 .env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env.*
 
 # Build files
 .tscache/
@@ -53,7 +59,6 @@ dist-ssr/
 !/supabase/migrations/20260923000000_protocol_examples.sql
 !/supabase/migrations/20260923000001_save_checkin_template.sql
 !/supabase/migrations/20260923000002_checkin_recipient_guard.sql
-.env.example
 .env.example
 /[Dd][Oo][Cc][Ss]/
 /AGENTS.md

@@ -5,7 +5,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $root = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '\..\..'))
 $source = Join-Path $root 'supabase'
-$backupRoot = Join-Path $root '.codex-local\backups\supabase'
+$backupRoot = Join-Path $root '.codex\local\backups\supabase'
 $manifestPath = Join-Path $backupRoot 'latest-manifest.json'
 
 if (-not (Test-Path -LiteralPath $source)) { throw 'Local Supabase infrastructure is missing.' }
