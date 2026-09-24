@@ -25,9 +25,31 @@ export function isExpectedPasswordRejection(error) {
   );
 }
 
-export async function resendEmailConfirmation(authClient, email) {
-  const { error } = await authClient.auth.resend({ type: 'signup', email: normalizeAuthEmail(email) });
+export function isExpectedConfirmationRejection(error) {
+  const status = Number(error?.status || error?.statusCode);
+  const code = String(error?.code || '');
+  return status === 429 || ['over_email_send_rate_limit', 'otp_expired', 'otp_disabled', 'invalid_token'].includes(code);
+}
+
+export async function resendEmailConfirmation(authClient, email, origin) {
+  const normalizedEmail = normalizeAuthEmail(email);
+  if (!normalizedEmail) throw new Error('Informe um e-mail válido.');
+  const { error } = await authClient.auth.resend({
+    type: 'signup',
+    email: normalizedEmail,
+    options: { emailRedirectTo: `${origin}/login` },
+  });
   if (error) throw error;
+}
+
+export async function confirmEmailWithCode(authClient, email, token) {
+  const normalizedEmail = normalizeAuthEmail(email);
+  const normalizedToken = String(token || '').replace(/\s/g, '');
+  if (!normalizedEmail) throw new Error('Informe o e-mail do cadastro.');
+  if (!/^\d{6}$/.test(normalizedToken)) throw new Error('Digite o código de 6 números recebido por e-mail.');
+  const { data, error } = await authClient.auth.verifyOtp({ email: normalizedEmail, token: normalizedToken, type: 'email' });
+  if (error) throw error;
+  return data;
 }
 
 export function validateNewPassword(password, confirmation = password) {

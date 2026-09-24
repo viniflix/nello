@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Eye, EyeOff, Mail, Lock, User, UserCircle, Scale, Ruler, Target, Ticket } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, User, UserCircle, Scale, Ruler, Ticket } from 'lucide-react';
 import { DateInputWithCalendar } from '@/components/ui/date-input';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -80,12 +80,12 @@ export default function RegisterPage() {
       return;
     }
 
-    const { data, error } = await signUp({
+    const { error } = await signUp({
       email: formData.email,
       password: formData.password,
       options: {
         data: profileData,
-        emailRedirectTo: `${window.location.origin}/login?confirmed=1`,
+        emailRedirectTo: `${window.location.origin}/login`,
       }
     });
 
@@ -99,15 +99,14 @@ export default function RegisterPage() {
         variant: "destructive",
       });
     } else {
-      console.log('[RegisterPage] Cadastro realizado:', data);
       if (formData.inviteCode) {
         localStorage.setItem('pending_invite_code', formData.inviteCode);
       }
       toast({
         title: "Cadastro realizado com sucesso!",
-        description: "Enviamos um link de confirmação para o seu e-mail.",
+        description: "Enviamos um código de confirmação para o seu e-mail.",
       });
-      navigate('/login');
+      navigate('/confirm-signup', { state: { email: formData.email, sentAt: Date.now() } });
     }
   };
 

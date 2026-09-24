@@ -25,7 +25,6 @@ import {
   isExpectedLoginRejection,
   normalizeAuthEmail,
   requestPasswordRecovery,
-  resendEmailConfirmation,
 } from '@/features/auth/authFlows';
 import { captureOperationalError } from '@/infrastructure/observability/telemetry';
 import { Events, track } from '@/infrastructure/analytics/posthog';
@@ -43,6 +42,7 @@ export default function LoginPage() {
   const { toast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
+  const callbackError = new URLSearchParams(location.hash.replace(/^#/, '')).get('error_code');
 
   const from = location.state?.from?.pathname || (user?.profile?.user_type === 'nutritionist' ? '/nutritionist' : '/patient');
 
@@ -95,19 +95,6 @@ export default function LoginPage() {
       });
     }
     setLoading(false);
-  };
-
-  const handleResendConfirmation = async () => {
-    setLoading(true);
-    try {
-      await resendEmailConfirmation(supabase, email);
-      toast({ title: 'Link enviado', description: 'Verifique seu e-mail e confirme a conta antes de entrar.' });
-    } catch (error) {
-      captureOperationalError(error, { operation: 'auth.resend_confirmation', module: 'authentication', source: 'supabase_auth' });
-      toast({ title: 'Erro ao reenviar', description: toPortugueseError(error), variant: 'destructive' });
-    } finally {
-      setLoading(false);
-    }
   };
 
   const handlePasswordReset = async () => {
@@ -275,10 +262,18 @@ export default function LoginPage() {
                 </Button>
               </form>
 
-              {confirmationPending && (
-                <Button type="button" variant="outline" className="mt-3 w-full" onClick={handleResendConfirmation} disabled={loading}>
-                  Reenviar confirmação de e-mail
-                </Button>
+              {callbackError && (
+                <p role="alert" className="mt-3 rounded-lg border border-destructive/50 p-3 text-sm text-destructive">
+                  O link de confirmação não funcionou ou expirou. Peça um código novo abaixo.
+                </p>
+              )}
+              {(confirmationPending || callbackError) && (
+                <div className="mt-3 rounded-lg border border-border p-3 text-sm">
+                  <p>Seu e-mail ainda não foi confirmado. Digite o código recebido ou peça um novo.</p>
+                  <Button type="button" variant="outline" className="mt-3 w-full" onClick={() => navigate('/confirm-signup', { state: { email } })}>
+                    Confirmar meu e-mail
+                  </Button>
+                </div>
               )}
 
               <div className="mt-6 text-center border-t border-border pt-6">

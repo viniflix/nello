@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   clearForcedPasswordReset,
   isExpectedLoginRejection,
+  isExpectedConfirmationRejection,
+  confirmEmailWithCode,
   isExpectedPasswordRejection,
   normalizeAuthEmail,
   redeemPatientInvite,
@@ -125,7 +127,17 @@ describe('authFlows', () => {
 
   it('resends a confirmation for the normalized email', async () => {
     const resend = vi.fn().mockResolvedValue({ error: null });
-    await resendEmailConfirmation({ auth: { resend } }, ' USER@Example.com ');
-    expect(resend).toHaveBeenCalledWith({ type: 'signup', email: 'user@example.com' });
+    await resendEmailConfirmation({ auth: { resend } }, ' USER@Example.com ', 'https://nellonutri.com.br');
+    expect(resend).toHaveBeenCalledWith({ type: 'signup', email: 'user@example.com', options: { emailRedirectTo: 'https://nellonutri.com.br/login' } });
+  });
+
+  it('verifies a numeric confirmation code without exposing a link token', async () => {
+    const verifyOtp = vi.fn().mockResolvedValue({ data: { user: { id: 'user-1' } }, error: null });
+    await confirmEmailWithCode({ auth: { verifyOtp } }, ' User@Example.com ', ' 123456 ');
+    expect(verifyOtp).toHaveBeenCalledWith({ email: 'user@example.com', token: '123456', type: 'email' });
+    await expect(confirmEmailWithCode({ auth: { verifyOtp } }, 'user@example.com', '123')).rejects.toThrow('6 números');
+    expect(verifyOtp).toHaveBeenCalledTimes(1);
+    expect(isExpectedConfirmationRejection({ code: 'over_email_send_rate_limit', status: 429 })).toBe(true);
+    expect(isExpectedConfirmationRejection({ code: 'unexpected_failure', status: 500 })).toBe(false);
   });
 });

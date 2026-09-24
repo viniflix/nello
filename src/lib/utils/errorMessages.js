@@ -23,6 +23,8 @@ const ERROR_TRANSLATIONS = [
 export function toPortugueseError(errorOrMessage, fallback = 'Ocorreu um erro. Tente novamente.') {
   const code = typeof errorOrMessage === 'string' ? '' : String(errorOrMessage?.code || '');
   if (code === 'email_not_confirmed') return 'Confirme seu e-mail antes de entrar. Você pode reenviar o link de confirmação abaixo.';
+  if (code === 'over_email_send_rate_limit' || Number(errorOrMessage?.status) === 429) return 'Aguarde um minuto antes de pedir outro código. Confira também a caixa de spam.';
+  if (code === 'otp_expired' || code === 'invalid_token') return 'Código inválido ou expirado. Peça um novo código e use apenas o mais recente.';
   if (code === 'same_password') return 'A nova senha deve ser diferente da senha atual.';
   if (code === 'invalid_credentials') return 'E-mail ou senha inválidos.';
   const raw = typeof errorOrMessage === 'string'

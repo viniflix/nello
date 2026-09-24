@@ -8,12 +8,14 @@ const LoginPage = lazyWithReload(() => import('@/pages/auth/LoginPage.jsx'), 'au
 const RegisterPage = lazyWithReload(() => import('@/pages/auth/RegisterPage.jsx'), 'auth:register');
 const UpdatePasswordPage = lazyWithReload(() => import('@/pages/auth/UpdatePasswordPage.jsx'), 'auth:update-password');
 const AuthVerifyPage = lazyWithReload(() => import('@/pages/auth/AuthVerifyPage.jsx'), 'auth:verify');
+const ConfirmSignupPage = lazyWithReload(() => import('@/pages/auth/ConfirmSignupPage.jsx'), 'auth:confirm-signup');
 const RedeemDeepLinkPage = lazyWithReload(() => import('@/pages/auth/RedeemDeepLinkPage.jsx'), 'auth:invite');
 
 export const authRoutes = (
     <>
         <Route path="/login" element={<AuthWrapper><LoginPage /></AuthWrapper>} />
         <Route path="/register" element={<AuthWrapper><RegisterPage /></AuthWrapper>} />
+        <Route path="/confirm-signup" element={<AuthWrapper><ConfirmSignupPage /></AuthWrapper>} />
         <Route path="/update-password" element={<UpdatePasswordPage />} />
         {/* Rota Desprotegida p/ Tratar Acesso Híbrido (Deslogado/Logado) */}
         <Route path="/convite" element={<RedeemDeepLinkPage />} />
