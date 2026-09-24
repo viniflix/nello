@@ -40,7 +40,14 @@ export function AuthProvider({ children }) {
   const [isOffline, setIsOffline] = useState(!window.navigator.onLine);
   const navigate = useNavigate();
   const processingSession = useRef(false);
+  const identityRef = useRef(null);
   const queryClient = useQueryClient();
+
+  const clearPrivateClientState = useCallback(() => {
+    try { clearPrivateDraftStorage(); } catch { /* Storage can be unavailable. */ }
+    queryClient.clear();
+    clearObservabilityUser();
+  }, [queryClient]);
 
   // Busca o perfil via React Query
   const { data: profile, isLoading: isProfileLoading, isError: isProfileError } = useProfile(user?.id);
@@ -98,7 +105,7 @@ export function AuthProvider({ children }) {
 
   // Sincroniza o perfil do React Query com o estado do usuário do contexto
   useEffect(() => {
-    if (profile) {
+    if (profile && user?.id) {
       setUser(prev => {
         if (!prev) return null;
         // Só atualiza se o perfil for diferente ou novo para evitar re-renders infinitos
@@ -115,17 +122,16 @@ export function AuthProvider({ children }) {
   }, [profile, user?.id, isProfileError, isOffline]);
 
   const signOut = useCallback(async () => {
-    try { clearPrivateDraftStorage(); } catch { /* Browser storage may be unavailable; the server session is still revoked. */ }
+    clearPrivateClientState();
+    identityRef.current = null;
     setUser(null);
-    clearObservabilityUser();
-    queryClient.clear(); // Limpa cache global ao sair
     try {
       await supabase.auth.signOut();
     } catch (error) {
       console.error('Erro ao fazer logout:', error);
     }
     navigate('/login', { replace: true });
-  }, [navigate, queryClient]);
+  }, [navigate, clearPrivateClientState]);
 
   // Auxiliar: processa a sessão (usado por getSession + onAuthStateChange)
   const pendingSessionRef = useRef(null);
@@ -141,10 +147,16 @@ export function AuthProvider({ children }) {
         pendingSessionRef.current = null;
 
         if (!nextSession?.user) {
+          if (identityRef.current || nextEvent === 'SIGNED_OUT') clearPrivateClientState();
+          identityRef.current = null;
           setUser(null);
-          clearObservabilityUser();
           continue;
         }
+
+        if (identityRef.current && identityRef.current !== nextSession.user.id) {
+          clearPrivateClientState();
+        }
+        identityRef.current = nextSession.user.id;
 
         // Agora apenas definimos o usuário base. O perfil virá via useProfile hook.
         // Se já temos um perfil cacheado, mantemos para evitar UI flickering
@@ -194,7 +206,7 @@ export function AuthProvider({ children }) {
         await processSession(pending.session, pending.event);
       }
     }
-  }, [queryClient]);
+  }, [queryClient, clearPrivateClientState]);
 
   useEffect(() => {
     let mounted = true;
@@ -225,6 +237,8 @@ export function AuthProvider({ children }) {
           // Aguarda o processamento inicial da sessão
           await processSession(data.session, 'INITIAL_SESSION');
         } else {
+          if (identityRef.current) clearPrivateClientState();
+          identityRef.current = null;
           setUser(null);
         }
       } catch (err) {
@@ -235,7 +249,11 @@ export function AuthProvider({ children }) {
             setIsOffline(true);
         } else {
             console.error('[AuthContext] Erro fatal durante initAuth:', err);
-            if (mounted) setUser(null);
+            if (mounted) {
+              if (identityRef.current) clearPrivateClientState();
+              identityRef.current = null;
+              setUser(null);
+            }
         }
       } finally {
         // GARANTIDO: o app sempre sai do estado de loading se estiver montado
@@ -252,8 +270,9 @@ export function AuthProvider({ children }) {
       if (!mounted) return;
 
       if (event === 'SIGNED_OUT') {
+        clearPrivateClientState();
+        identityRef.current = null;
         setUser(null);
-        clearObservabilityUser();
         setLoading(false);
         return;
       }
@@ -261,7 +280,11 @@ export function AuthProvider({ children }) {
       // NOVO: Refresh silencioso - atualiza o token sem disparar o loader ou re-buscar o perfil
       if (event === 'TOKEN_REFRESHED') {
         if (session?.user) {
-          setUser(prev => prev ? { ...session.user, profile: prev.profile, verification: prev.verification } : null);
+          if (identityRef.current && identityRef.current !== session.user.id) {
+            await processSession(session, event);
+          } else {
+            setUser(prev => prev ? { ...session.user, profile: prev.profile, verification: prev.verification } : null);
+          }
         }
         return;
       }
@@ -284,6 +307,8 @@ export function AuthProvider({ children }) {
           }
         } else if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
           if (!session) {
+            if (identityRef.current) clearPrivateClientState();
+            identityRef.current = null;
             setUser(null);
           }
         }
@@ -296,7 +321,7 @@ export function AuthProvider({ children }) {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [processSession]);
+  }, [processSession, clearPrivateClientState]);
 
   const updateUserProfile = (newProfileData) => {
     setUser(currentUser => {
