@@ -659,7 +659,7 @@ export default function AdminStudyPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Card>
               <CardHeader>
-                <SectionTitle icon={FileText} title="Anamnese" description="Completude dos formulários clínicos" />
+                <SectionTitle icon={FileText} title="Anamnese" description="Registros validados ou concluídos" />
               </CardHeader>
               <CardContent className="space-y-4">
                 {isLoading ? <Skeleton className="h-32 w-full" /> : (
@@ -677,7 +677,7 @@ export default function AdminStudyPage() {
                         </svg>
                         <div className="absolute inset-0 flex flex-col items-center justify-center">
                           <span className="text-2xl font-bold">{m.anamnesis?.completion_rate_pct ?? 0}%</span>
-                          <span className="text-[10px] text-muted-foreground">completas</span>
+                          <span className="text-[10px] text-muted-foreground">validadas</span>
                         </div>
                       </div>
                     </div>
@@ -688,7 +688,7 @@ export default function AdminStudyPage() {
                       </div>
                       <div className="bg-muted/30 p-2 rounded-lg">
                         <p className="text-lg font-bold">{num(m.anamnesis?.completed)}</p>
-                        <p className="text-xs text-muted-foreground">Concluídas</p>
+                        <p className="text-xs text-muted-foreground">Validadas</p>
                       </div>
                     </div>
                   </>
