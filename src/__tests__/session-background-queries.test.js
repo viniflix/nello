@@ -57,7 +57,7 @@ describe('session-safe background queries', () => {
     const existing = {
       id: 'task-1', source_type: 'pending', source_id: 'pending-1', patient_id: 'patient-1',
       title: 'Pendência', description: null, priority_score: 2, priority_reason: null,
-      status: 'open', snooze_until: null, last_seen_at: new Date().toISOString(),
+      status: 'open', snooze_until: null, last_seen_at: '2025-01-01T00:00:00Z',
       metadata: { item_type: 'pending', cta_route: '/nutritionist/patients' },
     };
 
@@ -69,6 +69,28 @@ describe('session-safe background queries', () => {
 
     expect(result).toMatchObject({ error: null, data: [existing] });
     expect(mocks.from).not.toHaveBeenCalled();
+  });
+
+  it('updates a changed snapshot without a per-item read and guards concurrent edits', async () => {
+    mocks.getSession.mockResolvedValue({ data: { session: { user: { id: 'nutritionist-session' } } }, error: null });
+    const maybeSingle = vi.fn().mockResolvedValue({ data: null, error: null });
+    const updateQuery = { eq: vi.fn(), select: vi.fn() };
+    updateQuery.eq.mockReturnValue(updateQuery);
+    updateQuery.select.mockReturnValue({ maybeSingle });
+    const update = vi.fn().mockReturnValue(updateQuery);
+    mocks.from.mockReturnValue({ update });
+
+    const result = await syncFeedTasksFromItems('nutritionist-session', [{
+      sourceType: 'pending', sourceId: 'pending-1', title: 'Nova pendência',
+    }], [{
+      id: 'task-1', source_type: 'pending', source_id: 'pending-1',
+      title: 'Pendência', status: 'resolved', updated_at: '2026-09-24T00:00:00Z', metadata: {},
+    }]);
+
+    expect(mocks.from).toHaveBeenCalledTimes(1);
+    expect(update).toHaveBeenCalledWith(expect.objectContaining({ status: 'resolved' }));
+    expect(updateQuery.eq).toHaveBeenCalledWith('updated_at', '2026-09-24T00:00:00Z');
+    expect(result).toMatchObject({ data: [], error: null });
   });
 
   it('starts every independent patient activity source before waiting for responses', async () => {

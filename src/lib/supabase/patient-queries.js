@@ -1031,7 +1031,8 @@ export const upsertFeedTask = async ({
     status = 'open',
     snoozeUntil = null,
     metadata = {},
-    auditAction = null
+    auditAction = null,
+    existingTask = undefined
 }) => {
     try {
         if (!await ownsCurrentSession(nutritionistId)) {
@@ -1039,15 +1040,16 @@ export const upsertFeedTask = async ({
         }
 
         const identity = buildFeedTaskIdentity({ nutritionistId, sourceType, sourceId });
-        const { data: existingRows, error: existingError } = await supabase
-            .from('feed_tasks')
-            .select('id, metadata')
-            .match(identity)
-            .limit(1);
-
-        const existing = existingRows?.[0];
-
-        if (existingError) throw existingError;
+        let existing = existingTask;
+        if (existingTask === undefined) {
+            const { data: existingRows, error: existingError } = await supabase
+                .from('feed_tasks')
+                .select('id, metadata')
+                .match(identity)
+                .limit(1);
+            if (existingError) throw existingError;
+            existing = existingRows?.[0];
+        }
 
         const nowIso = new Date().toISOString();
         const baseMetadata = {
@@ -1087,16 +1089,19 @@ export const upsertFeedTask = async ({
         }
 
         if (existing?.id) {
-            const { data, error } = await supabase
+            let updateQuery = supabase
                 .from('feed_tasks')
                 .update(baseData)
-                .eq('id', existing.id)
-                .select()
-                .single();
+                .eq('id', existing.id);
+            if (existingTask !== undefined && existing.updated_at) {
+                updateQuery = updateQuery.eq('updated_at', existing.updated_at);
+            }
+            const { data, error } = await updateQuery.select().maybeSingle();
             if (await sessionChangedDuringWrite(error, nutritionistId)) {
                 return { data: null, error: null, skipped: true };
             }
             if (error) throw error;
+            if (!data) return { data: null, error: null, skipped: true };
             return { data, error: null };
         }
 
@@ -1225,10 +1230,7 @@ export const syncFeedTasksFromItems = async (nutritionistId, items = [], existin
                         cta_route: item.ctaRoute || null
                     }
                 };
-                const lastSeen = existing?.last_seen_at ? new Date(existing.last_seen_at).getTime() : 0;
-                const recentlySeen = Number.isFinite(lastSeen) && Date.now() - lastSeen < 15 * 60 * 1000;
                 const unchanged = existing
-                    && recentlySeen
                     && String(existing.patient_id || '') === String(payload.patientId || '')
                     && existing.title === payload.title
                     && (existing.description || null) === payload.description
@@ -1241,9 +1243,13 @@ export const syncFeedTasksFromItems = async (nutritionistId, items = [], existin
                 return { payload, existing, unchanged };
             });
 
-        const result = await Promise.all(syncPayloads.map(({ payload, existing, unchanged }) =>
-            unchanged ? Promise.resolve({ data: existing, error: null }) : upsertFeedTask(payload)
-        ));
+        const result = [];
+        for (let offset = 0; offset < syncPayloads.length; offset += 4) {
+            const batch = syncPayloads.slice(offset, offset + 4);
+            result.push(...await Promise.all(batch.map(({ payload, existing, unchanged }) =>
+                unchanged ? Promise.resolve({ data: existing, error: null }) : upsertFeedTask({ ...payload, existingTask: existing || null })
+            )));
+        }
         const firstError = result.find((entry) => entry?.error)?.error || null;
         return { data: result.map((entry) => entry?.data).filter(Boolean), error: firstError };
     } catch (error) {
