@@ -20,12 +20,13 @@ describe('savePatientDiaryMeal', () => {
     expect(supabase.rpc.mock.calls[0][1]).toMatchObject({
       p_meal_id: 42,
       p_payload: { meal_date: '2026-09-23', meal_type: 'Almoço' },
-      p_items: [{ food_source: 'reference', name: 'Arroz', calories: 130 }],
+      p_items: [{ food_source: 'reference', food_id: meal.foods[0].food_id, quantity: 100 }],
     });
+    expect(supabase.rpc.mock.calls[0][1].p_items[0]).not.toHaveProperty('calories');
   });
 
   it('rejects invalid food before contacting the database and propagates RPC failure', async () => {
-    await expect(savePatientDiaryMeal({ ...meal, foods: [{ ...meal.foods[0], calories: Number.NaN }] })).rejects.toThrow('Revise os valores');
+    await expect(savePatientDiaryMeal({ ...meal, foods: [{ ...meal.foods[0], quantity: Number.NaN }] })).rejects.toThrow('Revise os valores');
     expect(supabase.rpc).not.toHaveBeenCalled();
     supabase.rpc.mockResolvedValue({ data: null, error: new Error('DIARY_INVALID_ITEM') });
     await expect(savePatientDiaryMeal(meal)).rejects.toThrow('DIARY_INVALID_ITEM');

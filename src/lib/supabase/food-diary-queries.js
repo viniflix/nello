@@ -27,18 +27,11 @@ export async function savePatientDiaryMeal({ mealId = null, mealDate, mealTime, 
         const item = {
             food_id: food.food_id,
             food_source: String(food.food_source || 'reference').toLowerCase() === 'custom' ? 'custom' : 'reference',
-            name: food.food_name || food.name,
             quantity: Number(food.quantity),
             unit: food.unit || 'gram',
             measure_id: food.measure_id || food.measure?.id || null,
-            calories: Number(food.calories),
-            protein: Number(food.protein),
-            carbs: Number(food.carbs),
-            fat: Number(food.fat),
         };
-        if (!item.food_id || !item.name ||
-            ['quantity', 'calories', 'protein', 'carbs', 'fat'].some((key) => !Number.isFinite(item[key])) ||
-            item.quantity <= 0 || ['calories', 'protein', 'carbs', 'fat'].some((key) => item[key] < 0)) {
+        if (!item.food_id || !Number.isFinite(item.quantity) || item.quantity <= 0) {
             throw new Error('Revise os valores dos alimentos antes de salvar.');
         }
         return item;

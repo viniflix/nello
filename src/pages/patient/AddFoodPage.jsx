@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { calculateNutrition, foodPer100Grams } from '@/lib/utils/nutrition-calculations';
 import { savePatientDiaryMeal } from '@/lib/supabase/food-diary-queries';
+import { toPortugueseError } from '@/lib/utils/errorMessages';
 import { format } from 'date-fns';
 import { getFoodMeasures, searchFoodsPaginated } from '@/lib/supabase/foodService';
 import { formatNutrient } from '@/lib/utils';
@@ -224,7 +225,7 @@ const AddFoodPage = () => {
             navigate('/patient/diario');
         } catch (error) {
             console.error('Erro ao salvar refeição:', error);
-            toast({ title: 'Erro ao salvar', description: 'A refeição anterior foi preservada. Revise os dados e tente novamente.', variant: 'destructive' });
+            toast({ title: 'Erro ao salvar', description: toPortugueseError(error), variant: 'destructive' });
         } finally {
             setLoading(false);
         }

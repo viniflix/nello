@@ -1,4 +1,8 @@
 const ERROR_TRANSLATIONS = [
+  { test: /DIARY_MEAL_NOT_FOUND/i, message: 'Esta refeição não está disponível para edição na sua conta.' },
+  { test: /DIARY_FOOD_UNAVAILABLE/i, message: 'Um alimento foi desativado ou não está disponível. Remova-o e escolha outro.' },
+  { test: /DIARY_INVALID_(ITEM|MEASURE|WEIGHT|FOOD_BASE|NUTRITION|MEAL|PAYLOAD)/i, message: 'Revise os alimentos, quantidades e horário antes de salvar.' },
+  { test: /DIARY_AUTH_REQUIRED/i, message: 'Sua sessão expirou. Entre novamente para salvar a refeição.' },
   { test: /invalid login credentials/i, message: 'E-mail ou senha inválidos.' },
   { test: /MEASURE_IN_USE/i, message: 'Esta medida já está em um plano alimentar. Preserve o peso usado ou crie uma nova medida.' },
   { test: /MEASURE_NOT_OWNED|FOOD_NOT_OWNED/i, message: 'Este alimento ou medida não pertence à sua conta.' },
