@@ -84,6 +84,19 @@ const CLINICAL_TYPE_LABELS = {
   initial_assessment: 'Avaliação inicial',
   discharge_summary: 'Resumo de alta',
 };
+const HISTORY_PAGE_SIZE = 100;
+const GROWTH_COLUMNS = 'id, patient_id, record_date, weight, height, head_circumference, notes, circumferences, skinfolds, bioimpedance, bone_diameters';
+const SELF_MEASUREMENT_COLUMNS = 'id, patient_id, record_date, weight, height, head_circumference, created_at';
+const GLYCEMIA_COLUMNS = 'id, patient_id, date, value, condition, notes';
+const mergeUnique = (current, incoming, keyFor) => {
+  const seen = new Set(current.map(keyFor));
+  return [...current, ...incoming.filter((item) => {
+    const key = keyFor(item);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  })];
+};
 
 /**
  * PatientProgressPage - Aba 3: Progresso
@@ -109,6 +122,9 @@ export default function PatientProgressPage() {
   const [clinicalLoadError, setClinicalLoadError] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
+  const [historyPage, setHistoryPage] = useState(0);
+  const [hasMoreHistory, setHasMoreHistory] = useState(false);
+  const [loadingMoreHistory, setLoadingMoreHistory] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [goalWeight, setGoalWeight] = useState(null);
 
@@ -154,23 +170,28 @@ export default function PatientProgressPage() {
     setClinicalLoadError(false);
 
     try {
-      const [weightResult, glycemiaResult, photoResult, foundationResult] = await Promise.all([
-        supabase.from('growth_records').select('*').eq('patient_id', userId).order('record_date', { ascending: true }),
-        supabase.from('glycemia_records').select('*').eq('patient_id', userId).order('date', { ascending: true }),
+      const [weightResult, selfMeasurementResult, glycemiaResult, photoResult, foundationResult] = await Promise.all([
+        supabase.from('growth_records').select(GROWTH_COLUMNS).eq('patient_id', userId).eq('status', 'active').eq('is_latest_revision', true).order('record_date', { ascending: false }).range(0, HISTORY_PAGE_SIZE - 1),
+        supabase.from('patient_progress_measurements').select(SELF_MEASUREMENT_COLUMNS).eq('patient_id', userId).order('record_date', { ascending: false }).range(0, HISTORY_PAGE_SIZE - 1),
+        supabase.from('glycemia_records').select(GLYCEMIA_COLUMNS).eq('patient_id', userId).order('date', { ascending: false }).range(0, HISTORY_PAGE_SIZE - 1),
         getProgressPhotos({ patientId: userId, limit: 50 }),
         getPatientRecordFoundation(userId),
       ]);
 
       if (!isMounted.current || currentController.signal.aborted) return;
 
-      const requiredError = weightResult.error || glycemiaResult.error || photoResult.error;
+      const requiredError = weightResult.error || selfMeasurementResult.error || glycemiaResult.error || photoResult.error;
       if (requiredError) throw requiredError;
       
-      const weightRecords = weightResult.data || [];
-      const glycemiaRecords = glycemiaResult.data || [];
+      const weightRecords = [...(weightResult.data || []).map((record) => ({ ...record, source: 'clinical' })),
+        ...(selfMeasurementResult.data || []).map((record) => ({ ...record, id: `patient:${record.id}`, source: 'patient' }))]
+        .sort((a, b) => String(a.record_date).localeCompare(String(b.record_date)));
+      const glycemiaRecords = [...(glycemiaResult.data || [])].reverse();
       const photoRecords = photoResult.data || [];
 
       setWeightData(weightRecords);
+      setHistoryPage(0);
+      setHasMoreHistory([weightResult, selfMeasurementResult, glycemiaResult].some((result) => result.data?.length === HISTORY_PAGE_SIZE));
       setGlycemiaData(glycemiaRecords || []);
       setPhotosData(photoRecords);
       setMeasurementsData(weightRecords.filter(hasMeasurementData));
@@ -201,6 +222,35 @@ export default function PatientProgressPage() {
     }
   }, [userId]);
 
+  const loadMoreHistory = async () => {
+    if (!userId || !hasMoreHistory || loadingMoreHistory) return;
+    setLoadingMoreHistory(true);
+    const nextPage = historyPage + 1;
+    const start = nextPage * HISTORY_PAGE_SIZE;
+    const end = start + HISTORY_PAGE_SIZE - 1;
+    try {
+      const [clinical, self, glycemia] = await Promise.all([
+        supabase.from('growth_records').select(GROWTH_COLUMNS).eq('patient_id', userId).eq('status', 'active').eq('is_latest_revision', true).order('record_date', { ascending: false }).range(start, end),
+        supabase.from('patient_progress_measurements').select(SELF_MEASUREMENT_COLUMNS).eq('patient_id', userId).order('record_date', { ascending: false }).range(start, end),
+        supabase.from('glycemia_records').select(GLYCEMIA_COLUMNS).eq('patient_id', userId).order('date', { ascending: false }).range(start, end),
+      ]);
+      if (clinical.error || self.error || glycemia.error) throw clinical.error || self.error || glycemia.error;
+      const moreWeights = [...(clinical.data || []).map((record) => ({ ...record, source: 'clinical' })),
+        ...(self.data || []).map((record) => ({ ...record, id: `patient:${record.id}`, source: 'patient' }))];
+      setWeightData((current) => mergeUnique(current, moreWeights, (record) => `${record.source}:${record.id}`)
+        .sort((a, b) => String(a.record_date).localeCompare(String(b.record_date))));
+      setMeasurementsData((current) => mergeUnique(current, moreWeights.filter(hasMeasurementData), (record) => `${record.source}:${record.id}`));
+      setGlycemiaData((current) => mergeUnique(current, glycemia.data || [], (record) => record.id)
+        .sort((a, b) => String(a.date).localeCompare(String(b.date))));
+      setHistoryPage(nextPage);
+      setHasMoreHistory([clinical, self, glycemia].some((result) => result.data?.length === HISTORY_PAGE_SIZE));
+    } catch (error) {
+      toast({ title: 'Histórico não carregado', description: toPortugueseError(error), variant: 'destructive' });
+    } finally {
+      setLoadingMoreHistory(false);
+    }
+  };
+
   useEffect(() => {
     loadProgressData();
   }, [loadProgressData]);
@@ -217,7 +267,7 @@ export default function PatientProgressPage() {
       return;
     }
 
-    const { error } = await supabase.from('growth_records').insert({
+    const { error } = await supabase.from('patient_progress_measurements').insert({
       patient_id: user.id,
       record_date: recordDate,
       weight: parseFloat(newWeight)
@@ -253,7 +303,7 @@ export default function PatientProgressPage() {
       return;
     }
 
-    const { error } = await supabase.from('growth_records').insert({
+    const { error } = await supabase.from('patient_progress_measurements').insert({
       patient_id: user.id,
       record_date: recordDate,
       height: parseFloat(newHeight),
@@ -691,6 +741,7 @@ export default function PatientProgressPage() {
                                 <p className="text-sm font-semibold text-foreground">
                                   {formatCivilDate(record.record_date)}
                                 </p>
+                                {record.source === 'patient' && <p className="text-xs text-muted-foreground">Informado por você</p>}
                                 {record.notes && (
                                   <p className="text-xs text-muted-foreground mt-1">
                                     {record.notes}
@@ -877,6 +928,7 @@ export default function PatientProgressPage() {
                                 <p className="text-sm font-semibold text-foreground">
                                   {formatCivilDate(record.record_date)}
                                 </p>
+                                {record.source === 'patient' && <p className="text-xs text-muted-foreground">Informado por você</p>}
                                 <div className="flex flex-wrap gap-3 mt-1">
                                   {record.weight && (
                                     <p className="text-xs text-muted-foreground">
@@ -1028,6 +1080,13 @@ export default function PatientProgressPage() {
             </motion.div>
           </TabsContent>
         </Tabs>
+        )}
+        {hasMoreHistory && !loadError && (
+          <div className="mt-5 text-center">
+            <Button type="button" variant="outline" disabled={loadingMoreHistory} onClick={() => void loadMoreHistory()}>
+              {loadingMoreHistory ? 'Carregando histórico...' : 'Carregar registros anteriores'}
+            </Button>
+          </div>
         )}
       </div>
 

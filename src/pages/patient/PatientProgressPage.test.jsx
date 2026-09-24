@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
     glycemia_records: [
       { id: 'glucose-1', date: '2026-07-11T10:00:00Z', value: 96, condition: 'fasting' },
     ],
+    patient_progress_measurements: [],
     progress_photos: [],
   },
 }));
@@ -34,6 +35,7 @@ vi.mock('@/lib/customSupabaseClient', () => ({
         eq: () => builder,
         order: () => builder,
         limit: () => builder,
+        range: () => builder,
         then: (resolve) => resolve({ data: mocks.rows[table] || [], error: null }),
       };
       return builder;
