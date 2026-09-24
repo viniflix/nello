@@ -7,6 +7,7 @@ import {
   listDocumentArtifacts,
   saveMyDocumentIdentity,
   signDocumentArtifact,
+  uploadDocumentAsset,
   verifyDocumentAuthenticity,
 } from './document-queries';
 
@@ -14,6 +15,7 @@ vi.mock('@/infrastructure/supabase/client', () => ({
   supabase: {
     rpc: vi.fn(),
     storage: { from: vi.fn() },
+    functions: { invoke: vi.fn() },
   },
 }));
 
@@ -39,6 +41,26 @@ describe('document identity contracts', () => {
       p_expected_version: 4,
       p_reason: 'profile_update',
     });
+  });
+
+  it('confirms an uploaded asset through the trusted edge without sending a browser hash', async () => {
+    supabase.rpc.mockResolvedValueOnce({
+      data: { upload_id: 'upload-1', storage_bucket: 'document-assets', storage_path: 'owner/logo/upload-1' },
+      error: null,
+    });
+    const upload = vi.fn().mockResolvedValue({ error: null });
+    supabase.storage.from.mockReturnValue({ upload });
+    supabase.functions.invoke.mockResolvedValue({ data: { success: true }, error: null });
+    const file = new File(['image'], 'logo.png', { type: 'image/png' });
+
+    const result = await uploadDocumentAsset('logo', file, 2);
+
+    expect(result).toEqual({ data: { success: true }, error: null });
+    expect(supabase.functions.invoke).toHaveBeenCalledWith('confirm-document-asset', {
+      body: { uploadId: 'upload-1' },
+    });
+    expect(supabase.rpc).not.toHaveBeenCalledWith('confirm_document_asset_upload', expect.anything());
+    expect(upload).toHaveBeenCalledWith('owner/logo/upload-1', file, expect.objectContaining({ upsert: false }));
   });
 });
 
