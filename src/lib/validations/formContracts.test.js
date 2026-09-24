@@ -46,6 +46,15 @@ describe('template de check-in', () => {
 });
 
 describe('template de anamnese', () => {
+  it('rejeita opções aninhadas que causariam erro na prévia ou respostas ambíguas', () => {
+    expect(validateAnamnesisTemplate({
+      title: 'Anamnese',
+      sections: [{ id: 's', title: 'Hábitos', fields: [{ id: 'f', type: 'select', label: 'Escolha', options: [
+        { label: 'Sim', value: 'sim' }, { label: { pt: 'Não' }, value: 'nao' },
+      ] }] }],
+    })).toMatch(/opções/);
+  });
+
   it('rejeita condição órfã e seção vazia', () => {
     expect(validateAnamnesisTemplate({ title: 'Anamnese', sections: [{ id: 's', title: 'Dados', fields: [] }] })).toMatch(/pergunta/);
     expect(validateAnamnesisTemplate({

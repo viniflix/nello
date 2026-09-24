@@ -5,6 +5,13 @@ import { Button } from '@/components/ui/button';
 import { useAnamnesisTemplates } from '@/hooks/useAnamnesisTemplates';
 import { CardSkeleton } from '@/components/ui/custom-skeletons';
 
+const optionPreviewText = (option) => {
+    if (typeof option === 'string') return option || 'Opção sem nome';
+    if (typeof option?.label === 'string' && option.label.trim()) return option.label;
+    if (typeof option?.value === 'string' && option.value.trim()) return option.value;
+    return 'Opção com dados inválidos';
+};
+
 // ─── Card de Formulário ─────────────────────────────────────────────────────────
 const FormCard = ({ template, onEdit, onDelete, onView, isGlobal }) => (
     <div className={`rounded-2xl border shadow-sm hover:shadow-md transition-all flex flex-col h-full p-5 gap-3 ${
@@ -255,7 +262,7 @@ export default function TemplatesList() {
                         
                         <div className="flex-1 overflow-y-auto p-5 bg-muted/40">
                             <div className="space-y-6">
-                                {((Array.isArray(previewTemplate.sections) ? previewTemplate.sections : previewTemplate.sections?.sections) || []).map((section, idx) => (
+                                {(Array.isArray(previewTemplate.sections) ? previewTemplate.sections : (Array.isArray(previewTemplate.sections?.sections) ? previewTemplate.sections.sections : [])).map((section, idx) => (
                                     <div key={section.id || idx} className="bg-card p-5 rounded-xl border border-border shadow-sm">
                                         <h3 className="font-semibold text-foreground mb-4 pb-2 border-b border-border flex items-center gap-2">
                                             <span className="w-6 h-6 rounded-full bg-primary/15 text-primary flex items-center justify-center text-xs">
@@ -264,25 +271,25 @@ export default function TemplatesList() {
                                             {section.title}
                                         </h3>
                                         <div className="space-y-4">
-                                            {(section.fields || []).map((field, fIdx) => (
+                                            {(Array.isArray(section.fields) ? section.fields : []).map((field, fIdx) => (
                                                 <div key={field.id || fIdx} className="text-sm">
                                                     <p className="font-medium text-foreground">{field.label}</p>
                                                     {field.placeholder && (
                                                         <p className="text-muted-foreground mt-0.5 text-xs italic">{field.placeholder}</p>
                                                     )}
-                                                    {field.options && field.options.length > 0 && (
+                                                    {Array.isArray(field.options) && field.options.length > 0 && (
                                                         <ul className="mt-2 space-y-1">
                                                             {field.options.map((opt, oIdx) => (
                                                                 <li key={oIdx} className="flex items-center gap-2 text-muted-foreground text-xs">
                                                                     <div className="w-1.5 h-1.5 rounded-full bg-muted" />
-                                                                    {typeof opt === 'string' ? opt : opt?.label || opt?.value || 'Opção sem nome'}
+                                                                    {optionPreviewText(opt)}
                                                                 </li>
                                                             ))}
                                                         </ul>
                                                     )}
                                                 </div>
                                             ))}
-                                            {(!section.fields || section.fields.length === 0) && (
+                                            {(!Array.isArray(section.fields) || section.fields.length === 0) && (
                                                 <p className="text-xs text-muted-foreground italic">Nenhuma pergunta nesta seção.</p>
                                             )}
                                         </div>

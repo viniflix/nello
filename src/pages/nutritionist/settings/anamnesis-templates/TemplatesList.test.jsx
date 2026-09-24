@@ -10,7 +10,7 @@ vi.mock('@/hooks/useAnamnesisTemplates', () => ({
         id: 'form-1', title: 'Anamnese', sections: [{
           id: 'section-1', title: 'Hábitos', fields: [{
             id: 'field-1', label: 'Atividade física',
-            options: [{ label: 'Sim', value: 'sim' }, 'Não'],
+            options: [{ label: 'Sim', value: 'sim' }, 'Não', { label: { pt: 'Talvez' }, value: { code: 'maybe' } }],
           }],
         }],
       }],
@@ -27,5 +27,6 @@ describe('TemplatesList preview', () => {
     fireEvent.click(screen.getByTitle('Visualizar'));
     expect(screen.getByText('Sim')).toBeDefined();
     expect(screen.getByText('Não')).toBeDefined();
+    expect(screen.getByText('Opção com dados inválidos')).toBeDefined();
   });
 });

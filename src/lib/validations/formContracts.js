@@ -73,9 +73,12 @@ export function validateAnamnesisTemplate({ title, sections }) {
       if (!String(field.label || '').trim()) return `Preencha o texto da ${label}.`;
 
       if (ANAMNESIS_OPTION_TYPES.has(field.type)) {
-        const options = (field.options || [])
-          .map((option) => ({ label: String(option?.label || '').trim(), value: String(option?.value || '').trim() }))
-          .filter((option) => option.label && option.value);
+        if (!Array.isArray(field.options) || field.options.some((option) =>
+          typeof option?.label !== 'string' || !option.label.trim()
+          || typeof option?.value !== 'string' || !option.value.trim())) {
+          return `Revise as opções da ${label}; texto e valor devem ser válidos.`;
+        }
+        const options = field.options;
         if (new Set(options.map((option) => option.value)).size < 2) return `Adicione pelo menos duas opções válidas na ${label}.`;
       }
 
