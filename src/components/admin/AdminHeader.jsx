@@ -8,16 +8,18 @@ import { supabase } from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 
 const NAV_ITEMS = [
-  { section: 'Principal', items: [{ name: 'ERP Dashboard', path: '/admin/dashboard', icon: LayoutDashboard }] },
-  { section: 'Análises', items: [
-    { name: 'Comportamento', path: '/admin/study', icon: Activity },
-    { name: 'Performance', path: '/admin/bugs', icon: Bug },
+  { section: 'Visão geral', items: [{ name: 'Operação', path: '/admin/dashboard', icon: LayoutDashboard }] },
+  { section: 'Operação', items: [
+    { name: 'Uso da plataforma', path: '/admin/study', icon: Activity },
+    { name: 'Incidentes', path: '/admin/bugs', icon: Bug },
   ]},
-  { section: 'Gestão', items: [
-    { name: 'Usuários', path: '/admin/users', icon: Users },
+  { section: 'Pessoas', items: [
+    { name: 'Cadastros', path: '/admin/users', icon: Users },
     { name: 'Verificações', path: '/admin/verifications', icon: BadgeCheck },
-    { name: 'Privacidade LGPD', path: '/admin/privacy', icon: ShieldCheck },
-    { name: 'Financeiro', path: '/admin/financial', icon: Settings },
+  ]},
+  { section: 'Governança', items: [
+    { name: 'Privacidade', path: '/admin/privacy', icon: ShieldCheck },
+    { name: 'Cobrança', path: '/admin/financial', icon: Settings },
   ]},
 ];
 
@@ -95,10 +97,10 @@ export default function AdminHeader() {
               <SheetContent side="left" className="w-72 p-0">
                 <SheetHeader className="p-6 border-b">
                   <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-indigo-100 border border-indigo-200 flex items-center justify-center">
-                      <Shield className="w-4 h-4 text-indigo-600" />
+                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <Shield className="w-4 h-4 text-primary" />
                     </div>
-                    <SheetTitle className="text-lg font-bold">Admin Console</SheetTitle>
+                    <SheetTitle className="text-lg font-bold">Nello · Administração</SheetTitle>
                   </div>
                 </SheetHeader>
                 <nav className="flex flex-col p-2 pt-4">
@@ -131,10 +133,10 @@ export default function AdminHeader() {
           </div>
 
           <Link to="/admin/dashboard" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-indigo-100 border border-indigo-200 flex items-center justify-center">
-              <Shield className="w-4 h-4 text-indigo-600" />
+            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+              <Shield className="w-4 h-4 text-primary" />
             </div>
-            <span className="font-bold text-sm hidden sm:inline">Admin Console</span>
+            <span className="font-bold text-sm hidden sm:inline">Nello · Administração</span>
           </Link>
 
           <nav className="hidden md:flex items-center gap-1">
@@ -209,12 +211,12 @@ export default function AdminHeader() {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-9 w-9 rounded-full p-0">
                 {user.profile?.avatar_url ? (
-                  <div className="h-9 w-9 rounded-full border-2 border-indigo-400 overflow-hidden">
+                  <div className="h-9 w-9 rounded-full border-2 border-primary/40 overflow-hidden">
                     <img src={user?.profile?.avatar_url} alt={user?.profile?.name} className="w-full h-full object-cover" />
                   </div>
                 ) : (
-                  <div className="h-9 w-9 rounded-full bg-indigo-100 border-2 border-indigo-400 flex items-center justify-center">
-                    <span className="text-indigo-700 font-semibold text-sm">{initials}</span>
+                  <div className="h-9 w-9 rounded-full bg-primary/10 border-2 border-primary/40 flex items-center justify-center">
+                    <span className="text-primary font-semibold text-sm">{initials}</span>
                   </div>
                 )}
               </Button>
@@ -224,7 +226,7 @@ export default function AdminHeader() {
                 <div className="flex flex-col space-y-1">
                   <p className="text-sm font-medium truncate">{user.profile?.name}</p>
                   <p className="text-xs text-muted-foreground truncate">{user.email}</p>
-                  <span className="text-[10px] font-medium text-indigo-600 bg-indigo-50 rounded px-1.5 py-0.5 mt-1 w-fit">Administrador</span>
+                  <span className="text-[10px] font-medium text-primary bg-primary/10 rounded px-1.5 py-0.5 mt-1 w-fit">Administrador · MFA</span>
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
