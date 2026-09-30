@@ -35,7 +35,7 @@ module.exports = {
           300: '#A4C999',
           400: '#86B777',
           500: '#68A555',
-          DEFAULT: '#528540', // Nosso Verde Principal
+          DEFAULT: '#416A33', // Contraste AA também sobre superfícies verdes suaves.
           600: '#528540',
           700: '#416A33',
           800: '#314F26',

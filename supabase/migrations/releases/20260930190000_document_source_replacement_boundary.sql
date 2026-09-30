@@ -22,7 +22,7 @@ begin
  if not found then raise exception using errcode='23514',message='responsible_document_identity_required';end if;
  if p_supersedes_id is null and exists(select 1 from public.document_artifacts a where a.source_type='clinical_record' and a.source_id=v_r.id and a.status in('draft','finalized','signed')) then raise exception using errcode='23505',message='clinical_record_document_already_exists';end if;
  if p_supersedes_id is not null then select * into v_old from public.document_artifacts where id=p_supersedes_id for update;
-   if not found or v_old.status is distinct from 'signed' or v_old.professional_id is distinct from v_responsible
+   if not found or v_old.status not in ('signed','invalidated') or v_old.professional_id is distinct from v_responsible
    or v_old.patient_id is distinct from v_r.patient_id or v_old.care_episode_id is distinct from v_r.care_episode_id
    or v_old.source_type is distinct from 'clinical_record'
    or not exists(select 1 from public.clinical_records prior where prior.id=v_old.source_id and coalesce(prior.root_record_id,prior.id)=coalesce(v_r.root_record_id,v_r.id)) or length(coalesce(btrim(p_replacement_reason),''))<10 then raise exception using errcode='22023',message='invalid_document_replacement';end if;end if;
@@ -49,19 +49,20 @@ begin
  if not exists(select 1 from public.professional_document_identities i where i.id=v_a.identity_id and i.professional_id=v_actor and i.normalized_crn=v_v.normalized_crn) then raise exception using errcode='42501',message='document_identity_verification_mismatch';end if;
  if v_a.supersedes_id is not null then
    select * into v_old from public.document_artifacts where id=v_a.supersedes_id for update;
-   if not found or v_old.status is distinct from 'signed' or v_old.professional_id is distinct from v_a.professional_id
+   if not found or v_old.status not in ('signed','invalidated') or v_old.professional_id is distinct from v_a.professional_id
      or v_old.patient_id is distinct from v_a.patient_id or v_old.care_episode_id is distinct from v_a.care_episode_id
      or v_old.source_type is distinct from 'clinical_record' or v_a.source_type is distinct from 'clinical_record'
      or not exists(select 1 from public.clinical_records prior join public.clinical_records successor
        on coalesce(prior.root_record_id,prior.id)=coalesce(successor.root_record_id,successor.id)
        where prior.id=v_old.source_id and successor.id=v_a.source_id) then
      raise exception using errcode='22023',message='invalid_document_replacement';end if;
-   update public.document_artifacts set status='superseded',updated_at=now() where id=v_old.id;
+   -- An invalidated predecessor remains invalidated; the reviewed successor may still be signed.
+   update public.document_artifacts set status='superseded',updated_at=now() where id=v_old.id and status='signed';
  end if;
  update public.document_artifacts set status='signed',signed_at=now(),signed_by=v_actor,signature_method='nello_internal',authenticity_code=v_code,
  signature_evidence=jsonb_build_object('method','nello_internal','actor_id',v_actor,'identity_id',v_a.identity_id,'canonical_sha256',v_a.canonical_sha256,'verified_crn',v_v.normalized_crn),revision=revision+1,updated_at=now() where id=v_a.id;
  insert into public.document_artifact_events(artifact_id,actor_id,event_type,from_status,to_status,reason,metadata)values(v_a.id,v_actor,'signed','finalized','signed','document_signed_internally',jsonb_build_object('method','nello_internal'));
  if v_a.supersedes_id is not null then
-   insert into public.document_artifact_events(artifact_id,actor_id,event_type,from_status,to_status,reason,metadata)values(v_a.supersedes_id,v_actor,'superseded','signed','superseded',v_a.replacement_reason,jsonb_build_object('replacement_id',v_a.id));end if;
+   insert into public.document_artifact_events(artifact_id,actor_id,event_type,from_status,to_status,reason,metadata)values(v_a.supersedes_id,v_actor,case when v_old.status='signed' then 'superseded' else 'replacement_signed' end,v_old.status,case when v_old.status='signed' then 'superseded' else 'invalidated' end,v_a.replacement_reason,jsonb_build_object('replacement_id',v_a.id));end if;
  return jsonb_build_object('artifact_id',v_a.id,'status','signed','authenticity_code',v_code,'sha256',v_a.canonical_sha256);
 end$function$;

@@ -7,7 +7,7 @@
     },
     {
       "file": "supabase/migrations/releases/20260930190000_document_source_replacement_boundary.sql",
-      "sha256": "ce4a206ca74f52b44eb8a9205b4cfd37ae5b6e5c9c064551eb17673d81df8bb6"
+      "sha256": "7a3a985425614c61a02200b9267fe92246b586f457d5d75da620a43efdf17ba4"
     }
   ]
 }

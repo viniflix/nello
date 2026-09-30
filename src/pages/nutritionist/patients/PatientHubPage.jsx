@@ -172,7 +172,7 @@ export default function PatientHubPage() {
         <div className="min-h-screen overflow-x-hidden bg-[#ecebe8] pb-8 text-slate-900">
             <section aria-label="Resumo clínico do paciente" className="mx-auto w-full max-w-[1440px] px-3 py-4 sm:px-6 lg:px-8">
                 <div className="mb-3 flex items-center justify-between gap-2">
-                    <Button asChild variant="ghost" size="sm" className="-ml-2 gap-2 text-slate-500"><Link to="/nutritionist/patients"><ArrowLeft className="h-4 w-4" />Pacientes</Link></Button>
+                    <Button asChild variant="ghost" size="sm" className="-ml-2 gap-2 text-slate-600"><Link to="/nutritionist/patients"><ArrowLeft className="h-4 w-4" />Pacientes</Link></Button>
                     <div className="flex items-center gap-1">
                         <Button variant="ghost" size="icon" onClick={refresh} aria-label="Atualizar dados" title="Atualizar dados" className="h-8 w-8 text-slate-500 hover:bg-white"><RefreshCw className="h-3.5 w-3.5" /></Button>
                     </div>

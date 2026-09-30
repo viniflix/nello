@@ -18,7 +18,7 @@ for(const viewport of [{width:390,height:844},{width:768,height:1024},{width:144
  test(`clinical screens accessibility and layout ${viewport.width}`,async({page})=>{
   const errors=[];page.on('pageerror',error=>errors.push(error.message));page.on('console',message=>{if(relevantDiagnostic(message.text()))errors.push(message.text());});
   await page.setViewportSize(viewport);await login(page,'nutritionist-a');await expect(page).toHaveURL(/\/nutritionist/);
-  for(const module of ['hub','energy-expenditure','meal-plan','anamnese']){await page.goto(`/nutritionist/patients/${fixture.personas['patient-a'].id}/${module}`);await expect(page.locator('main')).toBeVisible();await audit(page);await page.screenshot({path:`.backend-ci/browser-results/${module}-${viewport.width}.png`,fullPage:true});}
+  for(const module of ['hub','energy-expenditure','meal-plan','anamnese']){await page.goto(`/nutritionist/patients/${fixture.personas['patient-a'].id}/${module}`);await expect(page.locator('main')).toBeVisible();await expect(page.getByText('QA patient-a',{exact:false}).first()).toBeVisible();await audit(page);await expect(page).toHaveScreenshot(`${module}-${viewport.width}.png`,{fullPage:true,animations:'disabled',maxDiffPixelRatio:0.002});}
   expect(errors).toEqual([]);
  });
 }

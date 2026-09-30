@@ -90,6 +90,24 @@ do $$declare replacement uuid; result jsonb; predecessor uuid;begin
  update hard_ids set artifact=replacement;
 end$$;
 
+-- Invalidating the predecessor during a pending replacement must neither strand
+-- the successor nor resurrect the invalidated document.
+do $$declare predecessor uuid; replacement uuid; result jsonb;begin
+ predecessor:=(select artifact from hard_ids);
+ result:=public.create_document_artifact_from_clinical_record(
+   '98000000-0000-0000-0000-000000000020','shared_with_patient',predecessor,'Nova emissão com revisão de invalidação');
+ replacement:=(result->>'artifact_id')::uuid;
+ perform public.finalize_document_artifact(replacement,1);
+ perform public.invalidate_document_artifact(predecessor,'Documento anterior invalidado durante revisão');
+ perform public.sign_document_artifact(replacement);
+ if (select status from public.document_artifacts where id=predecessor) is distinct from 'invalidated'
+    or (select status from public.document_artifacts where id=replacement) is distinct from 'signed'
+    or not exists(select 1 from public.document_artifact_events where artifact_id=predecessor
+      and event_type='replacement_signed' and from_status='invalidated' and to_status='invalidated') then
+   raise exception 'pending replacement recovery or historical status failed';end if;
+ update hard_ids set artifact=replacement;
+end$$;
+
 do $$begin
  begin perform public.create_lab_result_record(jsonb_build_object(
    'patient_id','98000000-0000-0000-0000-000000000002','test_name','Glicemia','test_date',current_date,'interpretation_confirmed',true

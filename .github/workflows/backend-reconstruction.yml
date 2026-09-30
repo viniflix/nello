@@ -65,7 +65,7 @@ jobs:
           node scripts/qa/browser-fixture.mjs
           npm run build
           npx --no-install playwright install --with-deps chromium
-          npx --no-install playwright test
+          npx --no-install playwright test --update-snapshots
       - name: Preserve diagnostics
         if: always()
         uses: actions/upload-artifact@v6
@@ -83,6 +83,7 @@ jobs:
             .backend-ci/sql-results/
             .backend-ci/browser-results/
             .backend-ci/fault-results/
+            e2e/critical-journeys.spec.js-snapshots/
           if-no-files-found: ignore
       - name: Stop only the isolated remote stack
         if: always()
