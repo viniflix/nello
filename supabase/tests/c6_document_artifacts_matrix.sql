@@ -5,18 +5,25 @@ do $$begin
  if (select count(*) from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.prosecdef and has_function_privilege('anon',p.oid,'execute'))<>3 then raise exception 'c6_artifact_anon_allowlist_drift';end if;
  if has_table_privilege('authenticated','public.document_artifacts','select')or has_table_privilege('anon','public.document_artifacts','select') then raise exception 'c6_artifact_table_exposed';end if;
 end$$;
-insert into auth.users(instance_id,id,aud,role,email,encrypted_password,confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at) values
-('00000000-0000-0000-0000-000000000000','94000000-0000-0000-0000-000000000001','authenticated','authenticated','c6-art-pro@nello.test','x',now(),'{}','{}',now(),now()),
-('00000000-0000-0000-0000-000000000000','94000000-0000-0000-0000-000000000002','authenticated','authenticated','c6-art-student@nello.test','x',now(),'{}','{}',now(),now()),
-('00000000-0000-0000-0000-000000000000','94000000-0000-0000-0000-000000000003','authenticated','authenticated','c6-art-patient@nello.test','x',now(),'{}','{}',now(),now()),
-('00000000-0000-0000-0000-000000000000','94000000-0000-0000-0000-000000000004','authenticated','authenticated','c6-art-other@nello.test','x',now(),'{}','{}',now(),now()),
-('00000000-0000-0000-0000-000000000000','94000000-0000-0000-0000-000000000005','authenticated','authenticated','c6-art-admin@nello.test','x',now(),'{}','{}',now(),now());
-insert into public.user_profiles(id,name,user_type,is_admin,is_active,email) values
-('94000000-0000-0000-0000-000000000001','Responsável C6','nutritionist',false,true,'c6-art-pro@nello.test'),
-('94000000-0000-0000-0000-000000000002','Estudante C6','nutritionist',false,true,'c6-art-student@nello.test'),
-('94000000-0000-0000-0000-000000000003','Paciente Sigiloso C6','patient',false,true,'c6-art-patient@nello.test'),
-('94000000-0000-0000-0000-000000000004','Alheio C6','nutritionist',false,true,'c6-art-other@nello.test'),
-('94000000-0000-0000-0000-000000000005','Admin C6','admin',true,true,'c6-art-admin@nello.test');
+insert into auth.users(instance_id,id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at) values
+('00000000-0000-0000-0000-000000000000','94000000-0000-0000-0000-000000000001','authenticated','authenticated','c6-art-pro@example.invalid','x',now(),'{}','{"user_type":"nutritionist"}',now(),now()),
+('00000000-0000-0000-0000-000000000000','94000000-0000-0000-0000-000000000002','authenticated','authenticated','c6-art-student@example.invalid','x',now(),'{}','{"user_type":"nutritionist"}',now(),now()),
+('00000000-0000-0000-0000-000000000000','94000000-0000-0000-0000-000000000003','authenticated','authenticated','c6-art-patient@example.invalid','x',now(),'{}','{"user_type":"patient"}',now(),now()),
+('00000000-0000-0000-0000-000000000000','94000000-0000-0000-0000-000000000004','authenticated','authenticated','c6-art-other@example.invalid','x',now(),'{}','{"user_type":"nutritionist"}',now(),now()),
+('00000000-0000-0000-0000-000000000000','94000000-0000-0000-0000-000000000005','authenticated','authenticated','c6-art-admin@example.invalid','x',now(),'{}','{"user_type":"patient"}',now(),now());
+-- Auth creates this profile first; configure the synthetic actor without disabling its trigger.
+insert into public.user_profiles (id,name,user_type,is_admin,is_active,email) values
+('94000000-0000-0000-0000-000000000001','Responsável C6','nutritionist',false,true,'c6-art-pro@example.invalid'),
+('94000000-0000-0000-0000-000000000002','Estudante C6','nutritionist',false,true,'c6-art-student@example.invalid'),
+('94000000-0000-0000-0000-000000000003','Paciente Sigiloso C6','patient',false,true,'c6-art-patient@example.invalid'),
+('94000000-0000-0000-0000-000000000004','Alheio C6','nutritionist',false,true,'c6-art-other@example.invalid'),
+('94000000-0000-0000-0000-000000000005','Admin C6','admin',true,true,'c6-art-admin@example.invalid')
+on conflict (id) do update set
+  name=excluded.name,
+  user_type=excluded.user_type,
+  is_admin=excluded.is_admin,
+  is_active=excluded.is_active,
+  email=excluded.email;
 update public.professional_verifications set crn_region='CRN-3',crn_number='C6-D1',normalized_crn='CRN3C6D1' where user_id='94000000-0000-0000-0000-000000000001';
 update public.professional_verifications set professional_role='student',status='approved',verification_method='student_document_manual',institution_name='Universidade',current_semester=5,crn_region=null,crn_number=null,normalized_crn=null,valid_until=now()+interval '6 months' where user_id='94000000-0000-0000-0000-000000000002';
 insert into public.care_episodes(id,patient_id,nutritionist_id,status,started_at,start_reason,started_by)values('94000000-0000-0000-0000-000000000010','94000000-0000-0000-0000-000000000003','94000000-0000-0000-0000-000000000001','active',now(),'qa','94000000-0000-0000-0000-000000000001');

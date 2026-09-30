@@ -53,21 +53,29 @@ end;
 $$;
 
 insert into auth.users(
-  instance_id, id, aud, role, email, encrypted_password, confirmed_at,
+  instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
   raw_app_meta_data, raw_user_meta_data, created_at, updated_at
 ) values
-('00000000-0000-0000-0000-000000000000','91000000-0000-0000-0000-000000000001','authenticated','authenticated','c6-pro@nello.test','x',now(),'{}','{}',now(),now()),
-('00000000-0000-0000-0000-000000000000','91000000-0000-0000-0000-000000000002','authenticated','authenticated','c6-student@nello.test','x',now(),'{}','{}',now(),now()),
-('00000000-0000-0000-0000-000000000000','91000000-0000-0000-0000-000000000003','authenticated','authenticated','c6-patient@nello.test','x',now(),'{}','{}',now(),now()),
-('00000000-0000-0000-0000-000000000000','91000000-0000-0000-0000-000000000004','authenticated','authenticated','c6-admin@nello.test','x',now(),'{}','{}',now(),now()),
-('00000000-0000-0000-0000-000000000000','91000000-0000-0000-0000-000000000005','authenticated','authenticated','c6-pending@nello.test','x',now(),'{}','{}',now(),now());
+('00000000-0000-0000-0000-000000000000','91000000-0000-0000-0000-000000000001','authenticated','authenticated','c6-pro@example.invalid','x',now(),'{}','{"user_type":"nutritionist"}',now(),now()),
+('00000000-0000-0000-0000-000000000000','91000000-0000-0000-0000-000000000002','authenticated','authenticated','c6-student@example.invalid','x',now(),'{}','{"user_type":"nutritionist"}',now(),now()),
+('00000000-0000-0000-0000-000000000000','91000000-0000-0000-0000-000000000003','authenticated','authenticated','c6-patient@example.invalid','x',now(),'{}','{"user_type":"patient"}',now(),now()),
+('00000000-0000-0000-0000-000000000000','91000000-0000-0000-0000-000000000004','authenticated','authenticated','c6-admin@example.invalid','x',now(),'{}','{"user_type":"patient"}',now(),now()),
+('00000000-0000-0000-0000-000000000000','91000000-0000-0000-0000-000000000005','authenticated','authenticated','c6-pending@example.invalid','x',now(),'{}','{"user_type":"nutritionist"}',now(),now());
 
-insert into public.user_profiles(id, name, user_type, is_admin, is_active, email, phone) values
-('91000000-0000-0000-0000-000000000001','Profissional C6','nutritionist',false,true,'c6-pro@nello.test','85999990001'),
-('91000000-0000-0000-0000-000000000002','Estudante C6','nutritionist',false,true,'c6-student@nello.test',null),
-('91000000-0000-0000-0000-000000000003','Paciente C6','patient',false,true,'c6-patient@nello.test',null),
-('91000000-0000-0000-0000-000000000004','Admin C6','admin',true,true,'c6-admin@nello.test',null),
-('91000000-0000-0000-0000-000000000005','Pendente C6','nutritionist',false,true,'c6-pending@nello.test',null);
+-- Auth creates this profile first; configure the synthetic actor without disabling its trigger.
+insert into public.user_profiles (id, name, user_type, is_admin, is_active, email, phone) values
+('91000000-0000-0000-0000-000000000001','Profissional C6','nutritionist',false,true,'c6-pro@example.invalid','85999990001'),
+('91000000-0000-0000-0000-000000000002','Estudante C6','nutritionist',false,true,'c6-student@example.invalid',null),
+('91000000-0000-0000-0000-000000000003','Paciente C6','patient',false,true,'c6-patient@example.invalid',null),
+('91000000-0000-0000-0000-000000000004','Admin C6','admin',true,true,'c6-admin@example.invalid',null),
+('91000000-0000-0000-0000-000000000005','Pendente C6','nutritionist',false,true,'c6-pending@example.invalid',null)
+on conflict (id) do update set
+  name=excluded.name,
+  user_type=excluded.user_type,
+  is_admin=excluded.is_admin,
+  is_active=excluded.is_active,
+  email=excluded.email,
+  phone=excluded.phone;
 
 update public.professional_verifications
 set status = 'approved', professional_role = 'nutritionist',
@@ -108,7 +116,7 @@ begin
     jsonb_build_object(
       'professional_name', 'Dra. Profissional C6',
       'clinic_name', 'Clínica Nello C6',
-      'professional_email', 'documentos@nello.test',
+      'professional_email', 'documentos@example.invalid',
       'primary_color', '#123abc',
       'accent_color', '#AABBCC',
       'header_text', 'Nutrição clínica e acolhimento',

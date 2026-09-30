@@ -16,16 +16,24 @@ do $$begin
  end if;
 end$$;
 
-insert into auth.users(instance_id,id,aud,role,email,encrypted_password,confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)values
-('00000000-0000-0000-0000-000000000000','98000000-0000-0000-0000-000000000001','authenticated','authenticated','hard-pro@nello.test','x',now(),'{}','{}',now(),now()),
-('00000000-0000-0000-0000-000000000000','98000000-0000-0000-0000-000000000002','authenticated','authenticated','hard-p1@nello.test','x',now(),'{}','{}',now(),now()),
-('00000000-0000-0000-0000-000000000000','98000000-0000-0000-0000-000000000003','authenticated','authenticated','hard-p2@nello.test','x',now(),'{}','{}',now(),now()),
-('00000000-0000-0000-0000-000000000000','98000000-0000-0000-0000-000000000004','authenticated','authenticated','hard-admin@nello.test','x',now(),'{}','{}',now(),now());
-insert into public.user_profiles(id,name,user_type,is_admin,is_active,email,nutritionist_id)values
-('98000000-0000-0000-0000-000000000001','Profissional Hardening','nutritionist',false,true,'hard-pro@nello.test',null),
-('98000000-0000-0000-0000-000000000002','Paciente Um','patient',false,true,'hard-p1@nello.test','98000000-0000-0000-0000-000000000001'),
-('98000000-0000-0000-0000-000000000003','Paciente Dois','patient',false,true,'hard-p2@nello.test','98000000-0000-0000-0000-000000000001'),
-('98000000-0000-0000-0000-000000000004','Admin Hardening','admin',true,true,'hard-admin@nello.test',null);
+insert into auth.users(instance_id,id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)values
+('00000000-0000-0000-0000-000000000000','98000000-0000-0000-0000-000000000001','authenticated','authenticated','hard-pro@example.invalid','x',now(),'{}','{"user_type":"nutritionist"}',now(),now()),
+('00000000-0000-0000-0000-000000000000','98000000-0000-0000-0000-000000000002','authenticated','authenticated','hard-p1@example.invalid','x',now(),'{}','{"user_type":"patient"}',now(),now()),
+('00000000-0000-0000-0000-000000000000','98000000-0000-0000-0000-000000000003','authenticated','authenticated','hard-p2@example.invalid','x',now(),'{}','{"user_type":"patient"}',now(),now()),
+('00000000-0000-0000-0000-000000000000','98000000-0000-0000-0000-000000000004','authenticated','authenticated','hard-admin@example.invalid','x',now(),'{}','{"user_type":"patient"}',now(),now());
+-- Auth creates this profile first; configure the synthetic actor without disabling its trigger.
+insert into public.user_profiles (id,name,user_type,is_admin,is_active,email,nutritionist_id) values
+('98000000-0000-0000-0000-000000000001','Profissional Hardening','nutritionist',false,true,'hard-pro@example.invalid',null),
+('98000000-0000-0000-0000-000000000002','Paciente Um','patient',false,true,'hard-p1@example.invalid','98000000-0000-0000-0000-000000000001'),
+('98000000-0000-0000-0000-000000000003','Paciente Dois','patient',false,true,'hard-p2@example.invalid','98000000-0000-0000-0000-000000000001'),
+('98000000-0000-0000-0000-000000000004','Admin Hardening','admin',true,true,'hard-admin@example.invalid',null)
+on conflict (id) do update set
+  name=excluded.name,
+  user_type=excluded.user_type,
+  is_admin=excluded.is_admin,
+  is_active=excluded.is_active,
+  email=excluded.email,
+  nutritionist_id=excluded.nutritionist_id;
 update public.professional_verifications set status='approved',professional_role='nutritionist',crn_region='CRN-3',crn_number='H-1',normalized_crn='CRN3H1',valid_until=now()+interval'1 year'
 where user_id='98000000-0000-0000-0000-000000000001';
 insert into public.care_episodes(id,patient_id,nutritionist_id,status,start_reason,started_by)values
@@ -88,7 +96,7 @@ do $$declare v jsonb;begin v:=public.invalidate_lab_result_record((select lab_re
 
 do $$begin
  begin insert into public.energy_expenditure_calculations(
-   patient_id,nutritionist_id,care_episode_id,weight,height,age,gender,protocol,protocol_code,protocol_version,input_snapshot,output_snapshot,confirmed_by,confirmed_at
+   patient_id,nutritionist_id,care_episode_id,weight,height,age,gender,protocol,protocol_code,protocol_version,input_snapshot,output_snapshot,confirmed_by,email_confirmed_at
  )values('98000000-0000-0000-0000-000000000002',auth.uid(),'98000000-0000-0000-0000-000000000010',70,170,30,'M','bmi','anthropometry.bmi_adult',1,'{}','{}',auth.uid(),now());
  raise exception 'cross-domain energy protocol accepted';exception when check_violation then null;end;
 end$$;

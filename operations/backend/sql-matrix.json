@@ -5,12 +5,16 @@
     {
       "file": "bh24_02_03_atomic_appointments.sql",
       "kind": "assertion-suite",
-      "fixtures": []
+      "fixtures": [
+        "supabase/fixtures/wave02/clinical-attachments.sql"
+      ]
     },
     {
       "file": "c5_lifecycle_matrix.sql",
       "kind": "assertion-suite",
-      "fixtures": []
+      "fixtures": [
+        "supabase/fixtures/wave02/clinical-attachments.sql"
+      ]
     },
     {
       "file": "c6_d10_adversarial_hardening_matrix.sql",
@@ -65,10 +69,9 @@
     {
       "file": "clinical_attachments_contract_matrix.sql",
       "kind": "assertion-suite",
-      "fixtures": [],
-      "variables": {
-        "stage4_only": "1"
-      }
+      "fixtures": [
+        "supabase/fixtures/wave02/clinical-attachments.sql"
+      ]
     },
     {
       "file": "clinical_episode_isolation_matrix.sql",
@@ -78,22 +81,30 @@
     {
       "file": "clinical_evolution_system_matrix.sql",
       "kind": "assertion-suite",
-      "fixtures": []
+      "fixtures": [
+        "supabase/fixtures/wave02/clinical-evolution.sql"
+      ]
     },
     {
       "file": "clinical_record_amendments_concurrency_setup.sql",
       "kind": "concurrency-setup",
-      "fixtures": []
+      "fixtures": [
+        "supabase/fixtures/wave02/clinical-amendments.sql"
+      ]
     },
     {
       "file": "clinical_record_amendments_matrix.sql",
       "kind": "assertion-suite",
-      "fixtures": []
+      "fixtures": [
+        "supabase/fixtures/wave02/clinical-amendments.sql"
+      ]
     },
     {
       "file": "clinical_record_foundation_matrix.sql",
       "kind": "assertion-suite",
-      "fixtures": []
+      "fixtures": [
+        "supabase/fixtures/wave02/clinical-foundation.sql"
+      ]
     },
     {
       "file": "d1_d10_clinical_prescription_matrix.sql",
@@ -103,7 +114,9 @@
     {
       "file": "meal_plan_permission_matrix.sql",
       "kind": "assertion-suite",
-      "fixtures": []
+      "fixtures": [
+        "supabase/fixtures/wave02/meal-plan-permissions.sql"
+      ]
     },
     {
       "file": "meal_time_compatibility_matrix.sql",
@@ -123,17 +136,23 @@
     {
       "file": "patient_timeline_matrix.sql",
       "kind": "assertion-suite",
-      "fixtures": []
+      "fixtures": [
+        "supabase/fixtures/wave02/patient-timeline.sql"
+      ]
     },
     {
       "file": "pre_c6_security_hardening_matrix.sql",
       "kind": "assertion-suite",
-      "fixtures": []
+      "fixtures": [
+        "supabase/fixtures/wave02/clinical-attachments.sql"
+      ]
     },
     {
       "file": "prelaunch_tester_clinical_access_matrix.sql",
       "kind": "assertion-suite",
-      "fixtures": []
+      "fixtures": [
+        "supabase/fixtures/wave02/clinical-attachments.sql"
+      ]
     },
     {
       "file": "professional_verification_foundation_matrix.sql",
@@ -153,12 +172,16 @@
     {
       "file": "s02_stage2_auth_rls_matrix.sql",
       "kind": "assertion-suite",
-      "fixtures": []
+      "fixtures": [
+        "supabase/fixtures/wave02/clinical-attachments.sql"
+      ]
     },
     {
       "file": "s02_stage3_episode_policy_matrix.sql",
       "kind": "assertion-suite",
-      "fixtures": []
+      "fixtures": [
+        "supabase/fixtures/wave02/clinical-attachments.sql"
+      ]
     },
     {
       "file": "s02_stage4_index_matrix.sql",

@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "detachment": {
+    "file": "supabase/migrations/releases/20260930143000_fail_closed_anamnesis_detachment.sql",
+    "name": "fail_closed_anamnesis_detachment",
+    "appliedVersion": null
+  }
+}

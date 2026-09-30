@@ -3,16 +3,20 @@ begin;
 
 insert into auth.users (
   instance_id, id, aud, role, email, encrypted_password,
-  confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at
+  email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at
 ) values
-  ('00000000-0000-0000-0000-000000000000', '10000000-0000-0000-0000-000000000011', 'authenticated', 'authenticated', 'owner-b1@nello.test', 'not-used', now(), '{}', '{}', now(), now()),
-  ('00000000-0000-0000-0000-000000000000', '10000000-0000-0000-0000-000000000012', 'authenticated', 'authenticated', 'other-b1@nello.test', 'not-used', now(), '{}', '{}', now(), now()),
-  ('00000000-0000-0000-0000-000000000000', '20000000-0000-0000-0000-000000000011', 'authenticated', 'authenticated', 'patient-b1@nello.test', 'not-used', now(), '{}', '{}', now(), now());
+  ('00000000-0000-0000-0000-000000000000', '10000000-0000-0000-0000-000000000011', 'authenticated', 'authenticated', 'owner-b1@example.invalid', 'not-used', now(), '{}', '{"user_type":"nutritionist"}', now(), now()),
+  ('00000000-0000-0000-0000-000000000000', '10000000-0000-0000-0000-000000000012', 'authenticated', 'authenticated', 'other-b1@example.invalid', 'not-used', now(), '{}', '{"user_type":"nutritionist"}', now(), now()),
+  ('00000000-0000-0000-0000-000000000000', '20000000-0000-0000-0000-000000000011', 'authenticated', 'authenticated', 'patient-b1@example.invalid', 'not-used', now(), '{}', '{"user_type":"patient"}', now(), now());
 
+-- Auth creates this profile first; configure the synthetic actor without disabling its trigger.
 insert into public.user_profiles (id, name, user_type) values
-  ('10000000-0000-0000-0000-000000000011', 'Nutricionista Proprietária B1', 'nutritionist'),
+('10000000-0000-0000-0000-000000000011', 'Nutricionista Proprietária B1', 'nutritionist'),
   ('10000000-0000-0000-0000-000000000012', 'Nutricionista Nova B1', 'nutritionist'),
-  ('20000000-0000-0000-0000-000000000011', 'Paciente B1', 'patient');
+  ('20000000-0000-0000-0000-000000000011', 'Paciente B1', 'patient')
+on conflict (id) do update set
+  name=excluded.name,
+  user_type=excluded.user_type;
 
 select set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000011', true);
 select public.start_care_episode('20000000-0000-0000-0000-000000000011', 'qa_started');

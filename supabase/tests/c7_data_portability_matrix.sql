@@ -14,13 +14,21 @@ begin
 end;
 $$;
 
-insert into auth.users(instance_id,id,aud,role,email,encrypted_password,confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at) values
-('00000000-0000-0000-0000-000000000000','95000000-0000-0000-0000-000000000001','authenticated','authenticated','c7-patient@nello.test','x',now(),'{}','{}',now(),now()),
-('00000000-0000-0000-0000-000000000000','95000000-0000-0000-0000-000000000002','authenticated','authenticated','c7-pro@nello.test','x',now(),'{}','{}',now(),now());
+insert into auth.users(instance_id,id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at) values
+('00000000-0000-0000-0000-000000000000','95000000-0000-0000-0000-000000000001','authenticated','authenticated','c7-patient@example.invalid','x',now(),'{}','{"user_type":"patient"}',now(),now()),
+('00000000-0000-0000-0000-000000000000','95000000-0000-0000-0000-000000000002','authenticated','authenticated','c7-pro@example.invalid','x',now(),'{}','{"user_type":"nutritionist"}',now(),now());
 
-insert into public.user_profiles(id,name,user_type,is_active,email,invite_code,patient_invite_code) values
-('95000000-0000-0000-0000-000000000001','Paciente C7','patient',true,'c7-patient@nello.test','SECRET-INVITE','SECRET-PATIENT'),
-('95000000-0000-0000-0000-000000000002','Nutricionista C7','nutritionist',true,'c7-pro@nello.test',null,null);
+-- Auth creates this profile first; configure the synthetic actor without disabling its trigger.
+insert into public.user_profiles (id,name,user_type,is_active,email,invite_code,patient_invite_code) values
+('95000000-0000-0000-0000-000000000001','Paciente C7','patient',true,'c7-patient@example.invalid','SECRET-INVITE','SECRET-PATIENT'),
+('95000000-0000-0000-0000-000000000002','Nutricionista C7','nutritionist',true,'c7-pro@example.invalid',null,null)
+on conflict (id) do update set
+  name=excluded.name,
+  user_type=excluded.user_type,
+  is_active=excluded.is_active,
+  email=excluded.email,
+  invite_code=excluded.invite_code,
+  patient_invite_code=excluded.patient_invite_code;
 
 insert into public.notifications(user_id,type,content,is_read,title,message,link_url)
 values('95000000-0000-0000-0000-000000000001','test','{"text":"C7"}'::jsonb,false,'C7','Teste','/private/token');

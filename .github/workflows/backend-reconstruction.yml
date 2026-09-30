@@ -50,6 +50,9 @@ jobs:
       - name: Verify all captured Edge workers start
         if: ${{ !cancelled() && steps.rebuild.outcome == 'success' }}
         run: node scripts/backend/edge-boot-smoke.mjs
+      - name: Verify forward detachment contract on the synthetic PostgreSQL 17 clone
+        if: ${{ !cancelled() && steps.rebuild.outcome == 'success' }}
+        run: node scripts/backend/forward-contracts.mjs
       - name: Preserve diagnostics
         if: always()
         uses: actions/upload-artifact@v6
@@ -63,6 +66,7 @@ jobs:
             type-generation.log
             .backend-ci/restore-results/
             .backend-ci/edge-results/
+            .backend-ci/forward-results/
           if-no-files-found: ignore
       - name: Stop only the isolated remote stack
         if: always()

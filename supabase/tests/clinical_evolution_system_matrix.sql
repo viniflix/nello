@@ -29,12 +29,14 @@ begin
   ) and (
     professional_role <> 'nutritionist'
     or status <> 'approved'
-    or crn_number <> '12345'
+    or crn_number <> '9000' || right(user_id::text,2)
     or crn_region <> 'CRN-3'
     or valid_until <= now()
     or reviewed_at is null
   );
-  if v_bad <> 0 then
+  if v_bad <> 0 or (select count(*) from public.professional_verifications
++    where user_id in ('10000000-0000-0000-0000-000000000041',
++      '10000000-0000-0000-0000-000000000042','10000000-0000-0000-0000-000000000043')) <> 3 then
     raise exception 'invalid_nutritionist_fixture: %', v_bad;
   end if;
 

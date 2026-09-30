@@ -1,18 +1,28 @@
 begin;
 
 -- Fixed C1 identities and episodes.
-insert into auth.users(instance_id,id,aud,role,email,encrypted_password,confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at) values
-('00000000-0000-0000-0000-000000000000','10000000-0000-0000-0000-000000000042','authenticated','authenticated','former-c1@nello.test','x',now(),'{}','{}',now(),now()),
-('00000000-0000-0000-0000-000000000000','10000000-0000-0000-0000-000000000043','authenticated','authenticated','unrelated-c1@nello.test','x',now(),'{}','{}',now(),now()),
-('00000000-0000-0000-0000-000000000000','10000000-0000-0000-0000-000000000044','authenticated','authenticated','student-c1@nello.test','x',now(),'{}','{}',now(),now());
-insert into public.user_profiles(id,name,user_type,is_admin,is_active) values
+insert into auth.users(instance_id,id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at) values
+('00000000-0000-0000-0000-000000000000','10000000-0000-0000-0000-000000000042','authenticated','authenticated','former-c1@example.invalid','x',now(),'{}','{"user_type":"nutritionist"}',now(),now()),
+('00000000-0000-0000-0000-000000000000','10000000-0000-0000-0000-000000000043','authenticated','authenticated','unrelated-c1@example.invalid','x',now(),'{}','{"user_type":"nutritionist"}',now(),now()),
+('00000000-0000-0000-0000-000000000000','10000000-0000-0000-0000-000000000044','authenticated','authenticated','student-c1@example.invalid','x',now(),'{}','{"user_type":"nutritionist"}',now(),now());
+-- Auth creates this profile first; configure the synthetic actor without disabling its trigger.
+insert into public.user_profiles (id,name,user_type,is_admin,is_active) values
 ('10000000-0000-0000-0000-000000000042','Former C1','nutritionist',false,true),
 ('10000000-0000-0000-0000-000000000043','Unrelated C1','nutritionist',false,true),
-('10000000-0000-0000-0000-000000000044','Student C1','nutritionist',false,true);
+('10000000-0000-0000-0000-000000000044','Student C1','nutritionist',false,true)
+on conflict (id) do update set
+  name=excluded.name,
+  user_type=excluded.user_type,
+  is_admin=excluded.is_admin,
+  is_active=excluded.is_active;
 insert into public.professional_verifications(user_id,professional_role,status,verification_method,valid_until,decision_reason) values
 ('10000000-0000-0000-0000-000000000042','nutritionist','approved','official_registry_manual',now()+interval '1 year','matrix'),
 ('10000000-0000-0000-0000-000000000043','nutritionist','approved','official_registry_manual',now()+interval '1 year','matrix'),
-('10000000-0000-0000-0000-000000000044','student','approved','student_document_manual',now()+interval '1 year','matrix');
+('10000000-0000-0000-0000-000000000044','student','approved','student_document_manual',now()+interval '1 year','matrix')
+on conflict (user_id) do update set
+  professional_role=excluded.professional_role,status=excluded.status,
+  verification_method=excluded.verification_method,valid_until=excluded.valid_until,
+  decision_reason=excluded.decision_reason;
 insert into public.care_episodes(id,patient_id,nutritionist_id,status,started_at,ended_at,start_reason,end_reason,started_by,ended_by) values
 ('40000000-0000-0000-0000-000000000041','20000000-0000-0000-0000-000000000041','10000000-0000-0000-0000-000000000042','ended',now()-interval '1 year',now()-interval '6 months','started','ended','10000000-0000-0000-0000-000000000042','10000000-0000-0000-0000-000000000042'),
 ('40000000-0000-0000-0000-000000000043','20000000-0000-0000-0000-000000000041','10000000-0000-0000-0000-000000000041','active',now()-interval '1 month',null,'started',null,'10000000-0000-0000-0000-000000000041',null);
@@ -150,14 +160,14 @@ do $$ declare rejected boolean; forbidden_field text; target_id uuid; result jso
  rejected:=false; begin perform public.update_patient_progressive_profile('20000000-0000-0000-0000-000000000041','{"name":""}','nutritionist'); exception when check_violation then rejected:=true; end; if not rejected then raise exception 'empty_name_accepted'; end if;
  rejected:=false; begin perform public.upsert_patient_legal_guardian('20000000-0000-0000-0000-000000000041','40000000-0000-0000-0000-000000000043','{"name":"CPF","relationship":"other","cpf_last4":"1234"}'); exception when invalid_parameter_value then rejected:=true; end; if not rejected then raise exception 'cpf_accepted_without_hmac'; end if;
  reset role; update public.patient_episode_legal_guardians set valid_from=now()+interval '2 days' where care_episode_id='40000000-0000-0000-0000-000000000043' and status='active'; set local role authenticated; perform set_config('request.jwt.claim.sub','10000000-0000-0000-0000-000000000041',true);
- result:=public.upsert_patient_legal_guardian('20000000-0000-0000-0000-000000000041','40000000-0000-0000-0000-000000000043','{"name":"Period","relationship":"mother","reason":"matrix period replacement","valid_from":"2026-07-12","valid_until":"2027-07-12","contact":{"phone":"85999999999","email":"guardian@nello.test"},"consent":{"recorded":true,"version":"v1","recorded_at":"2026-07-12T10:00:00Z","evidence":"term-reference"}}');
+ result:=public.upsert_patient_legal_guardian('20000000-0000-0000-0000-000000000041','40000000-0000-0000-0000-000000000043','{"name":"Period","relationship":"mother","reason":"matrix period replacement","valid_from":"2026-07-12","valid_until":"2027-07-12","contact":{"phone":"85999999999","email":"guardian@example.invalid"},"consent":{"recorded":true,"version":"v1","recorded_at":"2026-07-12T10:00:00Z","evidence":"term-reference"}}');
  reset role;
  if exists(select 1 from public.patient_episode_legal_guardians g where g.care_episode_id='40000000-0000-0000-0000-000000000043' and g.status='replaced' and g.valid_until<g.valid_from) then raise exception 'future_guardian_replacement_period_invalid'; end if;
  if not exists(select 1 from public.legal_guardian_events e join public.patient_episode_legal_guardians g on g.id=e.legal_guardian_id where g.care_episode_id='40000000-0000-0000-0000-000000000043' and e.to_status='replaced' and (e.metadata->>'valid_until')::timestamptz>=g.valid_from) then raise exception 'future_guardian_replacement_event_metadata_invalid'; end if;
  if result->>'valid_from' not like '2026-07-12%' or result->>'valid_until' not like '2027-07-12%' or result#>>'{consent,recorded}'<>'true' then raise exception 'guardian_period_consent_not_persisted: %',result; end if;
  if not exists(select 1 from public.legal_guardian_events e where e.legal_guardian_id=(result->>'id')::uuid and e.metadata#>>'{consent,recorded}'='true') then raise exception 'guardian_period_consent_event_missing'; end if;
- if result#>>'{contact,email}'<>'guardian@nello.test' or result#>>'{consent,version}'<>'v1' then raise exception 'guardian_contact_or_consent_evidence_missing'; end if;
- if exists(select 1 from public.legal_guardian_events e where e.legal_guardian_id=(result->>'id')::uuid and (e.metadata::text like '%guardian@nello.test%' or e.metadata::text like '%term-reference%')) then raise exception 'guardian_event_leaked_contact_or_evidence'; end if;
+ if result#>>'{contact,email}'<>'guardian@example.invalid' or result#>>'{consent,version}'<>'v1' then raise exception 'guardian_contact_or_consent_evidence_missing'; end if;
+ if exists(select 1 from public.legal_guardian_events e where e.legal_guardian_id=(result->>'id')::uuid and (e.metadata::text like '%guardian@example.invalid%' or e.metadata::text like '%term-reference%')) then raise exception 'guardian_event_leaked_contact_or_evidence'; end if;
  set local role authenticated; perform set_config('request.jwt.claim.sub','10000000-0000-0000-0000-000000000041',true);
  rejected:=false; begin perform public.upsert_patient_legal_guardian('20000000-0000-0000-0000-000000000041','40000000-0000-0000-0000-000000000043','{"name":"Missing reason","relationship":"other"}'); exception when invalid_parameter_value then rejected:=true; end; if not rejected then raise exception 'replacement_without_reason_accepted'; end if;
  rejected:=false; begin perform public.revoke_patient_legal_guardian((result->>'id')::uuid,''); exception when invalid_parameter_value then rejected:=true; end; if not rejected then raise exception 'revocation_without_reason_accepted'; end if;

@@ -1,12 +1,19 @@
 begin;
-insert into auth.users(instance_id,id,aud,role,email,encrypted_password,confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at) values
-('00000000-0000-0000-0000-000000000000','96000000-0000-0000-0000-000000000001','authenticated','authenticated','c8-patient@nello.test','x',now(),'{}','{}',now(),now()),
-('00000000-0000-0000-0000-000000000000','96000000-0000-0000-0000-000000000002','authenticated','authenticated','c8-other@nello.test','x',now(),'{}','{}',now(),now()),
-('00000000-0000-0000-0000-000000000000','96000000-0000-0000-0000-000000000003','authenticated','authenticated','c8-admin@nello.test','x',now(),'{}','{}',now(),now());
-insert into public.user_profiles(id,name,user_type,is_admin,is_active,email) values
-('96000000-0000-0000-0000-000000000001','Paciente C8','patient',false,true,'c8-patient@nello.test'),
-('96000000-0000-0000-0000-000000000002','Outro C8','patient',false,true,'c8-other@nello.test'),
-('96000000-0000-0000-0000-000000000003','Admin C8','admin',true,true,'c8-admin@nello.test');
+insert into auth.users(instance_id,id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at) values
+('00000000-0000-0000-0000-000000000000','96000000-0000-0000-0000-000000000001','authenticated','authenticated','c8-patient@example.invalid','x',now(),'{}','{"user_type":"patient"}',now(),now()),
+('00000000-0000-0000-0000-000000000000','96000000-0000-0000-0000-000000000002','authenticated','authenticated','c8-other@example.invalid','x',now(),'{}','{"user_type":"patient"}',now(),now()),
+('00000000-0000-0000-0000-000000000000','96000000-0000-0000-0000-000000000003','authenticated','authenticated','c8-admin@example.invalid','x',now(),'{}','{"user_type":"patient"}',now(),now());
+-- Auth creates this profile first; configure the synthetic actor without disabling its trigger.
+insert into public.user_profiles (id,name,user_type,is_admin,is_active,email) values
+('96000000-0000-0000-0000-000000000001','Paciente C8','patient',false,true,'c8-patient@example.invalid'),
+('96000000-0000-0000-0000-000000000002','Outro C8','patient',false,true,'c8-other@example.invalid'),
+('96000000-0000-0000-0000-000000000003','Admin C8','admin',true,true,'c8-admin@example.invalid')
+on conflict (id) do update set
+  name=excluded.name,
+  user_type=excluded.user_type,
+  is_admin=excluded.is_admin,
+  is_active=excluded.is_active,
+  email=excluded.email;
 
 create temporary table c8_ids(request_id uuid,revision bigint);
 grant select,insert,update on c8_ids to authenticated;

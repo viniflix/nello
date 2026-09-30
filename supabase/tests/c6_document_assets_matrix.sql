@@ -41,12 +41,19 @@ begin
 end;
 $$;
 
-insert into auth.users(instance_id,id,aud,role,email,encrypted_password,confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at) values
-('00000000-0000-0000-0000-000000000000','92000000-0000-0000-0000-000000000001','authenticated','authenticated','c6-assets-owner@nello.test','x',now(),'{}','{}',now(),now()),
-('00000000-0000-0000-0000-000000000000','92000000-0000-0000-0000-000000000002','authenticated','authenticated','c6-assets-other@nello.test','x',now(),'{}','{}',now(),now());
-insert into public.user_profiles(id,name,user_type,is_admin,is_active,email) values
-('92000000-0000-0000-0000-000000000001','Assets Owner C6','nutritionist',false,true,'c6-assets-owner@nello.test'),
-('92000000-0000-0000-0000-000000000002','Assets Other C6','nutritionist',false,true,'c6-assets-other@nello.test');
+insert into auth.users(instance_id,id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at) values
+('00000000-0000-0000-0000-000000000000','92000000-0000-0000-0000-000000000001','authenticated','authenticated','c6-assets-owner@example.invalid','x',now(),'{}','{"user_type":"nutritionist"}',now(),now()),
+('00000000-0000-0000-0000-000000000000','92000000-0000-0000-0000-000000000002','authenticated','authenticated','c6-assets-other@example.invalid','x',now(),'{}','{"user_type":"nutritionist"}',now(),now());
+-- Auth creates this profile first; configure the synthetic actor without disabling its trigger.
+insert into public.user_profiles (id,name,user_type,is_admin,is_active,email) values
+('92000000-0000-0000-0000-000000000001','Assets Owner C6','nutritionist',false,true,'c6-assets-owner@example.invalid'),
+('92000000-0000-0000-0000-000000000002','Assets Other C6','nutritionist',false,true,'c6-assets-other@example.invalid')
+on conflict (id) do update set
+  name=excluded.name,
+  user_type=excluded.user_type,
+  is_admin=excluded.is_admin,
+  is_active=excluded.is_active,
+  email=excluded.email;
 update public.professional_verifications set crn_region='CRN-3',crn_number='C6-A1',normalized_crn='CRN3C6A1'
 where user_id='92000000-0000-0000-0000-000000000001';
 

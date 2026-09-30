@@ -3,21 +3,30 @@ begin;
 
 insert into auth.users (
   instance_id, id, aud, role, email, encrypted_password,
-  confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at
+  email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at
 ) values
-  ('00000000-0000-0000-0000-000000000000', '10000000-0000-0000-0000-000000000031', 'authenticated', 'authenticated', 'nutritionist-b3@nello.test', 'not-used', now(), '{}', '{}', now(), now()),
-  ('00000000-0000-0000-0000-000000000000', '20000000-0000-0000-0000-000000000031', 'authenticated', 'authenticated', 'patient-b3@nello.test', 'not-used', now(), '{}', '{}', now(), now());
+  ('00000000-0000-0000-0000-000000000000', '10000000-0000-0000-0000-000000000031', 'authenticated', 'authenticated', 'nutritionist-b3@example.invalid', 'not-used', now(), '{}', '{"user_type":"nutritionist"}', now(), now()),
+  ('00000000-0000-0000-0000-000000000000', '20000000-0000-0000-0000-000000000031', 'authenticated', 'authenticated', 'patient-b3@example.invalid', 'not-used', now(), '{}', '{"user_type":"patient"}', now(), now());
 
+-- Auth creates this profile first; configure the synthetic actor without disabling its trigger.
 insert into public.user_profiles (id, name, user_type, nutritionist_id, is_active) values
-  ('10000000-0000-0000-0000-000000000031', 'Nutricionista B3', 'nutritionist', null, true),
-  ('20000000-0000-0000-0000-000000000031', 'Paciente B3', 'patient', '10000000-0000-0000-0000-000000000031', true);
+('10000000-0000-0000-0000-000000000031', 'Nutricionista B3', 'nutritionist', null, true),
+  ('20000000-0000-0000-0000-000000000031', 'Paciente B3', 'patient', '10000000-0000-0000-0000-000000000031', true)
+on conflict (id) do update set
+  name=excluded.name,
+  user_type=excluded.user_type,
+  nutritionist_id=excluded.nutritionist_id,
+  is_active=excluded.is_active;
 
 insert into public.professional_verifications (
   user_id, professional_role, status, verification_method, valid_until, decision_reason
 ) values (
   '10000000-0000-0000-0000-000000000031', 'nutritionist', 'approved',
   'qa_fixture', now() + interval '1 year', 'qa_fixture'
-);
+) on conflict (user_id) do update set
+  professional_role=excluded.professional_role,status=excluded.status,
+  verification_method=excluded.verification_method,valid_until=excluded.valid_until,
+  decision_reason=excluded.decision_reason;
 
 insert into public.nutritionist_patients (nutritionist_id, patient_id, status)
 values ('10000000-0000-0000-0000-000000000031', '20000000-0000-0000-0000-000000000031', 'active');
@@ -92,18 +101,29 @@ end $$;
 -- Conta nova não verificada não pode sequer criar solicitação real.
 insert into auth.users (
   instance_id, id, aud, role, email, encrypted_password,
-  confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at
+  email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at
 ) values
-  ('00000000-0000-0000-0000-000000000000', '10000000-0000-0000-0000-000000000032', 'authenticated', 'authenticated', 'unverified-b4@nello.test', 'not-used', now(), '{}', '{}', now(), now()),
-  ('00000000-0000-0000-0000-000000000000', '10000000-0000-0000-0000-000000000033', 'authenticated', 'authenticated', 'student-b4@nello.test', 'not-used', now(), '{}', '{}', now(), now()),
-  ('00000000-0000-0000-0000-000000000000', '20000000-0000-0000-0000-000000000032', 'authenticated', 'authenticated', 'real-patient-b4@nello.test', 'not-used', now(), '{}', '{}', now(), now()),
-  ('00000000-0000-0000-0000-000000000000', '20000000-0000-0000-0000-000000000033', 'authenticated', 'authenticated', 'simulation-b4@nello.test', 'not-used', now(), '{}', '{}', now(), now());
+  ('00000000-0000-0000-0000-000000000000', '10000000-0000-0000-0000-000000000032', 'authenticated', 'authenticated', 'unverified-b4@example.invalid', 'not-used', now(), '{}', '{"user_type":"nutritionist"}', now(), now()),
+  ('00000000-0000-0000-0000-000000000000', '10000000-0000-0000-0000-000000000033', 'authenticated', 'authenticated', 'student-b4@example.invalid', 'not-used', now(), '{}', '{"user_type":"nutritionist"}', now(), now()),
+  ('00000000-0000-0000-0000-000000000000', '20000000-0000-0000-0000-000000000032', 'authenticated', 'authenticated', 'real-patient-b4@example.invalid', 'not-used', now(), '{}', '{"user_type":"patient"}', now(), now()),
+  ('00000000-0000-0000-0000-000000000000', '20000000-0000-0000-0000-000000000033', 'authenticated', 'authenticated', 'simulation-b4@example.invalid', 'not-used', now(), '{}', '{"user_type":"patient"}', now(), now());
 
+-- Auth creates this profile first; configure the synthetic actor without disabling its trigger.
 insert into public.user_profiles (id, name, user_type, is_active) values
-  ('10000000-0000-0000-0000-000000000032', 'Nutricionista Não Verificada', 'nutritionist', true),
+('10000000-0000-0000-0000-000000000032', 'Nutricionista Não Verificada', 'nutritionist', true),
   ('10000000-0000-0000-0000-000000000033', 'Estudante B4', 'nutritionist', true),
   ('20000000-0000-0000-0000-000000000032', 'Paciente Real B4', 'patient', true),
-  ('20000000-0000-0000-0000-000000000033', 'Paciente Simulado B4', 'patient', true);
+  ('20000000-0000-0000-0000-000000000033', 'Paciente Simulado B4', 'patient', true)
+on conflict (id) do update set
+  name=excluded.name,
+  user_type=excluded.user_type,
+  is_active=excluded.is_active;
+
+-- Registration currently auto-approves testers. Explicitly construct the denied
+-- persona so these assertions continue exercising the unverified contract.
+update public.professional_verifications
+set status='not_submitted',valid_until=null,reviewed_at=null,decision_reason=null
+where user_id='10000000-0000-0000-0000-000000000032';
 
 insert into public.professional_verifications (
   user_id, professional_role, status, verification_method, institution_name,
@@ -112,7 +132,11 @@ insert into public.professional_verifications (
   '10000000-0000-0000-0000-000000000033', 'student', 'approved',
   'student_document_manual', 'Universidade QA', 5, current_date + 500,
   now() + interval '6 months', 'qa_fixture'
-);
+) on conflict (user_id) do update set
+  professional_role=excluded.professional_role,status=excluded.status,
+  verification_method=excluded.verification_method,institution_name=excluded.institution_name,
+  current_semester=excluded.current_semester,expected_graduation_at=excluded.expected_graduation_at,
+  valid_until=excluded.valid_until,decision_reason=excluded.decision_reason;
 
 do $$
 begin

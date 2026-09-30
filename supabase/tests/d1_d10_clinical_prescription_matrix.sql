@@ -1,12 +1,18 @@
 begin;
-insert into auth.users(instance_id,id,aud,role,email,encrypted_password,confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)values
-('00000000-0000-0000-0000-000000000000','97000000-0000-0000-0000-000000000001','authenticated','authenticated','d-pro@nello.test','x',now(),'{}','{}',now(),now()),
-('00000000-0000-0000-0000-000000000000','97000000-0000-0000-0000-000000000002','authenticated','authenticated','d-patient@nello.test','x',now(),'{}','{}',now(),now()),
-('00000000-0000-0000-0000-000000000000','97000000-0000-0000-0000-000000000003','authenticated','authenticated','d-other@nello.test','x',now(),'{}','{}',now(),now());
-insert into public.user_profiles(id,name,user_type,is_active,email)values
-('97000000-0000-0000-0000-000000000001','Nutricionista D','nutritionist',true,'d-pro@nello.test'),
-('97000000-0000-0000-0000-000000000002','Paciente D','patient',true,'d-patient@nello.test'),
-('97000000-0000-0000-0000-000000000003','Outro D','nutritionist',true,'d-other@nello.test');
+insert into auth.users(instance_id,id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)values
+('00000000-0000-0000-0000-000000000000','97000000-0000-0000-0000-000000000001','authenticated','authenticated','d-pro@example.invalid','x',now(),'{}','{"user_type":"nutritionist"}',now(),now()),
+('00000000-0000-0000-0000-000000000000','97000000-0000-0000-0000-000000000002','authenticated','authenticated','d-patient@example.invalid','x',now(),'{}','{"user_type":"patient"}',now(),now()),
+('00000000-0000-0000-0000-000000000000','97000000-0000-0000-0000-000000000003','authenticated','authenticated','d-other@example.invalid','x',now(),'{}','{"user_type":"nutritionist"}',now(),now());
+-- Auth creates this profile first; configure the synthetic actor without disabling its trigger.
+insert into public.user_profiles (id,name,user_type,is_active,email) values
+('97000000-0000-0000-0000-000000000001','Nutricionista D','nutritionist',true,'d-pro@example.invalid'),
+('97000000-0000-0000-0000-000000000002','Paciente D','patient',true,'d-patient@example.invalid'),
+('97000000-0000-0000-0000-000000000003','Outro D','nutritionist',true,'d-other@example.invalid')
+on conflict (id) do update set
+  name=excluded.name,
+  user_type=excluded.user_type,
+  is_active=excluded.is_active,
+  email=excluded.email;
 update public.professional_verifications set status='approved',professional_role='nutritionist',crn_region='CRN-3',crn_number='D-1',normalized_crn='CRN3D1',valid_until=now()+interval'1 year'where user_id='97000000-0000-0000-0000-000000000001';
 insert into public.care_episodes(id,patient_id,nutritionist_id,status,started_at,start_reason,started_by)values('97000000-0000-0000-0000-000000000010','97000000-0000-0000-0000-000000000002','97000000-0000-0000-0000-000000000001','active',now(),'qa-d','97000000-0000-0000-0000-000000000001');
 -- Mantém o fixture compatível com as políticas legadas ainda vigentes durante a
@@ -28,7 +34,7 @@ select public.accept_clinical_protocol('energy.mifflin_st_jeor',1,'accepted','Ap
 select public.accept_clinical_protocol('energy.mifflin_st_jeor',1,'restricted','Restrito após nova avaliação profissional de QA');
 do $$begin if(select value->'professional_decision'->>'decision'from public.list_clinical_protocol_catalog('energy')value where value->>'code'='energy.mifflin_st_jeor')<>'restricted'then raise exception 'D2 current professional decision projection failed';end if;end$$;
 
-with x as(insert into public.growth_records(patient_id,care_episode_id,record_date,weight,height,created_by_user_id,protocol_code,protocol_version,source_snapshot,confirmed_by,confirmed_at)values('97000000-0000-0000-0000-000000000002','97000000-0000-0000-0000-000000000010',current_date,70,170,auth.uid(),'anthropometry.bmi_adult',1,'{"method":"measured"}',auth.uid(),now())returning id)update d_ids set anthro=(select id from x);
+with x as(insert into public.growth_records(patient_id,care_episode_id,record_date,weight,height,created_by_user_id,protocol_code,protocol_version,source_snapshot,confirmed_by,email_confirmed_at)values('97000000-0000-0000-0000-000000000002','97000000-0000-0000-0000-000000000010',current_date,70,170,auth.uid(),'anthropometry.bmi_adult',1,'{"method":"measured"}',auth.uid(),now())returning id)update d_ids set anthro=(select id from x);
 with x as(select public.revise_anthropometry_record((select anthro from d_ids),'{"weight":70.5}'::jsonb,'Correção conferida na ficha de avaliação de QA')p)update d_ids set anthro=(select(p->>'id')::bigint from x);
 do $$begin if(select revision_number from public.growth_records where id=(select anthro from d_ids))<>2 then raise exception 'D3 anthropometry revision missing';end if;end$$;
 select public.invalidate_anthropometry_record((select anthro from d_ids),'Medida inválida confirmada em QA');
@@ -41,7 +47,7 @@ with x as(select public.revise_lab_result_record((select lab from d_ids),jsonb_b
 select public.invalidate_lab_result_record((select lab_revision from d_ids),'Resultado duplicado no laudo de QA');
 do $$begin if(select is_latest_revision from public.lab_results where id=(select lab from d_ids))then raise exception 'D5 old lab remained latest';end if;begin delete from public.lab_results where id=(select lab from d_ids);raise exception 'D5 hard delete accepted';exception when check_violation or insufficient_privilege then null;end;end$$;
 
-with x as(insert into public.energy_expenditure_calculations(patient_id,nutritionist_id,care_episode_id,weight,height,age,gender,protocol,activity_level,tmb,get,tmb_protocol,tmb_result,activity_factor,get_result,final_planned_kcal,protocol_code,protocol_version,input_snapshot,output_snapshot,confirmed_by,confirmed_at)values('97000000-0000-0000-0000-000000000002',auth.uid(),'97000000-0000-0000-0000-000000000010',70,170,30,'M','mifflin',1.55,1600,2480,'mifflin',1600,1.55,2480,2200,'energy.mifflin_st_jeor',1,'{"weight_kg":70}','{"planned_kcal":2200}',auth.uid(),now())returning id)update d_ids set energy=(select id from x);
+with x as(insert into public.energy_expenditure_calculations(patient_id,nutritionist_id,care_episode_id,weight,height,age,gender,protocol,activity_level,tmb,get,tmb_protocol,tmb_result,activity_factor,get_result,final_planned_kcal,protocol_code,protocol_version,input_snapshot,output_snapshot,confirmed_by,email_confirmed_at)values('97000000-0000-0000-0000-000000000002',auth.uid(),'97000000-0000-0000-0000-000000000010',70,170,30,'M','mifflin',1.55,1600,2480,'mifflin',1600,1.55,2480,2200,'energy.mifflin_st_jeor',1,'{"weight_kg":70}','{"planned_kcal":2200}',auth.uid(),now())returning id)update d_ids set energy=(select id from x);
 do $$begin begin update public.energy_expenditure_calculations set final_planned_kcal=2100 where id=(select energy from d_ids);raise exception 'D4 mutation accepted';exception when check_violation or insufficient_privilege then null;end;begin delete from public.energy_expenditure_calculations where id=(select energy from d_ids);raise exception 'D4 hard delete accepted';exception when check_violation or insufficient_privilege then null;end;end$$;
 
 do $$declare v_food uuid;v_template uuid;begin select id into v_food from public.foods where calories>0 limit 1;if v_food is null then raise exception 'D9 food fixture missing';end if;v_template:=public.create_diet_template(auth.uid(),'Template D completo','Cópia profunda',array['qa'],jsonb_build_array(jsonb_build_object('name','Almoço','time','12:00','order_index',0,'foods',jsonb_build_array(jsonb_build_object('food_id',v_food,'quantity',100,'unit','g','order_index',0)))));update d_ids set template=v_template;perform public.update_diet_template(v_template,auth.uid(),'Template D versionado','Segunda versão',array['qa','v2'],jsonb_build_array(jsonb_build_object('name','Almoço','time','12:00','order_index',0,'foods',jsonb_build_array(jsonb_build_object('food_id',v_food,'quantity',120,'unit','g','order_index',0)))));end$$;

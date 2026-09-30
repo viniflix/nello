@@ -1,8 +1,15 @@
 begin;
-insert into auth.users(instance_id,id,aud,role,email,encrypted_password,confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
-values('00000000-0000-0000-0000-000000000000','93000000-0000-0000-0000-000000000001','authenticated','authenticated','c6-composition@nello.test','x',now(),'{}','{}',now(),now());
-insert into public.user_profiles(id,name,user_type,is_admin,is_active,email)
-values('93000000-0000-0000-0000-000000000001','Composição C6','nutritionist',false,true,'c6-composition@nello.test');
+insert into auth.users(instance_id,id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
+values('00000000-0000-0000-0000-000000000000','93000000-0000-0000-0000-000000000001','authenticated','authenticated','c6-composition@example.invalid','x',now(),'{}','{"user_type":"nutritionist"}',now(),now());
+-- Auth creates this profile first; configure the synthetic actor without disabling its trigger.
+insert into public.user_profiles (id,name,user_type,is_admin,is_active,email) values
+('93000000-0000-0000-0000-000000000001','Composição C6','nutritionist',false,true,'c6-composition@example.invalid')
+on conflict (id) do update set
+  name=excluded.name,
+  user_type=excluded.user_type,
+  is_admin=excluded.is_admin,
+  is_active=excluded.is_active,
+  email=excluded.email;
 update public.professional_verifications set crn_region='CRN-3',crn_number='C6-C1',normalized_crn='CRN3C6C1'
 where user_id='93000000-0000-0000-0000-000000000001';
 insert into public.professional_document_identities(

@@ -161,7 +161,7 @@ begin
 end;
 $$;
 
-insert into auth.users (instance_id,id,aud,role,email,encrypted_password,confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
+insert into auth.users (instance_id,id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
 values ('00000000-0000-0000-0000-000000000000','10000000-0000-0000-0000-000000000043','authenticated','authenticated','duplicate-b4@nello.test','not-used',now(),'{}','{}',now(),now());
 insert into public.user_profiles (id,name,user_type,is_admin,is_active)
 values ('10000000-0000-0000-0000-000000000043','Nutricionista Duplicada B4','nutritionist',false,true);
@@ -219,7 +219,7 @@ $$;
 reset role;
 
 -- Supervisão estudantil: solicitação, aceite, encerramento e rejeição.
-insert into auth.users (instance_id,id,aud,role,email,encrypted_password,confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at) values
+insert into auth.users (instance_id,id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at) values
 ('00000000-0000-0000-0000-000000000000','10000000-0000-0000-0000-000000000044','authenticated','authenticated','student-supervision@nello.test','not-used',now(),'{}','{}',now(),now()),
 ('00000000-0000-0000-0000-000000000000','10000000-0000-0000-0000-000000000045','authenticated','authenticated','supervisor@nello.test','not-used',now(),'{}','{}',now(),now()),
 ('00000000-0000-0000-0000-000000000000','10000000-0000-0000-0000-000000000046','authenticated','authenticated','document-review@nello.test','not-used',now(),'{}','{}',now(),now());

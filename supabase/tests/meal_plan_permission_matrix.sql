@@ -12,6 +12,13 @@ join public.care_episodes ce
 where np.status = 'active'
 order by np.nutritionist_id, np.created_at;
 
+-- Empty fixture collections must never count as successful permission coverage.
+do $$ begin
+  if (select count(*) from pg_temp.meal_plan_permission_pairs) < 2 then
+    raise exception 'meal_plan_permission_requires_two_distinct_professionals';
+  end if;
+end $$;
+
 create temp table meal_plan_permission_results (
   nutritionist_id uuid,
   patient_id uuid,
@@ -71,6 +78,10 @@ reset role;
 
 do $$
 begin
+  if (select count(*) from pg_temp.meal_plan_permission_results)
+    <> (select count(*) from pg_temp.meal_plan_permission_pairs) then
+    raise exception 'meal_plan_permission_incomplete_execution';
+  end if;
   if exists (
     select 1 from pg_temp.meal_plan_permission_results where not ok
   ) then

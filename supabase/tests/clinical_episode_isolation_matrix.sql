@@ -3,27 +3,37 @@ begin;
 
 insert into auth.users (
   instance_id, id, aud, role, email, encrypted_password,
-  confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at
+  email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at
 ) values
-  ('00000000-0000-0000-0000-000000000000', '10000000-0000-0000-0000-000000000021', 'authenticated', 'authenticated', 'old-b2@nello.test', 'not-used', now(), '{}', '{}', now(), now()),
-  ('00000000-0000-0000-0000-000000000000', '10000000-0000-0000-0000-000000000022', 'authenticated', 'authenticated', 'current-b2@nello.test', 'not-used', now(), '{}', '{}', now(), now()),
-  ('00000000-0000-0000-0000-000000000000', '10000000-0000-0000-0000-000000000023', 'authenticated', 'authenticated', 'unrelated-b2@nello.test', 'not-used', now(), '{}', '{}', now(), now()),
-  ('00000000-0000-0000-0000-000000000000', '20000000-0000-0000-0000-000000000021', 'authenticated', 'authenticated', 'patient-b2@nello.test', 'not-used', now(), '{}', '{}', now(), now());
+  ('00000000-0000-0000-0000-000000000000', '10000000-0000-0000-0000-000000000021', 'authenticated', 'authenticated', 'old-b2@example.invalid', 'not-used', now(), '{}', '{"user_type":"nutritionist"}', now(), now()),
+  ('00000000-0000-0000-0000-000000000000', '10000000-0000-0000-0000-000000000022', 'authenticated', 'authenticated', 'current-b2@example.invalid', 'not-used', now(), '{}', '{"user_type":"nutritionist"}', now(), now()),
+  ('00000000-0000-0000-0000-000000000000', '10000000-0000-0000-0000-000000000023', 'authenticated', 'authenticated', 'unrelated-b2@example.invalid', 'not-used', now(), '{}', '{"user_type":"nutritionist"}', now(), now()),
+  ('00000000-0000-0000-0000-000000000000', '20000000-0000-0000-0000-000000000021', 'authenticated', 'authenticated', 'patient-b2@example.invalid', 'not-used', now(), '{}', '{"user_type":"patient"}', now(), now());
 
 insert into auth.users (
   instance_id, id, aud, role, email, encrypted_password,
-  confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at
+  email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at
 ) values
-  ('00000000-0000-0000-0000-000000000000', '20000000-0000-0000-0000-000000000022', 'authenticated', 'authenticated', 'standalone-b2@nello.test', 'not-used', now(), '{}', '{}', now(), now());
+  ('00000000-0000-0000-0000-000000000000', '20000000-0000-0000-0000-000000000022', 'authenticated', 'authenticated', 'standalone-b2@example.invalid', 'not-used', now(), '{}', '{"user_type":"patient"}', now(), now());
 
+-- Auth creates this profile first; configure the synthetic actor without disabling its trigger.
 insert into public.user_profiles (id, name, user_type, nutritionist_id) values
-  ('10000000-0000-0000-0000-000000000021', 'Nutricionista Anterior B2', 'nutritionist', null),
+('10000000-0000-0000-0000-000000000021', 'Nutricionista Anterior B2', 'nutritionist', null),
   ('10000000-0000-0000-0000-000000000022', 'Nutricionista Atual B2', 'nutritionist', null),
   ('10000000-0000-0000-0000-000000000023', 'Nutricionista Alheio B2', 'nutritionist', null),
-  ('20000000-0000-0000-0000-000000000021', 'Paciente B2', 'patient', '10000000-0000-0000-0000-000000000022');
+  ('20000000-0000-0000-0000-000000000021', 'Paciente B2', 'patient', '10000000-0000-0000-0000-000000000022')
+on conflict (id) do update set
+  name=excluded.name,
+  user_type=excluded.user_type,
+  nutritionist_id=excluded.nutritionist_id;
 
+-- Auth creates this profile first; configure the synthetic actor without disabling its trigger.
 insert into public.user_profiles (id, name, user_type, nutritionist_id) values
-  ('20000000-0000-0000-0000-000000000022', 'Paciente Sem Vínculo B2', 'patient', null);
+('20000000-0000-0000-0000-000000000022', 'Paciente Sem Vínculo B2', 'patient', null)
+on conflict (id) do update set
+  name=excluded.name,
+  user_type=excluded.user_type,
+  nutritionist_id=excluded.nutritionist_id;
 
 insert into public.care_episodes (
   id, patient_id, nutritionist_id, status, started_at, ended_at, start_reason, end_reason
