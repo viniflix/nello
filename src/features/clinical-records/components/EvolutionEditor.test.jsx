@@ -344,9 +344,11 @@ describe('EvolutionEditor', () => {
       'amendment-1',
       'Correção aberta por engano e sem alteração clínica válida.',
     ));
-    expect(loadChain).toHaveBeenCalledTimes(1);
-    expect(onRecordsRefresh).toHaveBeenCalledTimes(1);
-    expect(onReplacementOpen).toHaveBeenCalledWith(signedTarget);
+    await waitFor(() => {
+      expect(loadChain).toHaveBeenCalledTimes(1);
+      expect(onRecordsRefresh).toHaveBeenCalledTimes(1);
+      expect(onReplacementOpen).toHaveBeenCalledWith(signedTarget);
+    });
   });
 
   it('keeps the correction draft open and shows the hook error when abandonment fails', async () => {
@@ -563,9 +565,11 @@ describe('EvolutionEditor', () => {
 
     await waitFor(() => expect(abandonCorrection).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());
-    expect(loadChain).toHaveBeenCalledTimes(1);
-    expect(onRecordsRefresh).toHaveBeenCalledTimes(1);
-    expect(onReplacementOpen).toHaveBeenCalledWith(signedTarget);
+    await waitFor(() => {
+      expect(loadChain).toHaveBeenCalledTimes(1);
+      expect(onRecordsRefresh).toHaveBeenCalledTimes(1);
+      expect(onReplacementOpen).toHaveBeenCalledWith(signedTarget);
+    });
   });
 
   it('shows amendment actions only to the responsible signer of a signed current record', async () => {

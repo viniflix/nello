@@ -24,6 +24,13 @@ vi.mock('@/hooks/use-toast', () => ({ useToast: () => ({ toast: vi.fn() }) }));
 vi.mock('@/components/patient/PatientCheckinHistoryWidget', () => ({ default: () => <div>CHECK-INS</div> }));
 vi.mock('@/components/anthropometry/WeightChart', () => ({ default: () => <div>GRÁFICO DE PESO</div> }));
 vi.mock('framer-motion', () => ({ motion: { div: ({ children, ...props }) => <div {...props}>{children}</div> } }));
+vi.mock('recharts', async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    ResponsiveContainer: ({ children }) => <div style={{ width: 800, height: 400 }}>{children}</div>,
+  };
+});
 vi.mock('@/features/clinical-records/api/record-foundation-queries', () => ({
   getPatientRecordFoundation: mocks.foundation,
 }));
