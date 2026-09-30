@@ -240,6 +240,11 @@ Somente nesse clone, ACLs de tabelas com esse default verificado são materializ
 com GRANT ao próprio dono, conservando direitos efetivos. ACL não nula divergente
 não é corrigida. O comparador independente continua inalterado e exige zero
 diferenças nas 15 seções; nenhum grant ou objeto da aplicação é excluído do gate.
+O CHECK clinical_attachments_path_check tem duas representações equivalentes:
+AND aninhado no baseline e AND plano ao passar pelo parser PostgreSQL17 no restore.
+Somente essas duas strings exatas desse mesmo objeto são equivalentes no gate.
+Limites 10/500, regex, operadores, casts, identidade e flags de validação continuam
+comparados; os testes do comparador real rejeitam alterações nesses contratos.
 
 O smoke das oito Edge workers usa GET recusado pelos handlers (405 ou 410), para
 exercitar imports e inicialização sem mutações nem chamadas a APIs de negócio.

@@ -1,5 +1,6 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { isDeepStrictEqual } from 'node:util';
+import { canonicalConstraint } from './constraint-representation.mjs';
 const expected = JSON.parse(readFileSync(process.argv[2], 'utf8'));
 const actual = JSON.parse(readFileSync(process.argv[3], 'utf8'));
 const differences = [];
@@ -7,7 +8,7 @@ const differences = [];
 // Keep multiplicity, every field, ordered function config and enum sort positions.
 function canonical(key, items) {
   return items?.map((item) => {
-    const result = { ...item };
+    const result = { ...(key === 'constraints' ? canonicalConstraint(item) : item) };
     if (key === 'realtime' && Array.isArray(result.columns)) result.columns = [...result.columns].sort();
     // ACL entry order is incidental; principal, rights, grant options and grantor remain exact.
     if (typeof result.grants === 'string' && /^\{[^"{}]*\}$/.test(result.grants)) {
