@@ -563,7 +563,7 @@ begin
   perform set_config('request.jwt.claim.sub','10000000-0000-0000-0000-000000000044',true);
   begin
     perform public.create_clinical_evolution_draft(
-      '20000000-0000-0000-0000-000000000041','40000000-0000-0000-0000-000000000043',
+      '20000000-0000-0000-0000-000000000045','40000000-0000-0000-0000-000000000045',
       v_code,now(),'professional_private',null
     );
     raise exception 'other_owner_private_template_should_fail';
@@ -817,8 +817,8 @@ begin
     'request.jwt.claim.sub', '10000000-0000-0000-0000-000000000044', true
   );
   v_draft := public.create_clinical_evolution_draft(
-    '20000000-0000-0000-0000-000000000041',
-    '40000000-0000-0000-0000-000000000043',
+    '20000000-0000-0000-0000-000000000045',
+    '40000000-0000-0000-0000-000000000045',
     'nello_standard', now(), 'professional_private', null
   );
   v_id := (v_draft->>'id')::uuid;

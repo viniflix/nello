@@ -18,7 +18,9 @@ on conflict (id) do update set
   name=excluded.name,
   user_type=excluded.user_type;
 
-insert into public.nutritionist_patients(nutritionist_id,patient_id,status) values('10000000-0000-0000-0000-000000000011','20000000-0000-0000-0000-000000000011','pending');
+insert into public.nutritionist_patients(nutritionist_id,patient_id,status) values('10000000-0000-0000-0000-000000000011','20000000-0000-0000-0000-000000000011','active');
+-- Simulate the supported repair of an active legacy relationship without an episode.
+delete from public.care_episodes where patient_id='20000000-0000-0000-0000-000000000011';
 select set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000011', true);
 select public.start_care_episode('20000000-0000-0000-0000-000000000011', 'qa_started');
 

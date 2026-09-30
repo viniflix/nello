@@ -113,8 +113,10 @@ begin
     if a.actor in ('current','student_supervised') and (not jsonb_path_exists(result,'$.records[*] ? (@.id == "70000000-0000-0000-0000-000000000044")')
       or not jsonb_path_exists(result,'$.records[*] ? (@.id == "70000000-0000-0000-0000-000000000045")')) then raise exception 'professional_visibility_projection_failed: %',a.actor; end if;
     if a.actor='previous' and jsonb_array_length(result->'records')<>1 then raise exception 'previous_read_other_episode'; end if;
-    if a.actor='patient' and (jsonb_array_length(result->'records')<>2 or not jsonb_path_exists(result,'$.records[*] ? (@.care_episode_id == "40000000-0000-0000-0000-000000000041")')
-      or not jsonb_path_exists(result,'$.records[*] ? (@.care_episode_id == "40000000-0000-0000-0000-000000000043")')) then raise exception 'patient_missing_own_records'; end if;
+    -- The patient projection intentionally omits internal episode identifiers.
+    if a.actor='patient' and (jsonb_array_length(result->'records')<>2 or not jsonb_path_exists(result,'$.records[*] ? (@.id == "70000000-0000-0000-0000-000000000041")')
+      or not jsonb_path_exists(result,'$.records[*] ? (@.id == "70000000-0000-0000-0000-000000000043")')) then raise exception 'patient_missing_own_records'; end if;
+    if a.actor='patient' and exists(select 1 from jsonb_array_elements(result->'records') r where r ?| array['care_episode_id','author_id','nutritionist_id','canonical_hash']) then raise exception 'patient_internal_fields_leaked';end if;
     if a.actor='patient' and jsonb_path_exists(result,'$.records[*] ? (@.visibility != "shared_with_patient")') then raise exception 'patient_received_private_record'; end if;
   end if;
   select count(*) into event_count from public.legal_guardian_events;

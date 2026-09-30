@@ -84,11 +84,13 @@ do $$declare replacement uuid; result jsonb; predecessor uuid;begin
  replacement:=(result->>'artifact_id')::uuid;
  perform public.finalize_document_artifact(replacement,1);
  perform public.sign_document_artifact(replacement);
+ reset role; -- Inspect protected audit/history as the isolated fixture administrator.
  if (select status from public.document_artifacts where id=predecessor) is distinct from 'superseded'
     or (select status from public.document_artifacts where id=replacement) is distinct from 'signed' then
    raise exception 'legitimate document replacement did not preserve lifecycle';end if;
  update hard_ids set artifact=replacement;
-end$$;
+ set local role authenticated;
+end$;
 
 -- Invalidating the predecessor during a pending replacement must neither strand
 -- the successor nor resurrect the invalidated document.
@@ -100,13 +102,15 @@ do $$declare predecessor uuid; replacement uuid; result jsonb;begin
  perform public.finalize_document_artifact(replacement,1);
  perform public.invalidate_document_artifact(predecessor,'Documento anterior invalidado durante revisão');
  perform public.sign_document_artifact(replacement);
+ reset role; -- Inspect protected audit/history as the isolated fixture administrator.
  if (select status from public.document_artifacts where id=predecessor) is distinct from 'invalidated'
     or (select status from public.document_artifacts where id=replacement) is distinct from 'signed'
     or not exists(select 1 from public.document_artifact_events where artifact_id=predecessor
       and event_type='replacement_signed' and from_status='invalidated' and to_status='invalidated') then
    raise exception 'pending replacement recovery or historical status failed';end if;
  update hard_ids set artifact=replacement;
-end$$;
+ set local role authenticated;
+end$;
 
 do $$begin
  begin perform public.create_lab_result_record(jsonb_build_object(
