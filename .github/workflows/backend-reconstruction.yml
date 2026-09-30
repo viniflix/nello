@@ -19,8 +19,7 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: npm
-      - run: npm install --global npm@11.5.2
-      - run: npm ci
+      - run: node scripts/release/install.mjs
       - name: Verify and prepare authoritative migration history
         run: node scripts/backend/prepare.mjs
       - name: Rebuild database on the remote runner

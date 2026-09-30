@@ -7,7 +7,10 @@ import { summarizeNpmLog } from './install-diagnostics.mjs';
 const started = Date.now();
 console.log(`Release install: node ${process.version}, ${process.platform}/${process.arch}`);
 const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-for (const args of [['install', '--global', 'npm@11.5.2'], ['ci']]) {
+// All locked packages use the public npm registry. Use that same upstream in CI
+// and Vercel instead of the provider's injected loopback registry proxy.
+const registry = '--registry=https://registry.npmjs.org';
+for (const args of [['install', '--global', 'npm@11.5.2', registry], ['ci', registry]]) {
   const result = spawnSync(npm, args, { stdio: 'inherit', shell: process.platform === 'win32' });
   if (result.error || result.status !== 0) {
     const logDirectory = path.join(process.env.npm_config_cache || path.join(homedir(), '.npm'), '_logs');

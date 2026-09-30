@@ -23,8 +23,7 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: npm
-      - run: npm install --global npm@11.5.2
-      - run: npm ci
+      - run: node scripts/release/install.mjs
       - run: npm run verify:release
         env:
           # Unit tests instantiate the public client, but never contact a real project.

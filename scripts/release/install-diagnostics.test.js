@@ -4,11 +4,11 @@ import { summarizeNpmLog } from './install-diagnostics.mjs';
 describe('npm installation failure diagnostics', () => {
   it('captures versions, failed requests and unfinished package extraction', () => {
     const result = summarizeNpmLog(`0 info using npm@11.5.2
-1 info using node@22.18.0
+1 info using node@v22.18.0
 2 http fetch GET 502 https://registry.npmjs.org/vite/-/vite-7.3.6.tgz 72000ms
 3 error code ECONNRESET
 4 error Exit handler never called!
-5 silly unfinished npm timer reify:unpack:node_modules/vite 123456`);
+5 verbose unfinished npm timer reify:unpack:node_modules/vite 123456`);
     expect(result.versions).toEqual(['npm@11.5.2', 'node@22.18.0']);
     expect(result.failures).toEqual(['ECONNRESET', 'Exit handler never called']);
     expect(result.requests[0].status).toBe(502);

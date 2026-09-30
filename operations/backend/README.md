@@ -197,3 +197,12 @@ Run `36678226385` passou a reconstrução e a comparação integral do catálogo
 O gerador restaurado no run `36678887863` encontrou `show_limit`/`show_trgm` adicionais. A consulta independente de produção comprovou `pg_trgm` 1.6 em `extensions`; o histórico inicial a criou em `public`. A reconstrução move a extensão com seus objetos e preserva os índices dependentes, sem filtrar essas funções do comparador de tipos. O gate de catálogo agora inclui nome, versão e schema das extensões em `public`, `private` e `extensions`. Serviços/extensões exclusivos do provider fora desses schemas permanecem fora desse catálogo de aplicação; não se declara paridade de implementação interna do Supabase hospedado.
 
 O SHA `9270d6ce` passou ambos os workflows na branch e na main. A instalação Vercel por `npx npm@11.5.2 ci` falhou com erro interno `Exit handler never called`, inclusive em redeploy comprovadamente sem cache. O comando de instalação foi alinhado ao GitHub (`npm install --global npm@11.5.2 && npm ci`), preservando versão e lockfile; a build usa o npm instalado. O erro de produção não encerra a wave até o deployment posterior estar Ready e ser validado.
+
+O bootstrap global também passou na Vercel, mas o `npm ci` repetiu a falha.
+O diagnóstico estruturado de `00f301df` identificou Node 22.23.2 e requisições
+ao registro injetado `127.0.0.1`, enquanto o lockfile usa `registry.npmjs.org`.
+O instalador compartilhado de CI/Vercel fixa esse upstream público explicitamente,
+conservando npm 11.5.2, `npm ci`, integridade do lockfile, scripts de instalação
+e status de saída. Nenhum token, variável de ambiente ou log bruto é impresso
+pelo diagnóstico. Essa hipótese só será considerada resolvida depois da instalação
+e dos demais gates completos no provedor.
