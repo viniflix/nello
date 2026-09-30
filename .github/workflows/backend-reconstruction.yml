@@ -24,6 +24,7 @@ jobs:
       - name: Verify and prepare authoritative migration history
         run: node scripts/backend/prepare.mjs
       - name: Rebuild database on the remote runner
+        id: rebuild
         run: |
           set -o pipefail
           npx --no-install supabase start --workdir .backend-ci --exclude studio,analytics,vector,imgproxy 2>&1 | tee backend-reconstruction.log
@@ -32,6 +33,7 @@ jobs:
           psql 'postgresql://postgres:postgres@127.0.0.1:54322/postgres' -X -t -A -v ON_ERROR_STOP=1 -f scripts/backend/catalog.sql > reconstructed-catalog.json
           node scripts/backend/compare-catalog.mjs operations/backend/production-catalog.json reconstructed-catalog.json catalog-diff.json
       - name: Verify generated database types
+        if: ${{ !cancelled() && steps.rebuild.outcome == 'success' }}
         run: |
           npx --no-install supabase gen types typescript --local --workdir .backend-ci > reconstructed.types.ts
           node scripts/backend/compare-types.mjs src/lib/database.types.ts reconstructed.types.ts

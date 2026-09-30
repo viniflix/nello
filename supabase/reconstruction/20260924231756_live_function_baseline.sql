@@ -1,4 +1,5 @@
 -- CI-only authoritative live function bodies; metadata snapshot excludes row data.
+-- Restore all current signatures before the two final recorded permission migrations.
 
 SET check_function_bodies = false;
 

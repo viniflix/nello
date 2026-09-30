@@ -168,3 +168,11 @@ missing public/private legacy UUID transition definitions. Their current capture
 bodies and service-only ACL are supplied immediately before the recorded revocation.
 The original revoke statements still execute, and the final snapshot retains both
 old retired and current bigint contracts. No historical revocation is skipped.
+
+Run 36674909310 passed the legacy revocation and reached the final current bigint
+wrapper, whose CREATE was also manual. The complete 382-function body snapshot
+now runs after all historical function changes but BEFORE the two final permission
+migrations (20260924231758/20260924231829). Both original revocations/grants execute
+against the complete current signature set. The narrower UUID-only prerequisite is
+removed as redundant. Once the stack rebuilds, type comparison also runs if catalog
+comparison fails, preserving both diagnostics while the overall gate stays failed.
