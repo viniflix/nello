@@ -62,3 +62,13 @@ This exception is unrelated to patient authorization or bucket privacy.
 Function hashes normalize CRLF to LF; 48 hosted function bodies used Windows line
 endings. This avoids treating a checkout line ending as a contract change. Every
 other character of the definition, security mode, search path and grant is compared.
+
+CI run 36667594975 advanced past the provider mismatch and then exposed eight
+application tables created outside recorded migrations: bug_reports, feed_tasks,
+message_templates, notification_rules, nutritionist_patients,
+operational_observability_log, patient_module_sync_flags and template_dispatch_log.
+Their columns/constraints come from live metadata, with FK restoration after dependent
+tables exist. Indexes, RLS, policies, grants and triggers are restored ONLY on CI,
+then compared against production. No rows from those tables were read or exported.
+This reconstruction foundation is evidence of historical drift, not a production
+migration and not a replacement for later security corrections.

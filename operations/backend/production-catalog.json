@@ -17662,10 +17662,12 @@
   "schemas": [
     {
       "name": "private",
+      "owner": "postgres",
       "grants": "{postgres=UC/postgres,anon=U/postgres,authenticated=U/postgres,service_role=U/postgres}"
     },
     {
       "name": "public",
+      "owner": "postgres",
       "grants": "{postgres=UC/postgres,=U/postgres,anon=U/postgres,authenticated=U/postgres,service_role=U/postgres}"
     }
   ],
@@ -21445,6 +21447,7 @@
     {
       "args": "p_patient_id uuid, p_nutritionist_id uuid, p_xp integer, p_reason text",
       "name": "add_patient_xp",
+      "owner": "postgres",
       "config": [
         "search_path=public, pg_catalog"
       ],
@@ -21457,6 +21460,7 @@
     {
       "args": "",
       "name": "admin_member",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -21469,6 +21473,7 @@
     {
       "args": "p_patient_id uuid",
       "name": "approve_patient_link",
+      "owner": "postgres",
       "config": [
         "search_path=public, pg_temp"
       ],
@@ -21481,6 +21486,7 @@
     {
       "args": "p_plan_id bigint, p_patient_id uuid",
       "name": "assert_plan_ready_to_activate",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -21493,6 +21499,7 @@
     {
       "args": "",
       "name": "assign_clinical_care_episode",
+      "owner": "postgres",
       "config": [
         "search_path=public, pg_temp"
       ],
@@ -21505,6 +21512,7 @@
     {
       "args": "",
       "name": "assign_patient_owned_care_episode",
+      "owner": "postgres",
       "config": [
         "search_path=public, pg_temp"
       ],
@@ -21517,6 +21525,7 @@
     {
       "args": "",
       "name": "audit_notification_change",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -21529,6 +21538,7 @@
     {
       "args": "",
       "name": "audit_progress_photo_change",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -21541,6 +21551,7 @@
     {
       "args": "",
       "name": "auto_approve_prelaunch_nutritionist",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -21553,6 +21564,7 @@
     {
       "args": "p_record clinical_records",
       "name": "build_clinical_record_amendment_impact",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -21565,6 +21577,7 @@
     {
       "args": "p_template_id uuid",
       "name": "build_diet_template_snapshot",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -21577,6 +21590,7 @@
     {
       "args": "p_plan_id bigint",
       "name": "build_meal_plan_snapshot",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -21589,6 +21603,7 @@
     {
       "args": "p_name text, p_write boolean",
       "name": "can_access_anamnesis_attachment_object",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -21601,6 +21616,7 @@
     {
       "args": "p_name text",
       "name": "can_access_patient_photo_object",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -21613,6 +21629,7 @@
     {
       "args": "p_attachment_id uuid",
       "name": "can_list_clinical_attachment",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -21625,6 +21642,7 @@
     {
       "args": "p_episode_id uuid",
       "name": "can_manage_clinical_attachment",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -21637,6 +21655,7 @@
     {
       "args": "p_replacement_record_id uuid, p_actor uuid, p_action text",
       "name": "can_manage_clinical_record_correction",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -21649,6 +21668,7 @@
     {
       "args": "p_id uuid",
       "name": "can_manage_document_artifact",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -21661,6 +21681,7 @@
     {
       "args": "p_attachment_id uuid",
       "name": "can_open_clinical_attachment",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -21673,6 +21694,7 @@
     {
       "args": "p_episode_id uuid",
       "name": "can_read_care_episode",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -21685,6 +21707,7 @@
     {
       "args": "p_bucket_id text, p_name text",
       "name": "can_read_clinical_attachment_object",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -21697,6 +21720,7 @@
     {
       "args": "p_record_id uuid",
       "name": "can_read_clinical_record",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -21709,6 +21733,7 @@
     {
       "args": "p_bucket_id text, p_name text",
       "name": "can_read_document_asset_object",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -21721,6 +21746,7 @@
     {
       "args": "p_event_id uuid",
       "name": "can_read_legal_guardian_event",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -21733,6 +21759,7 @@
     {
       "args": "p_record_id uuid, p_actor uuid",
       "name": "can_start_clinical_record_correction",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -21745,6 +21772,7 @@
     {
       "args": "p_bucket_id text, p_name text",
       "name": "can_upload_clinical_attachment_object",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -21757,6 +21785,7 @@
     {
       "args": "p_bucket_id text, p_name text",
       "name": "can_upload_document_asset_object",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -21769,6 +21798,7 @@
     {
       "args": "p_name text",
       "name": "can_upload_patient_photo_object",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -21781,6 +21811,7 @@
     {
       "args": "p_episode_id uuid",
       "name": "can_write_active_care_episode",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -21793,6 +21824,7 @@
     {
       "args": "p_patient_id uuid, p_nutritionist_id uuid, p_care_episode_id uuid",
       "name": "can_write_active_meal_plan",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -21805,6 +21837,7 @@
     {
       "args": "",
       "name": "cancel_pending_appointment_charge",
+      "owner": "postgres",
       "config": [
         "search_path=pg_catalog, public"
       ],
@@ -21817,6 +21850,7 @@
     {
       "args": "",
       "name": "capture_anthropometry_calculation_snapshot",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -21829,6 +21863,7 @@
     {
       "args": "",
       "name": "capture_ended_care_episode_snapshot",
+      "owner": "postgres",
       "config": [
         "search_path=public, pg_temp"
       ],
@@ -21841,6 +21876,7 @@
     {
       "args": "",
       "name": "capture_energy_calculation_snapshot",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -21853,6 +21889,7 @@
     {
       "args": "p_plan_id bigint, p_reason text, p_metadata jsonb",
       "name": "capture_meal_plan_version",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -21865,6 +21902,7 @@
     {
       "args": "p_user_id uuid",
       "name": "check_and_grant_achievements",
+      "owner": "postgres",
       "config": [
         "search_path=public"
       ],
@@ -21877,6 +21915,7 @@
     {
       "args": "",
       "name": "check_is_admin",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -21889,6 +21928,7 @@
     {
       "args": "p_sender_id uuid",
       "name": "clear_message_notifications_from_sender",
+      "owner": "postgres",
       "config": [
         "search_path=public"
       ],
@@ -21901,6 +21941,7 @@
     {
       "args": "p_actor_id uuid, p_source text",
       "name": "clinical_attachment_actor_role",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -21913,6 +21954,7 @@
     {
       "args": "p_record clinical_records, p_content jsonb, p_retrospective_reason text",
       "name": "clinical_record_canonical_payload",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -21925,6 +21967,7 @@
     {
       "args": "p_record_id uuid",
       "name": "clinical_record_signed_by",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -21937,6 +21980,7 @@
     {
       "args": "p_template_id uuid, p_patient_id uuid, p_nutritionist_id uuid, p_name text",
       "name": "clone_diet_template_to_patient",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -21949,6 +21993,7 @@
     {
       "args": "p_meal_template_id uuid, p_meal_plan_id bigint, p_meal_type text, p_meal_time time without time zone",
       "name": "clone_meal_template_to_plan",
+      "owner": "postgres",
       "config": [
         "search_path=public, pg_catalog"
       ],
@@ -21961,6 +22006,7 @@
     {
       "args": "p_layout_code text, p_layout_version integer, p_identity_id uuid, p_patient jsonb, p_content jsonb, p_metadata jsonb",
       "name": "compose_document_payload",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -21973,6 +22019,7 @@
     {
       "args": "p_template_id uuid, p_plan_id bigint, p_meal_ids uuid[]",
       "name": "copy_diet_template_meals_to_plan",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -21985,6 +22032,7 @@
     {
       "args": "",
       "name": "create_appointment_reminders",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -21997,6 +22045,7 @@
     {
       "args": "",
       "name": "create_daily_log_reminders",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -22009,6 +22058,7 @@
     {
       "args": "p_user_id uuid, p_type text, p_title text, p_message text, p_link_url text, p_content jsonb",
       "name": "create_notification",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -22021,6 +22071,7 @@
     {
       "args": "",
       "name": "create_summary_notification",
+      "owner": "postgres",
       "config": [
         "search_path=public"
       ],
@@ -22033,6 +22084,7 @@
     {
       "args": "",
       "name": "current_recent_authentication_evidence",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -22045,6 +22097,7 @@
     {
       "args": "patient_id uuid",
       "name": "delete_patient",
+      "owner": "postgres",
       "config": [
         "search_path=public"
       ],
@@ -22057,6 +22110,7 @@
     {
       "args": "",
       "name": "dispatch_due_checkins",
+      "owner": "postgres",
       "config": [
         "search_path=pg_catalog, public, private"
       ],
@@ -22069,6 +22123,7 @@
     {
       "args": "",
       "name": "document_authenticity_fingerprint",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -22081,6 +22136,7 @@
     {
       "args": "p_patient_id uuid",
       "name": "empty_patient_removal_status",
+      "owner": "postgres",
       "config": [
         "search_path=public, private, pg_temp"
       ],
@@ -22093,6 +22149,7 @@
     {
       "args": "p_patient_id uuid, p_end_reason text",
       "name": "end_care_episode",
+      "owner": "postgres",
       "config": [
         "search_path=public, pg_temp"
       ],
@@ -22105,6 +22162,7 @@
     {
       "args": "",
       "name": "enforce_clinical_record_amendment_immutability",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -22117,6 +22175,7 @@
     {
       "args": "",
       "name": "enforce_clinical_record_c4_status_transition",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -22129,6 +22188,7 @@
     {
       "args": "",
       "name": "enforce_clinical_record_write_lock",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -22141,6 +22201,7 @@
     {
       "args": "",
       "name": "enforce_meal_plan_write_authorization",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -22153,6 +22214,7 @@
     {
       "args": "",
       "name": "enforce_verified_patient_link",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -22165,6 +22227,7 @@
     {
       "args": "p_table regclass, p_subject_column name, p_subject_id uuid, p_redacted_keys text[]",
       "name": "export_subject_rows",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -22177,6 +22240,7 @@
     {
       "args": "",
       "name": "freeze_prescription_food_reference",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -22189,6 +22253,7 @@
     {
       "args": "",
       "name": "freeze_recipe_ingredient_reference",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -22201,6 +22266,7 @@
     {
       "args": "",
       "name": "freeze_substitution_food_reference",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -22213,6 +22279,7 @@
     {
       "args": "",
       "name": "get_admin_dashboard_stats",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -22225,6 +22292,7 @@
     {
       "args": "recipient_id uuid",
       "name": "get_chat_recipient_profile",
+      "owner": "postgres",
       "config": [
         "search_path=public, extensions"
       ],
@@ -22237,6 +22305,7 @@
     {
       "args": "p_nutritionist_id uuid, p_limit integer",
       "name": "get_comprehensive_activity_feed_optimized",
+      "owner": "postgres",
       "config": [
         "search_path=public"
       ],
@@ -22249,6 +22318,7 @@
     {
       "args": "p_nutritionist_id uuid",
       "name": "get_daily_adherence",
+      "owner": "postgres",
       "config": [
         "search_path=public"
       ],
@@ -22261,6 +22331,7 @@
     {
       "args": "start_date date, end_date date",
       "name": "get_financial_summary",
+      "owner": "postgres",
       "config": [
         "search_path=public"
       ],
@@ -22273,6 +22344,7 @@
     {
       "args": "p_invite_code text",
       "name": "get_invite_details",
+      "owner": "postgres",
       "config": [
         "search_path=public"
       ],
@@ -22285,6 +22357,7 @@
     {
       "args": "p_meal_plan_id uuid",
       "name": "get_meal_plan_with_foods_optimized",
+      "owner": "postgres",
       "config": [
         "search_path=public"
       ],
@@ -22297,6 +22370,7 @@
     {
       "args": "p_nutritionist_id uuid",
       "name": "get_nutritionist_conversations",
+      "owner": "postgres",
       "config": [
         "search_path=public, extensions"
       ],
@@ -22309,6 +22383,7 @@
     {
       "args": "p_nutritionist_id uuid",
       "name": "get_nutritionist_detail",
+      "owner": "postgres",
       "config": [
         "search_path=public, pg_catalog"
       ],
@@ -22321,6 +22396,7 @@
     {
       "args": "",
       "name": "get_nutritionists_list",
+      "owner": "postgres",
       "config": [
         "search_path=public"
       ],
@@ -22333,6 +22409,7 @@
     {
       "args": "p_nutritionist_id uuid, p_window_hours integer",
       "name": "get_operational_health_summary",
+      "owner": "postgres",
       "config": [
         "search_path=public"
       ],
@@ -22345,6 +22422,7 @@
     {
       "args": "",
       "name": "get_own_profile_attrs",
+      "owner": "postgres",
       "config": [
         "search_path=public"
       ],
@@ -22357,6 +22435,7 @@
     {
       "args": "p_nutritionist_id uuid",
       "name": "get_patients_for_new_chat",
+      "owner": "postgres",
       "config": [
         "search_path=public, extensions"
       ],
@@ -22369,6 +22448,7 @@
     {
       "args": "p_nutritionist_id uuid, p_days_threshold integer",
       "name": "get_patients_low_adherence_optimized",
+      "owner": "postgres",
       "config": [
         "search_path=public"
       ],
@@ -22381,6 +22461,7 @@
     {
       "args": "p_nutritionist_id uuid",
       "name": "get_patients_pending_data_optimized",
+      "owner": "postgres",
       "config": [
         "search_path=public"
       ],
@@ -22393,6 +22474,7 @@
     {
       "args": "limit_count integer",
       "name": "get_system_live_logs",
+      "owner": "postgres",
       "config": [
         "search_path=public"
       ],
@@ -22405,6 +22487,7 @@
     {
       "args": "",
       "name": "get_tcc_study_metrics",
+      "owner": "postgres",
       "config": [
         "search_path=public, pg_catalog"
       ],
@@ -22417,6 +22500,7 @@
     {
       "args": "",
       "name": "get_user_id",
+      "owner": "postgres",
       "config": [
         "search_path=public"
       ],
@@ -22429,6 +22513,7 @@
     {
       "args": "",
       "name": "guard_appointment_status_transition",
+      "owner": "postgres",
       "config": [
         "search_path=pg_catalog, public"
       ],
@@ -22441,6 +22526,7 @@
     {
       "args": "",
       "name": "guard_checkin_session_update",
+      "owner": "postgres",
       "config": [
         "search_path=pg_catalog, public, private"
       ],
@@ -22453,6 +22539,7 @@
     {
       "args": "",
       "name": "guard_financial_appointment_link",
+      "owner": "postgres",
       "config": [
         "search_path=pg_catalog, public"
       ],
@@ -22465,6 +22552,7 @@
     {
       "args": "",
       "name": "guard_financial_cash_dates",
+      "owner": "postgres",
       "config": [
         "search_path=pg_catalog, public"
       ],
@@ -22477,6 +22565,7 @@
     {
       "args": "",
       "name": "guard_paid_financial_delete",
+      "owner": "postgres",
       "config": [
         "search_path=pg_catalog, public"
       ],
@@ -22489,6 +22578,7 @@
     {
       "args": "",
       "name": "handle_new_chat_message_notification",
+      "owner": "postgres",
       "config": [
         "search_path=public"
       ],
@@ -22501,6 +22591,7 @@
     {
       "args": "",
       "name": "handle_new_user",
+      "owner": "postgres",
       "config": [
         "search_path=public"
       ],
@@ -22513,6 +22604,7 @@
     {
       "args": "p_user_id uuid",
       "name": "has_current_clinical_capacity",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -22525,6 +22617,7 @@
     {
       "args": "p_value text",
       "name": "has_meaningful_clinical_text",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -22537,6 +22630,7 @@
     {
       "args": "p_patient_id uuid, p_nutritionist_id uuid",
       "name": "increment_checkin_streak",
+      "owner": "postgres",
       "config": [
         "search_path=public, pg_catalog"
       ],
@@ -22549,6 +22643,7 @@
     {
       "args": "",
       "name": "increment_checkin_streak_after_completion",
+      "owner": "postgres",
       "config": [
         "search_path=pg_catalog, public, private"
       ],
@@ -22561,6 +22656,7 @@
     {
       "args": "p_notification_id uuid, p_delete_if_message boolean",
       "name": "interact_notification",
+      "owner": "postgres",
       "config": [
         "search_path=public"
       ],
@@ -22573,6 +22669,7 @@
     {
       "args": "",
       "name": "is_admin",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -22585,6 +22682,7 @@
     {
       "args": "",
       "name": "is_nutritionist",
+      "owner": "postgres",
       "config": [
         "search_path=public",
         "row_security=off"
@@ -22598,6 +22696,7 @@
     {
       "args": "",
       "name": "is_patient",
+      "owner": "postgres",
       "config": [
         "search_path=public",
         "row_security=off"
@@ -22611,6 +22710,7 @@
     {
       "args": "p_record_id uuid",
       "name": "is_patient_visible_clinical_record",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -22623,6 +22723,7 @@
     {
       "args": "p_episode_id uuid",
       "name": "lock_and_can_write_active_care_episode",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -22635,6 +22736,7 @@
     {
       "args": "p_event_name text, p_event_version integer, p_source_module text, p_patient_id uuid, p_nutritionist_id uuid, p_payload jsonb",
       "name": "log_activity_event",
+      "owner": "postgres",
       "config": [
         "search_path=public, pg_temp"
       ],
@@ -22647,6 +22749,7 @@
     {
       "args": "p_error_type character varying, p_error_message text, p_stack_trace text, p_route text, p_user_id uuid, p_user_email text, p_user_name text, p_user_type character varying, p_user_agent text, p_console_log jsonb, p_metadata jsonb, p_component_stack text, p_source_file text, p_line_number integer, p_column_number integer",
       "name": "log_bug_report",
+      "owner": "postgres",
       "config": [
         "search_path=public"
       ],
@@ -22659,6 +22762,7 @@
     {
       "args": "p_patient_id uuid, p_meal_id bigint, p_action text, p_meal_type text, p_meal_date date, p_meal_time time without time zone, p_details jsonb",
       "name": "log_meal_action",
+      "owner": "postgres",
       "config": [
         "search_path=public"
       ],
@@ -22671,6 +22775,7 @@
     {
       "args": "p_meal_id text, p_action text, p_details jsonb",
       "name": "log_meal_action_secure",
+      "owner": "postgres",
       "config": [
         "search_path=public"
       ],
@@ -22683,6 +22788,7 @@
     {
       "args": "p_module text, p_operation text, p_event_type text, p_latency_ms integer, p_nutritionist_id uuid, p_patient_id uuid, p_error_message text, p_metadata jsonb",
       "name": "log_operational_event",
+      "owner": "postgres",
       "config": [
         "search_path=public"
       ],
@@ -22695,6 +22801,7 @@
     {
       "args": "p_payload jsonb, p_key text, p_current text, p_default text",
       "name": "merge_document_identity_text",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -22707,6 +22814,7 @@
     {
       "args": "p_patient_id uuid",
       "name": "minimal_patient_snapshot",
+      "owner": "postgres",
       "config": [
         "search_path=public, pg_temp"
       ],
@@ -22719,6 +22827,7 @@
     {
       "args": "p_frequency text, p_send_days integer[], p_send_time time without time zone, p_time_zone text, p_after timestamp with time zone",
       "name": "next_checkin_send_at",
+      "owner": "postgres",
       "config": [
         "search_path=pg_catalog, public"
       ],
@@ -22731,6 +22840,7 @@
     {
       "args": "p_value text",
       "name": "normalize_meal_time",
+      "owner": "postgres",
       "config": [
         "search_path=pg_catalog"
       ],
@@ -22743,6 +22853,7 @@
     {
       "args": "p_user_id uuid, p_type text, p_title text, p_message text, p_episode_id uuid",
       "name": "notify_care_episode_participant",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -22755,6 +22866,7 @@
     {
       "args": "",
       "name": "notify_clinical_attachment_transition",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -22767,6 +22879,7 @@
     {
       "args": "p_patient_id uuid",
       "name": "patient_has_meaningful_data",
+      "owner": "postgres",
       "config": [
         "search_path=public, private, pg_temp"
       ],
@@ -22779,6 +22892,7 @@
     {
       "args": "",
       "name": "prepare_clinical_attachment",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -22791,6 +22905,7 @@
     {
       "args": "",
       "name": "prepare_clinical_record_chain",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -22803,6 +22918,7 @@
     {
       "args": "",
       "name": "prepare_verified_care_episode",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -22815,6 +22931,7 @@
     {
       "args": "",
       "name": "prevent_clinical_measurement_delete",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -22827,6 +22944,7 @@
     {
       "args": "",
       "name": "prevent_clinical_snapshot_mutation",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -22839,6 +22957,7 @@
     {
       "args": "",
       "name": "prevent_data_subject_event_mutation",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -22851,6 +22970,7 @@
     {
       "args": "",
       "name": "prevent_finalized_content_mutation",
+      "owner": "postgres",
       "config": [
         "search_path=pg_catalog, public"
       ],
@@ -22863,6 +22983,7 @@
     {
       "args": "",
       "name": "prevent_meal_plan_delete",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -22875,6 +22996,7 @@
     {
       "args": "",
       "name": "prevent_version_mutation",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -22887,6 +23009,7 @@
     {
       "args": "p_patient_id uuid",
       "name": "process_patient_reminders",
+      "owner": "postgres",
       "config": [
         "search_path=public, pg_temp"
       ],
@@ -22899,6 +23022,7 @@
     {
       "args": "p_record clinical_records",
       "name": "project_clinical_evolution_record",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -22911,6 +23035,7 @@
     {
       "args": "p_record clinical_records",
       "name": "project_clinical_record_chain_item",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -22923,6 +23048,7 @@
     {
       "args": "p_record clinical_records",
       "name": "project_patient_clinical_record",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -22935,6 +23061,7 @@
     {
       "args": "p_draft_id bigint, p_patient_id uuid",
       "name": "promote_draft_to_active",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -22947,6 +23074,7 @@
     {
       "args": "",
       "name": "protect_clinical_attachment_upload_fields",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -22959,6 +23087,7 @@
     {
       "args": "",
       "name": "protect_document_artifact_frozen_fields",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -22971,6 +23100,7 @@
     {
       "args": "",
       "name": "protect_progress_photo_identity",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -22983,6 +23113,7 @@
     {
       "args": "",
       "name": "record_clinical_attachment_event",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -22995,6 +23126,7 @@
     {
       "args": "input_code text",
       "name": "redeem_invite_code",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -23007,6 +23139,7 @@
     {
       "args": "",
       "name": "reject_clinical_attachment_mutation",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -23019,6 +23152,7 @@
     {
       "args": "",
       "name": "reject_clinical_foundation_mutation",
+      "owner": "postgres",
       "config": [
         "search_path=pg_catalog, public"
       ],
@@ -23031,6 +23165,7 @@
     {
       "args": "",
       "name": "reject_clinical_record_type_mutation",
+      "owner": "postgres",
       "config": [
         "search_path=pg_catalog, public"
       ],
@@ -23043,6 +23178,7 @@
     {
       "args": "",
       "name": "reject_document_artifact_delete",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -23055,6 +23191,7 @@
     {
       "args": "",
       "name": "reject_document_artifact_event_mutation",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -23067,6 +23204,7 @@
     {
       "args": "",
       "name": "reject_document_identity_delete",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -23079,6 +23217,7 @@
     {
       "args": "",
       "name": "reject_document_identity_event_mutation",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -23091,6 +23230,7 @@
     {
       "args": "",
       "name": "reject_document_layout_version_mutation",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -23103,6 +23243,7 @@
     {
       "args": "",
       "name": "reject_evolution_template_immutable_mutation",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -23115,6 +23256,7 @@
     {
       "args": "",
       "name": "reject_legal_guardian_delete",
+      "owner": "postgres",
       "config": [
         "search_path=pg_catalog, public"
       ],
@@ -23127,6 +23269,7 @@
     {
       "args": "p_patient_id uuid",
       "name": "reject_patient_link",
+      "owner": "postgres",
       "config": [
         "search_path=public"
       ],
@@ -23139,6 +23282,7 @@
     {
       "args": "",
       "name": "reject_verification_event_mutation",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -23151,6 +23295,7 @@
     {
       "args": "",
       "name": "require_checkin_patient_account",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -23163,6 +23308,7 @@
     {
       "args": "",
       "name": "require_verification_admin",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -23175,6 +23321,7 @@
     {
       "args": "p_patient_id uuid",
       "name": "resolve_active_care_episode",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -23187,6 +23334,7 @@
     {
       "args": "",
       "name": "schedule_verification_document_deletion",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -23199,6 +23347,7 @@
     {
       "args": "p_user uuid",
       "name": "seed_nello_protocol_examples",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -23211,6 +23360,7 @@
     {
       "args": "",
       "name": "seed_nello_protocol_examples_on_profile",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -23223,6 +23373,7 @@
     {
       "args": "p_plan_id bigint",
       "name": "set_active_meal_plan",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -23235,6 +23386,7 @@
     {
       "args": "p_meal_id bigint",
       "name": "soft_delete_meal",
+      "owner": "postgres",
       "config": [
         "search_path=public"
       ],
@@ -23247,6 +23399,7 @@
     {
       "args": "",
       "name": "stamp_financial_cash_dates",
+      "owner": "postgres",
       "config": [
         "search_path=pg_catalog, public"
       ],
@@ -23259,6 +23412,7 @@
     {
       "args": "p_patient_id uuid, p_start_reason text",
       "name": "start_care_episode",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -23271,6 +23425,7 @@
     {
       "args": "",
       "name": "sync_care_episode_for_active_link",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -23283,6 +23438,7 @@
     {
       "args": "",
       "name": "sync_checkin_template_schedules",
+      "owner": "postgres",
       "config": [
         "search_path=pg_catalog, public, private"
       ],
@@ -23295,6 +23451,7 @@
     {
       "args": "",
       "name": "sync_notification_read_state",
+      "owner": "postgres",
       "config": [
         "search_path=public"
       ],
@@ -23307,6 +23464,7 @@
     {
       "args": "",
       "name": "sync_profile_email_from_auth",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -23319,6 +23477,7 @@
     {
       "args": "p_appointment_id bigint, p_next_status text, p_reason text",
       "name": "transition_appointment_status",
+      "owner": "postgres",
       "config": [
         "search_path=pg_catalog, public, private"
       ],
@@ -23331,6 +23490,7 @@
     {
       "args": "p_appointment_id uuid, p_next_status text, p_reason text",
       "name": "transition_appointment_status",
+      "owner": "postgres",
       "config": [
         "search_path=public"
       ],
@@ -23343,6 +23503,7 @@
     {
       "args": "p_plan_id bigint, p_plan_data jsonb, p_meals jsonb",
       "name": "upsert_full_meal_plan",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -23355,6 +23516,7 @@
     {
       "args": "",
       "name": "validate_clinical_record_amendment_shape",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -23367,6 +23529,7 @@
     {
       "args": "p_content jsonb, p_sections_snapshot jsonb, p_require_meaningful boolean",
       "name": "validate_clinical_record_content",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -23379,6 +23542,7 @@
     {
       "args": "",
       "name": "validate_diet_template_food",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -23391,6 +23555,7 @@
     {
       "args": "p_sections jsonb",
       "name": "validate_evolution_template_sections",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -23403,6 +23568,7 @@
     {
       "args": "p_professional_id uuid, p_expected_identity_id uuid, p_asset_type text, p_storage_path text, p_reason text",
       "name": "version_document_identity_asset",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -23415,6 +23581,7 @@
     {
       "args": "p_event_name text, p_episode care_episodes, p_actor_user_id uuid, p_reason text",
       "name": "write_care_episode_activity",
+      "owner": "postgres",
       "config": [
         "search_path=public, pg_temp"
       ],
@@ -23427,6 +23594,7 @@
     {
       "args": "p_plan_id bigint, p_plan_data jsonb, p_meals jsonb",
       "name": "write_full_meal_plan_storage",
+      "owner": "postgres",
       "config": [
         "search_path=public"
       ],
@@ -23439,6 +23607,7 @@
     {
       "args": "p_section jsonb, p_section_name text, p_default_min numeric, p_default_max numeric",
       "name": "_validate_growth_record_json_section",
+      "owner": "postgres",
       "config": [
         "search_path=public, pg_temp"
       ],
@@ -23451,6 +23620,7 @@
     {
       "args": "p_amendment_id uuid, p_reason text",
       "name": "abandon_clinical_record_correction",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -23463,6 +23633,7 @@
     {
       "args": "p_code text, p_version integer, p_decision text, p_reason text",
       "name": "accept_clinical_protocol",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -23475,6 +23646,7 @@
     {
       "args": "p_patient_id uuid, p_nutritionist_id uuid, p_xp integer, p_reason text",
       "name": "add_patient_xp",
+      "owner": "postgres",
       "config": [
         "search_path=public, private, pg_temp"
       ],
@@ -23487,6 +23659,7 @@
     {
       "args": "",
       "name": "admin_access_status",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -23499,6 +23672,7 @@
     {
       "args": "",
       "name": "admin_brand_migration_status",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -23511,6 +23685,7 @@
     {
       "args": "p_search text, p_type text, p_page integer",
       "name": "admin_list_people",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -23523,6 +23698,7 @@
     {
       "args": "",
       "name": "admin_security_overview",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -23535,6 +23711,7 @@
     {
       "args": "",
       "name": "admin_workflow_overview",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -23547,6 +23724,7 @@
     {
       "args": "p_patient_id uuid",
       "name": "approve_patient_link",
+      "owner": "postgres",
       "config": [
         "search_path=public, private, pg_temp"
       ],
@@ -23559,6 +23737,7 @@
     {
       "args": "p_plan_id bigint, p_reason text",
       "name": "archive_meal_plan",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -23571,6 +23750,7 @@
     {
       "args": "p_template_code text",
       "name": "archive_private_evolution_template",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -23583,6 +23763,7 @@
     {
       "args": "p_record_id uuid, p_token uuid, p_path text, p_field_id text, p_field_label text, p_file_name text",
       "name": "attach_anamnesis_file",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -23595,6 +23776,7 @@
     {
       "args": "",
       "name": "auth_role",
+      "owner": "postgres",
       "config": [
         "search_path=public"
       ],
@@ -23607,6 +23789,7 @@
     {
       "args": "p_name text",
       "name": "auth_setting",
+      "owner": "postgres",
       "config": [
         "search_path=public"
       ],
@@ -23619,6 +23802,7 @@
     {
       "args": "",
       "name": "auth_uid",
+      "owner": "postgres",
       "config": [
         "search_path=public"
       ],
@@ -23631,6 +23815,7 @@
     {
       "args": "p_attachment_id uuid",
       "name": "authorize_my_data_export_attachment",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -23643,6 +23828,7 @@
     {
       "args": "",
       "name": "build_my_data_export_snapshot",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -23655,6 +23841,7 @@
     {
       "args": "goal_id bigint",
       "name": "calculate_goal_progress",
+      "owner": "postgres",
       "config": [
         "search_path=public"
       ],
@@ -23667,6 +23854,7 @@
     {
       "args": "test_value_text text, ref_min numeric, ref_max numeric",
       "name": "calculate_lab_status",
+      "owner": "postgres",
       "config": [
         "search_path=public"
       ],
@@ -23679,6 +23867,7 @@
     {
       "args": "p_meal_plan_id bigint",
       "name": "calculate_macro_targets",
+      "owner": "postgres",
       "config": [
         "search_path=public"
       ],
@@ -23691,6 +23880,7 @@
     {
       "args": "",
       "name": "calculate_net_amount",
+      "owner": "postgres",
       "config": [
         "search_path=public"
       ],
@@ -23703,6 +23893,7 @@
     {
       "args": "p_target_id uuid",
       "name": "can_delete_user",
+      "owner": "postgres",
       "config": [
         "search_path=public"
       ],
@@ -23715,6 +23906,7 @@
     {
       "args": "p_request_id uuid",
       "name": "cancel_my_data_subject_request",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -23727,6 +23919,7 @@
     {
       "args": "p_attachment_id uuid, p_visibility text, p_reason text",
       "name": "change_clinical_attachment_visibility",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -23739,6 +23932,7 @@
     {
       "args": "p_user_id uuid",
       "name": "check_and_grant_achievements",
+      "owner": "postgres",
       "config": [
         "search_path=public, private, pg_temp"
       ],
@@ -23751,6 +23945,7 @@
     {
       "args": "",
       "name": "check_is_admin",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -23763,6 +23958,7 @@
     {
       "args": "p_user_id uuid",
       "name": "claim_food_proxy_quota",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -23775,6 +23971,7 @@
     {
       "args": "p_sender_id uuid",
       "name": "clear_message_notifications_from_sender",
+      "owner": "postgres",
       "config": [
         "search_path=public, private, pg_temp"
       ],
@@ -23787,6 +23984,7 @@
     {
       "args": "p_template_id uuid, p_patient_id uuid, p_nutritionist_id uuid, p_name text",
       "name": "clone_diet_template_to_patient",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -23799,6 +23997,7 @@
     {
       "args": "p_source_code text, p_name text",
       "name": "clone_evolution_template",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -23811,6 +24010,7 @@
     {
       "args": "p_meal_template_id uuid, p_meal_plan_id bigint, p_meal_type text, p_meal_time time without time zone",
       "name": "clone_meal_template_to_plan",
+      "owner": "postgres",
       "config": [
         "search_path=public, private, pg_temp"
       ],
@@ -23823,6 +24023,7 @@
     {
       "args": "p_left_record_id uuid, p_right_record_id uuid",
       "name": "compare_clinical_record_versions",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -23835,6 +24036,7 @@
     {
       "args": "p_attachment_id uuid, p_sha256 text, p_size_bytes bigint, p_mime_type text, p_reason text",
       "name": "confirm_clinical_attachment_replacement",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -23847,6 +24049,7 @@
     {
       "args": "p_attachment_id uuid, p_sha256 text, p_size_bytes bigint, p_mime_type text",
       "name": "confirm_clinical_attachment_upload",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -23859,6 +24062,7 @@
     {
       "args": "p_upload_id uuid, p_sha256 text, p_size_bytes bigint, p_mime_type text",
       "name": "confirm_document_asset_upload",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -23871,6 +24075,7 @@
     {
       "args": "p_upload_id uuid, p_actor_id uuid, p_sha256 text, p_size_bytes bigint, p_mime_type text",
       "name": "confirm_document_asset_upload_verified",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -23883,6 +24088,7 @@
     {
       "args": "p_result_id bigint, p_reason text",
       "name": "confirm_lab_result_interpretation",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -23895,6 +24101,7 @@
     {
       "args": "",
       "name": "convert_custom_measure_to_grams",
+      "owner": "postgres",
       "config": [
         "search_path=public, pg_temp"
       ],
@@ -23907,6 +24114,7 @@
     {
       "args": "p_source_plan_id bigint, p_target_patient_id uuid, p_name text",
       "name": "copy_meal_plan_to_patient_atomic",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -23919,6 +24127,7 @@
     {
       "args": "",
       "name": "create_appointment_reminders",
+      "owner": "postgres",
       "config": [
         "search_path=public, private, pg_temp"
       ],
@@ -23931,6 +24140,7 @@
     {
       "args": "p_replaces_attachment_id uuid, p_original_filename text, p_mime_type text, p_size_bytes bigint",
       "name": "create_clinical_attachment_replacement_intent",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -23943,6 +24153,7 @@
     {
       "args": "p_attachment_id uuid",
       "name": "create_clinical_attachment_signed_url",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -23955,6 +24166,7 @@
     {
       "args": "p_patient_id uuid, p_care_episode_id uuid, p_clinical_record_id uuid, p_category_code text, p_description text, p_clinical_date date, p_original_filename text, p_mime_type text, p_size_bytes bigint",
       "name": "create_clinical_attachment_upload_intent",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -23967,6 +24179,7 @@
     {
       "args": "p_patient_id uuid, p_episode_id uuid, p_template_code text, p_encounter_at timestamp with time zone, p_visibility text, p_retrospective_reason text",
       "name": "create_clinical_evolution_draft",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -23979,6 +24192,7 @@
     {
       "args": "p_patient_id uuid, p_record_type text, p_encounter_at timestamp with time zone, p_visibility text",
       "name": "create_clinical_record_draft",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -23991,6 +24205,7 @@
     {
       "args": "",
       "name": "create_daily_log_reminders",
+      "owner": "postgres",
       "config": [
         "search_path=public, private, pg_temp"
       ],
@@ -24003,6 +24218,7 @@
     {
       "args": "p_user_id uuid, p_name text, p_description text, p_tags text[], p_meals jsonb",
       "name": "create_diet_template",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -24015,6 +24231,7 @@
     {
       "args": "p_record_id uuid, p_visibility text, p_supersedes_id uuid, p_replacement_reason text",
       "name": "create_document_artifact_from_clinical_record",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -24027,6 +24244,7 @@
     {
       "args": "p_plan_id bigint, p_visibility text",
       "name": "create_document_artifact_from_meal_plan",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -24039,6 +24257,7 @@
     {
       "args": "p_asset_type text, p_original_filename text, p_mime_type text, p_size_bytes bigint, p_expected_identity_version integer",
       "name": "create_document_asset_upload_intent",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -24051,6 +24270,7 @@
     {
       "args": "p_payload jsonb",
       "name": "create_lab_result_record",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -24063,6 +24283,7 @@
     {
       "args": "p_plan_data jsonb",
       "name": "create_meal_plan_atomic",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -24075,6 +24296,7 @@
     {
       "args": "p_request_type text, p_subject_note text",
       "name": "create_my_data_subject_request",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -24087,6 +24309,7 @@
     {
       "args": "p_request_id uuid, p_nutritionist_id uuid, p_patient_id uuid, p_invite_code text, p_email text, p_profile jsonb",
       "name": "create_offline_patient_atomic",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -24099,6 +24322,7 @@
     {
       "args": "p_appointment_id bigint",
       "name": "delete_appointment_with_finance",
+      "owner": "postgres",
       "config": [
         "search_path=pg_catalog, public"
       ],
@@ -24111,6 +24335,7 @@
     {
       "args": "patient_id uuid",
       "name": "delete_patient",
+      "owner": "postgres",
       "config": [
         "search_path=public, private, pg_temp"
       ],
@@ -24123,6 +24348,7 @@
     {
       "args": "",
       "name": "delete_read_notifications",
+      "owner": "postgres",
       "config": [
         "search_path=public"
       ],
@@ -24135,6 +24361,7 @@
     {
       "args": "p_record_id uuid, p_token uuid, p_attachment_id uuid",
       "name": "detach_anamnesis_file",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -24147,6 +24374,7 @@
     {
       "args": "p_patient_id uuid, p_end_reason text",
       "name": "end_care_episode",
+      "owner": "postgres",
       "config": [
         "search_path=public, private, pg_temp"
       ],
@@ -24159,6 +24387,7 @@
     {
       "args": "p_supervision_id uuid, p_reason text",
       "name": "end_student_supervision",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -24171,6 +24400,7 @@
     {
       "args": "p_limit integer",
       "name": "expire_clinical_attachment_uploads",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -24183,6 +24413,7 @@
     {
       "args": "p_limit integer",
       "name": "expire_document_asset_uploads",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -24195,6 +24426,7 @@
     {
       "args": "p_record_id uuid",
       "name": "extract_and_inject_clinical_flags",
+      "owner": "postgres",
       "config": [
         "search_path=public, pg_temp"
       ],
@@ -24207,6 +24439,7 @@
     {
       "args": "p_attachment_id uuid, p_reason text",
       "name": "fail_clinical_attachment_upload",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -24219,6 +24452,7 @@
     {
       "args": "p_upload_id uuid, p_failure_code text",
       "name": "fail_document_asset_upload",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -24231,6 +24465,7 @@
     {
       "args": "p_record_id uuid, p_content jsonb, p_expected_revision bigint, p_retrospective_reason text",
       "name": "finalize_clinical_record",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -24243,6 +24478,7 @@
     {
       "args": "p_artifact_id uuid, p_expected_revision bigint",
       "name": "finalize_document_artifact",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -24255,6 +24491,7 @@
     {
       "args": "p_patient_id uuid",
       "name": "force_delete_test_clone",
+      "owner": "postgres",
       "config": [
         "search_path=pg_catalog"
       ],
@@ -24267,6 +24504,7 @@
     {
       "args": "p_record_id uuid, p_nutritionist_id uuid, p_expires_days integer",
       "name": "generate_anamnesis_link",
+      "owner": "postgres",
       "config": [
         "search_path=public, pg_temp"
       ],
@@ -24279,6 +24517,7 @@
     {
       "args": "length integer",
       "name": "generate_random_invite_code",
+      "owner": "postgres",
       "config": [
         "search_path=public"
       ],
@@ -24291,6 +24530,7 @@
     {
       "args": "col_name text",
       "name": "generate_unique_invite_code",
+      "owner": "postgres",
       "config": [
         "search_path=public"
       ],
@@ -24303,6 +24543,7 @@
     {
       "args": "",
       "name": "get_admin_dashboard_stats",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -24315,6 +24556,7 @@
     {
       "args": "p_token uuid",
       "name": "get_anamnesis_by_token",
+      "owner": "postgres",
       "config": [
         "search_path=pg_catalog, public, pg_temp"
       ],
@@ -24327,6 +24569,7 @@
     {
       "args": "p_patient_id uuid",
       "name": "get_anthropometry_longitudinal_score",
+      "owner": "postgres",
       "config": [
         "search_path=public, pg_temp"
       ],
@@ -24339,6 +24582,7 @@
     {
       "args": "p_patient_id uuid",
       "name": "get_care_patient_profile",
+      "owner": "postgres",
       "config": [
         "search_path=public, pg_temp"
       ],
@@ -24351,6 +24595,7 @@
     {
       "args": "recipient_id uuid",
       "name": "get_chat_recipient_profile",
+      "owner": "postgres",
       "config": [
         "search_path=public, private, pg_temp"
       ],
@@ -24363,6 +24608,7 @@
     {
       "args": "p_record_id uuid",
       "name": "get_clinical_record_amendment_impact",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -24375,6 +24621,7 @@
     {
       "args": "p_nutritionist_id uuid, p_limit integer",
       "name": "get_comprehensive_activity_feed_optimized",
+      "owner": "postgres",
       "config": [
         "search_path=public, private, pg_temp"
       ],
@@ -24387,6 +24634,7 @@
     {
       "args": "p_nutritionist_id uuid",
       "name": "get_daily_adherence",
+      "owner": "postgres",
       "config": [
         "search_path=public, private, pg_temp"
       ],
@@ -24399,6 +24647,7 @@
     {
       "args": "p_artifact_id uuid",
       "name": "get_document_artifact",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -24411,6 +24660,7 @@
     {
       "args": "p_patient_id uuid",
       "name": "get_empty_patient_removal_status",
+      "owner": "postgres",
       "config": [
         "search_path=public, private, pg_temp"
       ],
@@ -24423,6 +24673,7 @@
     {
       "args": "start_date date, end_date date",
       "name": "get_financial_summary",
+      "owner": "postgres",
       "config": [
         "search_path=public, private, pg_temp"
       ],
@@ -24435,6 +24686,7 @@
     {
       "args": "p_nutritionist_id uuid",
       "name": "get_food_stats",
+      "owner": "postgres",
       "config": [
         "search_path=public, pg_temp"
       ],
@@ -24447,6 +24699,7 @@
     {
       "args": "address_jsonb jsonb",
       "name": "get_formatted_address",
+      "owner": "postgres",
       "config": [
         "search_path=public"
       ],
@@ -24459,6 +24712,7 @@
     {
       "args": "p_food_id bigint, p_measure_code text, p_quantity numeric",
       "name": "get_grams_from_measure",
+      "owner": "postgres",
       "config": [
         "search_path=public"
       ],
@@ -24471,6 +24725,7 @@
     {
       "args": "p_invite_code text",
       "name": "get_invite_details",
+      "owner": "postgres",
       "config": [
         "search_path=public, private, pg_temp"
       ],
@@ -24483,6 +24738,7 @@
     {
       "args": "p_meal_plan_id uuid",
       "name": "get_meal_plan_with_foods_optimized",
+      "owner": "postgres",
       "config": [
         "search_path=public, private, pg_temp"
       ],
@@ -24495,6 +24751,7 @@
     {
       "args": "",
       "name": "get_my_care_relationship",
+      "owner": "postgres",
       "config": [
         "search_path=public, pg_temp"
       ],
@@ -24507,6 +24764,7 @@
     {
       "args": "",
       "name": "get_my_clinical_document_context",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -24519,6 +24777,7 @@
     {
       "args": "p_asset_type text",
       "name": "get_my_document_asset_preview",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -24531,6 +24790,7 @@
     {
       "args": "",
       "name": "get_my_document_identity",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -24543,6 +24803,7 @@
     {
       "args": "",
       "name": "get_my_professional_verification",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -24555,6 +24816,7 @@
     {
       "args": "",
       "name": "get_my_student_supervisions",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -24567,6 +24829,7 @@
     {
       "args": "p_nutritionist_id uuid",
       "name": "get_nutritionist_conversations",
+      "owner": "postgres",
       "config": [
         "search_path=public, private, pg_temp"
       ],
@@ -24579,6 +24842,7 @@
     {
       "args": "p_nutritionist_id uuid",
       "name": "get_nutritionist_detail",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -24591,6 +24855,7 @@
     {
       "args": "",
       "name": "get_nutritionists_list",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -24603,6 +24868,7 @@
     {
       "args": "p_nutritionist_id uuid, p_window_hours integer",
       "name": "get_operational_health_summary",
+      "owner": "postgres",
       "config": [
         "search_path=public, private, pg_temp"
       ],
@@ -24615,6 +24881,7 @@
     {
       "args": "",
       "name": "get_own_profile_attrs",
+      "owner": "postgres",
       "config": [
         "search_path=public, private, pg_temp"
       ],
@@ -24627,6 +24894,7 @@
     {
       "args": "p_patient_id uuid",
       "name": "get_patient_record_foundation",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -24639,6 +24907,7 @@
     {
       "args": "p_nutritionist_id uuid",
       "name": "get_patients_for_new_chat",
+      "owner": "postgres",
       "config": [
         "search_path=public, private, pg_temp"
       ],
@@ -24651,6 +24920,7 @@
     {
       "args": "p_nutritionist_id uuid, p_days_threshold integer",
       "name": "get_patients_low_adherence_optimized",
+      "owner": "postgres",
       "config": [
         "search_path=public, private, pg_temp"
       ],
@@ -24663,6 +24933,7 @@
     {
       "args": "p_nutritionist_id uuid",
       "name": "get_patients_pending_data_optimized",
+      "owner": "postgres",
       "config": [
         "search_path=public, private, pg_temp"
       ],
@@ -24675,6 +24946,7 @@
     {
       "args": "nutritionist_id_param uuid, limit_param integer",
       "name": "get_recent_patient_activity",
+      "owner": "postgres",
       "config": [
         "search_path=public"
       ],
@@ -24687,6 +24959,7 @@
     {
       "args": "limit_count integer",
       "name": "get_system_live_logs",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -24699,6 +24972,7 @@
     {
       "args": "",
       "name": "get_tcc_study_metrics",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -24711,6 +24985,7 @@
     {
       "args": "p_limit integer",
       "name": "get_top_financial_patients",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -24723,6 +24998,7 @@
     {
       "args": "p_user_id uuid",
       "name": "get_unread_senders",
+      "owner": "postgres",
       "config": [
         "search_path=public"
       ],
@@ -24735,6 +25011,7 @@
     {
       "args": "",
       "name": "get_user_id",
+      "owner": "postgres",
       "config": [
         "search_path=public, private, pg_temp"
       ],
@@ -24747,6 +25024,7 @@
     {
       "args": "p_template_id uuid, p_plan_id bigint, p_meal_ids uuid[]",
       "name": "import_diet_template_meals_to_plan",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -24759,6 +25037,7 @@
     {
       "args": "p_patient_id uuid, p_nutritionist_id uuid",
       "name": "increment_checkin_streak",
+      "owner": "postgres",
       "config": [
         "search_path=public, private, pg_temp"
       ],
@@ -24771,6 +25050,7 @@
     {
       "args": "p_notification_id uuid, p_delete_if_message boolean",
       "name": "interact_notification",
+      "owner": "postgres",
       "config": [
         "search_path=public, private, pg_temp"
       ],
@@ -24783,6 +25063,7 @@
     {
       "args": "p_record_id bigint, p_reason text",
       "name": "invalidate_anthropometry_record",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -24795,6 +25076,7 @@
     {
       "args": "p_attachment_id uuid, p_reason text",
       "name": "invalidate_clinical_attachment",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -24807,6 +25089,7 @@
     {
       "args": "p_record_id uuid, p_reason text, p_impact_confirmation jsonb",
       "name": "invalidate_clinical_record",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -24819,6 +25102,7 @@
     {
       "args": "p_artifact_id uuid, p_reason text",
       "name": "invalidate_document_artifact",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -24831,6 +25115,7 @@
     {
       "args": "p_result_id bigint, p_reason text",
       "name": "invalidate_lab_result_record",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -24843,6 +25128,7 @@
     {
       "args": "p_photo_id uuid, p_reason text",
       "name": "invalidate_progress_photo",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -24855,6 +25141,7 @@
     {
       "args": "",
       "name": "is_admin",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -24867,6 +25154,7 @@
     {
       "args": "",
       "name": "is_nutritionist",
+      "owner": "postgres",
       "config": [
         "search_path=public, private, pg_temp"
       ],
@@ -24879,6 +25167,7 @@
     {
       "args": "",
       "name": "is_patient",
+      "owner": "postgres",
       "config": [
         "search_path=public, private, pg_temp"
       ],
@@ -24891,6 +25180,7 @@
     {
       "args": "p_template_id uuid, p_patient_id uuid, p_channel text, p_time_zone text",
       "name": "link_checkin_template",
+      "owner": "postgres",
       "config": [
         "search_path=pg_catalog, public, private"
       ],
@@ -24903,6 +25193,7 @@
     {
       "args": "p_patient_id uuid, p_episode_id uuid, p_status text, p_cursor text",
       "name": "list_clinical_attachments_by_episode",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -24915,6 +25206,7 @@
     {
       "args": "p_domain text",
       "name": "list_clinical_protocol_catalog",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -24927,6 +25219,7 @@
     {
       "args": "p_record_id uuid",
       "name": "list_clinical_record_version_chain",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -24939,6 +25232,7 @@
     {
       "args": "p_patient_id uuid, p_episode_id uuid, p_status_filter text",
       "name": "list_clinical_records_by_episode",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -24951,6 +25245,7 @@
     {
       "args": "p_status text",
       "name": "list_data_subject_requests",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -24963,6 +25258,7 @@
     {
       "args": "p_template_id uuid",
       "name": "list_diet_template_versions",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -24975,6 +25271,7 @@
     {
       "args": "p_patient_id uuid, p_episode_id uuid",
       "name": "list_document_artifacts",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -24987,6 +25284,7 @@
     {
       "args": "",
       "name": "list_evolution_templates",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -24999,6 +25297,7 @@
     {
       "args": "p_care_episode_id uuid",
       "name": "list_my_clinical_documents",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -25011,6 +25310,7 @@
     {
       "args": "",
       "name": "list_my_data_subject_requests",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -25023,6 +25323,7 @@
     {
       "args": "",
       "name": "list_nutritionist_care_patients",
+      "owner": "postgres",
       "config": [
         "search_path=public, pg_temp"
       ],
@@ -25035,6 +25336,7 @@
     {
       "args": "p_care_episode_id uuid",
       "name": "list_patient_clinical_attachments",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -25047,6 +25349,7 @@
     {
       "args": "p_patient_id uuid, p_episode_id uuid",
       "name": "list_patient_legal_guardians",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -25059,6 +25362,7 @@
     {
       "args": "p_patient_id uuid, p_episode_id uuid, p_scope text, p_cursor_at timestamp with time zone, p_cursor_event_id text, p_limit integer",
       "name": "list_patient_timeline",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -25071,6 +25375,7 @@
     {
       "args": "p_status text, p_role text",
       "name": "list_professional_verifications",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -25083,6 +25388,7 @@
     {
       "args": "p_event_name text, p_event_version integer, p_source_module text, p_patient_id uuid, p_nutritionist_id uuid, p_payload jsonb",
       "name": "log_activity_event",
+      "owner": "postgres",
       "config": [
         "search_path=public, private, pg_temp"
       ],
@@ -25095,6 +25401,7 @@
     {
       "args": "p_error_type character varying, p_error_message text, p_stack_trace text, p_route text, p_user_id uuid, p_user_email text, p_user_name text, p_user_type character varying, p_user_agent text, p_console_log jsonb, p_metadata jsonb, p_component_stack text, p_source_file text, p_line_number integer, p_column_number integer",
       "name": "log_bug_report",
+      "owner": "postgres",
       "config": [
         "search_path=public, private, pg_temp"
       ],
@@ -25107,6 +25414,7 @@
     {
       "args": "p_patient_id uuid, p_meal_id bigint, p_action text, p_meal_type text, p_meal_date date, p_meal_time time without time zone, p_details jsonb",
       "name": "log_meal_action",
+      "owner": "postgres",
       "config": [
         "search_path=public, private, pg_temp"
       ],
@@ -25119,6 +25427,7 @@
     {
       "args": "p_meal_id text, p_action text, p_details jsonb",
       "name": "log_meal_action_secure",
+      "owner": "postgres",
       "config": [
         "search_path=public, private, pg_temp"
       ],
@@ -25131,6 +25440,7 @@
     {
       "args": "",
       "name": "log_meal_edit",
+      "owner": "postgres",
       "config": [
         "search_path=public"
       ],
@@ -25143,6 +25453,7 @@
     {
       "args": "p_module text, p_operation text, p_event_type text, p_latency_ms integer, p_nutritionist_id uuid, p_patient_id uuid, p_error_message text, p_metadata jsonb",
       "name": "log_operational_event",
+      "owner": "postgres",
       "config": [
         "search_path=public, private, pg_temp"
       ],
@@ -25155,6 +25466,7 @@
     {
       "args": "p_user_id uuid, p_sender_id uuid",
       "name": "mark_chat_notifications_as_read",
+      "owner": "postgres",
       "config": [
         "search_path=public"
       ],
@@ -25167,6 +25479,7 @@
     {
       "args": "p_user_id uuid, p_sender_id uuid",
       "name": "mark_messages_as_read",
+      "owner": "postgres",
       "config": [
         "search_path=public"
       ],
@@ -25179,6 +25492,7 @@
     {
       "args": "p_value text",
       "name": "normalize_food_search",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -25191,6 +25505,7 @@
     {
       "args": "p_record_id uuid",
       "name": "notify_nutritionist_anamnesis_completed",
+      "owner": "postgres",
       "config": [
         "search_path=public"
       ],
@@ -25203,6 +25518,7 @@
     {
       "args": "p_patient_id uuid",
       "name": "process_patient_reminders",
+      "owner": "postgres",
       "config": [
         "search_path=public, private, pg_temp"
       ],
@@ -25215,6 +25531,7 @@
     {
       "args": "p_draft_id bigint, p_patient_id uuid",
       "name": "promote_draft_to_active",
+      "owner": "postgres",
       "config": [
         "search_path=public, private, pg_temp"
       ],
@@ -25227,6 +25544,7 @@
     {
       "args": "input_code text",
       "name": "redeem_invite_code",
+      "owner": "postgres",
       "config": [
         "search_path=public, private, pg_temp"
       ],
@@ -25239,6 +25557,7 @@
     {
       "args": "p_id bigint, p_refunded_at date",
       "name": "refund_financial_transaction",
+      "owner": "postgres",
       "config": [
         "search_path=pg_catalog, public"
       ],
@@ -25251,6 +25570,7 @@
     {
       "args": "p_patient_id uuid",
       "name": "reject_patient_link",
+      "owner": "postgres",
       "config": [
         "search_path=public, private, pg_temp"
       ],
@@ -25263,6 +25583,7 @@
     {
       "args": "p_patient_id uuid",
       "name": "remove_empty_patient",
+      "owner": "postgres",
       "config": [
         "search_path=public, private, pg_temp"
       ],
@@ -25275,6 +25596,7 @@
     {
       "args": "p_supervisor_id uuid",
       "name": "request_student_supervision",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -25287,6 +25609,7 @@
     {
       "args": "p_supervisor_email text",
       "name": "request_student_supervision_by_email",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -25299,6 +25622,7 @@
     {
       "args": "p_verification_id uuid, p_reason text",
       "name": "request_verification_information",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -25311,6 +25635,7 @@
     {
       "args": "p_supervision_id uuid, p_decision text, p_reason text",
       "name": "respond_student_supervision",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -25323,6 +25648,7 @@
     {
       "args": "p_attachment_id uuid, p_decision text, p_reason text, p_category_code text, p_description text, p_clinical_date date, p_clinical_record_id uuid",
       "name": "review_patient_clinical_attachment",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -25335,6 +25661,7 @@
     {
       "args": "p_verification_id uuid, p_decision text, p_reason text, p_source_url text, p_valid_until timestamp with time zone",
       "name": "review_professional_verification",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -25347,6 +25674,7 @@
     {
       "args": "p_record_id bigint, p_payload jsonb, p_reason text",
       "name": "revise_anthropometry_record",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -25359,6 +25687,7 @@
     {
       "args": "p_result_id bigint, p_payload jsonb, p_reason text",
       "name": "revise_lab_result_record",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -25371,6 +25700,7 @@
     {
       "args": "p_guardian_id uuid, p_reason text",
       "name": "revoke_patient_legal_guardian",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -25383,6 +25713,7 @@
     {
       "args": "p_appointment jsonb, p_financial jsonb, p_appointment_id bigint",
       "name": "save_appointment_with_finance",
+      "owner": "postgres",
       "config": [
         "search_path=pg_catalog, public"
       ],
@@ -25395,6 +25726,7 @@
     {
       "args": "p_id uuid, p_template jsonb, p_fields jsonb",
       "name": "save_checkin_template",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -25407,6 +25739,7 @@
     {
       "args": "p_food_id uuid, p_food jsonb, p_measures jsonb",
       "name": "save_custom_food_with_measures",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -25419,6 +25752,7 @@
     {
       "args": "p_id uuid, p_expected_updated_at timestamp with time zone, p_name text, p_description text, p_tags text[], p_foods jsonb",
       "name": "save_meal_template",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -25431,6 +25765,7 @@
     {
       "args": "p_payload jsonb, p_expected_version integer, p_reason text",
       "name": "save_my_document_identity",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -25443,6 +25778,7 @@
     {
       "args": "p_meal_id bigint, p_payload jsonb, p_items jsonb",
       "name": "save_patient_diary_meal",
+      "owner": "postgres",
       "config": [
         "search_path=pg_catalog, public, private"
       ],
@@ -25455,6 +25791,7 @@
     {
       "args": "p_id uuid, p_expected_updated_at timestamp with time zone, p_name text, p_description text, p_preparation_method text, p_yield_quantity numeric, p_yield_unit text, p_ingredients jsonb",
       "name": "save_recipe_template",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -25467,6 +25804,7 @@
     {
       "args": "p_query text, p_source text, p_scope text, p_groups text[], p_calories_min numeric, p_calories_max numeric, p_macro text, p_limit integer, p_offset integer",
       "name": "search_foods",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -25479,6 +25817,7 @@
     {
       "args": "p_search_term text, p_limit integer, p_source text",
       "name": "search_foods",
+      "owner": "postgres",
       "config": [
         "search_path=public"
       ],
@@ -25491,6 +25830,7 @@
     {
       "args": "p_plan_id bigint",
       "name": "set_active_meal_plan",
+      "owner": "postgres",
       "config": [
         "search_path=public, private, pg_temp"
       ],
@@ -25503,6 +25843,7 @@
     {
       "args": "p_schedule_id uuid, p_active boolean",
       "name": "set_checkin_schedule_active",
+      "owner": "postgres",
       "config": [
         "search_path=pg_catalog, public, private"
       ],
@@ -25515,6 +25856,7 @@
     {
       "args": "",
       "name": "set_communication_automations_updated_at",
+      "owner": "postgres",
       "config": [
         "search_path=public"
       ],
@@ -25527,6 +25869,7 @@
     {
       "args": "",
       "name": "set_lab_risk_rules_updated_at",
+      "owner": "postgres",
       "config": [
         "search_path=public"
       ],
@@ -25539,6 +25882,7 @@
     {
       "args": "",
       "name": "set_message_templates_updated_at",
+      "owner": "postgres",
       "config": [
         "search_path=public"
       ],
@@ -25551,6 +25895,7 @@
     {
       "args": "",
       "name": "set_patient_reminder_preferences_updated_at",
+      "owner": "postgres",
       "config": [
         "search_path=public"
       ],
@@ -25563,6 +25908,7 @@
     {
       "args": "",
       "name": "set_updated_at_ncm",
+      "owner": "postgres",
       "config": [
         "search_path=public, pg_catalog"
       ],
@@ -25575,6 +25921,7 @@
     {
       "args": "p_record_id uuid",
       "name": "sign_clinical_record",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -25587,6 +25934,7 @@
     {
       "args": "p_artifact_id uuid",
       "name": "sign_document_artifact",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -25599,6 +25947,7 @@
     {
       "args": "p_name text",
       "name": "slugify_name",
+      "owner": "postgres",
       "config": [
         "search_path=public"
       ],
@@ -25611,6 +25960,7 @@
     {
       "args": "p_meal_id bigint",
       "name": "soft_delete_meal",
+      "owner": "postgres",
       "config": [
         "search_path=public, private, pg_temp"
       ],
@@ -25623,6 +25973,7 @@
     {
       "args": "",
       "name": "stamp_editor_shadow_draft",
+      "owner": "postgres",
       "config": [
         "search_path=public"
       ],
@@ -25635,6 +25986,7 @@
     {
       "args": "p_patient_id uuid, p_start_reason text",
       "name": "start_care_episode",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -25647,6 +25999,7 @@
     {
       "args": "p_record_id uuid, p_reason text, p_impact_confirmation jsonb",
       "name": "start_clinical_record_correction",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -25659,6 +26012,7 @@
     {
       "args": "p_token uuid, p_content jsonb, p_status text, p_lgpd_consented boolean, p_ip text, p_clinical_flags jsonb",
       "name": "submit_anamnesis_by_token",
+      "owner": "postgres",
       "config": [
         "search_path=pg_catalog, public, private, pg_temp"
       ],
@@ -25671,6 +26025,7 @@
     {
       "args": "p_session_id uuid, p_responses jsonb",
       "name": "submit_checkin_session",
+      "owner": "postgres",
       "config": [
         "search_path=pg_catalog, public, private"
       ],
@@ -25683,6 +26038,7 @@
     {
       "args": "p_payload jsonb",
       "name": "submit_professional_verification",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -25695,6 +26051,7 @@
     {
       "args": "p_verification_id uuid, p_reason text",
       "name": "suspend_professional_verification",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -25707,6 +26064,7 @@
     {
       "args": "",
       "name": "sync_anthropometry_on_profile_change",
+      "owner": "postgres",
       "config": [
         "search_path=public"
       ],
@@ -25719,6 +26077,7 @@
     {
       "args": "p_appointment_id bigint, p_next_status text, p_reason text",
       "name": "transition_appointment_status",
+      "owner": "postgres",
       "config": [
         "search_path=public, private, pg_temp"
       ],
@@ -25731,6 +26090,7 @@
     {
       "args": "p_appointment_id uuid, p_next_status text, p_reason text",
       "name": "transition_appointment_status",
+      "owner": "postgres",
       "config": [
         "search_path=public, private, pg_temp"
       ],
@@ -25743,6 +26103,7 @@
     {
       "args": "",
       "name": "trg_growth_records_apply_versioning",
+      "owner": "postgres",
       "config": [
         "search_path=public, pg_temp"
       ],
@@ -25755,6 +26116,7 @@
     {
       "args": "",
       "name": "trg_growth_records_mark_previous_not_latest",
+      "owner": "postgres",
       "config": [
         "search_path=public, pg_temp"
       ],
@@ -25767,6 +26129,7 @@
     {
       "args": "",
       "name": "trg_growth_records_sync_modules",
+      "owner": "postgres",
       "config": [
         "search_path=public, pg_temp"
       ],
@@ -25779,6 +26142,7 @@
     {
       "args": "",
       "name": "trg_growth_records_validate_clinical",
+      "owner": "postgres",
       "config": [
         "search_path=public, pg_temp"
       ],
@@ -25791,6 +26155,7 @@
     {
       "args": "",
       "name": "trg_set_invite_code",
+      "owner": "postgres",
       "config": [
         "search_path=public"
       ],
@@ -25803,6 +26168,7 @@
     {
       "args": "",
       "name": "update_bug_reports_updated_at",
+      "owner": "postgres",
       "config": [
         "search_path=public"
       ],
@@ -25815,6 +26181,7 @@
     {
       "args": "p_record_id uuid, p_content jsonb, p_visibility text, p_expected_revision bigint",
       "name": "update_clinical_record_draft",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -25827,6 +26194,7 @@
     {
       "args": "p_request_id uuid, p_expected_revision bigint, p_status text, p_reason text, p_retention_decision text, p_legal_basis text, p_assign_to_me boolean",
       "name": "update_data_subject_request",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -25839,6 +26207,7 @@
     {
       "args": "p_template_id uuid, p_user_id uuid, p_name text, p_description text, p_tags text[], p_meals jsonb",
       "name": "update_diet_template",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -25851,6 +26220,7 @@
     {
       "args": "p_artifact_id uuid, p_payload jsonb, p_expected_revision bigint",
       "name": "update_document_artifact_draft",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -25863,6 +26233,7 @@
     {
       "args": "",
       "name": "update_energy_calc_timestamp",
+      "owner": "postgres",
       "config": [
         "search_path=public"
       ],
@@ -25875,6 +26246,7 @@
     {
       "args": "",
       "name": "update_foods_timestamp",
+      "owner": "postgres",
       "config": [
         "search_path=public"
       ],
@@ -25887,6 +26259,7 @@
     {
       "args": "",
       "name": "update_lab_results_timestamp",
+      "owner": "postgres",
       "config": [
         "search_path=public"
       ],
@@ -25899,6 +26272,7 @@
     {
       "args": "",
       "name": "update_meal_plan_timestamp",
+      "owner": "postgres",
       "config": [
         "search_path=public"
       ],
@@ -25911,6 +26285,7 @@
     {
       "args": "",
       "name": "update_modified_column",
+      "owner": "postgres",
       "config": [
         "search_path=public, pg_temp"
       ],
@@ -25923,6 +26298,7 @@
     {
       "args": "",
       "name": "update_patient_goals_updated_at",
+      "owner": "postgres",
       "config": [
         "search_path=public"
       ],
@@ -25935,6 +26311,7 @@
     {
       "args": "p_patient_id uuid, p_changes jsonb, p_source text",
       "name": "update_patient_progressive_profile",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -25947,6 +26324,7 @@
     {
       "args": "",
       "name": "update_reference_values_timestamp",
+      "owner": "postgres",
       "config": [
         "search_path=public"
       ],
@@ -25959,6 +26337,7 @@
     {
       "args": "",
       "name": "update_updated_at_column",
+      "owner": "postgres",
       "config": [
         "search_path=public"
       ],
@@ -25971,6 +26350,7 @@
     {
       "args": "p_plan_id bigint, p_plan_data jsonb, p_meals jsonb",
       "name": "upsert_full_meal_plan",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -25983,6 +26363,7 @@
     {
       "args": "p_patient_id uuid, p_episode_id uuid, p_payload jsonb",
       "name": "upsert_patient_legal_guardian",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -25995,6 +26376,7 @@
     {
       "args": "",
       "name": "user_profiles_sync_slug",
+      "owner": "postgres",
       "config": [
         "search_path=public"
       ],
@@ -26007,6 +26389,7 @@
     {
       "args": "p_code uuid",
       "name": "verify_document_authenticity",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -26019,6 +26402,7 @@
     {
       "args": "p_template_code text, p_sections jsonb",
       "name": "version_private_evolution_template",
+      "owner": "postgres",
       "config": [
         "search_path=\"\""
       ],
@@ -26034,6 +26418,7 @@
       "rls": true,
       "kind": "r",
       "name": "admin_access_events",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres}",
       "schema": "private",
       "forceRls": false
@@ -26042,6 +26427,7 @@
       "rls": true,
       "kind": "r",
       "name": "admin_operators",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres}",
       "schema": "private",
       "forceRls": false
@@ -26050,6 +26436,7 @@
       "rls": false,
       "kind": "r",
       "name": "document_authenticity_rate_limits",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,service_role=arwd/postgres}",
       "schema": "private",
       "forceRls": false
@@ -26058,6 +26445,7 @@
       "rls": false,
       "kind": "r",
       "name": "empty_patient_removal_audit",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres}",
       "schema": "private",
       "forceRls": false
@@ -26066,6 +26454,7 @@
       "rls": false,
       "kind": "r",
       "name": "food_proxy_quotas",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres}",
       "schema": "private",
       "forceRls": false
@@ -26074,6 +26463,7 @@
       "rls": false,
       "kind": "r",
       "name": "offline_patient_requests",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres}",
       "schema": "private",
       "forceRls": false
@@ -26082,6 +26472,7 @@
       "rls": true,
       "kind": "r",
       "name": "achievements",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26090,6 +26481,7 @@
       "rls": false,
       "kind": "S",
       "name": "achievements_id_seq",
+      "owner": "postgres",
       "grants": "{postgres=rwU/postgres,anon=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26098,6 +26490,7 @@
       "rls": true,
       "kind": "r",
       "name": "activity_log",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26106,6 +26499,7 @@
       "rls": true,
       "kind": "r",
       "name": "anamnesis_records",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26114,6 +26508,7 @@
       "rls": true,
       "kind": "r",
       "name": "anamnesis_templates",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26122,6 +26517,7 @@
       "rls": true,
       "kind": "r",
       "name": "appointments",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26130,6 +26526,7 @@
       "rls": false,
       "kind": "S",
       "name": "appointments_id_seq",
+      "owner": "postgres",
       "grants": "{postgres=rwU/postgres,anon=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26138,6 +26535,7 @@
       "rls": true,
       "kind": "r",
       "name": "archived_patient_links",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26146,6 +26544,7 @@
       "rls": true,
       "kind": "r",
       "name": "bug_reports",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26154,6 +26553,7 @@
       "rls": true,
       "kind": "r",
       "name": "care_episodes",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26162,6 +26562,7 @@
       "rls": true,
       "kind": "r",
       "name": "chats",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26170,6 +26571,7 @@
       "rls": false,
       "kind": "S",
       "name": "chats_id_seq",
+      "owner": "postgres",
       "grants": "{postgres=rwU/postgres,anon=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26178,6 +26580,7 @@
       "rls": true,
       "kind": "r",
       "name": "checkin_fields",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26186,6 +26589,7 @@
       "rls": true,
       "kind": "r",
       "name": "checkin_schedules",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26194,6 +26598,7 @@
       "rls": true,
       "kind": "r",
       "name": "checkin_sessions",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26202,6 +26607,7 @@
       "rls": true,
       "kind": "r",
       "name": "checkin_templates",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26210,6 +26616,7 @@
       "rls": true,
       "kind": "r",
       "name": "clinical_attachment_categories",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26218,6 +26625,7 @@
       "rls": true,
       "kind": "r",
       "name": "clinical_attachment_events",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26226,6 +26634,7 @@
       "rls": true,
       "kind": "r",
       "name": "clinical_attachments",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26234,6 +26643,7 @@
       "rls": true,
       "kind": "r",
       "name": "clinical_calculation_snapshots",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26242,6 +26652,7 @@
       "rls": true,
       "kind": "r",
       "name": "clinical_evolution_template_events",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres,authenticated=r/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26250,6 +26661,7 @@
       "rls": true,
       "kind": "r",
       "name": "clinical_evolution_template_versions",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres,authenticated=r/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26258,6 +26670,7 @@
       "rls": true,
       "kind": "r",
       "name": "clinical_evolution_templates",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres,authenticated=r/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26266,6 +26679,7 @@
       "rls": true,
       "kind": "r",
       "name": "clinical_protocol_acceptances",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26274,6 +26688,7 @@
       "rls": true,
       "kind": "r",
       "name": "clinical_protocol_catalog",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26282,6 +26697,7 @@
       "rls": true,
       "kind": "r",
       "name": "clinical_record_amendments",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26290,6 +26706,7 @@
       "rls": true,
       "kind": "r",
       "name": "clinical_record_events",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26298,6 +26715,7 @@
       "rls": true,
       "kind": "r",
       "name": "clinical_record_types",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres,authenticated=r/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26306,6 +26724,7 @@
       "rls": true,
       "kind": "r",
       "name": "clinical_records",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26314,6 +26733,7 @@
       "rls": true,
       "kind": "r",
       "name": "communication_automations",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26322,6 +26742,7 @@
       "rls": false,
       "kind": "S",
       "name": "communication_automations_id_seq",
+      "owner": "postgres",
       "grants": "{postgres=rwU/postgres,anon=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26330,6 +26751,7 @@
       "rls": true,
       "kind": "r",
       "name": "data_retention_policy_catalog",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26338,6 +26760,7 @@
       "rls": true,
       "kind": "r",
       "name": "data_subject_request_events",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26346,6 +26769,7 @@
       "rls": true,
       "kind": "r",
       "name": "data_subject_requests",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26354,6 +26778,7 @@
       "rls": true,
       "kind": "r",
       "name": "diet_template_food_substitutions",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26362,6 +26787,7 @@
       "rls": true,
       "kind": "r",
       "name": "diet_template_foods",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26370,6 +26796,7 @@
       "rls": true,
       "kind": "r",
       "name": "diet_template_meals",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26378,6 +26805,7 @@
       "rls": true,
       "kind": "r",
       "name": "diet_template_versions",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26386,6 +26814,7 @@
       "rls": true,
       "kind": "r",
       "name": "diet_templates",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26394,6 +26823,7 @@
       "rls": true,
       "kind": "r",
       "name": "document_artifact_events",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26402,6 +26832,7 @@
       "rls": true,
       "kind": "r",
       "name": "document_artifacts",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26410,6 +26841,7 @@
       "rls": true,
       "kind": "r",
       "name": "document_asset_uploads",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26418,6 +26850,7 @@
       "rls": true,
       "kind": "r",
       "name": "document_layout_versions",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres,authenticated=r/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26426,6 +26859,7 @@
       "rls": true,
       "kind": "r",
       "name": "document_layouts",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres,authenticated=r/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26434,6 +26868,7 @@
       "rls": true,
       "kind": "r",
       "name": "editor_shadow_drafts",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26442,6 +26877,7 @@
       "rls": true,
       "kind": "r",
       "name": "energy_expenditure_calculations",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26450,6 +26886,7 @@
       "rls": false,
       "kind": "S",
       "name": "energy_expenditure_calculations_id_seq",
+      "owner": "postgres",
       "grants": "{postgres=rwU/postgres,anon=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26458,6 +26895,7 @@
       "rls": true,
       "kind": "r",
       "name": "external_api_cache",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26466,6 +26904,7 @@
       "rls": true,
       "kind": "r",
       "name": "feed_tasks",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26474,6 +26913,7 @@
       "rls": true,
       "kind": "r",
       "name": "financial_records",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26482,6 +26922,7 @@
       "rls": true,
       "kind": "r",
       "name": "financial_transactions",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26490,6 +26931,7 @@
       "rls": false,
       "kind": "S",
       "name": "financial_transactions_id_seq",
+      "owner": "postgres",
       "grants": "{postgres=rwU/postgres,anon=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26498,6 +26940,7 @@
       "rls": true,
       "kind": "r",
       "name": "food_household_measures",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26506,6 +26949,7 @@
       "rls": true,
       "kind": "r",
       "name": "food_measures",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26514,6 +26958,7 @@
       "rls": false,
       "kind": "v",
       "name": "foods",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26522,6 +26967,7 @@
       "rls": true,
       "kind": "r",
       "name": "glycemia_records",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26530,6 +26976,7 @@
       "rls": true,
       "kind": "r",
       "name": "growth_records",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26538,6 +26985,7 @@
       "rls": false,
       "kind": "S",
       "name": "growth_records_id_seq",
+      "owner": "postgres",
       "grants": "{postgres=rwU/postgres,anon=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26546,6 +26994,7 @@
       "rls": true,
       "kind": "r",
       "name": "household_measures",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26554,6 +27003,7 @@
       "rls": false,
       "kind": "S",
       "name": "household_measures_id_seq",
+      "owner": "postgres",
       "grants": "{postgres=rwU/postgres,anon=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26562,6 +27012,7 @@
       "rls": true,
       "kind": "r",
       "name": "lab_results",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26570,6 +27021,7 @@
       "rls": false,
       "kind": "S",
       "name": "lab_results_id_seq",
+      "owner": "postgres",
       "grants": "{postgres=rwU/postgres,anon=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26578,6 +27030,7 @@
       "rls": true,
       "kind": "r",
       "name": "lab_risk_rules",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26586,6 +27039,7 @@
       "rls": false,
       "kind": "S",
       "name": "lab_risk_rules_id_seq",
+      "owner": "postgres",
       "grants": "{postgres=rwU/postgres,anon=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26594,6 +27048,7 @@
       "rls": true,
       "kind": "r",
       "name": "legal_guardian_events",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres,authenticated=r/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26602,6 +27057,7 @@
       "rls": true,
       "kind": "r",
       "name": "meal_audit_log",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=rDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26610,6 +27066,7 @@
       "rls": false,
       "kind": "S",
       "name": "meal_audit_log_id_seq",
+      "owner": "postgres",
       "grants": "{postgres=rwU/postgres,anon=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26618,6 +27075,7 @@
       "rls": true,
       "kind": "r",
       "name": "meal_edit_history",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26626,6 +27084,7 @@
       "rls": false,
       "kind": "S",
       "name": "meal_edit_history_id_seq",
+      "owner": "postgres",
       "grants": "{postgres=rwU/postgres,anon=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26634,6 +27093,7 @@
       "rls": true,
       "kind": "r",
       "name": "meal_history",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=rDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26642,6 +27102,7 @@
       "rls": false,
       "kind": "S",
       "name": "meal_history_id_seq",
+      "owner": "postgres",
       "grants": "{postgres=rwU/postgres,anon=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26650,6 +27111,7 @@
       "rls": true,
       "kind": "r",
       "name": "meal_items",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26658,6 +27120,7 @@
       "rls": false,
       "kind": "S",
       "name": "meal_items_id_seq",
+      "owner": "postgres",
       "grants": "{postgres=rwU/postgres,anon=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26666,6 +27129,7 @@
       "rls": true,
       "kind": "r",
       "name": "meal_plan_food_substitutions",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26674,6 +27138,7 @@
       "rls": false,
       "kind": "S",
       "name": "meal_plan_food_substitutions_id_seq",
+      "owner": "postgres",
       "grants": "{postgres=rwU/postgres,anon=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26682,6 +27147,7 @@
       "rls": true,
       "kind": "r",
       "name": "meal_plan_foods",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26690,6 +27156,7 @@
       "rls": false,
       "kind": "S",
       "name": "meal_plan_foods_id_seq",
+      "owner": "postgres",
       "grants": "{postgres=rwU/postgres,anon=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26698,6 +27165,7 @@
       "rls": true,
       "kind": "r",
       "name": "meal_plan_meals",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26706,6 +27174,7 @@
       "rls": false,
       "kind": "S",
       "name": "meal_plan_meals_id_seq",
+      "owner": "postgres",
       "grants": "{postgres=rwU/postgres,anon=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26714,6 +27183,7 @@
       "rls": true,
       "kind": "r",
       "name": "meal_plan_reference_values",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26722,6 +27192,7 @@
       "rls": false,
       "kind": "S",
       "name": "meal_plan_reference_values_id_seq",
+      "owner": "postgres",
       "grants": "{postgres=rwU/postgres,anon=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26730,6 +27201,7 @@
       "rls": true,
       "kind": "r",
       "name": "meal_plan_versions",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,authenticated=rm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26738,6 +27210,7 @@
       "rls": false,
       "kind": "S",
       "name": "meal_plan_versions_id_seq",
+      "owner": "postgres",
       "grants": "{postgres=rwU/postgres,service_role=rwU/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26746,6 +27219,7 @@
       "rls": true,
       "kind": "r",
       "name": "meal_plans",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26754,6 +27228,7 @@
       "rls": false,
       "kind": "S",
       "name": "meal_plans_id_seq",
+      "owner": "postgres",
       "grants": "{postgres=rwU/postgres,anon=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26762,6 +27237,7 @@
       "rls": true,
       "kind": "r",
       "name": "meal_template_food_substitutions",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26770,6 +27246,7 @@
       "rls": true,
       "kind": "r",
       "name": "meal_template_foods",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26778,6 +27255,7 @@
       "rls": true,
       "kind": "r",
       "name": "meal_templates",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26786,6 +27264,7 @@
       "rls": true,
       "kind": "r",
       "name": "meals",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26794,6 +27273,7 @@
       "rls": false,
       "kind": "S",
       "name": "meals_id_seq",
+      "owner": "postgres",
       "grants": "{postgres=rwU/postgres,anon=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26802,6 +27282,7 @@
       "rls": true,
       "kind": "r",
       "name": "message_templates",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26810,6 +27291,7 @@
       "rls": false,
       "kind": "S",
       "name": "message_templates_id_seq",
+      "owner": "postgres",
       "grants": "{postgres=rwU/postgres,anon=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26818,6 +27300,7 @@
       "rls": true,
       "kind": "r",
       "name": "notification_events",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26826,6 +27309,7 @@
       "rls": false,
       "kind": "S",
       "name": "notification_events_id_seq",
+      "owner": "postgres",
       "grants": "{postgres=rwU/postgres,anon=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26834,6 +27318,7 @@
       "rls": true,
       "kind": "r",
       "name": "notification_rules",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26842,6 +27327,7 @@
       "rls": true,
       "kind": "r",
       "name": "notifications",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26850,6 +27336,7 @@
       "rls": false,
       "kind": "S",
       "name": "notifications_id_seq",
+      "owner": "postgres",
       "grants": "{postgres=rwU/postgres,anon=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26858,6 +27345,7 @@
       "rls": true,
       "kind": "r",
       "name": "nutritionist_branding",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26866,6 +27354,7 @@
       "rls": true,
       "kind": "r",
       "name": "nutritionist_custom_measures",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26874,6 +27363,7 @@
       "rls": false,
       "kind": "S",
       "name": "nutritionist_custom_measures_id_seq",
+      "owner": "postgres",
       "grants": "{postgres=rwU/postgres,anon=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26882,6 +27372,7 @@
       "rls": true,
       "kind": "r",
       "name": "nutritionist_foods",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26890,6 +27381,7 @@
       "rls": true,
       "kind": "r",
       "name": "nutritionist_patients",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26898,6 +27390,7 @@
       "rls": true,
       "kind": "r",
       "name": "operational_observability_log",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26906,6 +27399,7 @@
       "rls": false,
       "kind": "S",
       "name": "operational_observability_log_id_seq",
+      "owner": "postgres",
       "grants": "{postgres=rwU/postgres,anon=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26914,6 +27408,7 @@
       "rls": true,
       "kind": "r",
       "name": "patient_episode_legal_guardians",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26922,6 +27417,7 @@
       "rls": true,
       "kind": "r",
       "name": "patient_goals",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26930,6 +27426,7 @@
       "rls": false,
       "kind": "S",
       "name": "patient_goals_id_seq",
+      "owner": "postgres",
       "grants": "{postgres=rwU/postgres,anon=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26938,6 +27435,7 @@
       "rls": false,
       "kind": "v",
       "name": "patient_hub_summary",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26946,6 +27444,7 @@
       "rls": true,
       "kind": "r",
       "name": "patient_module_sync_flags",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26954,6 +27453,7 @@
       "rls": true,
       "kind": "r",
       "name": "patient_profile_events",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres,authenticated=r/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26962,6 +27462,7 @@
       "rls": true,
       "kind": "r",
       "name": "patient_progress_measurements",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26970,6 +27471,7 @@
       "rls": false,
       "kind": "S",
       "name": "patient_progress_measurements_id_seq",
+      "owner": "postgres",
       "grants": "{postgres=rwU/postgres,anon=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26978,6 +27480,7 @@
       "rls": true,
       "kind": "r",
       "name": "patient_reminder_preferences",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26986,6 +27489,7 @@
       "rls": false,
       "kind": "S",
       "name": "patient_reminder_preferences_id_seq",
+      "owner": "postgres",
       "grants": "{postgres=rwU/postgres,anon=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}",
       "schema": "public",
       "forceRls": false
@@ -26994,6 +27498,7 @@
       "rls": true,
       "kind": "r",
       "name": "prescriptions",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -27002,6 +27507,7 @@
       "rls": false,
       "kind": "S",
       "name": "prescriptions_id_seq",
+      "owner": "postgres",
       "grants": "{postgres=rwU/postgres,anon=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}",
       "schema": "public",
       "forceRls": false
@@ -27010,6 +27516,7 @@
       "rls": true,
       "kind": "r",
       "name": "professional_document_identities",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -27018,6 +27525,7 @@
       "rls": true,
       "kind": "r",
       "name": "professional_document_identity_events",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -27026,6 +27534,7 @@
       "rls": true,
       "kind": "r",
       "name": "professional_verifications",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,authenticated=rDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -27034,6 +27543,7 @@
       "rls": true,
       "kind": "r",
       "name": "progress_photo_events",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -27042,6 +27552,7 @@
       "rls": false,
       "kind": "S",
       "name": "progress_photo_events_id_seq",
+      "owner": "postgres",
       "grants": "{postgres=rwU/postgres,anon=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}",
       "schema": "public",
       "forceRls": false
@@ -27050,6 +27561,7 @@
       "rls": true,
       "kind": "r",
       "name": "progress_photos",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -27058,6 +27570,7 @@
       "rls": true,
       "kind": "r",
       "name": "recipe_ingredients",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -27066,6 +27579,7 @@
       "rls": true,
       "kind": "r",
       "name": "recipes",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -27074,6 +27588,7 @@
       "rls": true,
       "kind": "r",
       "name": "recurring_expenses",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -27082,6 +27597,7 @@
       "rls": true,
       "kind": "r",
       "name": "reference_foods",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -27090,6 +27606,7 @@
       "rls": true,
       "kind": "r",
       "name": "reminder_delivery_log",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -27098,6 +27615,7 @@
       "rls": false,
       "kind": "S",
       "name": "reminder_delivery_log_id_seq",
+      "owner": "postgres",
       "grants": "{postgres=rwU/postgres,anon=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}",
       "schema": "public",
       "forceRls": false
@@ -27106,6 +27624,7 @@
       "rls": true,
       "kind": "r",
       "name": "scientific_sources",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -27114,6 +27633,7 @@
       "rls": true,
       "kind": "r",
       "name": "services",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -27122,6 +27642,7 @@
       "rls": true,
       "kind": "r",
       "name": "student_supervision_events",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,authenticated=rDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -27130,6 +27651,7 @@
       "rls": true,
       "kind": "r",
       "name": "student_supervisions",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,authenticated=rDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -27138,6 +27660,7 @@
       "rls": true,
       "kind": "r",
       "name": "supplement_logs",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -27146,6 +27669,7 @@
       "rls": true,
       "kind": "r",
       "name": "template_dispatch_log",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -27154,6 +27678,7 @@
       "rls": false,
       "kind": "S",
       "name": "template_dispatch_log_id_seq",
+      "owner": "postgres",
       "grants": "{postgres=rwU/postgres,anon=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}",
       "schema": "public",
       "forceRls": false
@@ -27162,6 +27687,7 @@
       "rls": true,
       "kind": "r",
       "name": "user_achievements",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -27170,6 +27696,7 @@
       "rls": false,
       "kind": "S",
       "name": "user_achievements_id_seq",
+      "owner": "postgres",
       "grants": "{postgres=rwU/postgres,anon=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}",
       "schema": "public",
       "forceRls": false
@@ -27178,6 +27705,7 @@
       "rls": true,
       "kind": "r",
       "name": "user_profiles",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -27186,6 +27714,7 @@
       "rls": true,
       "kind": "r",
       "name": "verification_documents",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,authenticated=rDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -27194,6 +27723,7 @@
       "rls": true,
       "kind": "r",
       "name": "verification_events",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,authenticated=rDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -27202,6 +27732,7 @@
       "rls": true,
       "kind": "r",
       "name": "weekly_summaries",
+      "owner": "postgres",
       "grants": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public",
       "forceRls": false
@@ -27210,6 +27741,7 @@
       "rls": false,
       "kind": "S",
       "name": "weekly_summaries_id_seq",
+      "owner": "postgres",
       "grants": "{postgres=rwU/postgres,anon=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}",
       "schema": "public",
       "forceRls": false
