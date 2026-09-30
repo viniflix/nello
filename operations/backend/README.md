@@ -162,3 +162,9 @@ zero defaults in the public salmon fixture, violating the recorded TACO unreport
 micronutrient constraint. Its B12/D/E/folate values are explicitly NULL; the
 constraint is unchanged. A post-repair assertion verifies the recorded four mineral
 corrections and those NULLs, covering this fixture's adjacent nutrition contract.
+
+Run 36674450176 reached the last September 24 permission retirement and exposed
+missing public/private legacy UUID transition definitions. Their current captured
+bodies and service-only ACL are supplied immediately before the recorded revocation.
+The original revoke statements still execute, and the final snapshot retains both
+old retired and current bigint contracts. No historical revocation is skipped.
