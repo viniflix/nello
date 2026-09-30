@@ -66,7 +66,7 @@
     --popover-foreground: 24 5.7% 23.9%;
 
     /* Cores primárias e secundárias (OK) */
-    --primary: 100 31% 38%;
+    --primary: 100 31% 32%;
     --primary-foreground: 0 0% 100%;
     --secondary: 26 95% 48%;
     --secondary-foreground: 0 0% 100%;
@@ -74,7 +74,7 @@
     /* TEXTO "MUTED" (Correção de Contraste) */
     /* Agora usa Stone 500, legível em fundo branco */
     --muted: 24 5.4% 92.9%; /* stone-100 */
-    --muted-foreground: 24 3.8% 46.1%; /* stone-500 (#78716c) */
+    --muted-foreground: 24 3.8% 39%; /* stone-500 (#78716c) */
 
     --accent: 24 5.6% 94.9%; /* stone-100 (mais claro) */
     --accent-foreground: 24 5.9% 10%; /* stone-900 */

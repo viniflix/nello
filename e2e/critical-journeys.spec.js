@@ -5,7 +5,7 @@ import AxeBuilder from '@axe-core/playwright';
 import { readFileSync } from 'node:fs';
 const fixture=JSON.parse(readFileSync('.backend-ci/browser-runtime/fixture.json'));
 async function login(page,key){await page.goto(key.startsWith('admin-')?'/admin/dashboard':'/login');await page.locator('#email').fill(fixture.personas[key].email);await page.locator('#password').fill(fixture.password);await page.getByRole('button',{name:'Entrar',exact:true}).click();}
-async function audit(page){const {violations}=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze();expect(violations).toEqual([]);expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);}
+async function audit(page){await page.evaluate(async()=>{await Promise.all(document.getAnimations().filter(a=>a.effect?.getComputedTiming().iterations!==Infinity).map(a=>a.finished.catch(()=>{})));});const {violations}=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze();expect(violations.map(v=>({id:v.id,nodes:v.nodes.map(n=>({target:n.target,html:n.html,summary:n.failureSummary}))}))).toEqual([]);expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);}
 test('anonymous protected routes redirect to login; keyboard login is usable',async({page})=>{
   await page.goto('/nutritionist/patients');await expect(page).toHaveURL(/\/login/);await page.locator('#email').focus();await page.keyboard.press('Tab');await expect(page.getByRole('button',{name:'Esqueceu a senha?',exact:true})).toBeFocused();await page.keyboard.press('Tab');await expect(page.locator('#password')).toBeFocused();await audit(page);
 });

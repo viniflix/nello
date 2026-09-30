@@ -35,7 +35,7 @@ function Section({ title, description, action, children, className = '' }) {
             <div className="flex flex-col gap-3 border-b border-slate-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
                 <div>
                     <h2 className="font-heading text-lg font-semibold leading-tight tracking-[0.025em] text-[#263125]">{title}</h2>
-                    {description && <p className="mt-1 text-xs leading-5 text-slate-500">{description}</p>}
+                    {description && <p className="mt-1 text-xs leading-5 text-slate-600">{description}</p>}
                 </div>
                 {action}
             </div>
@@ -59,7 +59,7 @@ function RecommendationInfo({ insight }) {
                         {reasons.map((reason) => <li key={reason}>• {reason}</li>)}
                     </ul>
                 ) : <p className="mt-2 text-slate-200">Não há evidências adicionais disponíveis.</p>}
-                <p className="mt-2 border-t border-white/15 pt-2 text-slate-400">Dados considerados: perfil, agenda, plano, avaliações e check-ins disponíveis.</p>
+                <p className="mt-2 border-t border-white/15 pt-2 text-slate-600">Dados considerados: perfil, agenda, plano, avaliações e check-ins disponíveis.</p>
             </div>
         </div>
     );
@@ -90,7 +90,7 @@ function RecommendedAction({ insights, onAction }) {
                         <p className="mt-1 text-[13px] leading-5 text-slate-600 sm:text-sm">{insight.description}</p>
                     </div>
                 </div>
-                <Button onClick={() => onAction(insight.action)} className={`h-10 shrink-0 gap-2 text-white ${isSuccess ? 'bg-[#5f6f52] hover:bg-[#4e5c45]' : 'bg-[#c4661f] hover:bg-[#a95318]'}`}>
+                <Button onClick={() => onAction(insight.action)} className={`h-10 shrink-0 gap-2 text-white ${isSuccess ? 'bg-[#5f6f52] hover:bg-[#4e5c45]' : 'bg-[#a95318] hover:bg-[#a95318]'}`}>
                     {insight.actionLabel}<ChevronRight className="h-4 w-4" />
                 </Button>
             </div>
@@ -117,7 +117,7 @@ function PlanCard({ context, onAction }) {
                         <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                             <div>
                                 <p className="text-sm font-semibold text-slate-800">{plan.name || 'Plano alimentar'}</p>
-                                <p className="mt-1 text-xs text-slate-500">{context.mealCount ?? '—'} refeições · {context.foodCount ?? '—'} alimentos</p>
+                                <p className="mt-1 text-xs text-slate-600">{context.mealCount ?? '—'} refeições · {context.foodCount ?? '—'} alimentos</p>
                             </div>
                             <div className="mt-3 grid grid-cols-4 gap-2 sm:mt-0 sm:min-w-[360px]">
                                 {[
@@ -126,7 +126,7 @@ function PlanCard({ context, onAction }) {
                                 ].map(([value, label]) => (
                                     <div key={label} className="rounded-lg bg-[#efeeec] px-2 py-2 text-center shadow-[inset_0_1px_3px_rgba(39,45,35,0.07)]">
                                         <p className="text-sm font-bold text-slate-800">{value == null ? '—' : Math.round(Number(value))}</p>
-                                        <p className="text-[10px] text-slate-500">{label}</p>
+                                        <p className="text-[10px] text-slate-600">{label}</p>
                                     </div>
                                 ))}
                             </div>
@@ -155,7 +155,7 @@ function AppointmentCard({ context, onAction }) {
                 {appointment ? (
                     <>
                         <p className="font-heading text-xl font-semibold tracking-wide text-slate-900">{formatDateTime(appointmentAt)}</p>
-                        <p className="mt-1 text-xs text-slate-500">{appointment.appointment_type || 'Consulta'} · {appointment.duration || 60} min</p>
+                        <p className="mt-1 text-xs text-slate-600">{appointment.appointment_type || 'Consulta'} · {appointment.duration || 60} min</p>
                         <Badge variant="outline" className="mt-3 border-sky-200 bg-sky-50 text-sky-700">{appointment.status || 'Agendada'}</Badge>
                     </>
                 ) : <p className="text-sm leading-5 text-slate-600">Nenhuma consulta futura está agendada.</p>}
@@ -179,10 +179,10 @@ function Signals({ insights, adherence, context, onAction }) {
                 {items.length ? items.slice(0, 3).map(({ icon: Icon, label, value, action }) => (
                     <button key={`${label}-${value}`} type="button" onClick={() => onAction(action)} className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-slate-50 sm:px-5">
                         <Icon className="h-4 w-4 shrink-0 text-[#718065]" />
-                        <span className="min-w-0 flex-1"><span className="block text-xs font-semibold text-slate-800">{label}</span><span className="mt-0.5 block text-xs leading-5 text-slate-500">{value}</span></span>
+                        <span className="min-w-0 flex-1"><span className="block text-xs font-semibold text-slate-800">{label}</span><span className="mt-0.5 block text-xs leading-5 text-slate-600">{value}</span></span>
                         <ChevronRight className="h-4 w-4 shrink-0 text-slate-300" />
                     </button>
-                )) : <p className="px-4 py-5 text-sm text-slate-500 sm:px-5">Ainda não há registros suficientes para montar este resumo.</p>}
+                )) : <p className="px-4 py-5 text-sm text-slate-600 sm:px-5">Ainda não há registros suficientes para montar este resumo.</p>}
             </div>
         </Section>
     );
@@ -202,8 +202,8 @@ const TabContentOverview = ({ operationalContext, adherence, insights, activitie
                     {activities.length ? activities.slice(0, 3).map((activity, index) => {
                         const title = activity.title || activity.description || activity.action || activity.type || 'Registro atualizado';
                         const at = activity.created_at || activity.date || activity.timestamp;
-                        return <div key={activity.id || `${title}-${index}`} className="flex gap-3 px-4 py-3 sm:px-5"><Activity className="mt-0.5 h-4 w-4 shrink-0 text-[#718065]" /><div className="min-w-0"><p className="truncate text-xs font-semibold text-slate-800">{title}</p><p className="mt-0.5 text-xs text-slate-500">{at ? formatDateTime(at) : 'Data não informada'}</p></div></div>;
-                    }) : <p className="px-4 py-5 text-sm text-slate-500 sm:px-5">Nenhuma atividade recente encontrada.</p>}
+                        return <div key={activity.id || `${title}-${index}`} className="flex gap-3 px-4 py-3 sm:px-5"><Activity className="mt-0.5 h-4 w-4 shrink-0 text-[#718065]" /><div className="min-w-0"><p className="truncate text-xs font-semibold text-slate-800">{title}</p><p className="mt-0.5 text-xs text-slate-600">{at ? formatDateTime(at) : 'Data não informada'}</p></div></div>;
+                    }) : <p className="px-4 py-5 text-sm text-slate-600 sm:px-5">Nenhuma atividade recente encontrada.</p>}
                 </div>
             </Section>
         </div>

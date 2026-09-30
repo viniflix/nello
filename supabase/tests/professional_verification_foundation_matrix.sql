@@ -73,7 +73,7 @@ begin
     raise exception 'Conta nova deveria iniciar sem submissão: %', v_state;
   end if;
 
-  if exists (select 1 from public.professional_verifications) then
+  if exists (select 1 from public.professional_verifications where user_id <> auth.uid()) then
     raise exception 'Conta nova acessou verificação alheia';
   end if;
 end;
@@ -86,7 +86,8 @@ select set_config('request.jwt.claims',jsonb_build_object('sub','30000000-0000-0
 
 do $$
 begin
-  if (select count(*) from public.professional_verifications) <> 1 then
+  -- Current Auth provisions a not_submitted row for the second professional.
+  if (select count(*) from public.professional_verifications) <> 2 then
     raise exception 'Admin não acessou a fila profissional completa';
   end if;
 end;

@@ -896,7 +896,7 @@ do $$
 declare v_signature text;
 begin
   foreach v_signature in array array[
-    'review_patient_clinical_attachment(uuid,text,text,text,date,uuid)',
+    'review_patient_clinical_attachment(uuid,text,text,text,text,date,uuid)',
     'change_clinical_attachment_visibility(uuid,text,text)',
     'invalidate_clinical_attachment(uuid,text)'
   ] loop

@@ -350,7 +350,7 @@ const DashboardHeader = ({ user, logout }) => {
             {/* Menu Hamburger - Apenas Mobile */}
             <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
               <SheetTrigger asChild className="lg:hidden">
-                <Button variant="ghost" size="icon">
+                <Button variant="ghost" size="icon" aria-label="Abrir menu de navegação">
                   <Menu className="h-5 w-5" />
                 </Button>
               </SheetTrigger>
@@ -477,7 +477,7 @@ const DashboardHeader = ({ user, logout }) => {
                 
                 <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="relative">
+                  <Button variant="ghost" size="icon" className="relative" aria-label="Abrir notificações">
                     <Bell className="h-5 w-5" />
                     {unreadCount > 0 && (
                       <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 rounded-full bg-destructive px-1 text-[10px] font-bold text-white leading-4 text-center">
@@ -588,7 +588,7 @@ const DashboardHeader = ({ user, logout }) => {
             {/* Dropdown de Perfil */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0">
+                <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0" aria-label="Abrir menu da conta">
                   {user?.profile?.avatar_url ? (
                     <div className="h-10 w-10 rounded-full border-2 border-primary overflow-hidden">
                       <img

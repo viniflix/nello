@@ -71,6 +71,25 @@ do $$begin
  exception when invalid_parameter_value then null;end;
 end$$;
 
+-- The legitimate same-source replacement remains atomic and signable, while
+-- duplicate initial documents cannot coexist for the same clinical source.
+do $$declare replacement uuid; result jsonb; predecessor uuid;begin
+ predecessor:=(select artifact from hard_ids);
+ begin perform public.create_document_artifact_from_clinical_record(
+   '98000000-0000-0000-0000-000000000020','shared_with_patient');
+   raise exception 'duplicate live clinical source accepted';
+ exception when unique_violation then null;end;
+ result:=public.create_document_artifact_from_clinical_record(
+   '98000000-0000-0000-0000-000000000020','shared_with_patient',predecessor,'Nova emissão conferida pelo responsável');
+ replacement:=(result->>'artifact_id')::uuid;
+ perform public.finalize_document_artifact(replacement,1);
+ perform public.sign_document_artifact(replacement);
+ if (select status from public.document_artifacts where id=predecessor) is distinct from 'superseded'
+    or (select status from public.document_artifacts where id=replacement) is distinct from 'signed' then
+   raise exception 'legitimate document replacement did not preserve lifecycle';end if;
+ update hard_ids set artifact=replacement;
+end$$;
+
 do $$begin
  begin perform public.create_lab_result_record(jsonb_build_object(
    'patient_id','98000000-0000-0000-0000-000000000002','test_name','Glicemia','test_date',current_date,'interpretation_confirmed',true

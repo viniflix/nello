@@ -56,6 +56,9 @@ jobs:
       - name: Execute every Wave 02 SQL source and real concurrency scenario
         if: ${{ !cancelled() && steps.rebuild.outcome == 'success' }}
         run: node scripts/backend/sql-matrix.mjs
+      - name: Prove the catalog gate blocks a controlled RLS and grant failure
+        if: ${{ !cancelled() && steps.rebuild.outcome == 'success' }}
+        run: node scripts/backend/gate-injections.mjs
       - name: Exercise real Auth and clinical browser journeys on the isolated remote stack
         if: ${{ !cancelled() && steps.rebuild.outcome == 'success' }}
         run: |
@@ -79,6 +82,7 @@ jobs:
             .backend-ci/forward-results/
             .backend-ci/sql-results/
             .backend-ci/browser-results/
+            .backend-ci/fault-results/
           if-no-files-found: ignore
       - name: Stop only the isolated remote stack
         if: always()

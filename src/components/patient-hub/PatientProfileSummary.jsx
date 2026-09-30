@@ -59,9 +59,9 @@ function Metric({ icon: Icon, label, value, detail }) {
         <div className="flex min-w-0 items-center gap-2.5 rounded-xl border border-[#d5d2cd] bg-[#efeeec] px-3 py-3 shadow-[inset_0_1px_3px_rgba(39,45,35,0.08)] sm:px-4">
             <Icon className="h-4 w-4 shrink-0 text-[#718065]" />
             <div className="min-w-0">
-                <p className="text-[10px] font-bold uppercase tracking-[0.09em] text-slate-400">{label}</p>
+                <p className="text-[10px] font-bold uppercase tracking-[0.09em] text-slate-600">{label}</p>
                 <p className="truncate text-[15px] font-semibold leading-5 text-slate-800">{value}</p>
-                {detail && <p className="truncate text-[11px] leading-4 text-slate-500">{detail}</p>}
+                {detail && <p className="truncate text-[11px] leading-4 text-slate-600">{detail}</p>}
             </div>
         </div>
     );
@@ -92,7 +92,7 @@ const PatientProfileSummary = ({
                             <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-2xl bg-[#65765a] text-xl font-bold text-white shadow-[inset_0_1px_2px_rgba(255,255,255,0.2)] sm:text-2xl">
                                 {patientData?.avatar_url ? <img src={patientData.avatar_url} alt={`Foto de ${patientData.name}`} className="h-full w-full object-cover" /> : <User className="h-11 w-11 text-white/85" />}
                             </div>
-                            <Button variant="secondary" size="icon" onClick={onEditProfile} aria-label="Editar perfil" title="Editar perfil" className="absolute -right-2 -top-2 h-8 w-8 rounded-full border-2 border-white bg-white text-slate-500 shadow-md hover:bg-white hover:text-[#526047]"><Pencil className="h-3.5 w-3.5" /></Button>
+                            <Button variant="secondary" size="icon" onClick={onEditProfile} aria-label="Editar perfil" title="Editar perfil" className="absolute -right-2 -top-2 h-8 w-8 rounded-full border-2 border-white bg-white text-slate-600 shadow-md hover:bg-white hover:text-[#526047]"><Pencil className="h-3.5 w-3.5" /></Button>
                             <span
                                 role="status"
                                 aria-label={`Paciente ${isOnline ? 'online' : 'offline'}`}
@@ -107,8 +107,8 @@ const PatientProfileSummary = ({
                                 <Badge className={patientData?.is_active === false ? 'border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-100' : 'border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50'}>{patientData?.is_active === false ? 'Inativo' : 'Ativo'}</Badge>
                                 {patientData?.patient_invite_code && <Badge variant="outline" className="border-sky-200 bg-sky-50 text-[10px] text-sky-700">Sem conta</Badge>}
                             </div>
-                            <p className="mt-1 text-xs leading-5 text-slate-500 sm:text-sm">{age !== null ? `${age} anos` : 'Idade não informada'} · {goal}</p>
-                            <p className="text-xs leading-5 text-slate-400">{patientData?.created_at ? `Membro desde ${formatDate(patientData.created_at)}` : 'Data de cadastro não informada'}</p>
+                            <p className="mt-1 text-xs leading-5 text-slate-600 sm:text-sm">{age !== null ? `${age} anos` : 'Idade não informada'} · {goal}</p>
+                            <p className="text-xs leading-5 text-slate-600">{patientData?.created_at ? `Membro desde ${formatDate(patientData.created_at)}` : 'Data de cadastro não informada'}</p>
                             {(flags.length > 0 || patientData?.patient_category) && <div className="mt-2 flex flex-wrap gap-1.5">{flags.map((flag) => <Badge key={flag} variant="outline" className="border-red-200 bg-red-50/60 text-[10px] font-medium text-red-600 sm:text-xs">{flag}</Badge>)}{patientData?.patient_category && <Badge variant="outline" className="border-slate-200 bg-slate-50 text-[10px] font-medium text-slate-600 sm:text-xs">{patientData.patient_category}</Badge>}</div>}
                         </div>
                     </div>

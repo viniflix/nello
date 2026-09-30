@@ -9,9 +9,10 @@ export async function controlledRelease({sha,evidence,previous,candidate,provide
   const old=await provider.inspect(previous);if(old.projectId!==evidence.project.id||old.readyState!=='READY')throw Error('Rollback target is not ready in the same project');
   await smoke('https://'+old.url,{stage:'rollback-target'});
   await smoke('https://'+staged.url,{stage:'canary'});record({stage:'canary-passed',sha,candidate,previous});
+  if(await provider.current()!==previous)throw Error('Production changed during canary validation');
   promotionAttempted=true;await provider.promote(candidate);await smoke('https://nellonutri.com.br',{stage:'production',observationMinutes:30});record({stage:'production-verified',sha,candidate,previous});return {passed:true,candidate};
  }catch(error){
-  if(promotionAttempted){await provider.rollback(previous);await smoke('https://nellonutri.com.br',{stage:'rollback'});record({stage:'rolled-back',candidate,previous});}
+  if(promotionAttempted){const current=await provider.current();if(current!==candidate&&current!==previous)throw Error('Production changed concurrently; automatic rollback stopped to preserve the other release');await provider.rollback(previous);await smoke('https://nellonutri.com.br',{stage:'rollback'});record({stage:'rolled-back',candidate,previous});}
   throw error;
  }
 }

@@ -453,11 +453,16 @@ begin
     reset role;
   end loop;
 
+  -- B4 requires a student-owned episode; a supervisor-owned episode is not writable by the student.
+  insert into auth.users(instance_id,id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at) values
+  ('00000000-0000-0000-0000-000000000000','20000000-0000-0000-0000-000000000045','authenticated','authenticated','student-patient-c2@example.invalid','not-used',now(),'{}','{"user_type":"patient"}',now(),now());
+  insert into public.care_episodes(id,patient_id,nutritionist_id,status,start_reason,started_by) values
+  ('40000000-0000-0000-0000-000000000045','20000000-0000-0000-0000-000000000045','10000000-0000-0000-0000-000000000044','active','student QA','10000000-0000-0000-0000-000000000044');
   set local role authenticated;
   perform set_config('request.jwt.claim.sub','10000000-0000-0000-0000-000000000044',true);
   v_draft:=public.create_clinical_evolution_draft(
-    '20000000-0000-0000-0000-000000000041',
-    '40000000-0000-0000-0000-000000000043',
+    '20000000-0000-0000-0000-000000000045',
+    '40000000-0000-0000-0000-000000000045',
     'nello_standard',now(),'professional_private',null
   );
   if v_draft->>'student_id'<>'10000000-0000-0000-0000-000000000044'
@@ -473,8 +478,8 @@ begin
   perform set_config('request.jwt.claim.sub','10000000-0000-0000-0000-000000000044',true);
   begin
     perform public.create_clinical_evolution_draft(
-      '20000000-0000-0000-0000-000000000041',
-      '40000000-0000-0000-0000-000000000043',
+      '20000000-0000-0000-0000-000000000045',
+      '40000000-0000-0000-0000-000000000045',
       'nello_standard',now(),'professional_private',null
     );
     raise exception 'expired_supervisor_creation_should_fail';

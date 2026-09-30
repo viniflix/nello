@@ -72,7 +72,7 @@ begin
   rejected:=false; begin perform public.list_patient_legal_guardians('20000000-0000-0000-0000-000000000041','40000000-0000-0000-0000-000000000043'); exception when insufficient_privilege then rejected:=true; end; if not rejected then raise exception 'anon_list_succeeded'; end if;
   rejected:=false; begin perform public.upsert_patient_legal_guardian('20000000-0000-0000-0000-000000000041','40000000-0000-0000-0000-000000000043','{}'); exception when insufficient_privilege then rejected:=true; end; if not rejected then raise exception 'anon_upsert_succeeded'; end if;
   rejected:=false; begin perform public.revoke_patient_legal_guardian('60000000-0000-0000-0000-000000000043','x'); exception when insufficient_privilege then rejected:=true; end; if not rejected then raise exception 'anon_revoke_succeeded'; end if;
-  rejected:=false; begin perform public.create_clinical_record_draft('20000000-0000-0000-0000-000000000041','clinical_evolution',now(),'professional_private'); exception when insufficient_privilege then rejected:=true; end; if not rejected then raise exception 'anon_draft_succeeded'; end if;
+  rejected:=false; begin perform public.create_clinical_record_draft('20000000-0000-0000-0000-000000000041','follow_up',now(),'professional_private'); exception when insufficient_privilege then rejected:=true; end; if not rejected then raise exception 'anon_draft_succeeded'; end if;
   reset role;
 end $$;
 
@@ -87,7 +87,7 @@ insert into c1_actor_matrix values
 ('admin','30000000-0000-0000-0000-000000000041','40000000-0000-0000-0000-000000000043','none',false,false,false,false,false,false),
 ('student_unsupervised','10000000-0000-0000-0000-000000000044','40000000-0000-0000-0000-000000000043','none',false,false,false,false,false,false),
 ('student_wrong_supervisor','10000000-0000-0000-0000-000000000044','40000000-0000-0000-0000-000000000043','wrong',false,false,false,false,false,false),
-('student_supervised','10000000-0000-0000-0000-000000000044','40000000-0000-0000-0000-000000000043','matching',true,true,true,true,true,true);
+('student_supervised','10000000-0000-0000-0000-000000000044','40000000-0000-0000-0000-000000000043','matching',true,true,true,true,true,false);
 
 do $$
 declare a record; rejected boolean; got boolean; guardian uuid; result jsonb; keys text[]; before_count integer; after_count integer; event_count integer;
@@ -138,7 +138,7 @@ begin
   if got<>a.expect_revoke then raise exception 'actor_rpc_mismatch: % revoke expected % got %',a.actor,a.expect_revoke,got; end if;
   if got then reset role; select count(*) into after_count from public.legal_guardian_events; if after_count<>before_count+1 or result->>'status'<>'revoked' then raise exception 'guardian_revoke_transition_missing: %',a.actor; end if; set local role authenticated; perform set_config('request.jwt.claim.sub',a.uid::text,true); end if;
   reset role; select count(*) into before_count from public.clinical_record_events; set local role authenticated; perform set_config('request.jwt.claim.sub',a.uid::text,true);
-  got:=true; begin result:=public.create_clinical_record_draft('20000000-0000-0000-0000-000000000041','clinical_evolution',now(),'professional_private'); exception when insufficient_privilege then got:=false; end;
+  got:=true; begin result:=public.create_clinical_record_draft('20000000-0000-0000-0000-000000000041','follow_up',now(),'professional_private'); exception when insufficient_privilege then got:=false; end;
   if got<>a.expect_draft then raise exception 'actor_rpc_mismatch: % draft expected % got %',a.actor,a.expect_draft,got; end if;
   if got then
     reset role; select count(*) into after_count from public.clinical_record_events;
@@ -204,7 +204,7 @@ do $$ declare rejected boolean; forbidden_field text; target_id uuid; result jso
  rejected:=false; begin perform public.revoke_patient_legal_guardian(target_id,repeat('r',501)); exception when invalid_parameter_value then rejected:=true; end; if not rejected then raise exception 'oversized_revocation_reason_accepted'; end if;
  set local role authenticated; perform set_config('request.jwt.claim.sub','10000000-0000-0000-0000-000000000041',true);
  rejected:=false; begin perform public.upsert_patient_legal_guardian('20000000-0000-0000-0000-000000000041','40000000-0000-0000-0000-000000000043','{"name":"Invalid","relationship":"other","reason":"invalid period","valid_from":"2027-07-12","valid_until":"2026-07-12"}'); exception when invalid_parameter_value then rejected:=true; end; if not rejected then raise exception 'invalid_guardian_period_accepted'; end if;
- rejected:=false; begin perform public.create_clinical_record_draft('20000000-0000-0000-0000-000000000041','clinical_evolution',now()-interval '6 minutes','professional_private'); exception when invalid_parameter_value then rejected:=true; end; if not rejected then raise exception 'retrospective_without_reason'; end if;
+ rejected:=false; begin perform public.create_clinical_record_draft('20000000-0000-0000-0000-000000000041','follow_up',now()-interval '6 minutes','professional_private'); exception when invalid_parameter_value then rejected:=true; end; if not rejected then raise exception 'retrospective_without_reason'; end if;
  rejected:=false; begin perform public.upsert_patient_legal_guardian('20000000-0000-0000-0000-000000000041','40000000-0000-0000-0000-000000000041','{"name":"Old","relationship":"other","reason":"x"}'); exception when insufficient_privilege then rejected:=true; end; if not rejected then raise exception 'active_professional_wrote_previous_episode'; end if;
  rejected:=false; begin perform public.upsert_patient_legal_guardian('20000000-0000-0000-0000-000000000041','49999999-0000-0000-0000-000000000099','{"name":"Alien","relationship":"other","reason":"x"}'); exception when insufficient_privilege then rejected:=true; end; if not rejected then raise exception 'active_professional_wrote_unrelated_episode_uuid'; end if;
  reset role;

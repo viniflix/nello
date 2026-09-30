@@ -4,6 +4,10 @@
     {
       "file": "supabase/migrations/releases/20260930155500_restrict_anonymous_clinical_table_privileges.sql",
       "sha256": "f43a8825c654720860cf07c49f63c50eb69b51d3efd1d717d7160c0855421ff1"
+    },
+    {
+      "file": "supabase/migrations/releases/20260930190000_document_source_replacement_boundary.sql",
+      "sha256": "ce4a206ca74f52b44eb8a9205b4cfd37ae5b6e5c9c064551eb17673d81df8bb6"
     }
   ]
 }

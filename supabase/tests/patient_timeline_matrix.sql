@@ -235,7 +235,7 @@ begin
     and e.to_status='signed'
     and e.actor_id='10000000-0000-0000-0000-000000000051'
     and e.metadata->>'canonical_hash'=v_record->>'canonical_hash'
-    and e.metadata->>'crn_number'='12345'
+    and e.metadata->>'crn_number'='900051'
     and e.metadata->>'crn_region'='CRN-3';
   if v_event_count<>1 then
     raise exception 'supervisor_signature_audit_event_invalid: %',v_event_count;
