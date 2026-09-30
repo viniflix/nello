@@ -204,5 +204,38 @@ ao registro injetado `127.0.0.1`, enquanto o lockfile usa `registry.npmjs.org`.
 O instalador compartilhado de CI/Vercel fixa esse upstream público explicitamente,
 conservando npm 11.5.2, `npm ci`, integridade do lockfile, scripts de instalação
 e status de saída. Nenhum token, variável de ambiente ou log bruto é impresso
-pelo diagnóstico. Essa hipótese só será considerada resolvida depois da instalação
-e dos demais gates completos no provedor.
+pelo diagnóstico. O SHA `8982adeb` concluiu instalação, build, Quality e Backend
+na branch e na main, com produção Ready. A revisão dos 21 deployments Error
+identificou o mesmo erro de instalação em todos (19 preview, dois production).
+Isso sustenta a correção do registro injetado; não identifica o defeito interno
+do proxy do fornecedor nem garante ausência de outras falhas futuras.
+
+## Revalidação e limites de certificação
+
+A regressão da instalação executa o instalador real com Node 22.23.2 observado
+na Vercel e um registro loopback indisponível injetado no ambiente. O override
+explícito deve instalar npm11.5.2, executar npm ci e compilar, conservando o lockfile.
+O runtime primário de testes continua o `.nvmrc`; patch do provider pode mudar.
+
+`auth-contract.json` diferencia o baseline hospedado do config isolado. CI falha
+se confirmação de email, MFA, anonymous sign-in ou JWT das oito funções divergir
+no config restaurado. `capture-auth-contract.mjs <arquivo-privado.json>` compara
+o Management API read-only usando SUPABASE_ACCESS_TOKEN em memória; só campos
+explicitamente permitidos saem para evidência. Não altera hosted Auth ou seus secrets.
+
+O runner também restaura um snapshot criado **da reconstrução vazia**, preservando
+ownership, ACLs e todo o catálogo da aplicação. pg_cron e seu schema cron são
+excluídos apenas desse clone: o scheduler só pode existir no banco configurado
+pelo provider. A exceção é registrada e a comparação independente das 15 seções
+continua obrigatória. O scheduler no postgres original não é alterado. Esse gate
+não certifica recuperação de dados reais, PITR nem teste do cron em outro banco.
+
+O smoke das oito Edge workers usa GET recusado pelos handlers (405 ou 410), para
+exercitar imports e inicialização sem mutações nem chamadas a APIs de negócio.
+Não equivale a testar criação de paciente, exclusão, PDF completo ou integração.
+
+As 39 fontes SQL permanecem versionadas. O executor experimental Wave02 tem
+fixtures e concorrência ainda incompletas e não foi integrado à main. A inicialização
+da matriz falhou na cópia de pg_cron; a restauração compartilhada acima corrige
+essa infraestrutura sem apagar testes ou aprovar as assertions não executadas.
+Uma Wave02 com esse executor incompleto não pode ser certificada nem promovida.

@@ -1,7 +1,7 @@
 name: Backend reconstruction
 on:
   push:
-    branches: [main, 'codex/wave-01-*']
+    branches: [main, 'codex/wave-*']
   pull_request:
     branches: [main]
 permissions:
@@ -21,7 +21,9 @@ jobs:
           cache: npm
       - run: node scripts/release/install.mjs
       - name: Verify and prepare authoritative migration history
-        run: node scripts/backend/prepare.mjs
+        run: |
+          node scripts/backend/auth-contract.mjs
+          node scripts/backend/prepare.mjs --baseline-only
       - name: Rebuild database on the remote runner
         id: rebuild
         run: |
@@ -42,6 +44,12 @@ jobs:
           docker tag ghcr.io/supabase/postgres-meta:v0.96.6 public.ecr.aws/supabase/postgres-meta:v0.96.6
           npx --no-install supabase gen types typescript --local --schema public --workdir .backend-ci > reconstructed.types.ts 2> type-generation.log
           node scripts/backend/compare-types.mjs src/lib/database.types.ts reconstructed.types.ts
+      - name: Verify snapshot restoration against independent application metadata
+        if: ${{ !cancelled() && steps.rebuild.outcome == 'success' }}
+        run: node scripts/backend/snapshot-restore.mjs
+      - name: Verify all captured Edge workers start
+        if: ${{ !cancelled() && steps.rebuild.outcome == 'success' }}
+        run: node scripts/backend/edge-boot-smoke.mjs
       - name: Preserve diagnostics
         if: always()
         uses: actions/upload-artifact@v6
@@ -53,6 +61,8 @@ jobs:
             catalog-diff.json
             reconstructed.types.ts
             type-generation.log
+            .backend-ci/restore-results/
+            .backend-ci/edge-results/
           if-no-files-found: ignore
       - name: Stop only the isolated remote stack
         if: always()
