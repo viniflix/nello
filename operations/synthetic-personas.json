@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "purpose": "Isolated QA only. These identities are fixtures, not production accounts or credentials.",
+  "emailDomain": "example.invalid",
+  "personas": [
+    { "key": "nutritionist-a", "id": "00000000-0000-4000-8000-000000000001", "email": "nutritionist-a@example.invalid", "role": "nutritionist", "status": "active-verified", "tenant": "a" },
+    { "key": "nutritionist-b", "id": "00000000-0000-4000-8000-000000000002", "email": "nutritionist-b@example.invalid", "role": "nutritionist", "status": "active-verified", "tenant": "b" },
+    { "key": "nutritionist-pending", "id": "00000000-0000-4000-8000-000000000003", "email": "nutritionist-pending@example.invalid", "role": "nutritionist", "status": "pending", "tenant": "c" },
+    { "key": "patient-a", "id": "00000000-0000-4000-8000-000000000004", "email": "patient-a@example.invalid", "role": "patient", "status": "active", "tenant": "a", "nutritionist": "nutritionist-a" },
+    { "key": "patient-b", "id": "00000000-0000-4000-8000-000000000005", "email": "patient-b@example.invalid", "role": "patient", "status": "active", "tenant": "b", "nutritionist": "nutritionist-b" },
+    { "key": "patient-unlinked", "id": "00000000-0000-4000-8000-000000000006", "email": "patient-unlinked@example.invalid", "role": "patient", "status": "active", "tenant": null },
+    { "key": "disabled", "id": "00000000-0000-4000-8000-000000000007", "email": "disabled@example.invalid", "role": "patient", "status": "disabled", "tenant": "a" },
+    { "key": "admin-aal1", "id": "00000000-0000-4000-8000-000000000008", "email": "admin-aal1@example.invalid", "role": "operator", "status": "eligible", "aal": "aal1" },
+    { "key": "admin-aal2", "id": "00000000-0000-4000-8000-000000000009", "email": "admin-aal2@example.invalid", "role": "operator", "status": "eligible", "aal": "aal2" },
+    { "key": "anonymous", "id": null, "role": "anon", "status": "anonymous" }
+  ],
+  "clinicalExample": { "patient": "patient-a", "birthDate": "1990-01-01", "sex": "female", "weightKg": 60, "heightCm": 165, "origin": "invented-for-qa" }
+}

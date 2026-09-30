@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "canonicalOrigin": "https://nellonutri.com.br",
+  "productionBranch": "main",
+  "owner": "viniflix",
+  "validation": { "localVirtualization": false, "clinicalProductionFixtures": false, "productionWrites": "synthetic-only", "remoteIsolationRequiredForDatabaseChanges": true },
+  "slo": {
+    "status": "initial-targets-not-yet-measured",
+    "windowDays": 30,
+    "availabilityPercent": 99.9,
+    "loginSuccessPercentExcludingExpectedDenials": 99.5,
+    "loginP95Ms": 3000,
+    "clinicalReadP95Ms": 2000,
+    "documentGenerationP95Ms": 10000,
+    "recoveryTimeObjectiveMinutes": 60,
+    "recoveryPointObjectiveMinutes": 15
+  },
+  "stopConditions": ["cross-tenant-access", "clinical-reference-mismatch", "data-loss-or-corruption", "secret-or-clinical-data-in-telemetry", "critical-journey-unavailable", "required-validation-unavailable"],
+  "plannedControls": [
+    { "key": "patient-invitation-v2", "ownerWave": 4, "default": false, "gate": "synthetic-onboarding-and-legacy-compatibility", "status": "planned-not-active" },
+    { "key": "private-file-delivery-v2", "ownerWave": 7, "default": false, "gate": "cross-tenant-storage-matrix", "status": "planned-not-active" },
+    { "key": "private-realtime-v2", "ownerWave": 8, "default": false, "gate": "socket-isolation-and-reconnection", "status": "planned-not-active" },
+    { "key": "idempotent-sync-v2", "ownerWave": 9, "default": false, "gate": "concurrency-retry-and-account-switch", "status": "planned-not-active" },
+    { "key": "clinical-engine-v2", "ownerWave": 10, "default": false, "gate": "reference-cases-ui-snapshot-pdf", "status": "planned-not-active" }
+  ],
+  "observation": { "operationalOnlyMinutes": 5, "runtimeMinimumMinutes": 30, "highRiskMinimumHours": 24, "lowTrafficNeedsSyntheticEvidence": true },
+  "completionRequires": ["applicable-gates-green", "cascade-consumers-verified", "production-ready-matching-sha", "canonical-domain-verified", "no-attributable-new-regression", "rollback-available", "checkpoint-current", "immutable-verified-tag"]
+}
