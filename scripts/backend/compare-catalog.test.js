@@ -1,11 +1,14 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, rmSync, writeFileSync, readFileSync } from 'node:fs';
+import { mkdtempSync, rmdirSync, unlinkSync, readdirSync, writeFileSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 const dirs = [];
-afterEach(() => dirs.splice(0).forEach((dir) => rmSync(dir, { recursive: true, force: true })));
+afterEach(() => dirs.splice(0).forEach((dir) => {
+  readdirSync(dir).forEach((file) => unlinkSync(join(dir, file)));
+  rmdirSync(dir);
+}));
 function compare(expected, actual) {
   const dir = mkdtempSync(join(tmpdir(), 'nello-catalog-'));
   dirs.push(dir);

@@ -104,7 +104,7 @@
     "vitest": "4.1.10"
   },
   "engines": {
-    "node": "22.18.x",
+    "node": "22.x",
     "npm": "11.5.x"
   },
   "packageManager": "npm@11.5.2"

@@ -1,17 +1,7 @@
--- CI-only columns absent from recorded DDL, reconstructed from live metadata.
-ALTER TABLE "public"."activity_log" ADD COLUMN IF NOT EXISTS "event_version" integer DEFAULT 1;
-ALTER TABLE "public"."activity_log" ADD COLUMN IF NOT EXISTS "source_module" text;
-ALTER TABLE "public"."activity_log" ADD COLUMN IF NOT EXISTS "nutritionist_id" uuid;
-ALTER TABLE "public"."activity_log" ADD COLUMN IF NOT EXISTS "actor_user_id" uuid;
+-- CI-only unrecorded columns from live metadata. No user or patient rows.
 ALTER TABLE "public"."appointments" ADD COLUMN IF NOT EXISTS "start_time" timestamp with time zone NOT NULL;
 ALTER TABLE "public"."energy_expenditure_calculations" ADD COLUMN IF NOT EXISTS "activity_factor" numeric DEFAULT 1.55;
 ALTER TABLE "public"."energy_expenditure_calculations" ADD COLUMN IF NOT EXISTS "nutritionist_id" uuid;
-ALTER TABLE "public"."food_measures" ADD COLUMN IF NOT EXISTS "reference_food_id" uuid;
-ALTER TABLE "public"."food_measures" ADD COLUMN IF NOT EXISTS "nutritionist_food_id" uuid;
-ALTER TABLE "public"."food_measures" ADD COLUMN IF NOT EXISTS "label" text NOT NULL;
-ALTER TABLE "public"."food_measures" ADD COLUMN IF NOT EXISTS "weight_in_grams" numeric NOT NULL;
-ALTER TABLE "public"."foods" ADD COLUMN IF NOT EXISTS "group_norm" text;
-ALTER TABLE "public"."foods" ADD COLUMN IF NOT EXISTS "base_unit" text;
 ALTER TABLE "public"."growth_records" ADD COLUMN IF NOT EXISTS "supersedes_record_id" bigint;
 ALTER TABLE "public"."growth_records" ADD COLUMN IF NOT EXISTS "revision_group_id" bigint;
 ALTER TABLE "public"."growth_records" ADD COLUMN IF NOT EXISTS "revision_number" integer DEFAULT 1 NOT NULL;

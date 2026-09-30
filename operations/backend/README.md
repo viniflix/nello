@@ -48,6 +48,13 @@ backup/compatibility checks. Capture revisions and commit SHA together in releas
 evidence. Product version starts at 0.1.0; Sentry/PostHog release remains the deployment
 commit SHA, maintaining existing observability correlation.
 
+CI/local verification uses exact Node 22.18.0 and npm 11.5.2. Vercel supports pinning
+the [Node major](https://vercel.com/docs/functions/runtimes/node-js/node-js-versions)
+and applies minor/patch updates itself, so `engines.node` is `22.x`, consistent with
+the existing hosted project. Vercel install/build commands explicitly invoke npm
+11.5.2; `.nvmrc` remains the reproducible verification runtime. This provider limit
+is documented rather than claiming production has an exact minor pin.
+
 ## Historical provider compatibility
 
 Remote CI run 36667008654 failed before application migrations because the February
@@ -74,9 +81,16 @@ This reconstruction foundation is evidence of historical drift, not a production
 migration and not a replacement for later security corrections.
 
 Run 36668123617 exposed additional unrecorded columns (starting with
-activity_log.actor_user_id). Static comparison identified 27 column foundations and
+activity_log.actor_user_id). After reviewing inline table definitions and view columns,
+static comparison identified 22 table column foundations and
 25 function definitions whose names never appear in history. These are explicit
 metadata-only prerequisites. The final live function snapshot retains manual body
 changes and makes all 382 application functions reviewable from Git. It contains no
 user/patient rows, access tokens or literal email addresses. Function bodies and
 ownership/grants remain subject to the catalog parity gate; capture alone is insufficient.
+
+Run 36668603945 showed activity_log is created later than the initial snapshot;
+its four missing columns are restored immediately after that recorded CREATE,
+before the index consumer. Other foundations target tables already present. Current
+food_measures columns belong to a later recorded table replacement, and foods is a
+view: neither is incorrectly added to the early table foundation.
