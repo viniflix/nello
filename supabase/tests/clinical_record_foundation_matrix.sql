@@ -87,7 +87,9 @@ insert into c1_actor_matrix values
 ('admin','30000000-0000-0000-0000-000000000041','40000000-0000-0000-0000-000000000043','none',false,false,false,false,false,false),
 ('student_unsupervised','10000000-0000-0000-0000-000000000044','40000000-0000-0000-0000-000000000043','none',false,false,false,false,false,false),
 ('student_wrong_supervisor','10000000-0000-0000-0000-000000000044','40000000-0000-0000-0000-000000000043','wrong',false,false,false,false,false,false),
-('student_supervised','10000000-0000-0000-0000-000000000044','40000000-0000-0000-0000-000000000043','matching',true,true,true,true,true,false);
+-- Current B4 contract: supervision does not transfer ownership of the supervisor's episode.
+-- The positive student-owned episode lifecycle is exercised by clinical_evolution_system_matrix.
+('student_supervised','10000000-0000-0000-0000-000000000044','40000000-0000-0000-0000-000000000043','matching',false,false,false,false,false,false);
 
 do $$
 declare a record; rejected boolean; got boolean; guardian uuid; result jsonb; keys text[]; before_count integer; after_count integer; event_count integer;

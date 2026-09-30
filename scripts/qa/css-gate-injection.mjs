@@ -1,8 +1,10 @@
-import {build} from 'vite';
+import {build,loadConfigFromFile} from 'vite';
 import {mkdirSync,writeFileSync} from 'node:fs';
 import path from 'node:path';
-import config from '../../vite.config.js';
 if(process.env.CI!=='true'||process.env.GITHUB_ACTIONS!=='true')throw Error('Controlled CSS fault requires the isolated remote runner');
+const loaded=await loadConfigFromFile({command:'build',mode:'production'},'vite.config.js');
+if(!loaded)throw Error('Application build configuration missing');
+const config=loaded.config;
 const directory=path.resolve('.backend-ci/fault-results/css-gate');mkdirSync(directory,{recursive:true});
 writeFileSync(path.join(directory,'entry.js'),"import './fault.css';\n");
 writeFileSync(path.join(directory,'fault.css'),'body { color: red; /* unclosed comment');

@@ -169,6 +169,8 @@ insert into auth.users (instance_id,id,aud,role,email,encrypted_password,email_c
 values ('00000000-0000-0000-0000-000000000000','10000000-0000-0000-0000-000000000043','authenticated','authenticated','duplicate-b4@example.invalid','not-used',now(),'{}','{"user_type":"nutritionist"}',now(),now());
 insert into public.user_profiles (id,name,user_type,is_admin,is_active)
 values ('10000000-0000-0000-0000-000000000043','Nutricionista Duplicada B4','nutritionist',false,true) on conflict(id) do update set name=excluded.name,user_type=excluded.user_type,is_admin=excluded.is_admin,is_active=excluded.is_active;
+-- The current prelaunch Auth trigger provisions capacity; this scenario starts before submission.
+update public.professional_verifications set status='not_submitted',valid_until=null where user_id='10000000-0000-0000-0000-000000000043';
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000043', true);

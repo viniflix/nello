@@ -1,0 +1,14 @@
+import {readFileSync,mkdirSync,appendFileSync} from 'node:fs';
+import path from 'node:path';
+import {controlledRelease} from './controlled-release.mjs';
+import {vercelProvider} from './vercel-provider.mjs';
+import {smokeDeployment} from './smoke.mjs';
+const [sha,candidate,previous,evidencePath,outputPath]=process.argv.slice(2);
+if(!/^[a-f0-9]{40}$/.test(sha||'')||!evidencePath||!outputPath)throw Error('Usage: promote.mjs SHA CANDIDATE_DEPLOYMENT PREVIOUS_DEPLOYMENT READINESS_JSON EVIDENCE_JSONL');
+const url=process.env.VITE_SUPABASE_URL,anonKey=process.env.VITE_SUPABASE_ANON_KEY;
+const project=JSON.parse(readFileSync('operations/backend/baseline.json')).projectRef;
+if(new URL(url).origin!==`https://${project}.supabase.co`||!anonKey)throw Error('The production public Supabase contract is required for smoke validation');
+const evidence=JSON.parse(readFileSync(evidencePath));mkdirSync(path.dirname(outputPath),{recursive:true});
+const record=event=>{const safe={capturedAt:new Date().toISOString(),...event};appendFileSync(outputPath,JSON.stringify(safe)+'\n');console.log(JSON.stringify(safe));};
+const result=await controlledRelease({sha,candidate,previous,evidence,provider:vercelProvider(process.env.VERCEL_TOKEN),smoke:base=>smokeDeployment(base,{supabaseUrl:url,anonKey}),record});
+record({stage:'complete',sha,...result});

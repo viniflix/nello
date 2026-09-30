@@ -861,6 +861,7 @@ begin
     raise exception 'supervisor_signature_expected';
   end if;
 
+  reset role; -- Audit tables deliberately remain unavailable to client roles.
   if not exists(
     select 1 from public.clinical_record_events e
     where e.clinical_record_id=v_id and e.from_status='finalized' and e.to_status='signed'
@@ -873,6 +874,7 @@ begin
   ) then
     raise exception 'signature_event_metadata_invalid';
   end if;
+  set local role authenticated;
 
   begin
     perform public.sign_clinical_record(v_id);

@@ -52,3 +52,10 @@ jobs:
           # Unit tests instantiate the public client, but never contact a real project.
           VITE_SUPABASE_URL: https://ci-placeholder.supabase.co
           VITE_SUPABASE_ANON_KEY: ci-placeholder-anon-key
+      - name: Preserve critical coverage evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: critical-coverage-${{ github.sha }}
+          path: coverage/coverage-summary.json
+          if-no-files-found: error

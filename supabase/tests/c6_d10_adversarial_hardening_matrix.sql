@@ -90,7 +90,7 @@ do $$declare replacement uuid; result jsonb; predecessor uuid;begin
    raise exception 'legitimate document replacement did not preserve lifecycle';end if;
  update hard_ids set artifact=replacement;
  set local role authenticated;
-end$;
+end$$;
 
 -- Invalidating the predecessor during a pending replacement must neither strand
 -- the successor nor resurrect the invalidated document.
@@ -110,7 +110,7 @@ do $$declare predecessor uuid; replacement uuid; result jsonb;begin
    raise exception 'pending replacement recovery or historical status failed';end if;
  update hard_ids set artifact=replacement;
  set local role authenticated;
-end$;
+end$$;
 
 do $$begin
  begin perform public.create_lab_result_record(jsonb_build_object(
