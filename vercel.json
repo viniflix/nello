@@ -1,6 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "installCommand": "npm install --global npm@11.5.2 && npm ci",
+  "installCommand": "node scripts/release/install.mjs",
   "buildCommand": "npm run build",
   "rewrites": [
     {
