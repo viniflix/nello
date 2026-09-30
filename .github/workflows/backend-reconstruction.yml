@@ -37,7 +37,11 @@ jobs:
       - name: Verify generated database types
         if: ${{ !cancelled() && steps.rebuild.outcome == 'success' }}
         run: |
-          npx --no-install supabase gen types typescript --local --schema public --workdir .backend-ci > reconstructed.types.ts
+          # CLI 2.109.1 gen types invokes this exact image without start's registry fallback.
+          # Cache the publisher's same-version GHCR image under its expected ECR tag.
+          docker pull ghcr.io/supabase/postgres-meta:v0.96.6
+          docker tag ghcr.io/supabase/postgres-meta:v0.96.6 public.ecr.aws/supabase/postgres-meta:v0.96.6
+          npx --no-install supabase gen types typescript --local --schema public --workdir .backend-ci > reconstructed.types.ts 2> type-generation.log
           node scripts/backend/compare-types.mjs src/lib/database.types.ts reconstructed.types.ts
       - name: Preserve diagnostics
         if: always()
@@ -49,6 +53,7 @@ jobs:
             reconstructed-catalog.json
             catalog-diff.json
             reconstructed.types.ts
+            type-generation.log
           if-no-files-found: ignore
       - name: Stop only the isolated remote stack
         if: always()
