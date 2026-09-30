@@ -29,6 +29,10 @@ jobs:
         run: |
           psql 'postgresql://postgres:postgres@127.0.0.1:54322/postgres' -X -t -A -v ON_ERROR_STOP=1 -f scripts/backend/catalog.sql > reconstructed-catalog.json
           node scripts/backend/compare-catalog.mjs operations/backend/production-catalog.json reconstructed-catalog.json catalog-diff.json
+      - name: Verify generated database types
+        run: |
+          npx --no-install supabase gen types typescript --local --workdir .backend-ci > reconstructed.types.ts
+          node scripts/backend/compare-types.mjs src/lib/database.types.ts reconstructed.types.ts
       - name: Preserve diagnostics
         if: always()
         uses: actions/upload-artifact@v6
@@ -37,6 +41,7 @@ jobs:
           path: |
             reconstructed-catalog.json
             catalog-diff.json
+            reconstructed.types.ts
           if-no-files-found: ignore
       - name: Stop only the isolated remote stack
         if: always()

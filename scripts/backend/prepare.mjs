@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
-import { mkdirSync, readFileSync, readdirSync, copyFileSync, writeFileSync, existsSync } from 'node:fs';
+import { mkdirSync, readFileSync, readdirSync, copyFileSync, cpSync, writeFileSync, existsSync } from 'node:fs';
 import { resolve, join } from 'node:path';
+import { adaptManagedStorageSnapshot } from './storage-compatibility.mjs';
 
 const root = process.cwd();
 const manifest = JSON.parse(readFileSync('operations/backend/baseline.json', 'utf8'));
@@ -28,7 +29,11 @@ mkdirSync(join(destination, 'supabase/migrations'), { recursive: true });
 const config = readFileSync('supabase/config.toml', 'utf8');
 if (!config.includes('[db.migrations]\n#')) throw Error('Unexpected migration guard config');
 writeFileSync(join(destination, 'supabase/config.toml'), config.replace(/(\[db\.migrations\][\s\S]*?)enabled = false/, '$1enabled = true'));
-for (const file of actual) copyFileSync(join(source, file), join(destination, 'supabase/migrations', file));
+cpSync(resolve('supabase/functions'), join(destination, 'supabase/functions'), { recursive: true });
+for (const file of actual) {
+  const original = readFileSync(join(source, file), 'utf8');
+  writeFileSync(join(destination, 'supabase/migrations', file), adaptManagedStorageSnapshot(file, original));
+}
 // CI-only dependencies of recorded history; never sent to a hosted project.
 for (const file of readdirSync('supabase/reconstruction').filter((f) => f.endsWith('.sql')).sort()) {
   if (!/^\d{14}_\w+\.sql$/.test(file) || expected.includes(file)) throw Error(`Invalid reconstruction prerequisite: ${file}`);

@@ -97,6 +97,24 @@
       "schema": "public"
     }
   ],
+  "views": [
+    {
+      "name": "foods",
+      "schema": "public",
+      "options": [
+        "security_invoker=true"
+      ],
+      "definition": " SELECT rf.id,\n    rf.name,\n    (rf.source)::text AS source,\n    rf.source_id,\n    rf.\"group\",\n    rf.group_norm,\n    rf.description,\n    rf.preparation,\n    rf.portion_size,\n    rf.base_unit,\n    rf.calories,\n    rf.protein,\n    rf.carbs,\n    rf.fat,\n    rf.fiber,\n    rf.sodium,\n    rf.saturated_fat,\n    rf.trans_fat,\n    rf.cholesterol,\n    rf.sugar,\n    rf.calcium,\n    rf.iron,\n    rf.magnesium,\n    rf.phosphorus,\n    rf.potassium,\n    rf.zinc,\n    rf.vitamin_a,\n    rf.vitamin_c,\n    rf.vitamin_d,\n    rf.vitamin_e,\n    rf.vitamin_b12,\n    rf.folate,\n    COALESCE(rf.is_active, true) AS is_active,\n    rf.created_at,\n    NULL::uuid AS nutritionist_id\n   FROM reference_foods rf\nUNION ALL\n SELECT nf.id,\n    nf.name,\n    'custom'::text AS source,\n    nf.barcode AS source_id,\n    NULL::text AS \"group\",\n    NULL::text AS group_norm,\n    nf.brand AS description,\n    NULL::text AS preparation,\n    nf.base_qty AS portion_size,\n    nf.base_unit,\n    nf.energy_kcal AS calories,\n    nf.protein_g AS protein,\n    nf.carbohydrate_g AS carbs,\n    nf.lipid_g AS fat,\n    nf.fiber_g AS fiber,\n    nf.sodium_mg AS sodium,\n    nf.saturated_fat_g AS saturated_fat,\n    nf.trans_fat_g AS trans_fat,\n    nf.cholesterol_mg AS cholesterol,\n    nf.sugar_g AS sugar,\n    nf.calcium_mg AS calcium,\n    nf.iron_mg AS iron,\n    nf.magnesium_mg AS magnesium,\n    nf.phosphorus_mg AS phosphorus,\n    nf.potassium_mg AS potassium,\n    nf.zinc_mg AS zinc,\n    nf.vitamin_a_mcg AS vitamin_a,\n    nf.vitamin_c_mg AS vitamin_c,\n    nf.vitamin_d_mcg AS vitamin_d,\n    nf.vitamin_e_mg AS vitamin_e,\n    nf.vitamin_b12_mcg AS vitamin_b12,\n    nf.folate_mcg AS folate,\n    COALESCE(nf.is_active, true) AS is_active,\n    nf.created_at,\n    nf.nutritionist_id\n   FROM nutritionist_foods nf;"
+    },
+    {
+      "name": "patient_hub_summary",
+      "schema": "public",
+      "options": [
+        "security_invoker=true"
+      ],
+      "definition": " SELECT id AS patient_id,\n    name,\n    email,\n    phone,\n    birth_date,\n    goal,\n    avatar_url,\n    address,\n    get_formatted_address(address) AS formatted_address,\n    nutritionist_id,\n    created_at,\n    ( SELECT jsonb_build_object('weight', gr.weight, 'height', gr.height, 'record_date', gr.record_date) AS jsonb_build_object\n           FROM growth_records gr\n          WHERE (gr.patient_id = p.id)\n          ORDER BY gr.record_date DESC\n         LIMIT 1) AS latest_metrics,\n    ( SELECT a.appointment_time\n           FROM appointments a\n          WHERE ((a.patient_id = p.id) AND (a.appointment_time <= now()))\n          ORDER BY a.appointment_time DESC\n         LIMIT 1) AS last_appointment,\n    ( SELECT a.appointment_time\n           FROM appointments a\n          WHERE ((a.patient_id = p.id) AND (a.appointment_time > now()))\n          ORDER BY a.appointment_time\n         LIMIT 1) AS next_appointment,\n    (( SELECT count(*) AS count\n           FROM anamnesis_records\n          WHERE (anamnesis_records.patient_id = p.id)) > 0) AS has_anamnese,\n    (( SELECT count(*) AS count\n           FROM growth_records\n          WHERE (growth_records.patient_id = p.id)) > 0) AS has_anthropometry,\n    (( SELECT count(*) AS count\n           FROM prescriptions\n          WHERE (prescriptions.patient_id = p.id)) > 0) AS has_prescriptions,\n    (( SELECT count(*) AS count\n           FROM meals\n          WHERE (meals.patient_id = p.id)) > 0) AS has_meals,\n    (( SELECT count(*) AS count\n           FROM user_achievements\n          WHERE (user_achievements.user_id = p.id)) > 0) AS has_achievements\n   FROM user_profiles p\n  WHERE (user_type = 'patient'::text);"
+    }
+  ],
   "buckets": [
     {
       "id": "anamnesis-attachments",
@@ -17641,6 +17659,16 @@
       "tablespace": null
     }
   ],
+  "schemas": [
+    {
+      "name": "private",
+      "grants": "{postgres=UC/postgres,anon=U/postgres,authenticated=U/postgres,service_role=U/postgres}"
+    },
+    {
+      "name": "public",
+      "grants": "{postgres=UC/postgres,=U/postgres,anon=U/postgres,authenticated=U/postgres,service_role=U/postgres}"
+    }
+  ],
   "policies": [
     {
       "cmd": "SELECT",
@@ -20574,6 +20602,66 @@
       "with_check": null
     }
   ],
+  "realtime": [
+    {
+      "table": "chats",
+      "schema": "public",
+      "columns": [
+        "id",
+        "from_id",
+        "to_id",
+        "message",
+        "created_at",
+        "message_type",
+        "media_url"
+      ],
+      "rowFilter": null
+    },
+    {
+      "table": "user_profiles",
+      "schema": "public",
+      "columns": [
+        "id",
+        "name",
+        "user_type",
+        "crn",
+        "birth_date",
+        "gender",
+        "height",
+        "weight",
+        "goal",
+        "nutritionist_id",
+        "created_at",
+        "patient_category",
+        "fiscal_data",
+        "preferences",
+        "avatar_url",
+        "phone",
+        "address",
+        "specialties",
+        "education",
+        "bio",
+        "is_active",
+        "cpf",
+        "occupation",
+        "civil_status",
+        "email",
+        "observations",
+        "is_admin",
+        "clinic_settings",
+        "slug",
+        "needs_password_reset",
+        "ethnicity",
+        "last_seen_at",
+        "invite_code",
+        "patient_invite_code",
+        "clinical_flags",
+        "is_simulation",
+        "simulation_owner_id"
+      ],
+      "rowFilter": null
+    }
+  ],
   "triggers": [
     {
       "name": "on_auth_user_created",
@@ -21808,7 +21896,7 @@
       "schema": "private",
       "definer": true,
       "returns": "void",
-      "definition": "7ede46327636950ba8fb09395127b9ad"
+      "definition": "33e55749c64cb9d114395029478d97ee"
     },
     {
       "args": "p_actor_id uuid, p_source text",
@@ -21964,7 +22052,7 @@
       "schema": "private",
       "definer": true,
       "returns": "void",
-      "definition": "168b63d1fabb4b1f449d8aa26ab9174a"
+      "definition": "375a5bb8088cfbcf6a9a8373c8e917ba"
     },
     {
       "args": "",
@@ -22168,7 +22256,7 @@
       "schema": "private",
       "definer": true,
       "returns": "numeric",
-      "definition": "2e8905e7b3f4b2b5478d47e6fb560337"
+      "definition": "c0dc19d9a193067bd6c145ef86ef032e"
     },
     {
       "args": "start_date date, end_date date",
@@ -22180,7 +22268,7 @@
       "schema": "private",
       "definer": true,
       "returns": "json",
-      "definition": "83ac2285fa6d950a9f81ea5cad3b36fe"
+      "definition": "bdaf63785538a87fa0f83d59ce4f2951"
     },
     {
       "args": "p_invite_code text",
@@ -22204,7 +22292,7 @@
       "schema": "private",
       "definer": true,
       "returns": "json",
-      "definition": "4dc8edab8bb5d4fe1a8c9058ee4d0bdb"
+      "definition": "0084a02476b6f6ee3eb1209c7c0c1ae6"
     },
     {
       "args": "p_nutritionist_id uuid",
@@ -22252,7 +22340,7 @@
       "schema": "private",
       "definer": true,
       "returns": "jsonb",
-      "definition": "15367e3026a37e3bec264bb44e44d44b"
+      "definition": "8f58288fd2790d2b134fe7fec729ce24"
     },
     {
       "args": "",
@@ -22264,7 +22352,7 @@
       "schema": "private",
       "definer": true,
       "returns": "TABLE(is_admin boolean, user_type text)",
-      "definition": "4cc6244a1c8b6d24e761a4192547b929"
+      "definition": "4f8a5fe7c521c606980bab17648be43f"
     },
     {
       "args": "p_nutritionist_id uuid",
@@ -22288,7 +22376,7 @@
       "schema": "private",
       "definer": true,
       "returns": "TABLE(patient_id uuid, patient_name text, last_meal_date timestamp with time zone, days_since_last_meal integer)",
-      "definition": "d8610cd74bc3edb2d20d8d4c171ca32a"
+      "definition": "51c608601ca472ad48935209ce73589e"
     },
     {
       "args": "p_nutritionist_id uuid",
@@ -22300,7 +22388,7 @@
       "schema": "private",
       "definer": true,
       "returns": "TABLE(patient_id uuid, patient_name text, has_anamnese boolean, has_anthropometry boolean, has_meal_plan boolean, has_prescription boolean, pending_items text[])",
-      "definition": "8c0afb3a848850feb9e7f7590c5c6394"
+      "definition": "cc9206a61099d817a6507172470471fe"
     },
     {
       "args": "limit_count integer",
@@ -22480,7 +22568,7 @@
       "schema": "private",
       "definer": true,
       "returns": "void",
-      "definition": "b76ca3fc3ce165028f077fe544863d37"
+      "definition": "1cf54c6a3394f6db15343431718fa019"
     },
     {
       "args": "",
@@ -22505,7 +22593,7 @@
       "schema": "private",
       "definer": true,
       "returns": "boolean",
-      "definition": "6a965c983512b916c5a7174f22e88f92"
+      "definition": "342925688413effadcd6fdbc6175f7b2"
     },
     {
       "args": "",
@@ -22518,7 +22606,7 @@
       "schema": "private",
       "definer": true,
       "returns": "boolean",
-      "definition": "7ec1a82f0fe1db36a10553077bbb1702"
+      "definition": "baca8fa08b962e94689f079e80315cd6"
     },
     {
       "args": "p_record_id uuid",
@@ -22578,7 +22666,7 @@
       "schema": "private",
       "definer": true,
       "returns": "bigint",
-      "definition": "423322c22177160587a4a18105b81fe7"
+      "definition": "ce2e638adefc2e50ad3a594d1267a5ba"
     },
     {
       "args": "p_meal_id text, p_action text, p_details jsonb",
@@ -22590,7 +22678,7 @@
       "schema": "private",
       "definer": true,
       "returns": "void",
-      "definition": "d6bc65bd478ccfe518165491c9d1bdb8"
+      "definition": "aa187f4e0feb0e5a0687083ecec19688"
     },
     {
       "args": "p_module text, p_operation text, p_event_type text, p_latency_ms integer, p_nutritionist_id uuid, p_patient_id uuid, p_error_message text, p_metadata jsonb",
@@ -22602,7 +22690,7 @@
       "schema": "private",
       "definer": true,
       "returns": "bigint",
-      "definition": "f2b90c328d4d717dccab29cef6213a59"
+      "definition": "41f6e49798f288d8beeaaef395e2df81"
     },
     {
       "args": "p_payload jsonb, p_key text, p_current text, p_default text",
@@ -22638,7 +22726,7 @@
       "schema": "private",
       "definer": false,
       "returns": "timestamp with time zone",
-      "definition": "e584e9ea118b054e821e5b3aa6abc659"
+      "definition": "dd91da7d7f78d6f0f97fb5f21b31681f"
     },
     {
       "args": "p_value text",
@@ -23154,7 +23242,7 @@
       "schema": "private",
       "definer": true,
       "returns": "boolean",
-      "definition": "9000f5005df8d9035d74ff1f2b6b9452"
+      "definition": "be85ae6de5b3c2d3db964cec7c9f39fd"
     },
     {
       "args": "",
@@ -23214,7 +23302,7 @@
       "schema": "private",
       "definer": true,
       "returns": "trigger",
-      "definition": "c82ed586075073a2f152c1c9f4fd111d"
+      "definition": "dada09f9c0b8761c78ebfea7851d9b96"
     },
     {
       "args": "",
@@ -23250,7 +23338,7 @@
       "schema": "private",
       "definer": true,
       "returns": "jsonb",
-      "definition": "a1a7607bf514210fa0c596b883d29444"
+      "definition": "5dac061fad439b259352a831ae91563d"
     },
     {
       "args": "p_plan_id bigint, p_plan_data jsonb, p_meals jsonb",
@@ -23358,7 +23446,7 @@
       "schema": "public",
       "definer": false,
       "returns": "void",
-      "definition": "f546c191f618105dcaba878d4740d9bb"
+      "definition": "bc9f204a9405b8201e394520aa59d855"
     },
     {
       "args": "p_amendment_id uuid, p_reason text",
@@ -23514,7 +23602,7 @@
       "schema": "public",
       "definer": false,
       "returns": "text",
-      "definition": "a3157c7671d95447746904d3ba9ac26f"
+      "definition": "ba478ac818230aedf951537b9698c649"
     },
     {
       "args": "p_name text",
@@ -23526,7 +23614,7 @@
       "schema": "public",
       "definer": false,
       "returns": "text",
-      "definition": "fb2beb4de38e7cb8f2413d8fc0baf375"
+      "definition": "30948ca22bcbed856b52f0181783fe09"
     },
     {
       "args": "",
@@ -23538,7 +23626,7 @@
       "schema": "public",
       "definer": false,
       "returns": "uuid",
-      "definition": "efad6f9903df7e49a33c268115c1743f"
+      "definition": "f9cad1ab61455788e0d31f6eea04a099"
     },
     {
       "args": "p_attachment_id uuid",
@@ -23574,7 +23662,7 @@
       "schema": "public",
       "definer": false,
       "returns": "numeric",
-      "definition": "d197deb6269547a55dada81d90df6ad1"
+      "definition": "2c20da6de81919b8954d2bb77dc31fb8"
     },
     {
       "args": "test_value_text text, ref_min numeric, ref_max numeric",
@@ -23586,7 +23674,7 @@
       "schema": "public",
       "definer": false,
       "returns": "text",
-      "definition": "e6aff9576fc89bfb5d409f3ab0f0176e"
+      "definition": "378484e61fb16f5b860c4e3f6904bc39"
     },
     {
       "args": "p_meal_plan_id bigint",
@@ -23598,7 +23686,7 @@
       "schema": "public",
       "definer": false,
       "returns": "TABLE(protein_g numeric, carbs_g numeric, fat_g numeric)",
-      "definition": "e29e43794dd883e5e80c30e5735e53dd"
+      "definition": "85f14bffee7c7ab5532cd31e4826a92a"
     },
     {
       "args": "",
@@ -23610,7 +23698,7 @@
       "schema": "public",
       "definer": false,
       "returns": "trigger",
-      "definition": "be73ba0ff569346392a179667bf1429c"
+      "definition": "3a5c7490bd3dafcd730ce17c047d8141"
     },
     {
       "args": "p_target_id uuid",
@@ -23622,7 +23710,7 @@
       "schema": "public",
       "definer": false,
       "returns": "boolean",
-      "definition": "06dd2e13467aa1d0aca586854948f77d"
+      "definition": "b3f7367a1b77a39726fc22f263773696"
     },
     {
       "args": "p_request_id uuid",
@@ -24246,7 +24334,7 @@
       "schema": "public",
       "definer": false,
       "returns": "jsonb",
-      "definition": "634d55a8845a72208935eb6552723aeb"
+      "definition": "c4a574c2cca6fe158a531422d2756631"
     },
     {
       "args": "p_patient_id uuid",
@@ -24366,7 +24454,7 @@
       "schema": "public",
       "definer": false,
       "returns": "text",
-      "definition": "1a226e03d5a9c433f276b4608d6894e8"
+      "definition": "c0d862e62a01c12e42a24c7f7eafb415"
     },
     {
       "args": "p_food_id bigint, p_measure_code text, p_quantity numeric",
@@ -24378,7 +24466,7 @@
       "schema": "public",
       "definer": false,
       "returns": "numeric",
-      "definition": "f38820f196e3ed685cc4b96eeb9617b7"
+      "definition": "a21d7ba7130b8aa1ed25948b37dfde8b"
     },
     {
       "args": "p_invite_code text",
@@ -25314,7 +25402,7 @@
       "schema": "public",
       "definer": true,
       "returns": "uuid",
-      "definition": "fb0c5a4cc0864dea8055d9ff59a3e4c0"
+      "definition": "5de9abc63c4ad413cb96c14c547183ad"
     },
     {
       "args": "p_food_id uuid, p_food jsonb, p_measures jsonb",
@@ -25398,7 +25486,7 @@
       "schema": "public",
       "definer": false,
       "returns": "TABLE(id bigint, name text, \"group\" text, description text, source text, calories real, protein real, carbs real, fat real)",
-      "definition": "2dac2bfa98c168febf508f8891a7662e"
+      "definition": "2fda269364cb325e7a31927807fa35d2"
     },
     {
       "args": "p_plan_id bigint",
@@ -25458,7 +25546,7 @@
       "schema": "public",
       "definer": false,
       "returns": "trigger",
-      "definition": "d5c7cc3325c3bfa504afed8f94ed2b2d"
+      "definition": "9939f336f7e05b4e69eae1795815b64b"
     },
     {
       "args": "",
@@ -25518,7 +25606,7 @@
       "schema": "public",
       "definer": false,
       "returns": "text",
-      "definition": "8fd6518f96bfbd10759769d4fef8a5fe"
+      "definition": "a989851dfe451c828e69abd70035156a"
     },
     {
       "args": "p_meal_id bigint",
@@ -25626,7 +25714,7 @@
       "schema": "public",
       "definer": false,
       "returns": "trigger",
-      "definition": "1f4cc20d6ba26900c573d8c15720c4ef"
+      "definition": "6066308a76da55d2e6274b1a658e82c3"
     },
     {
       "args": "p_appointment_id bigint, p_next_status text, p_reason text",
@@ -25662,7 +25750,7 @@
       "schema": "public",
       "definer": false,
       "returns": "trigger",
-      "definition": "c9bd31e3a5e10091a409b06b4c06bbb1"
+      "definition": "085d6b185e26dd47408ac2a8e40988b6"
     },
     {
       "args": "",
@@ -25674,7 +25762,7 @@
       "schema": "public",
       "definer": false,
       "returns": "trigger",
-      "definition": "3f25189b53db1d5a58fa4dab24ebb979"
+      "definition": "ab28dc0286b57580bbec8e44a99e6803"
     },
     {
       "args": "",
@@ -25686,7 +25774,7 @@
       "schema": "public",
       "definer": false,
       "returns": "trigger",
-      "definition": "367780fae4af65f28c0afb1a060f7a85"
+      "definition": "77413008d1098fff249c5bd8dc5f2073"
     },
     {
       "args": "",
@@ -25698,7 +25786,7 @@
       "schema": "public",
       "definer": false,
       "returns": "trigger",
-      "definition": "4b75e197d6949a6f237743c43ee18d8a"
+      "definition": "bce7bfeae3d0c6e38c47a0ea88e5daf1"
     },
     {
       "args": "",
@@ -25782,7 +25870,7 @@
       "schema": "public",
       "definer": false,
       "returns": "trigger",
-      "definition": "771e9d4216aaef0b514ed861ffd2acab"
+      "definition": "7c292e29a1c7a4160a04be5dc0134928"
     },
     {
       "args": "",
@@ -25794,7 +25882,7 @@
       "schema": "public",
       "definer": false,
       "returns": "trigger",
-      "definition": "ecbc76bd1f40a5dba7de441236e544ce"
+      "definition": "c3b6de76e310441bc55b0d3df3671716"
     },
     {
       "args": "",
@@ -25806,7 +25894,7 @@
       "schema": "public",
       "definer": false,
       "returns": "trigger",
-      "definition": "714e3de53e55725d9989ef0383ee9afa"
+      "definition": "210b4d75b46421f1e1a9d90064fc441f"
     },
     {
       "args": "",
@@ -25818,7 +25906,7 @@
       "schema": "public",
       "definer": false,
       "returns": "trigger",
-      "definition": "906e87cd88c80b69c9ea0ea3f9c55be6"
+      "definition": "634e6fbc82116b04982baab76fb20c2c"
     },
     {
       "args": "",
@@ -25842,7 +25930,7 @@
       "schema": "public",
       "definer": false,
       "returns": "trigger",
-      "definition": "f0a356ff964fa90eb6c7b6ccbcc136a6"
+      "definition": "52f5ec8f1b63c3aa0f4915fc5562f07c"
     },
     {
       "args": "p_patient_id uuid, p_changes jsonb, p_source text",
@@ -25866,7 +25954,7 @@
       "schema": "public",
       "definer": false,
       "returns": "trigger",
-      "definition": "95d359845151313d163ecc496462a919"
+      "definition": "21b172e7e4ca3ceb281a66062bfd8549"
     },
     {
       "args": "",
@@ -25878,7 +25966,7 @@
       "schema": "public",
       "definer": false,
       "returns": "trigger",
-      "definition": "22da08219e7c3f81d554aede6ba2a948"
+      "definition": "fd12f14758394464030249c664d85dbc"
     },
     {
       "args": "p_plan_id bigint, p_plan_data jsonb, p_meals jsonb",
@@ -25914,7 +26002,7 @@
       "schema": "public",
       "definer": false,
       "returns": "trigger",
-      "definition": "69ccb3f7b928c4a031b4d0ffc4478c68"
+      "definition": "fb76becb28d0fc5d1c63720785dde809"
     },
     {
       "args": "p_code uuid",
@@ -30835,6 +30923,26 @@
       "table": "weekly_summaries",
       "schema": "public",
       "definition": "PRIMARY KEY (id)"
+    }
+  ],
+  "defaultPrivileges": [
+    {
+      "kind": "S",
+      "owner": "postgres",
+      "grants": "{postgres=rwU/postgres,anon=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}",
+      "schema": "public"
+    },
+    {
+      "kind": "f",
+      "owner": "postgres",
+      "grants": "{postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "owner": "postgres",
+      "grants": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+      "schema": "public"
     }
   ]
 }

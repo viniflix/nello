@@ -47,3 +47,18 @@ production migration/function release must separately pass its own wave gates an
 backup/compatibility checks. Capture revisions and commit SHA together in release
 evidence. Product version starts at 0.1.0; Sentry/PostHog release remains the deployment
 commit SHA, maintaining existing observability correlation.
+
+## Historical provider compatibility
+
+Remote CI run 36667008654 failed before application migrations because the February
+snapshot captured five vendor-owned prefix triggers whose functions no longer exist.
+Production metadata confirms these triggers are absent. Supabase's own [Storage
+migration 0052](https://github.com/supabase/storage/blob/master/migrations/tenant/0052-drop-not-used-indexes-and-functions.sql)
+retired them. The CI adapter conditionally creates only those five EXACT statements
+when their vendor function exists. Original files and checksums are preserved; all
+application policies/grants remain intact, and unknown statements make the adapter fail.
+This exception is unrelated to patient authorization or bucket privacy.
+
+Function hashes normalize CRLF to LF; 48 hosted function bodies used Windows line
+endings. This avoids treating a checkout line ending as a contract change. Every
+other character of the definition, security mode, search path and grant is compared.
