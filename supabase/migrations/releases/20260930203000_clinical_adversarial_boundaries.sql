@@ -36,6 +36,9 @@ DECLARE
   v_food record;
   v_measure record;
 BEGIN
+  IF TG_OP='UPDATE' AND NEW.food_id IS NOT DISTINCT FROM OLD.food_id THEN
+    NEW.food_snapshot := OLD.food_snapshot;
+  ELSE
   SELECT * INTO v_food FROM public.foods WHERE id = NEW.food_id;
   IF NOT FOUND THEN
     RAISE EXCEPTION USING ERRCODE='23503', MESSAGE='prescription_food_not_found';
@@ -43,7 +46,6 @@ BEGIN
   IF v_food.is_active IS NOT TRUE THEN
     RAISE EXCEPTION USING ERRCODE='23514', MESSAGE='prescription_food_inactive', DETAIL=NEW.food_id::text;
   END IF;
-  IF TRUE THEN
     NEW.food_snapshot := jsonb_strip_nulls(jsonb_build_object(
       'id',v_food.id,'name',v_food.name,'source',v_food.source,'source_id',v_food.source_id,
       'portion_size',v_food.portion_size,'base_unit',v_food.base_unit,'calories',v_food.calories,
@@ -51,7 +53,10 @@ BEGIN
       'sodium',v_food.sodium,'captured_at',now()
     ));
   END IF;
-  IF TRUE THEN
+  IF TG_OP='UPDATE' AND NEW.food_id IS NOT DISTINCT FROM OLD.food_id
+    AND NEW.unit IS NOT DISTINCT FROM OLD.unit THEN
+    NEW.measure_snapshot := OLD.measure_snapshot;
+  ELSE
     SELECT fm.id,fm.label,fm.weight_in_grams,fm.version,fm.source_snapshot INTO v_measure
     FROM public.food_measures fm
     WHERE (fm.reference_food_id=NEW.food_id OR fm.nutritionist_food_id=NEW.food_id)
@@ -65,6 +70,11 @@ BEGIN
   RETURN NEW;
 END;
 $function$;
+
+DROP TRIGGER IF EXISTS trg_meal_plan_foods_freeze_reference ON public.meal_plan_foods;
+CREATE TRIGGER trg_meal_plan_foods_freeze_reference
+BEFORE INSERT OR UPDATE ON public.meal_plan_foods
+FOR EACH ROW EXECUTE FUNCTION private.freeze_prescription_food_reference();
 
 CREATE OR REPLACE FUNCTION private.capture_energy_calculation_snapshot()
  RETURNS trigger

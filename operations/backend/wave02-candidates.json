@@ -11,7 +11,7 @@
     },
     {
       "file": "supabase/migrations/releases/20260930203000_clinical_adversarial_boundaries.sql",
-      "sha256": "73bf1db9fce605f83b2fa847252da90334352e6a1a1765e043b907ffcdd932c3"
+      "sha256": "eb36160a72f8c4297377d47b706078d5fa92bc126cda5ab24563d2699abe7154"
     }
   ]
 }

@@ -866,11 +866,13 @@ begin
     select 1 from public.clinical_record_events e
     where e.clinical_record_id=v_id and e.from_status='finalized' and e.to_status='signed'
       and e.actor_id='10000000-0000-0000-0000-000000000041'
-      and e.metadata ?& array['canonical_hash','crn_number','crn_region','signed_at','auth_level']
+      and e.metadata ?& array['canonical_hash','canonical_format_version','crn_number','crn_region','signed_at','auth_level','amendment_id']
       and not (e.metadata ?| array['content','clinical_content','student_author'])
       and e.metadata->>'canonical_hash'=v_result->>'canonical_hash'
       and e.metadata->>'crn_number'='900041' and e.metadata->>'crn_region'='CRN-3'
-      and (select count(*) from jsonb_object_keys(e.metadata))=5
+      and e.metadata->>'canonical_format_version'=v_result->>'canonical_format_version'
+      and e.metadata->'amendment_id'='null'::jsonb
+      and (select count(*) from jsonb_object_keys(e.metadata))=7
   ) then
     raise exception 'signature_event_metadata_invalid';
   end if;
