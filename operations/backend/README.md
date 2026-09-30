@@ -114,3 +114,13 @@ April `ALTER FUNCTION ... SET SCHEMA`, not an early prerequisite. Only its publi
 signature is therefore supplied early; the final snapshot restores both current
 definitions. Creating both early caused a duplicate-function error and is corrected
 without adapting or bypassing the historical schema move.
+
+Run 36671479539 reached July's template overload search-path correction. Two old
+JSONB overloads are absent both from recorded CREATE statements and current
+production; the August migration explicitly drops them. CI guards only their exact
+ALTER statements if absent, preserving search-path hardening for existing versions.
+Current text-array signatures are supplied immediately before the July consumer,
+since their first recorded CREATE is August. Other unrecorded functions with no
+historical consumers are supplied by the final snapshot, rather than created too
+early. In particular, write_full_meal_plan_storage is created by an August rename
+and is not precreated. No user journeys run on intermediate historical states.
