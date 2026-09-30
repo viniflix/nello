@@ -231,6 +231,16 @@ pelo provider. A exceção é registrada e a comparação independente das 15 se
 continua obrigatória. O scheduler no postgres original não é alterado. Esse gate
 não certifica recuperação de dados reais, PITR nem teste do cron em outro banco.
 
+A captura do clone usa `postgres`, o mesmo leitor da reconstrução original,
+e verifica igualdade do `search_path` entre os dois bancos. Consultar como
+`supabase_admin` muda a qualificação de `auth.uid()` e `auth.users` pelos
+deparsers e gera diferenças artificiais de policies, constraints e hashes.
+O dump também omite ACLs explícitas iguais ao default nativo do proprietário.
+Somente nesse clone, ACLs de tabelas com esse default verificado são materializadas
+com GRANT ao próprio dono, conservando direitos efetivos. ACL não nula divergente
+não é corrigida. O comparador independente continua inalterado e exige zero
+diferenças nas 15 seções; nenhum grant ou objeto da aplicação é excluído do gate.
+
 O smoke das oito Edge workers usa GET recusado pelos handlers (405 ou 410), para
 exercitar imports e inicialização sem mutações nem chamadas a APIs de negócio.
 Não equivale a testar criação de paciente, exclusão, PDF completo ou integração.
