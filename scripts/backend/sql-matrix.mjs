@@ -1,7 +1,8 @@
 import { mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
-import { restoreApplicationSnapshot } from './snapshot-restore.mjs';
+import { execFileSync } from 'node:child_process';
+import { assertForwardRestoration } from './forward-restoration.mjs';
 import { runAmendmentConcurrency } from './concurrency.mjs';
 import { validateSqlManifest } from './sql-manifest.mjs';
 
@@ -14,7 +15,15 @@ const fixtureFiles = new Set(readdirSync('supabase/fixtures/wave02').map(file =>
 validateSqlManifest(manifest, actual, fixtureFiles);
 const output = '.backend-ci/sql-results';
 mkdirSync(output, { recursive: true });
-const { docker, sql, template } = restoreApplicationSnapshot();
+const restoration = JSON.parse(readFileSync('.backend-ci/restore-results/result.json', 'utf8'));
+assertForwardRestoration(restoration);
+const template = restoration.database;
+const docker = (command, args, options = {}) => execFileSync('docker', ['exec',
+  ...(options.input ? ['-i'] : []), '-e', 'PGPASSWORD=postgres',
+  'supabase_db_nello-reconstruction', command, '-h', '127.0.0.1', '-U', 'supabase_admin', ...args],
+  { timeout: 120000, maxBuffer: 64 * 1024 * 1024, ...options });
+const sql = (database, script) => docker('psql', ['-X', '-t', '-A', '-v', 'ON_ERROR_STOP=1',
+  '-v', 'VERBOSITY=verbose', '-d', database], { input: script, encoding: 'utf8' });
 const results = [];
 for (const [index, source] of manifest.sources.entries()) {
   const database = `nello_qa_wave02_${index}`;

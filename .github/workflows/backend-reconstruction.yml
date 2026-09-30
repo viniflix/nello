@@ -53,6 +53,9 @@ jobs:
       - name: Verify forward detachment contract on the synthetic PostgreSQL 17 clone
         if: ${{ !cancelled() && steps.rebuild.outcome == 'success' }}
         run: node scripts/backend/forward-contracts.mjs
+      - name: Execute every Wave 02 SQL source and real concurrency scenario
+        if: ${{ !cancelled() && steps.rebuild.outcome == 'success' }}
+        run: node scripts/backend/sql-matrix.mjs
       - name: Preserve diagnostics
         if: always()
         uses: actions/upload-artifact@v6
@@ -67,6 +70,7 @@ jobs:
             .backend-ci/restore-results/
             .backend-ci/edge-results/
             .backend-ci/forward-results/
+            .backend-ci/sql-results/
           if-no-files-found: ignore
       - name: Stop only the isolated remote stack
         if: always()
