@@ -31476,5 +31476,6 @@
       "grants": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
       "schema": "public"
     }
-  ]
+  ],
+  "columnGrants": []
 }

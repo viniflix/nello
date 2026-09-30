@@ -146,3 +146,13 @@ checks all 581 transformed macro/sentinel values and removes only those invented
 fixtures before later history. This proves the mechanical repair, not scientific
 nutrition accuracy. These CI-only fixtures must never be pushed to a hosted project.
 The runner OS is pinned to Ubuntu 24.04 instead of a moving major-version label.
+
+Run 36673435864 executed and verified all 581 invented food repairs, removed them,
+and reached the September 23 Pollock correction for four historical clinical rows.
+That data-only correction has no input on an empty clinical database. CI returns
+only when the entire growth_records table is empty; any nonempty table retains all
+original source, partial-application and row-count guards. No patient data is
+exported or invented from those production records. This is not clinical validation;
+Wave 10 still owns Pollock regression and provenance testing. Original source and
+checksums are retained. Column-level grants are also included in the catalog gate;
+the production metadata snapshot confirmed none currently exist.

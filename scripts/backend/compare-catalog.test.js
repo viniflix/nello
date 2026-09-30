@@ -25,6 +25,7 @@ describe('backend catalog promotion gate', () => {
     ['policies', { roles: ['authenticated'], qual: 'auth.uid() = id' }, { roles: ['anon'], qual: 'true' }],
     ['buckets', { id: 'clinical', public: false }, { id: 'clinical', public: true }],
     ['functions', { definer: true, grants: 'authenticated=X' }, { definer: true, grants: '=X' }],
+    ['columnGrants', { column: 'is_admin', grants: 'postgres=w/postgres' }, { column: 'is_admin', grants: 'authenticated=w/postgres' }],
   ])('blocks unsafe %s drift and preserves diagnostics', (key, expected, actual) => {
     const result = compare({ [key]: [expected] }, { [key]: [actual] });
     expect(result.status).toBe(1);

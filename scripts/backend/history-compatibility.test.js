@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { adaptAppliedHistory, legacyBugPolicyRename, obsoleteTemplateSignatures } from './history-compatibility.mjs';
+import { adaptAppliedHistory, legacyBugPolicyRename, obsoleteTemplateSignatures, pollockRepairEntry } from './history-compatibility.mjs';
 
 const file = '20260324201639_hardening_bug_reports_policies.sql';
 describe('unrecorded obsolete policy reconstruction', () => {
@@ -41,5 +41,23 @@ describe('removed legacy template overloads', () => {
   });
   it('rejects unexpected legacy source', () => {
     expect(() => adaptAppliedHistory(file, '')).toThrow('Unexpected obsolete template');
+  });
+});
+
+describe('data-only historical Pollock applicability', () => {
+  const file = '20260923010000_recalculate_historical_pollock.sql';
+  it('preserves every original clinical assertion and update for nonempty data', () => {
+    const original = readFileSync(`supabase/migrations/applied/${file}`, 'utf8').replaceAll('\r\n', '\n');
+    const [before, after] = original.split(pollockRepairEntry);
+    const adapted = adaptAppliedHistory(file, original);
+    expect(adapted.startsWith(before)).toBe(true);
+    expect(adapted.endsWith(after)).toBe(true);
+    expect(adapted).toContain('IF NOT EXISTS (SELECT 1 FROM public.growth_records) THEN');
+    expect(after).toContain("RAISE EXCEPTION 'Correção Pollock parcialmente aplicada");
+    expect(after).toContain("IF affected <> 4 THEN RAISE EXCEPTION");
+  });
+  it('fails on unexpected source and leaves other data migrations intact', () => {
+    expect(() => adaptAppliedHistory(file, '')).toThrow('Unexpected historical Pollock');
+    expect(adaptAppliedHistory('other.sql', pollockRepairEntry)).toBe(pollockRepairEntry);
   });
 });
