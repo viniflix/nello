@@ -1,6 +1,8 @@
 // pg_cron is installed in exactly one provider-configured database. It is not an
 // application authorization object and cannot be restored in a QA clone.
-// Everything else in the archive, including ownership and ACLs, is retained.
+// pg_dump can retain extension-member ACL entries even with exclude-schema.
+// Scheduler namespace ACLs must follow their omitted objects; application ACLs
+// and every other archive entry are retained without modification.
 export function applicationRestoreList(toc) {
   let extensionCount = 0;
   const excluded = [];
@@ -11,6 +13,10 @@ export function applicationRestoreList(toc) {
       return '; ' + line;
     }
     if (/^\d+; \d+ \d+ COMMENT - EXTENSION pg_cron(?:\s|$)/.test(line)) {
+      excluded.push(line);
+      return '; ' + line;
+    }
+    if (/^\d+; \d+ \d+ (?:ACL|COMMENT|SECURITY LABEL) (?:cron\s|\- SCHEMA cron(?:\s|$))/.test(line)) {
       excluded.push(line);
       return '; ' + line;
     }

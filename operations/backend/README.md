@@ -225,7 +225,8 @@ explicitamente permitidos saem para evidência. Não altera hosted Auth ou seus 
 
 O runner também restaura um snapshot criado **da reconstrução vazia**, preservando
 ownership, ACLs e todo o catálogo da aplicação. pg_cron e seu schema cron são
-excluídos apenas desse clone: o scheduler só pode existir no banco configurado
+excluídos apenas desse clone (incluindo ACLs dos objetos desse namespace que
+pg_dump mantém mesmo com exclude-schema): o scheduler só pode existir no banco configurado
 pelo provider. A exceção é registrada e a comparação independente das 15 seções
 continua obrigatória. O scheduler no postgres original não é alterado. Esse gate
 não certifica recuperação de dados reais, PITR nem teste do cron em outro banco.
