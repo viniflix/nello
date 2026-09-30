@@ -13,7 +13,9 @@ Responsável técnico: executor da wave. Responsável pelo produto e contas dos 
 
 ## Deploy e observação
 
-Revisar diff e gates, commit da wave, integração sem force push e push da main. Confirmar deployment `READY`, SHA exato e domínio canônico. Executar `node scripts/qa/release-smoke.mjs` e smoke sintético dos contratos afetados. Consultar Sentry/PostHog desde o deploy, separados por release e ambiente; internos separados de externos. Sem tráfego, ausência de erro não comprova a jornada.
+Revisar diff e gates e enviar o candidato na branch antes de integrar a main. Conferir **todos** os workflows do SHA e o deployment Vercel desse mesmo SHA: Quality, reconstrução, regressão da instalação e Vercel devem terminar verdes. GitHub verde não autoriza promoção quando Vercel está Error/pending. Capturar os resultados atuais pelas APIs dos provedores em evidência privada (`sha`, `project`, `github.checks`, `github.runs`, `candidateDeployment`) e executar `node scripts/release/readiness.mjs <SHA> <evidência.json>`. Saída não zero bloqueia a integração; não usar um arquivo antigo para outro commit nem tratar uma suíte SQL incompleta como aprovada. O script valida a evidência, não configura proteção da branch no provedor.
+
+Depois desse gate, integrar sem force push e enviar a main. Confirmar deployment de produção `READY`, SHA exato e domínio canônico. Executar `node scripts/qa/release-smoke.mjs` e smoke sintético dos contratos afetados. Consultar Sentry/PostHog desde o deploy, separados por release e ambiente; internos separados de externos. Sem tráfego, ausência de erro não comprova a jornada.
 
 Para artefatos operacionais sem alteração funcional, observar ao menos cinco minutos e comprovar que o código funcional permaneceu igual; a identificação de release pode mudar os bytes do bundle. Para mudanças runtime, observar ao menos 30 minutos; mudanças clínicas, de dados ou autorização exigem canário e janela mínima de 24 horas antes de expansão integral. Continuar coleta durante essa janela sem declarar conclusão antecipada.
 
