@@ -97,8 +97,9 @@ view: neither is incorrectly added to the early table foundation.
 
 Run 36669300311 advanced through the table/index repairs and found that a March
 Storage policy calls is_admin before its first recorded declaration. The reviewed
-foundation includes 39 current signatures (37 unrecorded CREATE signatures plus
-two is_admin signatures required for historical ordering). Consumer name mentions
+foundation initially exposed 39 candidate signatures. The final early prerequisite
+contains only ten signatures across eight names with historical consumers;
+other current functions are supplied by the final snapshot. Consumer name mentions
 are not counted as evidence that a function definition was versioned.
 
 Run 36670647782 reached the March 24 bug-report hardening and exposed an obsolete
@@ -124,3 +125,14 @@ since their first recorded CREATE is August. Other unrecorded functions with no
 historical consumers are supplied by the final snapshot, rather than created too
 early. In particular, write_full_meal_plan_storage is created by an August rename
 and is not precreated. No user journeys run on intermediate historical states.
+
+Run 36672023738 reached August's policy-consolidation guard and exposed five
+base policies whose manual creation/consolidation was never recorded. The guard
+remains unchanged. Three ALL predicates are reconstructed from the matching
+preserved INSERT/UPDATE/DELETE predicates, and two SELECT predicates remove only
+the episode branch that this recorded migration adds back. CI also restores the
+complete 244-policy current snapshot after the recorded history. Every role,
+command, permissive/restrictive mode and predicate comes from production metadata,
+and is independently compared. This captures existing authorization, including
+known weaknesses for Wave 05; it does not change permissions in production or
+declare security findings fixed.
