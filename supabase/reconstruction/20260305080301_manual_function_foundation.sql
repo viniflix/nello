@@ -147,16 +147,6 @@ begin
 end;
 $function$;
 
-CREATE OR REPLACE FUNCTION private.is_admin()
- RETURNS boolean
- LANGUAGE sql
- STABLE SECURITY DEFINER
- SET search_path TO ''
-AS $function$
-  select private.admin_member()
-    and coalesce(auth.jwt() ->> 'aal', 'aal1') = 'aal2';
-$function$;
-
 CREATE OR REPLACE FUNCTION private.is_nutritionist()
  RETURNS boolean
  LANGUAGE sql

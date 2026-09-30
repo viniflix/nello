@@ -107,3 +107,10 @@ when the old policy is absent. The replacement policy, its checks, all admin pol
 and the deprecated-policy removal execute unchanged. Applied source/checksums remain
 immutable; no production policy is modified. Unknown or duplicate statements fail
 the adapter, and final permission metadata must still match production.
+
+Run 36671202763 advanced to the April schema move. `public.is_admin` must exist
+before March policy consumers, but its private copy must be created by the recorded
+April `ALTER FUNCTION ... SET SCHEMA`, not an early prerequisite. Only its public
+signature is therefore supplied early; the final snapshot restores both current
+definitions. Creating both early caused a duplicate-function error and is corrected
+without adapting or bypassing the historical schema move.
