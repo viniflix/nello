@@ -156,3 +156,9 @@ exported or invented from those production records. This is not clinical validat
 Wave 10 still owns Pollock regression and provenance testing. Original source and
 checksums are retained. Column-level grants are also included in the catalog gate;
 the production metadata snapshot confirmed none currently exist.
+
+Run 36673963959 passed the empty-clinical applicability check and then caught
+zero defaults in the public salmon fixture, violating the recorded TACO unreported
+micronutrient constraint. Its B12/D/E/folate values are explicitly NULL; the
+constraint is unchanged. A post-repair assertion verifies the recorded four mineral
+corrections and those NULLs, covering this fixture's adjacent nutrition contract.
