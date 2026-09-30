@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, readdirSync, copyFileSync, cpSync, writeFileSync, existsSync } from 'node:fs';
 import { resolve, join } from 'node:path';
-import { adaptManagedStorageSnapshot } from './storage-compatibility.mjs';
+import { adaptAppliedHistory } from './history-compatibility.mjs';
 
 const root = process.cwd();
 const manifest = JSON.parse(readFileSync('operations/backend/baseline.json', 'utf8'));
@@ -32,7 +32,7 @@ writeFileSync(join(destination, 'supabase/config.toml'), config.replace(/(\[db\.
 cpSync(resolve('supabase/functions'), join(destination, 'supabase/functions'), { recursive: true });
 for (const file of actual) {
   const original = readFileSync(join(source, file), 'utf8');
-  writeFileSync(join(destination, 'supabase/migrations', file), adaptManagedStorageSnapshot(file, original));
+  writeFileSync(join(destination, 'supabase/migrations', file), adaptAppliedHistory(file, original.replaceAll('\r\n', '\n')));
 }
 // CI-only dependencies of recorded history; never sent to a hosted project.
 for (const file of readdirSync('supabase/reconstruction').filter((f) => f.endsWith('.sql')).sort()) {

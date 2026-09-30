@@ -100,3 +100,10 @@ Storage policy calls is_admin before its first recorded declaration. The reviewe
 foundation includes 39 current signatures (37 unrecorded CREATE signatures plus
 two is_admin signatures required for historical ordering). Consumer name mentions
 are not counted as evidence that a function definition was versioned.
+
+Run 36670647782 reached the March 24 bug-report hardening and exposed an obsolete
+policy rename whose creation was never recorded. CI guards only that exact rename
+when the old policy is absent. The replacement policy, its checks, all admin policies
+and the deprecated-policy removal execute unchanged. Applied source/checksums remain
+immutable; no production policy is modified. Unknown or duplicate statements fail
+the adapter, and final permission metadata must still match production.
