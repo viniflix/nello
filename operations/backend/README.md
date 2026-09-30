@@ -1,7 +1,7 @@
 # Backend reconstruction contract — Wave 01
 
 Production is Supabase `afyoidxrshkmplxhcyeh`, PostgreSQL 17. Git must reproduce its
-catalog before behavior-changing waves. `baseline.json` records 213 applied migrations
+catalog before behavior-changing waves. `baseline.json` records 214 applied migrations
 and eight deployed functions as captured on 2026-09-30. Sources contain metadata and
 DDL, no exports of users, patients, medical records or Storage objects.
 
@@ -255,3 +255,26 @@ fixtures e concorrência ainda incompletas e não foi integrado à main. A inici
 da matriz falhou na cópia de pg_cron; a restauração compartilhada acima corrige
 essa infraestrutura sem apagar testes ou aprovar as assertions não executadas.
 Uma Wave02 com esse executor incompleto não pode ser certificada nem promovida.
+
+## Wave02: entrega do núcleo validado e limites
+
+O fechamento solicitado em 30/09 tem escopo reduzido e não certifica integralmente
+os gates V1–V7 da Wave02 original. O manifesto continua cobrindo39fontes; fixtures
+e executor de quatro corridas foram acrescentados, mas essa matriz inteira não é
+executada pelo workflow nem declarada aprovada. Nenhuma assertion antiga foi
+silenciada para produzir um status verde. E2E de personas, axe, comparação visual,
+thresholds de cobertura, warnings legados e rollback automático permanecem abertos.
+
+O workflow acrescenta um contrato específico em PostgreSQL17 usando o clone vazio
+validado: reproduz a definição histórica de detach_anamnesis_file apenas nesse
+banco descartável e verifica15cenários antes/depois da correção. O resultado e o
+hash da migração entram no artefato; um cenário inesperado falha o job. A migração
+20260930144924 foi aplicada pelo Management API com registro no histórico e seu
+conteúdo foi confirmado pelo checksum dos statements. Ela altera somente a condição
+de autorização da função; owner, ACL, assinatura, retorno e search_path permanecem.
+O baseline passa a214migrações; o catálogo independente muda apenas o hash desse corpo.
+
+Os testes em memória executam a função PL/pgSQL capturada e controles legítimos;
+PGlite é somente dependência de desenvolvimento. O teste remoto mantém a prova no
+schema completo do Supabase. Nenhum Docker/Hyper-V ou preview local foi iniciado,
+nenhum registro real foi utilizado e nenhum serviço adicional foi contratado.

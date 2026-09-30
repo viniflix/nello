@@ -24369,7 +24369,7 @@
       "schema": "public",
       "definer": true,
       "returns": "jsonb",
-      "definition": "ec69d48894ea3d76284b0880f08a3e2d"
+      "definition": "c040ba80deabe3c4b6c60d005dfaba5e"
     },
     {
       "args": "p_patient_id uuid, p_end_reason text",

@@ -3,7 +3,7 @@
   "capturedAt": "2026-09-30",
   "projectRef": "afyoidxrshkmplxhcyeh",
   "postgresMajor": 17,
-  "lastMigration": "20260924231829",
+  "lastMigration": "20260930144924",
   "migrations": [
     {
       "version": "20251222080706",
@@ -1494,6 +1494,13 @@
       "name": "wave4_authenticated_workflow_grants",
       "file": "20260924231829_wave4_authenticated_workflow_grants.sql",
       "sha256": "046a45546831effc5f0abcdc15753c322f66a630c5c936c5af85c880fd067f44",
+      "statements": 1
+    },
+    {
+      "version": "20260930144924",
+      "name": "fail_closed_anamnesis_detachment",
+      "file": "20260930144924_fail_closed_anamnesis_detachment.sql",
+      "sha256": "104f7168839ed57d1d4aca902b5941e3943fda823d91b83c70a7363e565c5a5b",
       "statements": 1
     }
   ],
