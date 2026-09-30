@@ -28,6 +28,8 @@ jobs:
         run: |
           set -o pipefail
           npx --no-install supabase start --workdir .backend-ci --exclude studio,analytics,vector,imgproxy 2>&1 | tee backend-reconstruction.log
+      - name: Restore isolated provider default privileges
+        run: psql 'postgresql://supabase_admin:postgres@127.0.0.1:54322/postgres' -X -v ON_ERROR_STOP=1 -f scripts/backend/provider-defaults.sql
       - name: Capture catalog and compare to production metadata
         run: |
           psql 'postgresql://postgres:postgres@127.0.0.1:54322/postgres' -X -t -A -v ON_ERROR_STOP=1 -f scripts/backend/catalog.sql > reconstructed-catalog.json

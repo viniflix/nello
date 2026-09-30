@@ -250,6 +250,5 @@ CREATE TRIGGER trg_growth_records_validate_clinical BEFORE INSERT OR UPDATE ON p
 CREATE TRIGGER trg_sync_notification_read_state BEFORE INSERT OR UPDATE ON public.notifications FOR EACH ROW EXECUTE FUNCTION private.sync_notification_read_state();
 CREATE TRIGGER tr_set_invite_code BEFORE INSERT ON public.user_profiles FOR EACH ROW EXECUTE FUNCTION trg_set_invite_code();
 CREATE TRIGGER trg_user_profiles_sync_slug BEFORE INSERT OR UPDATE OF name ON public.user_profiles FOR EACH ROW WHEN (((new.user_type = 'patient'::text) AND (new.nutritionist_id IS NOT NULL))) EXECUTE FUNCTION user_profiles_sync_slug();
-ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public REVOKE ALL ON SEQUENCES FROM postgres,anon,authenticated,service_role;
-ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public REVOKE ALL ON FUNCTIONS FROM postgres,anon,authenticated,service_role;
-ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public REVOKE ALL ON TABLES FROM postgres,anon,authenticated,service_role;
+-- Provider-owned defaults require the isolated runner's provider role, not postgres.
+-- The workflow applies scripts/backend/provider-defaults.sql after normal replay.
