@@ -136,3 +136,13 @@ command, permissive/restrictive mode and predicate comes from production metadat
 and is independently compared. This captures existing authorization, including
 known weaknesses for Wave 05; it does not change permissions in production or
 declare security findings fixed.
+
+Run 36672831599 passed the policy foundations and reached September's 581-row
+TACO repair. That migration depends on a manually populated import staging table
+and existing public reference rows; neither was recorded. CI supplies 581 explicitly
+INVENTED food fixtures and payloads with no external API calls. The original row
+count, ID/status and update-count guards execute unchanged. A following assertion
+checks all 581 transformed macro/sentinel values and removes only those invented
+fixtures before later history. This proves the mechanical repair, not scientific
+nutrition accuracy. These CI-only fixtures must never be pushed to a hosted project.
+The runner OS is pinned to Ubuntu 24.04 instead of a moving major-version label.
