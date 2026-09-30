@@ -2,7 +2,7 @@ name: Quality gate
 
 on:
   push:
-    branches: [main]
+    branches: [main, 'codex/wave-01-*']
   pull_request:
     branches: [main]
 
