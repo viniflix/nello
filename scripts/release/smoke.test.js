@@ -1,0 +1,5 @@
+import {it,expect}from'vitest';import{smokeDeployment}from'./smoke.mjs';
+function fixture(mutation){return async url=>{const path=new URL(url).pathname;const types={'/login':'text/html','/assets/main.js':'application/javascript','/assets/main.css':'text/css'};const body=path==='/login'?'<title>Nello</title><div id="root"></div><script src="/assets/main.js"></script><link href="/assets/main.css">':'/* healthy synthetic asset */';const headers={'content-type':types[path]||'text/html',...Object.fromEntries(['content-security-policy','x-content-type-options','strict-transport-security','referrer-policy','permissions-policy'].map(key=>[key,'test']))};return new Response(mutation==='content'&&path==='/login'?'construction':body,{status:mutation==='asset'&&path.endsWith('.js')?404:200,headers});};}
+it('validates synthetic HTML, JS, CSS and headers',async()=>expect(await smokeDeployment('https://fixture.invalid',{fetcher:fixture()})).toMatchObject({passed:true}));
+it.each(['asset','content'])('blocks controlled %s failure',async mutation=>expect(smokeDeployment('https://fixture.invalid',{fetcher:fixture(mutation)})).rejects.toThrow(/Smoke failed|Expected/));
+

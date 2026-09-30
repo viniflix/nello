@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import ClinicalRecordAmendmentDialog from './ClinicalRecordAmendmentDialog';
 
@@ -73,7 +73,7 @@ describe('ClinicalRecordAmendmentDialog', () => {
       { impact_hash: 'impact-1', confirmed: true },
     );
     expect(JSON.stringify(onConfirm.mock.calls)).not.toContain('segredo');
-    resolveConfirm(true);
+    await act(async () => { resolveConfirm(true); });
   });
 
   it('keeps invalidation blocked after a generic reauthentication failure', async () => {

@@ -459,7 +459,7 @@ function EnergyExpenditureForm({ resolvedPatient }) {
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#f7f7f5]">
-      <main className="mx-auto w-full max-w-[1440px] min-w-0 px-3 py-4 sm:px-6 md:py-6 lg:px-8">
+      <section aria-label="Resumo clínico do paciente" className="mx-auto w-full max-w-[1440px] min-w-0 px-3 py-4 sm:px-6 md:py-6 lg:px-8">
         <Button variant="ghost" size="sm" onClick={() => navigate(patientHubRoute({ id: patientId, slug: patientSlug || paramValue }, 'nutrition'))} className="-ml-2 mb-3 gap-2 text-muted-foreground">
           <ArrowLeft className="h-4 w-4" />
           Prontuário do paciente
@@ -741,7 +741,7 @@ function EnergyExpenditureForm({ resolvedPatient }) {
             </div>
           </TabsContent>
         </Tabs>
-      </main>
+      </section>
     </div>
   );
 }

@@ -43,7 +43,14 @@ export default defineConfig({
 		}
 	},
 	test: {
-		globals: true,
+		coverage: {
+ provider: 'v8',
+ include: ['src/lib/utils/energy-*.js','src/lib/utils/dri-energy.js','src/lib/utils/nutrition-calculations.js'],
+ exclude: ['**/*.test.js'],
+ reporter: ['text','json-summary'],
+ thresholds: { perFile: true, lines: 90, statements: 90, functions: 90, branches: 85 },
+},
+ globals: true,
 		include: ['{src,build,scripts}/**/*.{test,spec}.{js,jsx,ts,tsx}'],
 		environment: 'jsdom',
 		setupFiles: ['./src/__tests__/setup.js'],

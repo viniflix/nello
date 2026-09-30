@@ -64,5 +64,6 @@ dist-ssr/
 /supabase/migrations/*.sql
 /.backend-ci/
 .env.example
+/coverage/
 /[Dd][Oo][Cc][Ss]/
 /AGENTS.md

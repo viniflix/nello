@@ -45,12 +45,12 @@ const normalizeTab = (value) => value === 'feed' ? 'overview' : validTabs.has(va
 function HubSkeleton() {
     return (
         <div className="min-h-screen bg-[#ecebe8]">
-            <main className="mx-auto w-full max-w-[1440px] space-y-4 px-3 py-4 sm:px-6 lg:px-8">
+            <section aria-label="Resumo clínico do paciente" className="mx-auto w-full max-w-[1440px] space-y-4 px-3 py-4 sm:px-6 lg:px-8">
                 <div className="flex justify-between"><Skeleton className="h-9 w-24" /><Skeleton className="h-9 w-36" /></div>
                 <Card className="border-[#d8d5d0] bg-white shadow-card"><CardContent className="p-4 sm:p-5"><div className="flex gap-4"><Skeleton className="h-24 w-24 rounded-2xl" /><div className="flex-1 space-y-3"><Skeleton className="h-7 w-52" /><Skeleton className="h-4 w-72 max-w-full" /><Skeleton className="h-8 w-48" /></div></div><div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">{[1, 2, 3, 4].map((item) => <Skeleton key={item} className="h-16 rounded-xl" />)}</div></CardContent></Card>
                 <Skeleton className="h-16 w-full rounded-xl" />
                 <SimpleListSkeleton count={4} />
-            </main>
+            </section>
         </div>
     );
 }
@@ -170,7 +170,7 @@ export default function PatientHubPage() {
 
     return (
         <div className="min-h-screen overflow-x-hidden bg-[#ecebe8] pb-8 text-slate-900">
-            <main className="mx-auto w-full max-w-[1440px] px-3 py-4 sm:px-6 lg:px-8">
+            <section aria-label="Resumo clínico do paciente" className="mx-auto w-full max-w-[1440px] px-3 py-4 sm:px-6 lg:px-8">
                 <div className="mb-3 flex items-center justify-between gap-2">
                     <Button asChild variant="ghost" size="sm" className="-ml-2 gap-2 text-slate-500"><Link to="/nutritionist/patients"><ArrowLeft className="h-4 w-4" />Pacientes</Link></Button>
                     <div className="flex items-center gap-1">
@@ -213,7 +213,7 @@ export default function PatientHubPage() {
                     {activeTab === 'checkins' && <TabContentCheckins patientId={patientId} />}
                 </Suspense>
                 </div>
-            </main>
+            </section>
 
             <PatientEditProfileModal isOpen={isEditProfileModalOpen} onClose={() => setIsEditProfileModalOpen(false)} patientData={patientData} viewedEpisodeId={viewedEpisodeId} writableEpisodeId={writableEpisodeId} profileRequirements={profileRequirements} legalGuardians={legalGuardians} onSaveSuccess={refresh} />
             <Dialog open={isHistoryOpen} onOpenChange={setIsHistoryOpen}>

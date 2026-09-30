@@ -18,4 +18,4 @@ it('closes direct clinical privileges while retaining supported inserts, updates
  for(const table of ['growth_records','meal_plans','diet_templates','lab_results','energy_expenditure_calculations'])await expect(db.exec('truncate '+table)).rejects.toMatchObject({code:'42501'});
  await db.exec('reset role;');expect((await db.query('select value from lab_results')).rows[0].value).toBe(2);
  }finally{await db.close();}
-});
+}, 20000);

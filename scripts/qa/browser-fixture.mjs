@@ -22,7 +22,8 @@ for (const persona of JSON.parse(readFileSync('operations/synthetic-personas.jso
   personas[persona.key] = { ...persona, id:data.user.id };
 }
 const id = key=>personas[key].id;
-sql(`update public.professional_verifications set status='not_submitted',valid_until=null where user_id='${id('nutritionist-pending')}';
+sql(`update public.professional_verifications set status='approved',professional_role='nutritionist',crn_region='CRN-3',crn_number='QA-'||user_id::text,normalized_crn='QA'||user_id::text,verification_method='approved_by_migration',valid_until=now()+interval '1 year' where user_id in ('${id('nutritionist-a')}','${id('nutritionist-b')}');
+update public.professional_verifications set status='not_submitted',valid_until=null where user_id='${id('nutritionist-pending')}';
 update public.user_profiles set is_active=false where id='${id('disabled')}';
 insert into private.admin_operators(user_id,grant_reason) values
 ('${id('admin-aal1')}','synthetic QA'),('${id('admin-aal2')}','synthetic QA');`);

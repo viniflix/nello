@@ -15,7 +15,7 @@
     "check:bundle": "node scripts/qa/check-bundle-budget.mjs",
     "check:security": "npm audit --omit=dev --audit-level=high",
     "diagnose:observability": "node scripts/observability/diagnose.mjs",
-    "verify": "npm run check:structure && npm run lint && npm run test:run && vite build && npm run check:bundle",
+    "verify": "npm run check:structure && npm run lint && npm run test:coverage && vite build && npm run check:bundle",
     "verify:release": "npm run verify && npm run check:security",
     "check:backend": "node scripts/backend/prepare.mjs --check"
   },
