@@ -72,3 +72,11 @@ tables exist. Indexes, RLS, policies, grants and triggers are restored ONLY on C
 then compared against production. No rows from those tables were read or exported.
 This reconstruction foundation is evidence of historical drift, not a production
 migration and not a replacement for later security corrections.
+
+Run 36668123617 exposed additional unrecorded columns (starting with
+activity_log.actor_user_id). Static comparison identified 27 column foundations and
+25 function definitions whose names never appear in history. These are explicit
+metadata-only prerequisites. The final live function snapshot retains manual body
+changes and makes all 382 application functions reviewable from Git. It contains no
+user/patient rows, access tokens or literal email addresses. Function bodies and
+ownership/grants remain subject to the catalog parity gate; capture alone is insufficient.
