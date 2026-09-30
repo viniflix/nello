@@ -2,6 +2,9 @@
 -- Source: immutable metadata snapshot and successful remote replay a20f86fc.
 -- Never deploy this file to production. No CASCADE or error suppression.
 SET search_path = public, extensions;
+-- Read-only production metadata confirms pg_trgm 1.6 is in extensions.
+-- Recorded initial history installed it in public; moving preserves dependent indexes.
+ALTER EXTENSION pg_trgm SET SCHEMA extensions;
 ALTER TYPE "public"."food_source" ADD VALUE 'Nello';
 CREATE OR REPLACE VIEW "public"."patient_hub_summary" WITH (security_invoker=true) AS  SELECT id AS patient_id,
     name,

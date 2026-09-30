@@ -48,4 +48,9 @@ describe('backend catalog promotion gate', () => {
     expect(compare({ functions: [{ config: ['search_path=public, private'] }] }, { functions: [{ config: ['search_path=private, public'] }] }).status).toBe(1);
     expect(compare({ enums: [{ label: 'Nello', order: 7 }] }, { enums: [{ label: 'Nello', order: 6 }] }).status).toBe(1);
   });
+  it('blocks extension schema or version drift', () => {
+    const expected = { extensions: [{ name: 'pg_trgm', schema: 'extensions', version: '1.6' }] };
+    expect(compare(expected, { extensions: [{ name: 'pg_trgm', schema: 'public', version: '1.6' }] }).status).toBe(1);
+    expect(compare(expected, { extensions: [{ name: 'pg_trgm', schema: 'extensions', version: '1.5' }] }).status).toBe(1);
+  });
 });

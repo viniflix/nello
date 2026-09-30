@@ -1,5 +1,6 @@
 -- Metadata only: never selects user profiles, patients, clinical rows or objects.
 SELECT jsonb_build_object(
+ 'extensions', COALESCE((SELECT jsonb_agg(jsonb_build_object('name',e.extname,'schema',n.nspname,'version',e.extversion) ORDER BY e.extname) FROM pg_extension e JOIN pg_namespace n ON n.oid=e.extnamespace WHERE n.nspname IN ('public','private','extensions')), '[]'::jsonb),
  'columnGrants', COALESCE((SELECT jsonb_agg(jsonb_build_object('schema',n.nspname,'relation',c.relname,'column',a.attname,'grants',a.attacl::text) ORDER BY n.nspname,c.relname,a.attname) FROM pg_attribute a JOIN pg_class c ON c.oid=a.attrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname IN ('public','private') AND a.attnum>0 AND NOT a.attisdropped AND a.attacl IS NOT NULL), '[]'::jsonb),
  'schemas', COALESCE((SELECT jsonb_agg(jsonb_build_object('name',nspname,'owner',pg_get_userbyid(nspowner),'grants',nspacl::text) ORDER BY nspname) FROM pg_namespace WHERE nspname IN ('public','private')), '[]'::jsonb),
  'defaultPrivileges', COALESCE((SELECT jsonb_agg(jsonb_build_object('schema',n.nspname,'owner',r.rolname,'kind',d.defaclobjtype,'grants',d.defaclacl::text) ORDER BY n.nspname,r.rolname,d.defaclobjtype) FROM pg_default_acl d JOIN pg_namespace n ON n.oid=d.defaclnamespace JOIN pg_roles r ON r.oid=d.defaclrole WHERE n.nspname IN ('public','private')), '[]'::jsonb),

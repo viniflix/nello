@@ -31477,5 +31477,11 @@
       "schema": "public"
     }
   ],
-  "columnGrants": []
+  "columnGrants": [],
+  "extensions": [
+    { "name": "pg_stat_statements", "schema": "extensions", "version": "1.11" },
+    { "name": "pg_trgm", "schema": "extensions", "version": "1.6" },
+    { "name": "pgcrypto", "schema": "extensions", "version": "1.3" },
+    { "name": "uuid-ossp", "schema": "extensions", "version": "1.1" }
+  ]
 }
