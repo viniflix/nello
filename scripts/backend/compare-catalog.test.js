@@ -34,4 +34,18 @@ describe('backend catalog promotion gate', () => {
   it('blocks a missing section', () => {
     expect(compare({ triggers: [{ name: 'on_auth_user_created' }] }, {}).status).toBe(1);
   });
+  it('accepts aggregation/ACL/publication column ordering without ignoring rights', () => {
+    expect(compare({ realtime: [{ columns: ['id', 'name'] }], schemas: [{ grants: '{=U/postgres,anon=U/postgres}' }], columns: [{ name: 'id' }, { name: 'name' }] },
+      { realtime: [{ columns: ['name', 'id'] }], schemas: [{ grants: '{anon=U/postgres,=U/postgres}' }], columns: [{ name: 'name' }, { name: 'id' }] }).status).toBe(0);
+    expect(compare({ schemas: [{ grants: '{=U/postgres,anon=U/postgres}' }] }, { schemas: [{ grants: '{anon=UC/postgres,=U/postgres}' }] }).status).toBe(1);
+  });
+  it('blocks unexpected sections and duplicate or missing publication columns', () => {
+    expect(compare({}, { columnGrants: [{ grants: '=w' }] }).status).toBe(1);
+    expect(compare({ columns: [{ name: 'id' }] }, { columns: [{ name: 'id' }, { name: 'id' }] }).status).toBe(1);
+    expect(compare({ realtime: [{ columns: ['id', 'name'] }] }, { realtime: [{ columns: ['id', 'id'] }] }).status).toBe(1);
+  });
+  it('preserves ordered search paths and enum positions', () => {
+    expect(compare({ functions: [{ config: ['search_path=public, private'] }] }, { functions: [{ config: ['search_path=private, public'] }] }).status).toBe(1);
+    expect(compare({ enums: [{ label: 'Nello', order: 7 }] }, { enums: [{ label: 'Nello', order: 6 }] }).status).toBe(1);
+  });
 });

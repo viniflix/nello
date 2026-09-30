@@ -35,7 +35,7 @@ jobs:
       - name: Verify generated database types
         if: ${{ !cancelled() && steps.rebuild.outcome == 'success' }}
         run: |
-          npx --no-install supabase gen types typescript --local --workdir .backend-ci > reconstructed.types.ts
+          npx --no-install supabase gen types typescript --local --schema public --workdir .backend-ci > reconstructed.types.ts
           node scripts/backend/compare-types.mjs src/lib/database.types.ts reconstructed.types.ts
       - name: Preserve diagnostics
         if: always()

@@ -185,3 +185,9 @@ CASCADE is never used. Explicit current function ACLs are then restored in captu
 principal/grantor order; PostgreSQL NULL defaults remain unchanged. The two final
 recorded permission migrations still execute afterward. This makes manual contract
 and permission drift reviewable instead of bypassing CREATE errors or weakening grants.
+# Reconciliação após o primeiro replay completo
+
+O replay remoto de `a20f86fc` concluiu as migrações, mas revelou alterações manuais fora do histórico. A reconstrução isolada restaura a view de anamnese, remove quatro tabelas obsoletas **vazias**, reproduz a nulabilidade clínica, oito ativações RLS, restrições de grants de auditoria, constraints, índices, sete triggers e o enum `Nello`. Os arquivos em `supabase/reconstruction` são exclusivamente de CI: não são migrações para produção. A comparação mantém o catálogo de produção capturado como referência independente.
+
+A ordem de agregação de metadados, entradas ACL e colunas da publicação não representa mudança de contrato; o comparador conserva conteúdo, multiplicidade, direitos, grantor, filtros e configurações de funções. O gerador local recebe `--schema public`, como a captura hospedada. A comparação TypeScript normaliza apenas comentários, parênteses equivalentes e o marcador conhecido de versão PostgREST; mudanças de schema, campos, nulabilidade, enums e helpers continuam bloqueando o gate. Os testes verificam essas fronteiras.
+

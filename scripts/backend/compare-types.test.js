@@ -21,6 +21,15 @@ describe('generated database type gate', () => {
   it('allows only the provider PostgREST engine version difference', () => {
     expect(run('type Metadata={PostgrestVersion: "14.1"}', 'type Metadata={PostgrestVersion: "14.5"}').status).toBe(0);
   });
+  it('accepts only the known optional provider marker and equivalent parentheses', () => {
+    expect(run('export type Database={__InternalSupabase:{PostgrestVersion:"14.5"};public:{}}', 'export type Database={public:{}}').status).toBe(0);
+    expect(run('type Helper<T>=(T extends string ? string : never)', 'type Helper<T>=T extends string ? string : never').status).toBe(0);
+    expect(run('export type Database={__InternalSupabase:{PostgrestVersion:"14.5";unexpected:string};public:{}}', 'export type Database={public:{}}').status).toBe(1);
+  });
+  it('preserves helper precedence and additional schemas', () => {
+    expect(run('type Helper<T>=(T extends string ? string : never)[]', 'type Helper<T>=T extends string ? string : never[]').status).toBe(1);
+    expect(run('export type Database={public:{}}', 'export type Database={public:{};private:{}}').status).toBe(1);
+  });
   it.each([
     ['nullability', 'export type Row={id:string}', 'export type Row={id:string|null}'],
     ['enum values', 'export type Source="TACO"', 'export type Source="CUSTOM"'],
