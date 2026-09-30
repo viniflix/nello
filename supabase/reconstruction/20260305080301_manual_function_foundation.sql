@@ -1,4 +1,6 @@
--- CI-only function definitions with names absent from all recorded history.
+-- CI-only current definitions absent from recorded CREATE FUNCTION statements.
+
+-- A name appearing in a consumer is NOT proof that its definition was recorded.
 
 CREATE SCHEMA IF NOT EXISTS private;
 
@@ -97,6 +99,18 @@ begin
 end;
 $function$;
 
+CREATE OR REPLACE FUNCTION private.get_own_profile_attrs()
+ RETURNS TABLE(is_admin boolean, user_type text)
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  select up.is_admin, up.user_type
+  from public.user_profiles up
+  where up.id = auth.uid()
+  limit 1;
+$function$;
+
 CREATE OR REPLACE FUNCTION private.interact_notification(p_notification_id uuid, p_delete_if_message boolean DEFAULT true)
  RETURNS void
  LANGUAGE plpgsql
@@ -131,6 +145,42 @@ begin
       and user_id = auth.uid();
   end if;
 end;
+$function$;
+
+CREATE OR REPLACE FUNCTION private.is_admin()
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+  select private.admin_member()
+    and coalesce(auth.jwt() ->> 'aal', 'aal1') = 'aal2';
+$function$;
+
+CREATE OR REPLACE FUNCTION private.is_nutritionist()
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+ SET row_security TO 'off'
+AS $function$
+  select exists (
+    select 1 from public.user_profiles
+    where id = auth.uid() and user_type = 'nutritionist'
+  );
+$function$;
+
+CREATE OR REPLACE FUNCTION private.is_patient()
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+ SET row_security TO 'off'
+AS $function$
+  select exists (
+    select 1 from public.user_profiles
+    where id = auth.uid() and user_type = 'patient'
+  );
 $function$;
 
 CREATE OR REPLACE FUNCTION private.log_meal_action_secure(p_meal_id text, p_action text, p_details jsonb)
@@ -249,6 +299,115 @@ begin
 end;
 $function$;
 
+CREATE OR REPLACE FUNCTION private.write_full_meal_plan_storage(p_plan_id bigint, p_plan_data jsonb, p_meals jsonb)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+DECLARE
+  v_meal JSONB;
+  v_food JSONB;
+  v_sub JSONB;
+  v_new_meal_id BIGINT;
+  v_new_food_id BIGINT;
+BEGIN
+  -- 1. Update the meal plan itself
+  UPDATE meal_plans
+  SET 
+    name = (p_plan_data->>'name'),
+    description = (p_plan_data->>'description'),
+    start_date = (p_plan_data->>'start_date')::DATE,
+    end_date = (p_plan_data->>'end_date')::DATE,
+    is_active = COALESCE((p_plan_data->>'is_active')::BOOLEAN, true),
+    is_draft = COALESCE((p_plan_data->>'is_draft')::BOOLEAN, false),
+    daily_calories = COALESCE((p_plan_data->>'daily_calories')::NUMERIC, 0),
+    daily_protein = COALESCE((p_plan_data->>'daily_protein')::NUMERIC, 0),
+    daily_carbs = COALESCE((p_plan_data->>'daily_carbs')::NUMERIC, 0),
+    daily_fat = COALESCE((p_plan_data->>'daily_fat')::NUMERIC, 0),
+    updated_at = NOW()
+  WHERE id = p_plan_id;
+
+  -- 2. Clear old structure (Deletes cascade to foods and subs if constraints permit, 
+  --    but we'll be explicit to ensure performance and correctness)
+  -- Assuming ON DELETE CASCADE is set. If not, we should delete children first.
+  DELETE FROM meal_plan_food_substitutions 
+  WHERE meal_plan_food_id IN (
+    SELECT id FROM meal_plan_foods 
+    WHERE meal_plan_meal_id IN (
+      SELECT id FROM meal_plan_meals WHERE meal_plan_id = p_plan_id
+    )
+  );
+  
+  DELETE FROM meal_plan_foods 
+  WHERE meal_plan_meal_id IN (
+    SELECT id FROM meal_plan_meals WHERE meal_plan_id = p_plan_id
+  );
+
+  DELETE FROM meal_plan_meals WHERE meal_plan_id = p_plan_id;
+
+  -- 3. Insert new structure
+  FOR v_meal IN SELECT * FROM jsonb_array_elements(p_meals)
+  LOOP
+    INSERT INTO meal_plan_meals (
+      meal_plan_id, name, meal_type, meal_time, order_index, notes,
+      total_calories, total_protein, total_carbs, total_fat
+    ) VALUES (
+      p_plan_id,
+      v_meal->>'name',
+      COALESCE((v_meal->>'meal_type'), 'other')::meal_type_enum,
+      private.normalize_meal_time(v_meal->>'meal_time'),
+      COALESCE((v_meal->>'order_index')::INTEGER, 0),
+      v_meal->>'notes',
+      COALESCE((v_meal->>'total_calories')::NUMERIC, 0),
+      COALESCE((v_meal->>'total_protein')::NUMERIC, 0),
+      COALESCE((v_meal->>'total_carbs')::NUMERIC, 0),
+      COALESCE((v_meal->>'total_fat')::NUMERIC, 0)
+    ) RETURNING id INTO v_new_meal_id;
+
+    -- Insert foods for this meal
+    IF v_meal ? 'foods' THEN
+      FOR v_food IN SELECT * FROM jsonb_array_elements(v_meal->'foods')
+      LOOP
+        INSERT INTO meal_plan_foods (
+          meal_plan_meal_id, food_id, quantity, unit, 
+          calories, protein, carbs, fat, notes, order_index,
+          patient_description
+        ) VALUES (
+          v_new_meal_id,
+          (v_food->>'food_id')::UUID,
+          COALESCE((v_food->>'quantity')::NUMERIC, 0),
+          v_food->>'unit',
+          COALESCE((v_food->>'calories')::NUMERIC, 0),
+          COALESCE((v_food->>'protein')::NUMERIC, 0),
+          COALESCE((v_food->>'carbs')::NUMERIC, 0),
+          COALESCE((v_food->>'fat')::NUMERIC, 0),
+          v_food->>'notes',
+          COALESCE((v_food->>'order_index')::INTEGER, 0),
+          v_food->>'patient_description'
+        ) RETURNING id INTO v_new_food_id;
+
+        -- Insert substitutes
+        IF v_food ? 'substitutes' THEN
+          FOR v_sub IN SELECT * FROM jsonb_array_elements(v_food->'substitutes')
+          LOOP
+            INSERT INTO meal_plan_food_substitutions (
+              meal_plan_food_id, substitute_food_id, notes
+            ) VALUES (
+              v_new_food_id,
+              (v_sub->>'id')::UUID,
+              v_sub->>'notes'
+            );
+          END LOOP;
+        END IF;
+      END LOOP;
+    END IF;
+  END LOOP;
+
+  RETURN jsonb_build_object('status', 'success', 'plan_id', p_plan_id);
+END;
+$function$;
+
 CREATE OR REPLACE FUNCTION public._validate_growth_record_json_section(p_section jsonb, p_section_name text, p_default_min numeric, p_default_max numeric)
  RETURNS void
  LANGUAGE plpgsql
@@ -319,6 +478,15 @@ AS $function$
   select current_setting(p_name, true);
 $function$;
 
+CREATE OR REPLACE FUNCTION public.auth_uid()
+ RETURNS uuid
+ LANGUAGE sql
+ STABLE
+ SET search_path TO 'public'
+AS $function$
+  select auth.uid();
+$function$;
+
 CREATE OR REPLACE FUNCTION public.can_delete_user(p_target_id uuid)
  RETURNS boolean
  LANGUAGE sql
@@ -338,6 +506,48 @@ CREATE OR REPLACE FUNCTION public.clear_message_notifications_from_sender(p_send
  LANGUAGE sql
  SET search_path TO 'public', 'private', 'pg_temp'
 AS $function$ select private.clear_message_notifications_from_sender($1); $function$;
+
+CREATE OR REPLACE FUNCTION public.generate_random_invite_code(length integer DEFAULT 6)
+ RETURNS text
+ LANGUAGE plpgsql
+ SET search_path TO 'public'
+AS $function$
+DECLARE
+  chars text := 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  result text := '';
+  i int;
+BEGIN
+  FOR i IN 1..length LOOP
+    result := result || substr(chars, floor(random() * length(chars) + 1)::int, 1);
+  END LOOP;
+  RETURN result;
+END;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.generate_unique_invite_code(col_name text)
+ RETURNS text
+ LANGUAGE plpgsql
+ SET search_path TO 'public'
+AS $function$
+DECLARE
+  new_code text;
+  found text;
+BEGIN
+  LOOP
+    new_code := generate_random_invite_code(6);
+    -- Check uniqueness
+    IF col_name = 'invite_code' THEN
+      SELECT invite_code INTO found FROM public.user_profiles WHERE invite_code = new_code LIMIT 1;
+    ELSE
+      SELECT patient_invite_code INTO found FROM public.user_profiles WHERE patient_invite_code = new_code LIMIT 1;
+    END IF;
+    
+    IF found IS NULL THEN
+      RETURN new_code;
+    END IF;
+  END LOOP;
+END;
+$function$;
 
 CREATE OR REPLACE FUNCTION public.get_anthropometry_longitudinal_score(p_patient_id uuid)
  RETURNS jsonb
@@ -494,6 +704,24 @@ BEGIN
 END;
 $function$;
 
+CREATE OR REPLACE FUNCTION public.get_food_stats(p_nutritionist_id uuid)
+ RETURNS json
+ LANGUAGE sql
+ STABLE
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+  SELECT json_build_object(
+    'total', count(*),
+    'custom', count(*) FILTER (WHERE source = 'custom' OR nutritionist_id = p_nutritionist_id),
+    'public', count(*) FILTER (WHERE source != 'custom' AND nutritionist_id IS NULL),
+    'taco', count(*) FILTER (WHERE source = 'TACO'),
+    'tbca', count(*) FILTER (WHERE source = 'TBCA'),
+    'tucunduva', count(*) FILTER (WHERE source = 'TUCUNDUVA'),
+    'usda', count(*) FILTER (WHERE source = 'USDA'),
+    'nello', count(*) FILTER (WHERE source = 'Nello')
+  ) FROM foods WHERE is_active = true;
+$function$;
+
 CREATE OR REPLACE FUNCTION public.get_invite_details(p_invite_code text)
  RETURNS TABLE(patient_name text, nutritionist_name text, nutritionist_gender text)
  LANGUAGE sql
@@ -506,11 +734,36 @@ CREATE OR REPLACE FUNCTION public.get_operational_health_summary(p_nutritionist_
  SET search_path TO 'public', 'private', 'pg_temp'
 AS $function$ select private.get_operational_health_summary($1, $2); $function$;
 
+CREATE OR REPLACE FUNCTION public.get_own_profile_attrs()
+ RETURNS TABLE(is_admin boolean, user_type text)
+ LANGUAGE sql
+ SET search_path TO 'public', 'private', 'pg_temp'
+AS $function$ select * from private.get_own_profile_attrs(); $function$;
+
 CREATE OR REPLACE FUNCTION public.interact_notification(p_notification_id uuid, p_delete_if_message boolean DEFAULT true)
  RETURNS void
  LANGUAGE sql
  SET search_path TO 'public', 'private', 'pg_temp'
 AS $function$ select private.interact_notification($1, $2); $function$;
+
+CREATE OR REPLACE FUNCTION public.is_admin()
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO ''
+AS $function$ select private.is_admin(); $function$;
+
+CREATE OR REPLACE FUNCTION public.is_nutritionist()
+ RETURNS boolean
+ LANGUAGE sql
+ SET search_path TO 'public', 'private', 'pg_temp'
+AS $function$ select private.is_nutritionist(); $function$;
+
+CREATE OR REPLACE FUNCTION public.is_patient()
+ RETURNS boolean
+ LANGUAGE sql
+ SET search_path TO 'public', 'private', 'pg_temp'
+AS $function$ select private.is_patient(); $function$;
 
 CREATE OR REPLACE FUNCTION public.log_meal_action_secure(p_meal_id text, p_action text, p_details jsonb)
  RETURNS void
@@ -696,6 +949,19 @@ BEGIN
   PERFORM public._validate_growth_record_json_section(NEW.bone_diameters, 'bone_diameters', 1, 40);
   PERFORM public._validate_growth_record_json_section(NEW.bioimpedance, 'bioimpedance', 0, 1000);
 
+  RETURN NEW;
+END;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.trg_set_invite_code()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SET search_path TO 'public'
+AS $function$
+BEGIN
+  IF NEW.user_type = 'nutritionist' AND NEW.invite_code IS NULL THEN
+    NEW.invite_code := generate_random_invite_code(6);
+  END IF;
   RETURN NEW;
 END;
 $function$;

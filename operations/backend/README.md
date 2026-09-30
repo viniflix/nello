@@ -83,7 +83,7 @@ migration and not a replacement for later security corrections.
 Run 36668123617 exposed additional unrecorded columns (starting with
 activity_log.actor_user_id). After reviewing inline table definitions and view columns,
 static comparison identified 22 table column foundations and
-25 function definitions whose names never appear in history. These are explicit
+function definitions missing from recorded CREATE statements. These are explicit
 metadata-only prerequisites. The final live function snapshot retains manual body
 changes and makes all 382 application functions reviewable from Git. It contains no
 user/patient rows, access tokens or literal email addresses. Function bodies and
@@ -94,3 +94,9 @@ its four missing columns are restored immediately after that recorded CREATE,
 before the index consumer. Other foundations target tables already present. Current
 food_measures columns belong to a later recorded table replacement, and foods is a
 view: neither is incorrectly added to the early table foundation.
+
+Run 36669300311 advanced through the table/index repairs and found that a March
+Storage policy calls is_admin before its first recorded declaration. The reviewed
+foundation includes 39 current signatures (37 unrecorded CREATE signatures plus
+two is_admin signatures required for historical ordering). Consumer name mentions
+are not counted as evidence that a function definition was versioned.
