@@ -1,0 +1,1912 @@
+[
+  {
+    "signature": "private.add_patient_xp(uuid,uuid,integer,text)",
+    "args": "p_patient_id uuid, p_nutritionist_id uuid, p_xp integer, p_reason text",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "private.admin_member()",
+    "args": "",
+    "returns": "boolean"
+  },
+  {
+    "signature": "private.approve_patient_link(uuid)",
+    "args": "p_patient_id uuid",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "private.assert_plan_ready_to_activate(bigint,uuid)",
+    "args": "p_plan_id bigint, p_patient_id uuid",
+    "returns": "void"
+  },
+  {
+    "signature": "private.assign_clinical_care_episode()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "private.assign_patient_owned_care_episode()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "private.audit_notification_change()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "private.audit_progress_photo_change()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "private.auto_approve_prelaunch_nutritionist()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "private.build_clinical_record_amendment_impact(public.clinical_records)",
+    "args": "p_record clinical_records",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "private.build_diet_template_snapshot(uuid)",
+    "args": "p_template_id uuid",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "private.build_meal_plan_snapshot(bigint)",
+    "args": "p_plan_id bigint",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "private.can_access_anamnesis_attachment_object(text,boolean)",
+    "args": "p_name text, p_write boolean",
+    "returns": "boolean"
+  },
+  {
+    "signature": "private.can_access_patient_photo_object(text)",
+    "args": "p_name text",
+    "returns": "boolean"
+  },
+  {
+    "signature": "private.can_list_clinical_attachment(uuid)",
+    "args": "p_attachment_id uuid",
+    "returns": "boolean"
+  },
+  {
+    "signature": "private.can_manage_clinical_attachment(uuid)",
+    "args": "p_episode_id uuid",
+    "returns": "boolean"
+  },
+  {
+    "signature": "private.can_manage_clinical_record_correction(uuid,uuid,text)",
+    "args": "p_replacement_record_id uuid, p_actor uuid, p_action text",
+    "returns": "boolean"
+  },
+  {
+    "signature": "private.can_manage_document_artifact(uuid)",
+    "args": "p_id uuid",
+    "returns": "boolean"
+  },
+  {
+    "signature": "private.can_open_clinical_attachment(uuid)",
+    "args": "p_attachment_id uuid",
+    "returns": "boolean"
+  },
+  {
+    "signature": "private.can_read_care_episode(uuid)",
+    "args": "p_episode_id uuid",
+    "returns": "boolean"
+  },
+  {
+    "signature": "private.can_read_clinical_attachment_object(text,text)",
+    "args": "p_bucket_id text, p_name text",
+    "returns": "boolean"
+  },
+  {
+    "signature": "private.can_read_clinical_record(uuid)",
+    "args": "p_record_id uuid",
+    "returns": "boolean"
+  },
+  {
+    "signature": "private.can_read_document_asset_object(text,text)",
+    "args": "p_bucket_id text, p_name text",
+    "returns": "boolean"
+  },
+  {
+    "signature": "private.can_read_legal_guardian_event(uuid)",
+    "args": "p_event_id uuid",
+    "returns": "boolean"
+  },
+  {
+    "signature": "private.can_start_clinical_record_correction(uuid,uuid)",
+    "args": "p_record_id uuid, p_actor uuid",
+    "returns": "boolean"
+  },
+  {
+    "signature": "private.can_upload_clinical_attachment_object(text,text)",
+    "args": "p_bucket_id text, p_name text",
+    "returns": "boolean"
+  },
+  {
+    "signature": "private.can_upload_document_asset_object(text,text)",
+    "args": "p_bucket_id text, p_name text",
+    "returns": "boolean"
+  },
+  {
+    "signature": "private.can_upload_patient_photo_object(text)",
+    "args": "p_name text",
+    "returns": "boolean"
+  },
+  {
+    "signature": "private.can_write_active_care_episode(uuid)",
+    "args": "p_episode_id uuid",
+    "returns": "boolean"
+  },
+  {
+    "signature": "private.can_write_active_meal_plan(uuid,uuid,uuid)",
+    "args": "p_patient_id uuid, p_nutritionist_id uuid, p_care_episode_id uuid",
+    "returns": "boolean"
+  },
+  {
+    "signature": "private.cancel_pending_appointment_charge()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "private.capture_anthropometry_calculation_snapshot()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "private.capture_ended_care_episode_snapshot()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "private.capture_energy_calculation_snapshot()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "private.capture_meal_plan_version(bigint,text,jsonb)",
+    "args": "p_plan_id bigint, p_reason text, p_metadata jsonb",
+    "returns": "integer"
+  },
+  {
+    "signature": "private.check_and_grant_achievements(uuid)",
+    "args": "p_user_id uuid",
+    "returns": "TABLE(name text, description text, icon_name text)"
+  },
+  {
+    "signature": "private.check_is_admin()",
+    "args": "",
+    "returns": "boolean"
+  },
+  {
+    "signature": "private.clear_message_notifications_from_sender(uuid)",
+    "args": "p_sender_id uuid",
+    "returns": "void"
+  },
+  {
+    "signature": "private.clinical_attachment_actor_role(uuid,text)",
+    "args": "p_actor_id uuid, p_source text",
+    "returns": "text"
+  },
+  {
+    "signature": "private.clinical_record_canonical_payload(public.clinical_records,jsonb,text)",
+    "args": "p_record clinical_records, p_content jsonb, p_retrospective_reason text",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "private.clinical_record_signed_by(uuid)",
+    "args": "p_record_id uuid",
+    "returns": "uuid"
+  },
+  {
+    "signature": "private.clone_diet_template_to_patient(uuid,uuid,uuid,text)",
+    "args": "p_template_id uuid, p_patient_id uuid, p_nutritionist_id uuid, p_name text",
+    "returns": "bigint"
+  },
+  {
+    "signature": "private.clone_meal_template_to_plan(uuid,bigint,text,time without time zone)",
+    "args": "p_meal_template_id uuid, p_meal_plan_id bigint, p_meal_type text, p_meal_time time without time zone",
+    "returns": "bigint"
+  },
+  {
+    "signature": "private.compose_document_payload(text,integer,uuid,jsonb,jsonb,jsonb)",
+    "args": "p_layout_code text, p_layout_version integer, p_identity_id uuid, p_patient jsonb, p_content jsonb, p_metadata jsonb",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "private.copy_diet_template_meals_to_plan(uuid,bigint,uuid[])",
+    "args": "p_template_id uuid, p_plan_id bigint, p_meal_ids uuid[]",
+    "returns": "bigint[]"
+  },
+  {
+    "signature": "private.create_appointment_reminders()",
+    "args": "",
+    "returns": "void"
+  },
+  {
+    "signature": "private.create_daily_log_reminders()",
+    "args": "",
+    "returns": "void"
+  },
+  {
+    "signature": "private.create_notification(uuid,text,text,text,text,jsonb)",
+    "args": "p_user_id uuid, p_type text, p_title text, p_message text, p_link_url text, p_content jsonb",
+    "returns": "bigint"
+  },
+  {
+    "signature": "private.create_summary_notification()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "private.current_recent_authentication_evidence()",
+    "args": "",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "private.delete_patient(uuid)",
+    "args": "patient_id uuid",
+    "returns": "void"
+  },
+  {
+    "signature": "private.dispatch_due_checkins()",
+    "args": "",
+    "returns": "integer"
+  },
+  {
+    "signature": "private.document_authenticity_fingerprint()",
+    "args": "",
+    "returns": "text"
+  },
+  {
+    "signature": "private.empty_patient_removal_status(uuid)",
+    "args": "p_patient_id uuid",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "private.end_care_episode(uuid,text)",
+    "args": "p_patient_id uuid, p_end_reason text",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "private.enforce_clinical_record_amendment_immutability()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "private.enforce_clinical_record_c4_status_transition()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "private.enforce_clinical_record_write_lock()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "private.enforce_meal_plan_write_authorization()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "private.enforce_verified_patient_link()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "private.export_subject_rows(regclass,name,uuid,text[])",
+    "args": "p_table regclass, p_subject_column name, p_subject_id uuid, p_redacted_keys text[]",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "private.freeze_prescription_food_reference()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "private.freeze_recipe_ingredient_reference()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "private.freeze_substitution_food_reference()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "private.get_admin_dashboard_stats()",
+    "args": "",
+    "returns": "json"
+  },
+  {
+    "signature": "private.get_chat_recipient_profile(uuid)",
+    "args": "recipient_id uuid",
+    "returns": "TABLE(id uuid, name text, avatar_url text, user_type text, is_active boolean, nutritionist_id uuid, last_seen_at timestamp with time zone)"
+  },
+  {
+    "signature": "private.get_comprehensive_activity_feed_optimized(uuid,integer)",
+    "args": "p_nutritionist_id uuid, p_limit integer",
+    "returns": "TABLE(activity_type text, activity_id text, patient_id uuid, patient_name text, activity_date timestamp with time zone, activity_data jsonb)"
+  },
+  {
+    "signature": "private.get_daily_adherence(uuid)",
+    "args": "p_nutritionist_id uuid",
+    "returns": "numeric"
+  },
+  {
+    "signature": "private.get_financial_summary(date,date)",
+    "args": "start_date date, end_date date",
+    "returns": "json"
+  },
+  {
+    "signature": "private.get_invite_details(text)",
+    "args": "p_invite_code text",
+    "returns": "TABLE(patient_name text, nutritionist_name text, nutritionist_gender text)"
+  },
+  {
+    "signature": "private.get_meal_plan_with_foods_optimized(uuid)",
+    "args": "p_meal_plan_id uuid",
+    "returns": "json"
+  },
+  {
+    "signature": "private.get_nutritionist_conversations(uuid)",
+    "args": "p_nutritionist_id uuid",
+    "returns": "TABLE(recipient_id uuid, recipient_name text, recipient_avatar text, last_message_content text, last_message_at timestamp with time zone, unread_count bigint, is_active boolean, last_seen_at timestamp with time zone)"
+  },
+  {
+    "signature": "private.get_nutritionist_detail(uuid)",
+    "args": "p_nutritionist_id uuid",
+    "returns": "json"
+  },
+  {
+    "signature": "private.get_nutritionists_list()",
+    "args": "",
+    "returns": "TABLE(id uuid, name text, email text, created_at timestamp with time zone, is_active boolean, patients_count bigint, last_activity timestamp with time zone)"
+  },
+  {
+    "signature": "private.get_operational_health_summary(uuid,integer)",
+    "args": "p_nutritionist_id uuid, p_window_hours integer",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "private.get_own_profile_attrs()",
+    "args": "",
+    "returns": "TABLE(is_admin boolean, user_type text)"
+  },
+  {
+    "signature": "private.get_patients_for_new_chat(uuid)",
+    "args": "p_nutritionist_id uuid",
+    "returns": "TABLE(id uuid, name text, avatar_url text, is_active boolean, last_seen_at timestamp with time zone)"
+  },
+  {
+    "signature": "private.get_patients_low_adherence_optimized(uuid,integer)",
+    "args": "p_nutritionist_id uuid, p_days_threshold integer",
+    "returns": "TABLE(patient_id uuid, patient_name text, last_meal_date timestamp with time zone, days_since_last_meal integer)"
+  },
+  {
+    "signature": "private.get_patients_pending_data_optimized(uuid)",
+    "args": "p_nutritionist_id uuid",
+    "returns": "TABLE(patient_id uuid, patient_name text, has_anamnese boolean, has_anthropometry boolean, has_meal_plan boolean, has_prescription boolean, pending_items text[])"
+  },
+  {
+    "signature": "private.get_system_live_logs(integer)",
+    "args": "limit_count integer",
+    "returns": "TABLE(id text, type text, message text, user_name text, event_timestamp timestamp with time zone)"
+  },
+  {
+    "signature": "private.get_tcc_study_metrics()",
+    "args": "",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "private.get_user_id()",
+    "args": "",
+    "returns": "uuid"
+  },
+  {
+    "signature": "private.guard_appointment_status_transition()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "private.guard_checkin_session_update()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "private.guard_financial_appointment_link()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "private.guard_financial_cash_dates()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "private.guard_paid_financial_delete()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "private.handle_new_chat_message_notification()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "private.handle_new_user()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "private.has_current_clinical_capacity(uuid)",
+    "args": "p_user_id uuid",
+    "returns": "boolean"
+  },
+  {
+    "signature": "private.has_meaningful_clinical_text(text)",
+    "args": "p_value text",
+    "returns": "boolean"
+  },
+  {
+    "signature": "private.increment_checkin_streak(uuid,uuid)",
+    "args": "p_patient_id uuid, p_nutritionist_id uuid",
+    "returns": "void"
+  },
+  {
+    "signature": "private.increment_checkin_streak_after_completion()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "private.interact_notification(uuid,boolean)",
+    "args": "p_notification_id uuid, p_delete_if_message boolean",
+    "returns": "void"
+  },
+  {
+    "signature": "private.is_admin()",
+    "args": "",
+    "returns": "boolean"
+  },
+  {
+    "signature": "private.is_nutritionist()",
+    "args": "",
+    "returns": "boolean"
+  },
+  {
+    "signature": "private.is_patient()",
+    "args": "",
+    "returns": "boolean"
+  },
+  {
+    "signature": "private.is_patient_visible_clinical_record(uuid)",
+    "args": "p_record_id uuid",
+    "returns": "boolean"
+  },
+  {
+    "signature": "private.lock_and_can_write_active_care_episode(uuid)",
+    "args": "p_episode_id uuid",
+    "returns": "boolean"
+  },
+  {
+    "signature": "private.log_activity_event(text,integer,text,uuid,uuid,jsonb)",
+    "args": "p_event_name text, p_event_version integer, p_source_module text, p_patient_id uuid, p_nutritionist_id uuid, p_payload jsonb",
+    "returns": "uuid"
+  },
+  {
+    "signature": "private.log_bug_report(character varying,text,text,text,uuid,text,text,character varying,text,jsonb,jsonb,text,text,integer,integer)",
+    "args": "p_error_type character varying, p_error_message text, p_stack_trace text, p_route text, p_user_id uuid, p_user_email text, p_user_name text, p_user_type character varying, p_user_agent text, p_console_log jsonb, p_metadata jsonb, p_component_stack text, p_source_file text, p_line_number integer, p_column_number integer",
+    "returns": "uuid"
+  },
+  {
+    "signature": "private.log_meal_action(uuid,bigint,text,text,date,time without time zone,jsonb)",
+    "args": "p_patient_id uuid, p_meal_id bigint, p_action text, p_meal_type text, p_meal_date date, p_meal_time time without time zone, p_details jsonb",
+    "returns": "bigint"
+  },
+  {
+    "signature": "private.log_meal_action_secure(text,text,jsonb)",
+    "args": "p_meal_id text, p_action text, p_details jsonb",
+    "returns": "void"
+  },
+  {
+    "signature": "private.log_operational_event(text,text,text,integer,uuid,uuid,text,jsonb)",
+    "args": "p_module text, p_operation text, p_event_type text, p_latency_ms integer, p_nutritionist_id uuid, p_patient_id uuid, p_error_message text, p_metadata jsonb",
+    "returns": "bigint"
+  },
+  {
+    "signature": "private.merge_document_identity_text(jsonb,text,text,text)",
+    "args": "p_payload jsonb, p_key text, p_current text, p_default text",
+    "returns": "text"
+  },
+  {
+    "signature": "private.minimal_patient_snapshot(uuid)",
+    "args": "p_patient_id uuid",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "private.next_checkin_send_at(text,integer[],time without time zone,text,timestamp with time zone)",
+    "args": "p_frequency text, p_send_days integer[], p_send_time time without time zone, p_time_zone text, p_after timestamp with time zone",
+    "returns": "timestamp with time zone"
+  },
+  {
+    "signature": "private.normalize_meal_time(text)",
+    "args": "p_value text",
+    "returns": "time without time zone"
+  },
+  {
+    "signature": "private.notify_care_episode_participant(uuid,text,text,text,uuid)",
+    "args": "p_user_id uuid, p_type text, p_title text, p_message text, p_episode_id uuid",
+    "returns": "void"
+  },
+  {
+    "signature": "private.notify_clinical_attachment_transition()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "private.patient_has_meaningful_data(uuid)",
+    "args": "p_patient_id uuid",
+    "returns": "boolean"
+  },
+  {
+    "signature": "private.prepare_clinical_attachment()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "private.prepare_clinical_record_chain()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "private.prepare_verified_care_episode()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "private.prevent_clinical_measurement_delete()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "private.prevent_clinical_snapshot_mutation()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "private.prevent_data_subject_event_mutation()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "private.prevent_finalized_content_mutation()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "private.prevent_meal_plan_delete()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "private.prevent_version_mutation()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "private.process_patient_reminders(uuid)",
+    "args": "p_patient_id uuid",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "private.project_clinical_evolution_record(public.clinical_records)",
+    "args": "p_record clinical_records",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "private.project_clinical_record_chain_item(public.clinical_records)",
+    "args": "p_record clinical_records",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "private.project_patient_clinical_record(public.clinical_records)",
+    "args": "p_record clinical_records",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "private.promote_draft_to_active(bigint,uuid)",
+    "args": "p_draft_id bigint, p_patient_id uuid",
+    "returns": "void"
+  },
+  {
+    "signature": "private.protect_clinical_attachment_upload_fields()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "private.protect_document_artifact_frozen_fields()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "private.protect_progress_photo_identity()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "private.record_clinical_attachment_event()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "private.redeem_invite_code(text)",
+    "args": "input_code text",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "private.reject_clinical_attachment_mutation()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "private.reject_clinical_foundation_mutation()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "private.reject_clinical_record_type_mutation()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "private.reject_document_artifact_delete()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "private.reject_document_artifact_event_mutation()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "private.reject_document_identity_delete()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "private.reject_document_identity_event_mutation()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "private.reject_document_layout_version_mutation()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "private.reject_evolution_template_immutable_mutation()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "private.reject_legal_guardian_delete()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "private.reject_patient_link(uuid)",
+    "args": "p_patient_id uuid",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "private.reject_verification_event_mutation()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "private.require_checkin_patient_account()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "private.require_verification_admin()",
+    "args": "",
+    "returns": "void"
+  },
+  {
+    "signature": "private.resolve_active_care_episode(uuid)",
+    "args": "p_patient_id uuid",
+    "returns": "uuid"
+  },
+  {
+    "signature": "private.schedule_verification_document_deletion()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "private.seed_nello_protocol_examples(uuid)",
+    "args": "p_user uuid",
+    "returns": "void"
+  },
+  {
+    "signature": "private.seed_nello_protocol_examples_on_profile()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "private.set_active_meal_plan(bigint)",
+    "args": "p_plan_id bigint",
+    "returns": "void"
+  },
+  {
+    "signature": "private.soft_delete_meal(bigint)",
+    "args": "p_meal_id bigint",
+    "returns": "boolean"
+  },
+  {
+    "signature": "private.stamp_financial_cash_dates()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "private.start_care_episode(uuid,text)",
+    "args": "p_patient_id uuid, p_start_reason text",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "private.sync_care_episode_for_active_link()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "private.sync_checkin_template_schedules()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "private.sync_notification_read_state()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "private.sync_profile_email_from_auth()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "private.transition_appointment_status(bigint,text,text)",
+    "args": "p_appointment_id bigint, p_next_status text, p_reason text",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "private.transition_appointment_status(uuid,text,text)",
+    "args": "p_appointment_id uuid, p_next_status text, p_reason text",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "private.upsert_full_meal_plan(bigint,jsonb,jsonb)",
+    "args": "p_plan_id bigint, p_plan_data jsonb, p_meals jsonb",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "private.validate_clinical_record_amendment_shape()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "private.validate_clinical_record_content(jsonb,jsonb,boolean)",
+    "args": "p_content jsonb, p_sections_snapshot jsonb, p_require_meaningful boolean",
+    "returns": "integer"
+  },
+  {
+    "signature": "private.validate_diet_template_food()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "private.validate_evolution_template_sections(jsonb)",
+    "args": "p_sections jsonb",
+    "returns": "boolean"
+  },
+  {
+    "signature": "private.version_document_identity_asset(uuid,uuid,text,text,text)",
+    "args": "p_professional_id uuid, p_expected_identity_id uuid, p_asset_type text, p_storage_path text, p_reason text",
+    "returns": "uuid"
+  },
+  {
+    "signature": "private.write_care_episode_activity(text,public.care_episodes,uuid,text)",
+    "args": "p_event_name text, p_episode care_episodes, p_actor_user_id uuid, p_reason text",
+    "returns": "void"
+  },
+  {
+    "signature": "private.write_full_meal_plan_storage(bigint,jsonb,jsonb)",
+    "args": "p_plan_id bigint, p_plan_data jsonb, p_meals jsonb",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public._validate_growth_record_json_section(jsonb,text,numeric,numeric)",
+    "args": "p_section jsonb, p_section_name text, p_default_min numeric, p_default_max numeric",
+    "returns": "void"
+  },
+  {
+    "signature": "public.abandon_clinical_record_correction(uuid,text)",
+    "args": "p_amendment_id uuid, p_reason text",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.accept_clinical_protocol(text,integer,text,text)",
+    "args": "p_code text, p_version integer, p_decision text, p_reason text",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.add_patient_xp(uuid,uuid,integer,text)",
+    "args": "p_patient_id uuid, p_nutritionist_id uuid, p_xp integer, p_reason text",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.admin_access_status()",
+    "args": "",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.admin_brand_migration_status()",
+    "args": "",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.admin_list_people(text,text,integer)",
+    "args": "p_search text, p_type text, p_page integer",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.admin_security_overview()",
+    "args": "",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.admin_workflow_overview()",
+    "args": "",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.approve_patient_link(uuid)",
+    "args": "p_patient_id uuid",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.archive_meal_plan(bigint,text)",
+    "args": "p_plan_id bigint, p_reason text",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.archive_private_evolution_template(text)",
+    "args": "p_template_code text",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.attach_anamnesis_file(uuid,uuid,text,text,text,text)",
+    "args": "p_record_id uuid, p_token uuid, p_path text, p_field_id text, p_field_label text, p_file_name text",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.auth_role()",
+    "args": "",
+    "returns": "text"
+  },
+  {
+    "signature": "public.auth_setting(text)",
+    "args": "p_name text",
+    "returns": "text"
+  },
+  {
+    "signature": "public.auth_uid()",
+    "args": "",
+    "returns": "uuid"
+  },
+  {
+    "signature": "public.authorize_my_data_export_attachment(uuid)",
+    "args": "p_attachment_id uuid",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.build_my_data_export_snapshot()",
+    "args": "",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.calculate_goal_progress(bigint)",
+    "args": "goal_id bigint",
+    "returns": "numeric"
+  },
+  {
+    "signature": "public.calculate_lab_status(text,numeric,numeric)",
+    "args": "test_value_text text, ref_min numeric, ref_max numeric",
+    "returns": "text"
+  },
+  {
+    "signature": "public.calculate_macro_targets(bigint)",
+    "args": "p_meal_plan_id bigint",
+    "returns": "TABLE(protein_g numeric, carbs_g numeric, fat_g numeric)"
+  },
+  {
+    "signature": "public.calculate_net_amount()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "public.can_delete_user(uuid)",
+    "args": "p_target_id uuid",
+    "returns": "boolean"
+  },
+  {
+    "signature": "public.cancel_my_data_subject_request(uuid)",
+    "args": "p_request_id uuid",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.change_clinical_attachment_visibility(uuid,text,text)",
+    "args": "p_attachment_id uuid, p_visibility text, p_reason text",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.check_and_grant_achievements(uuid)",
+    "args": "p_user_id uuid",
+    "returns": "TABLE(name text, description text, icon_name text)"
+  },
+  {
+    "signature": "public.check_is_admin()",
+    "args": "",
+    "returns": "boolean"
+  },
+  {
+    "signature": "public.claim_food_proxy_quota(uuid)",
+    "args": "p_user_id uuid",
+    "returns": "boolean"
+  },
+  {
+    "signature": "public.clear_message_notifications_from_sender(uuid)",
+    "args": "p_sender_id uuid",
+    "returns": "void"
+  },
+  {
+    "signature": "public.clone_diet_template_to_patient(uuid,uuid,uuid,text)",
+    "args": "p_template_id uuid, p_patient_id uuid, p_nutritionist_id uuid, p_name text",
+    "returns": "bigint"
+  },
+  {
+    "signature": "public.clone_evolution_template(text,text)",
+    "args": "p_source_code text, p_name text",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.clone_meal_template_to_plan(uuid,bigint,text,time without time zone)",
+    "args": "p_meal_template_id uuid, p_meal_plan_id bigint, p_meal_type text, p_meal_time time without time zone",
+    "returns": "bigint"
+  },
+  {
+    "signature": "public.compare_clinical_record_versions(uuid,uuid)",
+    "args": "p_left_record_id uuid, p_right_record_id uuid",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.confirm_clinical_attachment_replacement(uuid,text,bigint,text,text)",
+    "args": "p_attachment_id uuid, p_sha256 text, p_size_bytes bigint, p_mime_type text, p_reason text",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.confirm_clinical_attachment_upload(uuid,text,bigint,text)",
+    "args": "p_attachment_id uuid, p_sha256 text, p_size_bytes bigint, p_mime_type text",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.confirm_document_asset_upload(uuid,text,bigint,text)",
+    "args": "p_upload_id uuid, p_sha256 text, p_size_bytes bigint, p_mime_type text",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.confirm_document_asset_upload_verified(uuid,uuid,text,bigint,text)",
+    "args": "p_upload_id uuid, p_actor_id uuid, p_sha256 text, p_size_bytes bigint, p_mime_type text",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.confirm_lab_result_interpretation(bigint,text)",
+    "args": "p_result_id bigint, p_reason text",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.convert_custom_measure_to_grams()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "public.copy_meal_plan_to_patient_atomic(bigint,uuid,text)",
+    "args": "p_source_plan_id bigint, p_target_patient_id uuid, p_name text",
+    "returns": "bigint"
+  },
+  {
+    "signature": "public.create_appointment_reminders()",
+    "args": "",
+    "returns": "void"
+  },
+  {
+    "signature": "public.create_clinical_attachment_replacement_intent(uuid,text,text,bigint)",
+    "args": "p_replaces_attachment_id uuid, p_original_filename text, p_mime_type text, p_size_bytes bigint",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.create_clinical_attachment_signed_url(uuid)",
+    "args": "p_attachment_id uuid",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.create_clinical_attachment_upload_intent(uuid,uuid,uuid,text,text,date,text,text,bigint)",
+    "args": "p_patient_id uuid, p_care_episode_id uuid, p_clinical_record_id uuid, p_category_code text, p_description text, p_clinical_date date, p_original_filename text, p_mime_type text, p_size_bytes bigint",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.create_clinical_evolution_draft(uuid,uuid,text,timestamp with time zone,text,text)",
+    "args": "p_patient_id uuid, p_episode_id uuid, p_template_code text, p_encounter_at timestamp with time zone, p_visibility text, p_retrospective_reason text",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.create_clinical_record_draft(uuid,text,timestamp with time zone,text)",
+    "args": "p_patient_id uuid, p_record_type text, p_encounter_at timestamp with time zone, p_visibility text",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.create_daily_log_reminders()",
+    "args": "",
+    "returns": "void"
+  },
+  {
+    "signature": "public.create_diet_template(uuid,text,text,text[],jsonb)",
+    "args": "p_user_id uuid, p_name text, p_description text, p_tags text[], p_meals jsonb",
+    "returns": "uuid"
+  },
+  {
+    "signature": "public.create_document_artifact_from_clinical_record(uuid,text,uuid,text)",
+    "args": "p_record_id uuid, p_visibility text, p_supersedes_id uuid, p_replacement_reason text",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.create_document_artifact_from_meal_plan(bigint,text)",
+    "args": "p_plan_id bigint, p_visibility text",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.create_document_asset_upload_intent(text,text,text,bigint,integer)",
+    "args": "p_asset_type text, p_original_filename text, p_mime_type text, p_size_bytes bigint, p_expected_identity_version integer",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.create_lab_result_record(jsonb)",
+    "args": "p_payload jsonb",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.create_meal_plan_atomic(jsonb)",
+    "args": "p_plan_data jsonb",
+    "returns": "bigint"
+  },
+  {
+    "signature": "public.create_my_data_subject_request(text,text)",
+    "args": "p_request_type text, p_subject_note text",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.create_offline_patient_atomic(uuid,uuid,uuid,text,text,jsonb)",
+    "args": "p_request_id uuid, p_nutritionist_id uuid, p_patient_id uuid, p_invite_code text, p_email text, p_profile jsonb",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.delete_appointment_with_finance(bigint)",
+    "args": "p_appointment_id bigint",
+    "returns": "void"
+  },
+  {
+    "signature": "public.delete_patient(uuid)",
+    "args": "patient_id uuid",
+    "returns": "void"
+  },
+  {
+    "signature": "public.delete_read_notifications()",
+    "args": "",
+    "returns": "void"
+  },
+  {
+    "signature": "public.detach_anamnesis_file(uuid,uuid,uuid)",
+    "args": "p_record_id uuid, p_token uuid, p_attachment_id uuid",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.end_care_episode(uuid,text)",
+    "args": "p_patient_id uuid, p_end_reason text",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.end_student_supervision(uuid,text)",
+    "args": "p_supervision_id uuid, p_reason text",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.expire_clinical_attachment_uploads(integer)",
+    "args": "p_limit integer",
+    "returns": "integer"
+  },
+  {
+    "signature": "public.expire_document_asset_uploads(integer)",
+    "args": "p_limit integer",
+    "returns": "integer"
+  },
+  {
+    "signature": "public.extract_and_inject_clinical_flags(uuid)",
+    "args": "p_record_id uuid",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.fail_clinical_attachment_upload(uuid,text)",
+    "args": "p_attachment_id uuid, p_reason text",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.fail_document_asset_upload(uuid,text)",
+    "args": "p_upload_id uuid, p_failure_code text",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.finalize_clinical_record(uuid,jsonb,bigint,text)",
+    "args": "p_record_id uuid, p_content jsonb, p_expected_revision bigint, p_retrospective_reason text",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.finalize_document_artifact(uuid,bigint)",
+    "args": "p_artifact_id uuid, p_expected_revision bigint",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.force_delete_test_clone(uuid)",
+    "args": "p_patient_id uuid",
+    "returns": "boolean"
+  },
+  {
+    "signature": "public.generate_anamnesis_link(uuid,uuid,integer)",
+    "args": "p_record_id uuid, p_nutritionist_id uuid, p_expires_days integer",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.generate_random_invite_code(integer)",
+    "args": "length integer",
+    "returns": "text"
+  },
+  {
+    "signature": "public.generate_unique_invite_code(text)",
+    "args": "col_name text",
+    "returns": "text"
+  },
+  {
+    "signature": "public.get_admin_dashboard_stats()",
+    "args": "",
+    "returns": "json"
+  },
+  {
+    "signature": "public.get_anamnesis_by_token(uuid)",
+    "args": "p_token uuid",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.get_anthropometry_longitudinal_score(uuid)",
+    "args": "p_patient_id uuid",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.get_care_patient_profile(uuid)",
+    "args": "p_patient_id uuid",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.get_chat_recipient_profile(uuid)",
+    "args": "recipient_id uuid",
+    "returns": "TABLE(id uuid, name text, avatar_url text, user_type text, is_active boolean, nutritionist_id uuid, last_seen_at timestamp with time zone)"
+  },
+  {
+    "signature": "public.get_clinical_record_amendment_impact(uuid)",
+    "args": "p_record_id uuid",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.get_comprehensive_activity_feed_optimized(uuid,integer)",
+    "args": "p_nutritionist_id uuid, p_limit integer",
+    "returns": "TABLE(activity_type text, activity_id text, patient_id uuid, patient_name text, activity_date timestamp with time zone, activity_data jsonb)"
+  },
+  {
+    "signature": "public.get_daily_adherence(uuid)",
+    "args": "p_nutritionist_id uuid",
+    "returns": "numeric"
+  },
+  {
+    "signature": "public.get_document_artifact(uuid)",
+    "args": "p_artifact_id uuid",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.get_empty_patient_removal_status(uuid)",
+    "args": "p_patient_id uuid",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.get_financial_summary(date,date)",
+    "args": "start_date date, end_date date",
+    "returns": "json"
+  },
+  {
+    "signature": "public.get_food_stats(uuid)",
+    "args": "p_nutritionist_id uuid",
+    "returns": "json"
+  },
+  {
+    "signature": "public.get_formatted_address(jsonb)",
+    "args": "address_jsonb jsonb",
+    "returns": "text"
+  },
+  {
+    "signature": "public.get_grams_from_measure(bigint,text,numeric)",
+    "args": "p_food_id bigint, p_measure_code text, p_quantity numeric",
+    "returns": "numeric"
+  },
+  {
+    "signature": "public.get_invite_details(text)",
+    "args": "p_invite_code text",
+    "returns": "TABLE(patient_name text, nutritionist_name text, nutritionist_gender text)"
+  },
+  {
+    "signature": "public.get_meal_plan_with_foods_optimized(uuid)",
+    "args": "p_meal_plan_id uuid",
+    "returns": "json"
+  },
+  {
+    "signature": "public.get_my_care_relationship()",
+    "args": "",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.get_my_clinical_document_context()",
+    "args": "",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.get_my_document_asset_preview(text)",
+    "args": "p_asset_type text",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.get_my_document_identity()",
+    "args": "",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.get_my_professional_verification()",
+    "args": "",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.get_my_student_supervisions()",
+    "args": "",
+    "returns": "TABLE(id uuid, perspective text, status text, counterpart_name text, counterpart_email text, requested_at timestamp with time zone, responded_at timestamp with time zone, started_at timestamp with time zone, ended_at timestamp with time zone)"
+  },
+  {
+    "signature": "public.get_nutritionist_conversations(uuid)",
+    "args": "p_nutritionist_id uuid",
+    "returns": "TABLE(recipient_id uuid, recipient_name text, recipient_avatar text, last_message_content text, last_message_at timestamp with time zone, unread_count bigint, is_active boolean, last_seen_at timestamp with time zone)"
+  },
+  {
+    "signature": "public.get_nutritionist_detail(uuid)",
+    "args": "p_nutritionist_id uuid",
+    "returns": "json"
+  },
+  {
+    "signature": "public.get_nutritionists_list()",
+    "args": "",
+    "returns": "TABLE(id uuid, name text, email text, created_at timestamp with time zone, is_active boolean, patients_count bigint, last_activity timestamp with time zone)"
+  },
+  {
+    "signature": "public.get_operational_health_summary(uuid,integer)",
+    "args": "p_nutritionist_id uuid, p_window_hours integer",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.get_own_profile_attrs()",
+    "args": "",
+    "returns": "TABLE(is_admin boolean, user_type text)"
+  },
+  {
+    "signature": "public.get_patient_record_foundation(uuid)",
+    "args": "p_patient_id uuid",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.get_patients_for_new_chat(uuid)",
+    "args": "p_nutritionist_id uuid",
+    "returns": "TABLE(id uuid, name text, avatar_url text, is_active boolean, last_seen_at timestamp with time zone)"
+  },
+  {
+    "signature": "public.get_patients_low_adherence_optimized(uuid,integer)",
+    "args": "p_nutritionist_id uuid, p_days_threshold integer",
+    "returns": "TABLE(patient_id uuid, patient_name text, last_meal_date timestamp with time zone, days_since_last_meal integer)"
+  },
+  {
+    "signature": "public.get_patients_pending_data_optimized(uuid)",
+    "args": "p_nutritionist_id uuid",
+    "returns": "TABLE(patient_id uuid, patient_name text, has_anamnese boolean, has_anthropometry boolean, has_meal_plan boolean, has_prescription boolean, pending_items text[])"
+  },
+  {
+    "signature": "public.get_recent_patient_activity(uuid,integer)",
+    "args": "nutritionist_id_param uuid, limit_param integer",
+    "returns": "TABLE(meal_id bigint, patient_name text, meal_type text, total_calories numeric, created_at timestamp with time zone)"
+  },
+  {
+    "signature": "public.get_system_live_logs(integer)",
+    "args": "limit_count integer",
+    "returns": "TABLE(id text, type text, message text, user_name text, event_timestamp timestamp with time zone)"
+  },
+  {
+    "signature": "public.get_tcc_study_metrics()",
+    "args": "",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.get_top_financial_patients(integer)",
+    "args": "p_limit integer",
+    "returns": "TABLE(patient_id uuid, patient_name text, avatar_url text, total numeric)"
+  },
+  {
+    "signature": "public.get_unread_senders(uuid)",
+    "args": "p_user_id uuid",
+    "returns": "TABLE(from_id uuid)"
+  },
+  {
+    "signature": "public.get_user_id()",
+    "args": "",
+    "returns": "uuid"
+  },
+  {
+    "signature": "public.import_diet_template_meals_to_plan(uuid,bigint,uuid[])",
+    "args": "p_template_id uuid, p_plan_id bigint, p_meal_ids uuid[]",
+    "returns": "bigint[]"
+  },
+  {
+    "signature": "public.increment_checkin_streak(uuid,uuid)",
+    "args": "p_patient_id uuid, p_nutritionist_id uuid",
+    "returns": "void"
+  },
+  {
+    "signature": "public.interact_notification(uuid,boolean)",
+    "args": "p_notification_id uuid, p_delete_if_message boolean",
+    "returns": "void"
+  },
+  {
+    "signature": "public.invalidate_anthropometry_record(bigint,text)",
+    "args": "p_record_id bigint, p_reason text",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.invalidate_clinical_attachment(uuid,text)",
+    "args": "p_attachment_id uuid, p_reason text",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.invalidate_clinical_record(uuid,text,jsonb)",
+    "args": "p_record_id uuid, p_reason text, p_impact_confirmation jsonb",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.invalidate_document_artifact(uuid,text)",
+    "args": "p_artifact_id uuid, p_reason text",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.invalidate_lab_result_record(bigint,text)",
+    "args": "p_result_id bigint, p_reason text",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.invalidate_progress_photo(uuid,text)",
+    "args": "p_photo_id uuid, p_reason text",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.is_admin()",
+    "args": "",
+    "returns": "boolean"
+  },
+  {
+    "signature": "public.is_nutritionist()",
+    "args": "",
+    "returns": "boolean"
+  },
+  {
+    "signature": "public.is_patient()",
+    "args": "",
+    "returns": "boolean"
+  },
+  {
+    "signature": "public.link_checkin_template(uuid,uuid,text,text)",
+    "args": "p_template_id uuid, p_patient_id uuid, p_channel text, p_time_zone text",
+    "returns": "uuid"
+  },
+  {
+    "signature": "public.list_clinical_attachments_by_episode(uuid,uuid,text,text)",
+    "args": "p_patient_id uuid, p_episode_id uuid, p_status text, p_cursor text",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.list_clinical_protocol_catalog(text)",
+    "args": "p_domain text",
+    "returns": "SETOF jsonb"
+  },
+  {
+    "signature": "public.list_clinical_record_version_chain(uuid)",
+    "args": "p_record_id uuid",
+    "returns": "SETOF jsonb"
+  },
+  {
+    "signature": "public.list_clinical_records_by_episode(uuid,uuid,text)",
+    "args": "p_patient_id uuid, p_episode_id uuid, p_status_filter text",
+    "returns": "SETOF jsonb"
+  },
+  {
+    "signature": "public.list_data_subject_requests(text)",
+    "args": "p_status text",
+    "returns": "SETOF jsonb"
+  },
+  {
+    "signature": "public.list_diet_template_versions(uuid)",
+    "args": "p_template_id uuid",
+    "returns": "SETOF jsonb"
+  },
+  {
+    "signature": "public.list_document_artifacts(uuid,uuid)",
+    "args": "p_patient_id uuid, p_episode_id uuid",
+    "returns": "SETOF jsonb"
+  },
+  {
+    "signature": "public.list_evolution_templates()",
+    "args": "",
+    "returns": "SETOF clinical_evolution_templates"
+  },
+  {
+    "signature": "public.list_my_clinical_documents(uuid)",
+    "args": "p_care_episode_id uuid",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.list_my_data_subject_requests()",
+    "args": "",
+    "returns": "SETOF jsonb"
+  },
+  {
+    "signature": "public.list_nutritionist_care_patients()",
+    "args": "",
+    "returns": "SETOF jsonb"
+  },
+  {
+    "signature": "public.list_patient_clinical_attachments(uuid)",
+    "args": "p_care_episode_id uuid",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.list_patient_legal_guardians(uuid,uuid)",
+    "args": "p_patient_id uuid, p_episode_id uuid",
+    "returns": "TABLE(id uuid, patient_id uuid, care_episode_id uuid, author_id uuid, name text, relationship text, contact jsonb, valid_from timestamp with time zone, valid_until timestamp with time zone, consent jsonb, is_primary boolean, status text, created_at timestamp with time zone, updated_at timestamp with time zone)"
+  },
+  {
+    "signature": "public.list_patient_timeline(uuid,uuid,text,timestamp with time zone,text,integer)",
+    "args": "p_patient_id uuid, p_episode_id uuid, p_scope text, p_cursor_at timestamp with time zone, p_cursor_event_id text, p_limit integer",
+    "returns": "TABLE(event_id text, source_id text, source_type text, category text, subtype text, title text, summary text, occurred_at timestamp with time zone, status text, is_legacy boolean)"
+  },
+  {
+    "signature": "public.list_professional_verifications(text,text)",
+    "args": "p_status text, p_role text",
+    "returns": "SETOF jsonb"
+  },
+  {
+    "signature": "public.log_activity_event(text,integer,text,uuid,uuid,jsonb)",
+    "args": "p_event_name text, p_event_version integer, p_source_module text, p_patient_id uuid, p_nutritionist_id uuid, p_payload jsonb",
+    "returns": "uuid"
+  },
+  {
+    "signature": "public.log_bug_report(character varying,text,text,text,uuid,text,text,character varying,text,jsonb,jsonb,text,text,integer,integer)",
+    "args": "p_error_type character varying, p_error_message text, p_stack_trace text, p_route text, p_user_id uuid, p_user_email text, p_user_name text, p_user_type character varying, p_user_agent text, p_console_log jsonb, p_metadata jsonb, p_component_stack text, p_source_file text, p_line_number integer, p_column_number integer",
+    "returns": "uuid"
+  },
+  {
+    "signature": "public.log_meal_action(uuid,bigint,text,text,date,time without time zone,jsonb)",
+    "args": "p_patient_id uuid, p_meal_id bigint, p_action text, p_meal_type text, p_meal_date date, p_meal_time time without time zone, p_details jsonb",
+    "returns": "bigint"
+  },
+  {
+    "signature": "public.log_meal_action_secure(text,text,jsonb)",
+    "args": "p_meal_id text, p_action text, p_details jsonb",
+    "returns": "void"
+  },
+  {
+    "signature": "public.log_meal_edit()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "public.log_operational_event(text,text,text,integer,uuid,uuid,text,jsonb)",
+    "args": "p_module text, p_operation text, p_event_type text, p_latency_ms integer, p_nutritionist_id uuid, p_patient_id uuid, p_error_message text, p_metadata jsonb",
+    "returns": "bigint"
+  },
+  {
+    "signature": "public.mark_chat_notifications_as_read(uuid,uuid)",
+    "args": "p_user_id uuid, p_sender_id uuid",
+    "returns": "void"
+  },
+  {
+    "signature": "public.mark_messages_as_read(uuid,uuid)",
+    "args": "p_user_id uuid, p_sender_id uuid",
+    "returns": "void"
+  },
+  {
+    "signature": "public.normalize_food_search(text)",
+    "args": "p_value text",
+    "returns": "text"
+  },
+  {
+    "signature": "public.notify_nutritionist_anamnesis_completed(uuid)",
+    "args": "p_record_id uuid",
+    "returns": "void"
+  },
+  {
+    "signature": "public.process_patient_reminders(uuid)",
+    "args": "p_patient_id uuid",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.promote_draft_to_active(bigint,uuid)",
+    "args": "p_draft_id bigint, p_patient_id uuid",
+    "returns": "void"
+  },
+  {
+    "signature": "public.redeem_invite_code(text)",
+    "args": "input_code text",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.refund_financial_transaction(bigint,date)",
+    "args": "p_id bigint, p_refunded_at date",
+    "returns": "void"
+  },
+  {
+    "signature": "public.reject_patient_link(uuid)",
+    "args": "p_patient_id uuid",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.remove_empty_patient(uuid)",
+    "args": "p_patient_id uuid",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.request_student_supervision(uuid)",
+    "args": "p_supervisor_id uuid",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.request_student_supervision_by_email(text)",
+    "args": "p_supervisor_email text",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.request_verification_information(uuid,text)",
+    "args": "p_verification_id uuid, p_reason text",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.respond_student_supervision(uuid,text,text)",
+    "args": "p_supervision_id uuid, p_decision text, p_reason text",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.review_patient_clinical_attachment(uuid,text,text,text,text,date,uuid)",
+    "args": "p_attachment_id uuid, p_decision text, p_reason text, p_category_code text, p_description text, p_clinical_date date, p_clinical_record_id uuid",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.review_professional_verification(uuid,text,text,text,timestamp with time zone)",
+    "args": "p_verification_id uuid, p_decision text, p_reason text, p_source_url text, p_valid_until timestamp with time zone",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.revise_anthropometry_record(bigint,jsonb,text)",
+    "args": "p_record_id bigint, p_payload jsonb, p_reason text",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.revise_lab_result_record(bigint,jsonb,text)",
+    "args": "p_result_id bigint, p_payload jsonb, p_reason text",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.revoke_patient_legal_guardian(uuid,text)",
+    "args": "p_guardian_id uuid, p_reason text",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.save_appointment_with_finance(jsonb,jsonb,bigint)",
+    "args": "p_appointment jsonb, p_financial jsonb, p_appointment_id bigint",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.save_checkin_template(uuid,jsonb,jsonb)",
+    "args": "p_id uuid, p_template jsonb, p_fields jsonb",
+    "returns": "uuid"
+  },
+  {
+    "signature": "public.save_custom_food_with_measures(uuid,jsonb,jsonb)",
+    "args": "p_food_id uuid, p_food jsonb, p_measures jsonb",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.save_meal_template(uuid,timestamp with time zone,text,text,text[],jsonb)",
+    "args": "p_id uuid, p_expected_updated_at timestamp with time zone, p_name text, p_description text, p_tags text[], p_foods jsonb",
+    "returns": "uuid"
+  },
+  {
+    "signature": "public.save_my_document_identity(jsonb,integer,text)",
+    "args": "p_payload jsonb, p_expected_version integer, p_reason text",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.save_patient_diary_meal(bigint,jsonb,jsonb)",
+    "args": "p_meal_id bigint, p_payload jsonb, p_items jsonb",
+    "returns": "bigint"
+  },
+  {
+    "signature": "public.save_recipe_template(uuid,timestamp with time zone,text,text,text,numeric,text,jsonb)",
+    "args": "p_id uuid, p_expected_updated_at timestamp with time zone, p_name text, p_description text, p_preparation_method text, p_yield_quantity numeric, p_yield_unit text, p_ingredients jsonb",
+    "returns": "uuid"
+  },
+  {
+    "signature": "public.search_foods(text,text,text,text[],numeric,numeric,text,integer,integer)",
+    "args": "p_query text, p_source text, p_scope text, p_groups text[], p_calories_min numeric, p_calories_max numeric, p_macro text, p_limit integer, p_offset integer",
+    "returns": "SETOF foods"
+  },
+  {
+    "signature": "public.search_foods(text,integer,text)",
+    "args": "p_search_term text, p_limit integer, p_source text",
+    "returns": "TABLE(id bigint, name text, \"group\" text, description text, source text, calories real, protein real, carbs real, fat real)"
+  },
+  {
+    "signature": "public.set_active_meal_plan(bigint)",
+    "args": "p_plan_id bigint",
+    "returns": "void"
+  },
+  {
+    "signature": "public.set_checkin_schedule_active(uuid,boolean)",
+    "args": "p_schedule_id uuid, p_active boolean",
+    "returns": "void"
+  },
+  {
+    "signature": "public.set_communication_automations_updated_at()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "public.set_lab_risk_rules_updated_at()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "public.set_message_templates_updated_at()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "public.set_patient_reminder_preferences_updated_at()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "public.set_updated_at_ncm()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "public.sign_clinical_record(uuid)",
+    "args": "p_record_id uuid",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.sign_document_artifact(uuid)",
+    "args": "p_artifact_id uuid",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.slugify_name(text)",
+    "args": "p_name text",
+    "returns": "text"
+  },
+  {
+    "signature": "public.soft_delete_meal(bigint)",
+    "args": "p_meal_id bigint",
+    "returns": "boolean"
+  },
+  {
+    "signature": "public.stamp_editor_shadow_draft()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "public.start_care_episode(uuid,text)",
+    "args": "p_patient_id uuid, p_start_reason text",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.start_clinical_record_correction(uuid,text,jsonb)",
+    "args": "p_record_id uuid, p_reason text, p_impact_confirmation jsonb",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.submit_anamnesis_by_token(uuid,jsonb,text,boolean,text,jsonb)",
+    "args": "p_token uuid, p_content jsonb, p_status text, p_lgpd_consented boolean, p_ip text, p_clinical_flags jsonb",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.submit_checkin_session(uuid,jsonb)",
+    "args": "p_session_id uuid, p_responses jsonb",
+    "returns": "numeric"
+  },
+  {
+    "signature": "public.submit_professional_verification(jsonb)",
+    "args": "p_payload jsonb",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.suspend_professional_verification(uuid,text)",
+    "args": "p_verification_id uuid, p_reason text",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.sync_anthropometry_on_profile_change()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "public.transition_appointment_status(bigint,text,text)",
+    "args": "p_appointment_id bigint, p_next_status text, p_reason text",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.transition_appointment_status(uuid,text,text)",
+    "args": "p_appointment_id uuid, p_next_status text, p_reason text",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.trg_growth_records_apply_versioning()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "public.trg_growth_records_mark_previous_not_latest()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "public.trg_growth_records_sync_modules()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "public.trg_growth_records_validate_clinical()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "public.trg_set_invite_code()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "public.update_bug_reports_updated_at()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "public.update_clinical_record_draft(uuid,jsonb,text,bigint)",
+    "args": "p_record_id uuid, p_content jsonb, p_visibility text, p_expected_revision bigint",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.update_data_subject_request(uuid,bigint,text,text,text,text,boolean)",
+    "args": "p_request_id uuid, p_expected_revision bigint, p_status text, p_reason text, p_retention_decision text, p_legal_basis text, p_assign_to_me boolean",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.update_diet_template(uuid,uuid,text,text,text[],jsonb)",
+    "args": "p_template_id uuid, p_user_id uuid, p_name text, p_description text, p_tags text[], p_meals jsonb",
+    "returns": "void"
+  },
+  {
+    "signature": "public.update_document_artifact_draft(uuid,jsonb,bigint)",
+    "args": "p_artifact_id uuid, p_payload jsonb, p_expected_revision bigint",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.update_energy_calc_timestamp()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "public.update_foods_timestamp()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "public.update_lab_results_timestamp()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "public.update_meal_plan_timestamp()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "public.update_modified_column()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "public.update_patient_goals_updated_at()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "public.update_patient_progressive_profile(uuid,jsonb,text)",
+    "args": "p_patient_id uuid, p_changes jsonb, p_source text",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.update_reference_values_timestamp()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "public.update_updated_at_column()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "public.upsert_full_meal_plan(bigint,jsonb,jsonb)",
+    "args": "p_plan_id bigint, p_plan_data jsonb, p_meals jsonb",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.upsert_patient_legal_guardian(uuid,uuid,jsonb)",
+    "args": "p_patient_id uuid, p_episode_id uuid, p_payload jsonb",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.user_profiles_sync_slug()",
+    "args": "",
+    "returns": "trigger"
+  },
+  {
+    "signature": "public.verify_document_authenticity(uuid)",
+    "args": "p_code uuid",
+    "returns": "jsonb"
+  },
+  {
+    "signature": "public.version_private_evolution_template(text,jsonb)",
+    "args": "p_template_code text, p_sections jsonb",
+    "returns": "jsonb"
+  }
+]

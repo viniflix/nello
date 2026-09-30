@@ -176,3 +176,12 @@ migrations (20260924231758/20260924231829). Both original revocations/grants exe
 against the complete current signature set. The narrower UUID-only prerequisite is
 removed as redundant. Once the stack rebuilds, type comparison also runs if catalog
 comparison fails, preserving both diagnostics while the overall gate stays failed.
+
+Run 36675459872 reached the complete snapshot and exposed an unrecorded return
+contract change in get_comprehensive_activity_feed_optimized (UUID/JSON to text/JSONB).
+CI compares all 382 captured input/output headers before restoring bodies and drops
+only incompatible signatures with RESTRICT. Unexpected dependencies stop the build;
+CASCADE is never used. Explicit current function ACLs are then restored in captured
+principal/grantor order; PostgreSQL NULL defaults remain unchanged. The two final
+recorded permission migrations still execute afterward. This makes manual contract
+and permission drift reviewable instead of bypassing CREATE errors or weakening grants.
