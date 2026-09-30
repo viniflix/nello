@@ -3,6 +3,8 @@ import { pathToFileURL } from 'node:url';
 
 export function assertReleaseReady(evidence, sha) {
   if (!/^[a-f0-9]{40}$/.test(sha) || evidence.sha !== sha) throw Error('Release evidence SHA mismatch');
+  const age = Date.now() - Date.parse(evidence.capturedAt);
+  if (!Number.isFinite(age) || age < -60000 || age > 15 * 60000) throw Error('Fresh provider evidence required (maximum age 15 minutes)');
   if (evidence.project?.id !== 'prj_zbE0dJoJrygKzMBq6nG9o7NdVV3H') throw Error('Wrong Vercel project');
   const deployment = evidence.candidateDeployment;
   if (deployment?.projectId !== evidence.project.id || deployment.meta?.githubCommitSha !== sha

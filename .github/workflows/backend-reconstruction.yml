@@ -12,7 +12,7 @@ concurrency:
 jobs:
   reconstruct:
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -44,9 +44,9 @@ jobs:
           docker tag ghcr.io/supabase/postgres-meta:v0.96.6 public.ecr.aws/supabase/postgres-meta:v0.96.6
           npx --no-install supabase gen types typescript --local --schema public --workdir .backend-ci > reconstructed.types.ts 2> type-generation.log
           node scripts/backend/compare-types.mjs src/lib/database.types.ts reconstructed.types.ts
-      - name: Execute complete SQL matrix on isolated databases
+      - name: Verify snapshot restoration against independent application metadata
         if: ${{ !cancelled() && steps.rebuild.outcome == 'success' }}
-        run: node scripts/backend/sql-matrix.mjs
+        run: node scripts/backend/snapshot-restore.mjs
       - name: Verify all captured Edge workers start
         if: ${{ !cancelled() && steps.rebuild.outcome == 'success' }}
         run: node scripts/backend/edge-boot-smoke.mjs
@@ -61,9 +61,8 @@ jobs:
             catalog-diff.json
             reconstructed.types.ts
             type-generation.log
-            .backend-ci/sql-results/
-            .backend-ci/edge-results/
             .backend-ci/restore-results/
+            .backend-ci/edge-results/
           if-no-files-found: ignore
       - name: Stop only the isolated remote stack
         if: always()
