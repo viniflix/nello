@@ -869,7 +869,7 @@ begin
       and e.metadata ?& array['canonical_hash','crn_number','crn_region','signed_at','auth_level']
       and not (e.metadata ?| array['content','clinical_content','student_author'])
       and e.metadata->>'canonical_hash'=v_result->>'canonical_hash'
-      and e.metadata->>'crn_number'='12345' and e.metadata->>'crn_region'='CRN-3'
+      and e.metadata->>'crn_number'='900041' and e.metadata->>'crn_region'='CRN-3'
       and (select count(*) from jsonb_object_keys(e.metadata))=5
   ) then
     raise exception 'signature_event_metadata_invalid';

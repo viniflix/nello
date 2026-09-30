@@ -8,6 +8,10 @@
     {
       "file": "supabase/migrations/releases/20260930190000_document_source_replacement_boundary.sql",
       "sha256": "7a3a985425614c61a02200b9267fe92246b586f457d5d75da620a43efdf17ba4"
+    },
+    {
+      "file": "supabase/migrations/releases/20260930203000_clinical_adversarial_boundaries.sql",
+      "sha256": "73bf1db9fce605f83b2fa847252da90334352e6a1a1765e043b907ffcdd932c3"
     }
   ]
 }

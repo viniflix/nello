@@ -1,5 +1,6 @@
+import {assertIsolatedRuntime,supabaseCommand,supabaseArgs} from '../qa/isolated-runtime.mjs';
 import {execFileSync,spawnSync}from'node:child_process';import{readFileSync,writeFileSync,mkdirSync}from'node:fs';import{assertForwardRestoration}from'./forward-restoration.mjs';import{candidateMigrations}from'./candidate-migrations.mjs';
-if(process.env.CI!=='true'||process.env.GITHUB_ACTIONS!=='true')throw Error('Controlled RLS fault injection requires the isolated GitHub runner');
+assertIsolatedRuntime();
 const restoration=JSON.parse(readFileSync('.backend-ci/restore-results/result.json'));assertForwardRestoration(restoration);
 const db='nello_qa_wave02_103',out='.backend-ci/fault-results';mkdirSync(out,{recursive:true});
 const sql=(database,input,user='supabase_admin')=>execFileSync('docker',['exec','-i','-e','PGPASSWORD=postgres','supabase_db_nello-reconstruction','psql','-X','-t','-A','-h','127.0.0.1','-U',user,'-d',database,'-v','ON_ERROR_STOP=1'],{input,encoding:'utf8',timeout:120000,maxBuffer:16*1024*1024});

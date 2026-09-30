@@ -215,6 +215,15 @@ export default function LoginPage() {
                     <Label htmlFor="password" className="text-sm font-medium text-foreground">
                       Senha
                     </Label>
+                    <AlertDialogTrigger asChild>
+                      <button
+                        type="button"
+                        className="text-xs text-primary hover:underline transition-colors"
+                        onClick={() => setResetEmail(email)}
+                      >
+                        Esqueceu a senha?
+                      </button>
+                    </AlertDialogTrigger>
                   </div>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />

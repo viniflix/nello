@@ -1,13 +1,11 @@
+import {assertIsolatedRuntime,supabaseCommand,supabaseArgs} from '../qa/isolated-runtime.mjs';
 import { execFileSync } from 'node:child_process';
 import { readFileSync, mkdirSync, writeFileSync } from 'node:fs';
 
-if (process.env.CI !== 'true' || process.env.GITHUB_ACTIONS !== 'true') {
-  throw Error('Edge boot smoke requires an isolated GitHub runner; no local services are allowed.');
-}
+assertIsolatedRuntime();
 // Credentials belong exclusively to the unlinked, disposable runner. Do not log
 // the status output, token, response headers or function request/response bodies.
-const status = JSON.parse(execFileSync('npx', ['--no-install', 'supabase', 'status',
-  '--workdir', '.backend-ci', '--output', 'json'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }));
+const status = JSON.parse(execFileSync(supabaseCommand,supabaseArgs(['status','--workdir','.backend-ci','--output','json']), { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }));
 const api = new URL(status.API_URL);
 if (api.origin !== 'http://127.0.0.1:54321' || !status.ANON_KEY) throw Error('Unexpected isolated API endpoint');
 const baseline = JSON.parse(readFileSync('operations/backend/baseline.json', 'utf8'));

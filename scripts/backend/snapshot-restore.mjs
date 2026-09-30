@@ -1,3 +1,4 @@
+import {assertIsolatedRuntime,supabaseCommand,supabaseArgs} from '../qa/isolated-runtime.mjs';
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
@@ -6,9 +7,7 @@ import { applicationRestoreList } from './restore-list.mjs';
 import { defaultOwnerAclSql } from './restore-acl.mjs';
 
 export function restoreApplicationSnapshot({ execute = execFileSync } = {}) {
-  if (process.env.CI !== 'true' || process.env.GITHUB_ACTIONS !== 'true') {
-    throw Error('Snapshot restore requires an isolated GitHub runner; local virtualization is prohibited.');
-  }
+  assertIsolatedRuntime();
   const container = 'supabase_db_nello-reconstruction';
   const output = '.backend-ci/restore-results';
   mkdirSync(output, { recursive: true });

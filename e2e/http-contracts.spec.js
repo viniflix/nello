@@ -39,11 +39,14 @@ test('actual private Storage upload, confirmation and sharing preserve patient b
 });
 
 test('patient creation retries are idempotent and a meal plan survives HTTP readback',async()=>{
- const owner=await actor('nutritionist-a');const request={p_request_id:randomUUID(),p_nutritionist_id:fixture.personas['nutritionist-a'].id,p_patient_id:randomUUID(),p_invite_code:'QAAB-CD23',p_email:'qa-new@example.invalid',p_profile:{name:'QA novo paciente',birth_date:'1990-01-01'}};
- const first=await owner.rpc('create_offline_patient_atomic',request);expect(first.error).toBeNull();expect(first.data.userId).toBe(request.p_patient_id);
- const retry=await owner.rpc('create_offline_patient_atomic',request);expect(retry.error).toBeNull();expect(retry.data).toEqual(first.data);
- const patient=await owner.from('user_profiles').select('id,name').eq('id',request.p_patient_id);expect(patient.error).toBeNull();expect(patient.data).toEqual([{id:request.p_patient_id,name:'QA novo paciente'}]);
- const plan=await owner.rpc('create_meal_plan_atomic',{p_plan_data:{patient_id:request.p_patient_id,name:'QA plano persistido',is_active:false,hybrid:true,days:[]}});expect(plan.error).toBeNull();
+ const owner=await actor('nutritionist-a');const request={requestId:randomUUID(),isOffline:true,email:'qa-new@example.invalid',metadata:{name:'QA novo paciente',birth_date:'1990-01-01'}};
+ // The public flow authenticates the caller at the Edge boundary; its atomic RPC
+ // remains service-role-only. A browser must never be granted direct execution.
+ const first=await owner.functions.invoke('create-patient',{body:request});expect(first.error).toBeNull();expect(first.data.userId).toMatch(/^[0-9a-f-]{36}$/);
+ const retry=await owner.functions.invoke('create-patient',{body:request});expect(retry.error).toBeNull();expect(retry.data).toEqual(first.data);
+ const patientId=first.data.userId;
+ const patient=await owner.from('user_profiles').select('id,name').eq('id',patientId);expect(patient.error).toBeNull();expect(patient.data).toEqual([{id:patientId,name:'QA novo paciente'}]);
+ const plan=await owner.rpc('create_meal_plan_atomic',{p_plan_data:{patient_id:patientId,name:'QA plano persistido',is_active:false,hybrid:true,days:[]}});expect(plan.error).toBeNull();
  const persisted=await owner.from('meal_plans').select('name,patient_id').eq('id',plan.data).single();expect(persisted.error).toBeNull();expect(persisted.data.name).toBe('QA plano persistido');
  const other=await actor('nutritionist-b');const foreign=await other.from('meal_plans').select('id').eq('id',plan.data);expect(foreign.error).toBeNull();expect(foreign.data).toEqual([]);
 });

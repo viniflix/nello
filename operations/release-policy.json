@@ -3,7 +3,7 @@
   "canonicalOrigin": "https://nellonutri.com.br",
   "productionBranch": "main",
   "owner": "viniflix",
-  "validation": { "localVirtualization": false, "clinicalProductionFixtures": false, "productionWrites": "synthetic-only", "remoteIsolationRequiredForDatabaseChanges": true },
+  "validation": { "localVirtualization": true, "localQaRequiresExplicitIsolation": true, "clinicalProductionFixtures": false, "productionWrites": "synthetic-only", "remoteIsolationRequiredForDatabaseChanges": true },
   "slo": {
     "status": "initial-targets-not-yet-measured",
     "windowDays": 30,

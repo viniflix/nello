@@ -228,8 +228,8 @@ reset role;
 
 -- Supervisão estudantil: solicitação, aceite, encerramento e rejeição.
 insert into auth.users (instance_id,id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at) values
-('00000000-0000-0000-0000-000000000000','10000000-0000-0000-0000-000000000044','authenticated','authenticated','student-supervision@example.invalid','not-used',now(),'{}','{}',now(),now()),
-('00000000-0000-0000-0000-000000000000','10000000-0000-0000-0000-000000000045','authenticated','authenticated','supervisor@example.invalid','not-used',now(),'{}','{}',now(),now()),
+('00000000-0000-0000-0000-000000000000','10000000-0000-0000-0000-000000000044','authenticated','authenticated','student-supervision@example.invalid','not-used',now(),'{}','{"user_type":"nutritionist"}',now(),now()),
+('00000000-0000-0000-0000-000000000000','10000000-0000-0000-0000-000000000045','authenticated','authenticated','supervisor@example.invalid','not-used',now(),'{}','{"user_type":"nutritionist"}',now(),now()),
 ('00000000-0000-0000-0000-000000000000','10000000-0000-0000-0000-000000000046','authenticated','authenticated','document-review@example.invalid','not-used',now(),'{}','{"user_type":"nutritionist"}',now(),now());
 insert into public.user_profiles(id,name,user_type,is_admin,is_active) values
 ('10000000-0000-0000-0000-000000000044','Estudante Supervisionado','nutritionist',false,true),

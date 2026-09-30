@@ -49,14 +49,14 @@ const PlanTargetMonitor = ({
                             </div>
                             <div>
                                 <h4 className="text-sm font-black text-amber-900 uppercase tracking-tight">Monitoramento Indisponível</h4>
-                                <p className="text-xs text-amber-700/80 font-medium">{needsVentaReview ? 'A meta VENTA histórica precisa de confirmação clínica antes de ser usada no plano.' : 'O gasto energético (GET) não foi calculado para este paciente.'}</p>
+                                <p className="text-xs text-amber-800 font-medium">{needsVentaReview ? 'A meta VENTA histórica precisa de confirmação clínica antes de ser usada no plano.' : 'O gasto energético (GET) não foi calculado para este paciente.'}</p>
                             </div>
                         </div>
                         <Button
                             variant="default"
                             size="lg"
                             onClick={() => navigate(`/nutritionist/patients/${patientSegment}/energy-expenditure`)}
-                            className="bg-amber-600 hover:bg-amber-700 text-white font-bold h-12 px-6 rounded-xl shadow-md transition-all active:scale-95"
+                            className="bg-amber-700 hover:bg-amber-800 text-white font-bold h-12 px-6 rounded-xl shadow-md transition-all active:scale-95"
                         >
                             <Target className="w-4 h-4 mr-2" />
                             {needsVentaReview ? 'Revisar cálculo energético' : 'Definir Gasto Energético'}

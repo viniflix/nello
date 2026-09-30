@@ -1,3 +1,4 @@
+import {assertIsolatedRuntime} from '../qa/isolated-runtime.mjs';
 import { spawn } from 'node:child_process';
 
 const actor = '10000000-0000-0000-0000-000000000061';
@@ -6,9 +7,7 @@ const uuid = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/;
 const delay = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
 
 export function assertRemoteDatabase(database, environment = process.env) {
-  if (environment.CI !== 'true' || environment.GITHUB_ACTIONS !== 'true') {
-    throw Error('Concurrency requires an isolated GitHub runner; local virtualization is prohibited.');
-  }
+  assertIsolatedRuntime(environment);
   if (!/^nello_qa_wave02_\d+$/.test(database)) throw Error('Concurrency requires a synthetic matrix database.');
 }
 

@@ -1,3 +1,4 @@
+import {assertIsolatedRuntime,supabaseCommand,supabaseArgs} from '../qa/isolated-runtime.mjs';
 import { mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
@@ -7,9 +8,7 @@ import { runAmendmentConcurrency } from './concurrency.mjs';
 import { validateSqlManifest } from './sql-manifest.mjs';
 import { candidateMigrations } from './candidate-migrations.mjs';
 
-if (process.env.CI !== 'true' || process.env.GITHUB_ACTIONS !== 'true') {
-  throw Error('SQL matrix requires an isolated GitHub runner; local virtualization is prohibited.');
-}
+assertIsolatedRuntime();
 const manifest = JSON.parse(readFileSync('operations/backend/sql-matrix.json', 'utf8'));
 const actual = readdirSync('supabase/tests').filter(file => file.endsWith('.sql')).sort();
 const fixtureFiles = new Set(readdirSync('supabase/fixtures/wave02').map(file => `supabase/fixtures/wave02/${file}`));

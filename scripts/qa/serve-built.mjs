@@ -1,7 +1,8 @@
+import {assertIsolatedRuntime,supabaseCommand,supabaseArgs} from './isolated-runtime.mjs';
 import { createServer } from 'node:http';
 import { readFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
-if (process.env.CI !== 'true' || process.env.GITHUB_ACTIONS !== 'true') throw Error('Remote browser server only; no local preview.');
+assertIsolatedRuntime();
 const root=path.resolve('dist');
 createServer((req,res)=>{
   const requestPath=new URL(req.url,'http://localhost').pathname;

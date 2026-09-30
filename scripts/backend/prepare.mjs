@@ -1,3 +1,4 @@
+import {assertIsolatedRuntime,supabaseCommand,supabaseArgs} from '../qa/isolated-runtime.mjs';
 import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, readdirSync, copyFileSync, cpSync, writeFileSync, existsSync } from 'node:fs';
 import { resolve, join } from 'node:path';
@@ -22,11 +23,11 @@ for (const fn of manifest.functions) {
   }
 }
 if (process.argv.includes('--check')) process.exit(0);
-if (process.env.CI !== 'true') throw Error('Reconstruction workdir can only be prepared on a remote CI runner; no local virtualization.');
+assertIsolatedRuntime();
 const destination = resolve('.backend-ci');
 if (existsSync(destination)) throw Error('Refusing to overwrite an existing reconstruction workdir');
 mkdirSync(join(destination, 'supabase/migrations'), { recursive: true });
-const config = readFileSync('supabase/config.toml', 'utf8');
+const config = readFileSync('supabase/config.toml', 'utf8').replaceAll('\r\n','\n');
 if (!config.includes('[db.migrations]\n#')) throw Error('Unexpected migration guard config');
 writeFileSync(join(destination, 'supabase/config.toml'), config.replace(/(\[db\.migrations\][\s\S]*?)enabled = false/, '$1enabled = true'));
 cpSync(resolve('supabase/functions'), join(destination, 'supabase/functions'), { recursive: true });

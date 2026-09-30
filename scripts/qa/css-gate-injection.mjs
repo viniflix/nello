@@ -1,7 +1,8 @@
+import {assertIsolatedRuntime,supabaseCommand,supabaseArgs} from './isolated-runtime.mjs';
 import {build,loadConfigFromFile} from 'vite';
 import {mkdirSync,writeFileSync} from 'node:fs';
 import path from 'node:path';
-if(process.env.CI!=='true'||process.env.GITHUB_ACTIONS!=='true')throw Error('Controlled CSS fault requires the isolated remote runner');
+assertIsolatedRuntime();
 const loaded=await loadConfigFromFile({command:'build',mode:'production'},'vite.config.js');
 if(!loaded)throw Error('Application build configuration missing');
 const config=loaded.config;

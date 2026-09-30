@@ -131,14 +131,14 @@ const NotificationCenter = ({
                             variant: 'ghost',
                             icon: CheckCircle2,
                             onClick: onMarkAsReviewed,
-                            className: 'text-amber-700 hover:bg-amber-100/50'
+                            className: 'text-amber-800 hover:bg-amber-100/50'
                         },
                         {
                             label: 'Revisar agora',
                             variant: 'default',
                             icon: RefreshCw,
                             onClick: onReviewNow,
-                            className: 'bg-amber-600 hover:bg-amber-700 text-white'
+                            className: 'bg-amber-700 hover:bg-amber-800 text-white'
                         }
                     ]}
                 />

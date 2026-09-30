@@ -28,7 +28,7 @@ jobs:
         id: rebuild
         run: |
           set -o pipefail
-          npx --no-install supabase start --workdir .backend-ci --exclude studio,analytics,vector,imgproxy 2>&1 | tee backend-reconstruction.log
+          npx --no-install supabase start --workdir .backend-ci --exclude studio,logflare,vector,imgproxy 2>&1 | tee backend-reconstruction.log
       - name: Restore isolated provider default privileges
         run: psql 'postgresql://supabase_admin:postgres@127.0.0.1:54322/postgres' -X -v ON_ERROR_STOP=1 -f scripts/backend/provider-defaults.sql
       - name: Capture catalog and compare to production metadata
@@ -67,7 +67,7 @@ jobs:
           npx --no-install vite build --config e2e/qa-build.config.mjs
           node scripts/qa/css-gate-injection.mjs
           npx --no-install playwright install --with-deps chromium
-          npx --no-install playwright test --update-snapshots
+          npx --no-install playwright test
       - name: Preserve diagnostics
         if: always()
         uses: actions/upload-artifact@v4

@@ -1,11 +1,10 @@
+import {assertIsolatedRuntime,supabaseCommand,supabaseArgs} from '../qa/isolated-runtime.mjs';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { assertForwardRestoration } from './forward-restoration.mjs';
 
-if (process.env.CI !== 'true' || process.env.GITHUB_ACTIONS !== 'true') {
-  throw Error('Forward contracts require an isolated GitHub runner; local virtualization is prohibited.');
-}
+assertIsolatedRuntime();
 const restoration = JSON.parse(readFileSync('.backend-ci/restore-results/result.json','utf8'));
 assertForwardRestoration(restoration);
 const database = 'nello_qa_wave02_100';

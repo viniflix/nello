@@ -1,10 +1,11 @@
+import {assertIsolatedRuntime,supabaseCommand,supabaseArgs} from './isolated-runtime.mjs';
 import { createClient } from '@supabase/supabase-js';
 import { execFileSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 import { candidateMigrations } from '../backend/candidate-migrations.mjs';
-if (process.env.CI !== 'true' || process.env.GITHUB_ACTIONS !== 'true') throw Error('Browser fixtures require an isolated remote GitHub runner.');
-const status = JSON.parse(execFileSync('npx', ['--no-install', 'supabase', 'status', '--workdir', '.backend-ci', '-o', 'json'], { encoding: 'utf8' }));
+assertIsolatedRuntime();
+const status = JSON.parse(execFileSync(supabaseCommand,supabaseArgs(['status','--workdir','.backend-ci','--output','json']), { encoding: 'utf8' }));
 const api = new URL(status.API_URL);
 if (api.protocol !== 'http:' || !['127.0.0.1','localhost'].includes(api.hostname) || api.port !== '54321') throw Error('Loopback disposable Supabase required.');
 const sql = input => execFileSync('docker', ['exec', '-i', '-e', 'PGPASSWORD=postgres', 'supabase_db_nello-reconstruction', 'psql', '-X', '-h', '127.0.0.1', '-U', 'supabase_admin', '-d', 'postgres', '-t', '-A', '-v', 'ON_ERROR_STOP=1'], { input, encoding: 'utf8', timeout: 30000 });

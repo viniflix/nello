@@ -114,11 +114,11 @@ end$$;
 
 do $$begin
  begin perform public.create_lab_result_record(jsonb_build_object(
-   'patient_id','98000000-0000-0000-0000-000000000002','test_name','Glicemia','test_date',current_date,'interpretation_confirmed',true
+   'patient_id','98000000-0000-0000-0000-000000000002','test_name','Glicemia','test_value','90','test_date',current_date,'interpretation_confirmed',true
  ));raise exception 'implicit laboratory confirmation accepted';
  exception when check_violation then null;end;
  begin perform public.create_lab_result_record(jsonb_build_object(
-   'patient_id','98000000-0000-0000-0000-000000000002','test_name','Glicemia','test_date',current_date,'reference_min',100,'reference_max',50
+   'patient_id','98000000-0000-0000-0000-000000000002','test_name','Glicemia','test_value','90','test_date',current_date,'reference_min',100,'reference_max',50
  ));raise exception 'inverted laboratory reference accepted';
  exception when invalid_parameter_value then null;end;
 end$$;
@@ -153,7 +153,7 @@ with x as(
 )update hard_ids set meal=(select id from x);
 with x as(
  insert into public.meal_plan_foods(meal_plan_meal_id,food_id,quantity,unit,order_index,calories,protein,carbs,fat,food_snapshot,measure_snapshot)
- values((select meal from hard_ids),'98000000-0000-0000-0000-000000000030',100,'g',0,100,5,15,2,'{"name":"FORJADO"}','{"kind":"FORJADO"}')returning id
+ values((select meal from hard_ids),'98000000-0000-0000-0000-000000000030',100,'gram',0,100,5,15,2,'{"name":"FORJADO"}','{"kind":"FORJADO"}')returning id
 )update hard_ids set food=(select id from x);
 do $$begin
  if(select food_snapshot->>'name' from public.meal_plan_foods where id=(select food from hard_ids))='FORJADO'
@@ -169,7 +169,7 @@ end$$;
 select public.upsert_full_meal_plan((select plan from hard_ids),
  jsonb_build_object('name','Plano Final','is_draft',false,'active_days',jsonb_build_array('monday'),'plan_mode','hybrid','change_reason','Plano confirmado no teste adversarial'),
  jsonb_build_array(jsonb_build_object('name','Almoço','meal_type','lunch','meal_time','12:00','foods',jsonb_build_array(jsonb_build_object(
-   'food_id','98000000-0000-0000-0000-000000000030','quantity',100,'unit','g','calories',100,'protein',5,'carbs',15,'fat',2
+   'food_id','98000000-0000-0000-0000-000000000030','quantity',100,'unit','gram','calories',100,'protein',5,'carbs',15,'fat',2
  )))));
 do $$begin
  if(select source_snapshot->>'protocol_code' from public.meal_plans where id=(select plan from hard_ids))<>'meal_plan.cfn_record' then
