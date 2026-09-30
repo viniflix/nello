@@ -51,8 +51,9 @@ commit SHA, maintaining existing observability correlation.
 CI/local verification uses exact Node 22.18.0 and npm 11.5.2. Vercel supports pinning
 the [Node major](https://vercel.com/docs/functions/runtimes/node-js/node-js-versions)
 and applies minor/patch updates itself, so `engines.node` is `22.x`, consistent with
-the existing hosted project. Vercel install/build commands explicitly invoke npm
-11.5.2; `.nvmrc` remains the reproducible verification runtime. This provider limit
+the existing hosted project. Vercel installs npm 11.5.2 globally before `npm ci`,
+matching the successful GitHub runner procedure; build then uses that installed npm.
+`.nvmrc` remains the reproducible verification runtime. This provider limit
 is documented rather than claiming production has an exact minor pin.
 
 ## Historical provider compatibility
@@ -194,3 +195,5 @@ A ordem de agregação de metadados, entradas ACL e colunas da publicação não
 Run `36678226385` passou a reconstrução e a comparação integral do catálogo. A geração de tipos falhou ao baixar `public.ecr.aws/supabase/postgres-meta:v0.96.6` por limite de dados do registro. O CI prepara a imagem do mesmo publisher e versão pelo GHCR e a identifica com a tag esperada pelo CLI; nenhum upgrade do gerador ou contrato é feito. O stderr da geração também entra no artefato de diagnóstico. As defaults exclusivas do provider são reconciliadas pelo próprio papel `supabase_admin` via loopback no runner, sem conceder privilégios adicionais ao usuário de migrações.
 
 O gerador restaurado no run `36678887863` encontrou `show_limit`/`show_trgm` adicionais. A consulta independente de produção comprovou `pg_trgm` 1.6 em `extensions`; o histórico inicial a criou em `public`. A reconstrução move a extensão com seus objetos e preserva os índices dependentes, sem filtrar essas funções do comparador de tipos. O gate de catálogo agora inclui nome, versão e schema das extensões em `public`, `private` e `extensions`. Serviços/extensões exclusivos do provider fora desses schemas permanecem fora desse catálogo de aplicação; não se declara paridade de implementação interna do Supabase hospedado.
+
+O SHA `9270d6ce` passou ambos os workflows na branch e na main. A instalação Vercel por `npx npm@11.5.2 ci` falhou com erro interno `Exit handler never called`, inclusive em redeploy comprovadamente sem cache. O comando de instalação foi alinhado ao GitHub (`npm install --global npm@11.5.2 && npm ci`), preservando versão e lockfile; a build usa o npm instalado. O erro de produção não encerra a wave até o deployment posterior estar Ready e ser validado.
