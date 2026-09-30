@@ -50,15 +50,19 @@ dist-ssr/
 .cursorrules
 .copilot
 
-# Supabase infrastructure and local state stay outside GitHub.
-/supabase/*
-!/supabase/migrations/
-/supabase/migrations/*
-!/supabase/migrations/20260901000000_food_search_ranking.sql
-!/supabase/migrations/20260901000001_food_search_default_alphabetical.sql
-!/supabase/migrations/20260923000000_protocol_examples.sql
-!/supabase/migrations/20260923000001_save_checkin_template.sql
-!/supabase/migrations/20260923000002_checkin_recipient_guard.sql
+# Supabase source is versioned; credentials and disposable state are excluded.
+/supabase/.temp/
+/supabase/.branches/
+/supabase/.cache/
+/supabase/backups/
+/supabase/baseline/
+/supabase/secrets*
+/supabase/seed.local.sql
+/supabase/**/*.dump
+# Flat historical candidates are not the authoritative reconstruction history.
+# Already tracked candidates remain references for existing regression tests.
+/supabase/migrations/*.sql
+/.backend-ci/
 .env.example
 /[Dd][Oo][Cc][Ss]/
 /AGENTS.md

@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.1"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -657,6 +657,7 @@ export type Database = {
           nutritionist_id: string
           patient_id: string
           template_id: string
+          time_zone: string
         }
         Insert: {
           care_episode_id?: string | null
@@ -669,6 +670,7 @@ export type Database = {
           nutritionist_id: string
           patient_id: string
           template_id: string
+          time_zone?: string
         }
         Update: {
           care_episode_id?: string | null
@@ -681,6 +683,7 @@ export type Database = {
           nutritionist_id?: string
           patient_id?: string
           template_id?: string
+          time_zone?: string
         }
         Relationships: [
           {
@@ -734,11 +737,13 @@ export type Database = {
           completed_at: string | null
           created_at: string | null
           expires_at: string | null
+          fields_snapshot: Json
           id: string
           nutritionist_id: string
           patient_id: string
           responses: Json | null
           schedule_id: string | null
+          scheduled_for: string | null
           score_max: number | null
           score_total: number | null
           sent_at: string | null
@@ -752,11 +757,13 @@ export type Database = {
           completed_at?: string | null
           created_at?: string | null
           expires_at?: string | null
+          fields_snapshot?: Json
           id?: string
           nutritionist_id: string
           patient_id: string
           responses?: Json | null
           schedule_id?: string | null
+          scheduled_for?: string | null
           score_max?: number | null
           score_total?: number | null
           sent_at?: string | null
@@ -770,11 +777,13 @@ export type Database = {
           completed_at?: string | null
           created_at?: string | null
           expires_at?: string | null
+          fields_snapshot?: Json
           id?: string
           nutritionist_id?: string
           patient_id?: string
           responses?: Json | null
           schedule_id?: string | null
+          scheduled_for?: string | null
           score_max?: number | null
           score_total?: number | null
           sent_at?: string | null
@@ -2914,6 +2923,33 @@ export type Database = {
           },
         ]
       }
+      editor_shadow_drafts: {
+        Row: {
+          draft_key: string
+          id: string
+          owner_id: string
+          payload: Json
+          revision: number
+          updated_at: string
+        }
+        Insert: {
+          draft_key: string
+          id?: string
+          owner_id: string
+          payload?: Json
+          revision?: number
+          updated_at?: string
+        }
+        Update: {
+          draft_key?: string
+          id?: string
+          owner_id?: string
+          payload?: Json
+          revision?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       energy_expenditure_calculations: {
         Row: {
           activities: Json | null
@@ -3325,47 +3361,75 @@ export type Database = {
       financial_transactions: {
         Row: {
           amount: number
+          appointment_id: number | null
+          attachment_url: string | null
           category: string | null
           created_at: string | null
           description: string
           due_date: string | null
+          fee_percentage: number | null
           id: number
           income_source: string | null
+          net_amount: number | null
           nutritionist_id: string
+          paid_at: string | null
           patient_id: string | null
+          payment_method: string | null
+          refunded_at: string | null
           status: string | null
           transaction_date: string
           type: string
         }
         Insert: {
           amount: number
+          appointment_id?: number | null
+          attachment_url?: string | null
           category?: string | null
           created_at?: string | null
           description: string
           due_date?: string | null
+          fee_percentage?: number | null
           id?: never
           income_source?: string | null
+          net_amount?: number | null
           nutritionist_id: string
+          paid_at?: string | null
           patient_id?: string | null
+          payment_method?: string | null
+          refunded_at?: string | null
           status?: string | null
           transaction_date: string
           type: string
         }
         Update: {
           amount?: number
+          appointment_id?: number | null
+          attachment_url?: string | null
           category?: string | null
           created_at?: string | null
           description?: string
           due_date?: string | null
+          fee_percentage?: number | null
           id?: never
           income_source?: string | null
+          net_amount?: number | null
           nutritionist_id?: string
+          paid_at?: string | null
           patient_id?: string | null
+          payment_method?: string | null
+          refunded_at?: string | null
           status?: string | null
           transaction_date?: string
           type?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "financial_transactions_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "financial_transactions_nutritionist_id_fkey"
             columns: ["nutritionist_id"]
@@ -4249,17 +4313,17 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "meal_items_measure_id_fkey"
-            columns: ["measure_id"]
-            isOneToOne: false
-            referencedRelation: "food_measures"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "meal_items_meal_id_fkey"
             columns: ["meal_id"]
             isOneToOne: false
             referencedRelation: "meals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meal_items_measure_id_fkey"
+            columns: ["measure_id"]
+            isOneToOne: false
+            referencedRelation: "food_measures"
             referencedColumns: ["id"]
           },
         ]
@@ -5685,6 +5749,20 @@ export type Database = {
             referencedRelation: "meal_plans"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "patient_goals_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patient_hub_summary"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "patient_goals_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       patient_module_sync_flags: {
@@ -5807,6 +5885,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      patient_progress_measurements: {
+        Row: {
+          created_at: string
+          head_circumference: number | null
+          height: number | null
+          id: number
+          patient_id: string
+          record_date: string
+          weight: number | null
+        }
+        Insert: {
+          created_at?: string
+          head_circumference?: number | null
+          height?: number | null
+          id?: never
+          patient_id: string
+          record_date: string
+          weight?: number | null
+        }
+        Update: {
+          created_at?: string
+          head_circumference?: number | null
+          height?: number | null
+          id?: never
+          patient_id?: string
+          record_date?: string
+          weight?: number | null
+        }
+        Relationships: []
       }
       patient_reminder_preferences: {
         Row: {
@@ -7621,6 +7729,14 @@ export type Database = {
         }
         Returns: Json
       }
+      admin_access_status: { Args: never; Returns: Json }
+      admin_brand_migration_status: { Args: never; Returns: Json }
+      admin_list_people: {
+        Args: { p_page?: number; p_search?: string; p_type?: string }
+        Returns: Json
+      }
+      admin_security_overview: { Args: never; Returns: Json }
+      admin_workflow_overview: { Args: never; Returns: Json }
       approve_patient_link: { Args: { p_patient_id: string }; Returns: Json }
       archive_meal_plan: {
         Args: { p_plan_id: number; p_reason: string }
@@ -7628,6 +7744,17 @@ export type Database = {
       }
       archive_private_evolution_template: {
         Args: { p_template_code: string }
+        Returns: Json
+      }
+      attach_anamnesis_file: {
+        Args: {
+          p_field_id: string
+          p_field_label: string
+          p_file_name: string
+          p_path: string
+          p_record_id: string
+          p_token: string
+        }
         Returns: Json
       }
       auth_role: { Args: never; Returns: string }
@@ -7673,6 +7800,7 @@ export type Database = {
         }[]
       }
       check_is_admin: { Args: never; Returns: boolean }
+      claim_food_proxy_quota: { Args: { p_user_id: string }; Returns: boolean }
       clear_message_notifications_from_sender: {
         Args: { p_sender_id: string }
         Returns: undefined
@@ -7731,9 +7859,27 @@ export type Database = {
         }
         Returns: Json
       }
+      confirm_document_asset_upload_verified: {
+        Args: {
+          p_actor_id: string
+          p_mime_type: string
+          p_sha256: string
+          p_size_bytes: number
+          p_upload_id: string
+        }
+        Returns: Json
+      }
       confirm_lab_result_interpretation: {
         Args: { p_reason: string; p_result_id: number }
         Returns: Json
+      }
+      copy_meal_plan_to_patient_atomic: {
+        Args: {
+          p_name?: string
+          p_source_plan_id: number
+          p_target_patient_id: string
+        }
+        Returns: number
       }
       create_appointment_reminders: { Args: never; Returns: undefined }
       create_clinical_attachment_replacement_intent: {
@@ -7818,12 +7964,32 @@ export type Database = {
         Returns: Json
       }
       create_lab_result_record: { Args: { p_payload: Json }; Returns: Json }
+      create_meal_plan_atomic: { Args: { p_plan_data: Json }; Returns: number }
       create_my_data_subject_request: {
         Args: { p_request_type: string; p_subject_note?: string }
         Returns: Json
       }
+      create_offline_patient_atomic: {
+        Args: {
+          p_email: string
+          p_invite_code: string
+          p_nutritionist_id: string
+          p_patient_id: string
+          p_profile: Json
+          p_request_id: string
+        }
+        Returns: Json
+      }
+      delete_appointment_with_finance: {
+        Args: { p_appointment_id: number }
+        Returns: undefined
+      }
       delete_patient: { Args: { patient_id: string }; Returns: undefined }
       delete_read_notifications: { Args: never; Returns: undefined }
+      detach_anamnesis_file: {
+        Args: { p_attachment_id: string; p_record_id: string; p_token: string }
+        Returns: Json
+      }
       end_care_episode: {
         Args: { p_end_reason?: string; p_patient_id: string }
         Returns: Json
@@ -7864,6 +8030,10 @@ export type Database = {
       finalize_document_artifact: {
         Args: { p_artifact_id: string; p_expected_revision: number }
         Returns: Json
+      }
+      force_delete_test_clone: {
+        Args: { p_patient_id: string }
+        Returns: boolean
       }
       generate_anamnesis_link: {
         Args: {
@@ -8067,6 +8237,15 @@ export type Database = {
         }[]
       }
       get_tcc_study_metrics: { Args: never; Returns: Json }
+      get_top_financial_patients: {
+        Args: { p_limit?: number }
+        Returns: {
+          avatar_url: string
+          patient_id: string
+          patient_name: string
+          total: number
+        }[]
+      }
       get_unread_senders: {
         Args: { p_user_id: string }
         Returns: {
@@ -8074,6 +8253,10 @@ export type Database = {
         }[]
       }
       get_user_id: { Args: never; Returns: string }
+      import_diet_template_meals_to_plan: {
+        Args: { p_meal_ids: string[]; p_plan_id: number; p_template_id: string }
+        Returns: number[]
+      }
       increment_checkin_streak: {
         Args: { p_nutritionist_id: string; p_patient_id: string }
         Returns: undefined
@@ -8113,6 +8296,15 @@ export type Database = {
       is_admin: { Args: never; Returns: boolean }
       is_nutritionist: { Args: never; Returns: boolean }
       is_patient: { Args: never; Returns: boolean }
+      link_checkin_template: {
+        Args: {
+          p_channel?: string
+          p_patient_id: string
+          p_template_id: string
+          p_time_zone?: string
+        }
+        Returns: string
+      }
       list_clinical_attachments_by_episode: {
         Args: {
           p_cursor: string
@@ -8147,7 +8339,7 @@ export type Database = {
         Returns: Json[]
       }
       list_document_artifacts: {
-        Args: { p_episode_id: string; p_patient_id: string }
+        Args: { p_episode_id?: string; p_patient_id: string }
         Returns: Json[]
       }
       list_evolution_templates: {
@@ -8293,6 +8485,7 @@ export type Database = {
         Args: { p_sender_id: string; p_user_id: string }
         Returns: undefined
       }
+      normalize_food_search: { Args: { p_value: string }; Returns: string }
       notify_nutritionist_anamnesis_completed: {
         Args: { p_record_id: string }
         Returns: undefined
@@ -8306,6 +8499,10 @@ export type Database = {
         Returns: undefined
       }
       redeem_invite_code: { Args: { input_code: string }; Returns: Json }
+      refund_financial_transaction: {
+        Args: { p_id: number; p_refunded_at: string }
+        Returns: undefined
+      }
       reject_patient_link: { Args: { p_patient_id: string }; Returns: Json }
       remove_empty_patient: { Args: { p_patient_id: string }; Returns: Json }
       request_student_supervision: {
@@ -8358,6 +8555,33 @@ export type Database = {
         Args: { p_guardian_id: string; p_reason: string }
         Returns: Json
       }
+      save_appointment_with_finance: {
+        Args: {
+          p_appointment: Json
+          p_appointment_id?: number
+          p_financial?: Json
+        }
+        Returns: Json
+      }
+      save_checkin_template: {
+        Args: { p_fields: Json; p_id: string; p_template: Json }
+        Returns: string
+      }
+      save_custom_food_with_measures: {
+        Args: { p_food: Json; p_food_id: string; p_measures: Json }
+        Returns: Json
+      }
+      save_meal_template: {
+        Args: {
+          p_description: string
+          p_expected_updated_at: string
+          p_foods: Json
+          p_id: string
+          p_name: string
+          p_tags: string[]
+        }
+        Returns: string
+      }
       save_my_document_identity: {
         Args: {
           p_expected_version?: number
@@ -8366,21 +8590,99 @@ export type Database = {
         }
         Returns: Json
       }
-      search_foods: {
-        Args: { p_limit?: number; p_search_term: string; p_source?: string }
-        Returns: {
-          calories: number
-          carbs: number
-          description: string
-          fat: number
-          group: string
-          id: number
-          name: string
-          protein: number
-          source: string
-        }[]
+      save_patient_diary_meal: {
+        Args: { p_items: Json; p_meal_id: number; p_payload: Json }
+        Returns: number
       }
+      save_recipe_template: {
+        Args: {
+          p_description: string
+          p_expected_updated_at: string
+          p_id: string
+          p_ingredients: Json
+          p_name: string
+          p_preparation_method: string
+          p_yield_quantity: number
+          p_yield_unit: string
+        }
+        Returns: string
+      }
+      search_foods:
+        | {
+            Args: {
+              p_calories_max?: number
+              p_calories_min?: number
+              p_groups?: string[]
+              p_limit?: number
+              p_macro?: string
+              p_offset?: number
+              p_query?: string
+              p_scope?: string
+              p_source?: string
+            }
+            Returns: {
+              base_unit: string | null
+              calcium: number | null
+              calories: number | null
+              carbs: number | null
+              cholesterol: number | null
+              created_at: string | null
+              description: string | null
+              fat: number | null
+              fiber: number | null
+              folate: number | null
+              group: string | null
+              group_norm: string | null
+              id: string | null
+              iron: number | null
+              is_active: boolean | null
+              magnesium: number | null
+              name: string | null
+              nutritionist_id: string | null
+              phosphorus: number | null
+              portion_size: number | null
+              potassium: number | null
+              preparation: string | null
+              protein: number | null
+              saturated_fat: number | null
+              sodium: number | null
+              source: string | null
+              source_id: string | null
+              sugar: number | null
+              trans_fat: number | null
+              vitamin_a: number | null
+              vitamin_b12: number | null
+              vitamin_c: number | null
+              vitamin_d: number | null
+              vitamin_e: number | null
+              zinc: number | null
+            }[]
+            SetofOptions: {
+              from: "*"
+              to: "foods"
+              isOneToOne: false
+              isSetofReturn: true
+            }
+          }
+        | {
+            Args: { p_limit?: number; p_search_term: string; p_source?: string }
+            Returns: {
+              calories: number
+              carbs: number
+              description: string
+              fat: number
+              group: string
+              id: number
+              name: string
+              protein: number
+              source: string
+            }[]
+          }
       set_active_meal_plan: { Args: { p_plan_id: number }; Returns: undefined }
+      set_checkin_schedule_active: {
+        Args: { p_active: boolean; p_schedule_id: string }
+        Returns: undefined
+      }
       sign_clinical_record: { Args: { p_record_id: string }; Returns: Json }
       sign_document_artifact: { Args: { p_artifact_id: string }; Returns: Json }
       slugify_name: { Args: { p_name: string }; Returns: string }
@@ -8407,6 +8709,10 @@ export type Database = {
           p_token: string
         }
         Returns: Json
+      }
+      submit_checkin_session: {
+        Args: { p_responses: Json; p_session_id: string }
+        Returns: number
       }
       submit_professional_verification: {
         Args: { p_payload: Json }
@@ -8512,7 +8818,6 @@ export type Database = {
         | "other"
     }
     CompositeTypes: {
-      // eslint-disable-next-line no-unused-vars
       [_ in never]: never
     }
   }
@@ -8526,12 +8831,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -8555,11 +8860,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -8580,11 +8885,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -8605,11 +8910,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -8622,11 +8927,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }

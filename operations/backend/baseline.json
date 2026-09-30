@@ -1,0 +1,1632 @@
+{
+  "format": 1,
+  "capturedAt": "2026-09-30",
+  "projectRef": "afyoidxrshkmplxhcyeh",
+  "postgresMajor": 17,
+  "lastMigration": "20260924231829",
+  "migrations": [
+    {
+      "version": "20251222080706",
+      "name": "remote_schema",
+      "file": "20251222080706_remote_schema.sql",
+      "sha256": "ecec68ddd76fa99bc69742b18efce5e4915e69aeb1261c87ccb882da8ccf7d17",
+      "statements": 976
+    },
+    {
+      "version": "20260209212152",
+      "name": "remote_schema",
+      "file": "20260209212152_remote_schema.sql",
+      "sha256": "417fcce1874e0504a9b6dfdf0514b1af82d6683da44e68abfa9f014195e2d88b",
+      "statements": 22
+    },
+    {
+      "version": "20260220035931",
+      "name": "phase_23_sprint_3_reminder_preferences",
+      "file": "20260220035931_phase_23_sprint_3_reminder_preferences.sql",
+      "sha256": "61707de3f1bffdc31058d9c378bd8eee4d9bfbb778e733579cdec6c11afbce7f",
+      "statements": 1
+    },
+    {
+      "version": "20260220040823",
+      "name": "phase_24_sprint_3_reminder_engine_inapp",
+      "file": "20260220040823_phase_24_sprint_3_reminder_engine_inapp.sql",
+      "sha256": "14f76efc5cf41c4dfe71b4a7320532c3f0365fda118ddff0d178e7c00c246654",
+      "statements": 1
+    },
+    {
+      "version": "20260220041949",
+      "name": "phase_25_sprint_4_automations_risk_foundation",
+      "file": "20260220041949_phase_25_sprint_4_automations_risk_foundation.sql",
+      "sha256": "9dec44359dbe8553a9c24d0f2ed9c1552ac5ef9ccb80fdf6c6f9b959d0369a64",
+      "statements": 1
+    },
+    {
+      "version": "20260220163752",
+      "name": "phase_34_linter_security_performance_fixes",
+      "file": "20260220163752_phase_34_linter_security_performance_fixes.sql",
+      "sha256": "190bf8f601d5367269ccd8bf2611063e641968f625254d9484da48accbfdee5f",
+      "statements": 1
+    },
+    {
+      "version": "20260305051841",
+      "name": "energy_expenditure_calculations_schema",
+      "file": "20260305051841_energy_expenditure_calculations_schema.sql",
+      "sha256": "06c155475273339d4b7d3e014b17fc91ce5940d6dd9c39cf5f4afb45721f5de1",
+      "statements": 1
+    },
+    {
+      "version": "20260305080504",
+      "name": "add_default_message_templates",
+      "file": "20260305080504_add_default_message_templates.sql",
+      "sha256": "99a8a2a3ab60ab6a5d2b1857e47058e687fec17fac4da29dec8bc8e6a5fd812f",
+      "statements": 1
+    },
+    {
+      "version": "20260305081205",
+      "name": "add_progress_photos_module",
+      "file": "20260305081205_add_progress_photos_module.sql",
+      "sha256": "ae9cd31b061b9954b7c1a1f8f43d76a729f621d7345a8176878abf8b35e5f658",
+      "statements": 1
+    },
+    {
+      "version": "20260305195922",
+      "name": "create_activity_log_table",
+      "file": "20260305195922_create_activity_log_table.sql",
+      "sha256": "78187ebb62e0de89a69b1b2dd899a31a733c1978c7996a2aef3c40f6c2ccd8ea",
+      "statements": 1
+    },
+    {
+      "version": "20260305200109",
+      "name": "rls_performance_auth_initplan_and_consolidate",
+      "file": "20260305200109_rls_performance_auth_initplan_and_consolidate.sql",
+      "sha256": "7452452c48682ca9f1b2c5bade0959409ff81ef8d4dcd3d5cad85d9d7816579f",
+      "statements": 1
+    },
+    {
+      "version": "20260305200453",
+      "name": "rls_activity_log_auth_initplan",
+      "file": "20260305200453_rls_activity_log_auth_initplan.sql",
+      "sha256": "d4c72026c84951bdaf3b126eaacd08e424c369f3639eafccdb7dc352dfdabc79",
+      "statements": 1
+    },
+    {
+      "version": "20260305200508",
+      "name": "add_indexes_unindexed_foreign_keys",
+      "file": "20260305200508_add_indexes_unindexed_foreign_keys.sql",
+      "sha256": "5f269a91f5773202e2a3a860e64a08b5b08c6e3e469d67f52a8251cf21f2ca41",
+      "statements": 1
+    },
+    {
+      "version": "20260306002649",
+      "name": "add_log_activity_event_function",
+      "file": "20260306002649_add_log_activity_event_function.sql",
+      "sha256": "6c3b1938e9b7d78a5a028b7cccb0fc1c171201299759d747e9ec30fc2126b5bd",
+      "statements": 1
+    },
+    {
+      "version": "20260306021104",
+      "name": "fase_1_reference_nutritionist_foods_view",
+      "file": "20260306021104_fase_1_reference_nutritionist_foods_view.sql",
+      "sha256": "6de7c67b824bf2506218b9e9178a677156ee2b0d691ff0b9b2d3c7fa80fd1b30",
+      "statements": 1
+    },
+    {
+      "version": "20260306022548",
+      "name": "fase_2_alter_tables_uuid",
+      "file": "20260306022548_fase_2_alter_tables_uuid.sql",
+      "sha256": "4531a873c71694236668cda9d00ae5c908fe6791a80ce7f5c7f5db165c19e9db",
+      "statements": 1
+    },
+    {
+      "version": "20260306040144",
+      "name": "phase_38_migration_foods_security",
+      "file": "20260306040144_phase_38_migration_foods_security.sql",
+      "sha256": "de7ab8d485684f8edb55a96fc8f337c9094f8b90751b467a9ef142cf61e42670",
+      "statements": 1
+    },
+    {
+      "version": "20260306040355",
+      "name": "phase_39_rls_performance_fix",
+      "file": "20260306040355_phase_39_rls_performance_fix.sql",
+      "sha256": "bdc993d894a1dfa3cc3d9515368d04194c2dfa31e66021e78eff832d433e0098",
+      "statements": 1
+    },
+    {
+      "version": "20260312061448",
+      "name": "allow_nutritionists_avatar_upload",
+      "file": "20260312061448_allow_nutritionists_avatar_upload.sql",
+      "sha256": "b67f417659f075bdc3200624a6ce7d1c2dee1b5fba3abfe397a22fb908f1541b",
+      "statements": 1
+    },
+    {
+      "version": "20260312061504",
+      "name": "fix_allow_nutritionists_avatar_upload",
+      "file": "20260312061504_fix_allow_nutritionists_avatar_upload.sql",
+      "sha256": "6cf93c6f007069e0728f568a40747e545ba49d5cacfed349402249bbdb42d581",
+      "statements": 1
+    },
+    {
+      "version": "20260312061659",
+      "name": "nutritionist_update_patient_profile",
+      "file": "20260312061659_nutritionist_update_patient_profile.sql",
+      "sha256": "029d41505172473d99e59dd21a349f433483c00782ad49bd29aad4a1b2f91af9",
+      "statements": 1
+    },
+    {
+      "version": "20260312062801",
+      "name": "create_admin_functions_v2",
+      "file": "20260312062801_create_admin_functions_v2.sql",
+      "sha256": "61fcdc33b7f770ea059fee104c6db402028811d75760d96fa8500e95663f132a",
+      "statements": 1
+    },
+    {
+      "version": "20260313060635",
+      "name": "admin_nutritionist_detail_rpc",
+      "file": "20260313060635_admin_nutritionist_detail_rpc.sql",
+      "sha256": "f0eead154dd3248e4698493b378e13e3d11e73ef4474ef3f7aef42a20287ef56",
+      "statements": 1
+    },
+    {
+      "version": "20260313062434",
+      "name": "create_tcc_study_metrics_rpc",
+      "file": "20260313062434_create_tcc_study_metrics_rpc.sql",
+      "sha256": "9b6dcc1aa215b65dc286cd2ba2698c559569aae24e250388098f2114a480ac4e",
+      "statements": 1
+    },
+    {
+      "version": "20260317004855",
+      "name": "add_engagement_fields_to_nutritionist_patients",
+      "file": "20260317004855_add_engagement_fields_to_nutritionist_patients.sql",
+      "sha256": "f21a601b23a5c2a9e8a19815742482f532d0385645f3517d4f048b377a667b4a",
+      "statements": 1
+    },
+    {
+      "version": "20260317004918",
+      "name": "create_checkin_tables",
+      "file": "20260317004918_create_checkin_tables.sql",
+      "sha256": "8a93399fee603df2a05588474d4ae549634f5320067592469f321cff013cf945",
+      "statements": 1
+    },
+    {
+      "version": "20260317004921",
+      "name": "add_onboarding_and_supplement_tables",
+      "file": "20260317004921_add_onboarding_and_supplement_tables.sql",
+      "sha256": "a321a48f749b940ac49b0f5da37cbab1700ea3b2022d927751f1997c4fe10013",
+      "statements": 1
+    },
+    {
+      "version": "20260317004957",
+      "name": "add_rls_policies_for_checkin_and_branding_tables",
+      "file": "20260317004957_add_rls_policies_for_checkin_and_branding_tables.sql",
+      "sha256": "069c596851780456fb0019041517d3236ad9fef3acba0f0c02096d5759bfa55a",
+      "statements": 1
+    },
+    {
+      "version": "20260317004959",
+      "name": "add_checkin_streak_rpc_function",
+      "file": "20260317004959_add_checkin_streak_rpc_function.sql",
+      "sha256": "e88ed19d4e6d456626c5dcb7fd30afee9089d88810ae3122dbd1a5f875527bec",
+      "statements": 1
+    },
+    {
+      "version": "20260317012518",
+      "name": "add_channel_to_templates",
+      "file": "20260317012518_add_channel_to_templates.sql",
+      "sha256": "1d104098f338a4f5d073ab346fbe5c14860c71a734843476ff4a2bbec274b2d9",
+      "statements": 1
+    },
+    {
+      "version": "20260320045529",
+      "name": "add_needs_password_reset",
+      "file": "20260320045529_add_needs_password_reset.sql",
+      "sha256": "2a6b24950077958ae62c95b9ca4b4800ef5a97dc9d257b7c4ac80d88343a2904",
+      "statements": 1
+    },
+    {
+      "version": "20260320231151",
+      "name": "add_is_draft_to_meal_plans",
+      "file": "20260320231151_add_is_draft_to_meal_plans.sql",
+      "sha256": "9e3d6d7bce99988726714277f64c141ccd91661a6898fbf0aad870c25057ad2c",
+      "statements": 1
+    },
+    {
+      "version": "20260321004803",
+      "name": "add_ethnicity_to_user_profiles",
+      "file": "20260321004803_add_ethnicity_to_user_profiles.sql",
+      "sha256": "ca4fe734e3bb2c6104e6a921c982bb7df3baf156500b0a62959a58657f6c3956",
+      "statements": 1
+    },
+    {
+      "version": "20260321013201",
+      "name": "add_peso_usual_to_growth_records",
+      "file": "20260321013201_add_peso_usual_to_growth_records.sql",
+      "sha256": "a89d81964887f39e783c2b621af7ee0b3d163f19c105253177dff60960093062",
+      "statements": 1
+    },
+    {
+      "version": "20260321013847",
+      "name": "seed_anamnesis_system_templates",
+      "file": "20260321013847_seed_anamnesis_system_templates.sql",
+      "sha256": "231af7add18413ac9e2bb5a494d5d4648fc0cc1fe627ff903454d537818f82e7",
+      "statements": 1
+    },
+    {
+      "version": "20260321020535",
+      "name": "add_unregistered_appointments",
+      "file": "20260321020535_add_unregistered_appointments.sql",
+      "sha256": "f75ef8fe012b306bbf16d36fe913ab8f1503a0e96bf214282b0c3b89d56a96a9",
+      "statements": 1
+    },
+    {
+      "version": "20260321035933",
+      "name": "create_archived_patient_links",
+      "file": "20260321035933_create_archived_patient_links.sql",
+      "sha256": "2567397db01818ec5483e6a7983f20a7b56fa40f4eba0fe10b3d7042160f0a32",
+      "statements": 1
+    },
+    {
+      "version": "20260321230529",
+      "name": "fix_function_search_path_security",
+      "file": "20260321230529_fix_function_search_path_security.sql",
+      "sha256": "602f98af8f49362558be92d5009cb578a8ec072336cf128a10987eb422258d7e",
+      "statements": 1
+    },
+    {
+      "version": "20260321231037",
+      "name": "fix_rls_auth_uid_initplan",
+      "file": "20260321231037_fix_rls_auth_uid_initplan.sql",
+      "sha256": "945091eab0b46845fcfb6756445d989e2caf373edd40d174f0084e8fd8c9a1f6",
+      "statements": 1
+    },
+    {
+      "version": "20260321231119",
+      "name": "fix_rls_multiple_permissive_policies",
+      "file": "20260321231119_fix_rls_multiple_permissive_policies.sql",
+      "sha256": "0bb08b96341398f6e1fa69ef7bb5d04781552eea8524d0bfddc7e292f4b0ef84",
+      "statements": 1
+    },
+    {
+      "version": "20260321231204",
+      "name": "fix_rls_fully_merge_overlapping_policies",
+      "file": "20260321231204_fix_rls_fully_merge_overlapping_policies.sql",
+      "sha256": "4fdf7129369f5184c65e1d50ca094c3384c07471db381a865f6a67b4188e332c",
+      "statements": 1
+    },
+    {
+      "version": "20260321231546",
+      "name": "fix_rls_fully_explicit_no_overlap",
+      "file": "20260321231546_fix_rls_fully_explicit_no_overlap.sql",
+      "sha256": "f062ee5a27b373e385b79f9cb6e6438e7acaa500d2537280b8543a817ce2987a",
+      "statements": 1
+    },
+    {
+      "version": "20260321232241",
+      "name": "add_performance_indexes",
+      "file": "20260321232241_add_performance_indexes.sql",
+      "sha256": "812a61f71bee0b2989c3af6bcbda8d2c02a5f03016a6828312d0a67fc58e1fce",
+      "statements": 1
+    },
+    {
+      "version": "20260321234552",
+      "name": "create_meal_plan_versions_table",
+      "file": "20260321234552_create_meal_plan_versions_table.sql",
+      "sha256": "6bd1ce0c18b78dbcff4b7d97ddf9df2cbb3acf498507400d4eb4f9af72a7b2c7",
+      "statements": 1
+    },
+    {
+      "version": "20260323044111",
+      "name": "drop_and_recreate_chat_rpc",
+      "file": "20260323044111_drop_and_recreate_chat_rpc.sql",
+      "sha256": "e033f8782214efe81edc3f441f98be5bf547d754ed21064100a91fa78566d591",
+      "statements": 1
+    },
+    {
+      "version": "20260323044554",
+      "name": "create_chat_dashboard_rpc",
+      "file": "20260323044554_create_chat_dashboard_rpc.sql",
+      "sha256": "c14720cc23c6e357b43fa8e91d369884732c9a66ee55c470114c0042dda87a18",
+      "statements": 1
+    },
+    {
+      "version": "20260323044946",
+      "name": "recreate_chat_rpc_with_text_type",
+      "file": "20260323044946_recreate_chat_rpc_with_text_type.sql",
+      "sha256": "5c31eb0fe388994f003faf658de1f6f6d05273e96a2f70aeadfafa6ebc5c4264",
+      "statements": 1
+    },
+    {
+      "version": "20260323060033",
+      "name": "fix_chat_media_rls_policy",
+      "file": "20260323060033_fix_chat_media_rls_policy.sql",
+      "sha256": "33f087db6c71c40f0e557945bbb87c503d258f5f52807b8d48d6e6d73de3496f",
+      "statements": 1
+    },
+    {
+      "version": "20260323060415",
+      "name": "create_get_patients_for_new_chat_rpc",
+      "file": "20260323060415_create_get_patients_for_new_chat_rpc.sql",
+      "sha256": "667725871d77f22a5303189ccdcae8fcae63935367a1e15113fa7233cc7a7024",
+      "statements": 1
+    },
+    {
+      "version": "20260323194952",
+      "name": "fix_appointments_rls_policies",
+      "file": "20260323194952_fix_appointments_rls_policies.sql",
+      "sha256": "90e696f1f310e777f51c48574c47645c4e2c6389caeac4595399fe3f71c2a772",
+      "statements": 1
+    },
+    {
+      "version": "20260324201139",
+      "name": "fix_handle_new_user_defaults",
+      "file": "20260324201139_fix_handle_new_user_defaults.sql",
+      "sha256": "176fd10a70d10661349958e3191bb5acec0c890ae8888e26a69a80758227449e",
+      "statements": 1
+    },
+    {
+      "version": "20260324201639",
+      "name": "hardening_bug_reports_policies",
+      "file": "20260324201639_hardening_bug_reports_policies.sql",
+      "sha256": "f5a95e7b387150d75efa00a0e81ed372862d083ec7281a89ce0d03e61b8edc63",
+      "statements": 1
+    },
+    {
+      "version": "20260324215903",
+      "name": "meal_plan_substitutions_and_patient_description",
+      "file": "20260324215903_meal_plan_substitutions_and_patient_description.sql",
+      "sha256": "541024ed45f749e71ef0f8ba53029eb9c08653ff588f720c00c449128f3222a2",
+      "statements": 1
+    },
+    {
+      "version": "20260324233749",
+      "name": "upsert_full_meal_plan_rpc",
+      "file": "20260324233749_upsert_full_meal_plan_rpc.sql",
+      "sha256": "f79df25a17b4bab5a452c15e524a534ff9ceb46debb898f46517fef12ea077af",
+      "statements": 1
+    },
+    {
+      "version": "20260325010457",
+      "name": "add_patient_link_approval_system",
+      "file": "20260325010457_add_patient_link_approval_system.sql",
+      "sha256": "b0c7f89bc16769f0abf94d47792c5a69e651c607aacc8368240c478036f24906",
+      "statements": 1
+    },
+    {
+      "version": "20260325042149",
+      "name": "make_invite_code_case_insensitive",
+      "file": "20260325042149_make_invite_code_case_insensitive.sql",
+      "sha256": "f6ddd1265b0479a8bafc646b8fcbf5d87d28b8ec83b891e3d64c1e5324b7d44c",
+      "statements": 1
+    },
+    {
+      "version": "20260402054048",
+      "name": "atomic_meal_plan_rpcs_and_security_hardening",
+      "file": "20260402054048_atomic_meal_plan_rpcs_and_security_hardening.sql",
+      "sha256": "dcdd49b48b0b789de884fcc3406c2a948ae3a1183ca9337f39c1841bdcf51781",
+      "statements": 1
+    },
+    {
+      "version": "20260421074932",
+      "name": "anamnesis_v2_indexes_and_columns",
+      "file": "20260421074932_anamnesis_v2_indexes_and_columns.sql",
+      "sha256": "88cc7780938c012d507ac9e4b28d94175cb6e6a6d741cca92c8e38ac2715b077",
+      "statements": 1
+    },
+    {
+      "version": "20260429153637",
+      "name": "add_quantity_and_unit_to_substitutions",
+      "file": "20260429153637_add_quantity_and_unit_to_substitutions.sql",
+      "sha256": "565f5a00e79531eea6080f51259318c105927c46a3fe08fc01de2d27c24390e6",
+      "statements": 1
+    },
+    {
+      "version": "20260429161400",
+      "name": "create_template_system",
+      "file": "20260429161400_create_template_system.sql",
+      "sha256": "ec537220d9110c1a4fc710a4b323a81157ef001b3fa990b94710bf1a9f23e8ff",
+      "statements": 1
+    },
+    {
+      "version": "20260429161422",
+      "name": "create_template_rpc",
+      "file": "20260429161422_create_template_rpc.sql",
+      "sha256": "04b18c64579ac9095c7dab2bba6462479c2908a5417340c00cc86223851e650a",
+      "statements": 1
+    },
+    {
+      "version": "20260429185814",
+      "name": "fix_meal_plans_template_rls",
+      "file": "20260429185814_fix_meal_plans_template_rls.sql",
+      "sha256": "3eff3bb6d3e1ba93e07c6838cd16cc89b97ce3f2de35a5a5658fe191c76a9c82",
+      "statements": 1
+    },
+    {
+      "version": "20260429190712",
+      "name": "allow_null_start_date_for_templates",
+      "file": "20260429190712_allow_null_start_date_for_templates.sql",
+      "sha256": "2137b60b332d67e48a0a1ed4d1127dcabc9277cdf1591cd8f6da0f26afc28efa",
+      "statements": 1
+    },
+    {
+      "version": "20260429190856",
+      "name": "fix_meal_plan_meals_foods_rls_for_templates",
+      "file": "20260429190856_fix_meal_plan_meals_foods_rls_for_templates.sql",
+      "sha256": "7c5a35739fa32962c6c5412a19c965b8eef8262e847be6f87bdf9f774d97cd34",
+      "statements": 1
+    },
+    {
+      "version": "20260429190947",
+      "name": "fix_meal_plan_child_tables_rls_for_templates",
+      "file": "20260429190947_fix_meal_plan_child_tables_rls_for_templates.sql",
+      "sha256": "f1d16fcab1c317b1210581770ef29b8c7f3e0d6a228c424519f683d603efcb4f",
+      "statements": 1
+    },
+    {
+      "version": "20260429224334",
+      "name": "create_nutritionist_custom_measures",
+      "file": "20260429224334_create_nutritionist_custom_measures.sql",
+      "sha256": "5d1e26da53f76baf5370194cf82349c6c94a093bcc951d8de0cf5945141aa3e1",
+      "statements": 1
+    },
+    {
+      "version": "20260429231818",
+      "name": "migrate_meal_plan_templates_to_diet_templates",
+      "file": "20260429231818_migrate_meal_plan_templates_to_diet_templates.sql",
+      "sha256": "5840fdd7d3d367ccc5f075927b6f6eddaf3656b1f20a5a23ab48977e19b8eb9d",
+      "statements": 1
+    },
+    {
+      "version": "20260429232813",
+      "name": "fix_template_function_search_path_and_anon_access",
+      "file": "20260429232813_fix_template_function_search_path_and_anon_access.sql",
+      "sha256": "2facd3da615397c8db37791fb270a47d720b3f2dd76bacfb72b2b02c106f2624",
+      "statements": 1
+    },
+    {
+      "version": "20260429235048",
+      "name": "update_custom_measure_deletion_trigger",
+      "file": "20260429235048_update_custom_measure_deletion_trigger.sql",
+      "sha256": "0b664a7ce0d59c9fdf5ca2d5a8e0d09f8a18733a842e7836dcfd1ab93c903ecc",
+      "statements": 1
+    },
+    {
+      "version": "20260430003426",
+      "name": "create_external_api_cache",
+      "file": "20260430003426_create_external_api_cache.sql",
+      "sha256": "0903c705512b24bd24118f338eb64909fc2e9cd0bf1088ec2613d0d3d3dea009",
+      "statements": 1
+    },
+    {
+      "version": "20260430012545",
+      "name": "create_external_api_cache",
+      "file": "20260430012545_create_external_api_cache.sql",
+      "sha256": "62b922a7f151d28b7f3ceef61e2dabe09b645c1f96e167804595f4eb07d8aafc",
+      "statements": 1
+    },
+    {
+      "version": "20260430193901",
+      "name": "harden_security_definer_rpc_surface",
+      "file": "20260430193901_harden_security_definer_rpc_surface.sql",
+      "sha256": "e4dafd980a32ff5bb396d7d0cd8f532497cce74d2e45f0e9c64d5fc089a8d458",
+      "statements": 1
+    },
+    {
+      "version": "20260430193943",
+      "name": "harden_public_storage_listing",
+      "file": "20260430193943_harden_public_storage_listing.sql",
+      "sha256": "8fb5e50642fc4e0d8b1f82f600ba7c375c2862f99fde80f512bc6226b05b0f25",
+      "statements": 1
+    },
+    {
+      "version": "20260430194018",
+      "name": "remove_redundant_storage_bucket_policies",
+      "file": "20260430194018_remove_redundant_storage_bucket_policies.sql",
+      "sha256": "8780b47c6c950c6d392496b6573f4faf40cf5c3fb5c85cf9e4ba99fd9c4696c6",
+      "statements": 1
+    },
+    {
+      "version": "20260430224837",
+      "name": "fase7_anamnesis_base",
+      "file": "20260430224837_fase7_anamnesis_base.sql",
+      "sha256": "557e135c9f5b6be60c1e2ba693727999242026841b8ab60335975de78c531d9f",
+      "statements": 1
+    },
+    {
+      "version": "20260501000046",
+      "name": "20260430230000_fase7_anamnesis_omnichannel_rpc",
+      "file": "20260501000046_20260430230000_fase7_anamnesis_omnichannel_rpc.sql",
+      "sha256": "74013676bf71ed0805d4f5f13c8aa6a4bc80c5803914779a8113e410569fc999",
+      "statements": 1
+    },
+    {
+      "version": "20260501001409",
+      "name": "fase7_sprint6_9_premium",
+      "file": "20260501001409_fase7_sprint6_9_premium.sql",
+      "sha256": "c47aa08b52923b79dd152f0aa4614c26a89f21c286cf3235aa1d0e49677b27cc",
+      "statements": 1
+    },
+    {
+      "version": "20260501003553",
+      "name": "fase7_sprint_a_critical_fixes",
+      "file": "20260501003553_fase7_sprint_a_critical_fixes.sql",
+      "sha256": "2923e0834d37bccb0be91c781c66a42d67de6deb98d77451a951daa478acbb74",
+      "statements": 1
+    },
+    {
+      "version": "20260501020032",
+      "name": "20260501000000_update_submit_anamnesis_rpc",
+      "file": "20260501020032_20260501000000_update_submit_anamnesis_rpc.sql",
+      "sha256": "23765a304b383257dd016efaf64906ad3a75cf831eef9c0ffc778183c9e74aab",
+      "statements": 1
+    },
+    {
+      "version": "20260711202630",
+      "name": "enforce_one_active_nutritionist_per_patient",
+      "file": "20260711202630_enforce_one_active_nutritionist_per_patient.sql",
+      "sha256": "cbade581e27fa8d6c1b0639f187ed061b809adc3b1d3c6a7545cd00a66d91b98",
+      "statements": 1
+    },
+    {
+      "version": "20260711203001",
+      "name": "harden_patient_hub_and_anamnesis_rpcs",
+      "file": "20260711203001_harden_patient_hub_and_anamnesis_rpcs.sql",
+      "sha256": "006d3e4702a05d468380807236d024c099e538bec6a4372836dd80a55875d46b",
+      "statements": 1
+    },
+    {
+      "version": "20260711203022",
+      "name": "revoke_public_anamnesis_rpc_execution",
+      "file": "20260711203022_revoke_public_anamnesis_rpc_execution.sql",
+      "sha256": "85e066043ef07bc9cab91569f622272d81a6cfcf9f0101fed39f95190b9c9dd6",
+      "statements": 1
+    },
+    {
+      "version": "20260711205903",
+      "name": "harden_public_anamnesis_token_submission",
+      "file": "20260711205903_harden_public_anamnesis_token_submission.sql",
+      "sha256": "bc8c0ad6bc8ac058b48f184a769efe270c7d1a4ae35c62c1754fe471a1198b28",
+      "statements": 1
+    },
+    {
+      "version": "20260711211123",
+      "name": "fix_remaining_public_function_search_paths",
+      "file": "20260711211123_fix_remaining_public_function_search_paths.sql",
+      "sha256": "395b5eb977ae5b9317bb51dd2aa62a08770aafa28dc0ea610553e25f4c242bb7",
+      "statements": 1
+    },
+    {
+      "version": "20260711213759",
+      "name": "create_care_episodes_foundation",
+      "file": "20260711213759_create_care_episodes_foundation.sql",
+      "sha256": "1fa7bda1411e8f69acdbe9cf0dd63fecc372ebd0b2c3e76aae62ca515d200827",
+      "statements": 1
+    },
+    {
+      "version": "20260711213934",
+      "name": "gate_care_episode_rpcs_until_b2",
+      "file": "20260711213934_gate_care_episode_rpcs_until_b2.sql",
+      "sha256": "3b3f6af11dc35b1599944e82edc51e3f160044439f4de8347b8966de150eb0f3",
+      "statements": 1
+    },
+    {
+      "version": "20260712003930",
+      "name": "add_clinical_episode_isolation",
+      "file": "20260712003930_add_clinical_episode_isolation.sql",
+      "sha256": "d565396eab5406768f58473fabbad49b2d0bfa55d4281efbf792afcd357c1207",
+      "statements": 1
+    },
+    {
+      "version": "20260712004136",
+      "name": "allow_patient_clinical_episode_assignment",
+      "file": "20260712004136_allow_patient_clinical_episode_assignment.sql",
+      "sha256": "9b88e8eca8f0eb2c280ba3d0307c2a63decfe8f0c081e5825fb67589cfb2ec60",
+      "statements": 1
+    },
+    {
+      "version": "20260712004747",
+      "name": "add_patient_owned_episode_isolation",
+      "file": "20260712004747_add_patient_owned_episode_isolation.sql",
+      "sha256": "d051016ac28fc636bc3f372229bc2f483a6c7a5595994786863372d307fbf187",
+      "statements": 1
+    },
+    {
+      "version": "20260712005624",
+      "name": "enable_care_journeys",
+      "file": "20260712005624_enable_care_journeys.sql",
+      "sha256": "b5257b4c24bf9f96055f8537b984c0297a46e71feef339fd77eb1c959342c70e",
+      "statements": 1
+    },
+    {
+      "version": "20260712183742",
+      "name": "create_professional_verification_foundation",
+      "file": "20260712183742_create_professional_verification_foundation.sql",
+      "sha256": "d889b4c8e1b485bc36fc15dd9b7c1d6408c1eccc95f2569d4a382bdcde15ce0d",
+      "statements": 1
+    },
+    {
+      "version": "20260712184248",
+      "name": "add_professional_verification_workflow",
+      "file": "20260712184248_add_professional_verification_workflow.sql",
+      "sha256": "f6685596425963ebd5a3cdcfd4571e90f9e36fe1dd8c971ece4b8aa509e9929e",
+      "statements": 1
+    },
+    {
+      "version": "20260712184827",
+      "name": "enforce_verified_clinical_capacity",
+      "file": "20260712184827_enforce_verified_clinical_capacity.sql",
+      "sha256": "aba70fc6bc723c8b2009145dda6bd0bce86caaf1e36ddfe28b57d0d8674f95d9",
+      "statements": 1
+    },
+    {
+      "version": "20260712190553",
+      "name": "add_student_supervision_workflow",
+      "file": "20260712190553_add_student_supervision_workflow.sql",
+      "sha256": "bb05ef36055ba70011c52f960b14dcb64f502abda99553e0414e4a917f003afb",
+      "statements": 1
+    },
+    {
+      "version": "20260712213649",
+      "name": "create_clinical_record_foundation",
+      "file": "20260712213649_create_clinical_record_foundation.sql",
+      "sha256": "1e6b406a7f9d2fcce14c9ca9a6ccc1864a51523e2a86eb5d7dbb841e6ba37f92",
+      "statements": 1
+    },
+    {
+      "version": "20260712223212",
+      "name": "harden_clinical_record_foundation",
+      "file": "20260712223212_harden_clinical_record_foundation.sql",
+      "sha256": "2e4d44581839b2b584ecd18e2819e06079b87ceec73e381aa089304559ce4c4e",
+      "statements": 1
+    },
+    {
+      "version": "20260714232745",
+      "name": "create_clinical_evolution_system",
+      "file": "20260714232745_create_clinical_evolution_system.sql",
+      "sha256": "56d36562053c96c09754d8d22f7262a09aa0439ca90870c78bf120786db5bddc",
+      "statements": 1
+    },
+    {
+      "version": "20260715004207",
+      "name": "create_patient_timeline",
+      "file": "20260715004207_create_patient_timeline.sql",
+      "sha256": "e95cde594b1936a27d513cb44a66831577b0d6459ed6beb7b7aa29439def094a",
+      "statements": 1
+    },
+    {
+      "version": "20260715005158",
+      "name": "fix_clinical_write_lock_read_compatibility",
+      "file": "20260715005158_fix_clinical_write_lock_read_compatibility.sql",
+      "sha256": "d1f3c3a8fd79badec8879e37df33bd0cb15f528d371a8928ca4faa0f7c709161",
+      "statements": 1
+    },
+    {
+      "version": "20260715035819",
+      "name": "create_clinical_record_amendments",
+      "file": "20260715035819_create_clinical_record_amendments.sql",
+      "sha256": "5073adc758ec68c557d24a618403f7b89b42ede6d57c8930f351b75e7507ec30",
+      "statements": 1
+    },
+    {
+      "version": "20260715035839",
+      "name": "secure_patient_clinical_record_projection",
+      "file": "20260715035839_secure_patient_clinical_record_projection.sql",
+      "sha256": "a40429e58f3142195df224d6d838d1b020e6541048787638e1291d0279df53aa",
+      "statements": 1
+    },
+    {
+      "version": "20260728155356",
+      "name": "restore_prelaunch_tester_clinical_access",
+      "file": "20260728155356_restore_prelaunch_tester_clinical_access.sql",
+      "sha256": "d9679bfa793dfdce220ecd818da1003319bc8951e1ffda291dce4d2c6a7ea1f5",
+      "statements": 1
+    },
+    {
+      "version": "20260730224254",
+      "name": "align_meal_plan_permissions_with_care_episodes",
+      "file": "20260730224254_align_meal_plan_permissions_with_care_episodes.sql",
+      "sha256": "82bd7a43c682287472d4c714e0d25aa6595070c871c37970f797c7e5dc9dcf4c",
+      "statements": 1
+    },
+    {
+      "version": "20260802234229",
+      "name": "create_clinical_attachment_domain",
+      "file": "20260802234229_create_clinical_attachment_domain.sql",
+      "sha256": "c637cf0056eddca35594f0b5bcabd9159747f8c6ed694f2ac7b64b8bb7d06271",
+      "statements": 1
+    },
+    {
+      "version": "20260802234232",
+      "name": "secure_clinical_attachment_uploads",
+      "file": "20260802234232_secure_clinical_attachment_uploads.sql",
+      "sha256": "4d41984d0fd5e1518d6900ecf85caaa2630d8c19d08fd2e427573b7eccc1f898",
+      "statements": 1
+    },
+    {
+      "version": "20260802234234",
+      "name": "secure_clinical_attachment_reads",
+      "file": "20260802234234_secure_clinical_attachment_reads.sql",
+      "sha256": "720d4d215d3a12b7a8a6e4c8fd89c79fc4d13fdbfd53af3102fb159e5554e1a5",
+      "statements": 1
+    },
+    {
+      "version": "20260802234237",
+      "name": "harden_meal_plan_time_validation",
+      "file": "20260802234237_harden_meal_plan_time_validation.sql",
+      "sha256": "c75264c9ff7dd10aadc628c24222511fef8c6b15e0a83dca1ab750b50d97c1ca",
+      "statements": 1
+    },
+    {
+      "version": "20260802234240",
+      "name": "add_clinical_attachment_lifecycle",
+      "file": "20260802234240_add_clinical_attachment_lifecycle.sql",
+      "sha256": "9900b67876085095e69137d85f50546906417c92051c2e57b550493ddd5a1dc8",
+      "statements": 1
+    },
+    {
+      "version": "20260802234243",
+      "name": "add_patient_clinical_document_projection",
+      "file": "20260802234243_add_patient_clinical_document_projection.sql",
+      "sha256": "38c167a151bc7ba80aa9a9ce00b627c4ecd5b99fb6a8a68948d372206dd15480",
+      "statements": 1
+    },
+    {
+      "version": "20260803011147",
+      "name": "stabilize_patient_background_jobs",
+      "file": "20260803011147_stabilize_patient_background_jobs.sql",
+      "sha256": "d6baf535a9248588cce54d485700743ad34f2999b963aa08b574f66a8edd414d",
+      "statements": 1
+    },
+    {
+      "version": "20260803030116",
+      "name": "tolerate_legacy_meal_times",
+      "file": "20260803030116_tolerate_legacy_meal_times.sql",
+      "sha256": "5168e606f98e161a9b6ac7f07af328a206d3062955a40856e748dde09bece45d",
+      "statements": 1
+    },
+    {
+      "version": "20260803032328",
+      "name": "remove_empty_patient_safely",
+      "file": "20260803032328_remove_empty_patient_safely.sql",
+      "sha256": "9c60cc9832b3911b642cca46a2171fdc9aad9ce6b648854ec243bef2fb154ea5",
+      "statements": 1
+    },
+    {
+      "version": "20260803032747",
+      "name": "fix_empty_patient_link_status",
+      "file": "20260803032747_fix_empty_patient_link_status.sql",
+      "sha256": "dacd77de9f955716aee87eecdecc1de44612f1f8e7a0dfc1aa08c5c217efb5e7",
+      "statements": 1
+    },
+    {
+      "version": "20260805235059",
+      "name": "stabilize_notifications_for_offline_patients",
+      "file": "20260805235059_stabilize_notifications_for_offline_patients.sql",
+      "sha256": "4a511eda77a0456e6944df616d588de455884b94f00517cb53ffc6af4da336c8",
+      "statements": 1
+    },
+    {
+      "version": "20260806013629",
+      "name": "pre_c6_security_hardening",
+      "file": "20260806013629_pre_c6_security_hardening.sql",
+      "sha256": "d1f74589bac9c9aea3b0d3b74c28f39bead543c4e0240c9fb2d1de49d23522eb",
+      "statements": 1
+    },
+    {
+      "version": "20260813053439",
+      "name": "s02_revoke_public_schema_create",
+      "file": "20260813053439_s02_revoke_public_schema_create.sql",
+      "sha256": "21f18d3ab279e68d2f5cd84433e6b6ed6a59969d6e66b30aa7000a66242c7fd4",
+      "statements": 1
+    },
+    {
+      "version": "20260813053456",
+      "name": "s02_optimize_auth_rls_initplans",
+      "file": "20260813053456_s02_optimize_auth_rls_initplans.sql",
+      "sha256": "aa3f77434a97a2534433307480c8c83f132c1601c7bc37d0dd35fbb055fe10d0",
+      "statements": 1
+    },
+    {
+      "version": "20260813053727",
+      "name": "s02_consolidate_episode_select_policies",
+      "file": "20260813053727_s02_consolidate_episode_select_policies.sql",
+      "sha256": "95fc50a613c656c7620c1f44f26ae6c06ceb7bcce31180d98a8bbb4864fa62f0",
+      "statements": 1
+    },
+    {
+      "version": "20260813053756",
+      "name": "s02_remove_duplicate_anamnesis_index",
+      "file": "20260813053756_s02_remove_duplicate_anamnesis_index.sql",
+      "sha256": "6f8052c31af4cd81a0c080ef8f005385126c424ce68250ab02adc484ffb8b6bd",
+      "statements": 1
+    },
+    {
+      "version": "20260813073250",
+      "name": "c6_security_definer_acl_contract",
+      "file": "20260813073250_c6_security_definer_acl_contract.sql",
+      "sha256": "de3dd3415f64ed6d43c26a0375fc773f30d08284bd5b5965dd27f1f54c0563e2",
+      "statements": 1
+    },
+    {
+      "version": "20260813073305",
+      "name": "c6_document_identity_foundation",
+      "file": "20260813073305_c6_document_identity_foundation.sql",
+      "sha256": "8a0b06e8cd68897ea6083995076a100b2d6b6d8e0fd6e907028fb1b6a00c5a14",
+      "statements": 1
+    },
+    {
+      "version": "20260813073318",
+      "name": "c6_private_document_assets",
+      "file": "20260813073318_c6_private_document_assets.sql",
+      "sha256": "7dbe22a12689632e989d561e03182df5bee6d942ed92c4c82306b6a8a69469a7",
+      "statements": 1
+    },
+    {
+      "version": "20260813073332",
+      "name": "c6_document_composition_catalog",
+      "file": "20260813073332_c6_document_composition_catalog.sql",
+      "sha256": "dbae07340cf722665fcd770510c7f7371d0e9f447b67c04f93a901e67e97c6d4",
+      "statements": 1
+    },
+    {
+      "version": "20260813073348",
+      "name": "c6_canonical_document_artifacts",
+      "file": "20260813073348_c6_canonical_document_artifacts.sql",
+      "sha256": "a44246aef0d9d3ab7ad1cdba37924650ccd58a057b565a005c216c8228e13a46",
+      "statements": 1
+    },
+    {
+      "version": "20260813073403",
+      "name": "c6_document_signatures_authenticity",
+      "file": "20260813073403_c6_document_signatures_authenticity.sql",
+      "sha256": "6c2673ebd4b3db44f798bb2c4f00f2eaca6eedb0102eaa7d27fb564b595eb81f",
+      "statements": 1
+    },
+    {
+      "version": "20260813073416",
+      "name": "c6_authenticity_rate_limit",
+      "file": "20260813073416_c6_authenticity_rate_limit.sql",
+      "sha256": "b41739cf5430ab947f484f3ed90bc6f42511e6c980e30b89c30dd035d4cfd0cf",
+      "statements": 1
+    },
+    {
+      "version": "20260813073601",
+      "name": "c6_document_foreign_key_indexes",
+      "file": "20260813073601_c6_document_foreign_key_indexes.sql",
+      "sha256": "c95908a63128202bf100a127589dd4ea169ceecb70725ea9a46fa7c14f3071e6",
+      "statements": 1
+    },
+    {
+      "version": "20260813082022",
+      "name": "c7_data_portability_snapshot",
+      "file": "20260813082022_c7_data_portability_snapshot.sql",
+      "sha256": "a6abe01b16ab92f48df614028a767270d0cf47346beee025cd969924eed71543",
+      "statements": 1
+    },
+    {
+      "version": "20260813082050",
+      "name": "c8_data_subject_requests",
+      "file": "20260813082050_c8_data_subject_requests.sql",
+      "sha256": "30f10b29b21f978e504ff3ae4a45e368fcb7e2122c7f68006f37223aa1b7538c",
+      "statements": 1
+    },
+    {
+      "version": "20260813084528",
+      "name": "d1_d5_clinical_science",
+      "file": "20260813084528_d1_d5_clinical_science.sql",
+      "sha256": "5d3997350cd681360ab052cc2c1c7d4e82709a1e77949afe3ac1ce7327fcdc68",
+      "statements": 1
+    },
+    {
+      "version": "20260813084545",
+      "name": "d6_d7_meal_plan_integrity",
+      "file": "20260813084545_d6_d7_meal_plan_integrity.sql",
+      "sha256": "2d3593d8c588d0987891b0cc4c1f59fca114da8e05773561864567ffee9dd581",
+      "statements": 1
+    },
+    {
+      "version": "20260813084601",
+      "name": "d8_d9_plan_template_versioning",
+      "file": "20260813084601_d8_d9_plan_template_versioning.sql",
+      "sha256": "c7f4beb11972791371e2f6df91ddb6331f884e2e3830fb7e5aaf8f98e4378c0d",
+      "statements": 1
+    },
+    {
+      "version": "20260813084619",
+      "name": "d10_meal_plan_documents",
+      "file": "20260813084619_d10_meal_plan_documents.sql",
+      "sha256": "082eed40894149bec98e62cbf86a0b4901ff485c39b8e5850e8c9880d35a62ef",
+      "statements": 1
+    },
+    {
+      "version": "20260813084923",
+      "name": "d_advisor_hardening",
+      "file": "20260813084923_d_advisor_hardening.sql",
+      "sha256": "5a9b19ff4f8c366700a392dffe645fabb05d0edd323ab605c9ecc24fd6bdf0ca",
+      "statements": 1
+    },
+    {
+      "version": "20260813085406",
+      "name": "c8_d_text_encoding_repair",
+      "file": "20260813085406_c8_d_text_encoding_repair.sql",
+      "sha256": "dbcaf00039178552a7124906fcdb1dc315ee3004d5adf0b1a6e87cf042faa134",
+      "statements": 1
+    },
+    {
+      "version": "20260813085958",
+      "name": "d_scientific_source_url_repair",
+      "file": "20260813085958_d_scientific_source_url_repair.sql",
+      "sha256": "c619b418ceabf9cd3337fa509c6473a7f057a19ee6cf883c2be99f464b5c4030",
+      "statements": 1
+    },
+    {
+      "version": "20260824212759",
+      "name": "create_force_delete_test_clone_rpc",
+      "file": "20260824212759_create_force_delete_test_clone_rpc.sql",
+      "sha256": "efa9c11ef141e5dc5012dfa88996f3e0be54e8d1a3968032453d3e3abb8f46a4",
+      "statements": 1
+    },
+    {
+      "version": "20260824213108",
+      "name": "create_force_delete_test_clone_rpc",
+      "file": "20260824213108_create_force_delete_test_clone_rpc.sql",
+      "sha256": "25db43db7348f7682d2ca6ba9b766787a4e8e13d08a776fc890f4bbd6a7aa97d",
+      "statements": 1
+    },
+    {
+      "version": "20260824213245",
+      "name": "create_force_delete_test_clone_rpc",
+      "file": "20260824213245_create_force_delete_test_clone_rpc.sql",
+      "sha256": "74776fb3cd7db417020b6294a7baa3b09c631509da40a8eccffb755d990b0b1a",
+      "statements": 1
+    },
+    {
+      "version": "20260901155940",
+      "name": "enable_http_for_taco_data_repair",
+      "file": "20260901155940_enable_http_for_taco_data_repair.sql",
+      "sha256": "d964335162bb87cd377ce8627c57d94136f9849564cbcd3207debe7c86f88510",
+      "statements": 1
+    },
+    {
+      "version": "20260901160021",
+      "name": "create_taco_repair_staging",
+      "file": "20260901160021_create_taco_repair_staging.sql",
+      "sha256": "5bd1ef8e61572dd264c2604e99f0d99fae1e2d40d50c1bad489f6e42ee315c6a",
+      "statements": 1
+    },
+    {
+      "version": "20260901160347",
+      "name": "repair_taco_nutrient_values_from_source",
+      "file": "20260901160347_repair_taco_nutrient_values_from_source.sql",
+      "sha256": "21389151cd27d01d1ded74cd2944872c5b5106b111f0ed93f3e2235b3e568846",
+      "statements": 1
+    },
+    {
+      "version": "20260901160416",
+      "name": "cleanup_taco_repair_staging",
+      "file": "20260901160416_cleanup_taco_repair_staging.sql",
+      "sha256": "9fd8c08e27f7b6ab12aa669856ede4584574c2ee84a036303d5a23a19db4c4de",
+      "statements": 1
+    },
+    {
+      "version": "20260901162330",
+      "name": "enable_http_for_taco_validation",
+      "file": "20260901162330_enable_http_for_taco_validation.sql",
+      "sha256": "d964335162bb87cd377ce8627c57d94136f9849564cbcd3207debe7c86f88510",
+      "statements": 1
+    },
+    {
+      "version": "20260901162548",
+      "name": "cleanup_http_after_taco_validation",
+      "file": "20260901162548_cleanup_http_after_taco_validation.sql",
+      "sha256": "8a604900faec660a30cc1aba2c2fa0e2444d1f0e7fc1a138951c7480c3df0219",
+      "statements": 1
+    },
+    {
+      "version": "20260901165929",
+      "name": "food_search_ranking",
+      "file": "20260901165929_food_search_ranking.sql",
+      "sha256": "56859f91f97491e430b34f7708d63055aadfa8c00e492aa94a9cda7ef9bde5c9",
+      "statements": 1
+    },
+    {
+      "version": "20260904163641",
+      "name": "sync_food_search_alphabetical_default",
+      "file": "20260904163641_sync_food_search_alphabetical_default.sql",
+      "sha256": "0110fa779958ea762a48fd4ca1564ffaaf9d89e70603bda22e30084fb54e1e37",
+      "statements": 1
+    },
+    {
+      "version": "20260915130705",
+      "name": "energy_harris_dri_catalog",
+      "file": "20260915130705_energy_harris_dri_catalog.sql",
+      "sha256": "d307ea0348f0349eceb34a7c53494c4c95508935946ec85000e3e0a8e586e406",
+      "statements": 1
+    },
+    {
+      "version": "20260922000000",
+      "name": "taco_unreported_micronutrients",
+      "file": "20260922000000_taco_unreported_micronutrients.sql",
+      "sha256": "0537ff0b6e08f007241589516089aab00f8f2415dfc9138fdadd180ee05513a7",
+      "statements": 1
+    },
+    {
+      "version": "20260923010000",
+      "name": "recalculate_historical_pollock",
+      "file": "20260923010000_recalculate_historical_pollock.sql",
+      "sha256": "66517baa5963c39842fda9689468258bb19849ae26a7ae7481e58e09b3577d82",
+      "statements": 3
+    },
+    {
+      "version": "20260923030000",
+      "name": "correct_taco_salmon_minerals",
+      "file": "20260923030000_correct_taco_salmon_minerals.sql",
+      "sha256": "f14c3dba91c911d22ed0dcee0ba3986310fd9edd1fb7f0101bdc8ff752aacf12",
+      "statements": 3
+    },
+    {
+      "version": "20260923040000",
+      "name": "atomic_diet_template_import",
+      "file": "20260923040000_atomic_diet_template_import.sql",
+      "sha256": "0b4c3983a91f6fd2c6a48c73650eecee548a9a40ee8079120728a7fdd694bf81",
+      "statements": 5
+    },
+    {
+      "version": "20260923040001",
+      "name": "reject_inactive_prescription_food",
+      "file": "20260923040001_reject_inactive_prescription_food.sql",
+      "sha256": "5fbfffe98819b4077889530c8c703163030b00ce72d11d741ad56b7d74ad3cd3",
+      "statements": 1
+    },
+    {
+      "version": "20260923040801",
+      "name": "dispatch_checkins_wave9",
+      "file": "20260923040801_dispatch_checkins_wave9.sql",
+      "sha256": "2bbb2e1b7331f264cbca874458a40a20cfdebc6861028170029e76dc1aaeae60",
+      "statements": 1
+    },
+    {
+      "version": "20260923041102",
+      "name": "checkin_streak_once_wave9",
+      "file": "20260923041102_checkin_streak_once_wave9.sql",
+      "sha256": "619a186fbcf11ea7f3ca722ba8f9f59e2b7b71f1e8806c7b318c24d899ccd95e",
+      "statements": 1
+    },
+    {
+      "version": "20260923041557",
+      "name": "checkin_schedule_lifecycle_wave9",
+      "file": "20260923041557_checkin_schedule_lifecycle_wave9.sql",
+      "sha256": "e8ba59a27ee6bd2c31be76bcce462f50964c2f46a15e9ae6d4c966c527994659",
+      "statements": 1
+    },
+    {
+      "version": "20260923042013",
+      "name": "atomic_template_saves",
+      "file": "20260923042013_atomic_template_saves.sql",
+      "sha256": "88b0c1009e6d3348682cc6e8592c8100ea295e24f59defe064b7aa809774854e",
+      "statements": 1
+    },
+    {
+      "version": "20260923042151",
+      "name": "validate_diet_template_food",
+      "file": "20260923042151_validate_diet_template_food.sql",
+      "sha256": "519e9fc28cda968adccf520fa9950a1a6166b00c96a9435704941a827d2af96c",
+      "statements": 1
+    },
+    {
+      "version": "20260923053118",
+      "name": "atomic_plan_copy",
+      "file": "20260923053118_atomic_plan_copy.sql",
+      "sha256": "cc545b0ab485f737f8e932e63b6b834c84a1d30ccd64b88b441fe2e7b5867123",
+      "statements": 1
+    },
+    {
+      "version": "20260923053245",
+      "name": "atomic_plan_create",
+      "file": "20260923053245_atomic_plan_create.sql",
+      "sha256": "8174378ddb2090739fff58b16d1423ce6b2523044c7d33485d35ffd63fbdec55",
+      "statements": 1
+    },
+    {
+      "version": "20260923053545",
+      "name": "flag_short_active_plans",
+      "file": "20260923053545_flag_short_active_plans.sql",
+      "sha256": "f7df81e29f3859e6f70e82b29eb1684246b58ec2940264d6306283fe146010fb",
+      "statements": 1
+    },
+    {
+      "version": "20260923053959",
+      "name": "guard_plan_activation",
+      "file": "20260923053959_guard_plan_activation.sql",
+      "sha256": "bf58f8ac09ae75c6935f011a425a7e58f41b871b1818eb7b0a3b71a0138fbc85",
+      "statements": 1
+    },
+    {
+      "version": "20260923072035",
+      "name": "save_checkin_template_20260923",
+      "file": "20260923072035_save_checkin_template_20260923.sql",
+      "sha256": "599b009c8d20a8c3aebba2c4f0cbd3091d34d1e32c752cec7adde36cfe6e7129",
+      "statements": 1
+    },
+    {
+      "version": "20260923072042",
+      "name": "checkin_recipient_guard_20260923",
+      "file": "20260923072042_checkin_recipient_guard_20260923.sql",
+      "sha256": "be8ac2eb16a013e6df6d43fab0c2891c139c9d88df059c6be75893e16c9c1575",
+      "statements": 1
+    },
+    {
+      "version": "20260923072333",
+      "name": "protocol_examples_20260923",
+      "file": "20260923072333_protocol_examples_20260923.sql",
+      "sha256": "ca0239d13c1edb1e40450eece686b0380c0a4f3a7e4e267ac1406ab3abd6cf89",
+      "statements": 1
+    },
+    {
+      "version": "20260923113751",
+      "name": "editor_shadow_drafts",
+      "file": "20260923113751_editor_shadow_drafts.sql",
+      "sha256": "c619f575bd21a0a80a5a15c8029f4a5dd3eb2cdabcb176b57f6b777998b76d80",
+      "statements": 1
+    },
+    {
+      "version": "20260923162932",
+      "name": "editor_shadow_revision_clock",
+      "file": "20260923162932_editor_shadow_revision_clock.sql",
+      "sha256": "ffd485fcc730106ddbe49746d0a005955c68179ae0db19022a39518bfbd83ff3",
+      "statements": 1
+    },
+    {
+      "version": "20260923170908",
+      "name": "save_patient_diary_meal",
+      "file": "20260923170908_save_patient_diary_meal.sql",
+      "sha256": "fe903d9ae1df2cd6b35f2fed4bafd279aaf936467e448687e13e4fdd95f828e4",
+      "statements": 1
+    },
+    {
+      "version": "20260923170916",
+      "name": "checkin_send_days",
+      "file": "20260923170916_checkin_send_days.sql",
+      "sha256": "ece84f4e17080e74d42691aa5777bca573b4f6b98b33b6b612abbe3d50a2559e",
+      "statements": 1
+    },
+    {
+      "version": "20260923170924",
+      "name": "financial_cash_and_refunds",
+      "file": "20260923170924_financial_cash_and_refunds.sql",
+      "sha256": "487ed4ffa08f0ddf52c011e2b9a936b723e8adf1b0436ddbc3df009b49f288d0",
+      "statements": 1
+    },
+    {
+      "version": "20260923171405",
+      "name": "financial_cash_date_guard",
+      "file": "20260923171405_financial_cash_date_guard.sql",
+      "sha256": "a6fc85a1b17907de4259f66dfcd0806a2af4ca42a1b81f1879e9b5a341f0be54",
+      "statements": 1
+    },
+    {
+      "version": "20260923174302",
+      "name": "verify_patient_diary_nutrition",
+      "file": "20260923174302_verify_patient_diary_nutrition.sql",
+      "sha256": "465a466f79b07849e6271e2d9678d29e87b01e89167e600d239322a327c22b72",
+      "statements": 1
+    },
+    {
+      "version": "20260923183349",
+      "name": "wave17_measure_and_token_authorization",
+      "file": "20260923183349_wave17_measure_and_token_authorization.sql",
+      "sha256": "2bc5beb8753404d6cf094859bed7c704fdb2c7af29e04ba5b9c87e01380ba315",
+      "statements": 1
+    },
+    {
+      "version": "20260923183805",
+      "name": "wave17_revoke_legacy_delete_patient",
+      "file": "20260923183805_wave17_revoke_legacy_delete_patient.sql",
+      "sha256": "534199f6ac941ef6f7d97fde5bee47eff50aec636418df5c9c7b5a0b6bb1aef9",
+      "statements": 1
+    },
+    {
+      "version": "20260923184904",
+      "name": "wave18_atomic_custom_food",
+      "file": "20260923184904_wave18_atomic_custom_food.sql",
+      "sha256": "55db6e92f9dcf2c12d832cc04c38a63e0c02045d1c0e79c086a1b7ae2139ac96",
+      "statements": 1
+    },
+    {
+      "version": "20260923185111",
+      "name": "wave18_episode_start_guard",
+      "file": "20260923185111_wave18_episode_start_guard.sql",
+      "sha256": "b9196465809c2581aefefb17823e03e323f7e3033d48105f0ffa84c8c385b626",
+      "statements": 1
+    },
+    {
+      "version": "20260923185247",
+      "name": "wave18_anamnesis_attachments",
+      "file": "20260923185247_wave18_anamnesis_attachments.sql",
+      "sha256": "cedc45c03d71c012367b4581b1e50c2b8c294ca38872e33ed52517c4994ebd94",
+      "statements": 1
+    },
+    {
+      "version": "20260923215534",
+      "name": "wave18_fix_attachment_path_regex",
+      "file": "20260923215534_wave18_fix_attachment_path_regex.sql",
+      "sha256": "8d7d36893c6ba64c2c5971e248530f59f66586ac8b49bab485d2d50332c43f95",
+      "statements": 1
+    },
+    {
+      "version": "20260923215654",
+      "name": "wave18_attachment_access_contract",
+      "file": "20260923215654_wave18_attachment_access_contract.sql",
+      "sha256": "0f6e9d8a5b7597c05c32ebdbd4c55c9b7fc2135bd7d1442a407cc466e02e8583",
+      "statements": 1
+    },
+    {
+      "version": "20260923221504",
+      "name": "wave19_top_financial_patients",
+      "file": "20260923221504_wave19_top_financial_patients.sql",
+      "sha256": "d9b6524973684d9f86082ee0c2e7d9a9790444a831ce73364df61a79dde66c0b",
+      "statements": 1
+    },
+    {
+      "version": "20260923222553",
+      "name": "wave19_preserve_unprofiled_revenue",
+      "file": "20260923222553_wave19_preserve_unprofiled_revenue.sql",
+      "sha256": "fedf97f18aa7f1fb55989ffa50c435f270cdd2222c022aefbf7dea7f8aa168cf",
+      "statements": 1
+    },
+    {
+      "version": "20260923231043",
+      "name": "wave20_revoke_anon_custom_food",
+      "file": "20260923231043_wave20_revoke_anon_custom_food.sql",
+      "sha256": "e93dc74256921a35483cd175424e1681f549b7d796ac651af36c1e95bfb0ea1a",
+      "statements": 1
+    },
+    {
+      "version": "20260923231845",
+      "name": "wave20_guard_admin_nutritionist_detail",
+      "file": "20260923231845_wave20_guard_admin_nutritionist_detail.sql",
+      "sha256": "1a8b25d8b8079fa7d32a3ec0bb4b01b8829ff308f5b5bead1a8a4d8bf73afc59",
+      "statements": 1
+    },
+    {
+      "version": "20260924034823",
+      "name": "bh24_01_contain_force_delete_test_clone",
+      "file": "20260924034823_bh24_01_contain_force_delete_test_clone.sql",
+      "sha256": "81fd0b3642fe4dc8bbb88e84011f4f8d167e650687f54a14e698f71197548e8e",
+      "statements": 1
+    },
+    {
+      "version": "20260924035021",
+      "name": "bh24_01_retire_force_delete_test_clone",
+      "file": "20260924035021_bh24_01_retire_force_delete_test_clone.sql",
+      "sha256": "9f1c0666a85ccdf70a5d89c88ed68fce614c8a3cfa10e75944d440aefea01a65",
+      "statements": 1
+    },
+    {
+      "version": "20260924040013",
+      "name": "bh24_02_03_atomic_appointments",
+      "file": "20260924040013_bh24_02_03_atomic_appointments.sql",
+      "sha256": "e2ce5ac95b54575662861fe8fcdbd2326e3fbfd11e1f620664a5150c5f46f177",
+      "statements": 1
+    },
+    {
+      "version": "20260924040210",
+      "name": "bh24_03_fix_legacy_status_transition",
+      "file": "20260924040210_bh24_03_fix_legacy_status_transition.sql",
+      "sha256": "a652f957710b03c0938a7caa449ee45dbd331346cc2022de30c67a6bd66dfea0",
+      "statements": 1
+    },
+    {
+      "version": "20260924051013",
+      "name": "bh24_05_glycemia_range",
+      "file": "20260924051013_bh24_05_glycemia_range.sql",
+      "sha256": "833431e13e1e82eb5e1ea425e811290c2ee9a640313ddd13dcfa2df2032a519d",
+      "statements": 1
+    },
+    {
+      "version": "20260924052148",
+      "name": "bh24_02_03_guard_direct_writes",
+      "file": "20260924052148_bh24_02_03_guard_direct_writes.sql",
+      "sha256": "de958514f5f6f10297e3b000669887ce8f494ff37d65faafd0ac4895b3e849e7",
+      "statements": 1
+    },
+    {
+      "version": "20260924065517",
+      "name": "admin20_access_foundation",
+      "file": "20260924065517_admin20_access_foundation.sql",
+      "sha256": "7c855dad870ee587b2e1bf6a52089bd9c8223963a5298b6af0f1cb831a1c20d3",
+      "statements": 1
+    },
+    {
+      "version": "20260924070519",
+      "name": "admin20_real_overview",
+      "file": "20260924070519_admin20_real_overview.sql",
+      "sha256": "9e28b874098df5447755f1a5391af6b356c170939192f8d52cc82435f3e3a06b",
+      "statements": 1
+    },
+    {
+      "version": "20260924070947",
+      "name": "admin20_operations",
+      "file": "20260924070947_admin20_operations.sql",
+      "sha256": "b2410c6dd998f4bf84aa18cef606b6d246a773d01756f631be5596c2a5d6f680",
+      "statements": 1
+    },
+    {
+      "version": "20260924071352",
+      "name": "admin20_security_audit",
+      "file": "20260924071352_admin20_security_audit.sql",
+      "sha256": "c0a796d3ed84c911720fc3e3458dd1d90afae1431d75e9b3356422886a6cc3c6",
+      "statements": 1
+    },
+    {
+      "version": "20260924072304",
+      "name": "admin20_study_metrics_repair",
+      "file": "20260924072304_admin20_study_metrics_repair.sql",
+      "sha256": "85349e80a62324807252c32ad8b645d33c091ce4b8313e803901a8a494caca49",
+      "statements": 1
+    },
+    {
+      "version": "20260924125344",
+      "name": "nello_legacy_achievement_name",
+      "file": "20260924125344_nello_legacy_achievement_name.sql",
+      "sha256": "a97402478786f479e30aeaddf502af23297192327cc10b0d9c6c4ef6af33c405",
+      "statements": 1
+    },
+    {
+      "version": "20260924125728",
+      "name": "admin_brand_migration_status",
+      "file": "20260924125728_admin_brand_migration_status.sql",
+      "sha256": "9df10596412b92252a60010377a61a2ec3b1a3f5422bcc0b81130818b03e2d10",
+      "statements": 1
+    },
+    {
+      "version": "20260924130001",
+      "name": "sync_verified_auth_email",
+      "file": "20260924130001_sync_verified_auth_email.sql",
+      "sha256": "5b69b5d23bbd2af7e1ae8a9f33fa3e5124f4c1b9905a333a3238a0b431f4fc0d",
+      "statements": 1
+    },
+    {
+      "version": "20260924143709",
+      "name": "food_proxy_quota",
+      "file": "20260924143709_food_proxy_quota.sql",
+      "sha256": "de95208e476522d33b6c6fac8f2cfc7db1126175341ed906d8c7affb3d3a50b4",
+      "statements": 1
+    },
+    {
+      "version": "20260924144611",
+      "name": "document_artifact_optional_episode",
+      "file": "20260924144611_document_artifact_optional_episode.sql",
+      "sha256": "d3c32853fa3c8193e7d904022eaa24dc045ce83bea4e529bdbbf135c4dd48331",
+      "statements": 1
+    },
+    {
+      "version": "20260924145255",
+      "name": "create_offline_patient_atomic",
+      "file": "20260924145255_create_offline_patient_atomic.sql",
+      "sha256": "98c951534fa3ae94a08868084e18e8d23b2554adab5dd1d1ebb3f9d20626469c",
+      "statements": 1
+    },
+    {
+      "version": "20260924174712",
+      "name": "shadow_draft_rls_initplan",
+      "file": "20260924174712_shadow_draft_rls_initplan.sql",
+      "sha256": "ace13bbc72a91524014aad345177ee037f319015564664a778834166b7fe91a5",
+      "statements": 1
+    },
+    {
+      "version": "20260924175648",
+      "name": "patient_progress_measurements",
+      "file": "20260924175648_patient_progress_measurements.sql",
+      "sha256": "5970bd8cc5497849bca6ec2eb9c7e75500b2022d5e0799ba5f10ddbce98b663d",
+      "statements": 1
+    },
+    {
+      "version": "20260924175722",
+      "name": "remove_redundant_growth_policies",
+      "file": "20260924175722_remove_redundant_growth_policies.sql",
+      "sha256": "1d49b384dbad5ffbf3e9f754ae8e8a199b7e0df8fed5a66b417fa451d65fe44b",
+      "statements": 1
+    },
+    {
+      "version": "20260924175927",
+      "name": "patient_progress_professional_read",
+      "file": "20260924175927_patient_progress_professional_read.sql",
+      "sha256": "ecefb6843e60e5334c05d6e92bc8d5938461bbc1ba37a76fa9d5899da9e40652",
+      "statements": 1
+    },
+    {
+      "version": "20260924180601",
+      "name": "food_proxy_quota_adjustment",
+      "file": "20260924180601_food_proxy_quota_adjustment.sql",
+      "sha256": "4d4d110cdd85fa317ffc40cb3b01a83df9fae0fc2f3061273a745af0b07b0830",
+      "statements": 1
+    },
+    {
+      "version": "20260924193338",
+      "name": "document_asset_trusted_confirmation",
+      "file": "20260924193338_document_asset_trusted_confirmation.sql",
+      "sha256": "4dcbd1fe98a32c4a5eb439b5a83e33a7bd417861ef8c8b4d0513f2037c4c2f5b",
+      "statements": 1
+    },
+    {
+      "version": "20260924193629",
+      "name": "document_asset_revoke_client_confirmation",
+      "file": "20260924193629_document_asset_revoke_client_confirmation.sql",
+      "sha256": "9301f8cd57a76b4ee65a0e0a1b7328410251de4795a66ef678005c81ec78b6ab",
+      "statements": 1
+    },
+    {
+      "version": "20260924204948",
+      "name": "growth_records_clinical_write_guard",
+      "file": "20260924204948_growth_records_clinical_write_guard.sql",
+      "sha256": "f94641f6b6ecb7036e782bbc547893c959c672a231b561aa23492b11284defed",
+      "statements": 1
+    },
+    {
+      "version": "20260924205646",
+      "name": "preserve_offline_invite_links",
+      "file": "20260924205646_preserve_offline_invite_links.sql",
+      "sha256": "e8539100083156439cb7fce1ccd1a089434cc10ff3bce024caaf9595ee068393",
+      "statements": 1
+    },
+    {
+      "version": "20260924210020",
+      "name": "reconcile_offline_invite_dependents",
+      "file": "20260924210020_reconcile_offline_invite_dependents.sql",
+      "sha256": "90b084b32435cca7bbcc9f6d7c2179ae3213766b457769d75c59484a2bc8bc9b",
+      "statements": 1
+    },
+    {
+      "version": "20260924231348",
+      "name": "fix_anamnesis_token_clinical_flags",
+      "file": "20260924231348_fix_anamnesis_token_clinical_flags.sql",
+      "sha256": "5ac1c0cb45108b34977a625f204332b64633bbbd5ab524baf5ca3d49add47ebe",
+      "statements": 1
+    },
+    {
+      "version": "20260924231758",
+      "name": "wave4_retire_legacy_rpc_grants",
+      "file": "20260924231758_wave4_retire_legacy_rpc_grants.sql",
+      "sha256": "9111412a7fa8efa5173da312c40bedb337a4b33d62b03fe7d3484c9f07a17b9e",
+      "statements": 1
+    },
+    {
+      "version": "20260924231829",
+      "name": "wave4_authenticated_workflow_grants",
+      "file": "20260924231829_wave4_authenticated_workflow_grants.sql",
+      "sha256": "046a45546831effc5f0abcdc15753c322f66a630c5c936c5af85c880fd067f44",
+      "statements": 1
+    }
+  ],
+  "functions": [
+    {
+      "slug": "delete-user-securely",
+      "version": 8,
+      "verify_jwt": true,
+      "files": [
+        {
+          "file": "index.ts",
+          "sha256": "e264892f43ee4a31612480cf498e8a09c61ecc859fb2942438ecb99b6371a6d3",
+          "matchedLocal": false,
+          "repositorySha256": "e264892f43ee4a31612480cf498e8a09c61ecc859fb2942438ecb99b6371a6d3"
+        }
+      ],
+      "sourcePolicy": "Published source"
+    },
+    {
+      "slug": "create-patient",
+      "version": 18,
+      "verify_jwt": true,
+      "files": [
+        {
+          "file": "index.ts",
+          "sha256": "e2f1566ae5bfa8faa911976d2b1882bb6893d5ee64ef7d4b752ac064e8d86e21",
+          "matchedLocal": true,
+          "repositorySha256": "563be07dd8b67f1c4af3dad35dec8f73f44fe69613ed1d58ad8f3e517e66dba4"
+        }
+      ],
+      "sourcePolicy": "Published source"
+    },
+    {
+      "slug": "generate-pdf",
+      "version": 5,
+      "verify_jwt": true,
+      "files": [
+        {
+          "file": "index.ts",
+          "sha256": "f0015be07e3d70272d3cae068e28708aa46954eacb621c848f2e45bc6e7bfea5",
+          "matchedLocal": false,
+          "repositorySha256": "f0015be07e3d70272d3cae068e28708aa46954eacb621c848f2e45bc6e7bfea5"
+        }
+      ],
+      "sourcePolicy": "Published source"
+    },
+    {
+      "slug": "sentry-issues",
+      "version": 10,
+      "verify_jwt": true,
+      "files": [
+        {
+          "file": "index.ts",
+          "sha256": "eecaa449cc22b6b96691c3bfb505ed5f0ce0e9c8b51be248416e26365e72bb6d",
+          "matchedLocal": false,
+          "repositorySha256": "eecaa449cc22b6b96691c3bfb505ed5f0ce0e9c8b51be248416e26365e72bb6d"
+        },
+        {
+          "file": "deno.json",
+          "sha256": "511ad3cbe225fcdcf4947a23554c76ef9856a805a191217456c1db50ce3fe87c",
+          "matchedLocal": false,
+          "repositorySha256": "511ad3cbe225fcdcf4947a23554c76ef9856a805a191217456c1db50ce3fe87c"
+        }
+      ],
+      "sourcePolicy": "Published source"
+    },
+    {
+      "slug": "sentry-test",
+      "version": 5,
+      "verify_jwt": true,
+      "files": [
+        {
+          "file": "index.ts",
+          "sha256": "899f056d02164781913d5befc978a030211c8ccf0ac25960d21c300c79a5de38",
+          "matchedLocal": false,
+          "repositorySha256": "899f056d02164781913d5befc978a030211c8ccf0ac25960d21c300c79a5de38"
+        }
+      ],
+      "sourcePolicy": "Published source"
+    },
+    {
+      "slug": "sentry-proxy",
+      "version": 11,
+      "verify_jwt": true,
+      "files": [
+        {
+          "file": "index.ts",
+          "sha256": "7bf47345341abf597e767b2ec54c241802724d75b65010c4e17256a9ceb67271",
+          "matchedLocal": true,
+          "repositorySha256": "dfab5a3aad2e0b828c1837afc7ec9e140b557b8ceaf13bf1e1709cf42fcb959f"
+        }
+      ],
+      "sourcePolicy": "Published source"
+    },
+    {
+      "slug": "openfoodfacts-proxy",
+      "version": 19,
+      "verify_jwt": true,
+      "files": [
+        {
+          "file": "index.ts",
+          "sha256": "a80668a9f991bc3fabf1eb4aaff2733700e0d72600813aaa7b518f3fb2e24211",
+          "matchedLocal": false,
+          "repositorySha256": "a80668a9f991bc3fabf1eb4aaff2733700e0d72600813aaa7b518f3fb2e24211"
+        },
+        {
+          "file": "validation.ts",
+          "sha256": "de1252b9c495e8a690d232aa8d70971510d84bc8f041ebad6a203f59023226e2",
+          "matchedLocal": false,
+          "repositorySha256": "de1252b9c495e8a690d232aa8d70971510d84bc8f041ebad6a203f59023226e2"
+        }
+      ],
+      "sourcePolicy": "Published implementation; FoodRequest type declared in validation.ts for isolated type checking (no runtime change)"
+    },
+    {
+      "slug": "confirm-document-asset",
+      "version": 1,
+      "verify_jwt": true,
+      "files": [
+        {
+          "file": "index.ts",
+          "sha256": "02edb0b6c8d910f08f168786a37e04f3ffb6f4199fb41a6a4b1c57ba636ddbec",
+          "matchedLocal": true,
+          "repositorySha256": "bc893f9c543ad0bd8b96267b227afc0df7c3acc112c5f4948cdf50d810e5f8c8"
+        },
+        {
+          "file": "assetValidation.ts",
+          "sha256": "7972497ea24f312472b50d342025ddf01b7fc67531a087a6a0d8022549c552ea",
+          "matchedLocal": true,
+          "repositorySha256": "125c2d5a8dc9fd11fa7dbc9f1a69a59ea65676694115853c170d158ff07dbfb9"
+        }
+      ],
+      "sourcePolicy": "Published source"
+    }
+  ]
+}

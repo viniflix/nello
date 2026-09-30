@@ -1,0 +1,49 @@
+# Backend reconstruction contract — Wave 01
+
+Production is Supabase `afyoidxrshkmplxhcyeh`, PostgreSQL 17. Git must reproduce its
+catalog before behavior-changing waves. `baseline.json` records 213 applied migrations
+and eight deployed functions as captured on 2026-09-30. Sources contain metadata and
+DDL, no exports of users, patients, medical records or Storage objects.
+
+## Safe execution
+
+1. `npm ci` with `.nvmrc` and the pinned package manager.
+2. `npm run check:backend` validates checksums without starting any service.
+3. On a disposable REMOTE GitHub Actions runner, `node scripts/backend/prepare.mjs`
+   creates `.backend-ci/supabase`. It refuses local execution or an existing destination.
+4. Supabase CLI starts only that unlinked disposable workdir. No production credentials
+   are available in the reconstruction workflow.
+5. `catalog.sql` queries metadata; `compare-catalog.mjs` fails on differences in
+   relations, columns, grants, RLS, policies, functions, constraints, triggers, indexes,
+   enums and bucket restrictions. A successful build alone does not prove parity.
+
+The flat legacy migration files are retained because existing tests reference them
+and one contains an unrelated user edit. They never enter the generated replay path.
+Do not run default `db push` against this repository: the root migration guard is off.
+Forward migrations belong in `supabase/migrations/releases`, not the legacy root.
+
+## Auth: local settings versus production invariants
+
+The checked-in config is for reconstruction, not a command to overwrite hosted Auth.
+Loopback ports and site URL are disposable-runner settings. Email confirmation enabled,
+anonymous sign-in disabled and TOTP enrollment/verification enabled mirror hosted
+invariants. Minimum password length 6 and password reauthentication disabled are the
+observed baseline, not a declaration of adequate hardening; Wave 04 owns those changes.
+Canonical production site is `https://nellonutri.com.br`. Hosted SMTP/provider secrets,
+access tokens and database passwords are never stored here. Changes to the redirect
+allowlist and password settings require the Auth journey matrix in Wave 04.
+
+## Function compatibility
+
+All eight deployed endpoints require JWT verification. `sentry-test`, `sentry-issues`
+and `delete-user-securely` retain fail-closed responses for existing URLs. They are not
+reenabled as part of reconstruction. The remote food proxy contains a misplaced
+TypeScript-only `FoodRequest` declaration; the already validated local declaration
+in `validation.ts` is retained. Its runtime implementation matches the published one.
+This source drift is explicit and is not silently overwritten with an invalid type.
+
+No function or SQL is deployed to production by the reconstruction workflow. A future
+production migration/function release must separately pass its own wave gates and
+backup/compatibility checks. Capture revisions and commit SHA together in release
+evidence. Product version starts at 0.1.0; Sentry/PostHog release remains the deployment
+commit SHA, maintaining existing observability correlation.

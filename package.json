@@ -1,7 +1,7 @@
 {
   "name": "nello",
   "type": "module",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "vite",
@@ -16,7 +16,8 @@
     "check:security": "npm audit --omit=dev --audit-level=high",
     "diagnose:observability": "node scripts/observability/diagnose.mjs",
     "verify": "npm run check:structure && npm run lint && npm run test:run && vite build && npm run check:bundle",
-    "verify:release": "npm run verify && npm run check:security"
+    "verify:release": "npm run verify && npm run check:security",
+    "check:backend": "node scripts/backend/prepare.mjs --check"
   },
   "dependencies": {
     "@emotion/is-prop-valid": "^1.2.1",
@@ -101,5 +102,10 @@
     "tailwindcss": "^3.3.3",
     "vite": "7.3.6",
     "vitest": "4.1.10"
-  }
+  },
+  "engines": {
+    "node": "22.18.x",
+    "npm": "11.5.x"
+  },
+  "packageManager": "npm@11.5.2"
 }

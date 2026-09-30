@@ -1,0 +1,44 @@
+import { createHash } from 'node:crypto';
+import { mkdirSync, readFileSync, readdirSync, copyFileSync, writeFileSync, existsSync } from 'node:fs';
+import { resolve, join } from 'node:path';
+
+const root = process.cwd();
+const manifest = JSON.parse(readFileSync('operations/backend/baseline.json', 'utf8'));
+const sha = (s) => createHash('sha256').update(s.replaceAll('\r\n', '\n')).digest('hex');
+const source = resolve('supabase/migrations/applied');
+const actual = readdirSync(source).filter((f) => f.endsWith('.sql')).sort();
+const expected = manifest.migrations.map((m) => m.file);
+if (JSON.stringify(actual) !== JSON.stringify(expected)) throw Error('Applied migration list drift');
+for (const m of manifest.migrations) {
+  if (sha(readFileSync(join(source, m.file), 'utf8')) !== m.sha256) throw Error(`Applied migration checksum drift: ${m.file}`);
+}
+console.log(`Verified ${actual.length} immutable applied migrations.`);
+for (const fn of manifest.functions) {
+  for (const f of fn.files) {
+    if (sha(readFileSync(resolve('supabase/functions', fn.slug, f.file), 'utf8')) !== f.repositorySha256) {
+      throw Error(`Edge source checksum drift: ${fn.slug}/${f.file}. Update release evidence explicitly.`);
+    }
+  }
+}
+if (process.argv.includes('--check')) process.exit(0);
+if (process.env.CI !== 'true') throw Error('Reconstruction workdir can only be prepared on a remote CI runner; no local virtualization.');
+const destination = resolve('.backend-ci');
+if (existsSync(destination)) throw Error('Refusing to overwrite an existing reconstruction workdir');
+mkdirSync(join(destination, 'supabase/migrations'), { recursive: true });
+const config = readFileSync('supabase/config.toml', 'utf8');
+if (!config.includes('[db.migrations]\n#')) throw Error('Unexpected migration guard config');
+writeFileSync(join(destination, 'supabase/config.toml'), config.replace(/(\[db\.migrations\][\s\S]*?)enabled = false/, '$1enabled = true'));
+for (const file of actual) copyFileSync(join(source, file), join(destination, 'supabase/migrations', file));
+// CI-only dependencies of recorded history; never sent to a hosted project.
+for (const file of readdirSync('supabase/reconstruction').filter((f) => f.endsWith('.sql')).sort()) {
+  if (!/^\d{14}_\w+\.sql$/.test(file) || expected.includes(file)) throw Error(`Invalid reconstruction prerequisite: ${file}`);
+  copyFileSync(resolve('supabase/reconstruction', file), join(destination, 'supabase/migrations', file));
+}
+const releaseDir = resolve('supabase/migrations/releases');
+if (existsSync(releaseDir)) {
+  for (const file of readdirSync(releaseDir).filter((f) => f.endsWith('.sql')).sort()) {
+    if (!/^\d{14}_\w+\.sql$/.test(file) || file.slice(0, 14) <= manifest.lastMigration) throw Error(`Invalid forward migration: ${file}`);
+    copyFileSync(join(releaseDir, file), join(destination, 'supabase/migrations', file));
+  }
+}
+console.log(`Prepared isolated, UNLINKED remote CI workdir: ${destination.replace(root, '.')}`);

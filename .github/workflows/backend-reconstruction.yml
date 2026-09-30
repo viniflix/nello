@@ -1,0 +1,43 @@
+name: Backend reconstruction
+on:
+  push:
+    branches: [main, 'codex/wave-01-*']
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: backend-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  reconstruct:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm install --global npm@11.5.2
+      - run: npm ci
+      - name: Verify and prepare authoritative migration history
+        run: node scripts/backend/prepare.mjs
+      - name: Rebuild database on the remote runner
+        run: npx --no-install supabase start --workdir .backend-ci
+      - name: Capture catalog and compare to production metadata
+        run: |
+          psql 'postgresql://postgres:postgres@127.0.0.1:54322/postgres' -X -t -A -v ON_ERROR_STOP=1 -f scripts/backend/catalog.sql > reconstructed-catalog.json
+          node scripts/backend/compare-catalog.mjs operations/backend/production-catalog.json reconstructed-catalog.json catalog-diff.json
+      - name: Preserve diagnostics
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: backend-reconstruction-${{ github.sha }}
+          path: |
+            reconstructed-catalog.json
+            catalog-diff.json
+          if-no-files-found: ignore
+      - name: Stop only the isolated remote stack
+        if: always()
+        run: npx --no-install supabase stop --workdir .backend-ci --no-backup
