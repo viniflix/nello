@@ -5,6 +5,7 @@ import { execFileSync } from 'node:child_process';
 import { assertForwardRestoration } from './forward-restoration.mjs';
 import { runAmendmentConcurrency } from './concurrency.mjs';
 import { validateSqlManifest } from './sql-manifest.mjs';
+import { candidateMigrations } from './candidate-migrations.mjs';
 
 if (process.env.CI !== 'true' || process.env.GITHUB_ACTIONS !== 'true') {
   throw Error('SQL matrix requires an isolated GitHub runner; local virtualization is prohibited.');
@@ -34,9 +35,11 @@ for (const [index, source] of manifest.sources.entries()) {
   let hashes = [];
   try {
     sql('postgres', `CREATE DATABASE ${database} TEMPLATE ${source.kind === 'storage-fixture' ? 'template0' : template} OWNER supabase_admin;`);
-    const inputs = [...(source.fixtures || []), path.join('supabase/tests', source.file)];
+    const candidates=source.kind==='storage-fixture'?[]:candidateMigrations();
+    for(const migration of candidates)sql(database,migration.content);
+    const inputs = [...(source.kind==='storage-fixture'?[]:['supabase/fixtures/wave02/client-rpc-contract.sql']), ...(source.fixtures || []), path.join('supabase/tests', source.file)];
     const contents = inputs.map(file => readFileSync(file, 'utf8'));
-    hashes = inputs.map((file, index) => ({ file, sha256: createHash('sha256').update(contents[index]).digest('hex') }));
+    hashes = [...candidates.map(({file,sha256})=>({file,sha256})), ...inputs.map((file, index) => ({ file, sha256: createHash('sha256').update(contents[index]).digest('hex') }))];
     const script = contents.join('\n');
     log = docker('psql', ['-X', '-v', 'ON_ERROR_STOP=1', '-v', 'VERBOSITY=verbose', '-d', database], { input: script, encoding: 'utf8' });
     if (source.kind === 'concurrency-setup') {

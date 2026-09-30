@@ -37,6 +37,12 @@ const templates = [{
   ],
 }];
 
+async function renderEditor(element) {
+ let view;
+ await act(async () => { view = render(element); });
+ return view;
+}
+
 const deferred = () => {
   let resolve;
   const promise = new Promise((resolver) => { resolve = resolver; });
@@ -91,7 +97,7 @@ describe('EvolutionEditor', () => {
       .mockResolvedValueOnce({ ok: false, reason: 'error' })
       .mockResolvedValueOnce({ ok: true, reason: 'saved' });
     evolutionHook.useClinicalEvolution.mockReturnValue(hookState({ forceSave }));
-    render(<EvolutionEditor initialRecord={record} onBack={onBack} currentUserId="nutritionist-1" />);
+    await renderEditor(<EvolutionEditor initialRecord={record} onBack={onBack} currentUserId="nutritionist-1" />);
 
     const back = screen.getByRole('button', { name: /voltar.*evolu/i });
     fireEvent.click(back);
@@ -104,15 +110,15 @@ describe('EvolutionEditor', () => {
     await waitFor(() => expect(onBack).toHaveBeenCalledTimes(1));
   });
 
-  it('prevents beforeunload only while the draft is dirty', () => {
-    const { unmount } = render(<EvolutionEditor initialRecord={record} onBack={vi.fn()} />);
+  it('prevents beforeunload only while the draft is dirty', async () => {
+    const { unmount } = await renderEditor(<EvolutionEditor initialRecord={record} onBack={vi.fn()} />);
     const dirtyEvent = new Event('beforeunload', { cancelable: true });
     window.dispatchEvent(dirtyEvent);
     expect(dirtyEvent.defaultPrevented).toBe(true);
     unmount();
 
     evolutionHook.useClinicalEvolution.mockReturnValue(hookState({ hasUnsavedChanges: false }));
-    render(<EvolutionEditor initialRecord={record} onBack={vi.fn()} />);
+    await renderEditor(<EvolutionEditor initialRecord={record} onBack={vi.fn()} />);
     const cleanEvent = new Event('beforeunload', { cancelable: true });
     window.dispatchEvent(cleanEvent);
     expect(cleanEvent.defaultPrevented).toBe(false);
@@ -121,7 +127,7 @@ describe('EvolutionEditor', () => {
   it('renders one active editor, accessible section navigation and visibility guidance', async () => {
     const state = hookState();
     evolutionHook.useClinicalEvolution.mockReturnValue(state);
-    render(<EvolutionEditor initialRecord={record} onBack={vi.fn()} />);
+    await renderEditor(<EvolutionEditor initialRecord={record} onBack={vi.fn()} />);
 
     expect(await screen.findByRole('button', { name: 'Subjetivo' })).toHaveAttribute('aria-current', 'true');
     expect(screen.getAllByLabelText('editor clinico')).toHaveLength(1);
@@ -143,7 +149,7 @@ describe('EvolutionEditor', () => {
       template_sections_snapshot: [{ key: 'historic', label: 'Seção congelada' }],
     };
     evolutionHook.useClinicalEvolution.mockReturnValue(hookState({ record: versionedRecord }));
-    render(<EvolutionEditor initialRecord={versionedRecord} onBack={vi.fn()} />);
+    await renderEditor(<EvolutionEditor initialRecord={versionedRecord} onBack={vi.fn()} />);
 
     expect(await screen.findByRole('button', { name: 'Seção congelada' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Subjetivo' })).not.toBeInTheDocument();
@@ -154,7 +160,7 @@ describe('EvolutionEditor', () => {
       status: 'conflict',
       conflict: { message: 'draft_revision_conflict' },
     }));
-    render(<EvolutionEditor initialRecord={record} onBack={vi.fn()} currentUserId="nutritionist-1" canCosign />);
+    await renderEditor(<EvolutionEditor initialRecord={record} onBack={vi.fn()} currentUserId="nutritionist-1" canCosign />);
 
     expect(await screen.findByText(/outra sess.o alterou este rascunho/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /copiar conte.do local/i })).toBeInTheDocument();
@@ -188,7 +194,7 @@ describe('EvolutionEditor', () => {
       loadChain: vi.fn().mockResolvedValue([chainRecord]),
     }));
     evolutionHook.useClinicalEvolution.mockReturnValue(hookState({ record: correctionDraft }));
-    render(<EvolutionEditor initialRecord={correctionDraft} onBack={vi.fn()} />);
+    await renderEditor(<EvolutionEditor initialRecord={correctionDraft} onBack={vi.fn()} />);
 
     expect((await screen.findAllByRole('alert')).some((alert) => (
       /correção em preparação/i.test(alert.textContent)
@@ -224,7 +230,7 @@ describe('EvolutionEditor', () => {
     }));
     evolutionHook.useClinicalEvolution.mockReturnValue(hookState({ record: signedStudentRecord }));
     const onReplacementOpen = vi.fn();
-    render(<EvolutionEditor
+    await renderEditor(<EvolutionEditor
       initialRecord={signedStudentRecord}
       onBack={vi.fn()}
       currentUserId="supervisor-1"
@@ -269,7 +275,7 @@ describe('EvolutionEditor', () => {
       loadChain: vi.fn().mockResolvedValue([signedStudentRecord]),
     }));
     evolutionHook.useClinicalEvolution.mockReturnValue(hookState({ record: signedStudentRecord }));
-    render(<EvolutionEditor
+    await renderEditor(<EvolutionEditor
       initialRecord={signedStudentRecord}
       onBack={vi.fn()}
       currentUserId="student-1"
@@ -319,7 +325,7 @@ describe('EvolutionEditor', () => {
     evolutionHook.useClinicalEvolution.mockReturnValue(hookState({ record: correctionDraft }));
     const onReplacementOpen = vi.fn();
     const onRecordsRefresh = vi.fn().mockResolvedValue(undefined);
-    render(<EvolutionEditor
+    await renderEditor(<EvolutionEditor
       initialRecord={correctionDraft}
       onBack={vi.fn()}
       currentUserId="nutritionist-1"
@@ -355,20 +361,20 @@ describe('EvolutionEditor', () => {
       amendment: { id: 'amendment-1', type: 'correction', status: 'draft', target_record_id: 'signed-v1' },
     };
     const chain = [correctionDraft, { ...record, id: 'signed-v1', status: 'signed' }];
+    const stableAmendment = amendmentState({ chain, loadChain: vi.fn().mockResolvedValue(chain) });
     amendmentHook.useClinicalAmendment.mockImplementation(() => {
       const [error, setError] = React.useState(null);
-      return amendmentState({
-        chain,
+      return {
+        ...stableAmendment,
         error,
-        loadChain: vi.fn().mockResolvedValue(chain),
         abandonCorrection: vi.fn().mockImplementation(async () => {
           setError('Não foi possível abandonar a correção do registro.');
           return null;
         }),
-      });
+      };
     });
     evolutionHook.useClinicalEvolution.mockReturnValue(hookState({ record: correctionDraft }));
-    render(<EvolutionEditor initialRecord={correctionDraft} onBack={vi.fn()} currentUserId="student-1" />);
+    await renderEditor(<EvolutionEditor initialRecord={correctionDraft} onBack={vi.fn()} currentUserId="student-1" />);
 
     fireEvent.click(await screen.findByRole('button', { name: /abandonar corre/i }));
     fireEvent.change(screen.getByRole('textbox', { name: /motivo do abandono/i }), {
@@ -391,20 +397,20 @@ describe('EvolutionEditor', () => {
       amendment: { id: 'amendment-1', type: 'correction', status: 'draft', target_record_id: 'signed-v1' },
     };
     const chain = [correctionDraft, { ...record, id: 'signed-v1', status: 'signed' }];
+    const stableAmendment = amendmentState({ chain, loadChain: vi.fn().mockResolvedValue(chain) });
     amendmentHook.useClinicalAmendment.mockImplementation(() => {
       const [status, setStatus] = React.useState('idle');
-      return amendmentState({
-        chain,
+      return {
+        ...stableAmendment,
         status,
-        loadChain: vi.fn().mockResolvedValue(chain),
         abandonCorrection: vi.fn().mockImplementation(() => {
           setStatus('abandoning-correction');
           return pending.promise;
         }),
-      });
+      };
     });
     evolutionHook.useClinicalEvolution.mockReturnValue(hookState({ record: correctionDraft }));
-    render(<EvolutionEditor initialRecord={correctionDraft} onBack={vi.fn()} currentUserId="nutritionist-1" />);
+    await renderEditor(<EvolutionEditor initialRecord={correctionDraft} onBack={vi.fn()} currentUserId="nutritionist-1" />);
 
     fireEvent.click(await screen.findByRole('button', { name: /abandonar corre/i }));
     fireEvent.change(screen.getByRole('textbox', { name: /motivo do abandono/i }), {
@@ -438,7 +444,7 @@ describe('EvolutionEditor', () => {
       abandonCorrection,
     }));
     evolutionHook.useClinicalEvolution.mockReturnValue(hookState({ record: correctionDraft }));
-    render(<EvolutionEditor initialRecord={correctionDraft} onBack={vi.fn()} currentUserId="student-1" />);
+    await renderEditor(<EvolutionEditor initialRecord={correctionDraft} onBack={vi.fn()} currentUserId="student-1" />);
 
     expect(await screen.findByRole('button', { name: /abandonar corre/i })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /finalizar/i })).not.toBeInTheDocument();
@@ -472,7 +478,7 @@ describe('EvolutionEditor', () => {
       loadChain: vi.fn().mockResolvedValue(chain),
     }));
     evolutionHook.useClinicalEvolution.mockReturnValue(hookState({ record: correctionDraft }));
-    render(<EvolutionEditor initialRecord={correctionDraft} onBack={vi.fn()} currentUserId="unrelated-user" />);
+    await renderEditor(<EvolutionEditor initialRecord={correctionDraft} onBack={vi.fn()} currentUserId="unrelated-user" />);
 
     expect(await screen.findByLabelText('editor clinico')).toBeDisabled();
     expect(screen.queryByRole('button', { name: /abandonar|finalizar|assinar|corrigir|invalidar/i }))
@@ -502,7 +508,7 @@ describe('EvolutionEditor', () => {
       loadChain: vi.fn().mockResolvedValue(chain),
     }));
     evolutionHook.useClinicalEvolution.mockReturnValue(hookState({ record: supervisorCorrection }));
-    render(<EvolutionEditor initialRecord={supervisorCorrection} onBack={vi.fn()} currentUserId="student-1" />);
+    await renderEditor(<EvolutionEditor initialRecord={supervisorCorrection} onBack={vi.fn()} currentUserId="student-1" />);
 
     expect(await screen.findByLabelText('editor clinico')).toBeDisabled();
     expect(screen.queryByRole('button', { name: /abandonar corre/i })).not.toBeInTheDocument();
@@ -541,7 +547,7 @@ describe('EvolutionEditor', () => {
     evolutionHook.useClinicalEvolution.mockReturnValue(hookState({ record: correctionDraft }));
     const onReplacementOpen = vi.fn();
     const onRecordsRefresh = vi.fn().mockRejectedValue(new Error('parent refresh failed'));
-    render(<EvolutionEditor
+    await renderEditor(<EvolutionEditor
       initialRecord={correctionDraft}
       onBack={vi.fn()}
       currentUserId="nutritionist-1"
@@ -569,7 +575,7 @@ describe('EvolutionEditor', () => {
       loadChain: vi.fn().mockResolvedValue([signedRecord]),
     }));
     evolutionHook.useClinicalEvolution.mockReturnValue(hookState({ record: signedRecord }));
-    const { rerender } = render(<EvolutionEditor
+    const { rerender } = await renderEditor(<EvolutionEditor
       initialRecord={signedRecord}
       onBack={vi.fn()}
       currentUserId="another-user"
@@ -595,7 +601,7 @@ describe('EvolutionEditor', () => {
       loadChain: vi.fn().mockReturnValue(pendingChain.promise),
     }));
     evolutionHook.useClinicalEvolution.mockReturnValue(hookState({ record: signedRecord }));
-    render(<EvolutionEditor initialRecord={signedRecord} onBack={vi.fn()} currentUserId="nutritionist-1" />);
+    await renderEditor(<EvolutionEditor initialRecord={signedRecord} onBack={vi.fn()} currentUserId="nutritionist-1" />);
 
     expect(screen.queryByRole('button', { name: 'Corrigir' })).not.toBeInTheDocument();
     await act(async () => {
@@ -621,7 +627,7 @@ describe('EvolutionEditor', () => {
       loadChain: vi.fn().mockResolvedValue(chain),
     }));
     evolutionHook.useClinicalEvolution.mockReturnValue(hookState({ record: signedRecord }));
-    render(<EvolutionEditor initialRecord={signedRecord} onBack={vi.fn()} currentUserId="nutritionist-1" />);
+    await renderEditor(<EvolutionEditor initialRecord={signedRecord} onBack={vi.fn()} currentUserId="nutritionist-1" />);
 
     await waitFor(() => expect(screen.getAllByTestId('version-row')).toHaveLength(2));
     expect(screen.queryByRole('button', { name: 'Corrigir' })).not.toBeInTheDocument();
@@ -676,7 +682,7 @@ describe('EvolutionEditor', () => {
     const sign = vi.fn().mockResolvedValue(true);
     evolutionHook.useClinicalEvolution.mockReturnValue(hookState({ record: correctionRecord, sign }));
     const onRecordsRefresh = vi.fn().mockResolvedValue(undefined);
-    render(<EvolutionEditor
+    await renderEditor(<EvolutionEditor
       initialRecord={correctionRecord}
       onBack={vi.fn()}
       currentUserId="nutritionist-1"
@@ -714,7 +720,7 @@ describe('EvolutionEditor', () => {
     const sign = vi.fn().mockResolvedValue(true);
     evolutionHook.useClinicalEvolution.mockReturnValue(hookState({ record: finalizedRecord, sign }));
     const onRecordsRefresh = vi.fn();
-    render(<EvolutionEditor
+    await renderEditor(<EvolutionEditor
       initialRecord={finalizedRecord}
       onBack={vi.fn()}
       currentUserId="nutritionist-1"

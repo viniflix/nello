@@ -308,10 +308,13 @@ begin
   get diagnostics v_count=row_count;
   if v_count<>0 then raise exception 'clinical_attachment_storage_update_allowed'; end if;
 
-  delete from storage.objects where bucket_id='clinical-attachments'
+  begin
+    delete from storage.objects where bucket_id='clinical-attachments'
     and name=current_setting('c5.professional_intent')::jsonb->>'storage_path';
   get diagnostics v_count=row_count;
   if v_count<>0 then raise exception 'clinical_attachment_storage_delete_allowed'; end if;
+  exception when insufficient_privilege then null; -- current Storage protects direct SQL deletion before RLS
+  end;
 
   begin
     insert into storage.objects(bucket_id,name,owner_id,metadata)

@@ -72,7 +72,7 @@ describe('PatientProgressPage', () => {
     expect(screen.getByRole('heading', { name: 'LINHA DO TEMPO' })).toBeInTheDocument();
     expect(screen.getByRole('img', { name: /gráfico de evolução do peso/i })).toBeInTheDocument();
     expect(screen.queryByText(/toque ou passe o cursor/i)).not.toBeInTheDocument();
-    expect(screen.getAllByText('75.2 kg').length).toBeGreaterThan(0);
+    expect((await screen.findAllByText('75.2 kg')).length).toBeGreaterThan(0);
     expect(screen.getByText('ACOMPANHAMENTO CLÍNICO')).toBeInTheDocument();
     expect(screen.getByText('COMPARTILHADO PELO SEU NUTRICIONISTA')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /ver registros clínicos/i })).toHaveAttribute('href', '/patient/registros-clinicos');

@@ -157,12 +157,16 @@
     {
       "file": "professional_verification_foundation_matrix.sql",
       "kind": "assertion-suite",
-      "fixtures": []
+      "fixtures": [
+        "supabase/fixtures/wave02/professional-verification.sql"
+      ]
     },
     {
       "file": "rls_access_matrix.sql",
       "kind": "assertion-suite",
-      "fixtures": []
+      "fixtures": [
+        "supabase/fixtures/wave02/rls-accounts.sql"
+      ]
     },
     {
       "file": "s02_stage1_schema_privileges_matrix.sql",

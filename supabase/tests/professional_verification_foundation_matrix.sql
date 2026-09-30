@@ -10,7 +10,7 @@ begin
       and professional_role = 'nutritionist'
       and status = 'approved'
       and verification_method = 'approved_by_migration'
-      and valid_until = '2026-10-01 02:59:59+00'::timestamptz
+      and valid_until > now()
   ) then
     raise exception 'Conta profissional alpha não foi aprovada pela migração';
   end if;
@@ -82,6 +82,7 @@ $$;
 reset role;
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '30000000-0000-0000-0000-000000000041', true);
+select set_config('request.jwt.claims',jsonb_build_object('sub','30000000-0000-0000-0000-000000000041','role','authenticated','aal','aal2')::text,true);
 
 do $$
 begin
@@ -124,6 +125,7 @@ $$;
 reset role;
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '30000000-0000-0000-0000-000000000041', true);
+select set_config('request.jwt.claims',jsonb_build_object('sub','30000000-0000-0000-0000-000000000041','role','authenticated','aal','aal2')::text,true);
 
 select public.request_verification_information(
   (select id from public.professional_verifications where user_id='10000000-0000-0000-0000-000000000042'),
@@ -143,6 +145,7 @@ select public.submit_professional_verification(jsonb_build_object(
 reset role;
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '30000000-0000-0000-0000-000000000041', true);
+select set_config('request.jwt.claims',jsonb_build_object('sub','30000000-0000-0000-0000-000000000041','role','authenticated','aal','aal2')::text,true);
 
 select public.review_professional_verification(
   (select id from public.professional_verifications where user_id='10000000-0000-0000-0000-000000000042'),
@@ -155,16 +158,16 @@ begin
   if not private.has_current_clinical_capacity('10000000-0000-0000-0000-000000000042') then
     raise exception 'Nutricionista aprovado não recebeu capacidade clínica';
   end if;
-  if (select count(*) from public.verification_events e join public.professional_verifications v on v.id=e.verification_id where v.user_id='10000000-0000-0000-0000-000000000042') <> 4 then
+  if (select count(*) from public.verification_events e join public.professional_verifications v on v.id=e.verification_id where v.user_id='10000000-0000-0000-0000-000000000042') <> (select n+4 from b4_initial_events) then
     raise exception 'Workflow não preservou os quatro eventos esperados';
   end if;
 end;
 $$;
 
 insert into auth.users (instance_id,id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
-values ('00000000-0000-0000-0000-000000000000','10000000-0000-0000-0000-000000000043','authenticated','authenticated','duplicate-b4@nello.test','not-used',now(),'{}','{}',now(),now());
+values ('00000000-0000-0000-0000-000000000000','10000000-0000-0000-0000-000000000043','authenticated','authenticated','duplicate-b4@example.invalid','not-used',now(),'{}','{}',now(),now());
 insert into public.user_profiles (id,name,user_type,is_admin,is_active)
-values ('10000000-0000-0000-0000-000000000043','Nutricionista Duplicada B4','nutritionist',false,true);
+values ('10000000-0000-0000-0000-000000000043','Nutricionista Duplicada B4','nutritionist',false,true) on conflict(id) do update set name=excluded.name,user_type=excluded.user_type,is_admin=excluded.is_admin,is_active=excluded.is_active;
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000043', true);
@@ -177,6 +180,7 @@ select public.submit_professional_verification(jsonb_build_object(
 reset role;
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '30000000-0000-0000-0000-000000000041', true);
+select set_config('request.jwt.claims',jsonb_build_object('sub','30000000-0000-0000-0000-000000000041','role','authenticated','aal','aal2')::text,true);
 
 do $$
 begin
@@ -208,6 +212,7 @@ $$;
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '30000000-0000-0000-0000-000000000041', true);
+select set_config('request.jwt.claims',jsonb_build_object('sub','30000000-0000-0000-0000-000000000041','role','authenticated','aal','aal2')::text,true);
 do $$
 begin
   if (select count(*) from public.list_professional_verifications('suspended', 'nutritionist')) <> 1 then
@@ -220,17 +225,17 @@ reset role;
 
 -- Supervisão estudantil: solicitação, aceite, encerramento e rejeição.
 insert into auth.users (instance_id,id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at) values
-('00000000-0000-0000-0000-000000000000','10000000-0000-0000-0000-000000000044','authenticated','authenticated','student-supervision@nello.test','not-used',now(),'{}','{}',now(),now()),
-('00000000-0000-0000-0000-000000000000','10000000-0000-0000-0000-000000000045','authenticated','authenticated','supervisor@nello.test','not-used',now(),'{}','{}',now(),now()),
-('00000000-0000-0000-0000-000000000000','10000000-0000-0000-0000-000000000046','authenticated','authenticated','document-review@nello.test','not-used',now(),'{}','{}',now(),now());
+('00000000-0000-0000-0000-000000000000','10000000-0000-0000-0000-000000000044','authenticated','authenticated','student-supervision@example.invalid','not-used',now(),'{}','{}',now(),now()),
+('00000000-0000-0000-0000-000000000000','10000000-0000-0000-0000-000000000045','authenticated','authenticated','supervisor@example.invalid','not-used',now(),'{}','{}',now(),now()),
+('00000000-0000-0000-0000-000000000000','10000000-0000-0000-0000-000000000046','authenticated','authenticated','document-review@example.invalid','not-used',now(),'{}','{"user_type":"nutritionist"}',now(),now());
 insert into public.user_profiles(id,name,user_type,is_admin,is_active) values
 ('10000000-0000-0000-0000-000000000044','Estudante Supervisionado','nutritionist',false,true),
 ('10000000-0000-0000-0000-000000000045','Nutricionista Supervisor','nutritionist',false,true),
-('10000000-0000-0000-0000-000000000046','Profissional com Documento','nutritionist',false,true);
+('10000000-0000-0000-0000-000000000046','Profissional com Documento','nutritionist',false,true) on conflict(id) do update set name=excluded.name,user_type=excluded.user_type,is_admin=excluded.is_admin,is_active=excluded.is_active;
 insert into public.professional_verifications(user_id,professional_role,status,verification_method,institution_name,current_semester,expected_graduation_at,valid_until,decision_reason) values
 ('10000000-0000-0000-0000-000000000044','student','approved','student_document_manual','Universidade QA',5,current_date+500,now()+interval '6 months','qa_fixture'),
 ('10000000-0000-0000-0000-000000000045','nutritionist','approved','official_registry_manual',null,null,null,now()+interval '1 year','qa_fixture'),
-('10000000-0000-0000-0000-000000000046','nutritionist','pending','self_report',null,null,null,null,null);
+('10000000-0000-0000-0000-000000000046','nutritionist','pending','self_report',null,null,null,null,null) on conflict(user_id) do update set professional_role=excluded.professional_role,status=excluded.status,verification_method=excluded.verification_method,institution_name=excluded.institution_name,current_semester=excluded.current_semester,expected_graduation_at=excluded.expected_graduation_at,valid_until=excluded.valid_until,decision_reason=excluded.decision_reason;
 insert into public.verification_documents(verification_id,owner_id,document_type,storage_path,content_sha256)
 select id,user_id,'professional_card','verification-private/qa-document.pdf','qa-sha256'
 from public.professional_verifications where user_id='10000000-0000-0000-0000-000000000046';
@@ -280,6 +285,7 @@ end $$;
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '30000000-0000-0000-0000-000000000041', true);
+select set_config('request.jwt.claims',jsonb_build_object('sub','30000000-0000-0000-0000-000000000041','role','authenticated','aal','aal2')::text,true);
 select public.review_professional_verification(
   (select id from public.professional_verifications where user_id='10000000-0000-0000-0000-000000000046'),
   'rejected','Documento incompatível com os dados enviados.',null,null

@@ -18,6 +18,7 @@ on conflict (id) do update set
   name=excluded.name,
   user_type=excluded.user_type;
 
+insert into public.nutritionist_patients(nutritionist_id,patient_id,status) values('10000000-0000-0000-0000-000000000011','20000000-0000-0000-0000-000000000011','active');
 select set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000011', true);
 select public.start_care_episode('20000000-0000-0000-0000-000000000011', 'qa_started');
 
@@ -41,7 +42,7 @@ begin
   begin
     perform public.start_care_episode('20000000-0000-0000-0000-000000000011', 'attempt_cross_access');
     raise exception 'Outro nutricionista conseguiu iniciar um segundo episódio ativo';
-  exception when unique_violation then null;
+  exception when unique_violation or insufficient_privilege then null;
   end;
 end $$;
 
@@ -67,6 +68,7 @@ end $$;
 -- Um novo nutricionista pode iniciar um episódio limpo após o encerramento.
 reset role;
 select set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000012', true);
+insert into public.nutritionist_patients(nutritionist_id,patient_id,status) values('10000000-0000-0000-0000-000000000012','20000000-0000-0000-0000-000000000011','active');
 select public.start_care_episode('20000000-0000-0000-0000-000000000011', 'qa_new_professional');
 
 set local role authenticated;

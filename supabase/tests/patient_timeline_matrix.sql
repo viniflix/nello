@@ -227,6 +227,7 @@ begin
   if v_record->>'status'<>'signed' then
     raise exception 'canonical_student_evolution_must_be_signed_by_supervisor';
   end if;
+  reset role; -- audit tables intentionally deny direct authenticated reads
   select count(*) into v_event_count
   from public.clinical_record_events e
   where e.clinical_record_id=v_id
@@ -239,6 +240,7 @@ begin
   if v_event_count<>1 then
     raise exception 'supervisor_signature_audit_event_invalid: %',v_event_count;
   end if;
+  set local role authenticated;
   begin
     perform public.sign_clinical_record(v_id);
     raise exception 'second_supervisor_signature_must_fail';

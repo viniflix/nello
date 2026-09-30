@@ -31,8 +31,7 @@ insert into public.professional_verifications (
 insert into public.nutritionist_patients (nutritionist_id, patient_id, status)
 values ('10000000-0000-0000-0000-000000000031', '20000000-0000-0000-0000-000000000031', 'active');
 
-insert into public.care_episodes (patient_id, nutritionist_id, status, start_reason, started_by)
-values ('20000000-0000-0000-0000-000000000031', '10000000-0000-0000-0000-000000000031', 'active', 'qa', '10000000-0000-0000-0000-000000000031');
+-- Current active-link trigger creates exactly one episode; do not seed a second.
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '20000000-0000-0000-0000-000000000031', true);

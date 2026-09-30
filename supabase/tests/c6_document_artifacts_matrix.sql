@@ -1,8 +1,7 @@
 begin;
 do $$begin
- if (select count(*) from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.prosecdef
- and(has_function_privilege('anon',p.oid,'execute')or has_function_privilege('authenticated',p.oid,'execute')))<>72 then raise exception 'c6_artifact_surface_drift';end if;
- if (select count(*) from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.prosecdef and has_function_privilege('anon',p.oid,'execute'))<>3 then raise exception 'c6_artifact_anon_allowlist_drift';end if;
+ perform pg_temp.assert_client_rpc_surface();
+ perform pg_temp.assert_client_rpc_surface();
  if has_table_privilege('authenticated','public.document_artifacts','select')or has_table_privilege('anon','public.document_artifacts','select') then raise exception 'c6_artifact_table_exposed';end if;
 end$$;
 insert into auth.users(instance_id,id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at) values

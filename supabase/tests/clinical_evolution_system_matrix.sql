@@ -35,8 +35,8 @@ begin
     or reviewed_at is null
   );
   if v_bad <> 0 or (select count(*) from public.professional_verifications
-+    where user_id in ('10000000-0000-0000-0000-000000000041',
-+      '10000000-0000-0000-0000-000000000042','10000000-0000-0000-0000-000000000043')) <> 3 then
+    where user_id in ('10000000-0000-0000-0000-000000000041',
+      '10000000-0000-0000-0000-000000000042','10000000-0000-0000-0000-000000000043')) <> 3 then
     raise exception 'invalid_nutritionist_fixture: %', v_bad;
   end if;
 

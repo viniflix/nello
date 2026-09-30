@@ -15,6 +15,7 @@ on conflict (id) do update set
   is_active=excluded.is_active,
   email=excluded.email;
 
+insert into private.admin_operators(user_id,grant_reason) values('96000000-0000-0000-0000-000000000003','synthetic QA');
 create temporary table c8_ids(request_id uuid,revision bigint);
 grant select,insert,update on c8_ids to authenticated;
 set local role authenticated;
@@ -33,6 +34,18 @@ select set_config('request.jwt.claim.sub','96000000-0000-0000-0000-000000000002'
 do $$begin begin perform public.cancel_my_data_subject_request((select request_id from c8_ids));raise exception 'cross_subject_cancel_accepted';exception when insufficient_privilege then null;end;end$$;
 
 select set_config('request.jwt.claim.sub','96000000-0000-0000-0000-000000000003',true);
+select set_config('request.jwt.claims',jsonb_build_object('sub','96000000-0000-0000-0000-000000000003','role','authenticated','aal','aal2')::text,true);
+-- Both membership and MFA are required; a legacy profile flag is insufficient.
+select set_config('request.jwt.claims',jsonb_build_object('sub','96000000-0000-0000-0000-000000000003','role','authenticated','aal','aal1')::text,true);
+do $$begin begin perform public.list_data_subject_requests('submitted');raise exception 'aal1_admin_accepted';exception when insufficient_privilege then null;end;end$$;
+select set_config('request.jwt.claims',jsonb_build_object('sub','96000000-0000-0000-0000-000000000003','role','authenticated','aal','aal2')::text,true);
+reset role;
+update private.admin_operators set revoked_at=now() where user_id='96000000-0000-0000-0000-000000000003';
+set local role authenticated;
+do $$begin begin perform public.list_data_subject_requests('submitted');raise exception 'revoked_profile_admin_accepted';exception when insufficient_privilege then null;end;end$$;
+reset role;
+update private.admin_operators set revoked_at=null where user_id='96000000-0000-0000-0000-000000000003';
+set local role authenticated;
 do $$begin if(select count(*)from public.list_data_subject_requests('submitted'))<>1 then raise exception 'admin_queue_missing_request';end if;end$$;
 with transitioned as(select public.update_data_subject_request((select request_id from c8_ids),1,'triaged','Triagem administrativa iniciada',null,null,true) payload)
 update c8_ids set revision=(select(payload->>'revision')::bigint from transitioned);

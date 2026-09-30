@@ -52,6 +52,7 @@ insert into public.clinical_records(id,patient_id,care_episode_id,nutritionist_i
 insert into public.reference_foods(id,name,source,source_id,"group",portion_size,base_unit,calories,protein,carbs,fat,fiber,is_active)
 values('98000000-0000-0000-0000-000000000030','Alimento Hardening','TBCA','HARD','QA',100,'g',100,5,15,2,3,true);
 
+insert into private.admin_operators(user_id,grant_reason) values('98000000-0000-0000-0000-000000000004','synthetic QA');
 create temporary table hard_ids(artifact uuid,lab bigint,lab_revision bigint,plan bigint,meal bigint,food bigint,privacy uuid,privacy_revision bigint);
 grant select,insert,update on hard_ids to authenticated;
 insert into hard_ids default values;
@@ -96,7 +97,7 @@ do $$declare v jsonb;begin v:=public.invalidate_lab_result_record((select lab_re
 
 do $$begin
  begin insert into public.energy_expenditure_calculations(
-   patient_id,nutritionist_id,care_episode_id,weight,height,age,gender,protocol,protocol_code,protocol_version,input_snapshot,output_snapshot,confirmed_by,email_confirmed_at
+   patient_id,nutritionist_id,care_episode_id,weight,height,age,gender,protocol,protocol_code,protocol_version,input_snapshot,output_snapshot,confirmed_by,confirmed_at
  )values('98000000-0000-0000-0000-000000000002',auth.uid(),'98000000-0000-0000-0000-000000000010',70,170,30,'M','bmi','anthropometry.bmi_adult',1,'{}','{}',auth.uid(),now());
  raise exception 'cross-domain energy protocol accepted';exception when check_violation then null;end;
 end$$;
@@ -146,6 +147,7 @@ select set_config('request.jwt.claim.sub','98000000-0000-0000-0000-000000000002'
 with x as(select public.create_my_data_subject_request('deletion','Solicitação adversarial de privacidade')p)
 update hard_ids set privacy=(select(p->>'id')::uuid from x),privacy_revision=1;
 select set_config('request.jwt.claim.sub','98000000-0000-0000-0000-000000000004',true);
+select set_config('request.jwt.claims',jsonb_build_object('sub','98000000-0000-0000-0000-000000000004','role','authenticated','aal','aal2')::text,true);
 with x as(select public.update_data_subject_request((select privacy from hard_ids),1,'triaged','Triagem administrativa do teste',null,null,true)p)
 update hard_ids set privacy_revision=(select(p->>'revision')::bigint from x);
 do $$begin

@@ -5,7 +5,7 @@ insert into public.user_profiles (id, name, user_type) values
   ('10000000-0000-0000-0000-000000000001', 'Nutricionista Proprietária QA', 'nutritionist'),
   ('10000000-0000-0000-0000-000000000002', 'Nutricionista Alheia QA', 'nutritionist'),
   ('20000000-0000-0000-0000-000000000001', 'Paciente QA', 'patient'),
-  ('20000000-0000-0000-0000-000000000002', 'Paciente Alheio QA', 'patient');
+  ('20000000-0000-0000-0000-000000000002', 'Paciente Alheio QA', 'patient') on conflict(id) do update set name=excluded.name,user_type=excluded.user_type;
 
 insert into public.nutritionist_patients (nutritionist_id, patient_id, status) values
   ('10000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001', 'active'),

@@ -1,11 +1,22 @@
 begin;
+-- The Edge worker is the trusted confirmer. This isolated fixture simulates its
+-- service-role boundary without granting the retired client RPC to anyone.
+create function pg_temp.qa_verified_asset_confirmation(p_id uuid,p_sha text,p_size bigint,p_mime text)
+returns jsonb language plpgsql security definer set search_path='' as $$
+declare previous_role text:=current_setting('request.jwt.claim.role',true); result jsonb;
+begin
+ perform set_config('request.jwt.claim.role','service_role',true);
+ result:=public.confirm_document_asset_upload_verified(p_id,auth.uid(),p_sha,p_size,p_mime);
+ perform set_config('request.jwt.claim.role',coalesce(previous_role,'authenticated'),true);
+ return result;
+end$$;
+
 
 do $$
 declare v_signature text;
 begin
   foreach v_signature in array array[
     'create_document_asset_upload_intent(text,text,text,bigint,integer)',
-    'confirm_document_asset_upload(uuid,text,bigint,text)',
     'fail_document_asset_upload(uuid,text)',
     'get_my_document_asset_preview(text)'
   ] loop
@@ -19,16 +30,17 @@ begin
       raise exception 'c6_asset_rpc_grant_drift:%', v_signature;
     end if;
   end loop;
+  if has_function_privilege('authenticated','public.confirm_document_asset_upload(uuid,text,bigint,text)','execute')
+     or has_function_privilege('anon','public.confirm_document_asset_upload_verified(uuid,uuid,text,bigint,text)','execute')
+     or has_function_privilege('authenticated','public.confirm_document_asset_upload_verified(uuid,uuid,text,bigint,text)','execute')
+     or not has_function_privilege('service_role','public.confirm_document_asset_upload_verified(uuid,uuid,text,bigint,text)','execute') then
+    raise exception 'trusted_asset_confirmation_boundary_drift';
+  end if;
   if has_function_privilege('authenticated', 'public.expire_document_asset_uploads(integer)', 'execute')
      or has_function_privilege('anon', 'public.expire_document_asset_uploads(integer)', 'execute') then
     raise exception 'c6_asset_expiration_exposed';
   end if;
-  if (select count(*) from pg_proc p join pg_namespace n on n.oid=p.pronamespace
-      where n.nspname='public' and p.prosecdef
-        and (has_function_privilege('anon',p.oid,'execute')
-          or has_function_privilege('authenticated',p.oid,'execute'))) <> 64 then
-    raise exception 'c6_asset_security_definer_surface_drift';
-  end if;
+  perform pg_temp.assert_client_rpc_surface();
   if (select public from storage.buckets where id='document-assets') is distinct from false then
     raise exception 'c6_asset_bucket_not_private';
   end if;
@@ -94,7 +106,7 @@ select set_config('request.jwt.claim.sub','92000000-0000-0000-0000-000000000002'
 do $$
 begin
   begin
-    perform public.confirm_document_asset_upload(
+    perform pg_temp.qa_verified_asset_confirmation(
       (select id from c6_asset_ids where kind='first'),repeat('a',64),1024,'image/png'
     );
     raise exception 'c6_asset_cross_owner_confirmation_accepted';
@@ -104,7 +116,7 @@ end;
 $$;
 
 select set_config('request.jwt.claim.sub','92000000-0000-0000-0000-000000000001',true);
-select public.confirm_document_asset_upload(
+select pg_temp.qa_verified_asset_confirmation(
   (select id from c6_asset_ids where kind='first'),repeat('a',64),1024,'image/png'
 );
 
@@ -120,7 +132,7 @@ begin
     raise exception 'c6_asset_first_confirmation_failed:%,%',v_preview,v_identity;
   end if;
   begin
-    perform public.confirm_document_asset_upload(
+    perform pg_temp.qa_verified_asset_confirmation(
       (select id from c6_asset_ids where kind='first'),repeat('a',64),1024,'image/png'
     );
     raise exception 'c6_asset_double_confirmation_accepted';
@@ -142,13 +154,13 @@ select gen_random_uuid(),'document-assets',path,'92000000-0000-0000-0000-0000000
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub','92000000-0000-0000-0000-000000000001',true);
-select public.confirm_document_asset_upload(
+select pg_temp.qa_verified_asset_confirmation(
   (select id from c6_asset_ids where kind='race_a'),repeat('b',64),2048,'image/webp'
 );
 do $$
 begin
   begin
-    perform public.confirm_document_asset_upload(
+    perform pg_temp.qa_verified_asset_confirmation(
       (select id from c6_asset_ids where kind='race_b'),repeat('c',64),2048,'image/webp'
     );
     raise exception 'c6_asset_stale_parallel_intent_accepted';

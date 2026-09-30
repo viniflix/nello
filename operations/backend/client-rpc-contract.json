@@ -1,0 +1,1077 @@
+{
+  "schemaVersion": 1,
+  "note": "Explicit current API signatures, ACLs, pinned settings and independently captured body digests. Behavioral authorization is exercised by the SQL and HTTP matrices; this inventory alone is not a security audit.",
+  "contracts": [
+    {
+      "signature": "abandon_clinical_record_correction(uuid,text)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "5ea3e8ddb52138d8be704e0ad656f463"
+    },
+    {
+      "signature": "accept_clinical_protocol(text,integer,text,text)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "bde4c72707fe23c07aacf1f36cb200ce"
+    },
+    {
+      "signature": "admin_access_status()",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "5d57cf1926b07f9238f95e13fa6d3686"
+    },
+    {
+      "signature": "admin_brand_migration_status()",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "17f21b09aa00835bafa42dabb50b22d4"
+    },
+    {
+      "signature": "admin_list_people(text,text,integer)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "c344580187ef39997b0b4f42df4840d6"
+    },
+    {
+      "signature": "admin_security_overview()",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "595554ed8ef9090f86ec374fb7841a3c"
+    },
+    {
+      "signature": "admin_workflow_overview()",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "0a013cf7a4b0f1eaeb566af62ac480e4"
+    },
+    {
+      "signature": "archive_meal_plan(bigint,text)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "25545a3b00d54a6400d0f678bf317783"
+    },
+    {
+      "signature": "archive_private_evolution_template(text)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "7888c74cd8602a9c2e67c00382619c4b"
+    },
+    {
+      "signature": "attach_anamnesis_file(uuid,uuid,text,text,text,text)",
+      "anonymous": true,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "8c102199f014ace8ac02ac57850a0273"
+    },
+    {
+      "signature": "authorize_my_data_export_attachment(uuid)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "9d1bd6deeba05cbed1532146dd4f1c24"
+    },
+    {
+      "signature": "build_my_data_export_snapshot()",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "8ef39a72188cfbbe5eb5c4b05f7e222d"
+    },
+    {
+      "signature": "cancel_my_data_subject_request(uuid)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "9be344f699395deb4ac0234bcb2e9c66"
+    },
+    {
+      "signature": "change_clinical_attachment_visibility(uuid,text,text)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "9382488d49c850311170dc96dc75afb4"
+    },
+    {
+      "signature": "check_is_admin()",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "b2f965422e8a8539c23d182c01628b0f"
+    },
+    {
+      "signature": "clone_diet_template_to_patient(uuid,uuid,uuid,text)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "43ca3d0cac3bd2b1960e688aa09d5068"
+    },
+    {
+      "signature": "clone_evolution_template(text,text)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "d17fce676bfbcf8db33895ec60f50baa"
+    },
+    {
+      "signature": "compare_clinical_record_versions(uuid,uuid)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "e638ad4313df61684e06c6212ee5f807"
+    },
+    {
+      "signature": "confirm_clinical_attachment_replacement(uuid,text,bigint,text,text)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "9b8e4933c234ad0b8b628f2935516750"
+    },
+    {
+      "signature": "confirm_clinical_attachment_upload(uuid,text,bigint,text)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "d1be9128ec904bba5e67a092b11a530f"
+    },
+    {
+      "signature": "confirm_lab_result_interpretation(bigint,text)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "80be1f836c4008813419f4bc329bc230"
+    },
+    {
+      "signature": "copy_meal_plan_to_patient_atomic(bigint,uuid,text)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "9370bbd5aa004f13c3324f498908f250"
+    },
+    {
+      "signature": "create_clinical_attachment_replacement_intent(uuid,text,text,bigint)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "35e7ed1c2b20901115eae7a1006bbd0c"
+    },
+    {
+      "signature": "create_clinical_attachment_signed_url(uuid)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "a0c6998a91878173450a93af926d90f8"
+    },
+    {
+      "signature": "create_clinical_attachment_upload_intent(uuid,uuid,uuid,text,text,date,text,text,bigint)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "0ecf7eb70460d9ba939c008883a21327"
+    },
+    {
+      "signature": "create_clinical_evolution_draft(uuid,uuid,text,timestamp with time zone,text,text)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "844b1ff32b4c321181bf89c6f2e37824"
+    },
+    {
+      "signature": "create_clinical_record_draft(uuid,text,timestamp with time zone,text)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "179125a72cc555784f584a0e2f6fcdab"
+    },
+    {
+      "signature": "create_diet_template(uuid,text,text,text[],jsonb)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "74923825e628d0bf5012ed1b7370785f"
+    },
+    {
+      "signature": "create_document_artifact_from_clinical_record(uuid,text,uuid,text)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "f1e4dbca243ef4217cfd6402eb0715c0"
+    },
+    {
+      "signature": "create_document_artifact_from_meal_plan(bigint,text)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "bb3c6ce4a6c457835eedbda4d45b4286"
+    },
+    {
+      "signature": "create_document_asset_upload_intent(text,text,text,bigint,integer)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "b3d68eb57294d9f3ca9d46b2bbb685d5"
+    },
+    {
+      "signature": "create_lab_result_record(jsonb)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "7f835b57f636ad2b8033f520f5f827e2"
+    },
+    {
+      "signature": "create_meal_plan_atomic(jsonb)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "aeb3a2cc1888677ee013cfad68264bda"
+    },
+    {
+      "signature": "create_my_data_subject_request(text,text)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "d551b7c7c49c47a5ac666b2e4bdcccb5"
+    },
+    {
+      "signature": "detach_anamnesis_file(uuid,uuid,uuid)",
+      "anonymous": true,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "c040ba80deabe3c4b6c60d005dfaba5e"
+    },
+    {
+      "signature": "end_care_episode(uuid,text)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=public, private, pg_temp"
+      ],
+      "definitionMd5": "64a6b9c4107412a1d44459d951cbe3f9"
+    },
+    {
+      "signature": "end_student_supervision(uuid,text)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "8f8b6baee8154b5a130b42e6e74f9232"
+    },
+    {
+      "signature": "extract_and_inject_clinical_flags(uuid)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=public, pg_temp"
+      ],
+      "definitionMd5": "9d99a2256673751bf072e29c71e3d502"
+    },
+    {
+      "signature": "fail_clinical_attachment_upload(uuid,text)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "4c9b09e0b54986036160c6c9705d9094"
+    },
+    {
+      "signature": "fail_document_asset_upload(uuid,text)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "16b7d3d315e947049572cb3c86cbf480"
+    },
+    {
+      "signature": "finalize_clinical_record(uuid,jsonb,bigint,text)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "c7b7569954974e813693da0ed19e4613"
+    },
+    {
+      "signature": "finalize_document_artifact(uuid,bigint)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "7266e6a473b79815373b0f56f951a1eb"
+    },
+    {
+      "signature": "generate_anamnesis_link(uuid,uuid,integer)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=public, pg_temp"
+      ],
+      "definitionMd5": "9399cf43c32c8b415e28a4613bed0dce"
+    },
+    {
+      "signature": "get_admin_dashboard_stats()",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "5a72f18b202b87b5eb2e9bd43f1877f2"
+    },
+    {
+      "signature": "get_anamnesis_by_token(uuid)",
+      "anonymous": true,
+      "authenticated": true,
+      "config": [
+        "search_path=pg_catalog, public, pg_temp"
+      ],
+      "definitionMd5": "3b52bc686b74c5ba1a55724fd7916de8"
+    },
+    {
+      "signature": "get_care_patient_profile(uuid)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=public, pg_temp"
+      ],
+      "definitionMd5": "079af8b266501cdaa9f3556c1f0973c2"
+    },
+    {
+      "signature": "get_clinical_record_amendment_impact(uuid)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "876f73955fa46cafeeaaea98609d9091"
+    },
+    {
+      "signature": "get_document_artifact(uuid)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "38a66362b372da593fc108da12444cc0"
+    },
+    {
+      "signature": "get_empty_patient_removal_status(uuid)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=public, private, pg_temp"
+      ],
+      "definitionMd5": "ff5fdc978cb0f527b8b225453ee9aa24"
+    },
+    {
+      "signature": "get_my_care_relationship()",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=public, pg_temp"
+      ],
+      "definitionMd5": "011b6ce5b493cdf3a6a3215344efecb4"
+    },
+    {
+      "signature": "get_my_clinical_document_context()",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "995a2bcaa226fb68ad34266cb70b7b84"
+    },
+    {
+      "signature": "get_my_document_asset_preview(text)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "a7ef5fae07f872cd15818fd42b3b1edf"
+    },
+    {
+      "signature": "get_my_document_identity()",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "9a16ed15a01c0a4240efe96221929ed1"
+    },
+    {
+      "signature": "get_my_professional_verification()",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "7008bff24b8bdaa4a499fb613fa77d95"
+    },
+    {
+      "signature": "get_my_student_supervisions()",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "371908eda30a6811bd0a265d59d8afb9"
+    },
+    {
+      "signature": "get_nutritionist_detail(uuid)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "f8922bc49d9107c497f7d77da3be36bc"
+    },
+    {
+      "signature": "get_nutritionists_list()",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "1f0b5e0b8feb80d8a0f05456b2e937c1"
+    },
+    {
+      "signature": "get_patient_record_foundation(uuid)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "927f7c4f84865365a33c3751704aa42d"
+    },
+    {
+      "signature": "get_system_live_logs(integer)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "66f47e9dce1088166d61c835d1930d27"
+    },
+    {
+      "signature": "get_tcc_study_metrics()",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "faa007224d712b83205a4c154f94f82a"
+    },
+    {
+      "signature": "import_diet_template_meals_to_plan(uuid,bigint,uuid[])",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "fd4e251c62ea04b2023ff7f7559f4658"
+    },
+    {
+      "signature": "invalidate_anthropometry_record(bigint,text)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "ae3064445935d8fc9f749009d65fe6a7"
+    },
+    {
+      "signature": "invalidate_clinical_attachment(uuid,text)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "9e544b93c0ac0fba10280bb79071ebde"
+    },
+    {
+      "signature": "invalidate_clinical_record(uuid,text,jsonb)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "81f7ab412c5c0581ddc192341eb7f647"
+    },
+    {
+      "signature": "invalidate_document_artifact(uuid,text)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "7441422f961b438f749b1fde94d6810e"
+    },
+    {
+      "signature": "invalidate_lab_result_record(bigint,text)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "8b45990ac5fc998a8738399a937510de"
+    },
+    {
+      "signature": "invalidate_progress_photo(uuid,text)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "fc1b720691d9e05a69a1ba570c9e4244"
+    },
+    {
+      "signature": "is_admin()",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "ed015cfa8b87ca0cc7dcfe4febc8536e"
+    },
+    {
+      "signature": "link_checkin_template(uuid,uuid,text,text)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=pg_catalog, public, private"
+      ],
+      "definitionMd5": "14c739c8a51e3df95aa583f86a4239ce"
+    },
+    {
+      "signature": "list_clinical_attachments_by_episode(uuid,uuid,text,text)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "d716ef45b82f5ac0fbea4d25c6a25891"
+    },
+    {
+      "signature": "list_clinical_protocol_catalog(text)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "abe6119bf5cbc9322655ba3b8fe84913"
+    },
+    {
+      "signature": "list_clinical_record_version_chain(uuid)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "146ba556854cabe0e33b03d32d171c93"
+    },
+    {
+      "signature": "list_clinical_records_by_episode(uuid,uuid,text)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "bcb9586fbbd1d389b3e52f835070af70"
+    },
+    {
+      "signature": "list_data_subject_requests(text)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "9231712dcc3d62b8dea5aab07b03c15b"
+    },
+    {
+      "signature": "list_diet_template_versions(uuid)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "a3c7ac02b8cea15d5f574cbf52899b1f"
+    },
+    {
+      "signature": "list_document_artifacts(uuid,uuid)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "409c0c550123f6d4f6537f41733db060"
+    },
+    {
+      "signature": "list_evolution_templates()",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "ce1c4c0e1d64404f4203f20dd9ec266a"
+    },
+    {
+      "signature": "list_my_clinical_documents(uuid)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "73967d63a08de243d48d9efa81a69784"
+    },
+    {
+      "signature": "list_my_data_subject_requests()",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "4725eb18c21676b1034591d8b6aad4af"
+    },
+    {
+      "signature": "list_nutritionist_care_patients()",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=public, pg_temp"
+      ],
+      "definitionMd5": "9bd60ffbcecb3cc286cd70eb38002f85"
+    },
+    {
+      "signature": "list_patient_clinical_attachments(uuid)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "cccbed2b113521cc86f01bf79cff27cb"
+    },
+    {
+      "signature": "list_patient_legal_guardians(uuid,uuid)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "409e572e5ca9dcc7d36b43c39a6f9c51"
+    },
+    {
+      "signature": "list_patient_timeline(uuid,uuid,text,timestamp with time zone,text,integer)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "2a4f787773424e17a72ce820d9cfccad"
+    },
+    {
+      "signature": "list_professional_verifications(text,text)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "9a5b90bedd80c427937dc45a830dfbdd"
+    },
+    {
+      "signature": "process_patient_reminders(uuid)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=public, private, pg_temp"
+      ],
+      "definitionMd5": "da286bfb10358d9caa8dfb482c3887e1"
+    },
+    {
+      "signature": "refund_financial_transaction(bigint,date)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=pg_catalog, public"
+      ],
+      "definitionMd5": "842e7e636369e403704471f6a4ac7aa1"
+    },
+    {
+      "signature": "remove_empty_patient(uuid)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=public, private, pg_temp"
+      ],
+      "definitionMd5": "3440dbc5f2a8f1182406b837280a294d"
+    },
+    {
+      "signature": "request_student_supervision(uuid)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "7bba1c3558f3fd9b7f7864fd33766e82"
+    },
+    {
+      "signature": "request_student_supervision_by_email(text)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "d54bc5fdf5a59a92e91e02a5b8f7969e"
+    },
+    {
+      "signature": "request_verification_information(uuid,text)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "528476bff2ff728f8e1b31a0c3b6c4d5"
+    },
+    {
+      "signature": "respond_student_supervision(uuid,text,text)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "041958b58115e7ccd90656ad1c10d143"
+    },
+    {
+      "signature": "review_patient_clinical_attachment(uuid,text,text,text,text,date,uuid)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "16fe305a4cfac1595cc35a8fa64410b6"
+    },
+    {
+      "signature": "review_professional_verification(uuid,text,text,text,timestamp with time zone)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "08d4b4ad32db789225d86841d3aa99e3"
+    },
+    {
+      "signature": "revise_anthropometry_record(bigint,jsonb,text)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "c6b9d4d88229d93094bb7d92b0e6ff2f"
+    },
+    {
+      "signature": "revise_lab_result_record(bigint,jsonb,text)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "2acb3a755a5d23d69698ad4c27e1309f"
+    },
+    {
+      "signature": "revoke_patient_legal_guardian(uuid,text)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "e2d8cbe99c867f49b4da5f8a48a2b350"
+    },
+    {
+      "signature": "save_checkin_template(uuid,jsonb,jsonb)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "5de9abc63c4ad413cb96c14c547183ad"
+    },
+    {
+      "signature": "save_custom_food_with_measures(uuid,jsonb,jsonb)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "76cd867225d615fdd94a9b31f6cf6079"
+    },
+    {
+      "signature": "save_meal_template(uuid,timestamp with time zone,text,text,text[],jsonb)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "db2899f3d6843ed1b6d945577855f197"
+    },
+    {
+      "signature": "save_my_document_identity(jsonb,integer,text)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "a5f79793d619d2f0601e408ec148b98f"
+    },
+    {
+      "signature": "save_patient_diary_meal(bigint,jsonb,jsonb)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=pg_catalog, public, private"
+      ],
+      "definitionMd5": "0fd2618eee91c4b4ec9750c13e7f4153"
+    },
+    {
+      "signature": "save_recipe_template(uuid,timestamp with time zone,text,text,text,numeric,text,jsonb)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "25d8b700dc298890fdbebb704cb4a91c"
+    },
+    {
+      "signature": "set_checkin_schedule_active(uuid,boolean)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=pg_catalog, public, private"
+      ],
+      "definitionMd5": "e149131de1f33b596e94ff8a69f85a86"
+    },
+    {
+      "signature": "sign_clinical_record(uuid)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "467e17b2de962be50be982d06eb6013a"
+    },
+    {
+      "signature": "sign_document_artifact(uuid)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "3d4c3422142a5d03261a39ff820f2dd3"
+    },
+    {
+      "signature": "start_clinical_record_correction(uuid,text,jsonb)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "843e42374bb4c0c16e9f060f3a723d76"
+    },
+    {
+      "signature": "submit_anamnesis_by_token(uuid,jsonb,text,boolean,text,jsonb)",
+      "anonymous": true,
+      "authenticated": true,
+      "config": [
+        "search_path=pg_catalog, public, private, pg_temp"
+      ],
+      "definitionMd5": "0d1e569f667b876ae5b50a949d312faf"
+    },
+    {
+      "signature": "submit_checkin_session(uuid,jsonb)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=pg_catalog, public, private"
+      ],
+      "definitionMd5": "2e50c03b0d0e2e372da381363f5c15c8"
+    },
+    {
+      "signature": "submit_professional_verification(jsonb)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "aa1bf4b25879361edf9b12186de33fe0"
+    },
+    {
+      "signature": "suspend_professional_verification(uuid,text)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "f3515445ff5488aec27f3de895b74ece"
+    },
+    {
+      "signature": "update_clinical_record_draft(uuid,jsonb,text,bigint)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "9ddc14755718e8edd1df3e638931df11"
+    },
+    {
+      "signature": "update_data_subject_request(uuid,bigint,text,text,text,text,boolean)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "ff28125955d80f8acf4b5afae366d023"
+    },
+    {
+      "signature": "update_diet_template(uuid,uuid,text,text,text[],jsonb)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "36772693a4c776cec1187186f5044dc2"
+    },
+    {
+      "signature": "update_document_artifact_draft(uuid,jsonb,bigint)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "1f3c1a72a4cd84b9c07ac815df3f2ae5"
+    },
+    {
+      "signature": "update_patient_progressive_profile(uuid,jsonb,text)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "b69c92e25a5ae19ebefb46b4a76c2a85"
+    },
+    {
+      "signature": "upsert_full_meal_plan(bigint,jsonb,jsonb)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "887c036077f1dae83807c41f8ce65e25"
+    },
+    {
+      "signature": "upsert_patient_legal_guardian(uuid,uuid,jsonb)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "6278301f07473fb01d3c674f36eca705"
+    },
+    {
+      "signature": "verify_document_authenticity(uuid)",
+      "anonymous": true,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "fe5b0de7381d7210347dcb18fc426fd4"
+    },
+    {
+      "signature": "version_private_evolution_template(text,jsonb)",
+      "anonymous": false,
+      "authenticated": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "definitionMd5": "e4b0079a9f4408e28c437877210f77bd"
+    }
+  ]
+}

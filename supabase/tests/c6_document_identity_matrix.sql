@@ -26,12 +26,7 @@ begin
     end if;
   end loop;
 
-  if (select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-      where n.nspname = 'public' and p.prosecdef
-        and (has_function_privilege('anon', p.oid, 'execute')
-          or has_function_privilege('authenticated', p.oid, 'execute'))) <> 60 then
-    raise exception 'c6_identity_security_definer_surface_drift';
-  end if;
+  perform pg_temp.assert_client_rpc_surface();
 
   if has_table_privilege('authenticated', 'public.professional_document_identities', 'select')
      or has_table_privilege('authenticated', 'public.professional_document_identities', 'insert')

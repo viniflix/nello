@@ -21,10 +21,6 @@ insert into auth.users(instance_id,id,aud,role,email,encrypted_password,email_co
  'authenticated','authenticated','diet-patient-two@example.invalid','not-used',now(),'{}',
  '{"name":"QA Patient Two","user_type":"patient"}',now(),now());
 
-begin;
-set local role authenticated;
-select set_config('request.jwt.claim.sub','10000000-0000-0000-0000-000000000091',true);
-select public.start_care_episode('20000000-0000-0000-0000-000000000091','QA synthetic meal plan permissions');
-select set_config('request.jwt.claim.sub','10000000-0000-0000-0000-000000000092',true);
-select public.start_care_episode('20000000-0000-0000-0000-000000000092','QA synthetic meal plan permissions');
-commit;
+insert into public.nutritionist_patients(nutritionist_id,patient_id,status) values
+('10000000-0000-0000-0000-000000000091','20000000-0000-0000-0000-000000000091','active'),
+('10000000-0000-0000-0000-000000000092','20000000-0000-0000-0000-000000000092','active');
