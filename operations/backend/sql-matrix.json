@@ -1,0 +1,204 @@
+{
+  "schemaVersion": 1,
+  "note": "Every SQL source is classified; support/inventory is reported separately from behavioral assertions. No production connection or clinical data.",
+  "sources": [
+    {
+      "file": "bh24_02_03_atomic_appointments.sql",
+      "kind": "assertion-suite",
+      "fixtures": []
+    },
+    {
+      "file": "c5_lifecycle_matrix.sql",
+      "kind": "assertion-suite",
+      "fixtures": []
+    },
+    {
+      "file": "c6_d10_adversarial_hardening_matrix.sql",
+      "kind": "assertion-suite",
+      "fixtures": []
+    },
+    {
+      "file": "c6_document_artifacts_matrix.sql",
+      "kind": "assertion-suite",
+      "fixtures": []
+    },
+    {
+      "file": "c6_document_assets_matrix.sql",
+      "kind": "assertion-suite",
+      "fixtures": []
+    },
+    {
+      "file": "c6_document_composition_matrix.sql",
+      "kind": "assertion-suite",
+      "fixtures": []
+    },
+    {
+      "file": "c6_document_identity_matrix.sql",
+      "kind": "assertion-suite",
+      "fixtures": []
+    },
+    {
+      "file": "c6_security_definer_allowlist_matrix.sql",
+      "kind": "assertion-suite",
+      "fixtures": []
+    },
+    {
+      "file": "c7_data_portability_matrix.sql",
+      "kind": "assertion-suite",
+      "fixtures": []
+    },
+    {
+      "file": "c8_data_subject_requests_matrix.sql",
+      "kind": "assertion-suite",
+      "fixtures": []
+    },
+    {
+      "file": "care_episodes_matrix.sql",
+      "kind": "assertion-suite",
+      "fixtures": []
+    },
+    {
+      "file": "care_journeys_matrix.sql",
+      "kind": "assertion-suite",
+      "fixtures": []
+    },
+    {
+      "file": "clinical_attachments_contract_matrix.sql",
+      "kind": "assertion-suite",
+      "fixtures": [],
+      "variables": {
+        "stage4_only": "1"
+      }
+    },
+    {
+      "file": "clinical_episode_isolation_matrix.sql",
+      "kind": "assertion-suite",
+      "fixtures": []
+    },
+    {
+      "file": "clinical_evolution_system_matrix.sql",
+      "kind": "assertion-suite",
+      "fixtures": []
+    },
+    {
+      "file": "clinical_record_amendments_concurrency_setup.sql",
+      "kind": "concurrency-setup",
+      "fixtures": []
+    },
+    {
+      "file": "clinical_record_amendments_matrix.sql",
+      "kind": "assertion-suite",
+      "fixtures": []
+    },
+    {
+      "file": "clinical_record_foundation_matrix.sql",
+      "kind": "assertion-suite",
+      "fixtures": []
+    },
+    {
+      "file": "d1_d10_clinical_prescription_matrix.sql",
+      "kind": "assertion-suite",
+      "fixtures": []
+    },
+    {
+      "file": "meal_plan_permission_matrix.sql",
+      "kind": "assertion-suite",
+      "fixtures": []
+    },
+    {
+      "file": "meal_time_compatibility_matrix.sql",
+      "kind": "assertion-suite",
+      "fixtures": []
+    },
+    {
+      "file": "offline_patient_notifications_matrix.sql",
+      "kind": "assertion-suite",
+      "fixtures": []
+    },
+    {
+      "file": "patient_background_jobs_matrix.sql",
+      "kind": "assertion-suite",
+      "fixtures": []
+    },
+    {
+      "file": "patient_timeline_matrix.sql",
+      "kind": "assertion-suite",
+      "fixtures": []
+    },
+    {
+      "file": "pre_c6_security_hardening_matrix.sql",
+      "kind": "assertion-suite",
+      "fixtures": []
+    },
+    {
+      "file": "prelaunch_tester_clinical_access_matrix.sql",
+      "kind": "assertion-suite",
+      "fixtures": []
+    },
+    {
+      "file": "professional_verification_foundation_matrix.sql",
+      "kind": "assertion-suite",
+      "fixtures": []
+    },
+    {
+      "file": "rls_access_matrix.sql",
+      "kind": "assertion-suite",
+      "fixtures": []
+    },
+    {
+      "file": "s02_stage1_schema_privileges_matrix.sql",
+      "kind": "assertion-suite",
+      "fixtures": []
+    },
+    {
+      "file": "s02_stage2_auth_rls_matrix.sql",
+      "kind": "assertion-suite",
+      "fixtures": []
+    },
+    {
+      "file": "s02_stage3_episode_policy_matrix.sql",
+      "kind": "assertion-suite",
+      "fixtures": []
+    },
+    {
+      "file": "s02_stage4_index_matrix.sql",
+      "kind": "assertion-suite",
+      "fixtures": []
+    },
+    {
+      "file": "security_inventory.sql",
+      "kind": "inventory",
+      "fixtures": []
+    },
+    {
+      "file": "storage_schema_fixture.sql",
+      "kind": "storage-fixture",
+      "fixtures": []
+    },
+    {
+      "file": "wave2_growth_records_rls.sql",
+      "kind": "assertion-suite",
+      "fixtures": []
+    },
+    {
+      "file": "wave2_invite_redeem.sql",
+      "kind": "assertion-suite",
+      "fixtures": []
+    },
+    {
+      "file": "wave3_admin_access_matrix.sql",
+      "kind": "assertion-suite",
+      "fixtures": []
+    },
+    {
+      "file": "wave4_anamnesis_token.sql",
+      "kind": "assertion-suite",
+      "fixtures": []
+    },
+    {
+      "file": "wave4_rpc_grants.sql",
+      "kind": "assertion-suite",
+      "fixtures": []
+    }
+  ]
+}

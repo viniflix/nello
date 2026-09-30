@@ -40,7 +40,7 @@ for (const file of readdirSync('supabase/reconstruction').filter((f) => f.endsWi
   copyFileSync(resolve('supabase/reconstruction', file), join(destination, 'supabase/migrations', file));
 }
 const releaseDir = resolve('supabase/migrations/releases');
-if (existsSync(releaseDir)) {
+if (!process.argv.includes('--baseline-only') && existsSync(releaseDir)) {
   for (const file of readdirSync(releaseDir).filter((f) => f.endsWith('.sql')).sort()) {
     if (!/^\d{14}_\w+\.sql$/.test(file) || file.slice(0, 14) <= manifest.lastMigration) throw Error(`Invalid forward migration: ${file}`);
     copyFileSync(join(releaseDir, file), join(destination, 'supabase/migrations', file));
