@@ -28,4 +28,9 @@ describe('safe authentication redirects', () => {
     expect(safeAuthRedirect('/update-password', origin)).toBe('/update-password');
     expect(safeAuthRedirect('https://old.example/patient', 'https://old.example')).toBe('/login');
   });
+  it('fails closed for missing inputs and malformed URLs',()=>{
+    expect(safeAuthRedirect(null,origin)).toBe('/login');
+    expect(safeAuthRedirect('not a URL',origin)).toBe('/login');
+    expect(safeAuthRedirect('https://foreign.example/login','invalid origin')).toBe('/login');
+  });
 });

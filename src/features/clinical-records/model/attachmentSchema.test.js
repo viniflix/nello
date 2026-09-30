@@ -22,6 +22,16 @@ const file = (overrides = {}) => ({
 });
 
 describe('clinical attachment contracts', () => {
+  it('minimizes patient submissions while preserving their review status',()=>{
+    expect(normalizeClinicalAttachment(null)).toBeNull();
+    expect(normalizeClinicalAttachment('invalid')).toBeNull();
+    expect(normalizeClinicalAttachment({status:'quarantined',source:'nutritionist'},{audience:'patient_documents'})).toBeNull();
+    const result=normalizeClinicalAttachment({id:'a',status:'pending_review',source:'patient',storage_path:'secret',can_open:false},{audience:'patient_documents'});
+    expect(result).toMatchObject({id:'a',status:'pending_review',can_open:false});expect(result).not.toHaveProperty('storage_path');
+    expect(normalizeClinicalAttachment({status:'active',visibility:'shared_with_patient'},{audience:'patient_documents'})).not.toBeNull();
+    expect(normalizeClinicalAttachment({status:'future',visibility:'future'})).toMatchObject({status_label:'future',visibility_label:'future'});
+    expect(normalizeClinicalAttachment({})).toMatchObject({status_label:'Indisponível',visibility_label:'Indisponível'});
+  });
   it('defines stable MVP categories and short-lived signed URLs', () => {
     expect(CLINICAL_ATTACHMENT_CATEGORIES.map(({ code }) => code)).toEqual([
       'laboratory_exam',

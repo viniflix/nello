@@ -1,5 +1,6 @@
 import { assertReleaseReady } from './readiness.mjs';
-export async function controlledRelease({sha,evidence,previous,candidate,provider,smoke,record=()=>{}}){
+import {observeDeployment} from './observation.mjs';
+export async function controlledRelease({sha,evidence,previous,candidate,provider,smoke,observe=observeDeployment,record=()=>{}}){
  assertReleaseReady(evidence,sha);
  if(!previous||previous===candidate||!/^dpl_[a-zA-Z0-9]+$/.test(previous)||!/^dpl_[a-zA-Z0-9]+$/.test(candidate))throw Error('Distinct immutable deployment IDs required');
  let promotionAttempted=false;
@@ -10,7 +11,9 @@ export async function controlledRelease({sha,evidence,previous,candidate,provide
   await smoke('https://'+old.url,{stage:'rollback-target'});
   await smoke('https://'+staged.url,{stage:'canary'});record({stage:'canary-passed',sha,candidate,previous});
   if(await provider.current()!==previous)throw Error('Production changed during canary validation');
-  promotionAttempted=true;await provider.promote(candidate);await smoke('https://nellonutri.com.br',{stage:'production',observationMinutes:30});record({stage:'production-verified',sha,candidate,previous});return {passed:true,candidate};
+  promotionAttempted=true;await provider.promote(candidate);await smoke('https://nellonutri.com.br',{stage:'production'});
+  const observation=await observe('https://nellonutri.com.br',{smoke,durationMs:30*60_000,record});
+  record({stage:'production-verified',sha,candidate,previous,observation});return {passed:true,candidate,observation};
  }catch(error){
   if(promotionAttempted){const current=await provider.current();if(current!==candidate&&current!==previous)throw Error('Production changed concurrently; automatic rollback stopped to preserve the other release');await provider.rollback(previous);await smoke('https://nellonutri.com.br',{stage:'rollback'});record({stage:'rolled-back',candidate,previous});}
   throw error;

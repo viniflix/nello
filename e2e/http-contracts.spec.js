@@ -38,3 +38,30 @@ test('actual private Storage upload, confirmation and sharing preserve patient b
  const foreignRead=await other.storage.from(intent.storage_bucket).download(intent.storage_path);expect(foreignRead.error).not.toBeNull();
 });
 
+test('patient creation retries are idempotent and a meal plan survives HTTP readback',async()=>{
+ const owner=await actor('nutritionist-a');const request={p_request_id:randomUUID(),p_nutritionist_id:fixture.personas['nutritionist-a'].id,p_patient_id:randomUUID(),p_invite_code:'QAAB-CD23',p_email:'qa-new@example.invalid',p_profile:{name:'QA novo paciente',birth_date:'1990-01-01'}};
+ const first=await owner.rpc('create_offline_patient_atomic',request);expect(first.error).toBeNull();expect(first.data.userId).toBe(request.p_patient_id);
+ const retry=await owner.rpc('create_offline_patient_atomic',request);expect(retry.error).toBeNull();expect(retry.data).toEqual(first.data);
+ const patient=await owner.from('user_profiles').select('id,name').eq('id',request.p_patient_id);expect(patient.error).toBeNull();expect(patient.data).toEqual([{id:request.p_patient_id,name:'QA novo paciente'}]);
+ const plan=await owner.rpc('create_meal_plan_atomic',{p_plan_data:{patient_id:request.p_patient_id,name:'QA plano persistido',is_active:false,hybrid:true,days:[]}});expect(plan.error).toBeNull();
+ const persisted=await owner.from('meal_plans').select('name,patient_id').eq('id',plan.data).single();expect(persisted.error).toBeNull();expect(persisted.data.name).toBe('QA plano persistido');
+ const other=await actor('nutritionist-b');const foreign=await other.from('meal_plans').select('id').eq('id',plan.data);expect(foreign.error).toBeNull();expect(foreign.data).toEqual([]);
+});
+
+test('signed canonical clinical artifact generates an actual PDF in Chromium',async({page})=>{
+ const owner=await actor('nutritionist-a');const call=async(name,args)=>{const response=await owner.rpc(name,args);expect(response.error,JSON.stringify(response.error)).toBeNull();return response.data;};
+ await call('save_my_document_identity',{p_payload:{professional_name:'QA Profissional',primary_color:'#416A33',accent_color:'#914604'}});
+ const episode=await owner.from('care_episodes').select('id').eq('patient_id',fixture.personas['patient-a'].id).eq('status','active').single();expect(episode.error).toBeNull();
+ const draft=await call('create_clinical_evolution_draft',{p_patient_id:fixture.personas['patient-a'].id,p_episode_id:episode.data.id,p_template_code:'nello_standard',p_encounter_at:new Date().toISOString(),p_visibility:'shared_with_patient',p_retrospective_reason:null});
+ const recordId=draft.record_id||draft.id;
+ await call('finalize_clinical_record',{p_record_id:recordId,p_content:{conduct:'Orientacao sintetica de QA sem dados reais'},p_expected_revision:draft.revision});
+ await call('sign_clinical_record',{p_record_id:recordId});
+ const created=await call('create_document_artifact_from_clinical_record',{p_record_id:recordId,p_visibility:'shared_with_patient'});
+ await call('finalize_document_artifact',{p_artifact_id:created.artifact_id,p_expected_revision:created.revision});
+ await call('sign_document_artifact',{p_artifact_id:created.artifact_id});
+ const artifact=await call('get_document_artifact',{p_artifact_id:created.artifact_id});expect(artifact.status).toBe('signed');expect(artifact.sha256).toMatch(/^[a-f0-9]{64}$/);
+ await page.goto('/login');
+ const pdf=await page.evaluate(async artifact=>{const{renderCanonicalDocumentPdf}=await import('/__qa__/harness.js');const blob=await renderCanonicalDocumentPdf(artifact);return {type:blob.type,bytes:Array.from(new Uint8Array(await blob.arrayBuffer()))};},artifact);
+ expect(pdf.type).toBe('application/pdf');expect(pdf.bytes.length).toBeGreaterThan(2000);expect(Buffer.from(pdf.bytes).subarray(0,5).toString()).toBe('%PDF-');expect(Buffer.from(pdf.bytes).toString()).toContain('QA patient-a');
+});
+

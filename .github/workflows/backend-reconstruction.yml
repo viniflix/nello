@@ -64,6 +64,8 @@ jobs:
         run: |
           node scripts/qa/browser-fixture.mjs
           npm run build
+          npx --no-install vite build --config e2e/qa-build.config.mjs
+          node scripts/qa/css-gate-injection.mjs
           npx --no-install playwright install --with-deps chromium
           npx --no-install playwright test --update-snapshots
       - name: Preserve diagnostics
