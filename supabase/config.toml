@@ -69,3 +69,9 @@ verify_jwt = true
 verify_jwt = true
 [functions.confirm-document-asset]
 verify_jwt = true
+[functions.upload-private-file]
+static_files = [ "./functions/upload-private-file/.generated/*" ]
+# Public anamnesis capability is verified by the handler and reservation RPC.
+verify_jwt = false
+[functions.storage-maintenance]
+verify_jwt = true

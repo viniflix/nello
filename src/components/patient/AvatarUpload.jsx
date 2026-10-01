@@ -1,3 +1,4 @@
+import { uploadAvatarFile } from '@/lib/storage/avatarUpload';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import { useState, useRef } from 'react';
 import { Camera, User, Loader2 } from 'lucide-react';
@@ -30,6 +31,7 @@ export default function AvatarUpload({ size = 'large', showChangeButton = true }
   };
 
   const handleFileChange = async (event) => {
+    let objectUrl;
     try {
       const file = event.target.files?.[0];
       if (!file) return;
@@ -57,45 +59,15 @@ export default function AvatarUpload({ size = 'large', showChangeButton = true }
       setUploading(true);
 
       // Optimistic update: Show preview immediately
-      const objectUrl = URL.createObjectURL(file);
+      objectUrl = URL.createObjectURL(file);
       setPreviewUrl(objectUrl);
 
-      // Remove old avatar if exists
-      const { data: existingFiles } = await supabase.storage
-        .from('avatars')
-        .list(user.id);
-      
-      if (existingFiles && existingFiles.length > 0) {
-        const filesToRemove = existingFiles.map(f => `${user.id}/${f.name}`);
-        await supabase.storage.from('avatars').remove(filesToRemove);
-      }
-
-      // Create unique file name
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
-      const filePath = `${user.id}/${fileName}`;
-
-      // Upload to Supabase Storage (avatars bucket)
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(filePath, file, { upsert: true });
-
-      if (uploadError) {
-        // Revert optimistic update on error
-        setPreviewUrl(null);
-        URL.revokeObjectURL(objectUrl);
-        throw uploadError;
-      }
-
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(filePath);
+      const avatarReference = await uploadAvatarFile(user.id, file);
 
       // Update user profile in database
       const { data: updatedProfile, error: updateError } = await supabase
         .from('user_profiles')
-        .update({ avatar_url: publicUrl })
+        .update({ avatar_url: avatarReference })
         .eq('id', user.id)
         .select()
         .single();

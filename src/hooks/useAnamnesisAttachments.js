@@ -1,4 +1,4 @@
-import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
+import { uploadVerifiedFile } from '@/lib/storage/verifiedUpload';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
@@ -25,7 +25,7 @@ export function useAnamnesisAttachments(recordId, patientId, publicToken = null,
 
     const getSignedUrl = async (storagePath) => {
         const { data, error } = await supabase.storage.from(BUCKET)
-            .createSignedUrl(storagePath, publicToken ? 30 : 3600);
+            .createSignedUrl(storagePath, publicToken ? 30 : 300);
         if (error) throw error;
         return data.signedUrl;
     };
@@ -42,9 +42,7 @@ export function useAnamnesisAttachments(recordId, patientId, publicToken = null,
             const path = publicToken
                 ? `public/${publicToken}/${recordId}/${crypto.randomUUID()}.${ext}`
                 : `nutritionist/${user.id}/${recordId}/${crypto.randomUUID()}.${ext}`;
-            const { error: uploadError } = await supabase.storage.from(BUCKET)
-                .upload(path, file, { upsert: false, contentType: file.type });
-            if (uploadError) throw uploadError;
+            await uploadVerifiedFile(BUCKET, path, file, { publicToken });
             const { data, error } = await supabase.rpc('attach_anamnesis_file', {
                 p_record_id: recordId,
                 p_token: publicToken,
@@ -54,7 +52,6 @@ export function useAnamnesisAttachments(recordId, patientId, publicToken = null,
                 p_file_name: file.name,
             });
             if (error) {
-                await supabase.storage.from(BUCKET).remove([path]);
                 throw error;
             }
             return data;
@@ -77,9 +74,6 @@ export function useAnamnesisAttachments(recordId, patientId, publicToken = null,
                 p_attachment_id: attachmentId,
             });
             if (error) throw error;
-            const { error: storageError } = await supabase.storage.from(BUCKET)
-                .remove([data.storage_path]);
-            if (storageError) logDiagnostic('error', 'hooks/useAnamnesisAttachments.js:81', 'Falha na limpeza do anexo removido:', storageError.code || 'storage_error');
             return data.attachments;
         },
         onSuccess: (attachments) => {

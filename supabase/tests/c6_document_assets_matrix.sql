@@ -5,6 +5,12 @@ create function pg_temp.qa_verified_asset_confirmation(p_id uuid,p_sha text,p_si
 returns jsonb language plpgsql security definer set search_path='' as $$
 declare previous_role text:=current_setting('request.jwt.claim.role',true); result jsonb;
 begin
+ -- Only the disposable SQL fixture fabricates an already verified worker result.
+ if current_database() !~ '^nello_qa_wave02_[0-9]+$' then raise exception 'isolated_fixture_required'; end if;
+ insert into private.storage_upload_reservations(bucket_id,object_path,actor_id,tenant_id,quota_key,mime_type,expected_size,verified_size,sha256,source_sha256,status,verified_at)
+ select u.storage_bucket,u.storage_path,u.professional_id,u.professional_id,u.professional_id::text,u.mime_type,u.size_bytes,p_size,p_sha,p_sha,'confirmed',now()
+ from public.document_asset_uploads u where u.id=p_id and u.professional_id=auth.uid()
+ on conflict(bucket_id,object_path) do nothing;
  perform set_config('request.jwt.claim.role','service_role',true);
  result:=public.confirm_document_asset_upload_verified(p_id,auth.uid(),p_sha,p_size,p_mime);
  perform set_config('request.jwt.claim.role',coalesce(previous_role,'authenticated'),true);

@@ -241,6 +241,11 @@
       "file": "post06_clinical_boundaries.sql",
       "kind": "assertion-suite",
       "fixtures": []
+    },
+    {
+      "file": "wave07_private_storage.sql",
+      "kind": "assertion-suite",
+      "fixtures": []
     }
   ]
 }

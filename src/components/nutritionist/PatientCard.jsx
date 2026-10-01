@@ -1,3 +1,4 @@
+import { PrivateImage } from '@/components/ui/private-image';
 import { isPatientAccessPending } from '@/lib/utils/patientAccessStatus';
 import React, { useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -24,7 +25,7 @@ export const GradientAvatar = ({ name = '', avatarUrl, size = 44 }) => {
     const gradient = `linear-gradient(135deg, hsl(${hue},65%,52%), hsl(${(hue + 40) % 360},70%,45%))`;
 
     if (avatarUrl) {
-        return <img src={avatarUrl} alt={name} style={{ width: size, height: size }} className="rounded-full object-cover flex-shrink-0" />;
+        return <PrivateImage src={avatarUrl} alt={name} style={{ width: size, height: size }} className="rounded-full object-cover flex-shrink-0" />;
     }
     return (
         <div style={{ width: size, height: size, background: gradient }} className="rounded-full flex items-center justify-center font-bold text-white text-sm select-none flex-shrink-0">

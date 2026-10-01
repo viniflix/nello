@@ -1,3 +1,4 @@
+import { uploadVerifiedFile } from '@/lib/storage/verifiedUpload';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState, useEffect, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -12,9 +13,11 @@ import { format, addMonths, parseISO } from 'date-fns';
 import { Upload, File, X } from 'lucide-react';
 import { getServices } from '@/lib/supabase/financial-queries';
 import { formatCurrency } from '@/lib/utils';
-import { supabase } from '@/lib/customSupabaseClient';
 import { useToast } from '@/components/ui/use-toast';
 import { splitInstallmentAmounts } from '@/lib/utils/financial-math';
+import { privateFileReference } from '@/lib/storage/privateFiles';
+import { PrivateFileLink } from '@/components/ui/private-file-link';
+import { validateUploadSelection, fileExtensionForMime } from '@/lib/storage/uploadPolicy';
 
 const INCOME_CATEGORIES = [
     { value: 'consulta', label: 'Consulta' },
@@ -134,6 +137,10 @@ export default function TransactionDialog({
     const handleFileChange = (e) => {
         const file = e.target.files?.[0];
         if (file) {
+            try { validateUploadSelection('financial-docs', file); } catch {
+                toast({ title: 'Arquivo inválido', description: 'Envie JPG, PNG, WebP ou PDF de até 10 MB.', variant: 'destructive' });
+                e.target.value = ''; return;
+            }
             // Validate file size (max 10MB)
             if (file.size > 10 * 1024 * 1024) {
                 toast({
@@ -156,25 +163,14 @@ export default function TransactionDialog({
 
         setUploading(true);
         try {
-            const fileExt = formData.attachment_file.name.split('.').pop();
-            const fileName = `${nutritionistId}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+            validateUploadSelection('financial-docs', formData.attachment_file);
+            const fileExt = fileExtensionForMime(formData.attachment_file.type);
+            const fileName = `${nutritionistId}/${crypto.randomUUID()}.${fileExt}`;
 
             // Upload to Supabase Storage (bucket: financial-docs)
-            const { error: uploadError } = await supabase.storage
-                .from('financial-docs')
-                .upload(fileName, formData.attachment_file, {
-                    cacheControl: '3600',
-                    upsert: false
-                });
+            await uploadVerifiedFile('financial-docs', fileName, formData.attachment_file);
 
-            if (uploadError) throw uploadError;
-
-            // Get public URL
-            const { data: { publicUrl } } = supabase.storage
-                .from('financial-docs')
-                .getPublicUrl(fileName);
-
-            return publicUrl;
+            return privateFileReference('financial-docs', fileName);
         } catch (error) {
             logDiagnostic('error', 'components/financial/TransactionDialog.jsx:178', 'Error uploading attachment:', error);
             toast({
@@ -231,12 +227,8 @@ export default function TransactionDialog({
         if (formData.attachment_file) {
             attachmentUrl = await uploadAttachment();
             if (!attachmentUrl && formData.attachment_file) {
-                // User can still save without attachment if upload fails
-                toast({
-                    title: 'Aviso',
-                    description: 'Salvando sem anexo. Tente fazer upload novamente depois.',
-                    variant: 'default'
-                });
+                // Keep the form and its selected file intact for a retry.
+                return;
             }
         }
 
@@ -610,14 +602,13 @@ export default function TransactionDialog({
                             ) : formData.attachment_url ? (
                                 <div className="flex items-center gap-2 p-3 border rounded-lg bg-muted/50">
                                     <File className="w-4 h-4" />
-                                    <a 
-                                        href={formData.attachment_url} 
-                                        target="_blank" 
-                                        rel="noopener noreferrer"
+                                    <PrivateFileLink
+                                        value={formData.attachment_url}
+                                        bucket="financial-docs"
                                         className="flex-1 text-sm text-primary hover:underline truncate"
                                     >
                                         Ver anexo existente
-                                    </a>
+                                    </PrivateFileLink>
                                     <Button
                                         type="button"
                                         variant="ghost"

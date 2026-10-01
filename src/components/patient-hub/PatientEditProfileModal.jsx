@@ -1,3 +1,5 @@
+import { PrivateImage } from '@/components/ui/private-image';
+import { uploadAvatarFile } from '@/lib/storage/avatarUpload';
 import React, { useRef, useState } from "react";
 import { Camera, Loader2, User } from "lucide-react";
 import {
@@ -8,7 +10,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/lib/customSupabaseClient";
 import { updatePatientProfile } from "@/lib/supabase/patient-queries";
 import ProgressivePatientProfile from "@/features/clinical-records/components/ProgressivePatientProfile";
 import LegalGuardianCard from "@/features/clinical-records/components/LegalGuardianCard";
@@ -57,14 +58,9 @@ export default function PatientEditProfileModal({
     const localUrl = URL.createObjectURL(file);
     setPreviewUrl(localUrl);
     try {
-      const path = `${patientData.id}/${Date.now()}_${file.name}`;
-      const { error } = await supabase.storage
-        .from("avatars")
-        .upload(path, file, { upsert: true });
-      if (error) throw error;
-      const { data } = supabase.storage.from("avatars").getPublicUrl(path);
+      const avatarReference = await uploadAvatarFile(patientData.id, file);
       const saved = await updatePatientProfile(patientData.id, {
-        avatar_url: data.publicUrl,
+        avatar_url: avatarReference,
       });
       if (saved.error) throw saved.error;
       await onSaveSuccess?.();
@@ -77,6 +73,8 @@ export default function PatientEditProfileModal({
         variant: "destructive",
       });
     } finally {
+      URL.revokeObjectURL(localUrl);
+      setPreviewUrl(null);
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
@@ -99,7 +97,7 @@ export default function PatientEditProfileModal({
             {uploading ? (
               <Loader2 className="m-auto h-6 w-6 animate-spin" />
             ) : previewUrl || patientData?.avatar_url ? (
-              <img
+              <PrivateImage
                 src={previewUrl || patientData.avatar_url}
                 alt="Avatar do paciente"
                 className="h-full w-full object-cover"

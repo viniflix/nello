@@ -1,3 +1,4 @@
+import { PrivateImage } from '@/components/ui/private-image';
 import { markOwnNotificationsRead, deleteOwnNotifications } from '@/lib/supabase/notification-mutations';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState, useEffect, useCallback } from 'react';
@@ -276,7 +277,7 @@ const NotificationsPanel = ({ isOpen, setIsOpen }) => {
                     <div className="flex items-start gap-3">
                       {meta.isMessage ? (
                         sender?.avatar_url ? (
-                          <img src={sender.avatar_url} alt={sender?.name || 'Remetente'} className="h-10 w-10 rounded-full object-cover" />
+                          <PrivateImage src={sender.avatar_url} alt={sender?.name || 'Remetente'} className="h-10 w-10 rounded-full object-cover" />
                         ) : (
                           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 font-semibold text-primary">
                             {senderInitials}

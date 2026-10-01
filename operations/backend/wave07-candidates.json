@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "migrations": [
+    {
+      "file": "supabase/migrations/releases/20261001183000_wave07_private_storage.sql",
+      "sha256": "6967eac64b0e33e0fe50667e4a0d1f44ba76e1966035e9097c0fa303ece00706"
+    }
+  ]
+}

@@ -3,7 +3,7 @@ begin;
 insert into storage.buckets(id,name,public,file_size_limit,allowed_mime_types)
 values (
   'patient-photos','patient-photos',false,5242880,
-  array['image/jpeg','image/png','image/webp','image/heic','image/heif']::text[]
+  array['image/jpeg','image/png','image/webp']::text[]
 )
 on conflict (id) do update set public=excluded.public,file_size_limit=excluded.file_size_limit,
   allowed_mime_types=excluded.allowed_mime_types;
@@ -43,20 +43,27 @@ $test$;
 -- Patient can create an episode-scoped progress photo.
 set local role authenticated;
 select set_config('request.jwt.claim.sub','20000000-0000-0000-0000-000000000081',true);
+select set_config('qa.photo_upload',(public.reserve_storage_upload('patient-photos','20000000-0000-0000-0000-000000000081/40000000-0000-0000-0000-000000000081/progress_photos/50000000-0000-4000-8000-000000000701.jpg','image/jpeg',1000)->>'id'),true);
+select public.claim_storage_upload(current_setting('qa.photo_upload')::uuid);
+reset role;
 insert into storage.objects(bucket_id,name,owner_id,metadata)
 values(
   'patient-photos',
-  '20000000-0000-0000-0000-000000000081/40000000-0000-0000-0000-000000000081/progress_photos/patient.jpg',
+  '20000000-0000-0000-0000-000000000081/40000000-0000-0000-0000-000000000081/progress_photos/50000000-0000-4000-8000-000000000701.jpg',
   '20000000-0000-0000-0000-000000000081','{"mimetype":"image/jpeg","size":1000}'
 );
+select set_config('request.jwt.claim.role','service_role',true);
+select public.finish_storage_upload(current_setting('qa.photo_upload')::uuid,repeat('a',64),repeat('a',64),1000);
+select set_config('request.jwt.claim.role','authenticated',true);
+set local role authenticated;
 insert into public.progress_photos(
   id,patient_id,care_episode_id,photo_url,storage_path,photo_date,uploaded_by
 ) values(
   '60000000-0000-0000-0000-000000000081',
   '20000000-0000-0000-0000-000000000081',
   '40000000-0000-0000-0000-000000000081',
-  '20000000-0000-0000-0000-000000000081/40000000-0000-0000-0000-000000000081/progress_photos/patient.jpg',
-  '20000000-0000-0000-0000-000000000081/40000000-0000-0000-0000-000000000081/progress_photos/patient.jpg',
+  '20000000-0000-0000-0000-000000000081/40000000-0000-0000-0000-000000000081/progress_photos/50000000-0000-4000-8000-000000000701.jpg',
+  '20000000-0000-0000-0000-000000000081/40000000-0000-0000-0000-000000000081/progress_photos/50000000-0000-4000-8000-000000000701.jpg',
   current_date,
   '20000000-0000-0000-0000-000000000081'
 );
@@ -81,7 +88,7 @@ begin
   if (select count(*) from public.progress_photos where id='60000000-0000-0000-0000-000000000081') <> 1 then
     raise exception 'episode_nutritionist_cannot_read_progress_photo';
   end if;
-  if (select count(*) from storage.objects where name like '%/progress_photos/patient.jpg') <> 1 then
+  if (select count(*) from storage.objects where name like '%/progress_photos/50000000-0000-4000-8000-000000000701.jpg') <> 1 then
     raise exception 'episode_nutritionist_cannot_read_private_object';
   end if;
 end;
@@ -96,7 +103,7 @@ begin
   if (select count(*) from public.progress_photos where id='60000000-0000-0000-0000-000000000081') <> 0 then
     raise exception 'unrelated_nutritionist_read_progress_photo';
   end if;
-  if (select count(*) from storage.objects where name like '%/progress_photos/patient.jpg') <> 0 then
+  if (select count(*) from storage.objects where name like '%/progress_photos/50000000-0000-4000-8000-000000000701.jpg') <> 0 then
     raise exception 'unrelated_nutritionist_read_private_object';
   end if;
   begin
@@ -144,7 +151,7 @@ begin
   end if;
   if not exists(
     select 1 from storage.objects
-    where name like '%/progress_photos/patient.jpg'
+    where name like '%/progress_photos/50000000-0000-4000-8000-000000000701.jpg'
   ) then
     raise exception 'progress_photo_object_was_deleted';
   end if;

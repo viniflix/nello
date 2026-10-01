@@ -1,5 +1,19 @@
 begin;
 
+-- SQL-only metadata fixture: actual bytes are independently tested through Edge.
+create function pg_temp.qa_worker_clinical_object(p_path text,p_owner text,p_metadata jsonb,p_hash text)
+returns void language plpgsql security definer set search_path='' as $$
+declare scope jsonb;
+begin
+ if current_database() !~ '^nello_qa_wave02_[0-9]+$' then raise exception 'isolated_fixture_required'; end if;
+ scope:=private.storage_upload_scope('clinical-attachments',p_path,null,null);
+ insert into storage.objects(bucket_id,name,owner_id,metadata) values('clinical-attachments',p_path,p_owner,p_metadata);
+ insert into private.storage_upload_reservations(bucket_id,object_path,actor_id,tenant_id,patient_id,care_episode_id,quota_key,mime_type,expected_size,verified_size,sha256,source_sha256,status,verified_at)
+ select a.storage_bucket,a.storage_path,auth.uid(),(scope->>'tenant_id')::uuid,a.patient_id,a.care_episode_id,auth.uid()::text,a.mime_type,a.size_bytes,a.size_bytes,p_hash,p_hash,'confirmed',now()
+ from public.clinical_attachments a where a.storage_path=p_path;
+end$$;
+
+
 -- C5 contract matrix. It is intentionally RED before the C5 migration exists.
 -- Later stages extend this file with personas, lifecycle and Storage isolation.
 
@@ -242,29 +256,14 @@ begin
     raise exception 'clinical_attachment_bucket_mime_contract_failed';
   end if;
 
-  if not exists (
-    select 1 from pg_policies
-    where schemaname='storage' and tablename='objects'
-      and policyname='clinical_attachments_insert_reserved_intent' and cmd='INSERT'
-      and roles=array['authenticated']::name[]
-  ) then raise exception 'clinical_attachment_storage_insert_policy_missing'; end if;
-
-  if exists (
-    select 1 from pg_policies
-    where schemaname='storage' and tablename='objects'
-      and policyname like 'clinical_attachments_%'
-      and (
-        cmd in ('UPDATE','DELETE','ALL')
-        or (cmd='SELECT' and policyname<>'clinical_attachments_select_authorized')
-      )
-  ) then raise exception 'clinical_attachment_storage_broad_policy_detected'; end if;
-
-  if exists(
-    select 1 from pg_policies
-    where schemaname='storage' and tablename='objects'
-      and policyname='clinical_attachments_select_authorized'
-      and (cmd<>'SELECT' or roles<>array['authenticated']::name[])
-  ) then raise exception 'clinical_attachment_storage_select_policy_invalid'; end if;
+  if exists(select 1 from pg_policies where schemaname='storage' and tablename='objects'
+    and permissive='PERMISSIVE' and cmd in ('INSERT','UPDATE','DELETE','ALL')) then
+    raise exception 'client_storage_write_policy_detected';
+  end if;
+  if not exists(select 1 from pg_policies where schemaname='storage' and tablename='objects'
+    and cmd='SELECT' and qual like '%storage_object_readable%') then
+    raise exception 'verified_storage_read_policy_missing';
+  end if;
 
   raise notice 'PASS: C5 private bucket and minimal Storage boundary exist';
 end $$;
@@ -289,11 +288,7 @@ begin
   end;
 end $$;
 
-insert into storage.objects(bucket_id,name,owner_id,metadata)
-values(
-  'clinical-attachments',current_setting('c5.professional_intent')::jsonb->>'storage_path',
-  auth.uid()::text,'{"size":1024,"mimetype":"application/pdf"}'
-);
+select pg_temp.qa_worker_clinical_object(current_setting('c5.professional_intent')::jsonb->>'storage_path',auth.uid()::text,'{"size":1024,"mimetype":"application/pdf"}'::jsonb,repeat('1',64));
 
 do $$
 declare v_count integer;
@@ -323,7 +318,7 @@ begin
       auth.uid()::text,'{"size":1024,"mimetype":"application/pdf"}'
     );
     raise exception 'clinical_attachment_storage_overwrite_allowed';
-  exception when unique_violation then null;
+  exception when unique_violation or insufficient_privilege then null;
   end;
 end $$;
 
@@ -355,11 +350,7 @@ select set_config(
     'report','Relatorio para validar metadados',current_date,'relatorio.pdf','application/pdf',2048
   )::text,true
 );
-insert into storage.objects(bucket_id,name,owner_id,metadata)
-values(
-  'clinical-attachments',current_setting('c5.mismatch_intent')::jsonb->>'storage_path',
-  auth.uid()::text,'{"size":2048,"mimetype":"application/pdf"}'
-);
+select pg_temp.qa_worker_clinical_object(current_setting('c5.mismatch_intent')::jsonb->>'storage_path',auth.uid()::text,'{"size":2048,"mimetype":"application/pdf"}'::jsonb,repeat('2',64));
 
 do $$
 begin
@@ -408,11 +399,7 @@ select set_config(
     'patient_document','Documento enviado pelo paciente',current_date,'documento.png','image/png',512
   )::text,true
 );
-insert into storage.objects(bucket_id,name,owner_id,metadata)
-values(
-  'clinical-attachments',current_setting('c5.patient_intent')::jsonb->>'storage_path',
-  auth.uid()::text,'{"size":512,"mimetype":"image/png"}'
-);
+select pg_temp.qa_worker_clinical_object(current_setting('c5.patient_intent')::jsonb->>'storage_path',auth.uid()::text,'{"size":512,"mimetype":"image/png"}'::jsonb,repeat('3',64));
 select set_config(
   'c5.patient_confirm',
   public.confirm_clinical_attachment_upload(
@@ -441,11 +428,7 @@ select set_config(
     'clinical_image','Imagem enviada pelo estudante',current_date,'imagem.webp','image/webp',700
   )::text,true
 );
-insert into storage.objects(bucket_id,name,owner_id,metadata)
-values(
-  'clinical-attachments',current_setting('c5.student_intent')::jsonb->>'storage_path',
-  auth.uid()::text,'{"size":700,"mimetype":"image/webp"}'
-);
+select pg_temp.qa_worker_clinical_object(current_setting('c5.student_intent')::jsonb->>'storage_path',auth.uid()::text,'{"size":700,"mimetype":"image/webp"}'::jsonb,repeat('4',64));
 select set_config(
   'c5.student_confirm',
   public.confirm_clinical_attachment_upload(
@@ -472,11 +455,7 @@ select set_config(
     'report','Confirmacao apos encerramento',current_date,'encerrado.pdf','application/pdf',350
   )::text,true
 );
-insert into storage.objects(bucket_id,name,owner_id,metadata)
-values(
-  'clinical-attachments',current_setting('c5.ended_episode_intent')::jsonb->>'storage_path',
-  auth.uid()::text,'{"size":350,"mimetype":"application/pdf"}'
-);
+select pg_temp.qa_worker_clinical_object(current_setting('c5.ended_episode_intent')::jsonb->>'storage_path',auth.uid()::text,'{"size":350,"mimetype":"application/pdf"}'::jsonb,repeat('5',64));
 
 reset role;
 

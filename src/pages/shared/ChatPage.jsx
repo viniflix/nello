@@ -1,3 +1,7 @@
+import { uploadVerifiedFile } from '@/lib/storage/verifiedUpload';
+import { parsePrivateFile, signPrivateFile } from '@/lib/storage/privateFiles';
+import { validateUploadSelection, CHAT_UPLOAD_MAX_BYTES, fileExtensionForMime } from '@/lib/storage/uploadPolicy';
+import { PrivateImage } from '@/components/ui/private-image';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState, useEffect, useRef, Fragment, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -50,37 +54,7 @@ const formatLastSeen = (lastSeenAt) => {
   }
 };
 
-const getBucketPath = (url) => {
-    if (!url) return null;
-    
-    // Se não for uma URL completa, já é o caminho relativo
-    if (!url.startsWith('http')) return url;
-    
-    try {
-        // Formatos comuns do Supabase Storage:
-        // 1. /storage/v1/object/public/bucket_name/path/to/file
-        // 2. /storage/v1/object/sign/bucket_name/path/to/file?token=...
-        const storagePattern = /\/storage\/v1\/object\/(?:public|sign)\/[^/]+\/(.+)$/;
-        const match = url.split('?')[0].match(storagePattern);
-        
-        if (match && match[1]) {
-            return decodeURIComponent(match[1]);
-        }
-
-        // Fallback para o método antigo de split se o regex falhar
-        const parts = url.split('/storage/v1/object/');
-        if (parts.length > 1) {
-            const pathSegments = parts[1].split('/');
-            // pathSegments[0] é 'public' ou 'sign'
-            // pathSegments[1] é o nome do bucket
-            // O resto é o caminho
-            return pathSegments.slice(2).join('/').split('?')[0];
-        }
-    } catch (e) {
-        logDiagnostic('error', 'pages/shared/ChatPage.jsx:79', 'Erro ao interpretar URL do storage:', e);
-    }
-    return url;
-};
+const getBucketPath = (value) => parsePrivateFile(value, 'chat_media')?.path || null;
 
 const AudioPlayer = ({ src }) => {
     const audioRef = useRef(null);
@@ -150,58 +124,42 @@ const AudioPlayer = ({ src }) => {
     );
 };
 
-const MediaViewer = ({ mediaPath, messageText, onImageClick }) => {
-    const [signedUrl, setSignedUrl] = useState('');
-    const [loading, setLoading] = useState(true);
-
+const MediaViewer = ({ mediaPath, messageText, mediaType, onImageClick }) => {
+    const { user } = useAuth();
+    const actorId = user?.id;
+    const [access, setAccess] = useState(null);
     useEffect(() => {
-        const getSignedUrl = async () => {
-            if (!mediaPath) {
-                setLoading(false);
-                return;
+        let cancelled = false;
+        let refreshTimer;
+        const load = async () => {
+            try {
+                const cleanPath = getBucketPath(mediaPath);
+                if (!cleanPath) throw new Error('invalid_private_file_reference');
+                const url = await signPrivateFile(cleanPath, 'chat_media');
+                if (cancelled) return;
+                setAccess({ mediaPath, actorId, url });
+                refreshTimer = setTimeout(load, 240000);
+            } catch {
+                if (!cancelled) setAccess({ mediaPath, actorId, error: true });
             }
-            
-            // NORMALIZAÇÃO DO NOME DO BUCKET
-            // Garantimos que usamos 'chat_media' (com underscore)
-            // Mesmo que a URL original use 'chat-media' (com hífen)
-            const BUCKET_NAME = 'chat_media';
-            
-            // GARANTE QUE TEMOS APENAS O CAMINHO RELATIVO
-            const cleanPath = getBucketPath(mediaPath);
-            
-            setLoading(true);
-            const { data, error } = await supabase.storage
-                .from(BUCKET_NAME)
-                .createSignedUrl(cleanPath, 3600); // 1 hora de validade para melhor UX
-
-            if (error) {
-                // O caminho pode conter identificadores e nomes de arquivo do paciente.
-                // A indisponibilidade permanece visível na UI sem enviar esses dados ao
-                // console/Sentry em produção.
-                if (import.meta.env.DEV) {
-                    logDiagnostic('warn', 'pages/shared/ChatPage.jsx:181', 'Falha ao carregar mídia do chat.', error?.name || error?.statusCode || 'storage_error');
-                }
-                setSignedUrl('');
-            } else {
-                setSignedUrl(data.signedUrl);
-            }
-            setLoading(false);
         };
-        getSignedUrl();
-    }, [mediaPath]);
+        void load();
+        return () => { cancelled = true; clearTimeout(refreshTimer); };
+    }, [mediaPath, actorId]);
+    const currentAccess = access?.mediaPath === mediaPath && access?.actorId === actorId ? access : null;
+    if (!currentAccess) return <div className="h-24 flex items-center justify-center"><Loader2 className="animate-spin" /></div>;
+    if (currentAccess.error) return <p className="text-xs text-destructive">Arquivo indisponível ou acesso não autorizado</p>;
+    const signedUrl = currentAccess.url;
 
-    if (loading) return <div className="h-24 flex items-center justify-center"><Loader2 className="animate-spin" /></div>;
-    if (!signedUrl) return <p className="text-xs text-destructive">Erro ao carregar mídia</p>;
-    
     const fileType = mediaPath.split('.').pop().toLowerCase();
     
     if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(fileType)) {
-        return <img src={signedUrl} alt={messageText || "Imagem enviada"} className="rounded-lg max-w-[200px] md:max-w-xs h-auto cursor-pointer" onClick={() => onImageClick(signedUrl, 'image')} />;
+        return <PrivateImage src={signedUrl} alt={messageText || "Imagem enviada"} className="rounded-lg max-w-[200px] md:max-w-xs h-auto cursor-pointer" onClick={() => onImageClick(signedUrl, 'image')} />;
     }
 
     // --- CORREÇÃO DO BUG DE ÁUDIO/VÍDEO ---
     // .webm foi REMOVIDO daqui
-    if (['mp4', 'mov', 'quicktime'].includes(fileType)) {
+    if (mediaType === 'video' || (mediaType !== 'audio' && ['mp4', 'mov', 'quicktime'].includes(fileType))) {
         return (
           <div className="relative rounded-lg max-w-[200px] md:max-w-xs h-auto cursor-pointer group" onClick={() => onImageClick(signedUrl, 'video')}>
             <video src={signedUrl} className="rounded-lg w-full h-full" />
@@ -238,7 +196,7 @@ const ChatMessage = ({ msg, isSender, onImageClick }) => {
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className={`flex ${isSender ? 'justify-end' : 'justify-start'}`}>
       <div className={`max-w-xs md:max-w-md p-3 rounded-2xl shadow-sm ${ isSender ? 'bg-primary text-primary-foreground rounded-br-lg' : 'bg-card text-card-foreground rounded-bl-lg border'}`}>
         {/* Passa o tipo de mídia para o onImageClick */}
-        {mediaPath ? <MediaViewer mediaPath={mediaPath} messageText={originalFileName} onImageClick={onImageClick} /> : <p className="text-sm whitespace-pre-wrap">{messageText}</p>}
+        {mediaPath ? <MediaViewer mediaPath={mediaPath} messageText={originalFileName} mediaType={msg.message_type} onImageClick={onImageClick} /> : <p className="text-sm whitespace-pre-wrap">{messageText}</p>}
         {mediaPath && messageText && messageText !== originalFileName && <p className="text-sm mt-2">{messageText}</p>}
         <p className={`text-xs mt-1 ${isSender ? 'text-primary-foreground/70' : 'text-muted-foreground'} text-right`}>{format(parseISO(msg.created_at), 'HH:mm')}</p>
       </div>
@@ -367,10 +325,14 @@ const ChatPage = ({ propRecipientId, isEmbedded = false, initialDraft = '' }) =>
   const handleFileChange = (event) => {
     const file = event.target.files[0];
     if (file) {
-      const MAX_FILE_SIZE = 100 * 1024 * 1024;
+      const MAX_FILE_SIZE = CHAT_UPLOAD_MAX_BYTES;
       if (file.size > MAX_FILE_SIZE) {
-        toast({ title: "Arquivo muito grande", description: "O tamanho máximo do arquivo é de 100MB.", variant: "destructive" });
+        toast({ title: "Arquivo muito grande", description: "O tamanho máximo do arquivo é de 20 MB.", variant: "destructive" });
         if(fileInputRef.current) fileInputRef.current.value = ""; return;
+      }
+      try { validateUploadSelection('chat_media', file); } catch {
+        toast({ title: 'Arquivo inválido', description: 'Envie JPG, PNG, WebP, PDF, áudio ou vídeo de até 20 MB.', variant: 'destructive' });
+        event.target.value = ''; return;
       }
       let type = null;
       if (file.type.startsWith('image/')) type = 'image';
@@ -398,10 +360,15 @@ const ChatPage = ({ propRecipientId, isEmbedded = false, initialDraft = '' }) =>
       messageType = mediaType;
       messageText = (mediaType === 'audio') ? 'Mensagem de áudio' : mediaFile.name;
       
-      const fileExtension = mediaFile.name.split('.').pop();
-      const filePath = `${user.id}/${Date.now()}.${fileExtension}`;
-      const { error } = await supabase.storage.from('chat_media').upload(filePath, mediaFile);
-      if (error) { toast({ title: "Erro no upload", description: toPortugueseError(error, 'Não foi possível enviar o arquivo.'), variant: "destructive" }); setIsSending(false); return; }
+      try { validateUploadSelection('chat_media', mediaFile); } catch {
+        toast({ title: 'Arquivo inválido', description: 'Revise o formato e o limite de 20 MB.', variant: 'destructive' });
+        setIsSending(false); return;
+      }
+      const fileExtension = fileExtensionForMime(mediaFile.type);
+      const filePath = `${user.id}/${crypto.randomUUID()}.${fileExtension}`;
+      try {
+        await uploadVerifiedFile('chat_media', filePath, mediaFile, { chatRecipientId: recipientId });
+      } catch (error) { toast({ title: "Erro no upload", description: toPortugueseError(error, 'Não foi possível enviar o arquivo.'), variant: "destructive" }); setIsSending(false); return; }
       mediaPath = filePath;
       
       if (mediaType === 'audio') {
@@ -502,7 +469,7 @@ const ChatPage = ({ propRecipientId, isEmbedded = false, initialDraft = '' }) =>
         )}
         <div className="w-10 h-10 bg-primary/10 rounded-full mr-3 flex items-center justify-center font-bold overflow-hidden">
           {recipient.avatar_url ? (
-            <img src={recipient.avatar_url} alt={recipient.name} className="w-full h-full object-cover" />
+            <PrivateImage src={recipient.avatar_url} alt={recipient.name} className="w-full h-full object-cover" />
           ) : (
             <UserIcon className="w-6 h-6 text-primary" />
           )}
@@ -579,7 +546,7 @@ const ChatPage = ({ propRecipientId, isEmbedded = false, initialDraft = '' }) =>
           <>
             {mediaPreview && (
               <div className="relative p-2 mb-2 border rounded-lg max-w-sm flex items-center gap-2 bg-slate-50">
-                {mediaType === 'image' && <img src={mediaPreview} alt="Prévia" className="max-h-24 rounded" />}
+                {mediaType === 'image' && <PrivateImage src={mediaPreview} alt="Prévia" className="max-h-24 rounded" />}
                 {mediaType === 'video' && <video src={mediaPreview} className="max-h-24 rounded" muted loop autoPlay />}
                 {mediaType === 'audio' && <AudioPlayer src={mediaPreview} />}
                 {mediaType === 'pdf' && (

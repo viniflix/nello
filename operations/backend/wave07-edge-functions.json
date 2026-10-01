@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "functions": [
+    {
+      "slug": "upload-private-file",
+      "verify_jwt": false,
+      "files": [
+        {
+          "file": "cleanup.ts",
+          "repositorySha256": "28bd923d7696a9f7532af11c56c3956669f09f5fe6f3787980e0b1d410efc2c5"
+        },
+        {
+          "file": "deno.json",
+          "repositorySha256": "a35530a3017d424f39612a38efec079c6a884433cdb00c91b543f280e7d9d8ff"
+        },
+        {
+          "file": "handler.ts",
+          "repositorySha256": "ac2e2fb9baef940abe73e5eeb5c1677e400eb10d969ab00544d88d95a098c33f"
+        },
+        {
+          "file": "imageEnvelope.ts",
+          "repositorySha256": "0bf26f6201c7d26ad1170fda8f46cce68917ccc7204ba46b9f4e08bf82131e94"
+        },
+        {
+          "file": "imageSanitizer.ts",
+          "repositorySha256": "a8bfa7fbc5f14a240d59de120b7cec9131ce562fb162dd93f6c730eb180fcbb1"
+        },
+        {
+          "file": "index.ts",
+          "repositorySha256": "5d7cbf1cda801c2a7400d223bb1a7fd2004b48f0e16b156929e6023dc74ed92b"
+        },
+        {
+          "file": "mediaEnvelope.ts",
+          "repositorySha256": "8d17c1f62dcb854c80679a377b9d38b3aa3d2579d05c76cafff85d32b8d51e21"
+        },
+        {
+          "file": "mediaValidation.ts",
+          "repositorySha256": "5f318cffbf063dab118384085001cd5c923be8191846501438f2e55f3351b031"
+        },
+        {
+          "file": "pdfValidation.ts",
+          "repositorySha256": "0f11a014fd0bf04e9b9f647bb424900a2df83b0d5cd2b40686c35d10f0de08bd"
+        }
+      ]
+    },
+    {
+      "slug": "storage-maintenance",
+      "verify_jwt": true,
+      "files": [
+        {
+          "file": "index.ts",
+          "repositorySha256": "1cec327578e79e44d03fe02009da6f422178f076610ed56a8c30309f94fd640b"
+        }
+      ]
+    }
+  ]
+}

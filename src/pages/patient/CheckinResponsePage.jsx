@@ -4,6 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useCheckins } from '@/hooks/useCheckins';
 import { supabase } from '@/lib/customSupabaseClient';
 import { Button } from '@/components/ui/button';
+import { PrivateImage } from '@/components/ui/private-image';
 import { ArrowLeft, CheckCircle2, ChevronRight, ChevronLeft, Loader2, Upload, AlertCircle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -213,6 +214,12 @@ const CheckinResponsePage = () => {
   const progress = ((currentStep + 1) / fields.length) * 100;
   const branding = session?.checkin_templates?.nutritionist_branding?.[0];
   const brandColor = branding?.primary_color || 'hsl(var(--primary))';
+  let brandingLogo = branding?.logo_url;
+  try {
+    const legacyLogo = new URL(brandingLogo);
+    if (legacyLogo.origin === new URL(supabase.supabaseUrl).origin
+      && legacyLogo.pathname.startsWith('/storage/v1/object/public/IDV/')) brandingLogo = '/nello-logo.png';
+  } catch { /* Relative static assets and private references resolve in PrivateImage. */ }
 
   const currentVal = responses[currentField?.id];
   const isScale = currentField?.field_type === 'scale_1_10';
@@ -233,7 +240,7 @@ const CheckinResponsePage = () => {
                 <ArrowLeft className="w-5 h-5" />
               </Button>
               {branding?.logo_url ? (
-                <img src={branding.logo_url} alt="Logo" className="h-10 object-contain drop-shadow-md bg-white rounded-md p-1" />
+                <PrivateImage src={brandingLogo} alt="Logo" className="h-10 object-contain drop-shadow-md bg-white rounded-md p-1" />
               ) : (
                 <span className="font-bold text-lg">{session?.checkin_templates?.name}</span>
               )}

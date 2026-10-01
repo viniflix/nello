@@ -30,6 +30,7 @@ node(['scripts/qa/edge-expiry.mjs']);
 node(['scripts/qa/auth-captcha.mjs']);
 node(['node_modules/vite/bin/vite.js','build']);node(['node_modules/vite/bin/vite.js','build','--config','e2e/qa-build.config.mjs']);node(['scripts/qa/css-gate-injection.mjs']);
 node(['node_modules/playwright/cli.js','install','chromium']);node(['node_modules/playwright/cli.js','test',...process.argv.slice(2)]);
+node(['scripts/qa/storage-uploads.mjs']);
 const recording=process.argv.slice(2).some(arg=>arg.startsWith('--update-snapshots'));
 writeFileSync('.backend-ci/local-results/result.json',JSON.stringify({passed:!recording,phase:recording?'baseline-recording':'validation',capturedAt:new Date().toISOString(),productionData:false},null,2));
 console.log(recording?'Baselines recorded; visual comparison remains REQUIRED.':'PASS: complete isolated local Wave 02 pipeline');

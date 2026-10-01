@@ -1,3 +1,5 @@
+import { PrivateImage } from '@/components/ui/private-image';
+import { uploadAvatarFile } from '@/lib/storage/avatarUpload';
 import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -42,23 +44,11 @@ export default function ProfilePersonalTab({ profile, onUpdate }) {
         setUploading(true);
 
         try {
-            // Remove old avatar
-            const { data: existingAvatar } = await supabase.storage.from('avatars').list(user.id);
-            if (existingAvatar && existingAvatar.length > 0) {
-                const filesToRemove = existingAvatar.map(f => `${user.id}/${f.name}`);
-                await supabase.storage.from('avatars').remove(filesToRemove);
-            }
-
-            const filePath = `${user.id}/${Date.now()}_${file.name}`;
-            const { error: uploadError } = await supabase.storage.from('avatars').upload(filePath, file);
-
-            if (uploadError) throw uploadError;
-
-            const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(filePath);
+            const avatarReference = await uploadAvatarFile(user.id, file);
             
             const { data: updatedProfile, error: dbError } = await supabase
                 .from('user_profiles')
-                .update({ avatar_url: publicUrl })
+                .update({ avatar_url: avatarReference })
                 .eq('id', user.id)
                 .select()
                 .single();
@@ -66,7 +56,7 @@ export default function ProfilePersonalTab({ profile, onUpdate }) {
             if (dbError) throw dbError;
 
             updateUserProfile(updatedProfile);
-            setFormData(prev => ({ ...prev, avatar_url: publicUrl }));
+            setFormData(prev => ({ ...prev, avatar_url: avatarReference }));
             toast({ title: "Foto de perfil atualizada!" });
         } catch (error) {
             toast({
@@ -128,7 +118,7 @@ export default function ProfilePersonalTab({ profile, onUpdate }) {
                         <div className="relative">
                             <div className="w-32 h-32 rounded-full border-4 border-primary/20 bg-secondary flex items-center justify-center overflow-hidden">
                                 {formData.avatar_url ? (
-                                    <img src={formData.avatar_url} alt="Foto de perfil" className="w-full h-full object-cover" />
+                                    <PrivateImage src={formData.avatar_url} alt="Foto de perfil" className="w-full h-full object-cover" />
                                 ) : (
                                     <User className="w-16 h-16 text-muted-foreground" />
                                 )}

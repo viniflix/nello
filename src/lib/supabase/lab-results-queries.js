@@ -1,3 +1,5 @@
+import { uploadVerifiedFile } from '@/lib/storage/verifiedUpload';
+import { parsePrivateFile, signPrivateFile } from '@/lib/storage/privateFiles';
 /**
  * SUPABASE QUERIES - LAB RESULTS (EXAMES LABORATORIAIS)
  * Funções para manipular exames laboratoriais de pacientes
@@ -453,20 +455,10 @@ export async function uploadLabResultPDF(patientId, file) {
         }
 
         // Gerar nome único para o arquivo
-        const timestamp = Date.now();
-        const randomString = Math.random().toString(36).substring(7);
-        const fileExtension = 'pdf';
-        const fileName = `${patientId}/${timestamp}_${randomString}.${fileExtension}`;
+        const fileName = `${patientId}/${crypto.randomUUID()}.pdf`;
 
         // Upload para o storage
-        const { error } = await supabase.storage
-            .from('lab-results-pdfs')
-            .upload(fileName, file, {
-                cacheControl: '3600',
-                upsert: false
-            });
-
-        if (error) throw error;
+        await uploadVerifiedFile('lab-results-pdfs', fileName, file);
 
         return {
             url: fileName,
@@ -491,20 +483,14 @@ export async function deleteLabResultPDF(pdfUrl) {
             return { success: false, error: { message: 'URL do PDF não fornecida' } };
         }
 
-        // Extrair o path do arquivo da URL
-        // Formato esperado: https://...storage/v1/object/sign/lab-results-pdfs/patientId/file.pdf?token=...
-        const urlParts = pdfUrl.split('/lab-results-pdfs/');
-        if (urlParts.length < 2) {
-            return { success: false, error: { message: 'URL inválida' } };
-        }
+        const parsed = parsePrivateFile(pdfUrl, 'lab-results-pdfs');
+        if (!parsed) throw new Error('invalid_private_file_reference');
+        const filePath = parsed.path;
 
-        const pathWithToken = urlParts[1];
-        const filePath = pathWithToken.split('?')[0]; // Remove query params
-
-        // Deletar do storage
-        const { error } = await supabase.storage
-            .from('lab-results-pdfs')
-            .remove([filePath]);
+        // Only an unbound upload can be abandoned. Clinical history is retained.
+        const { error } = await supabase.rpc('abandon_storage_upload', {
+            p_bucket: 'lab-results-pdfs', p_path: filePath,
+        });
 
         if (error) throw error;
 
@@ -521,15 +507,10 @@ export async function deleteLabResultPDF(pdfUrl) {
  * @param {number} expiresIn - Tempo de expiração em segundos (padrão: 1 hora)
  * @returns {Promise<{url: string, error: Object}>}
  */
-export async function getLabResultPDFUrl(filePath, expiresIn = 3600) {
+export async function getLabResultPDFUrl(filePath, expiresIn = 300) {
     try {
-        const { data, error } = await supabase.storage
-            .from('lab-results-pdfs')
-            .createSignedUrl(filePath, expiresIn);
-
-        if (error) throw error;
-
-        return { url: data.signedUrl, error: null };
+        const url = await signPrivateFile(filePath, 'lab-results-pdfs', expiresIn);
+        return { url, error: null };
     } catch (error) {
         logSupabaseError("erro_ao_obter_url_do_pdf", error);
         return { url: null, error };

@@ -72,7 +72,7 @@ export default function MealPlanViewDialog({ open, onOpenChange, mealPlan, patie
 
     // Logo do Nello
     try {
-      const logoUrl = 'https://afyoidxrshkmplxhcyeh.supabase.co/storage/v1/object/public/IDV/nello.png';
+      const logoUrl = '/nello-logo.png';
       const response = await fetch(logoUrl);
       const blob = await response.blob();
 

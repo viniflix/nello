@@ -21,7 +21,7 @@ begin
   where n.nspname = 'public'
     and p.prosecdef
     and has_function_privilege('anon', p.oid, 'execute');
-  if v_names is distinct from array['attach_anamnesis_file','detach_anamnesis_file','get_anamnesis_by_token','submit_anamnesis_by_token','verify_document_authenticity']::text[] then
+  if v_names is distinct from array['attach_anamnesis_file','claim_storage_upload','detach_anamnesis_file','get_anamnesis_by_token','reserve_storage_upload','submit_anamnesis_by_token','verify_document_authenticity']::text[] then
     raise exception 'c6_anon_security_definer_allowlist_drift:%', v_names;
   end if;
 

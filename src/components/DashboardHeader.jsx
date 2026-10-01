@@ -1,3 +1,4 @@
+import { PrivateImage } from '@/components/ui/private-image';
 import { markOwnNotificationsRead, deleteOwnNotifications } from '@/lib/supabase/notification-mutations';
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
@@ -404,7 +405,7 @@ const DashboardHeader = ({ user, logout }) => {
             </Sheet>
 
             <Link to="/nutritionist" className="h-10 flex items-center min-w-0 shrink overflow-hidden max-w-[140px] md:max-w-none">
-              <img
+              <PrivateImage
                 src="/nello-logo.png"
                 alt="Nello Logo"
                 width="99"
@@ -519,7 +520,7 @@ const DashboardHeader = ({ user, logout }) => {
                             <div className="flex items-start gap-2">
                               {meta.isMessage ? (
                                 sender?.avatar_url ? (
-                                  <img src={sender.avatar_url} alt={sender?.name || 'Paciente'} className="h-9 w-9 rounded-full object-cover" />
+                                  <PrivateImage src={sender.avatar_url} alt={sender?.name || 'Paciente'} className="h-9 w-9 rounded-full object-cover" />
                                 ) : (
                                   <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/15 text-xs font-semibold text-primary">
                                     {senderInitials}
@@ -589,7 +590,7 @@ const DashboardHeader = ({ user, logout }) => {
                 <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0" aria-label="Abrir menu da conta">
                   {user?.profile?.avatar_url ? (
                     <div className="h-10 w-10 rounded-full border-2 border-primary overflow-hidden">
-                      <img
+                      <PrivateImage
                         src={user?.profile.avatar_url}
                         alt={user?.profile?.name}
                         className="w-full h-full object-cover"

@@ -1,9 +1,9 @@
 import { supabase } from '@/infrastructure/supabase/client';
+import { uploadVerifiedFile } from '@/lib/storage/verifiedUpload';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
 import {
   CLINICAL_ATTACHMENT_BUCKET,
   CLINICAL_ATTACHMENT_SIGNED_URL_TTL_SECONDS,
-  calculateClinicalAttachmentSha256,
   validateClinicalAttachmentFile,
   normalizeClinicalAttachment,
 } from '../model/attachmentSchema';
@@ -111,7 +111,6 @@ export async function uploadClinicalAttachment({
   const validation = validateClinicalAttachmentFile(file);
   if (!validation.valid) throw new Error(validation.errors[0]);
 
-  const sha256 = await calculateClinicalAttachmentSha256(file);
   const { data: intent, error: intentError } = await supabase.rpc(
     'create_clinical_attachment_upload_intent',
     {
@@ -133,10 +132,10 @@ export async function uploadClinicalAttachment({
     && intent?.attachment_id === intent?.storage_path;
   if (!validIntent) throwRpcError('Reserva inválida de anexo clínico', new Error('invalid_upload_intent'));
 
-  const { error: uploadError } = await supabase.storage
-    .from(CLINICAL_ATTACHMENT_BUCKET)
-    .upload(intent.storage_path, file, { upsert: false, contentType: file.type });
-  if (uploadError) {
+  let verified;
+  try {
+    verified = await uploadVerifiedFile(CLINICAL_ATTACHMENT_BUCKET, intent.storage_path, file);
+  } catch (uploadError) {
     await supabase.rpc('fail_clinical_attachment_upload', {
       p_attachment_id: intent.attachment_id,
       p_reason: 'storage_upload_failed',
@@ -146,8 +145,8 @@ export async function uploadClinicalAttachment({
 
   const { data, error } = await supabase.rpc('confirm_clinical_attachment_upload', {
     p_attachment_id: intent.attachment_id,
-    p_sha256: sha256,
-    p_size_bytes: file.size,
+    p_sha256: verified.sha256,
+    p_size_bytes: verified.size,
     p_mime_type: file.type,
   });
   if (error) throwRpcError("erro_ao_confirmar_anexo_clinico", error);

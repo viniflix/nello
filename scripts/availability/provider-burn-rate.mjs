@@ -45,7 +45,15 @@ export async function readProviderChecks({ token, now = Date.now(), fetcher = fe
     url = next ? new URL(next.match(/<([^>]+)>/)?.[1] || '', apiOrigin) : null;
   }
   if (url) throw Error('provider_pagination_incomplete');
-  return samples.sort((a, b) => a.timestamp - b.timestamp);
+  // The provider may return multiple regional/retried checks for one scheduled
+  // minute. Count that slot once, conservatively retaining any failed result.
+  // Missing minutes remain missing; evaluateBurnRate still rejects real gaps.
+  const slots = new Map();
+  for (const sample of samples) {
+    const previous = slots.get(sample.timestamp);
+    slots.set(sample.timestamp, { timestamp: sample.timestamp, ok: sample.ok && (previous?.ok ?? true) });
+  }
+  return [...slots.values()].sort((a, b) => a.timestamp - b.timestamp);
 }
 
 export function assessChecks(samples, now = Date.now()) {

@@ -5,6 +5,7 @@ import { buildActivityEventPayload, isExpectedRequestCancellation, logSupabaseEr
 import { classifyLabResultsRiskBatch, getLabRiskRules } from '@/lib/supabase/lab-results-queries';
 
 import { isUuid } from '@/lib/utils/patientRoutes';
+import { isTransientNetworkError, retryNetworkRead } from '@/lib/supabase/readRetry';
 import { listClinicalRecordsByEpisode } from '@/features/clinical-records/api/evolution-queries';
 
 let hasActivityLogTable = true;
@@ -983,20 +984,29 @@ export const getFeedTaskStates = async (nutritionistId) => {
  */
 export const getNutritionistPatientsForFeed = async (nutritionistId) => {
     try {
-        const { data, error } = await supabase
+        const sessionUnchanged = async () => {
+            const { data, error } = await supabase.auth.getSession();
+            return !error && data?.session?.user?.id === nutritionistId;
+        };
+        const { data, error } = await retryNetworkRead(() => supabase
             .from('user_profiles')
             .select('id, name, birth_date, avatar_url, slug')
             .eq('nutritionist_id', nutritionistId)
-            .eq('is_active', true);
+            .eq('is_active', true), sessionUnchanged);
 
         if (!error) {
             return { data: data || [], error: null };
         }
 
-        const { data: links, error: linksError } = await supabase
+        // A transport failure is not evidence of a legacy schema. Preserve it
+        // rather than querying an unrelated fallback and reporting an empty feed.
+        if (isTransientNetworkError(error)) throw error;
+        if (!['42703', 'PGRST204'].includes(error?.code)) throw error;
+
+        const { data: links, error: linksError } = await retryNetworkRead(() => supabase
             .from('nutritionist_patients')
             .select('patient_id')
-            .eq('nutritionist_id', nutritionistId);
+            .eq('nutritionist_id', nutritionistId), sessionUnchanged);
 
         if (linksError) throw linksError;
 
@@ -1005,10 +1015,10 @@ export const getNutritionistPatientsForFeed = async (nutritionistId) => {
             return { data: [], error: null };
         }
 
-        const { data: profiles, error: profileError } = await supabase
+        const { data: profiles, error: profileError } = await retryNetworkRead(() => supabase
             .from('user_profiles')
             .select('id, name, birth_date, avatar_url, slug')
-            .in('id', patientIds);
+            .in('id', patientIds), sessionUnchanged);
 
         if (profileError) throw profileError;
 

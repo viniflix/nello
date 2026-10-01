@@ -3,8 +3,8 @@ import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
  * Utilidades para ativos de PDF (logos, imagens, etc)
  */
 
-// URL da logo oficial no Supabase Storage
-export const NELLO_LOGO_URL = 'https://afyoidxrshkmplxhcyeh.supabase.co/storage/v1/object/public/IDV/nello.png';
+// Public product branding is distributed with the app, outside personal Storage.
+export const NELLO_LOGO_URL = '/nello-logo.png';
 
 /**
  * Carrega a logo do projeto de forma robusta para uso em PDFs.

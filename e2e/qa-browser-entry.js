@@ -1,4 +1,5 @@
 export {renderCanonicalDocumentPdf} from '../src/features/documents/pdf/render-canonical-document.js';
+export {uploadVerifiedFile} from '../src/lib/storage/verifiedUpload';
 import posthog, { identifyUser, resetUser, track } from '../src/infrastructure/analytics/posthog';
 import { createPosthogOptions } from '../src/app/config/posthog';
 import { bindConsentOwner, storeAnalyticsChoice } from '../src/features/privacy/consent';

@@ -50,7 +50,10 @@ export const errorResponse = (status: number, error: string) => new Response(JSO
   status, headers: { 'Content-Type': 'application/json' },
 });
 
-export function edgeBoundary(handler: (req: Request) => Response | Promise<Response>, options: { maxBytes?: number; retired?: boolean } = {}) {
+export function edgeBoundary<TContext = undefined>(handler: (req: Request, context: TContext) => Response | Promise<Response>, options: {
+  maxBytes?: number; retired?: boolean; binary?: boolean; bodyTimeoutMs?: number;
+  allowedHeaders?: string[]; beforeBody?: (req: Request) => TContext | Promise<TContext>;
+} = {}) {
   return async (req: Request): Promise<Response> => {
     const origin = req.headers.get('origin');
     const allowed = permittedOrigins(Deno.env.get('SUPABASE_URL'));
@@ -60,7 +63,7 @@ export function edgeBoundary(handler: (req: Request) => Response | Promise<Respo
       else if (req.method === 'OPTIONS') {
         const method = req.headers.get('access-control-request-method');
         const headers = req.headers.get('access-control-request-headers') || '';
-        const acceptable = new Set(['authorization', 'apikey', 'content-type', 'x-client-info']);
+        const acceptable = new Set(['authorization', 'apikey', 'content-type', 'x-client-info', ...(options.allowedHeaders || [])]);
         if ((method && method !== 'POST') || headers.split(',').some(value => value.trim() && !acceptable.has(value.trim().toLowerCase()))) {
           response = errorResponse(403, 'preflight_not_allowed');
         } else response = new Response(null, { status: 204 });
@@ -68,9 +71,13 @@ export function edgeBoundary(handler: (req: Request) => Response | Promise<Respo
       else if (req.method !== 'POST') response = errorResponse(405, 'method_not_allowed');
       else {
         const contentType = req.headers.get('content-type');
-        if (contentType && !/^application\/json(?:\s*;|$)/i.test(contentType)) throw new RequestError(415, 'unsupported_media_type');
-        const body = await boundedBody(req, options.maxBytes || 65536);
-        response = await handler(new Request(req.url, { method: req.method, headers: req.headers, body }));
+        const permittedType = options.binary ? /^application\/octet-stream(?:\s*;|$)/i : /^application\/json(?:\s*;|$)/i;
+        if ((options.binary && !contentType) || (contentType && !permittedType.test(contentType))) throw new RequestError(415, 'unsupported_media_type');
+        // Upload authorization/quota runs before buffering the potentially large
+        // binary body. Existing JSON endpoints retain the original limits.
+        const context = options.beforeBody ? await options.beforeBody(req) : undefined as TContext;
+        const body = await boundedBody(req, options.maxBytes || 65536, options.bodyTimeoutMs || 5000);
+        response = await handler(new Request(req.url, { method: req.method, headers: req.headers, body }), context);
       }
     } catch (error) {
       response = error instanceof RequestError ? errorResponse(error.status, error.code) : errorResponse(503, 'service_unavailable');
@@ -79,7 +86,7 @@ export function edgeBoundary(handler: (req: Request) => Response | Promise<Respo
     headers.delete('Access-Control-Allow-Origin');
     if (origin && allowed.has(origin)) headers.set('Access-Control-Allow-Origin', origin);
     headers.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    headers.set('Access-Control-Allow-Headers', 'authorization, apikey, content-type, x-client-info');
+    headers.set('Access-Control-Allow-Headers', ['authorization', 'apikey', 'content-type', 'x-client-info', ...(options.allowedHeaders || [])].join(', '));
     headers.set('Vary', 'Origin');
     headers.set('Cache-Control', 'no-store');
     headers.set('X-Content-Type-Options', 'nosniff');

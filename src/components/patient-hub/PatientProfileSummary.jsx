@@ -1,3 +1,4 @@
+import { PrivateImage } from '@/components/ui/private-image';
 import React from 'react';
 import { format, differenceInYears } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -90,7 +91,7 @@ const PatientProfileSummary = ({
                     <div className="flex min-w-0 items-stretch gap-4 sm:gap-5">
                         <div className="relative h-24 w-24 shrink-0 self-center sm:h-28 sm:w-28">
                             <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-2xl bg-[#65765a] text-xl font-bold text-white shadow-[inset_0_1px_2px_rgba(255,255,255,0.2)] sm:text-2xl">
-                                {patientData?.avatar_url ? <img src={patientData.avatar_url} alt={`Foto de ${patientData.name}`} className="h-full w-full object-cover" /> : <User className="h-11 w-11 text-white/85" />}
+                                {patientData?.avatar_url ? <PrivateImage src={patientData.avatar_url} alt={`Foto de ${patientData.name}`} className="h-full w-full object-cover" /> : <User className="h-11 w-11 text-white/85" />}
                             </div>
                             <Button variant="secondary" size="icon" onClick={onEditProfile} aria-label="Editar perfil" title="Editar perfil" className="absolute -right-2 -top-2 h-8 w-8 rounded-full border-2 border-white bg-white text-slate-600 shadow-md hover:bg-white hover:text-[#526047]"><Pencil className="h-3.5 w-3.5" /></Button>
                             <span

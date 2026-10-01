@@ -1,3 +1,4 @@
+import { PrivateImage } from '@/components/ui/private-image';
 import { markOwnNotificationsRead, deleteOwnNotifications } from '@/lib/supabase/notification-mutations';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState, useEffect, useCallback } from 'react';
@@ -218,7 +219,7 @@ export default function AdminHeader() {
               <Button variant="ghost" className="relative h-9 w-9 rounded-full p-0">
                 {user.profile?.avatar_url ? (
                   <div className="h-9 w-9 rounded-full border-2 border-primary/40 overflow-hidden">
-                    <img src={user?.profile?.avatar_url} alt={user?.profile?.name} className="w-full h-full object-cover" />
+                    <PrivateImage src={user?.profile?.avatar_url} alt={user?.profile?.name} className="w-full h-full object-cover" />
                   </div>
                 ) : (
                   <div className="h-9 w-9 rounded-full bg-primary/10 border-2 border-primary/40 flex items-center justify-center">

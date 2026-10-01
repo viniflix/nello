@@ -1,3 +1,6 @@
+import { uploadVerifiedFile } from '@/lib/storage/verifiedUpload';
+import { fileExtensionForMime } from '@/lib/storage/uploadPolicy';
+import { parsePrivateFile } from '@/lib/storage/privateFiles';
 import { supabase } from '@/lib/customSupabaseClient';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
 
@@ -5,14 +8,7 @@ const BUCKET = 'patient-photos';
 const SIGNED_URL_TTL_SECONDS = 300;
 
 export function normalizePatientPhotoPath(value) {
-    if (!value || typeof value !== 'string') return null;
-    if (value.startsWith(`${BUCKET}/`)) return value.slice(BUCKET.length + 1);
-
-    const publicMarker = `/storage/v1/object/public/${BUCKET}/`;
-    const signedMarker = `/storage/v1/object/sign/${BUCKET}/`;
-    if (value.includes(publicMarker)) return value.split(publicMarker)[1]?.split('?')[0] || null;
-    if (value.includes(signedMarker)) return value.split(signedMarker)[1]?.split('?')[0] || null;
-    return value.replace(/^\/+/, '').split('?')[0] || null;
+    return parsePrivateFile(value, BUCKET)?.path || null;
 }
 
 export async function getActiveCareEpisodeId(patientId) {
@@ -180,15 +176,9 @@ export async function uploadProgressPhoto({
         const episode = await getActiveCareEpisodeId(patientId);
         if (episode.error) throw episode.error;
 
-        storagePath = `${patientId}/${episode.data}/progress_photos/${crypto.randomUUID()}.${extension}`;
-        const { error: uploadError } = await supabase.storage
-            .from(BUCKET)
-            .upload(storagePath, file, {
-                upsert: false,
-                contentType,
-                cacheControl: '3600',
-            });
-        if (uploadError) throw uploadError;
+        const fileExtension = fileExtensionForMime(file.type);
+        storagePath = `${patientId}/${episode.data}/progress_photos/${crypto.randomUUID()}.${fileExtension}`;
+        await uploadVerifiedFile(BUCKET, storagePath, file);
 
         const inserted = await addProgressPhoto({
             patientId,
@@ -201,9 +191,6 @@ export async function uploadProgressPhoto({
         if (inserted.error) throw inserted.error;
         return { data: inserted.data, error: null };
     } catch (error) {
-        if (storagePath) {
-            await supabase.storage.from(BUCKET).remove([storagePath]);
-        }
         logSupabaseError('uploadProgressPhoto', error);
         return { data: null, error };
     }

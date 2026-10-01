@@ -20,8 +20,10 @@ vi.mock('@/infrastructure/supabase/client', () => ({
 }));
 
 vi.mock('@/lib/supabase/query-helpers', () => ({ logSupabaseError: vi.fn() }));
+vi.mock('@/lib/storage/verifiedUpload', () => ({ uploadVerifiedFile: vi.fn() }));
 
 const { supabase } = await import('@/infrastructure/supabase/client');
+const { uploadVerifiedFile } = await import('@/lib/storage/verifiedUpload');
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -48,8 +50,7 @@ describe('document identity contracts', () => {
       data: { upload_id: 'upload-1', storage_bucket: 'document-assets', storage_path: 'owner/logo/upload-1' },
       error: null,
     });
-    const upload = vi.fn().mockResolvedValue({ error: null });
-    supabase.storage.from.mockReturnValue({ upload });
+    uploadVerifiedFile.mockResolvedValue({ status: 'confirmed' });
     supabase.functions.invoke.mockResolvedValue({ data: { success: true }, error: null });
     const file = new File(['image'], 'logo.png', { type: 'image/png' });
 
@@ -60,7 +61,8 @@ describe('document identity contracts', () => {
       body: { uploadId: 'upload-1' },
     });
     expect(supabase.rpc).not.toHaveBeenCalledWith('confirm_document_asset_upload', expect.anything());
-    expect(upload).toHaveBeenCalledWith('owner/logo/upload-1', file, expect.objectContaining({ upsert: false }));
+    expect(uploadVerifiedFile).toHaveBeenCalledWith('document-assets', 'owner/logo/upload-1', file);
+    expect(supabase.storage.from).not.toHaveBeenCalled();
   });
 });
 

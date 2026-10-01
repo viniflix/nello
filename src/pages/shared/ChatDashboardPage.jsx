@@ -1,3 +1,4 @@
+import { PrivateImage } from '@/components/ui/private-image';
 import React, { useState, useMemo } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Search, MessageSquare, Loader2, User as UserIcon, Plus, Filter } from 'lucide-react';
@@ -45,7 +46,7 @@ const ConversationItem = ({ conversation, isActive, onClick }) => {
       <div className="relative shrink-0">
         <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden border">
           {conversation.recipient_avatar ? (
-            <img 
+            <PrivateImage
               src={conversation.recipient_avatar} 
               alt={conversation.recipient_name} 
               className="w-full h-full object-cover"

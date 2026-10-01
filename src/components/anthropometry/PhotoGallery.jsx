@@ -1,9 +1,10 @@
+import { fileExtensionForMime } from '@/lib/storage/uploadPolicy';
+import { uploadVerifiedFile } from '@/lib/storage/verifiedUpload';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import { useEffect, useState } from 'react';
 import { Upload, X, Image as ImageIcon, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { supabase } from '@/lib/customSupabaseClient';
 import { useToast } from '@/hooks/use-toast';
 import {
   createPatientPhotoSignedUrl,
@@ -50,10 +51,10 @@ export default function PhotoGallery({ patientId, recordId, initialPhotos = [], 
     }
 
     // Validar tipo de arquivo
-    if (!file.type.startsWith('image/')) {
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
       toast({
         title: 'Erro',
-        description: 'Por favor, selecione um arquivo de imagem.',
+        description: 'Selecione uma imagem JPG, PNG ou WebP.',
         variant: 'destructive'
       });
       return;
@@ -75,29 +76,15 @@ export default function PhotoGallery({ patientId, recordId, initialPhotos = [], 
       // Gerar nome único para o arquivo
       const episode = await getActiveCareEpisodeId(patientId);
       if (episode.error) throw episode.error;
-      const allowedExtensions = ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif'];
-      const rawExtension = (file.name.split('.').pop() || '').toLowerCase();
-      const fileExt = allowedExtensions.includes(rawExtension) ? rawExtension : 'jpg';
+      const fileExt = fileExtensionForMime(file.type);
       const filePath = `${patientId}/${episode.data}/anthropometry/${recordId}/${crypto.randomUUID()}.${fileExt}`;
 
       // Upload para Supabase Storage
-      const { error: uploadError } = await supabase.storage
-        .from('patient-photos')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: false
-        });
-
-      if (uploadError) {
-        // Se o bucket não existir, tentar criar ou usar fallback
-        logDiagnostic('error', 'components/anthropometry/PhotoGallery.jsx:92', 'Erro no upload:', uploadError);
-        throw uploadError;
-      }
+      await uploadVerifiedFile('patient-photos', filePath, file);
 
       // Obter URL pública
       const signed = await createPatientPhotoSignedUrl(filePath);
       if (signed.error || !signed.data) {
-        await supabase.storage.from('patient-photos').remove([filePath]);
         throw signed.error || new Error('Não foi possível autorizar a visualização da foto.');
       }
 

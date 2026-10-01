@@ -72,6 +72,7 @@ jobs:
           node scripts/qa/css-gate-injection.mjs
           npx --no-install playwright install --with-deps chromium
           npx --no-install playwright test
+          node scripts/qa/storage-uploads.mjs
       - name: Preserve diagnostics
         if: always()
         uses: actions/upload-artifact@v4
@@ -86,6 +87,7 @@ jobs:
             .backend-ci/restore-results/
             .backend-ci/edge-results/
             .backend-ci/edge-boundary-results/
+            .backend-ci/storage-results/
             .backend-ci/forward-results/
             .backend-ci/auth-onboarding-results/
             .backend-ci/auth-captcha-results/

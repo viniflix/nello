@@ -1,3 +1,4 @@
+import { PrivateImage } from '@/components/ui/private-image';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState, useEffect } from 'react';
 import { Search, User as UserIcon, Loader2, X, PlusCircle } from 'lucide-react';
@@ -82,7 +83,7 @@ const NewChatModal = ({ open, onOpenChange, onSelectPatient }) => {
                 >
                   <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden border border-border/50">
                     {patient.avatar_url ? (
-                      <img 
+                      <PrivateImage
                         src={patient.avatar_url} 
                         alt={patient.name} 
                         className="w-full h-full object-cover"

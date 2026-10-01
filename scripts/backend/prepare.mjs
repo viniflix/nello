@@ -3,8 +3,10 @@ import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, readdirSync, copyFileSync, cpSync, writeFileSync, existsSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { adaptAppliedHistory } from './history-compatibility.mjs';
+import { prepareStorageWasmAssets } from './storage-wasm-assets.mjs';
 
 const root = process.cwd();
+prepareStorageWasmAssets();
 const manifest = JSON.parse(readFileSync('operations/backend/baseline.json', 'utf8'));
 const sha = (s) => createHash('sha256').update(s.replaceAll('\r\n', '\n')).digest('hex');
 const source = resolve('supabase/migrations/applied');
@@ -25,6 +27,14 @@ for (const fn of manifest.functions) {
     if (sha(readFileSync(resolve('supabase/functions', fn.slug, f.file), 'utf8')) !== f.repositorySha256) {
       throw Error(`Edge source checksum drift: ${fn.slug}/${f.file}. Update release evidence explicitly.`);
     }
+  }
+}
+const storageFunctions = JSON.parse(readFileSync('operations/backend/wave07-edge-functions.json', 'utf8'));
+if (storageFunctions.schemaVersion !== 1 || !Array.isArray(storageFunctions.functions)) throw Error('Invalid Storage Edge release manifest');
+for (const fn of storageFunctions.functions) {
+  if (!['upload-private-file', 'storage-maintenance'].includes(fn.slug)) throw Error('Unexpected Storage Edge function');
+  for (const file of fn.files) {
+    if (sha(readFileSync(resolve('supabase/functions', fn.slug, file.file), 'utf8')) !== file.repositorySha256) throw Error(`Storage Edge checksum drift: ${fn.slug}/${file.file}`);
   }
 }
 if (process.argv.includes('--check')) process.exit(0);

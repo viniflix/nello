@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "assets": [
+    {
+      "name": "magick.wasm",
+      "source": "node_modules/@imagemagick/magick-wasm/dist/x86/magick.wasm",
+      "sha256": "b7d6710436b150dc5bd1ca04d80b6b7614c54854d7470f888f7e69a2a41b00e4"
+    },
+    {
+      "name": "MediaInfoModule.wasm",
+      "source": "node_modules/mediainfo.js/dist/MediaInfoModule.wasm",
+      "sha256": "1ee6839916d4928e09651805038b17439d98379d3dbd32f5a8bc642a2bc458e6"
+    },
+    {
+      "name": "magick-NOTICE.txt",
+      "source": "node_modules/@imagemagick/magick-wasm/NOTICE",
+      "sha256": "bc14d5191f0cd22ef077cb91daca24ec57a221746bc21941fc48b18f5bd8f072"
+    },
+    {
+      "name": "mediainfo-LICENSE.txt",
+      "source": "node_modules/mediainfo.js/LICENSE.txt",
+      "sha256": "4997496865cae27ceba179fecb7c90fbe563f4e661fa17d038d3e2b008d2fdb5"
+    }
+  ]
+}

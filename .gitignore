@@ -64,6 +64,7 @@ dist-ssr/
 # Already tracked candidates remain references for existing regression tests.
 /supabase/migrations/*.sql
 /.backend-ci/
+/supabase/functions/upload-private-file/.generated/
 .env.example
 /coverage/
 /[Dd][Oo][Cc][Ss]/

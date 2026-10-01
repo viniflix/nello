@@ -1,0 +1,7 @@
+{
+  "imports": {
+    "@imagemagick/magick-wasm": "npm:@imagemagick/magick-wasm@0.0.44",
+    "pdf-lib": "npm:pdf-lib@1.17.1",
+    "mediainfo.js": "npm:mediainfo.js@0.3.8"
+  }
+}

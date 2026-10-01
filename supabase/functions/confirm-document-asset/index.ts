@@ -1,6 +1,5 @@
 import { edgeBoundary, timedFetch } from '../_shared/http.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { verifyDocumentAssetBytes } from './assetValidation.ts';
 import { activeActor } from '../_shared/actor.ts';
 import { consumeQuota } from '../_shared/quota.ts';
 
@@ -65,22 +64,9 @@ Deno.serve(edgeBoundary(async (req: Request) => {
     return response(req, 400, { error: 'invalid_upload_reservation' });
   }
 
-  const { data: file, error: downloadError } = await admin.storage.from('document-assets').download(upload.storage_path);
-  if (downloadError || !file) return response(req, 404, { error: 'uploaded_asset_not_found' });
-
-  let verified;
-  try {
-    verified = await verifyDocumentAssetBytes(new Uint8Array(await file.arrayBuffer()), upload.mime_type, Number(upload.size_bytes));
-  } catch {
-    return response(req, 422, { error: 'uploaded_asset_content_invalid' });
-  }
-
-  const { data, error } = await admin.rpc('confirm_document_asset_upload_verified', {
+  const { data, error } = await admin.rpc('confirm_document_asset_storage_upload', {
     p_upload_id: uploadId,
     p_actor_id: actorId,
-    p_sha256: verified.sha256,
-    p_size_bytes: verified.sizeBytes,
-    p_mime_type: verified.mimeType,
   });
   if (error) return response(req, 409, { error: 'asset_confirmation_failed' });
   return response(req, 200, data);

@@ -19,6 +19,18 @@ function provider(data = rows, ingestStatus = 200) {
 }
 
 describe('durable external budget monitoring', () => {
+  it('counts regional duplicates once and retains failures regardless of ordering', async () => {
+    for (const duplicate of [{ ...rows[180] }, { ...rows[180], checkStatus: 'failure', httpStatusCode: 503 }]) {
+      for (const data of [[duplicate, ...rows], [...rows, duplicate]]) {
+        const result = await readProviderChecks({ token: 'synthetic', now, fetcher: provider(data) });
+        expect(result).toHaveLength(samples.length);
+        expect(result[180].ok).toBe(duplicate.checkStatus === 'success');
+        expect(assessChecks(result, now).coverageGap).toBe(false);
+      }
+    }
+    const missing = rows.filter((_, i) => i !== 358);
+    expect(assessChecks(await readProviderChecks({ token: 'synthetic', now, fetcher: provider([...missing, missing[180]]) }), now).coverageGap).toBe(true);
+  });
   it('paginates provider history while retaining only timestamp and availability', async () => {
     const fetcher = provider();
     expect(await readProviderChecks({ token: 'synthetic-read-token', now, fetcher })).toEqual(samples);

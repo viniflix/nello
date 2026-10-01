@@ -1,6 +1,7 @@
 import { supabase } from '@/infrastructure/supabase/client';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
 import { isUuid } from '@/lib/utils/patientRoutes';
+import { uploadVerifiedFile } from '@/lib/storage/verifiedUpload';
 
 const callRpc = async (rpcName, payload) => {
   try {
@@ -45,12 +46,7 @@ export const uploadDocumentAsset = async (assetType, file, expectedIdentityVersi
 
   const { upload_id: uploadId, storage_bucket: bucket, storage_path: path } = intent.data;
   try {
-    const { error: uploadError } = await supabase.storage.from(bucket).upload(path, file, {
-      cacheControl: '3600',
-      contentType: file.type,
-      upsert: false,
-    });
-    if (uploadError) throw uploadError;
+    await uploadVerifiedFile(bucket, path, file);
 
     const { data, error } = await supabase.functions.invoke('confirm-document-asset', {
       body: { uploadId },
