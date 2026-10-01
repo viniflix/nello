@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -66,7 +67,7 @@ const RecentActivityFeed = ({ limit = 10, showHeader = true }) => {
             const { data, error } = await getComprehensiveActivityFeed(user.id, 50);
 
             if (error) {
-                console.error('Erro ao buscar atividades:', error);
+                logDiagnostic('error', 'components/nutritionist/RecentActivityFeed.jsx:69', 'Erro ao buscar atividades:', error);
                 setActivities([]);
             } else {
                 setActivities(data || []);

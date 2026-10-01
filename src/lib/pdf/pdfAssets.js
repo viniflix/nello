@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 /**
  * Utilidades para ativos de PDF (logos, imagens, etc)
  */
@@ -41,13 +42,13 @@ export async function loadLogo(timeoutMs = 3000) {
 
             // Handler para erro
             reader.onerror = () => {
-                console.warn('Erro no FileReader ao carregar logo');
+                logDiagnostic('warn', 'lib/pdf/pdfAssets.js:44', 'Erro no FileReader ao carregar logo');
                 resolve(null);
             };
 
             // Timeout de segurança para o FileReader também
             const fileTimeout = setTimeout(() => {
-                console.warn('Timeout no FileReader ao carregar logo');
+                logDiagnostic('warn', 'lib/pdf/pdfAssets.js:50', 'Timeout no FileReader ao carregar logo');
                 resolve(null);
             }, 1000);
 
@@ -57,9 +58,9 @@ export async function loadLogo(timeoutMs = 3000) {
         });
     } catch (error) {
         if (error.name === 'AbortError') {
-            console.warn('Timeout ao carregar logo do PDF (3s)');
+            logDiagnostic('warn', 'lib/pdf/pdfAssets.js:60', 'Timeout ao carregar logo do PDF (3s)');
         } else {
-            console.warn('Erro ao carregar logo para o PDF:', error.message);
+            logDiagnostic('warn', 'lib/pdf/pdfAssets.js:62', 'Erro ao carregar logo para o PDF:', error.message);
         }
         return null; // Retorna null em vez de travar o processo
     }

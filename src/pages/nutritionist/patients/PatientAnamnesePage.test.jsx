@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 
+import PatientAnamnesePage from './PatientAnamnesePage';
+
 const mocks = vi.hoisted(() => ({
   patient: { patientId: 'patient-a', paramValue: 'ana' },
   useQuery: vi.fn(),
@@ -35,8 +37,6 @@ vi.mock('@/features/clinical-records/components/TimelineFeed', () => ({
   default: ({ patientId, viewedEpisodeId }) => <output data-testid="timeline-context">{patientId}:{viewedEpisodeId}</output>,
 }));
 vi.mock('@/hooks/usePatientHub', () => ({ usePatientHub: () => ({ patientData: null }) }));
-
-import PatientAnamnesePage from './PatientAnamnesePage';
 
 describe('PatientAnamnesePage timeline context', () => {
   beforeEach(() => {

@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import { supabase } from '@/lib/customSupabaseClient';
 import { translateMealType } from '@/utils/mealTranslations';
 import { buildActivityEventPayload, isExpectedRequestCancellation, logSupabaseError } from '@/lib/supabase/query-helpers';
@@ -1818,7 +1819,7 @@ export async function getInviteDetails(inviteCode) {
     if (error) throw error;
     return { success: true, data: data?.[0] };
   } catch (error) {
-    console.error('Erro getInviteDetails:', error);
+    logDiagnostic('error', 'lib/supabase/patient-queries.js:1821', 'Erro getInviteDetails:', error);
     return { success: false, message: error.message };
   }
 }

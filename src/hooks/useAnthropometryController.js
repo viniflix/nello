@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
@@ -264,11 +265,11 @@ export const useAnthropometryController = ({ patientId, user, resolveLoading, re
             ]);
 
             if (recordsResult.error) {
-                console.error('Erro ao buscar registros:', recordsResult.error);
+                logDiagnostic('error', 'hooks/useAnthropometryController.js:267', 'Erro ao buscar registros:', recordsResult.error);
                 throw new Error('Erro ao buscar registros antropométricos');
             }
             if (chartResult.error) {
-                console.error('Erro ao buscar dados de gráficos:', chartResult.error);
+                logDiagnostic('error', 'hooks/useAnthropometryController.js:271', 'Erro ao buscar dados de gráficos:', chartResult.error);
                 throw new Error('Erro ao buscar dados de gráficos');
             }
 
@@ -313,7 +314,7 @@ export const useAnthropometryController = ({ patientId, user, resolveLoading, re
             const goalType = activeGoalResult?.data?.goal_type;
             setPatientObjective(resolveObjective(goalType, anamnesisObjective, latestBmi));
         } catch (err) {
-            console.error('Erro ao carregar dados:', err);
+            logDiagnostic('error', 'hooks/useAnthropometryController.js:316', 'Erro ao carregar dados:', err);
             const errorMessage = err.message || 'Erro ao carregar dados';
             setError(errorMessage);
             toast({
@@ -377,7 +378,7 @@ export const useAnthropometryController = ({ patientId, user, resolveLoading, re
             await loadData();
         } catch (err) {
             track(Events.UI_ACTION_OUTCOME, { operation: 'anthropometry_save', outcome: 'failed', duration_ms: Math.round(performance.now() - started) });
-            console.error('Erro ao salvar registro:', err);
+            logDiagnostic('error', 'hooks/useAnthropometryController.js:380', 'Erro ao salvar registro:', err);
             toast({
                 title: 'Registro não salvo',
                 description: err?.code === '42501'
@@ -427,7 +428,7 @@ export const useAnthropometryController = ({ patientId, user, resolveLoading, re
 
             await loadData();
         } catch (err) {
-            console.error('Erro ao deletar registro:', err);
+            logDiagnostic('error', 'hooks/useAnthropometryController.js:430', 'Erro ao deletar registro:', err);
             toast({
                 title: 'Erro',
                 description: err.message || 'Não foi possível excluir o registro',

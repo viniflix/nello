@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
@@ -218,13 +219,13 @@ const AddFoodPage = () => {
             });
             toast({ title: 'Sucesso!', description: 'Refeição salva.' });
             const { data: achievements, error: achievementError } = await supabase.rpc('check_and_grant_achievements', { p_user_id: user.id });
-            if (achievementError) console.error('Error checking achievements:', achievementError);
+            if (achievementError) logDiagnostic('error', 'pages/patient/AddFoodPage.jsx:221', 'Error checking achievements:', achievementError);
             else (achievements || []).forEach((achievement) => {
                 toast({ title: '🎉 Conquista Desbloqueada!', description: achievement.name, duration: 5000 });
             });
             navigate('/patient/diario');
         } catch (error) {
-            console.error('Erro ao salvar refeição:', error);
+            logDiagnostic('error', 'pages/patient/AddFoodPage.jsx:227', 'Erro ao salvar refeição:', error);
             toast({ title: 'Erro ao salvar', description: toPortugueseError(error), variant: 'destructive' });
         } finally {
             setLoading(false);

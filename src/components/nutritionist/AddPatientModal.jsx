@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState, useEffect, useRef } from 'react';
 import { usePatientFormStore } from '@/stores/usePatientFormStore'; 
 import InputMask from 'react-input-mask'; 
@@ -302,7 +303,7 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded }) => {
             handleClose(); 
 
         } catch (error) {
-            console.error('[AddPatientModal] Erro ao adicionar paciente:', error);
+            logDiagnostic('error', 'components/nutritionist/AddPatientModal.jsx:305', '[AddPatientModal] Erro ao adicionar paciente:', error);
             toast({ title: "Erro ao adicionar paciente", description: toPortugueseError(error, 'Não foi possível adicionar o paciente.'), variant: "destructive" });
         } finally {
             setLoading(false);

@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import { useState, useEffect } from 'react';
 import { X, Plus, Trash2, Loader2, Info } from 'lucide-react';
 import {
@@ -51,7 +52,7 @@ export default function FoodMeasureManager({ food, isOpen, onClose }) {
       const data = await getFoodMeasures(food.id);
       setMeasures(data || []);
     } catch (error) {
-      console.error('Erro ao carregar medidas:', error);
+      logDiagnostic('error', 'components/nutritionist/FoodMeasureManager.jsx:54', 'Erro ao carregar medidas:', error);
       toast({
         title: 'Erro',
         description: 'Não foi possível carregar as medidas.',
@@ -97,7 +98,7 @@ export default function FoodMeasureManager({ food, isOpen, onClose }) {
         description: 'Medida adicionada com sucesso.'
       });
     } catch (error) {
-      console.error('Erro ao adicionar medida:', error);
+      logDiagnostic('error', 'components/nutritionist/FoodMeasureManager.jsx:100', 'Erro ao adicionar medida:', error);
       toast({
         title: 'Erro',
         description: toPortugueseError(error, 'Não foi possível adicionar a medida.'),
@@ -129,7 +130,7 @@ export default function FoodMeasureManager({ food, isOpen, onClose }) {
         description: 'Medida excluída com sucesso.'
       });
     } catch (error) {
-      console.error('Erro ao excluir medida:', error);
+      logDiagnostic('error', 'components/nutritionist/FoodMeasureManager.jsx:132', 'Erro ao excluir medida:', error);
       toast({
         title: 'Erro',
         description: toPortugueseError(error, 'Não foi possível excluir a medida.'),

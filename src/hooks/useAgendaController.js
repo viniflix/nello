@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useToast } from '@/components/ui/use-toast';
@@ -83,7 +84,7 @@ export function useAgendaController({ user }) {
         if (!user?.id) return;
         fetchAppointmentsInPeriod(user.id, calendarMonth, new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 1), 'id, appointment_time', 'agenda_calendar')
             .then(rows => { if (!cancelled) setCalendarAppointments(rows); })
-            .catch(error => { if (!cancelled) console.error('Falha ao carregar contagem do calendário', error); });
+            .catch(error => { if (!cancelled) logDiagnostic('error', 'hooks/useAgendaController.js:86', 'Falha ao carregar contagem do calendário', error); });
         return () => { cancelled = true; };
     }, [user?.id, calendarMonth, agendaRevision]);
 
@@ -108,7 +109,7 @@ export function useAgendaController({ user }) {
                 setSummaryReady(true);
             }
         })
-            .catch(error => { if (!cancelled) console.error('Falha ao carregar resumo da agenda', error); });
+            .catch(error => { if (!cancelled) logDiagnostic('error', 'hooks/useAgendaController.js:111', 'Falha ao carregar resumo da agenda', error); });
         return () => { cancelled = true; };
     }, [user?.id, agendaRevision]);
 
@@ -159,7 +160,7 @@ export function useAgendaController({ user }) {
                 toast({ title: "Erro", description: "Não foi possível carregar os pacientes. Verifique sua conexão.", variant: "destructive" });
             }
         } catch (e) {
-            console.error('Error fetching patients:', e);
+            logDiagnostic('error', 'hooks/useAgendaController.js:162', 'Error fetching patients:', e);
         }
 
         if (!cancelled) setPatients(patientsList);
@@ -168,7 +169,7 @@ export function useAgendaController({ user }) {
             const servicesData = await getServices(user.id);
             if (!cancelled) setServices(servicesData || []);
         } catch (error) {
-            console.error('Error loading services:', error);
+            logDiagnostic('error', 'hooks/useAgendaController.js:171', 'Error loading services:', error);
             if (!cancelled) setServices([]);
         }
         };
@@ -257,7 +258,7 @@ export function useAgendaController({ user }) {
             loadData();
             setAgendaRevision(revision => revision + 1);
         } catch (error) {
-            console.error('Error saving appointment:', error);
+            logDiagnostic('error', 'hooks/useAgendaController.js:260', 'Error saving appointment:', error);
             const errMsg = error?.message || error?.details || (typeof error === 'string' ? error : '');
             toast({ 
                 title: "Erro ao salvar", 
@@ -484,7 +485,7 @@ export function useAgendaController({ user }) {
 
             setExportDialogOpen(false);
         } catch (error) {
-            console.error('Erro ao exportar PDF:', error);
+            logDiagnostic('error', 'hooks/useAgendaController.js:487', 'Erro ao exportar PDF:', error);
             toast({
                 title: "Erro ao exportar",
                 description: "Não foi possível gerar o PDF. Tente novamente.",

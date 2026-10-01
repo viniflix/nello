@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
 const ThemeContext = createContext();
@@ -18,7 +19,7 @@ export const ThemeProvider = ({ children, defaultTheme = 'light', storageKey = '
       try {
         localStorage.setItem(storageKey, newTheme);
       } catch (e) {
-        console.error('Failed to save theme to localStorage', e);
+        logDiagnostic('error', 'contexts/ThemeContext.jsx:21', 'Failed to save theme to localStorage', e);
       }
       setTheme(newTheme);
     },

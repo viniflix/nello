@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState, useEffect } from 'react';
 import { Search, User as UserIcon, Loader2, X, PlusCircle } from 'lucide-react';
 import { supabase } from '@/lib/customSupabaseClient';
@@ -34,7 +35,7 @@ const NewChatModal = ({ open, onOpenChange, onSelectPatient }) => {
     if (!error && data) {
       setPatients(data);
     } else {
-      console.error('Error fetching patients for chat:', error);
+      logDiagnostic('error', 'components/nutritionist/NewChatModal.jsx:37', 'Error fetching patients for chat:', error);
     }
     setLoading(false);
   };

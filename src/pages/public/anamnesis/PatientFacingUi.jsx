@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '@/lib/customSupabaseClient';
@@ -146,10 +147,7 @@ export default function PatientFacingUi() {
                     setIsCompleted(true);
                 }
             } catch (err) {
-                console.error(
-                    'Falha ao carregar anamnese pública:',
-                    String(err?.code || err?.name || 'unknown_error')
-                );
+                logDiagnostic('error', 'pages/public/anamnesis/PatientFacingUi.jsx:149', 'Falha ao carregar anamnese pública:', String(err?.code || err?.name || 'unknown_error'));
                 setErrorCode('GENERIC');
             } finally {
                 setLoading(false);

@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useResolvedPatientId } from '@/hooks/useResolvedPatientId';
@@ -98,7 +99,7 @@ const LabResultsPage = () => {
                 setPatientName(profile.name);
             }
         } catch (error) {
-            console.error('Erro ao carregar dados do paciente:', error);
+            logDiagnostic('error', 'pages/nutritionist/patients/LabResultsPage.jsx:101', 'Erro ao carregar dados do paciente:', error);
         }
     };
 
@@ -114,7 +115,7 @@ const LabResultsPage = () => {
             setLabResults(classified.data || []);
             setRiskSummary(classified.summary || { total: 0, high: 0, medium: 0, low: 0, highest_risk: 'none' });
         } catch (error) {
-            console.error('Erro ao carregar exames:', error);
+            logDiagnostic('error', 'pages/nutritionist/patients/LabResultsPage.jsx:117', 'Erro ao carregar exames:', error);
             toast({
                 title: 'Erro',
                 description: toPortugueseError(error, 'Não foi possível carregar os exames.'),
@@ -357,7 +358,7 @@ const LabResultsPage = () => {
             handleCloseModal();
             loadLabResults();
         } catch (error) {
-            console.error('Erro ao salvar exame:', error);
+            logDiagnostic('error', 'pages/nutritionist/patients/LabResultsPage.jsx:360', 'Erro ao salvar exame:', error);
             toast({
                 title: 'Erro',
                 description: toPortugueseError(error, 'Não foi possível salvar o exame.'),
@@ -385,7 +386,7 @@ const LabResultsPage = () => {
             setLabToDelete(null);
             loadLabResults();
         } catch (error) {
-            console.error('Erro ao excluir exame:', error);
+            logDiagnostic('error', 'pages/nutritionist/patients/LabResultsPage.jsx:388', 'Erro ao excluir exame:', error);
             toast({
                 title: 'Erro',
                 description: toPortugueseError(error, 'Não foi possível excluir o exame.'),

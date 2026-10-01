@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -80,7 +81,7 @@ const RedeemDeepLinkPage = () => {
 
         // 0. Anti-spam: Honeypot (se preenchido, rejeita silenciosamente)
         if (honeypot) {
-            console.warn('Bot detectado.');
+            logDiagnostic('warn', 'pages/auth/RedeemDeepLinkPage.jsx:83', 'Bot detectado.');
             return;
         }
         

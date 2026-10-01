@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -30,7 +31,7 @@ export default function TopPatientsWidget({ nutritionistId, refreshKey = 0 }) {
                 total: Number(row.total) || 0,
             })));
         } catch (error) {
-            console.warn('Top patients query failed', { code: error?.code || 'unknown' });
+            logDiagnostic('warn', 'components/financial/TopPatientsWidget.jsx:33', 'Top patients query failed', { code: error?.code || 'unknown' });
             setTopPatients([]);
             setLoadFailed(true);
         } finally {

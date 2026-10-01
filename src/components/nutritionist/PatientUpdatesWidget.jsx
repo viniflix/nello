@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -144,7 +145,7 @@ const PatientUpdatesWidget = () => {
                 setAllUpdates(activities);
 
             } catch (error) {
-                console.error('Erro ao buscar atualizações:', error?.code || 'unknown');
+                logDiagnostic('error', 'components/nutritionist/PatientUpdatesWidget.jsx:147', 'Erro ao buscar atualizações:', error?.code || 'unknown');
                 setLoadError(true);
             }
 

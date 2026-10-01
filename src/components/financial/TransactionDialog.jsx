@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState, useEffect, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -175,7 +176,7 @@ export default function TransactionDialog({
 
             return publicUrl;
         } catch (error) {
-            console.error('Error uploading attachment:', error);
+            logDiagnostic('error', 'components/financial/TransactionDialog.jsx:178', 'Error uploading attachment:', error);
             toast({
                 title: 'Erro',
                 description: 'Não foi possível fazer upload do arquivo.',

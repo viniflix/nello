@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
@@ -134,7 +135,7 @@ export function useTemplates(type = 'diet', { enabled = true } = {}) {
       queryClient.invalidateQueries({ queryKey: ['templates', type, user?.id] });
     },
     onError: (err) => {
-      console.error(`[useTemplates] Error deleting ${type} template:`, err.message);
+      logDiagnostic('error', 'hooks/useTemplates.js:137', `[useTemplates] Error deleting ${type} template:`, err.message);
     }
   });
 

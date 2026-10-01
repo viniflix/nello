@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 /**
  * Hook para buscar medidas genéricas (household_measures)
  * e combinar com medidas personalizadas do nutricionista.
@@ -27,7 +28,7 @@ export const useHouseholdMeasures = (options = {}) => {
       if (result.error) throw result.error;
       setData(result.data || []);
     } catch (err) {
-      console.error('Erro ao carregar medidas caseiras:', err);
+      logDiagnostic('error', 'hooks/useHouseholdMeasures.js:30', 'Erro ao carregar medidas caseiras:', err);
       setError(err);
       setData([]);
     } finally {
@@ -131,7 +132,7 @@ export const useAllMeasures = () => {
         ml_equivalent: null,
       })));
     } catch (err) {
-      console.error('Erro ao carregar medidas:', err);
+      logDiagnostic('error', 'hooks/useHouseholdMeasures.js:134', 'Erro ao carregar medidas:', err);
       setError(err);
     } finally {
       setIsLoading(false);

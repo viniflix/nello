@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import { getProtocolInfo } from '@/lib/utils/energy-calculations';
 import { harrisEquationLabel } from '@/lib/utils/harris-history';
 import { ENERGY_ENGINE_VERSION, energyCalculationNeedsVentaReview } from '@/lib/utils/energy-planning';
@@ -77,7 +78,7 @@ const EnergyExpenditureSummaryCard = ({ patientId, patient }) => {
             setSyncFlags(flags || null);
 
         } catch (error) {
-            console.error('Erro ao buscar dados:', error);
+            logDiagnostic('error', 'components/patient-hub/EnergyExpenditureSummaryCard.jsx:80', 'Erro ao buscar dados:', error);
         } finally {
             setLoading(false);
         }

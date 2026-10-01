@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import {
     createDraftMealPlan,
@@ -155,7 +156,7 @@ export function useMealPlanDraft({ patientId, nutritionistId, enabled = false })
     const saveMeal = useCallback(async (mealData) => {
         const currentDraftId = latestDraftIdRef.current;
         if (!currentDraftId) {
-            console.warn('[useMealPlanDraft] saveMeal chamado antes do draftId estar pronto.');
+            logDiagnostic('warn', 'hooks/useMealPlanDraft.js:158', '[useMealPlanDraft] saveMeal chamado antes do draftId estar pronto.');
             return null;
         }
 
@@ -179,9 +180,9 @@ export function useMealPlanDraft({ patientId, nutritionistId, enabled = false })
         if (mealData.foods && mealData.foods.length > 0) {
             const { error: batchError } = await addFoodsToMeal(newMeal.id, mealData.foods);
             if (batchError) {
-                console.error('[useMealPlanDraft] Erro ao salvar alimentos no rascunho:', batchError);
+                logDiagnostic('error', 'hooks/useMealPlanDraft.js:182', '[useMealPlanDraft] Erro ao salvar alimentos no rascunho:', batchError);
                 const { error: cleanupError } = await deleteMealFromPlan(newMeal.id);
-                if (cleanupError) console.error('[useMealPlanDraft] Falha ao limpar refeição incompleta:', cleanupError);
+                if (cleanupError) logDiagnostic('error', 'hooks/useMealPlanDraft.js:184', '[useMealPlanDraft] Falha ao limpar refeição incompleta:', cleanupError);
                 setSaveStatus('error');
                 return null;
             }
@@ -245,9 +246,9 @@ export function useMealPlanDraft({ patientId, nutritionistId, enabled = false })
             if (mealData.foods && mealData.foods.length > 0) {
                 const { error: batchError } = await addFoodsToMeal(newMeal.id, mealData.foods);
                 if (batchError) {
-                    console.error('[useMealPlanDraft] Erro ao salvar alimentos ao atualizar refeição:', batchError);
+                    logDiagnostic('error', 'hooks/useMealPlanDraft.js:248', '[useMealPlanDraft] Erro ao salvar alimentos ao atualizar refeição:', batchError);
                     const { error: cleanupError } = await deleteMealFromPlan(newMeal.id);
-                    if (cleanupError) console.error('[useMealPlanDraft] Falha ao limpar refeição incompleta:', cleanupError);
+                    if (cleanupError) logDiagnostic('error', 'hooks/useMealPlanDraft.js:250', '[useMealPlanDraft] Falha ao limpar refeição incompleta:', cleanupError);
                     setSaveStatus('error');
                     return null; // a refeição antiga permanece intacta
                 }
@@ -264,7 +265,7 @@ export function useMealPlanDraft({ patientId, nutritionistId, enabled = false })
             if (oldDbId) {
                 const { error: deleteError } = await deleteMealFromPlan(oldDbId);
                 if (deleteError) {
-                    console.error('[useMealPlanDraft] Falha ao substituir refeição antiga:', deleteError);
+                    logDiagnostic('error', 'hooks/useMealPlanDraft.js:267', '[useMealPlanDraft] Falha ao substituir refeição antiga:', deleteError);
                     setSaveStatus('error');
                     return null;
                 }
@@ -273,7 +274,7 @@ export function useMealPlanDraft({ patientId, nutritionistId, enabled = false })
             setSaveStatus('saved');
             return newMeal.id;
         } catch (error) {
-            console.error('[useMealPlanDraft] Erro ao atualizar refeição no rascunho:', error);
+            logDiagnostic('error', 'hooks/useMealPlanDraft.js:276', '[useMealPlanDraft] Erro ao atualizar refeição no rascunho:', error);
             setSaveStatus('error');
             return null;
         }

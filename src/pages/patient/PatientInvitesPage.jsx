@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/customSupabaseClient';
@@ -44,7 +45,7 @@ export default function PatientInvitesPage() {
         });
       }
     } catch (err) {
-      console.error('redeem_invite_code error:', err);
+      logDiagnostic('error', 'pages/patient/PatientInvitesPage.jsx:47', 'redeem_invite_code error:', err);
       captureOperationalError(err, {
         operation: 'auth.redeem_patient_invite',
         module: 'authentication',

@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Search, Plus, Filter, Database, Package, Loader2, X, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -95,7 +96,7 @@ const FoodBankPage = () => {
             }
             setCustomTotal(count || 0);
         } catch (error) {
-            console.error('Erro ao buscar alimentos personalizados:', error);
+            logDiagnostic('error', 'pages/nutritionist/tools/FoodBankPage.jsx:98', 'Erro ao buscar alimentos personalizados:', error);
             toast({
                 title: 'Erro',
                 description: 'Não foi possível carregar os alimentos personalizados.',
@@ -136,7 +137,7 @@ const FoodBankPage = () => {
             }
             setPublicTotal(count || 0);
         } catch (error) {
-            console.error('Erro ao buscar alimentos públicos:', error);
+            logDiagnostic('error', 'pages/nutritionist/tools/FoodBankPage.jsx:139', 'Erro ao buscar alimentos públicos:', error);
             toast({
                 title: 'Erro',
                 description: 'Não foi possível carregar os alimentos públicos.',
@@ -169,7 +170,7 @@ const FoodBankPage = () => {
                 public: publicResult.count || 0
             };
         } catch (error) {
-            console.error('Erro ao buscar estatísticas:', error);
+            logDiagnostic('error', 'pages/nutritionist/tools/FoodBankPage.jsx:172', 'Erro ao buscar estatísticas:', error);
             return { custom: 0, public: 0 };
         }
     }, [user.id]);
@@ -248,7 +249,7 @@ const FoodBankPage = () => {
             setDeleteConfirmOpen(false);
             setFoodToDelete(null);
         } catch (error) {
-            console.error('Erro ao excluir alimento:', error);
+            logDiagnostic('error', 'pages/nutritionist/tools/FoodBankPage.jsx:251', 'Erro ao excluir alimento:', error);
             toast({
                 title: 'Erro',
                 description: 'Não foi possível excluir o alimento.',

@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 /**
  * Hooks para gerenciar medidas caseiras personalizadas do nutricionista.
  * Padrão: useState + useEffect (sem React Query), consistente com o restante do codebase.
@@ -32,7 +33,7 @@ export const useCustomMeasures = () => {
       if (result.error) throw result.error;
       setData(result.data || []);
     } catch (err) {
-      console.error('Erro ao carregar medidas personalizadas:', err);
+      logDiagnostic('error', 'hooks/useCustomMeasures.js:35', 'Erro ao carregar medidas personalizadas:', err);
       setError(err);
       setData([]);
     } finally {
@@ -69,7 +70,7 @@ export const useActiveCustomMeasures = () => {
       if (result.error) throw result.error;
       setData(result.data || []);
     } catch (err) {
-      console.error('Erro ao carregar medidas ativas:', err);
+      logDiagnostic('error', 'hooks/useCustomMeasures.js:72', 'Erro ao carregar medidas ativas:', err);
       setError(err);
       setData([]);
     } finally {
@@ -100,7 +101,7 @@ export const useCreateCustomMeasure = () => {
       toast({ title: 'Medida criada!', description: `"${payload.name}" foi adicionada às suas medidas.` });
       return result;
     } catch (err) {
-      console.error('Erro ao criar medida:', err);
+      logDiagnostic('error', 'hooks/useCustomMeasures.js:103', 'Erro ao criar medida:', err);
       setError(err);
       toast({ title: 'Erro ao criar medida', description: err.message, variant: 'destructive' });
       throw err;
@@ -130,7 +131,7 @@ export const useUpdateCustomMeasure = () => {
       toast({ title: 'Medida atualizada!', description: 'As alterações foram salvas.' });
       return result;
     } catch (err) {
-      console.error('Erro ao atualizar medida:', err);
+      logDiagnostic('error', 'hooks/useCustomMeasures.js:133', 'Erro ao atualizar medida:', err);
       setError(err);
       toast({ title: 'Erro ao atualizar', description: err.message, variant: 'destructive' });
       throw err;
@@ -164,7 +165,7 @@ export const useDeleteCustomMeasure = () => {
       });
       return result;
     } catch (err) {
-      console.error('Erro ao excluir medida:', err);
+      logDiagnostic('error', 'hooks/useCustomMeasures.js:167', 'Erro ao excluir medida:', err);
       setError(err);
       toast({ title: 'Erro ao excluir', description: err.message, variant: 'destructive' });
       throw err;

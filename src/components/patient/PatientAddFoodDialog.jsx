@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Plus, X, Search, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -120,7 +121,7 @@ const PatientAddFoodDialog = ({
             
             setHasMore(result.hasMore);
         } catch (error) {
-            console.error('Erro ao buscar alimentos:', error);
+            logDiagnostic('error', 'components/patient/PatientAddFoodDialog.jsx:123', 'Erro ao buscar alimentos:', error);
             if (!append) {
                 setSearchResults([]);
             }

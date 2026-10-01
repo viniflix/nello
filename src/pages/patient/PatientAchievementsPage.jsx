@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -73,7 +74,7 @@ export default function PatientAchievementsPage() {
         .order('id', { ascending: true });
 
       if (achievementsError) {
-        console.error('Erro ao buscar conquistas:', achievementsError);
+        logDiagnostic('error', 'pages/patient/PatientAchievementsPage.jsx:76', 'Erro ao buscar conquistas:', achievementsError);
       } else {
         setAllAchievements(achievementsData || []);
         setStats(prev => ({ ...prev, total: achievementsData?.length || 0 }));
@@ -86,7 +87,7 @@ export default function PatientAchievementsPage() {
         .eq('user_id', user.id);
 
       if (unlockedError) {
-        console.error('Erro ao buscar conquistas desbloqueadas:', unlockedError);
+        logDiagnostic('error', 'pages/patient/PatientAchievementsPage.jsx:89', 'Erro ao buscar conquistas desbloqueadas:', unlockedError);
       } else {
         const unlockedSet = new Set(unlockedData?.map(a => a.achievement_id) || []);
         const datesMap = {};

@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Search, Plus, Database, Package, X, ChevronLeft, ChevronRight, SlidersHorizontal, ChevronDown, BookOpen } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -122,7 +123,7 @@ export default function FoodBankSection() {
         nello: data.nello || 0,
       });
     } catch (err) {
-      console.error('Error fetching food stats:', err);
+      logDiagnostic('error', 'components/templates/FoodBankSection.jsx:125', 'Error fetching food stats:', err);
     } finally {
       setStatsLoading(false);
     }

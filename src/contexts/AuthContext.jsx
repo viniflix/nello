@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { Loader2 } from 'lucide-react';
 import { supabase } from '@/lib/customSupabaseClient';
@@ -81,7 +82,7 @@ export function AuthProvider({ children }) {
           filter: `id=eq.${user.id}`
         },
         () => {
-          if (import.meta.env.DEV) console.log('[AuthContext] Realtime invalidate query: profile');
+          if (import.meta.env.DEV) logDiagnostic('log', 'contexts/AuthContext.jsx:84', '[AuthContext] Realtime invalidate query: profile');
           queryClient.invalidateQueries({ queryKey: ['profile', user.id] });
         }
       )
@@ -117,7 +118,7 @@ export function AuthProvider({ children }) {
       setObservabilityUser({ id: user.id, profile });
     } else if (isProfileError && isOffline) {
         // Se houver erro de perfil mas estivermos offline, mantemos o que temos (graceful degradation)
-        if (import.meta.env.DEV) console.warn('[AuthContext] Perfil indisponível devido a offline, mantendo sessão.');
+        if (import.meta.env.DEV) logDiagnostic('warn', 'contexts/AuthContext.jsx:120', '[AuthContext] Perfil indisponível devido a offline, mantendo sessão.');
     }
   }, [profile, user?.id, isProfileError, isOffline]);
 
@@ -128,7 +129,7 @@ export function AuthProvider({ children }) {
     try {
       await supabase.auth.signOut();
     } catch (error) {
-      console.error('Erro ao fazer logout:', error);
+      logDiagnostic('error', 'contexts/AuthContext.jsx:131', 'Erro ao fazer logout:', error);
     }
     navigate('/login', { replace: true });
   }, [navigate, clearPrivateClientState]);
@@ -190,7 +191,7 @@ export function AuthProvider({ children }) {
         }
       }
     } catch (error) {
-      console.error('[AuthContext] Erro no processSession:', error);
+      logDiagnostic('error', 'contexts/AuthContext.jsx:193', '[AuthContext] Erro no processSession:', error);
       captureOperationalError(error, {
         operation: 'auth.process_session',
         module: 'authentication',
@@ -217,7 +218,7 @@ export function AuthProvider({ children }) {
       // Failsafe de segurança: evita travar em "Verificando sessão..." para sempre
       const failsafe = setTimeout(() => {
         if (mounted) {
-          console.warn('[AuthContext] Verificação inicial de sessão expirou, forçando initializing=false');
+          logDiagnostic('warn', 'contexts/AuthContext.jsx:220', '[AuthContext] Verificação inicial de sessão expirou, forçando initializing=false');
           setInitializing(false);
         }
       }, 10000); // 10 seconds timeout
@@ -245,10 +246,10 @@ export function AuthProvider({ children }) {
         // GRACEFUL DEGRADATION: Se falhar por rede, mas houver uma sessão local, não desloga.
         const isNetworkError = !window.navigator.onLine || err.message?.includes('fetch');
         if (isNetworkError) {
-            console.warn('[AuthContext] Falha de rede no boot, tentando manter sessão local.');
+            logDiagnostic('warn', 'contexts/AuthContext.jsx:248', '[AuthContext] Falha de rede no boot, tentando manter sessão local.');
             setIsOffline(true);
         } else {
-            console.error('[AuthContext] Erro fatal durante initAuth:', err);
+            logDiagnostic('error', 'contexts/AuthContext.jsx:251', '[AuthContext] Erro fatal durante initAuth:', err);
             if (mounted) {
               if (identityRef.current) clearPrivateClientState();
               identityRef.current = null;
@@ -313,7 +314,7 @@ export function AuthProvider({ children }) {
           }
         }
       } catch (err) {
-        if (import.meta.env.DEV) console.error('[AuthContext] Erro no handler onAuthStateChange:', err);
+        if (import.meta.env.DEV) logDiagnostic('error', 'contexts/AuthContext.jsx:316', '[AuthContext] Erro no handler onAuthStateChange:', err);
       }
     });
 

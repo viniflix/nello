@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, Target, Settings, FileSpreadsheet, Download, ChevronDown } from 'lucide-react';
@@ -90,7 +91,7 @@ export default function FinancialPage() {
                 if (settings.monthlyFinancialGoal) {
                     setMonthlyGoal(settings.monthlyFinancialGoal);
                 }
-            }).catch(console.error);
+            }).catch(error => logDiagnostic('error', 'financial.load_clinic_settings', error));
         }
     }, [user?.id]);
 
@@ -109,7 +110,7 @@ export default function FinancialPage() {
             track(Events.DATA_LOAD_TIMING, { operation: 'financial_month', duration_ms: Math.round(performance.now() - started), result_count: rows.length });
         } catch (error) {
             if (request !== loadRequest.current) return;
-            console.error('Falha ao carregar lançamentos financeiros', { code: error?.code || 'unknown' });
+            logDiagnostic('error', 'pages/nutritionist/tools/FinancialPage.jsx:112', 'Falha ao carregar lançamentos financeiros', { code: error?.code || 'unknown' });
             setLoadError(true);
             toast({ title: 'Erro', description: 'Não foi possível carregar os dados financeiros.', variant: 'destructive' });
         } finally {
@@ -189,7 +190,7 @@ export default function FinancialPage() {
             setEditingTransaction(null);
             await refreshAfterMutation();
         } catch (error) {
-            console.error('Error saving transaction:', error);
+            logDiagnostic('error', 'pages/nutritionist/tools/FinancialPage.jsx:192', 'Error saving transaction:', error);
             toast({
                 title: "Erro",
                 description: toPortugueseError(error, 'Não foi possível salvar a transação.'),
@@ -208,7 +209,7 @@ export default function FinancialPage() {
             setDeleteConfirm(null);
             await refreshAfterMutation();
         } catch (error) {
-            console.error('Error deleting transaction:', error);
+            logDiagnostic('error', 'pages/nutritionist/tools/FinancialPage.jsx:211', 'Error deleting transaction:', error);
             toast({
                 title: "Erro",
                 description: "Não foi possível deletar a transação.",
@@ -278,7 +279,7 @@ export default function FinancialPage() {
                 description: "Relatório completo exportado para contador."
             });
         } catch (error) {
-            console.error('Error exporting report:', error);
+            logDiagnostic('error', 'pages/nutritionist/tools/FinancialPage.jsx:281', 'Error exporting report:', error);
             toast({
                 title: "Erro",
                 description: toPortugueseError(error, "Não foi possível exportar o relatório."),
@@ -325,7 +326,7 @@ export default function FinancialPage() {
                 description: "Recibo gerado e baixado com sucesso."
             });
         } catch (error) {
-            console.error('Error generating receipt:', error);
+            logDiagnostic('error', 'pages/nutritionist/tools/FinancialPage.jsx:328', 'Error generating receipt:', error);
             toast({
                 title: "Erro",
                 description: toPortugueseError(error, "Não foi possível gerar o recibo."),
@@ -343,7 +344,7 @@ export default function FinancialPage() {
                 description: "Arquivo PDF gerado com sucesso."
             });
         } catch (error) {
-            console.error('Error exporting PDF:', error);
+            logDiagnostic('error', 'pages/nutritionist/tools/FinancialPage.jsx:346', 'Error exporting PDF:', error);
             toast({
                 title: "Erro",
                 description: "Não foi possível gerar o PDF.",
@@ -532,7 +533,7 @@ export default function FinancialPage() {
                     setIsServicesManagerOpen(open);
                     // Reload services when manager closes
                     if (!open && user?.id) {
-                        getServices(user.id).then(setServices).catch(console.error);
+                        getServices(user.id).then(setServices).catch(error => logDiagnostic('error', 'financial.load_services', error));
                     }
                 }}
                 nutritionistId={user?.id}

@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -95,7 +96,7 @@ export default function MealPlanViewDialog({ open, onOpenChange, mealPlan, patie
         img.src = URL.createObjectURL(blob);
       });
     } catch (error) {
-      console.error('Erro ao carregar logo:', error);
+      logDiagnostic('error', 'components/patient/MealPlanViewDialog.jsx:98', 'Erro ao carregar logo:', error);
     }
 
     // Título

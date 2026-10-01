@@ -2,11 +2,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
+import TimelineFeed from './TimelineFeed';
+
 const mocks = vi.hoisted(() => ({ useTimeline: vi.fn() }));
 vi.mock('../hooks/useTimeline', () => ({ useTimeline: mocks.useTimeline }));
 vi.mock('./TimelineItem', () => ({ default: ({ item }) => <div>{item.title}</div> }));
-
-import TimelineFeed from './TimelineFeed';
 
 const defaults = {
   timelineData: [], isLoading: false, isFetchingNextPage: false, hasNextPage: false,

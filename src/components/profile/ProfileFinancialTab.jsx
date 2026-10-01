@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -77,7 +78,7 @@ export default function ProfileFinancialTab({ userId, onUpdate }) {
             setServices(servicesData);
             setRecurringExpenses(expensesData);
         } catch (error) {
-            console.error('Error loading financial data:', error);
+            logDiagnostic('error', 'components/profile/ProfileFinancialTab.jsx:80', 'Error loading financial data:', error);
             toast({
                 title: "Erro",
                 description: "Não foi possível carregar os dados.",

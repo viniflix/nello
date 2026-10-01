@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -74,7 +75,7 @@ export default function PatientHomePage() {
     const { data: mealPlanData, error: mealPlanError } = await getActiveMealPlan(user.id);
 
     if (mealPlanError) {
-      console.error('Erro ao carregar plano alimentar:', mealPlanError);
+      logDiagnostic('error', 'pages/patient/PatientHomePage.jsx:77', 'Erro ao carregar plano alimentar:', mealPlanError);
     }
     
     setPrescription(mealPlanData);

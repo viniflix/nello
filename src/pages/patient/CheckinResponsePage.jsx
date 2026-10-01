@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useCheckins } from '@/hooks/useCheckins';
@@ -114,7 +115,7 @@ const CheckinResponsePage = () => {
 
       } catch (err) {
         if (import.meta.env.DEV) {
-          console.error('Falha ao carregar check-in:', err?.code || err?.name || 'unknown');
+          logDiagnostic('error', 'pages/patient/CheckinResponsePage.jsx:117', 'Falha ao carregar check-in:', err?.code || err?.name || 'unknown');
         }
         setError(CHECKIN_LOAD_ERROR_MESSAGE);
       } finally {

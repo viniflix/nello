@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useResolvedPatientId } from '@/hooks/useResolvedPatientId';
@@ -104,7 +105,7 @@ export default function ProgressPhotosPage() {
                 .limit(100);
             setWeights(weightData || []);
         } catch (e) {
-            console.error(e);
+            logDiagnostic('error', 'pages/nutritionist/patients/ProgressPhotosPage.jsx:107', e);
             toast({ title: 'Erro ao carregar dados', description: e.message, variant: 'destructive' });
         } finally {
             setLoading(false);
@@ -164,7 +165,7 @@ export default function ProgressPhotosPage() {
             if (fileInputRef.current) fileInputRef.current.value = '';
             loadData();
         } catch (err) {
-            console.error('[ProgressPhotos][upload] erro detalhado:', err);
+            logDiagnostic('error', 'pages/nutritionist/patients/ProgressPhotosPage.jsx:167', '[ProgressPhotos][upload] erro detalhado:', err);
             const fullMsg = err?.message || err?.error_description || err?.details || err?.hint || JSON.stringify(err);
             toast({
                 title: 'Erro ao enviar foto',

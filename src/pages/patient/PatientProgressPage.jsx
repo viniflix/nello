@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { format, parseISO } from 'date-fns';
@@ -200,7 +201,7 @@ export default function PatientProgressPage() {
       setGoalWeight(null);
     } catch (error) {
       if (!isMounted.current || currentController.signal.aborted) return;
-      console.error('[PatientProgress][load]', error);
+      logDiagnostic('error', 'pages/patient/PatientProgressPage.jsx:203', '[PatientProgress][load]', error);
       
       toast({
         title: 'Erro ao carregar dados',
@@ -434,7 +435,7 @@ export default function PatientProgressPage() {
       setSelectedPhotoFile(null);
       loadProgressData();
     } catch (error) {
-      console.error('[PatientProgress][upload] erro detalhado:', error);
+      logDiagnostic('error', 'pages/patient/PatientProgressPage.jsx:437', '[PatientProgress][upload] erro detalhado:', error);
       toast({
         title: 'Erro ao adicionar foto',
         description: toPortugueseError(error),

@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import { useState, useRef } from 'react';
 import { Camera, User, Loader2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -120,7 +121,7 @@ export default function AvatarUpload({ size = 'large', showChangeButton = true }
         description: 'Foto de perfil atualizada com sucesso.'
       });
     } catch (error) {
-      console.error('Erro ao fazer upload:', error);
+      logDiagnostic('error', 'components/patient/AvatarUpload.jsx:123', 'Erro ao fazer upload:', error);
       toast({
         title: 'Erro',
         description: toPortugueseError(error, 'Não foi possível atualizar a foto de perfil.'),

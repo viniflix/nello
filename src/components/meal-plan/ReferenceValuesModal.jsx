@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState, useEffect } from 'react';
 import { Save, X, RotateCcw, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -74,7 +75,7 @@ const ReferenceValuesModal = ({ isOpen, onClose, planId }) => {
                 setInitialValues(data);
             }
         } catch (error) {
-            console.error('Erro ao carregar valores:', error);
+            logDiagnostic('error', 'components/meal-plan/ReferenceValuesModal.jsx:77', 'Erro ao carregar valores:', error);
         } finally {
             setLoading(false);
         }
@@ -266,7 +267,7 @@ const ReferenceValuesModal = ({ isOpen, onClose, planId }) => {
             setInitialValues(result.data);
             onClose();
         } catch (error) {
-            console.error('Erro ao salvar:', error);
+            logDiagnostic('error', 'components/meal-plan/ReferenceValuesModal.jsx:269', 'Erro ao salvar:', error);
             toast({
                 title: 'Erro',
                 description: 'Não foi possível salvar os valores',

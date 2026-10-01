@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { LogOut, Bell, Check, Trash2, Shield, ArrowLeft, Menu, LayoutDashboard, Settings, Users, Bug, Activity, BadgeCheck, ShieldCheck } from 'lucide-react';
@@ -47,7 +48,7 @@ export default function AdminHeader() {
         .limit(20);
       setNotifications(data || []);
     } catch (err) {
-      console.error('Error fetching notifications:', err);
+      logDiagnostic('error', 'components/admin/AdminHeader.jsx:50', 'Error fetching notifications:', err);
     }
     setLoadingNotifications(false);
   }, [user?.id]);
@@ -64,7 +65,7 @@ export default function AdminHeader() {
       await supabase.from('notifications').update({ is_read: true }).in('id', unreadIds);
       setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
     } catch (err) {
-      console.error('Error marking as read:', err);
+      logDiagnostic('error', 'components/admin/AdminHeader.jsx:67', 'Error marking as read:', err);
     }
   };
 
@@ -75,7 +76,7 @@ export default function AdminHeader() {
       await supabase.from('notifications').delete().in('id', readIds);
       setNotifications((prev) => prev.filter((n) => !n.is_read));
     } catch (err) {
-      console.error('Error clearing notifications:', err);
+      logDiagnostic('error', 'components/admin/AdminHeader.jsx:78', 'Error clearing notifications:', err);
     }
   };
 

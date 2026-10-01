@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -102,7 +103,7 @@ export default function NutritionistFoodsPage() {
           custom: customResult.count || 0
         });
       } catch (error) {
-        console.error('Erro ao buscar estatísticas:', error);
+        logDiagnostic('error', 'pages/nutritionist/NutritionistFoodsPage.jsx:105', 'Erro ao buscar estatísticas:', error);
       }
     };
     fetchStats();
@@ -135,7 +136,7 @@ export default function NutritionistFoodsPage() {
       
       setHasMore(result.hasMore);
     } catch (error) {
-      console.error('Erro ao buscar alimentos:', error);
+      logDiagnostic('error', 'pages/nutritionist/NutritionistFoodsPage.jsx:138', 'Erro ao buscar alimentos:', error);
       toast({
         title: 'Erro',
         description: 'Não foi possível buscar alimentos.',
@@ -237,7 +238,7 @@ export default function NutritionistFoodsPage() {
           custom: customResult.count || 0
         });
       } catch (error) {
-        console.error('Erro ao atualizar estatísticas:', error);
+        logDiagnostic('error', 'pages/nutritionist/NutritionistFoodsPage.jsx:240', 'Erro ao atualizar estatísticas:', error);
       }
     };
     fetchStats();

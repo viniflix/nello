@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Utensils, Calendar, Clock, ArrowRight, Flame, Loader2 } from 'lucide-react';
@@ -31,7 +32,7 @@ const TabContentFeed = ({ patientId, patientSlugOrId, activities, loading, onLoa
                 if (error) throw error;
                 setRecentMeals(data || []);
             } catch (error) {
-                console.error('Erro ao buscar refeições:', error);
+                logDiagnostic('error', 'components/patient-hub/tabs/TabContentFeed.jsx:34', 'Erro ao buscar refeições:', error);
                 setRecentMeals([]);
             } finally {
                 setMealsLoading(false);

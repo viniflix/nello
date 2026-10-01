@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import { useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
@@ -127,7 +128,7 @@ export const usePatientHub = (patientId) => {
             const started = performance.now();
             const { data, error } = await getPatientActivities(patientId, 100);
             if (error) {
-                console.error('Erro ao carregar atividades:', error);
+                logDiagnostic('error', 'hooks/usePatientHub.js:130', 'Erro ao carregar atividades:', error);
                 return [];
             }
             track(Events.DATA_LOAD_TIMING, { operation: 'patient_hub_activities', duration_ms: Math.round(performance.now() - started), result_count: data?.length || 0 });

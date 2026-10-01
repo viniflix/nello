@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import html2canvas from 'html2canvas';
@@ -13,7 +14,7 @@ const withEdgePdfFallback = async (options, generateClientPdf) => {
   try {
     await generateClientPdf();
   } catch (error) {
-    console.error("Erro ao gerar PDF no cliente:", error);
+    logDiagnostic('error', 'lib/pdfUtils.jsx:16', "Erro ao gerar PDF no cliente:", error);
     await generatePdfViaEdge(options);
   }
 };
@@ -21,7 +22,7 @@ const withEdgePdfFallback = async (options, generateClientPdf) => {
 export const exportToPdf = async (elementId, fileName, title) => {
   const input = document.getElementById(elementId);
   if (!input) {
-    console.error(`Element with id ${elementId} not found.`);
+    logDiagnostic('error', 'lib/pdfUtils.jsx:24', `Element with id ${elementId} not found.`);
     return;
   }
 
@@ -245,7 +246,7 @@ export const exportAgendaToPdf = async (appointments, periodType, periodLabel, n
         try {
             doc.addImage(logoData, 'PNG', 14, 10, 40, 10);
         } catch (err) {
-            console.warn('Falha ao adicionar logo ao PDF:', err);
+            logDiagnostic('warn', 'lib/pdfUtils.jsx:248', 'Falha ao adicionar logo ao PDF:', err);
         }
     }
 

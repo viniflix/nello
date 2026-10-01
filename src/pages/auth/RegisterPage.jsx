@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -93,7 +94,7 @@ export default function RegisterPage() {
     setLoading(false);
 
     if (error) {
-      console.error('[RegisterPage] Erro no cadastro:', error);
+      logDiagnostic('error', 'pages/auth/RegisterPage.jsx:96', '[RegisterPage] Erro no cadastro:', error);
       toast({
         title: "Erro no cadastro",
         description: toPortugueseError(error, 'Não foi possível concluir o cadastro.'),

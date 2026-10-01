@@ -5,6 +5,7 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+  actions: read
 concurrency:
   group: production-observation
   cancel-in-progress: false
@@ -19,6 +20,32 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
+      - name: Locate previous budget delivery state
+        id: previous-budget
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data } = await github.rest.actions.listArtifactsForRepo({ ...context.repo, name: 'production-budget-state', per_page: 20 });
+            const prior = data.artifacts.find(a => !a.expired && a.workflow_run?.head_branch === 'main' && a.workflow_run.id !== context.runId);
+            if (prior) core.setOutput('run-id', String(prior.workflow_run.id));
+      - uses: actions/download-artifact@v4
+        if: steps.previous-budget.outputs.run-id != ''
+        with:
+          name: production-budget-state
+          path: previous-budget
+          run-id: ${{ steps.previous-budget.outputs.run-id }}
+          github-token: ${{ github.token }}
+      - name: Evaluate continuous Sentry uptime checks and deliver grouped budget alerts
+        run: node scripts/availability/provider-burn-rate.mjs
+        env:
+          SENTRY_MONITOR_READ_TOKEN: ${{ secrets.SENTRY_MONITOR_READ_TOKEN }}
+          SENTRY_DSN: ${{ secrets.PRODUCTION_MONITOR_SENTRY_DSN }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: production-budget-state
+          path: production-budget.json
+          retention-days: 7
+          if-no-files-found: error
       - name: Check live health, assets, headers, status and real 404 contracts
         run: node scripts/availability/production-check.mjs
         env:

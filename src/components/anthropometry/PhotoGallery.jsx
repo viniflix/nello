@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import { useEffect, useState } from 'react';
 import { Upload, X, Image as ImageIcon, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -89,7 +90,7 @@ export default function PhotoGallery({ patientId, recordId, initialPhotos = [], 
 
       if (uploadError) {
         // Se o bucket não existir, tentar criar ou usar fallback
-        console.error('Erro no upload:', uploadError);
+        logDiagnostic('error', 'components/anthropometry/PhotoGallery.jsx:92', 'Erro no upload:', uploadError);
         throw uploadError;
       }
 
@@ -114,7 +115,7 @@ export default function PhotoGallery({ patientId, recordId, initialPhotos = [], 
         description: 'Foto enviada com sucesso!'
       });
     } catch (error) {
-      console.error('Erro ao fazer upload da foto:', error);
+      logDiagnostic('error', 'components/anthropometry/PhotoGallery.jsx:117', 'Erro ao fazer upload da foto:', error);
       toast({
         title: 'Erro',
         description: 'Não foi possível fazer upload da foto. Tente novamente.',
@@ -149,7 +150,7 @@ export default function PhotoGallery({ patientId, recordId, initialPhotos = [], 
         description: 'Foto removida com sucesso!'
       });
     } catch (error) {
-      console.error('Erro ao deletar foto:', error);
+      logDiagnostic('error', 'components/anthropometry/PhotoGallery.jsx:152', 'Erro ao deletar foto:', error);
       toast({
         title: 'Erro',
         description: 'Não foi possível remover a foto.',

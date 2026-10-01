@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/customSupabaseClient';
 import { format } from 'date-fns';
@@ -152,7 +153,7 @@ export function useDashboardController({ user, toast }) {
       track(Events.DATA_LOAD_TIMING, { operation: 'dashboard_stats', duration_ms: Math.round(performance.now() - started), result_count: patientData.length });
 
     } catch (error) {
-      console.error('Erro ao carregar estatísticas:', error);
+      logDiagnostic('error', 'hooks/useDashboardController.js:155', 'Erro ao carregar estatísticas:', error);
       toast({ title: "Erro ao carregar estatísticas", description: toPortugueseError(error, 'Não foi possível carregar as estatísticas.'), variant: "destructive" });
     } finally {
       setStatsLoading(false);
@@ -201,7 +202,7 @@ export function useDashboardController({ user, toast }) {
       setAppointmentsTodayCount(todayCount || 0);
       track(Events.DATA_LOAD_TIMING, { operation: 'dashboard_appointments', duration_ms: Math.round(performance.now() - started), result_count: totalUpcomingCount || 0 });
     } catch (error) {
-      console.error('Erro ao carregar agendamentos:', error);
+      logDiagnostic('error', 'hooks/useDashboardController.js:204', 'Erro ao carregar agendamentos:', error);
       if (!isSchemaOrMigrationError(error)) {
         toast({ title: "Erro ao carregar agendamentos", description: toPortugueseError(error, 'Não foi possível carregar os agendamentos.'), variant: "destructive" });
       }
@@ -246,7 +247,7 @@ export function useDashboardController({ user, toast }) {
       });
       track(Events.DATA_LOAD_TIMING, { operation: 'dashboard_no_show', duration_ms: Math.round(performance.now() - started), result_count: noShowCount + completedCount + canceledCount });
     } catch (error) {
-      console.error('Erro ao carregar métricas de no-show:', error);
+      logDiagnostic('error', 'hooks/useDashboardController.js:249', 'Erro ao carregar métricas de no-show:', error);
       if (!isSchemaOrMigrationError(error)) {
         toast({
           title: 'Erro no no-show',

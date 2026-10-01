@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
@@ -181,7 +182,7 @@ export function useTemplateBuilder(type, templateId = null) {
         });
       }
     } catch (err) {
-      console.error('[useTemplateBuilder] Error loading template:', err.message);
+      logDiagnostic('error', 'hooks/useTemplateBuilder.js:184', '[useTemplateBuilder] Error loading template:', err.message);
       toast({ title: 'Erro', description: 'Não foi possível carregar o template.', variant: 'destructive' });
     } finally {
       setIsLoadingTemplate(false);
@@ -344,7 +345,7 @@ export function useTemplateBuilder(type, templateId = null) {
       }
       await shadow.discard();
     } catch (err) {
-      console.error('[useTemplateBuilder] Save error:', err.message);
+      logDiagnostic('error', 'hooks/useTemplateBuilder.js:347', '[useTemplateBuilder] Save error:', err.message);
       toast({ title: 'Erro ao salvar', description: err.message || 'Tente novamente.', variant: 'destructive' });
     } finally {
       setLoading(false);

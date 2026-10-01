@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import { useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -133,7 +134,7 @@ export default function AddMealPage() {
 
       setAddedFoods(foodsWithData);
     } catch (error) {
-      console.error('Erro ao carregar refeição:', error);
+      logDiagnostic('error', 'pages/patient/AddMealPage.jsx:136', 'Erro ao carregar refeição:', error);
       toast({
         title: 'Erro ao carregar',
         description: toPortugueseError(error),
@@ -267,7 +268,7 @@ export default function AddMealPage() {
       toast({ title: 'Sucesso!', description: editMode ? 'Refeição atualizada com sucesso' : 'Refeição registrada com sucesso' });
       navigate('/patient/diario');
     } catch (error) {
-      console.error('Erro ao salvar:', error);
+      logDiagnostic('error', 'pages/patient/AddMealPage.jsx:270', 'Erro ao salvar:', error);
       toast({ title: 'Erro ao salvar', description: toPortugueseError(error), variant: 'destructive' });
     } finally {
       setSaving(false);

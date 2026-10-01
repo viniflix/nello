@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -48,7 +49,7 @@ export default function RecentAchievementsWidget() {
         .limit(3);
 
       if (error) {
-        console.error('Erro ao buscar conquistas:', error);
+        logDiagnostic('error', 'components/patient/RecentAchievementsWidget.jsx:51', 'Erro ao buscar conquistas:', error);
       } else {
         setAchievements(data || []);
       }

@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/customSupabaseClient';
 
@@ -63,7 +64,7 @@ export function useOfflineSync() {
         remainingActions.push({ ...action, retryCount: action.retryCount + 1 });
       } else {
         // Erro lógico (ex: código inválido) - removemos da fila para não travar
-        console.warn(`[OfflineSync] Action ${action.id} failed with logic error:`, result.error);
+        logDiagnostic('warn', 'hooks/useOfflineSync.js:66', `[OfflineSync] Action ${action.id} failed with logic error:`, result.error);
         results.push({ id: action.id, status: 'failed', error: result.error });
       }
     }
@@ -74,7 +75,7 @@ export function useOfflineSync() {
 
   useEffect(() => {
     const handleOnline = () => {
-      if (import.meta.env.DEV) console.log('[OfflineSync] Internet recuperada, iniciando sincronização...');
+      if (import.meta.env.DEV) logDiagnostic('log', 'hooks/useOfflineSync.js:77', '[OfflineSync] Internet recuperada, iniciando sincronização...');
       syncAll();
     };
 

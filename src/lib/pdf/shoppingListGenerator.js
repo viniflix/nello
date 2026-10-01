@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { loadLogo } from './pdfAssets';
@@ -48,12 +49,12 @@ export const generateShoppingList = async (planData, patientName = 'Paciente') =
                 try {
                     doc.addImage(logoData, 'PNG', 14, 10, logoWidth, logoHeight);
                 } catch (err) {
-                    console.warn('Falha ao adicionar logo ao PDF:', err);
+                    logDiagnostic('warn', 'lib/pdf/shoppingListGenerator.js:51', 'Falha ao adicionar logo ao PDF:', err);
                 }
                 resolve();
             };
             img.onerror = () => {
-                console.warn('Falha ao carregar dimensões da logo');
+                logDiagnostic('warn', 'lib/pdf/shoppingListGenerator.js:56', 'Falha ao carregar dimensões da logo');
                 resolve();
             };
             img.src = logoData;

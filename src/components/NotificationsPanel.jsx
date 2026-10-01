@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
@@ -138,7 +139,7 @@ const NotificationsPanel = ({ isOpen, setIsOpen }) => {
       .limit(50);
 
     if (error) {
-      console.error(error);
+      logDiagnostic('error', 'components/NotificationsPanel.jsx:141', error);
       setLoading(false);
       return;
     }

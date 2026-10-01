@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useResolvedPatientId } from '@/hooks/useResolvedPatientId';
@@ -138,7 +139,7 @@ const FoodDiaryPage = () => {
                 if (isMounted) setNutritionalSummary(summary);
 
             } catch (error) {
-                console.error('Erro ao carregar dados:', error);
+                logDiagnostic('error', 'pages/nutritionist/patients/FoodDiaryPage.jsx:141', 'Erro ao carregar dados:', error);
                 if (isMounted) {
                     setLoadError(toPortugueseError(error));
                     toast({
@@ -173,7 +174,7 @@ const FoodDiaryPage = () => {
                 if (auditError) throw auditError;
                 if (isMounted) setAuditHistory(auditData || []);
             } catch (error) {
-                console.error('Erro ao buscar refeições:', error);
+                logDiagnostic('error', 'pages/nutritionist/patients/FoodDiaryPage.jsx:176', 'Erro ao buscar refeições:', error);
                 if (isMounted) {
                     toast({
                         title: 'Erro de sincronização',

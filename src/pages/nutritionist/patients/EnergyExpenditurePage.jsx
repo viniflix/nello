@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useResolvedPatientId } from '@/hooks/useResolvedPatientId';
@@ -332,7 +333,7 @@ function EnergyExpenditureForm({ resolvedPatient }) {
       const { data: flags } = await getPatientModuleSyncFlags(patientId);
       setSyncFlags(flags || null);
     } catch (err) {
-      console.error(err);
+      logDiagnostic('error', 'pages/nutritionist/patients/EnergyExpenditurePage.jsx:335', err);
       toast({ title: 'Erro', description: err?.message || 'Não foi possível carregar os dados do paciente.', variant: 'destructive' });
     } finally {
       setLoading(false);
@@ -403,7 +404,7 @@ function EnergyExpenditureForm({ resolvedPatient }) {
       navigate(patientHubRoute(patient, 'nutrition'));
     } catch (err) {
       track(Events.UI_ACTION_OUTCOME, { operation: 'energy_save', outcome: 'failed', duration_ms: Math.round(performance.now() - started) });
-      console.error(err);
+      logDiagnostic('error', 'pages/nutritionist/patients/EnergyExpenditurePage.jsx:406', err);
       toast({ title: 'Erro', description: err?.message || 'Não foi possível salvar o cálculo.', variant: 'destructive' });
     } finally {
       setSaving(false);

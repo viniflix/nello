@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState, useEffect } from 'react';
 import { Search, FileText, Loader2, ChevronRight, Check } from 'lucide-react';
 import {
@@ -49,7 +50,7 @@ export default function ImportMealFromProtocolDialog({ open, onOpenChange, nutri
                 // Pré-seleciona todas
                 setSelectedMealIds(new Set(meals.map(m => m.id ?? m.tempId)));
             } catch (err) {
-                console.error('[ImportMealFromProtocolDialog] Error loading template meals:', err.message);
+                logDiagnostic('error', 'components/meal-plan/ImportMealFromProtocolDialog.jsx:52', '[ImportMealFromProtocolDialog] Error loading template meals:', err.message);
                 if (!cancelled) { setTemplateMeals([]); setSelectedMealIds(new Set()); setLoadError('Não foi possível carregar o protocolo. Selecione-o novamente.'); }
             } finally {
                 if (!cancelled) setLoadingMeals(false);

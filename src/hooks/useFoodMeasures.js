@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 /**
  * Hook para gerenciar medidas caseiras de um alimento
  * Usa padrão useState + useEffect (sem React Query)
@@ -36,7 +37,7 @@ export const useFoodMeasures = (foodId) => {
       const result = await getFoodMeasures(foodId);
       setData(result || []);
     } catch (err) {
-      console.error('Erro ao carregar medidas:', err);
+      logDiagnostic('error', 'hooks/useFoodMeasures.js:39', 'Erro ao carregar medidas:', err);
       setError(err);
       setData([]);
     } finally {
@@ -80,7 +81,7 @@ export const useCreateFoodMeasure = () => {
 
       return result;
     } catch (err) {
-      console.error('Erro ao criar medida:', err);
+      logDiagnostic('error', 'hooks/useFoodMeasures.js:83', 'Erro ao criar medida:', err);
       setError(err);
 
       toast({
@@ -126,7 +127,7 @@ export const useUpdateFoodMeasure = () => {
 
       return result;
     } catch (err) {
-      console.error('Erro ao atualizar medida:', err);
+      logDiagnostic('error', 'hooks/useFoodMeasures.js:129', 'Erro ao atualizar medida:', err);
       setError(err);
 
       toast({
@@ -172,7 +173,7 @@ export const useDeleteFoodMeasure = () => {
 
       return result;
     } catch (err) {
-      console.error('Erro ao deletar medida:', err);
+      logDiagnostic('error', 'hooks/useFoodMeasures.js:175', 'Erro ao deletar medida:', err);
       setError(err);
 
       toast({
@@ -215,7 +216,7 @@ export const useFoodHasMeasures = (foodId) => {
         const result = await foodHasMeasures(foodId);
         setHasMeasures(result);
       } catch (err) {
-        console.error('Erro ao verificar medidas:', err);
+        logDiagnostic('error', 'hooks/useFoodMeasures.js:218', 'Erro ao verificar medidas:', err);
         setHasMeasures(false);
       } finally {
         setIsLoading(false);

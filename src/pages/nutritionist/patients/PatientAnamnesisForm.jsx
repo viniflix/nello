@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useResolvedPatientId } from '@/hooks/useResolvedPatientId';
@@ -150,7 +151,7 @@ export default function PatientAnamnesisForm() {
             autosave.discard();
             if (isSubmit) navigate(patientAnamnesisListRoute({ id: patientId, slug: paramValue }));
         } catch (err) {
-            console.error('Error saving anamnesis:', err);
+            logDiagnostic('error', 'pages/nutritionist/patients/PatientAnamnesisForm.jsx:153', 'Error saving anamnesis:', err);
             toast({ title: 'Erro ao salvar', description: toPortugueseError(err.message), variant: 'destructive' });
         } finally {
             if (isSubmit) setIsSubmitting(false);

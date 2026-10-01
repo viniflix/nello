@@ -74,6 +74,11 @@ describe('checkProjectStructure', () => {
     );
   });
 
+  it.each(['console.error(payload)', 'request.catch(console.error)', "console['error'](payload)"])('rejects raw diagnostics including callback references: %s', content => {
+    const result = checkProjectStructure(createRoot(), [], [{ path: 'src/pages/example.jsx', content }]);
+    expect(result.errors).toContain('Raw console diagnostics are not allowed in src/pages/example.jsx; use the privacy-preserving safeLogger');
+  });
+
   it('rejects unowned generic services but allows the legacy admin service', () => {
     const root = createRoot();
     const result = checkProjectStructure(root, [

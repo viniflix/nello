@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -71,7 +72,7 @@ export default function PatientProfilePage() {
       .eq('user_id', user.id);
 
     if (error) {
-      console.error('Erro ao carregar conquistas:', error);
+      logDiagnostic('error', 'pages/patient/PatientProfilePage.jsx:74', 'Erro ao carregar conquistas:', error);
       setAchievements([]);
     } else {
       setAchievements(data || []);

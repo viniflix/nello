@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/customSupabaseClient';
@@ -144,7 +145,7 @@ const NotificationsPage = () => {
             .limit(200); // OTIMIZADO: Últimas 200 notificações
 
         if (error) {
-            console.error(error);
+            logDiagnostic('error', 'pages/nutritionist/notifications/NotificationsPage.jsx:147', error);
         } else {
             setNotifications(data);
         }

@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useMemo, useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -189,10 +190,10 @@ const NutritionistActivityFeed = () => {
                 if (activitiesRes.error) throw activitiesRes.error;
                 if (lowAdherenceRes.error) throw lowAdherenceRes.error;
                 if (pendingRes.error) throw pendingRes.error;
-                if (appointmentsRes.error) console.warn('[Feed] Erro consultas:', appointmentsRes.error?.code || 'unknown');
+                if (appointmentsRes.error) logDiagnostic('warn', 'components/nutritionist/NutritionistActivityFeed.jsx:192', '[Feed] Erro consultas:', appointmentsRes.error?.code || 'unknown');
                 if (patientsRes.error) throw patientsRes.error;
-                if (priorityRulesRes?.error) console.warn('[Feed] Erro regras:', priorityRulesRes.error?.code || 'unknown');
-                if (feedStateRes?.error) console.warn('[Feed] Erro estados:', feedStateRes.error?.code || 'unknown');
+                if (priorityRulesRes?.error) logDiagnostic('warn', 'components/nutritionist/NutritionistActivityFeed.jsx:194', '[Feed] Erro regras:', priorityRulesRes.error?.code || 'unknown');
+                if (feedStateRes?.error) logDiagnostic('warn', 'components/nutritionist/NutritionistActivityFeed.jsx:195', '[Feed] Erro estados:', feedStateRes.error?.code || 'unknown');
 
                 const patients = patientsRes.data || [];
                 const patientIds = patients.map((p) => p.id).filter(Boolean);
@@ -210,7 +211,7 @@ const NutritionistActivityFeed = () => {
                 ]);
                 const labRiskAlerts = highRiskRes.error ? [] : highRiskRes.data || [];
                 const pendingPayments = paymentsRes.data || [];
-                if (paymentsRes.error) console.warn('[Feed] Erro ao carregar pagamentos pendentes:', paymentsRes.error?.code || 'unknown');
+                if (paymentsRes.error) logDiagnostic('warn', 'components/nutritionist/NutritionistActivityFeed.jsx:213', '[Feed] Erro ao carregar pagamentos pendentes:', paymentsRes.error?.code || 'unknown');
 
                 const priorityRules = priorityRulesRes?.data || [];
                 const activityItems = (activitiesRes.data || []).map((activity) => {
@@ -339,7 +340,7 @@ const NutritionistActivityFeed = () => {
                 const allItems = attachFeedPriorityMeta(allItemsRaw, priorityRules);
 
                 const syncRes = await syncFeedTasksFromItems(user.id, allItems, feedStateRes?.data || []);
-                if (syncRes.error) console.warn('[Feed] Erro sync:', syncRes.error);
+                if (syncRes.error) logDiagnostic('warn', 'components/nutritionist/NutritionistActivityFeed.jsx:342', '[Feed] Erro sync:', syncRes.error);
 
                 const mergedStateMap = new Map(
                     [...(feedStateRes?.data || []), ...(syncRes?.data || [])].map((s) => [`${s.source_type}:${s.source_id}`, s])
@@ -381,7 +382,7 @@ const NutritionistActivityFeed = () => {
                 setFeedItems(sorted);
                 track(Events.DATA_LOAD_TIMING, { operation: 'dashboard_feed', duration_ms: Math.round(performance.now() - started), result_count: sorted.length });
             } catch (error) {
-                console.error('Erro ao carregar feed:', error?.code || 'unknown');
+                logDiagnostic('error', 'components/nutritionist/NutritionistActivityFeed.jsx:384', 'Erro ao carregar feed:', error?.code || 'unknown');
                 setLoadError(true);
             } finally {
                 setLoading(false);

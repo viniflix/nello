@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { TimeInput } from '@/components/ui/date-input';
@@ -56,7 +57,7 @@ export default function ProfileAgendaTab({ userId, onUpdate }) {
                 });
             }
         } catch (error) {
-            console.error('Error loading agenda settings:', error);
+            logDiagnostic('error', 'components/profile/ProfileAgendaTab.jsx:59', 'Error loading agenda settings:', error);
         } finally {
             setLoading(false);
         }

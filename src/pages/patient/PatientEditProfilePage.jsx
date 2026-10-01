@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -103,7 +104,7 @@ export default function PatientEditProfilePage() {
           description: 'Endereço preenchido automaticamente.'
         });
       } catch (error) {
-        console.error('Erro ao buscar CEP:', error);
+        logDiagnostic('error', 'pages/patient/PatientEditProfilePage.jsx:106', 'Erro ao buscar CEP:', error);
         toast({
           title: 'Erro',
           description: 'Não foi possível buscar o CEP.',
@@ -168,7 +169,7 @@ export default function PatientEditProfilePage() {
         window.location.reload();
       }, 500);
     } catch (error) {
-      console.error('Erro ao atualizar perfil:', error);
+      logDiagnostic('error', 'pages/patient/PatientEditProfilePage.jsx:171', 'Erro ao atualizar perfil:', error);
       toast({
         title: 'Erro',
         description: 'Não foi possível atualizar suas informações.',

@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import posthog from 'posthog-js';
 import { technicalIdentity } from '@/infrastructure/observability/technicalIdentity';
 
@@ -107,7 +108,7 @@ export function identifyUser(user) {
       is_admin: user.profile?.is_admin ?? false,
     });
   } catch (err) {
-    if (import.meta.env.DEV) console.warn('[PostHog] identifyUser failed:', err.message);
+    if (import.meta.env.DEV) logDiagnostic('warn', 'infrastructure/analytics/posthog.js:110', '[PostHog] identifyUser failed:', err.message);
   }
 }
 
@@ -116,7 +117,7 @@ export function resetUser() {
     if (!POSTHOG_KEY) return;
     posthog.reset();
   } catch (err) {
-    if (import.meta.env.DEV) console.warn('[PostHog] resetUser failed:', err.message);
+    if (import.meta.env.DEV) logDiagnostic('warn', 'infrastructure/analytics/posthog.js:119', '[PostHog] resetUser failed:', err.message);
   }
 }
 
@@ -132,7 +133,7 @@ export function track(event, properties = {}) {
       environment: import.meta.env.MODE || 'development',
     } }).properties);
   } catch (err) {
-    if (import.meta.env.DEV) console.warn('[PostHog] track failed:', err.message);
+    if (import.meta.env.DEV) logDiagnostic('warn', 'infrastructure/analytics/posthog.js:135', '[PostHog] track failed:', err.message);
   }
 }
 

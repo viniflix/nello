@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
@@ -78,7 +79,7 @@ export function useAnamnesisAttachments(recordId, patientId, publicToken = null,
             if (error) throw error;
             const { error: storageError } = await supabase.storage.from(BUCKET)
                 .remove([data.storage_path]);
-            if (storageError) console.error('Falha na limpeza do anexo removido:', storageError.code || 'storage_error');
+            if (storageError) logDiagnostic('error', 'hooks/useAnamnesisAttachments.js:81', 'Falha na limpeza do anexo removido:', storageError.code || 'storage_error');
             return data.attachments;
         },
         onSuccess: (attachments) => {

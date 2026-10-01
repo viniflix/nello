@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/customSupabaseClient';
@@ -30,7 +31,7 @@ export function ChatProvider({ children }) {
     if (!error && data) {
       setConversations(data);
     } else if (error) {
-      console.error('Erro ao buscar conversas:', error);
+      logDiagnostic('error', 'contexts/ChatContext.jsx:33', 'Erro ao buscar conversas:', error);
     }
   }, [user]);
 
@@ -39,7 +40,7 @@ export function ChatProvider({ children }) {
 
       const { error } = await supabase.rpc('mark_chat_notifications_as_read', { p_user_id: user.id, p_sender_id: senderId });
       if (error) {
-        console.error("Falha ao marcar chat como lido:", error);
+        logDiagnostic('error', 'contexts/ChatContext.jsx:42', "Falha ao marcar chat como lido:", error);
         return;
       }
 
@@ -72,7 +73,7 @@ export function ChatProvider({ children }) {
       .order('created_at', { ascending: true });
 
     if (error) {
-      console.error('Erro ao buscar mensagens:', error);
+      logDiagnostic('error', 'contexts/ChatContext.jsx:75', 'Erro ao buscar mensagens:', error);
       setMessages([]);
     } else {
       setMessages(data);
@@ -87,7 +88,7 @@ export function ChatProvider({ children }) {
     const { error } = await supabase.from('chats').insert([newMessageData]);
 
     if (error) {
-      console.error('Erro ao enviar mensagem:', error);
+      logDiagnostic('error', 'contexts/ChatContext.jsx:90', 'Erro ao enviar mensagem:', error);
       toast({ title: "Erro", description: "Não foi possível enviar a mensagem.", variant: "destructive" });
       return null;
     }
@@ -164,7 +165,7 @@ export function ChatProvider({ children }) {
         }
     }).subscribe((status, err) => {
         if (status === 'CHANNEL_ERROR') {
-          console.error(`Erro no canal:`, err);
+          logDiagnostic('error', 'contexts/ChatContext.jsx:167', `Erro no canal:`, err);
         }
     });
 

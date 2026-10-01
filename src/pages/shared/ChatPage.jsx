@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState, useEffect, useRef, Fragment, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -76,7 +77,7 @@ const getBucketPath = (url) => {
             return pathSegments.slice(2).join('/').split('?')[0];
         }
     } catch (e) {
-        console.error('Erro ao interpretar URL do storage:', e);
+        logDiagnostic('error', 'pages/shared/ChatPage.jsx:79', 'Erro ao interpretar URL do storage:', e);
     }
     return url;
 };
@@ -178,7 +179,7 @@ const MediaViewer = ({ mediaPath, messageText, onImageClick }) => {
                 // A indisponibilidade permanece visível na UI sem enviar esses dados ao
                 // console/Sentry em produção.
                 if (import.meta.env.DEV) {
-                    console.warn('Falha ao carregar mídia do chat.', error?.name || error?.statusCode || 'storage_error');
+                    logDiagnostic('warn', 'pages/shared/ChatPage.jsx:181', 'Falha ao carregar mídia do chat.', error?.name || error?.statusCode || 'storage_error');
                 }
                 setSignedUrl('');
             } else {
@@ -315,7 +316,7 @@ const ChatPage = ({ propRecipientId, isEmbedded = false, initialDraft = '' }) =>
     const recipientData = data ? data[0] : null;
 
     if (error) {
-      console.error('Erro ao buscar destinatário:', error);
+      logDiagnostic('error', 'pages/shared/ChatPage.jsx:318', 'Erro ao buscar destinatário:', error);
       toast({
         title: "Erro",
         description: toPortugueseError(error, 'Não foi possível carregar os dados do destinatário.'),
@@ -442,7 +443,7 @@ const ChatPage = ({ propRecipientId, isEmbedded = false, initialDraft = '' }) =>
         mediaRecorder.start(); 
         setIsRecording(true);
       } catch (err) {
-          console.error("Erro ao gravar áudio:", err);
+          logDiagnostic('error', 'pages/shared/ChatPage.jsx:445', "Erro ao gravar áudio:", err);
           toast({ title: "Erro de gravação", description: "Não foi possível acessar o microfone. Verifique as permissões.", variant: "destructive"});
       }
   };

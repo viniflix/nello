@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -82,7 +83,7 @@ export default function PatientDiaryPage() {
     const { data: mealPlanData, error: mealPlanError } = await getActiveMealPlan(user.id);
 
     if (mealPlanError) {
-      console.error('Erro ao carregar plano alimentar:', mealPlanError);
+      logDiagnostic('error', 'pages/patient/PatientDiaryPage.jsx:85', 'Erro ao carregar plano alimentar:', mealPlanError);
     }
     
     setMealPlan(mealPlanData);
@@ -129,7 +130,7 @@ export default function PatientDiaryPage() {
       .order('created_at', { ascending: true });
 
     if (error) {
-      console.error('Erro ao carregar refeições:', error);
+      logDiagnostic('error', 'pages/patient/PatientDiaryPage.jsx:132', 'Erro ao carregar refeições:', error);
       toast({
         title: 'Erro',
         description: 'Não foi possível carregar as refeições.',

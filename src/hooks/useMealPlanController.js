@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
@@ -88,7 +89,7 @@ export function useMealPlanController({
                     .single();
                 if (!error && data) setPatientName(data.name);
             } catch (error) {
-                console.error('Erro ao carregar nome do paciente:', error);
+                logDiagnostic('error', 'hooks/useMealPlanController.js:91', 'Erro ao carregar nome do paciente:', error);
             }
         };
         loadPatientName();
@@ -122,7 +123,7 @@ export function useMealPlanController({
                 const preferred = versions.length > 1 ? versions[1] : versions[0];
                 setSelectedVersionId(preferred ? String(preferred.id) : '');
             } catch (error) {
-                console.error('Erro ao carregar versões do plano:', error);
+                logDiagnostic('error', 'hooks/useMealPlanController.js:125', 'Erro ao carregar versões do plano:', error);
                 setMealPlanVersions([]);
                 setSelectedVersionId('');
             } finally {
@@ -140,7 +141,7 @@ export function useMealPlanController({
                 if (error) throw error;
                 setEnergyCalculation(data);
             } catch (error) {
-                console.error('Erro ao carregar cálculo de energia:', error);
+                logDiagnostic('error', 'hooks/useMealPlanController.js:143', 'Erro ao carregar cálculo de energia:', error);
             }
         };
         loadEnergyCalculation();
@@ -214,7 +215,7 @@ export function useMealPlanController({
             setPendingDraft(fullDraft);
             setShowForm(true);
         } catch (error) {
-            console.error('Erro ao abrir rascunho:', error);
+            logDiagnostic('error', 'hooks/useMealPlanController.js:217', 'Erro ao abrir rascunho:', error);
             toast({ title: 'Erro ao abrir rascunho', description: 'Tente novamente antes de editar o plano alimentar.', variant: 'destructive' });
         }
     };
@@ -320,7 +321,7 @@ export function useMealPlanController({
             return true;
         } catch (error) {
             track(Events.UI_ACTION_OUTCOME, { operation: 'meal_plan_apply', outcome: 'failed', duration_ms: Math.round(performance.now() - started) });
-            console.error('Erro ao salvar plano:', error);
+            logDiagnostic('error', 'hooks/useMealPlanController.js:323', 'Erro ao salvar plano:', error);
             toast({
                 title: 'Erro ao salvar plano',
                 description: error?.message || 'Não foi possível salvar o plano alimentar.',
@@ -375,7 +376,7 @@ export function useMealPlanController({
             await loadPlans();
             return true;
         } catch (error) {
-            console.error('Erro ao salvar rascunho:', error);
+            logDiagnostic('error', 'hooks/useMealPlanController.js:378', 'Erro ao salvar rascunho:', error);
             toast({
                 title: 'Erro ao salvar rascunho',
                 description: error?.message || 'Não foi possível salvar o rascunho.',
@@ -394,7 +395,7 @@ export function useMealPlanController({
             setEditingPlan(result.data);
             setShowForm(true);
         } catch (error) {
-            console.error('Erro ao carregar plano para edição:', error);
+            logDiagnostic('error', 'hooks/useMealPlanController.js:397', 'Erro ao carregar plano para edição:', error);
             toast({ title: 'Erro', description: 'Não foi possível carregar o plano para edição', variant: 'destructive' });
         }
     };
@@ -406,7 +407,7 @@ export function useMealPlanController({
             toast({ title: 'Sucesso', description: 'Plano arquivado com sucesso', variant: 'success' });
             await loadPlans();
         } catch (error) {
-            console.error('Erro ao arquivar plano:', error);
+            logDiagnostic('error', 'hooks/useMealPlanController.js:409', 'Erro ao arquivar plano:', error);
             toast({ title: 'Erro', description: 'Não foi possível arquivar o plano', variant: 'destructive' });
         }
     };
@@ -418,7 +419,7 @@ export function useMealPlanController({
             toast({ title: 'Sucesso', description: 'Plano ativado com sucesso', variant: 'success' });
             await loadPlans();
         } catch (error) {
-            console.error('Erro ao ativar plano:', error);
+            logDiagnostic('error', 'hooks/useMealPlanController.js:421', 'Erro ao ativar plano:', error);
             toast({ title: 'Erro', description: 'Não foi possível ativar o plano', variant: 'destructive' });
         }
     };
@@ -439,7 +440,7 @@ export function useMealPlanController({
             setCopyModelDialogOpen(false);
             setPlanToCopy(null);
         } catch (error) {
-            console.error('Erro ao copiar modelo:', error);
+            logDiagnostic('error', 'hooks/useMealPlanController.js:442', 'Erro ao copiar modelo:', error);
             toast({ title: 'Erro', description: 'Não foi possível copiar o modelo para o paciente', variant: 'destructive' });
             throw error;
         }
@@ -454,7 +455,7 @@ export function useMealPlanController({
             await generateShoppingList(result.data, patientName);
             toast({ title: 'Lista de Compras gerada!', description: 'O PDF foi baixado com sucesso.' });
         } catch (error) {
-            console.error('Erro ao gerar lista de compras:', error);
+            logDiagnostic('error', 'hooks/useMealPlanController.js:457', 'Erro ao gerar lista de compras:', error);
             toast({ title: 'Erro', description: 'Não foi possível gerar a lista de compras.', variant: 'destructive' });
         }
     };
@@ -476,7 +477,7 @@ export function useMealPlanController({
             );
             toast({ title: 'PDF gerado!', description: 'Plano alimentar exportado com sucesso.', variant: 'success' });
         } catch (error) {
-            console.error('Erro ao exportar PDF:', error);
+            logDiagnostic('error', 'hooks/useMealPlanController.js:479', 'Erro ao exportar PDF:', error);
             toast({ title: 'Erro', description: 'Não foi possível exportar o plano alimentar', variant: 'destructive' });
         }
     };
@@ -491,7 +492,7 @@ export function useMealPlanController({
             setDeleteDialogOpen(false);
             await loadPlans();
         } catch (error) {
-            console.error('Erro ao arquivar plano:', error);
+            logDiagnostic('error', 'hooks/useMealPlanController.js:494', 'Erro ao arquivar plano:', error);
             toast({ title: 'ERRO', description: 'Não foi possível arquivar o plano.', variant: 'destructive' });
         }
     };
@@ -508,7 +509,7 @@ export function useMealPlanController({
             setTemplateName('');
             setTemplateTags('');
         } catch (error) {
-            console.error('Erro ao salvar template:', error);
+            logDiagnostic('error', 'hooks/useMealPlanController.js:511', 'Erro ao salvar template:', error);
             toast({ title: 'Erro', description: 'Não foi possível salvar o template.', variant: 'destructive' });
         } finally {
             setSubmitting(false);
@@ -529,7 +530,7 @@ export function useMealPlanController({
             await loadPlans();
             setVersionsExpanded(false);
         } catch (error) {
-            console.error('Erro ao restaurar versão:', error);
+            logDiagnostic('error', 'hooks/useMealPlanController.js:532', 'Erro ao restaurar versão:', error);
             toast({ title: 'Erro', description: 'Não foi possível restaurar esta versão.', variant: 'destructive' });
         } finally {
             setRestoringVersion(false);

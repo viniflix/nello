@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/lib/customSupabaseClient';
@@ -27,7 +28,7 @@ export default function AuthVerifyPage() {
             const targetPath = safeAuthRedirect(redirectTo, window.location.origin, defaultTarget);
 
             if (!token || !type) {
-                console.error('[AuthVerify] Missing token or type');
+                logDiagnostic('error', 'pages/auth/AuthVerifyPage.jsx:30', '[AuthVerify] Missing token or type');
                 setVerifying(false);
                 navigate('/login');
                 return;
@@ -41,7 +42,7 @@ export default function AuthVerifyPage() {
                 });
 
                 if (error) {
-                    console.error('[AuthVerify] Verification error:', error);
+                    logDiagnostic('error', 'pages/auth/AuthVerifyPage.jsx:44', '[AuthVerify] Verification error:', error);
                     toast({
                         title: "Erro na verificação",
                         description: "O link pode ter expirado ou já foi utilizado.",
@@ -54,7 +55,7 @@ export default function AuthVerifyPage() {
                     navigate(targetPath, { replace: true });
                 }
             } catch (err) {
-                console.error('[AuthVerify] Unexpected error:', err);
+                logDiagnostic('error', 'pages/auth/AuthVerifyPage.jsx:57', '[AuthVerify] Unexpected error:', err);
                 navigate('/login');
             } finally {
                 setVerifying(false);

@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState, useEffect } from 'react';
 import { Search, X, Trash2, Plus, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -58,7 +59,7 @@ const SubstitutionDialog = ({ isOpen, onClose, originalFood, initialSubstitutes 
             );
             setSuggestions(filtered);
         } catch (error) {
-            console.error('Erro ao carregar sugestões:', error);
+            logDiagnostic('error', 'components/meal-plan/SubstitutionDialog.jsx:61', 'Erro ao carregar sugestões:', error);
         } finally {
             setLoadingSuggestions(false);
         }
@@ -90,7 +91,7 @@ const SubstitutionDialog = ({ isOpen, onClose, originalFood, initialSubstitutes 
                 if (match) bestMeasure = match;
             }
         } catch (error) {
-            console.error("Erro na conversão inteligente:", error);
+            logDiagnostic('error', 'components/meal-plan/SubstitutionDialog.jsx:93', "Erro na conversão inteligente:", error);
         }
 
         const newSub = {

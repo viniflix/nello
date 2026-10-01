@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState, useEffect, useMemo, forwardRef, useImperativeHandle } from 'react';
 import { Plus, X, Calculator, Barcode, Loader2, Info, ChevronRight, ChevronLeft, Search, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -606,7 +607,7 @@ const SmartFoodForm = forwardRef(function SmartFoodForm({
                     description: `Encontrado via ${data.source === 'fatsecret' ? 'FatSecret' : 'OpenFoodFacts'}.`,
                 });
             } catch (error) {
-                console.error('Erro ao buscar produto:', error);
+                logDiagnostic('error', 'components/nutrition/SmartFoodForm.jsx:609', 'Erro ao buscar produto:', error);
                 toast({
                     title: 'Erro',
                     description: 'Não foi possível buscar o produto. Verifique sua conexão.',
@@ -662,7 +663,7 @@ const SmartFoodForm = forwardRef(function SmartFoodForm({
                 setSearchResults(validProducts);
                 setShowResultsDialog(true);
             } catch (error) {
-                console.error('Erro ao buscar produtos:', error);
+                logDiagnostic('error', 'components/nutrition/SmartFoodForm.jsx:665', 'Erro ao buscar produtos:', error);
                 toast({
                     title: 'Erro',
                     description: 'Não foi possível buscar produtos. Verifique sua conexão.',
@@ -745,7 +746,7 @@ const SmartFoodForm = forwardRef(function SmartFoodForm({
                 description: `Carregado via ${data.source === 'fatsecret' ? 'FatSecret' : 'OpenFoodFacts'}.`,
             });
         } catch (error) {
-            console.error('Erro ao carregar produto:', error);
+            logDiagnostic('error', 'components/nutrition/SmartFoodForm.jsx:748', 'Erro ao carregar produto:', error);
             toast({
                 title: 'Erro',
                 description: 'Não foi possível carregar o produto. Verifique sua conexão.',
@@ -872,7 +873,7 @@ const SmartFoodForm = forwardRef(function SmartFoodForm({
                 onSuccess(createdFood);
             }
         } catch (error) {
-            console.error('Erro ao salvar alimento:', error);
+            logDiagnostic('error', 'components/nutrition/SmartFoodForm.jsx:875', 'Erro ao salvar alimento:', error);
             toast({
                 title: 'Erro',
                 description: toPortugueseError(error, 'Não foi possível salvar o alimento.'),

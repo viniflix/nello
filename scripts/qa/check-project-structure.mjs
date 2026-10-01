@@ -35,6 +35,11 @@ export function checkProjectStructure(rootDir, trackedFiles, sourceFiles = []) {
   }
 
   for (const sourceFile of sourceFiles) {
+    if (!/\.test\.[jt]sx?$/.test(sourceFile.path)
+      && sourceFile.path !== 'src/infrastructure/observability/safeLogger.js'
+      && /\bconsole\s*(?:\.\s*(?:error|warn|log|info|debug)\b|\[)/.test(sourceFile.content)) {
+      errors.push(`Raw console diagnostics are not allowed in ${sourceFile.path}; use the privacy-preserving safeLogger`);
+    }
     if (sourceFile.content.includes("@/analytics/posthog")) {
       errors.push(
         `Legacy analytics import is not allowed in ${sourceFile.path}; use @/infrastructure/analytics/posthog`,

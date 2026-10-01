@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -36,7 +37,7 @@ export default function PendingPaymentsWidget({ nutritionistId, onUpdate }) {
             const data = await getPendingPayments(nutritionistId);
             setPendingPayments(data);
         } catch (error) {
-            console.error('Error loading pending payments:', error);
+            logDiagnostic('error', 'components/financial/PendingPaymentsWidget.jsx:39', 'Error loading pending payments:', error);
             toast({
                 title: "Erro",
                 description: "Não foi possível carregar os pagamentos pendentes.",

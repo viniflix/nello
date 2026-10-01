@@ -158,7 +158,8 @@ describe('useMealPlanDraft — saveMeal', () => {
         expect(returnValue).toBeNull();
         expect(mockAddMeal).not.toHaveBeenCalled();
         expect(warnSpy).toHaveBeenCalledWith(
-            expect.stringContaining('[useMealPlanDraft] saveMeal chamado antes do draftId estar pronto')
+            '[Nello] Technical diagnostic',
+            { operation: 'hooks/useMealPlanDraft.js:158' }
         );
 
         warnSpy.mockRestore();

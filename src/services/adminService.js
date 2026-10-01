@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import { supabase } from '@/lib/customSupabaseClient';
 
 export async function listAdminPeople({ search = '', type = 'all', page = 1 } = {}) {
@@ -30,7 +31,7 @@ export async function getDashboardStats() {
     if (error) throw error;
     return { data, error: null };
   } catch (error) {
-    console.error('[adminService] getDashboardStats:', error);
+    logDiagnostic('error', 'services/adminService.js:33', '[adminService] getDashboardStats:', error);
     return { data: null, error };
   }
 }
@@ -41,7 +42,7 @@ export async function getNutritionistsList() {
     if (error) throw error;
     return { data, error: null };
   } catch (error) {
-    console.error('[adminService] getNutritionistsList:', error);
+    logDiagnostic('error', 'services/adminService.js:44', '[adminService] getNutritionistsList:', error);
     return { data: null, error };
   }
 }
@@ -52,7 +53,7 @@ export async function getSystemLiveLogs(limit = 50) {
     if (error) throw error;
     return { data, error: null };
   } catch (error) {
-    console.error('[adminService] getSystemLiveLogs:', error);
+    logDiagnostic('error', 'services/adminService.js:55', '[adminService] getSystemLiveLogs:', error);
     return { data: null, error };
   }
 }
@@ -67,7 +68,7 @@ export async function getTCCStudyMetrics() {
     if (error) throw error;
     return { data, error: null };
   } catch (error) {
-    console.error('[adminService] getTCCStudyMetrics:', error);
+    logDiagnostic('error', 'services/adminService.js:70', '[adminService] getTCCStudyMetrics:', error);
     return { data: null, error };
   }
 }
@@ -81,7 +82,7 @@ export async function listProfessionalVerifications({ status = null, role = null
     if (error) throw error;
     return { data: data || [], error: null };
   } catch (error) {
-    console.error('[adminService] listProfessionalVerifications:', error);
+    logDiagnostic('error', 'services/adminService.js:84', '[adminService] listProfessionalVerifications:', error);
     return { data: null, error };
   }
 }

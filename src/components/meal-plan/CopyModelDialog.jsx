@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState, useEffect } from 'react';
 import { Search, X, Check, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -60,7 +61,7 @@ const CopyModelDialog = ({ isOpen, onClose, planId, planName, onCopy }) => {
             setPatients(data || []);
             setFilteredPatients(data || []);
         } catch (error) {
-            console.error('Erro ao carregar pacientes:', error);
+            logDiagnostic('error', 'components/meal-plan/CopyModelDialog.jsx:63', 'Erro ao carregar pacientes:', error);
         } finally {
             setLoading(false);
         }
@@ -74,7 +75,7 @@ const CopyModelDialog = ({ isOpen, onClose, planId, planName, onCopy }) => {
             await onCopy(selectedPatient.id);
             handleClose();
         } catch (error) {
-            console.error('Erro ao enviar plano:', error);
+            logDiagnostic('error', 'components/meal-plan/CopyModelDialog.jsx:77', 'Erro ao enviar plano:', error);
         } finally {
             setCopying(false);
         }

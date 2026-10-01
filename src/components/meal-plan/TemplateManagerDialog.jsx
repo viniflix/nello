@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState, useEffect } from 'react';
 import { Search, FileText, Tag, Loader2, CheckCircle2, AlertTriangle, Info, Utensils, Flame, Beef, Wheat, Droplets, Calendar, ChevronRight } from 'lucide-react';
 import {
@@ -121,7 +122,7 @@ export default function TemplateManagerDialog({
                 const { data } = await getDietTemplateWithMeals(selectedTemplate.id);
                 if (!cancelled) setTemplateDetail(data);
             } catch (error) {
-                console.error('Erro ao carregar protocolo:', error);
+                logDiagnostic('error', 'components/meal-plan/TemplateManagerDialog.jsx:124', 'Erro ao carregar protocolo:', error);
                 if (!cancelled) setDetailError('Não foi possível carregar o protocolo. Selecione-o novamente.');
             } finally {
                 if (!cancelled) setLoadingDetail(false);
@@ -150,13 +151,13 @@ export default function TemplateManagerDialog({
             
             if (onTemplateApplied) {
                 const { data: newPlan, error: planError } = await getMealPlanById(newPlanId);
-                if (planError) console.error('Protocolo criado, mas a leitura do plano falhou:', planError);
+                if (planError) logDiagnostic('error', 'components/meal-plan/TemplateManagerDialog.jsx:153', 'Protocolo criado, mas a leitura do plano falhou:', planError);
                 onTemplateApplied(newPlan || { id: newPlanId });
             }
             toast({ title: 'Rascunho criado', description: `"${selectedTemplate.name}" foi copiado. Revise e finalize a prescrição antes de liberá-la ao paciente.` });
             onOpenChange(false);
         } catch (error) {
-            console.error('Erro ao aplicar template:', error);
+            logDiagnostic('error', 'components/meal-plan/TemplateManagerDialog.jsx:159', 'Erro ao aplicar template:', error);
             toast({ title: 'Erro ao importar', description: error.message || 'Falha ao importar o protocolo.', variant: 'destructive' });
         } finally {
             setApplying(false);

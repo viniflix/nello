@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useResolvedPatientId } from '@/hooks/useResolvedPatientId';
@@ -62,7 +63,7 @@ const MealPlanSummaryPage = () => {
                     setReferenceValues(refResult.data);
                 }
             } catch (error) {
-                console.error('Erro ao carregar dados:', error);
+                logDiagnostic('error', 'pages/nutritionist/patients/MealPlanSummaryPage.jsx:65', 'Erro ao carregar dados:', error);
                 if (isMounted) {
                     toast({
                         title: 'Erro de conexão',
@@ -97,7 +98,7 @@ const MealPlanSummaryPage = () => {
             setPlan(planResult.data);
             setReferenceValues(refResult.data);
         } catch (error) {
-            console.error('Erro ao carregar dados:', error);
+            logDiagnostic('error', 'pages/nutritionist/patients/MealPlanSummaryPage.jsx:100', 'Erro ao carregar dados:', error);
             toast({
                 title: 'Erro',
                 description: toPortugueseError(error),
@@ -133,7 +134,7 @@ const MealPlanSummaryPage = () => {
             // Recarregar dados para atualizar a UI
             loadDataManual();
         } catch (error) {
-            console.error('Erro ao deletar valores:', error);
+            logDiagnostic('error', 'pages/nutritionist/patients/MealPlanSummaryPage.jsx:136', 'Erro ao deletar valores:', error);
             toast({
                 title: 'Erro ao deletar',
                 description: toPortugueseError(error),

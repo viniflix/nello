@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useResolvedPatientId } from '@/hooks/useResolvedPatientId';
@@ -150,7 +151,7 @@ const GoalsPage = () => {
                 setShowForm(true);
             }
         } catch (error) {
-            console.error('Erro ao carregar dados:', error);
+            logDiagnostic('error', 'pages/nutritionist/patients/GoalsPage.jsx:153', 'Erro ao carregar dados:', error);
             toast({
                 title: 'Erro',
                 description: toPortugueseError(error, 'Não foi possível carregar os dados das metas.'),
@@ -180,7 +181,7 @@ const GoalsPage = () => {
                 const viability = await calculateGoalViability(formData, patientId);
                 setViabilityPreview(viability);
             } catch (error) {
-                console.error('Erro ao calcular viabilidade:', error);
+                logDiagnostic('error', 'pages/nutritionist/patients/GoalsPage.jsx:183', 'Erro ao calcular viabilidade:', error);
             } finally {
                 setLoadingViability(false);
             }
@@ -296,7 +297,7 @@ const GoalsPage = () => {
             setViabilityPreview(null);
             await loadData();
         } catch (error) {
-            console.error('Erro ao criar meta:', error);
+            logDiagnostic('error', 'pages/nutritionist/patients/GoalsPage.jsx:299', 'Erro ao criar meta:', error);
             toast({ title: 'Erro', description: toPortugueseError(error, 'Não foi possível criar a meta.'), variant: 'destructive' });
         } finally {
             setSubmitting(false);
@@ -322,7 +323,7 @@ const GoalsPage = () => {
             setNewWeight('');
             await loadData();
         } catch (error) {
-            console.error('Erro ao atualizar progresso:', error);
+            logDiagnostic('error', 'pages/nutritionist/patients/GoalsPage.jsx:325', 'Erro ao atualizar progresso:', error);
             toast({
                 title: 'Erro',
                 description: toPortugueseError(error, 'Não foi possível atualizar o progresso.'),
@@ -350,7 +351,7 @@ const GoalsPage = () => {
 
             await loadData();
         } catch (error) {
-            console.error('Erro ao completar meta:', error);
+            logDiagnostic('error', 'pages/nutritionist/patients/GoalsPage.jsx:353', 'Erro ao completar meta:', error);
             toast({
                 title: 'Erro',
                 description: toPortugueseError(error, 'Não foi possível completar a meta.'),
@@ -374,7 +375,7 @@ const GoalsPage = () => {
 
             await loadData();
         } catch (error) {
-            console.error('Erro ao pausar meta:', error);
+            logDiagnostic('error', 'pages/nutritionist/patients/GoalsPage.jsx:377', 'Erro ao pausar meta:', error);
             toast({
                 title: 'Erro',
                 description: toPortugueseError(error, 'Não foi possível pausar a meta.'),
@@ -399,7 +400,7 @@ const GoalsPage = () => {
             setShowCancelDialog(false);
             await loadData();
         } catch (error) {
-            console.error('Erro ao cancelar meta:', error);
+            logDiagnostic('error', 'pages/nutritionist/patients/GoalsPage.jsx:402', 'Erro ao cancelar meta:', error);
             toast({
                 title: 'Erro',
                 description: toPortugueseError(error, 'Não foi possível cancelar a meta.'),

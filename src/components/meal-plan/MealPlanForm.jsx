@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { 
     Save, X, Plus, Trash2, Edit, Calendar, CloudOff, Cloud, 
@@ -221,7 +222,7 @@ const MealPlanForm = ({
                 setMeals(mealsWithTempId);
             }
         } catch (error) {
-            console.error('[MealPlanForm] Error resuming draft:', error);
+            logDiagnostic('error', 'components/meal-plan/MealPlanForm.jsx:224', '[MealPlanForm] Error resuming draft:', error);
         } finally {
             setIsResuming(false);
         }
@@ -287,7 +288,7 @@ const MealPlanForm = ({
         if (!isEditing && !activeDraftId) {
             activeDraftId = await draft.startNewDraft();
             if (!activeDraftId) {
-                console.error('[MealPlanForm] Não foi possível criar rascunho. Refeição não adicionada.');
+                logDiagnostic('error', 'components/meal-plan/MealPlanForm.jsx:290', '[MealPlanForm] Não foi possível criar rascunho. Refeição não adicionada.');
                 return false;
             }
         }

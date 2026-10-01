@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import { supabase } from '@/lib/customSupabaseClient';
 
 /**
@@ -18,7 +19,7 @@ export async function cloneDietTemplateToPatient(templateId, patientId, nutritio
     });
 
     if (error) {
-      console.error('Error cloning diet template:', error);
+      logDiagnostic('error', 'lib/supabase/template-queries.js:21', 'Error cloning diet template:', error);
       throw new Error(error.message || 'Erro no banco de dados ao importar o protocolo.');
     }
 
@@ -26,7 +27,7 @@ export async function cloneDietTemplateToPatient(templateId, patientId, nutritio
 
     return data;
   } catch (err) {
-    console.error('Exception in cloneDietTemplateToPatient:', err);
+    logDiagnostic('error', 'lib/supabase/template-queries.js:29', 'Exception in cloneDietTemplateToPatient:', err);
     if (['template_food_unavailable', 'template_substitute_unavailable', 'template_measure_unavailable'].includes(err?.message)) {
       throw new Error('O protocolo contém um alimento ou medida indisponível. Corrija-o antes de importar.');
     }
@@ -51,7 +52,7 @@ export async function cloneMealTemplateToPlan(mealTemplateId, mealPlanId, mealTy
   });
 
   if (error) {
-    console.error('Error cloning meal template:', error);
+    logDiagnostic('error', 'lib/supabase/template-queries.js:54', 'Error cloning meal template:', error);
     throw error;
   }
 
@@ -71,7 +72,7 @@ export async function getFoodsMapByIds(foodIds) {
     .in('id', uniqueIds);
 
   if (error) {
-    console.error('Error fetching food details:', error);
+    logDiagnostic('error', 'lib/supabase/template-queries.js:74', 'Error fetching food details:', error);
     throw error;
   }
 
