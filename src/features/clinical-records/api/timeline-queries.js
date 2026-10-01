@@ -24,7 +24,7 @@ export async function listPatientTimeline(patientId, episodeId, scope = 'all', c
       nextCursor: lastItem ? { occurredAt: lastItem.occurred_at, eventId: lastItem.event_id } : null,
     };
   } catch (error) {
-    logSupabaseError('Erro ao buscar linha do tempo do paciente', error);
+    logSupabaseError("erro_ao_buscar_linha_do_tempo_do_paciente", error);
     throw error;
   }
 }

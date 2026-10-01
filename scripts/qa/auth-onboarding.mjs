@@ -15,7 +15,7 @@ const anon = () => createClient(status.API_URL,status.ANON_KEY,options);
 const created=[];
 const password='QA1!'+randomBytes(24).toString('hex');
 const email=()=>`wave04-${randomUUID()}@example.invalid`;
-const legal={legal_version:'2026-10-01',terms_accepted:true,analytics_allowed:false};
+const legal={legal_version:'2026-10-01.2',terms_accepted:true,analytics_allowed:false};
 const sql = input => execFileSync('docker', ['exec','-i','-e','PGPASSWORD=postgres', 'supabase_db_nello-reconstruction',
   'psql','-X','-h','127.0.0.1','-U','supabase_admin','-d','postgres','-t','-A','-v','ON_ERROR_STOP=1'],{input,encoding:'utf8'});
 let assertions=0;
@@ -44,13 +44,22 @@ try {
   const user=anon(); const session=await user.auth.signInWithPassword({email:signup.data.user.email,password}); assert(!session.error);
   const preferences=await user.rpc('get_my_privacy_preferences'); assert(!preferences.error);
   assert.equal(preferences.data.terms_accepted,true);assert.equal(preferences.data.analytics_allowed,false); assertions++;
+  assert.equal(preferences.data.version,'2026-10-01.2');assert.equal(preferences.data.analytics_choice_recorded,true);assertions++;
+  sql(`delete from private.auth_legal_receipts where user_id='${signup.data.user.id}';`);
+  assert(!(await user.rpc('record_my_privacy_choice',{p_version:'2026-10-01',p_terms:true,p_analytics:true})).error);
+  const legacy=await user.rpc('get_my_privacy_preferences');assert(!legacy.error);
+  assert.equal(legacy.data.terms_accepted,false);assert.equal(legacy.data.analytics_allowed,false);assert.equal(legacy.data.analytics_choice_recorded,false);assertions++;
   const invalid=await user.rpc('record_my_privacy_choice',{p_version:'obsolete',p_terms:true,p_analytics:true}); assert(invalid.error);assertions++;
   for(const allowed of [true,false]) {
-    const saved=await user.rpc('record_my_privacy_choice',{p_version:'2026-10-01',p_terms:true,p_analytics:allowed});assert(!saved.error);
+    const saved=await user.rpc('record_my_privacy_choice',{p_version:'2026-10-01.2',p_terms:true,p_analytics:allowed});assert(!saved.error);
     const reread=await user.rpc('get_my_privacy_preferences');assert.equal(reread.data.analytics_allowed,allowed);assertions++;
   }
+  assert(!(await user.rpc('record_my_privacy_choice',{p_version:'2026-10-01.2',p_terms:true,p_analytics:true})).error);
+  assert(!(await user.rpc('record_my_privacy_choice',{p_version:'2026-10-01',p_terms:true,p_analytics:false})).error);
+  const oldClientRevocation=await user.rpc('get_my_privacy_preferences');assert(!oldClientRevocation.error);
+  assert.equal(oldClientRevocation.data.analytics_allowed,false);assertions++;
   const forbiddenInsert=await user.from('user_profiles').insert({id:randomUUID(),name:'QA forged profile',user_type:'nutritionist',is_admin:true}); assert(forbiddenInsert.error); assertions++;
-  const anonymousReceipt=await anon().rpc('record_my_privacy_choice',{p_version:'2026-10-01',p_terms:true,p_analytics:true}); assert(anonymousReceipt.error); assertions++;
+  const anonymousReceipt=await anon().rpc('record_my_privacy_choice',{p_version:'2026-10-01.2',p_terms:true,p_analytics:true}); assert(anonymousReceipt.error); assertions++;
   const userQuota=await user.rpc('consume_patient_creation_quota',{p_actor:signup.data.user.id});assert(userQuota.error);assertions++;
   for(let i=1;i<=21;i++) {
     const quota=await service.rpc('consume_patient_creation_quota',{p_actor:signup.data.user.id});assert(!quota.error);
@@ -79,9 +88,19 @@ try {
   assert.equal(edgePatient.body.initialPasswordAvailable,true);created.push(edgePatient.body.userId);assertions++;
   const edgeProfile=await service.from('user_profiles').select('is_admin,user_type,birth_date').eq('id',edgePatient.body.userId).single();
   assert.deepEqual(edgeProfile.data,{is_admin:false,user_type:'patient',birth_date:'1990-01-01'});assertions++;
+  const linkedProfile=await professionalClient.from('user_profiles').select('id').eq('id',edgePatient.body.userId).single();
+  assert(!linkedProfile.error,'Invited patient must be visible to the authorized professional immediately');assertions++;
+  const careBefore=await professionalClient.rpc('list_nutritionist_care_patients');
+  assert(!careBefore.error);assert.equal(careBefore.data.find(p=>p.id===edgePatient.body.userId)?.access_status,'awaiting_email_confirmation');assertions++;
+  const episodes=await service.from('care_episodes').select('id,status,nutritionist_id').eq('patient_id',edgePatient.body.userId);
+  assert.equal(episodes.data.length,1);assert.equal(episodes.data[0].status,'active');assert.equal(episodes.data[0].nutritionist_id,owner.id);assertions++;
+  const availableChat=await professionalClient.rpc('get_patients_for_new_chat',{p_nutritionist_id:owner.id});
+  assert(!availableChat.error);assert(availableChat.data.some(p=>p.id===edgePatient.body.userId || p.patient_id===edgePatient.body.userId));assertions++;
   // Confirm only this synthetic recipient to prove the chosen initial credential.
   assert(!(await service.auth.admin.updateUserById(edgePatient.body.userId,{email_confirm:true})).error);
   assert(!(await anon().auth.signInWithPassword({email:edgeEmail,password:'010190'})).error);assertions++;
+  const careAfter=await professionalClient.rpc('list_nutritionist_care_patients');
+  assert(!careAfter.error);assert.equal(careAfter.data.find(p=>p.id===edgePatient.body.userId)?.access_status,'ready');assertions++;
   assert((await anon().auth.signInWithPassword({email:edgeEmail,password:'IGNORED-CLIENT-PASSWORD!'})).error);assertions++;
   const duplicate=await invokePatient({email:edgeEmail,isOffline:false,metadata});assert.equal(duplicate.status,409);assertions++;
   const forbiddenIntent = await professionalClient.rpc('prepare_patient_auth_invitation',{p_email:email(),p_nutritionist:owner.id});

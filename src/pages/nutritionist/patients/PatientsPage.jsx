@@ -1,3 +1,4 @@
+import { isPatientAccessPending } from '@/lib/utils/patientAccessStatus';
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSearchParams, useNavigate } from 'react-router-dom';
@@ -239,7 +240,7 @@ const PatientsPage = () => {
             if (isArchived) archivedList.push(p);
             else {
                 activeList.push(p);
-                if (p.needs_password_reset === true) pending++;
+                if (isPatientAccessPending(p)) pending++;
                 if (isUserOnline(p.id)) online++;
             }
         });
@@ -275,10 +276,10 @@ const PatientsPage = () => {
 
         let base = [...activePatients];
         if (activeChip === 'new30') base = base.filter(p => new Date(p.created_at) >= new Date(THIRTY_DAYS_AGO));
-        else if (activeChip === 'pending') base = base.filter(p => p.needs_password_reset === true);
+        else if (activeChip === 'pending') base = base.filter(p => isPatientAccessPending(p));
         else {
-            if (filterStatus === 'active') base = base.filter(p => p.needs_password_reset !== true);
-            else if (filterStatus === 'pending') base = base.filter(p => p.needs_password_reset === true);
+            if (filterStatus === 'active') base = base.filter(p => !isPatientAccessPending(p));
+            else if (filterStatus === 'pending') base = base.filter(p => isPatientAccessPending(p));
             else if (filterStatus === 'online') base = base.filter(p => isUserOnline(p.id));
         }
 
@@ -537,7 +538,7 @@ const PatientsPage = () => {
                                                                 </TableCell>
                                                                 <TableCell className="hidden md:table-cell">
                                                                     {isArchived ? <Badge variant="outline" className="text-[10px] border-dashed">Arquivado</Badge>
-                                                                        : patient.needs_password_reset ? <Badge variant="outline" className="text-[10px] bg-amber-50 text-amber-700 border-amber-200">Convite Pendente</Badge>
+                                                                        : isPatientAccessPending(patient) ? <Badge variant="outline" className="text-[10px] bg-amber-50 text-amber-700 border-amber-200">Convite Pendente</Badge>
                                                                         : <Badge variant="outline" className="text-[10px] bg-emerald-50 text-emerald-700 border-emerald-200">Ativo</Badge>}
                                                                 </TableCell>
                                                                 <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">

@@ -88,7 +88,7 @@ export async function createAppointmentWithFinance(appointmentData, financialDat
 
     const syncResult = await syncAppointmentNotificationSchedule(appointment.id, true);
     if (syncResult.error) {
-        logSupabaseError('Erro ao sincronizar notificações da consulta após criação', syncResult.error);
+        logSupabaseError("erro_ao_sincronizar_notificacoes_da_consulta_apos_criacao", syncResult.error);
     }
 
     return { appointment, transaction };
@@ -114,7 +114,7 @@ export async function updateAppointment(appointmentId, appointmentData, financia
     const refreshed = data.appointment;
     const syncResult = await syncAppointmentNotificationSchedule(appointmentId, true);
     if (syncResult.error) {
-        logSupabaseError('Erro ao sincronizar notificações da consulta após atualização', syncResult.error);
+        logSupabaseError("erro_ao_sincronizar_notificacoes_da_consulta_apos_atualizacao", syncResult.error);
     }
 
     // Auto-dispatch post_consultation template when appointment is completed
@@ -145,7 +145,7 @@ export async function updateAppointment(appointmentId, appointmentData, financia
                 });
             }
         } catch (dispatchErr) {
-            logSupabaseError('Erro ao disparar template pós-consulta', dispatchErr);
+            logSupabaseError("erro_ao_disparar_template_pos_consulta", dispatchErr);
         }
     }
 

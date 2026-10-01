@@ -1,4 +1,5 @@
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
+import { queryOperation } from '@/infrastructure/observability/queryOperations';
 import { captureOperationalError } from '@/infrastructure/observability/telemetry';
 
 export const isExpectedRequestCancellation = (error, signal) => {
@@ -13,13 +14,14 @@ export const isExpectedRequestCancellation = (error, signal) => {
 };
 
 export const logSupabaseError = (context, error) => {
+  const operation = queryOperation(context);
   const correlationId = captureOperationalError(error, {
-    operation: context,
+    operation,
     module: 'supabase_query',
     source: 'supabase',
   });
   logDiagnostic('error', 'lib/supabase/query-helpers.js:20', '[Supabase] Operação falhou', {
-    operation: context,
+    operation,
     code: error?.code || 'unknown',
     status: error?.status || error?.statusCode || null,
     correlationId,

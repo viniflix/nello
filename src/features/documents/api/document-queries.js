@@ -2,13 +2,13 @@ import { supabase } from '@/infrastructure/supabase/client';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
 import { isUuid } from '@/lib/utils/patientRoutes';
 
-const callRpc = async (rpcName, payload, errorContext) => {
+const callRpc = async (rpcName, payload) => {
   try {
     const { data, error } = await supabase.rpc(rpcName, payload);
-    if (error) logSupabaseError(errorContext, error);
+    if (error) logSupabaseError(rpcName, error);
     return { data, error };
   } catch (error) {
-    logSupabaseError(errorContext, error);
+    logSupabaseError(rpcName, error);
     return { data: null, error };
   }
 };
@@ -16,7 +16,7 @@ const callRpc = async (rpcName, payload, errorContext) => {
 export const getMyDocumentIdentity = () => callRpc(
   'get_my_document_identity',
   {},
-  'Erro ao carregar identidade documental',
+  "erro_ao_carregar_identidade_documental",
 );
 
 export const saveMyDocumentIdentity = (payload, expectedVersion, reason = 'profile_update') => callRpc(
@@ -26,7 +26,7 @@ export const saveMyDocumentIdentity = (payload, expectedVersion, reason = 'profi
     p_expected_version: expectedVersion,
     p_reason: reason,
   },
-  'Erro ao salvar identidade documental',
+  "erro_ao_salvar_identidade_documental",
 );
 
 export const uploadDocumentAsset = async (assetType, file, expectedIdentityVersion) => {
@@ -39,7 +39,7 @@ export const uploadDocumentAsset = async (assetType, file, expectedIdentityVersi
       p_size_bytes: file.size,
       p_expected_identity_version: expectedIdentityVersion,
     },
-    'Erro ao reservar ativo documental',
+    "erro_ao_reservar_ativo_documental",
   );
   if (intent.error || !intent.data) return intent;
 
@@ -66,9 +66,9 @@ export const uploadDocumentAsset = async (assetType, file, expectedIdentityVersi
     await callRpc(
       'fail_document_asset_upload',
       { p_upload_id: uploadId, p_failure_code: 'client_upload_failed' },
-      'Erro ao registrar falha de ativo documental',
+      "erro_ao_registrar_falha_de_ativo_documental",
     );
-    logSupabaseError('Erro ao enviar ativo documental', error);
+    logSupabaseError("erro_ao_enviar_ativo_documental", error);
     return { data: null, error };
   }
 };
@@ -77,14 +77,14 @@ export const getMyDocumentAssetPreview = async (assetType) => {
   const projection = await callRpc(
     'get_my_document_asset_preview',
     { p_asset_type: assetType },
-    'Erro ao carregar preview de ativo documental',
+    "erro_ao_carregar_preview_de_ativo_documental",
   );
   if (projection.error || !projection.data?.storage_path) return projection;
   const expiresIn = Math.min(Number(projection.data.expires_in) || 300, 300);
   const { data, error } = await supabase.storage
     .from(projection.data.storage_bucket)
     .createSignedUrl(projection.data.storage_path, expiresIn);
-  if (error) logSupabaseError('Erro ao assinar preview de ativo documental', error);
+  if (error) logSupabaseError("erro_ao_assinar_preview_de_ativo_documental", error);
   return { data: data ? { ...projection.data, signed_url: data.signedUrl } : null, error };
 };
 
@@ -101,31 +101,31 @@ export const createDocumentArtifactFromClinicalRecord = (
     p_supersedes_id: supersedesId,
     p_replacement_reason: replacementReason,
   },
-  'Erro ao criar documento clínico',
+  "erro_ao_criar_documento_clinico",
 );
 
 export const createDocumentArtifactFromMealPlan = (planId, visibility = 'shared_with_patient') => callRpc(
   'create_document_artifact_from_meal_plan',
   { p_plan_id: planId, p_visibility: visibility },
-  'Erro ao criar documento do plano alimentar',
+  "erro_ao_criar_documento_do_plano_alimentar",
 );
 
 export const finalizeDocumentArtifact = (artifactId, expectedRevision) => callRpc(
   'finalize_document_artifact',
   { p_artifact_id: artifactId, p_expected_revision: expectedRevision },
-  'Erro ao finalizar documento clínico',
+  "erro_ao_finalizar_documento_clinico",
 );
 
 export const signDocumentArtifact = (artifactId) => callRpc(
   'sign_document_artifact',
   { p_artifact_id: artifactId },
-  'Erro ao assinar documento clínico',
+  "erro_ao_assinar_documento_clinico",
 );
 
 export const getDocumentArtifact = (artifactId) => callRpc(
   'get_document_artifact',
   { p_artifact_id: artifactId },
-  'Erro ao carregar documento clínico',
+  "erro_ao_carregar_documento_clinico",
 );
 
 export const listDocumentArtifacts = (patientId, episodeId = null) => {
@@ -135,7 +135,7 @@ export const listDocumentArtifacts = (patientId, episodeId = null) => {
   return callRpc(
     'list_document_artifacts',
     { p_patient_id: patientId, p_episode_id: episodeId ?? null },
-    'Erro ao listar documentos clínicos',
+    "erro_ao_listar_documentos_clinicos",
   );
 };
 
@@ -148,6 +148,6 @@ export const verifyDocumentAuthenticity = (code) => {
   return callRpc(
     'verify_document_authenticity',
     { p_code: normalizedCode },
-    'Erro ao verificar autenticidade documental',
+    "erro_ao_verificar_autenticidade_documental",
   );
 };

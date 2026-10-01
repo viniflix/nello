@@ -52,7 +52,7 @@ export const getAnthropometryRecords = async (patientId, options = {}) => {
         if (error) throw error;
         return { data: data || [], error: null };
     } catch (error) {
-        logSupabaseError('Erro ao buscar registros antropométricos', error);
+        logSupabaseError("erro_ao_buscar_registros_antropometricos", error);
         return { data: [], error };
     }
 };
@@ -96,7 +96,7 @@ export const getAnthropometryChartData = async (patientId) => {
 
         return { data: processedData, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao buscar dados para gráficos', error);
+        logSupabaseError("erro_ao_buscar_dados_para_graficos", error);
         return { data: [], error };
     }
 };
@@ -190,7 +190,7 @@ export const createAnthropometryRecord = async (recordData) => {
 
         return { data, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao criar registro antropométrico', error);
+        logSupabaseError("erro_ao_criar_registro_antropometrico", error);
         return { data: null, error };
     }
 };
@@ -250,7 +250,7 @@ export const updateAnthropometryRecord = async (recordId, recordData) => {
 
         return { data, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao atualizar registro antropométrico', error);
+        logSupabaseError("erro_ao_atualizar_registro_antropometrico", error);
         return { data: null, error };
     }
 };
@@ -281,7 +281,7 @@ export const deleteAnthropometryRecord = async (recordId) => {
 
         return { data, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao invalidar registro antropométrico', error);
+        logSupabaseError("erro_ao_invalidar_registro_antropometrico", error);
         return { data: null, error };
     }
 };
@@ -312,7 +312,7 @@ export const getLatestAnthropometryRecord = async (patientId) => {
         if (error) throw error;
         return { data, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao buscar último registro', error);
+        logSupabaseError("erro_ao_buscar_ultimo_registro", error);
         return { data: null, error };
     }
 };
@@ -376,7 +376,7 @@ export const getAnthropometryStats = async (patientId) => {
 
         return { data: stats, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao buscar estatísticas', error);
+        logSupabaseError("erro_ao_buscar_estatisticas", error);
         return { data: null, error };
     }
 };
@@ -394,7 +394,7 @@ export const getAnthropometryLongitudinalScore = async (patientId) => {
         if (error) throw error;
         return { data: data || null, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao buscar score longitudinal antropométrico', error);
+        logSupabaseError("erro_ao_buscar_score_longitudinal_antropometrico", error);
         return { data: null, error };
     }
 };
@@ -413,7 +413,7 @@ export const getPatientModuleSyncFlags = async (patientId) => {
         if (error) throw error;
         return { data: data || null, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao buscar flags de sincronização de módulos', error);
+        logSupabaseError("erro_ao_buscar_flags_de_sincronizacao_de_modulos", error);
         return { data: null, error };
     }
 };
@@ -469,7 +469,7 @@ export const clearPatientModuleSyncFlags = async (patientId, options = {}) => {
         if (error) throw error;
         return { data, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao limpar flags de sincronização de módulos', error);
+        logSupabaseError("erro_ao_limpar_flags_de_sincronizacao_de_modulos", error);
         return { data: null, error };
     }
 };

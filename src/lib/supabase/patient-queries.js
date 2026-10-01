@@ -63,7 +63,7 @@ export const resolvePatientId = async (slugOrId, nutritionistId) => {
         if (error) throw error;
         return { patientId: data?.id || null, error: null };
     } catch (err) {
-        logSupabaseError('Erro ao resolver slug do paciente', err);
+        logSupabaseError("erro_ao_resolver_slug_do_paciente", err);
         return { patientId: null, error: err };
     }
 };
@@ -84,7 +84,7 @@ export const getPatientProfile = async (patientId, nutritionistId) => {
         if (!data) throw new Error('Perfil de atendimento não encontrado.');
         return { data, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao buscar perfil do paciente', error);
+        logSupabaseError("erro_ao_buscar_perfil_do_paciente", error);
         return { data: null, error };
     }
 };
@@ -107,7 +107,7 @@ export const updatePatientProfile = async (patientId, updateData) => {
         if (error) throw error;
         return { data, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao atualizar perfil do paciente', error);
+        logSupabaseError("erro_ao_atualizar_perfil_do_paciente", error);
         return { data: null, error };
     }
 };
@@ -223,7 +223,7 @@ export const getLatestMetrics = async (patientId) => {
 
         return { data: metrics, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao buscar métricas do paciente', error);
+        logSupabaseError("erro_ao_buscar_metricas_do_paciente", error);
         return { data: null, error };
     }
 };
@@ -241,10 +241,20 @@ export const getPatientHubOperationalContext = async (patientId, nutritionistId,
     const upcomingAppointmentStatuses = ['scheduled', 'confirmed', 'awaiting_confirmation'];
     const partialErrors = [];
 
+    const hubReadOperations = {
+  "planos alimentares": "erro_ao_carregar_planos_alimentares_do_hub",
+  "refeições do plano": "erro_ao_carregar_refeicoes_do_plano_do_hub",
+  "próxima consulta": "erro_ao_carregar_proxima_consulta_do_hub",
+  "última consulta": "erro_ao_carregar_ultima_consulta_do_hub",
+  "check-in mais recente": "erro_ao_carregar_check_in_mais_recente_do_hub",
+  "meta ativa": "erro_ao_carregar_meta_ativa_do_hub",
+  "resumo semanal": "erro_ao_carregar_resumo_semanal_do_hub",
+  "registro clínico mais recente": "erro_ao_carregar_registro_clinico_mais_recente_do_hub"
+};
     const read = (result, fallback, label) => {
         if (result?.error) {
             partialErrors.push(label);
-            logSupabaseError(`Erro ao carregar ${label} do Hub`, result.error);
+            logSupabaseError(hubReadOperations[label] || 'patient_hub.unknown_read', result.error);
             return fallback;
         }
         return result?.data ?? fallback;
@@ -334,7 +344,7 @@ export const getPatientHubOperationalContext = async (patientId, nutritionistId,
                 if (foodCountResult.error) {
                     partialErrors.push('alimentos do plano');
                     foodCount = null;
-                    logSupabaseError('Erro ao contar alimentos do plano no Hub', foodCountResult.error);
+                    logSupabaseError("erro_ao_contar_alimentos_do_plano_no_hub", foodCountResult.error);
                 }
                 else foodCount = foodCountResult.count || 0;
             }
@@ -370,7 +380,7 @@ export const getPatientHubOperationalContext = async (patientId, nutritionistId,
             error: null
         };
     } catch (error) {
-        logSupabaseError('Erro ao carregar contexto operacional do Hub', error);
+        logSupabaseError("erro_ao_carregar_contexto_operacional_do_hub", error);
         return { data: null, error };
     }
 };
@@ -454,7 +464,7 @@ export const getModulesStatus = async (patientId) => {
 
         return { data: status, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao buscar status dos módulos', error);
+        logSupabaseError("erro_ao_buscar_status_dos_modulos", error);
         return { data: null, error };
     }
 };
@@ -478,7 +488,7 @@ export const getPatientActivities = async (patientId, limit = 10) => {
             supabase.from('anamnesis_records').select('id, date, created_at').eq('patient_id', patientId).order('date', { ascending: false }).limit(15),
             supabase.from('energy_expenditure_calculations').select('id, created_at, final_planned_kcal').eq('patient_id', patientId).order('created_at', { ascending: false }).limit(5),
             getProgressPhotoEventsFromAudit(patientId).catch((error) => {
-                logSupabaseError('Erro ao buscar auditoria de fotos no activity_log', error);
+                logSupabaseError("erro_ao_buscar_auditoria_de_fotos_no_activity_log", error);
                 return [];
             }),
             supabase.from('user_achievements').select('id, achievement_id, achieved_at, achievements(name)').eq('user_id', patientId).order('achieved_at', { ascending: false }).limit(15),
@@ -633,7 +643,7 @@ export const getPatientActivities = async (patientId, limit = 10) => {
         // Retornar apenas o limite solicitado
         return { data: activities.slice(0, limit), error: null };
     } catch (error) {
-        logSupabaseError('Erro ao buscar atividades do paciente', error);
+        logSupabaseError("erro_ao_buscar_atividades_do_paciente", error);
         return { data: [], error };
     }
 };
@@ -672,7 +682,7 @@ export const getPatientSummary = async (patientId, nutritionistId) => {
             error: null
         };
     } catch (error) {
-        logSupabaseError('Erro ao buscar resumo do paciente', error);
+        logSupabaseError("erro_ao_buscar_resumo_do_paciente", error);
         return { data: null, error };
     }
 };
@@ -710,7 +720,7 @@ export const getPatientsWithLowAdherence = async (nutritionistId) => {
 
         return { data: lowAdherencePatients, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao detectar baixa adesão', error);
+        logSupabaseError("erro_ao_detectar_baixa_adesao", error);
         return { data: [], error };
     }
 };
@@ -774,7 +784,7 @@ export const getPatientsPendingData = async (nutritionistId) => {
 
         return { data: pendingData, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao detectar pendências', error);
+        logSupabaseError("erro_ao_detectar_pendencias", error);
         return { data: [], error };
     }
 };
@@ -839,7 +849,7 @@ export const getPatientsHighRiskLabAlerts = async ({
             error: null
         };
     } catch (error) {
-        logSupabaseError('Erro ao buscar alertas de risco laboratorial alto', error);
+        logSupabaseError("erro_ao_buscar_alertas_de_risco_laboratorial_alto", error);
         return { data: [], error };
     }
 };
@@ -863,7 +873,7 @@ export const getFeedPriorityRules = async (nutritionistId) => {
         if (error) throw error;
         return { data: data || [], error: null };
     } catch (error) {
-        logSupabaseError('Erro ao buscar regras de prioridade do feed', error);
+        logSupabaseError("erro_ao_buscar_regras_de_prioridade_do_feed", error);
         return { data: [], error };
     }
 };
@@ -898,7 +908,7 @@ export const logActivityEvent = async (eventInput) => {
             if (isLogActivityEventMissing(error)) {
                 return { data: null, error: null };
             }
-            logSupabaseError('Erro ao registrar evento de atividade', error);
+            logSupabaseError("erro_ao_registrar_evento_de_atividade", error);
             return { data: null, error };
         }
         return { data: data || null, error: null };
@@ -906,7 +916,7 @@ export const logActivityEvent = async (eventInput) => {
         if (isLogActivityEventMissing(error)) {
             return { data: null, error: null };
         }
-        logSupabaseError('Erro ao registrar evento de atividade', error);
+        logSupabaseError("erro_ao_registrar_evento_de_atividade", error);
         return { data: null, error };
     }
 };
@@ -962,7 +972,7 @@ export const getFeedTaskStates = async (nutritionistId) => {
         if (error) throw error;
         return { data: data || [], error: null };
     } catch (error) {
-        logSupabaseError('Erro ao buscar estados do feed', error);
+        logSupabaseError("erro_ao_buscar_estados_do_feed", error);
         return { data: [], error };
     }
 };
@@ -1012,7 +1022,7 @@ export const getNutritionistPatientsForFeed = async (nutritionistId) => {
 
         return { data: normalized, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao buscar pacientes do nutricionista para feed', error);
+        logSupabaseError("erro_ao_buscar_pacientes_do_nutricionista_para_feed", error);
         return { data: [], error };
     }
 };
@@ -1122,7 +1132,7 @@ export const upsertFeedTask = async ({
         if (error) throw error;
         return { data, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao salvar tarefa do feed', error);
+        logSupabaseError("erro_ao_salvar_tarefa_do_feed", error);
         return { data: null, error };
     }
 };
@@ -1152,7 +1162,7 @@ export const resolveFeedTasksBatch = async (inputs = []) => {
             failedCount: failed.length
         };
     } catch (error) {
-        logSupabaseError('Erro ao resolver tarefas em lote', error);
+        logSupabaseError("erro_ao_resolver_tarefas_em_lote", error);
         return { data: [], error, failedCount: (inputs || []).length };
     }
 };
@@ -1170,7 +1180,7 @@ export const snoozeFeedTasksBatch = async (inputs = [], snoozeUntil) => {
             failedCount: failed.length
         };
     } catch (error) {
-        logSupabaseError('Erro ao adiar tarefas em lote', error);
+        logSupabaseError("erro_ao_adiar_tarefas_em_lote", error);
         return { data: [], error, failedCount: (inputs || []).length };
     }
 };
@@ -1254,7 +1264,7 @@ export const syncFeedTasksFromItems = async (nutritionistId, items = [], existin
         const firstError = result.find((entry) => entry?.error)?.error || null;
         return { data: result.map((entry) => entry?.data).filter(Boolean), error: firstError };
     } catch (error) {
-        logSupabaseError('Erro ao sincronizar snapshot do feed', error);
+        logSupabaseError("erro_ao_sincronizar_snapshot_do_feed", error);
         return { data: [], error };
     }
 };
@@ -1284,7 +1294,7 @@ export const getFeedTaskAuditTrail = async ({
         const entries = Array.isArray(data?.metadata?.audit_history) ? data.metadata.audit_history : [];
         return { data: entries.slice(0, Math.max(1, Number(limit) || 10)), error: null };
     } catch (error) {
-        logSupabaseError('Erro ao buscar auditoria do item do feed', error);
+        logSupabaseError("erro_ao_buscar_auditoria_do_item_do_feed", error);
         return { data: [], error };
     }
 };
@@ -1442,7 +1452,7 @@ export const getComprehensiveActivityFeed = async (nutritionistId, limit = 20) =
         activityFeedCache = { key: cacheKey, data: activities, ts: Date.now() };
         return { data: activities, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao buscar feed de atividades', error);
+        logSupabaseError("erro_ao_buscar_feed_de_atividades", error);
         /* logOperationalEvent removed */
         return { data: [], error };
     }
@@ -1602,7 +1612,7 @@ export const getLatestAnamnesisForEnergy = async (patientId) => {
             error: null
         };
     } catch (error) {
-        logSupabaseError('Erro ao buscar anamnese para energia', error);
+        logSupabaseError("erro_ao_buscar_anamnese_para_energia", error);
         return { data: null, error };
     }
 };
@@ -1627,7 +1637,7 @@ export const getActiveGoalForEnergy = async (patientId) => {
 
         return { data: goal, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao buscar objetivo para energia', error);
+        logSupabaseError("erro_ao_buscar_objetivo_para_energia", error);
         return { data: null, error };
     }
 };
@@ -1668,7 +1678,7 @@ export const fetchAllNutritionistPatients = async (nutritionistId) => {
 
         return { active, archived, pending, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao buscar pacientes unificados', error);
+        logSupabaseError("erro_ao_buscar_pacientes_unificados", error);
         return { active: [], archived: [], error };
     }
 };
@@ -1685,7 +1695,7 @@ export const archivePatient = async (patientId, nutritionistId) => {
         if (error) throw error;
         return { success: data?.success === true, error: null, data };
     } catch (error) {
-        logSupabaseError('Erro ao arquivar paciente', error);
+        logSupabaseError("erro_ao_arquivar_paciente", error);
         return { success: false, error };
     }
 };
@@ -1703,7 +1713,7 @@ export const getMyCareRelationship = async ({ signal } = {}) => {
         if (isExpectedRequestCancellation(error, signal)) {
             return { data: null, error: null, cancelled: true };
         }
-        logSupabaseError('Erro ao buscar vínculo de atendimento', error);
+        logSupabaseError("erro_ao_buscar_vinculo_de_atendimento", error);
         return { data: null, error };
     }
 };
@@ -1717,7 +1727,7 @@ export const endMyCareRelationship = async (patientId, reason = 'ended_by_patien
         if (error) throw error;
         return { success: data?.success === true, data, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao encerrar vínculo de atendimento', error);
+        logSupabaseError("erro_ao_encerrar_vinculo_de_atendimento", error);
         return { success: false, data: null, error };
     }
 };
@@ -1730,7 +1740,7 @@ export const unarchivePatient = async (patientId, nutritionistId) => {
         const { data, error } = await supabase.rpc('start_care_episode', { p_patient_id: patientId, p_start_reason: 'restarted_by_nutritionist' });
         return { success: !error && data?.success === true, error, data };
     } catch (error) {
-        logSupabaseError('Erro ao reativar paciente', error);
+        logSupabaseError("erro_ao_reativar_paciente", error);
         return { success: false, error };
     }
 };
@@ -1748,7 +1758,7 @@ export const getEmptyPatientRemovalStatus = async (patientId) => {
         if (error) throw error;
         return { data, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao verificar remoção de cadastro vazio', error);
+        logSupabaseError("erro_ao_verificar_remocao_de_cadastro_vazio", error);
         return { data: { can_remove: false, reason: 'status_check_failed' }, error };
     }
 };
@@ -1766,7 +1776,7 @@ export const removeEmptyPatient = async (patientId) => {
         if (!data?.success) throw new Error('A remoção não foi confirmada pelo servidor.');
         return { success: true, data, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao remover cadastro vazio do paciente', error);
+        logSupabaseError("erro_ao_remover_cadastro_vazio_do_paciente", error);
         return { success: false, data: null, error };
     }
 };
@@ -1780,7 +1790,7 @@ export const approvePatientLink = async (patientId) => {
         if (error) throw error;
         return { success: data?.success, message: data?.message };
     } catch (error) {
-        logSupabaseError('Erro ao aprovar vínculo', error);
+        logSupabaseError("erro_ao_aprovar_vinculo", error);
         return { success: false, message: error.message };
     }
 };
@@ -1794,7 +1804,7 @@ export const rejectPatientLink = async (patientId) => {
         if (error) throw error;
         return { success: data?.success, message: data?.message };
     } catch (error) {
-        logSupabaseError('Erro ao rejeitar vínculo', error);
+        logSupabaseError("erro_ao_rejeitar_vinculo", error);
         return { success: false, message: error.message };
     }
 };

@@ -45,7 +45,7 @@ export const getCustomMeasures = async () => {
     if (error) throw error;
     return { data: data || [], error: null };
   } catch (error) {
-    logSupabaseError('Erro ao buscar medidas personalizadas', error);
+    logSupabaseError("erro_ao_buscar_medidas_personalizadas", error);
     return { data: [], error };
   }
 };
@@ -66,7 +66,7 @@ export const getAllCustomMeasures = async () => {
     if (error) throw error;
     return { data: data || [], error: null };
   } catch (error) {
-    logSupabaseError('Erro ao buscar medidas personalizadas', error);
+    logSupabaseError("erro_ao_buscar_medidas_personalizadas", error);
     return { data: [], error };
   }
 };
@@ -84,7 +84,7 @@ export const countCustomMeasures = async () => {
     if (error) throw error;
     return count || 0;
   } catch (error) {
-    logSupabaseError('Erro ao contar medidas', error);
+    logSupabaseError("erro_ao_contar_medidas", error);
     return 0;
   }
 };
@@ -135,7 +135,7 @@ export const createCustomMeasure = async (payload) => {
     if (error) throw error;
     return { data, error: null };
   } catch (error) {
-    logSupabaseError('Erro ao criar medida personalizada', error);
+    logSupabaseError("erro_ao_criar_medida_personalizada", error);
     return { data: null, error };
   }
 };
@@ -176,7 +176,7 @@ export const updateCustomMeasure = async (id, payload) => {
     if (error) throw error;
     return { data, error: null };
   } catch (error) {
-    logSupabaseError('Erro ao atualizar medida personalizada', error);
+    logSupabaseError("erro_ao_atualizar_medida_personalizada", error);
     return { data: null, error };
   }
 };
@@ -199,7 +199,7 @@ export const deleteCustomMeasure = async (id) => {
     if (error) throw error;
     return { data: true, error: null };
   } catch (error) {
-    logSupabaseError('Erro ao excluir medida personalizada', error);
+    logSupabaseError("erro_ao_excluir_medida_personalizada", error);
     return { data: false, error };
   }
 };

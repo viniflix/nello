@@ -1,13 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { bindConsentOwner, clearAnalyticsChoice, hasAnalyticsConsent, hasPendingAnalyticsRevocation, markPendingAnalyticsRevocation, LEGAL_VERSION, storeAnalyticsChoice } from './consent';
+import { bindConsentOwner, clearAnalyticsChoice, hasAnalyticsConsent, hasAnalyticsChoice, hasPendingAnalyticsRevocation, markPendingAnalyticsRevocation, LEGAL_VERSION, storeAnalyticsChoice } from './consent';
 
 describe('analytics consent boundary', () => {
   beforeEach(() => { localStorage.clear(); bindConsentOwner(null); });
   afterEach(() => vi.restoreAllMocks());
   it('denies by default and grants only a current explicit choice', () => {
+    expect(hasAnalyticsChoice()).toBe(false);
     expect(hasAnalyticsConsent()).toBe(false);
     storeAnalyticsChoice(true); expect(hasAnalyticsConsent()).toBe(true);
     storeAnalyticsChoice(false); expect(hasAnalyticsConsent()).toBe(false);
+    expect(hasAnalyticsChoice()).toBe(true);
   });
   it('does not transfer an anonymous or another account grant to a signed-in user', () => {
     storeAnalyticsChoice(true); bindConsentOwner('account-a'); expect(hasAnalyticsConsent()).toBe(false);

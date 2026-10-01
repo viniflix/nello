@@ -7,7 +7,7 @@ export async function getMyProfessionalVerification() {
     if (error) throw error;
     return { data: data || { status: 'not_submitted', has_clinical_capacity: false }, error: null };
   } catch (error) {
-    logSupabaseError('Erro ao consultar verificação profissional', error);
+    logSupabaseError("erro_ao_consultar_verificacao_profissional", error);
     return { data: null, error };
   }
 }
@@ -20,7 +20,7 @@ export async function submitProfessionalVerification(payload) {
     if (error) throw error;
     return { data, error: null };
   } catch (error) {
-    logSupabaseError('Erro ao enviar verificação profissional', error);
+    logSupabaseError("erro_ao_enviar_verificacao_profissional", error);
     return { data: null, error };
   }
 }

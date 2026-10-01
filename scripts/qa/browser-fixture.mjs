@@ -33,7 +33,7 @@ for (const persona of JSON.parse(readFileSync('operations/synthetic-personas.jso
   // GoTrue applies app_metadata after its INSERT trigger. Provision minimal
   // legal accounts, then let the isolated SQL operator assign fixture roles.
   const { data, error } = await admin.auth.admin.createUser({ email:persona.email, password, email_confirm:true,
-    user_metadata:{ user_type:'nutritionist', name:'QA ' + persona.key, legal_version:'2026-10-01',terms_accepted:true,analytics_allowed:false }, ...(persona.status==='disabled'?{ban_duration:'100h'}:{}) });
+    user_metadata:{ user_type:'nutritionist', name:'QA ' + persona.key, legal_version:'2026-10-01.2',terms_accepted:true,analytics_allowed:false }, ...(persona.status==='disabled'?{ban_duration:'100h'}:{}) });
   if (error) throw error;
   if (!/^[a-f0-9-]{36}$/.test(data.user.id)) throw Error('Invalid synthetic user identifier');
   if(type!=='nutritionist') sql(`delete from public.professional_verifications where user_id='${data.user.id}';update public.user_profiles set user_type='patient' where id='${data.user.id}';`);

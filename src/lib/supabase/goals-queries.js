@@ -254,7 +254,7 @@ export const createGoal = async (goalData, patientId, nutritionistId) => {
 
         return { data, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao criar meta', error);
+        logSupabaseError("erro_ao_criar_meta", error);
         return { data: null, error };
     }
 };
@@ -296,7 +296,7 @@ export const getPatientGoals = async (patientId, options = {}) => {
 
         return { data, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao buscar metas', error);
+        logSupabaseError("erro_ao_buscar_metas", error);
         return { data: null, error };
     }
 };
@@ -319,7 +319,7 @@ export const getActiveGoal = async (patientId) => {
 
         return { data, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao buscar meta ativa', error);
+        logSupabaseError("erro_ao_buscar_meta_ativa", error);
         return { data: null, error };
     }
 };
@@ -339,7 +339,7 @@ export const getGoalById = async (goalId) => {
 
         return { data, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao buscar meta', error);
+        logSupabaseError("erro_ao_buscar_meta", error);
         return { data: null, error };
     }
 };
@@ -398,7 +398,7 @@ export const updateGoalProgress = async (goalId, currentWeight) => {
 
         return { data, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao atualizar progresso', error);
+        logSupabaseError("erro_ao_atualizar_progresso", error);
         return { data: null, error };
     }
 };
@@ -430,7 +430,7 @@ export const updateGoal = async (goalId, updates) => {
 
         return { data, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao atualizar meta', error);
+        logSupabaseError("erro_ao_atualizar_meta", error);
         return { data: null, error };
     }
 };
@@ -464,7 +464,7 @@ export const completeGoal = async (goalId) => {
 
         return { data, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao completar meta', error);
+        logSupabaseError("erro_ao_completar_meta", error);
         return { data: null, error };
     }
 };
@@ -499,7 +499,7 @@ export const cancelGoal = async (goalId, reason = '') => {
 
         return { data, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao cancelar meta', error);
+        logSupabaseError("erro_ao_cancelar_meta", error);
         return { data: null, error };
     }
 };
@@ -530,7 +530,7 @@ export const pauseGoal = async (goalId) => {
 
         return { data, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao pausar meta', error);
+        logSupabaseError("erro_ao_pausar_meta", error);
         return { data: null, error };
     }
 };
@@ -561,7 +561,7 @@ export const resumeGoal = async (goalId) => {
 
         return { data, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao reativar meta', error);
+        logSupabaseError("erro_ao_reativar_meta", error);
         return { data: null, error };
     }
 };
@@ -596,7 +596,7 @@ export const deleteGoal = async (goalId) => {
 
         return { error: null };
     } catch (error) {
-        logSupabaseError('Erro ao deletar meta', error);
+        logSupabaseError("erro_ao_deletar_meta", error);
         return { error };
     }
 };

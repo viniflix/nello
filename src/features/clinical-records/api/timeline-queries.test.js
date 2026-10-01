@@ -52,6 +52,6 @@ describe('listPatientTimeline', () => {
     mocks.rpc.mockResolvedValue({ data: null, error });
 
     await expect(listPatientTimeline('patient-1', 'episode-1', 'all')).rejects.toBe(error);
-    expect(mocks.logSupabaseError).toHaveBeenCalledWith('Erro ao buscar linha do tempo do paciente', error);
+    expect(mocks.logSupabaseError).toHaveBeenCalledWith('erro_ao_buscar_linha_do_tempo_do_paciente', error);
   });
 });

@@ -29,7 +29,7 @@ export const getGlycemiaRecords = async (patientId, options = {}) => {
         
         return { data, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao buscar glicemia', error);
+        logSupabaseError("erro_ao_buscar_glicemia", error);
         return { data: null, error };
     }
 };
@@ -58,7 +58,7 @@ export const insertGlycemiaRecord = async (recordData) => {
         if (error) throw error;
         return { data, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao registrar glicemia', error);
+        logSupabaseError("erro_ao_registrar_glicemia", error);
         return { data: null, error };
     }
 };

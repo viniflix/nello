@@ -27,10 +27,13 @@ export function verifyIsolatedAuth(config, contract) {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const contract = JSON.parse(readFileSync('operations/backend/auth-contract.json', 'utf8'));
-  verifyIsolatedAuth(readFileSync('supabase/config.toml', 'utf8'), contract);
-  if (process.argv[2]) {
-    const snapshot = JSON.parse(readFileSync(process.argv[2], 'utf8').replace(/^\uFEFF/, ''));
+  const production = process.argv[2] === '--production';
+  const contract = JSON.parse(readFileSync(production ? 'operations/backend/production-auth-contract.json' : 'operations/backend/auth-contract.json', 'utf8'));
+  if (!production) verifyIsolatedAuth(readFileSync('supabase/config.toml', 'utf8'), contract);
+  const snapshotPath = process.argv[production ? 3 : 2];
+  if (production && !snapshotPath) throw Error('Current hosted Auth snapshot required');
+  if (snapshotPath) {
+    const snapshot = JSON.parse(readFileSync(snapshotPath, 'utf8').replace(/^\uFEFF/, ''));
     if (snapshot.project !== contract.projectRef) throw Error('Auth snapshot belongs to a different project');
     verifyHostedAuth(snapshot, contract);
   }

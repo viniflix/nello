@@ -123,8 +123,7 @@ describe('clinical amendment read contracts', () => {
       data: null,
       error: rpcError,
     });
-    expect(logSupabaseError).toHaveBeenCalledWith(
-      'Erro ao consultar impacto da alteração do registro clínico',
+    expect(logSupabaseError).toHaveBeenCalledWith('erro_ao_consultar_impacto_da_alteracao_do_registro_clinico',
       rpcError,
     );
   });

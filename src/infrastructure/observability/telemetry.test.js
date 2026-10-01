@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as Sentry from '@sentry/react';
 import { track } from '@/infrastructure/analytics/posthog';
-import { captureOperationalError } from './telemetry';
+import { captureOperationalError, clearObservabilityUser } from './telemetry';
+import { logSupabaseError } from '@/lib/supabase/query-helpers';
 
 vi.mock('@sentry/react', () => ({
   captureException: vi.fn(),
@@ -24,7 +25,31 @@ vi.mock('@/infrastructure/analytics/posthog', () => ({
 }));
 
 describe('captureOperationalError', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => { clearObservabilityUser(); vi.clearAllMocks(); });
+
+  it('keeps distinct real query operations and deduplicates only their repeats', () => {
+    const error = { code: '42501', message: 'PRIVATE_CLINICAL_SENTINEL' };
+    logSupabaseError('erro_ao_detectar_pendencias', error);
+    logSupabaseError('erro_ao_registrar_evento_de_atividade', error);
+    logSupabaseError('erro_ao_detectar_pendencias', error);
+    expect(track).toHaveBeenCalledTimes(2);
+    expect(track.mock.calls.map(([, p]) => p.operation)).toEqual([
+      'erro_ao_detectar_pendencias', 'erro_ao_registrar_evento_de_atividade',
+    ]);
+    expect(JSON.stringify(track.mock.calls)).not.toContain('PRIVATE_CLINICAL_SENTINEL');
+  });
+
+  it('does not forward unknown personal query labels', () => {
+    logSupabaseError('Paciente patient@example.com token=secret', new Error('private'));
+    expect(track.mock.calls[0][1].operation).toBe('unknown_operation');
+    expect(JSON.stringify(track.mock.calls)).not.toContain('patient@example.com');
+  });
+
+  it('does not deduplicate different safe failure reasons for the same query', () => {
+    captureOperationalError({ message: 'Failed to fetch' }, { operation: 'load_query' });
+    captureOperationalError({ message: 'other private content' }, { operation: 'load_query' });
+    expect(track).toHaveBeenCalledTimes(2);
+  });
 
   it('correlates handled failures without sending Supabase details or hints', () => {
     const id = captureOperationalError({

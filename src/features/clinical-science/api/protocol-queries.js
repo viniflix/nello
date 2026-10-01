@@ -3,7 +3,7 @@ import { logSupabaseError } from '@/lib/supabase/query-helpers';
 
 export async function listClinicalProtocols(domain = null) {
   const { data, error } = await supabase.rpc('list_clinical_protocol_catalog', { p_domain: domain });
-  if (error) logSupabaseError('Erro ao carregar protocolos científicos', error);
+  if (error) logSupabaseError("erro_ao_carregar_protocolos_cientificos", error);
   return { data: data || [], error };
 }
 
@@ -24,6 +24,6 @@ export async function recordClinicalProtocolDecision({ code, version, decision, 
     p_decision: decision,
     p_reason: normalizedReason,
   });
-  if (error) logSupabaseError('Erro ao registrar decisão sobre protocolo', error);
+  if (error) logSupabaseError("erro_ao_registrar_decisao_sobre_protocolo", error);
   return { data, error };
 }

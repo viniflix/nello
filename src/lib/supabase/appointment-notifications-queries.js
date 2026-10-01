@@ -26,7 +26,7 @@ export const syncAppointmentNotificationSchedule = async (appointmentId, forceRe
         if (isFunctionMissing(error)) {
             return { data: null, error: null };
         }
-        logSupabaseError('Erro ao sincronizar notificações da consulta', error);
+        logSupabaseError("erro_ao_sincronizar_notificacoes_da_consulta", error);
         return { data: null, error };
     }
 };
@@ -40,7 +40,7 @@ export const processAppointmentNotifications = async (limit = 50) => {
         if (error) throw error;
         return { data, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao processar fila de notificações da consulta', error);
+        logSupabaseError("erro_ao_processar_fila_de_notificacoes_da_consulta", error);
         return { data: null, error };
     }
 };
@@ -69,7 +69,7 @@ export const getAppointmentNotifications = async ({
 
         return { data: data || [], error: null };
     } catch (error) {
-        logSupabaseError('Erro ao buscar notificações de consulta', error);
+        logSupabaseError("erro_ao_buscar_notificacoes_de_consulta", error);
         return { data: [], error };
     }
 };
@@ -89,7 +89,7 @@ export const transitionAppointmentStatus = async ({
         if (error) throw error;
         return { data, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao transicionar status da consulta', error);
+        logSupabaseError("erro_ao_transicionar_status_da_consulta", error);
         return { data: null, error };
     }
 };

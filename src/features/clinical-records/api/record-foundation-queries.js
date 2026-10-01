@@ -16,7 +16,7 @@ const callRpc = async (rpcName, payload, errorContext) => {
 export const getPatientRecordFoundation = (patientId) => callRpc(
   'get_patient_record_foundation',
   { p_patient_id: patientId },
-  'Erro ao buscar fundação do prontuário',
+  "erro_ao_buscar_fundacao_do_prontuario",
 );
 
 export const updatePatientProgressiveProfile = (patientId, changes, source) => {
@@ -25,7 +25,7 @@ export const updatePatientProgressiveProfile = (patientId, changes, source) => {
     return callRpc(
       'update_patient_progressive_profile',
       { p_patient_id: patientId, p_changes: normalizedChanges, p_source: source },
-      'Erro ao atualizar perfil progressivo',
+      "erro_ao_atualizar_perfil_progressivo",
     );
   } catch (error) {
     return Promise.resolve({ data: null, error });
@@ -35,19 +35,19 @@ export const updatePatientProgressiveProfile = (patientId, changes, source) => {
 export const listPatientLegalGuardians = (patientId, episodeId) => callRpc(
   'list_patient_legal_guardians',
   { p_patient_id: patientId, p_episode_id: episodeId },
-  'Erro ao buscar responsáveis legais',
+  "erro_ao_buscar_responsaveis_legais",
 );
 
 export const savePatientLegalGuardian = (patientId, episodeId, payload) => callRpc(
   'upsert_patient_legal_guardian',
   { p_patient_id: patientId, p_episode_id: episodeId, p_payload: payload },
-  'Erro ao salvar responsável legal',
+  "erro_ao_salvar_responsavel_legal",
 );
 
 export const revokePatientLegalGuardian = (guardianId, reason) => callRpc(
   'revoke_patient_legal_guardian',
   { p_guardian_id: guardianId, p_reason: reason },
-  'Erro ao revogar responsável legal',
+  "erro_ao_revogar_responsavel_legal",
 );
 
 export const createClinicalRecordDraft = (patientId, recordType, encounterAt, visibility) => callRpc(
@@ -58,5 +58,5 @@ export const createClinicalRecordDraft = (patientId, recordType, encounterAt, vi
     p_encounter_at: encounterAt,
     p_visibility: visibility,
   },
-  'Erro ao criar rascunho do prontuário',
+  "erro_ao_criar_rascunho_do_prontuario",
 );

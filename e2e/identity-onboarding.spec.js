@@ -93,3 +93,18 @@ test('application defers analytics initialization until explicit optional consen
   await page.getByRole('button', { name: 'Sem analytics' }).click();
   await expect(page.getByText(/opcional e está desligado/)).toBeVisible();
 });
+
+test('first-visit cookie banner remembers refusal and allows later configuration', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/privacidade');
+  await expect(page.getByRole('button', { name: 'Aceitar todos', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Recusar não essenciais', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Aceitar todos', exact: true })).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Aviso de Privacidade', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Aceitar todos', exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Preferências de privacidade', exact: true }).click();
+  await expect(page.getByText('Necessários: sempre ativos para acesso e segurança.')).toBeVisible();
+  await expect(page.getByText(/opcional e está desligado/)).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});

@@ -14,7 +14,7 @@ export const evaluateLabGoalRules = async ({ nutritionistId, patientId }) => {
         if (error) throw error;
         return { data: data || null, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao avaliar regras lab+goal', error);
+        logSupabaseError("erro_ao_avaliar_regras_lab_goal", error);
         return { data: null, error };
     }
 };
@@ -51,7 +51,7 @@ export const createConductSuggestion = async ({
         if (error) throw error;
         return { data, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao criar sugestão de conduta', error);
+        logSupabaseError("erro_ao_criar_sugestao_de_conduta", error);
         return { data: null, error };
     }
 };
@@ -69,7 +69,7 @@ export const approveConductSuggestion = async ({ suggestionId, actorId = null })
         if (error) throw error;
         return { data: data || null, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao aprovar sugestão de conduta', error);
+        logSupabaseError("erro_ao_aprovar_sugestao_de_conduta", error);
         return { data: null, error };
     }
 };
@@ -88,7 +88,7 @@ export const rejectConductSuggestion = async ({ suggestionId, reason = null, act
         if (error) throw error;
         return { data: data || null, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao rejeitar sugestão de conduta', error);
+        logSupabaseError("erro_ao_rejeitar_sugestao_de_conduta", error);
         return { data: null, error };
     }
 };
@@ -112,7 +112,7 @@ export const getConductSuggestions = async ({ nutritionistId, patientId = null, 
         if (error) throw error;
         return { data: data || [], error: null };
     } catch (error) {
-        logSupabaseError('Erro ao buscar sugestões de conduta', error);
+        logSupabaseError("erro_ao_buscar_sugestoes_de_conduta", error);
         return { data: [], error };
     }
 };

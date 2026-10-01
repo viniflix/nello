@@ -201,7 +201,7 @@ export const createMealPlan = async (planData) => {
         if (error) throw error;
         return { data, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao criar plano alimentar', error);
+        logSupabaseError("erro_ao_criar_plano_alimentar", error);
         return { data: null, error };
     }
 };
@@ -227,7 +227,7 @@ export const getMealPlans = async (patientId, onlyActive = false) => {
         });
         return { data, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao buscar planos alimentares', error);
+        logSupabaseError("erro_ao_buscar_planos_alimentares", error);
         return { data: [], error };
     }
 };
@@ -412,7 +412,7 @@ export const getMealPlansByIds = async (planIds, existingPlans = null) => {
             error: null
         };
     } catch (error) {
-        logSupabaseError('Erro ao buscar plano alimentar', error);
+        logSupabaseError("erro_ao_buscar_plano_alimentar", error);
         return { data: [], error };
     }
 };
@@ -452,7 +452,7 @@ export const getActiveMealPlan = async (patientId) => {
 
         return { data: null, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao buscar plano ativo', error);
+        logSupabaseError("erro_ao_buscar_plano_ativo", error);
         return { data: null, error };
     }
 };
@@ -475,7 +475,7 @@ export const updateMealPlan = async (planId, updates) => {
         if (error) throw error;
         return { data, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao atualizar plano alimentar', error);
+        logSupabaseError("erro_ao_atualizar_plano_alimentar", error);
         return { data: null, error };
     }
 };
@@ -491,7 +491,7 @@ export const archiveMealPlan = async (planId, reason = 'Plano arquivado pelo nut
         if (error) throw error;
         return { data, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao arquivar plano alimentar', error);
+        logSupabaseError("erro_ao_arquivar_plano_alimentar", error);
         return { data: null, error };
     }
 };
@@ -521,7 +521,7 @@ export const setActiveMealPlan = async (planId) => {
         if (fetchError) throw fetchError;
         return { data, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao ativar plano alimentar', error);
+        logSupabaseError("erro_ao_ativar_plano_alimentar", error);
         return { data: null, error };
     }
 };
@@ -541,7 +541,7 @@ export const deleteMealPlan = async (planId) => {
         if (error) throw error;
         return { data, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao deletar plano alimentar', error);
+        logSupabaseError("erro_ao_deletar_plano_alimentar", error);
         return { data: null, error };
     }
 };
@@ -584,7 +584,7 @@ export const addMealToPlan = async (mealData) => {
         if (error) throw error;
         return { data, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao adicionar refeição ao plano', error);
+        logSupabaseError("erro_ao_adicionar_refeicao_ao_plano", error);
         return { data: null, error };
     }
 };
@@ -610,7 +610,7 @@ export const updateMealInPlan = async (mealId, updates) => {
         if (error) throw error;
         return { data, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao atualizar refeição do plano', error);
+        logSupabaseError("erro_ao_atualizar_refeicao_do_plano", error);
         return { data: null, error };
     }
 };
@@ -632,7 +632,7 @@ export const deleteMealFromPlan = async (mealId) => {
         if (error) throw error;
         return { data, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao deletar refeição do plano', error);
+        logSupabaseError("erro_ao_deletar_refeicao_do_plano", error);
         return { data: null, error };
     }
 };
@@ -653,7 +653,7 @@ export const getMealsInPlan = async (planId) => {
         if (error) throw error;
         return { data: data || [], error: null };
     } catch (error) {
-        logSupabaseError('Erro ao buscar refeições do plano', error);
+        logSupabaseError("erro_ao_buscar_refeicoes_do_plano", error);
         return { data: [], error };
     }
 };
@@ -717,7 +717,7 @@ export const addFoodsToMeal = async (mealId, foods = []) => {
 
         return { data: dbFoods, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao adicionar alimentos em lote', error);
+        logSupabaseError("erro_ao_adicionar_alimentos_em_lote", error);
         return { data: null, error };
     }
 };
@@ -782,7 +782,7 @@ export const addFoodToMeal = async (foodData) => {
 
         return { data: dataWithFood, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao adicionar alimento à refeição', error);
+        logSupabaseError("erro_ao_adicionar_alimento_a_refeicao", error);
         return { data: null, error };
     }
 };
@@ -826,7 +826,7 @@ export const updateFoodInMeal = async (foodId, updates) => {
 
         return { data: dataWithFood, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao atualizar alimento da refeição', error);
+        logSupabaseError("erro_ao_atualizar_alimento_da_refeicao", error);
         return { data: null, error };
     }
 };
@@ -861,7 +861,7 @@ export const removeFoodFromMeal = async (foodId) => {
 
         return { data, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao remover alimento da refeição', error);
+        logSupabaseError("erro_ao_remover_alimento_da_refeicao", error);
         return { data: null, error };
     }
 };
@@ -890,7 +890,7 @@ export const getFoodsInMeal = async (mealId) => {
 
         return { data: enriched, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao buscar alimentos da refeição', error);
+        logSupabaseError("erro_ao_buscar_alimentos_da_refeicao", error);
         return { data: [], error };
     }
 };
@@ -943,7 +943,7 @@ export const recalculateMealNutrition = async (mealId) => {
 
         return { data: totals, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao recalcular nutrição da refeição', error);
+        logSupabaseError("erro_ao_recalcular_nutricao_da_refeicao", error);
         return { data: null, error };
     }
 };
@@ -986,7 +986,7 @@ export const recalculatePlanNutrition = async (planId) => {
 
         return { data, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao recalcular nutrição do plano', error);
+        logSupabaseError("erro_ao_recalcular_nutricao_do_plano", error);
         return { data: null, error };
     }
 };
@@ -1083,7 +1083,7 @@ export const calculateNutrition = async (food, quantity, unit) => {
             fat: parseFloat(fat.toFixed(2))
         };
     } catch (error) {
-        logSupabaseError('Erro ao calcular nutrição', error);
+        logSupabaseError("erro_ao_calcular_nutricao", error);
         return {
             calories: 0,
             protein: 0,
@@ -1109,7 +1109,7 @@ export const copyMealPlanToPatient = async (planId, targetPatientId) => {
         if (error) throw error;
         return getMealPlanById(copiedId);
     } catch (error) {
-        logSupabaseError('Erro ao copiar plano para paciente', error);
+        logSupabaseError("erro_ao_copiar_plano_para_paciente", error);
         return { data: null, error };
     }
 };
@@ -1127,7 +1127,7 @@ export const copyMealPlan = async (planId, newName) => {
         if (error) throw error;
         return getMealPlanById(copiedId);
     } catch (error) {
-        logSupabaseError('Erro ao copiar plano alimentar', error);
+        logSupabaseError("erro_ao_copiar_plano_alimentar", error);
         return { data: null, error };
     }
 };
@@ -1218,7 +1218,7 @@ export const createMealPlanVersionSnapshot = async ({
         if (error) throw error;
         return { data, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao criar versão do plano alimentar', error);
+        logSupabaseError("erro_ao_criar_versao_do_plano_alimentar", error);
         return { data: null, error };
     }
 };
@@ -1235,7 +1235,7 @@ export const getMealPlanVersions = async (planId, limit = 20) => {
         if (error) throw error;
         return { data: data || [], error: null };
     } catch (error) {
-        logSupabaseError('Erro ao buscar versões do plano alimentar', error);
+        logSupabaseError("erro_ao_buscar_versoes_do_plano_alimentar", error);
         return { data: [], error };
     }
 };
@@ -1305,7 +1305,7 @@ export const updateFullMealPlan = async (planId, planData) => {
 
         return updatedResult;
     } catch (error) {
-        logSupabaseError('Erro ao atualizar plano alimentar (RPC)', error);
+        logSupabaseError("erro_ao_atualizar_plano_alimentar_rpc", error);
         return { data: null, error };
     }
 };
@@ -1390,7 +1390,7 @@ export const saveReferenceValues = async (planId, values) => {
             return { data, error: null };
         }
     } catch (error) {
-        logSupabaseError('Erro ao salvar valores de referência', error);
+        logSupabaseError("erro_ao_salvar_valores_de_referencia", error);
         return { data: null, error };
     }
 };
@@ -1411,7 +1411,7 @@ export const getReferenceValues = async (planId) => {
         if (error) throw error;
         return { data, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao buscar valores de referência', error);
+        logSupabaseError("erro_ao_buscar_valores_de_referencia", error);
         return { data: null, error };
     }
 };
@@ -1430,7 +1430,7 @@ export const calculateMacroTargets = async (planId) => {
         if (error) throw error;
         return { data, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao calcular valores alvo', error);
+        logSupabaseError("erro_ao_calcular_valores_alvo", error);
         return { data: null, error };
     }
 };
@@ -1452,7 +1452,7 @@ export const deleteReferenceValues = async (planId) => {
         if (error) throw error;
         return { data, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao deletar valores de referência', error);
+        logSupabaseError("erro_ao_deletar_valores_de_referencia", error);
         return { data: null, error };
     }
 };
@@ -1502,7 +1502,7 @@ export const savePlanAsTemplate = async (planId, templateName, tags = []) => {
         if (error) throw error;
         return { data: { id: templateId, name: templateName.trim() }, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao salvar plano como template de dieta', error);
+        logSupabaseError("erro_ao_salvar_plano_como_template_de_dieta", error);
         return { data: null, error };
     }
 };
@@ -1525,7 +1525,7 @@ export const getTemplates = async (nutritionistId) => {
         if (error) throw error;
         return { data: data || [], error: null };
     } catch (error) {
-        logSupabaseError('Erro ao buscar templates', error);
+        logSupabaseError("erro_ao_buscar_templates", error);
         return { data: [], error };
     }
 };
@@ -1584,7 +1584,7 @@ export const restoreMealPlanVersion = async (versionId) => {
 
         return updateFullMealPlan(version.meal_plan_id, planData);
     } catch (error) {
-        logSupabaseError('Erro ao restaurar versão do plano alimentar', error);
+        logSupabaseError("erro_ao_restaurar_versao_do_plano_alimentar", error);
         return { data: null, error };
     }
 };
@@ -1626,7 +1626,7 @@ export const createDraftMealPlan = async (patientId, nutritionistId) => {
         if (error) throw error;
         return { data, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao criar rascunho do plano alimentar', error);
+        logSupabaseError("erro_ao_criar_rascunho_do_plano_alimentar", error);
         return { data: null, error };
     }
 };
@@ -1645,7 +1645,7 @@ export const getDraftMealPlan = async (patientId, nutritionistId) => {
         
         return { data: drafts && drafts.length > 0 ? drafts[0] : null, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao buscar rascunho singular do plano alimentar', error);
+        logSupabaseError("erro_ao_buscar_rascunho_singular_do_plano_alimentar", error);
         return { data: null, error };
     }
 };
@@ -1676,7 +1676,7 @@ export const getDraftMealPlans = async (patientId, nutritionistId) => {
 
         return { data: drafts, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao buscar rascunhos pendentes', error);
+        logSupabaseError("erro_ao_buscar_rascunhos_pendentes", error);
         return { data: [], error };
     }
 };
@@ -1708,7 +1708,7 @@ export const updateDraftMealPlan = async (draftId, planData) => {
         if (error) throw error;
         return { data, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao atualizar rascunho do plano alimentar', error);
+        logSupabaseError("erro_ao_atualizar_rascunho_do_plano_alimentar", error);
         return { data: null, error };
     }
 };
@@ -1740,7 +1740,7 @@ export const deleteDraftMealPlan = async (draftId) => {
         // Retorna data sintético para compatibilidade com chamadores que checam .data
         return { data: { id: draftId }, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao deletar rascunho do plano alimentar', error);
+        logSupabaseError("erro_ao_deletar_rascunho_do_plano_alimentar", error);
         return { data: null, error };
     }
 };
@@ -1768,7 +1768,7 @@ export const deleteAllDraftMealPlans = async (patientId) => {
         if (error) throw error;
         return { data: { success: true }, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao deletar todos os rascunhos', error);
+        logSupabaseError("erro_ao_deletar_todos_os_rascunhos", error);
         return { data: null, error };
     }
 };
@@ -1802,7 +1802,7 @@ export const promoteDraftToActive = async (draftId, patientId) => {
         if (fetchError) throw fetchError;
         return { data, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao promover rascunho para plano ativo', error);
+        logSupabaseError("erro_ao_promover_rascunho_para_plano_ativo", error);
         return { data: null, error };
     }
 };
@@ -1829,7 +1829,7 @@ export const saveDraftAsPlan = async (draftId) => {
         if (error) throw error;
         return { data, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao salvar rascunho como plano', error);
+        logSupabaseError("erro_ao_salvar_rascunho_como_plano", error);
         return { data: null, error };
     }
 };
@@ -1870,7 +1870,7 @@ export const saveFoodSubstitutions = async (mealPlanFoodId, substitutes = []) =>
         if (error) throw error;
         return { data, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao salvar substituições', error);
+        logSupabaseError("erro_ao_salvar_substituicoes", error);
         return { data: null, error };
     }
 };
@@ -1910,7 +1910,7 @@ export const getFoodSubstitutions = async (mealPlanFoodId) => {
 
         return { data: result, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao buscar substituições', error);
+        logSupabaseError("erro_ao_buscar_substituicoes", error);
         return { data: [], error };
     }
 };
@@ -1947,7 +1947,7 @@ export const getSuggestedSubstitutes = async (targetGroup, targetCalories, limit
 
         return { data: sorted, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao buscar sugestões de substitutos', error);
+        logSupabaseError("erro_ao_buscar_sugestoes_de_substitutos", error);
         return { data: [], error };
     }
 };

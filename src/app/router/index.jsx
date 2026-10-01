@@ -12,7 +12,7 @@ import { getHomePath } from './homePath';
 import { lazyWithReload } from '@/lib/utils/lazyWithReload';
 import StatusPage from '@/pages/public/StatusPage';
 import NotFoundPage from '@/pages/public/NotFoundPage';
-import LegalInformationPage from '@/pages/public/LegalInformationPage';
+const LegalInformationPage = lazyWithReload(() => import('@/pages/public/LegalInformationPage'), 'public:legal-information');
 
 // Rota Omnichannel Public Facing (Sem Auth Block)
 const PatientFacingAnamnesis = lazyWithReload(() => import('@/pages/public/anamnesis/PatientFacingUi.jsx'), 'public:anamnesis');
@@ -25,7 +25,7 @@ const AppRouter = () => {
   // Operational status must remain readable while authentication is unavailable.
   if (pathname === '/status' || pathname === '/status/') return <StatusPage />;
   const publicPath = pathname.replace(/\/$/, '');
-  if (['/termos', '/privacidade', '/ajuda', '/seguranca'].includes(publicPath)) return <LegalInformationPage pathname={publicPath} />;
+  if (['/termos', '/privacidade', '/ajuda', '/seguranca'].includes(publicPath)) return <Suspense fallback={<PageLoadingFallback />}><LegalInformationPage pathname={publicPath} /></Suspense>;
 
   if (loading) {
     return <PageLoadingFallback />;

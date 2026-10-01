@@ -29,7 +29,7 @@ export const createClinicalEvolutionDraft = (
     p_visibility: visibility,
     p_retrospective_reason: retrospectiveReason,
   },
-  'Erro ao criar rascunho da evolução',
+  "erro_ao_criar_rascunho_da_evolucao",
 );
 
 export const updateClinicalRecordDraft = (
@@ -45,7 +45,7 @@ export const updateClinicalRecordDraft = (
     p_visibility: visibility,
     p_expected_revision: expectedRevision,
   },
-  'Erro ao salvar rascunho da evolução',
+  "erro_ao_salvar_rascunho_da_evolucao",
 );
 
 export const finalizeClinicalRecord = (
@@ -61,13 +61,13 @@ export const finalizeClinicalRecord = (
     p_expected_revision: expectedRevision,
     p_retrospective_reason: retrospectiveReason,
   },
-  'Erro ao finalizar registro clínico',
+  "erro_ao_finalizar_registro_clinico",
 );
 
 export const signClinicalRecord = (recordId) => callRpc(
   'sign_clinical_record',
   { p_record_id: recordId },
-  'Erro ao assinar registro clínico',
+  "erro_ao_assinar_registro_clinico",
 );
 
 export const listClinicalRecordsByEpisode = (patientId, episodeId, statusFilter = null) => callRpc(
@@ -77,11 +77,11 @@ export const listClinicalRecordsByEpisode = (patientId, episodeId, statusFilter 
     p_episode_id: episodeId,
     p_status_filter: statusFilter,
   },
-  'Erro ao listar registros clínicos',
+  "erro_ao_listar_registros_clinicos",
 );
 
 export const listEvolutionTemplates = () => callRpc(
   'list_evolution_templates',
   {},
-  'Erro ao listar templates de evolução',
+  "erro_ao_listar_templates_de_evolucao",
 );

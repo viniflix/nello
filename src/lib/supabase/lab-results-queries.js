@@ -29,7 +29,7 @@ export async function getPatientLabResults(patientId, limit = 50) {
 
         return { data, error };
     } catch (error) {
-        logSupabaseError('Erro ao buscar exames', error);
+        logSupabaseError("erro_ao_buscar_exames", error);
         return { data: null, error };
     }
 }
@@ -56,7 +56,7 @@ export async function getRecentLabResults(patientId) {
 
         return { data, error };
     } catch (error) {
-        logSupabaseError('Erro ao buscar exames recentes', error);
+        logSupabaseError("erro_ao_buscar_exames_recentes", error);
         return { data: null, error };
     }
 }
@@ -76,7 +76,7 @@ export async function getLabResultById(labResultId) {
 
         return { data, error };
     } catch (error) {
-        logSupabaseError('Erro ao buscar exame', error);
+        logSupabaseError("erro_ao_buscar_exame", error);
         return { data: null, error };
     }
 }
@@ -112,7 +112,7 @@ export async function createLabResult(labResult) {
 
         return { data, error };
     } catch (error) {
-        logSupabaseError('Erro ao criar exame', error);
+        logSupabaseError("erro_ao_criar_exame", error);
         return { data: null, error };
     }
 }
@@ -154,7 +154,7 @@ export async function updateLabResult(labResultId, updates) {
 
         return { data, error };
     } catch (error) {
-        logSupabaseError('Erro ao atualizar exame', error);
+        logSupabaseError("erro_ao_atualizar_exame", error);
         return { data: null, error };
     }
 }
@@ -173,7 +173,7 @@ export async function deleteLabResult(labResultId) {
 
         return { data, error };
     } catch (error) {
-        logSupabaseError('Erro ao deletar exame', error);
+        logSupabaseError("erro_ao_deletar_exame", error);
         return { data: null, error };
     }
 }
@@ -186,7 +186,7 @@ export async function confirmLabResultInterpretation(labResultId, reason) {
         });
         return { data, error };
     } catch (error) {
-        logSupabaseError('Erro ao confirmar interpretação laboratorial', error);
+        logSupabaseError("erro_ao_confirmar_interpretacao_laboratorial", error);
         return { data: null, error };
     }
 }
@@ -210,7 +210,7 @@ export async function getLabResultsByTestName(patientId, testName) {
 
         return { data, error };
     } catch (error) {
-        logSupabaseError('Erro ao buscar exames por nome', error);
+        logSupabaseError("erro_ao_buscar_exames_por_nome", error);
         return { data: null, error };
     }
 }
@@ -233,7 +233,7 @@ export async function getAbnormalLabResults(patientId) {
 
         return { data, error };
     } catch (error) {
-        logSupabaseError('Erro ao buscar exames anormais', error);
+        logSupabaseError("erro_ao_buscar_exames_anormais", error);
         return { data: null, error };
     }
 }
@@ -307,7 +307,7 @@ export async function getLabRiskRules(nutritionistId = null) {
 
         return { data: sorted, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao buscar regras de risco laboratorial', error);
+        logSupabaseError("erro_ao_buscar_regras_de_risco_laboratorial", error);
         return { data: [], error };
     }
 }
@@ -416,7 +416,7 @@ export async function getLabResultsGroupedByName(patientId) {
 
         return { data: grouped, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao agrupar exames', error);
+        logSupabaseError("erro_ao_agrupar_exames", error);
         return { data: null, error };
     }
 }
@@ -475,7 +475,7 @@ export async function uploadLabResultPDF(patientId, file) {
             error: null
         };
     } catch (error) {
-        logSupabaseError('Erro ao fazer upload do PDF', error);
+        logSupabaseError("erro_ao_fazer_upload_do_pdf", error);
         return { url: null, filename: null, error };
     }
 }
@@ -510,7 +510,7 @@ export async function deleteLabResultPDF(pdfUrl) {
 
         return { success: true, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao deletar PDF', error);
+        logSupabaseError("erro_ao_deletar_pdf", error);
         return { success: false, error };
     }
 }
@@ -531,7 +531,7 @@ export async function getLabResultPDFUrl(filePath, expiresIn = 3600) {
 
         return { url: data.signedUrl, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao obter URL do PDF', error);
+        logSupabaseError("erro_ao_obter_url_do_pdf", error);
         return { url: null, error };
     }
 }

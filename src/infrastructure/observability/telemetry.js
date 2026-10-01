@@ -84,7 +84,7 @@ export function captureOperationalError(error, context = {}) {
   const status = safeStatus(error);
   const route = typeof window !== 'undefined' ? window.location.pathname : 'server';
   const id = correlationId();
-  const deduplicationKey = `${source}:${module}:${operation}:${errorCode}:${status || ''}`;
+  const deduplicationKey = `${source}:${module}:${operation}:${errorCode}:${failureReason}:${status || ''}`;
 
   if (!shouldCapture(deduplicationKey)) return null;
 
@@ -101,7 +101,7 @@ export function captureOperationalError(error, context = {}) {
   };
 
   Sentry.withScope((scope) => {
-    scope.setFingerprint(['operational-error', source, module, operation, errorCode]);
+    scope.setFingerprint(['operational-error', source, module, operation, errorCode, failureReason]);
     scope.setLevel(status === 403 || errorCode === '42501' ? 'warning' : 'error');
     scope.setTags({
       'correlation.id': id,

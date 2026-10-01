@@ -15,7 +15,7 @@ const callRpc = async (rpcName, payload, errorContext) => {
 export const getAmendmentImpact = (recordId) => callRpc(
   'get_clinical_record_amendment_impact',
   { p_record_id: recordId },
-  'Erro ao consultar impacto da alteração do registro clínico',
+  "erro_ao_consultar_impacto_da_alteracao_do_registro_clinico",
 );
 
 export const startClinicalRecordCorrection = (
@@ -29,7 +29,7 @@ export const startClinicalRecordCorrection = (
     p_reason: reason,
     p_impact_confirmation: impactConfirmation,
   },
-  'Erro ao iniciar correção do registro clínico',
+  "erro_ao_iniciar_correcao_do_registro_clinico",
 );
 
 export const abandonClinicalRecordCorrection = (amendmentId, reason) => callRpc(
@@ -38,7 +38,7 @@ export const abandonClinicalRecordCorrection = (amendmentId, reason) => callRpc(
     p_amendment_id: amendmentId,
     p_reason: reason,
   },
-  'Erro ao abandonar correção do registro clínico',
+  "erro_ao_abandonar_correcao_do_registro_clinico",
 );
 
 export const invalidateClinicalRecord = (
@@ -52,13 +52,13 @@ export const invalidateClinicalRecord = (
     p_reason: reason,
     p_impact_confirmation: impactConfirmation,
   },
-  'Erro ao invalidar registro clínico',
+  "erro_ao_invalidar_registro_clinico",
 );
 
 export const listClinicalRecordVersionChain = (recordId) => callRpc(
   'list_clinical_record_version_chain',
   { p_record_id: recordId },
-  'Erro ao listar versões do registro clínico',
+  "erro_ao_listar_versoes_do_registro_clinico",
 );
 
 export const compareClinicalRecordVersions = (leftRecordId, rightRecordId) => callRpc(
@@ -67,5 +67,5 @@ export const compareClinicalRecordVersions = (leftRecordId, rightRecordId) => ca
     p_left_record_id: leftRecordId,
     p_right_record_id: rightRecordId,
   },
-  'Erro ao comparar versões do registro clínico',
+  "erro_ao_comparar_versoes_do_registro_clinico",
 );

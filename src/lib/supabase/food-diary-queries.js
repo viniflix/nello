@@ -106,7 +106,7 @@ export const getPatientMeals = async (patientId, filters = {}, limit = 50, offse
 
         return { data: dataWithFoodId, error: null, count };
     } catch (error) {
-        logSupabaseError('Erro ao buscar refeições', error);
+        logSupabaseError("erro_ao_buscar_refeicoes", error);
         /* logOperationalEvent removed */
         return { data: null, error };
     }
@@ -128,7 +128,7 @@ export const getMealAuditHistory = async (mealId) => {
 
         return { data, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao buscar histórico de auditoria', error);
+        logSupabaseError("erro_ao_buscar_historico_de_auditoria", error);
         return { data: null, error };
     }
 };
@@ -164,7 +164,7 @@ export const getPatientAuditHistory = async (patientId, filters = {}, limit = 10
 
         return { data, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao buscar histórico completo', error);
+        logSupabaseError("erro_ao_buscar_historico_completo", error);
         return { data: null, error };
     }
 };
@@ -224,7 +224,7 @@ export const calculateDiaryAdherence = async (patientId, days = 30) => {
             error: null
         };
     } catch (error) {
-        logSupabaseError('Erro ao calcular adesão', error);
+        logSupabaseError("erro_ao_calcular_adesao", error);
         return { data: null, error };
     }
 };
@@ -290,7 +290,7 @@ export const getNutritionalSummary = async (patientId, startDate, endDate) => {
             error: null
         };
     } catch (error) {
-        logSupabaseError('Erro ao calcular resumo nutricional', error);
+        logSupabaseError("erro_ao_calcular_resumo_nutricional", error);
         return { data: null, error };
     }
 };
@@ -313,7 +313,7 @@ export const getRecentDiaryActivity = async (patientId, limit = 5) => {
 
         return { data, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao buscar atividades recentes', error);
+        logSupabaseError("erro_ao_buscar_atividades_recentes", error);
         return { data: null, error };
     }
 };
@@ -372,7 +372,7 @@ export const getPatientReminderPreferences = async (patientId) => {
             error: null
         };
     } catch (error) {
-        logSupabaseError('Erro ao buscar preferências de lembrete', error);
+        logSupabaseError("erro_ao_buscar_preferencias_de_lembrete", error);
         return { data: { ...DEFAULT_REMINDER_PREFERENCES, patient_id: patientId }, error };
     }
 };
@@ -397,7 +397,7 @@ export const upsertPatientReminderPreferences = async (patientId, preferences = 
         if (error) throw error;
         return { data, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao salvar preferências de lembrete', error);
+        logSupabaseError("erro_ao_salvar_preferencias_de_lembrete", error);
         return { data: null, error };
     }
 };
@@ -421,7 +421,7 @@ export const processPatientReminders = async (patientId, { signal } = {}) => {
         if (isExpectedRequestCancellation(error, signal)) {
             return { data: null, error: null, cancelled: true };
         }
-        logSupabaseError('Erro ao processar lembretes do paciente', error);
+        logSupabaseError("erro_ao_processar_lembretes_do_paciente", error);
         return { data: null, error };
     }
 };

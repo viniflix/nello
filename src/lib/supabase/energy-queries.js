@@ -27,7 +27,7 @@ export const getLatestEnergyCalculation = async (patientId) => {
     if (error) throw error;
     return { data, error: null };
   } catch (error) {
-    logSupabaseError('Erro ao buscar cálculo de energia', error);
+    logSupabaseError("erro_ao_buscar_calculo_de_energia", error);
     return { data: null, error };
   }
 };
@@ -43,7 +43,7 @@ export const getEnergyCalculationWithDetails = async (patientId) => {
     if (error) throw error;
     return { data, error: null };
   } catch (error) {
-    logSupabaseError('Erro ao buscar cálculo de energia', error);
+    logSupabaseError("erro_ao_buscar_calculo_de_energia", error);
     return { data: null, error };
   }
 };
@@ -198,7 +198,7 @@ export const getInitialBiometryForEnergy = async (patientId) => {
 
     return { data: { ...out, _sources: sources }, error: loadError };
   } catch (error) {
-    logSupabaseError('Erro ao buscar biometria para energia', error);
+    logSupabaseError("erro_ao_buscar_biometria_para_energia", error);
     return {
       data: { height: null, weight: null, age: null, gender: null, body_fat_percentage: null, lean_mass_kg: null, _sources: {} },
       error
@@ -357,7 +357,7 @@ export const saveEnergyCalculation = async (data) => {
     if (error) throw error;
     return { data: inserted, error: null };
   } catch (error) {
-    logSupabaseError('Erro ao salvar cálculo de energia', error);
+    logSupabaseError("erro_ao_salvar_calculo_de_energia", error);
     return { data: null, error };
   }
 };

@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "projectRef": "afyoidxrshkmplxhcyeh",
+  "hosted": {
+    "site_url": "https://nellonutri.com.br",
+    "uri_allow_list": "https://nellonutri.com.br/**,https://www.nellonutri.com.br/**",
+    "disable_signup": false,
+    "mailer_autoconfirm": false,
+    "password_min_length": 6,
+    "mfa_totp_enroll_enabled": true,
+    "mfa_totp_verify_enabled": true,
+    "security_captcha_enabled": true,
+    "security_update_password_require_reauthentication": false
+  }
+}

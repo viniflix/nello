@@ -43,6 +43,8 @@ export default defineConfig({
 		}
 	},
 	test: {
+  // Bound jsdom workers to avoid resource contention in local and CI validation.
+  maxWorkers: 4,
 		coverage: {
  provider: 'v8',
  include: ['src/lib/utils/energy-*.js','src/lib/utils/dri-energy.js','src/lib/utils/nutrition-calculations.js','src/features/auth/authFlows.js','src/lib/utils/authRedirect.js','src/features/clinical-records/model/attachmentSchema.js','supabase/functions/confirm-document-asset/assetValidation.ts'],

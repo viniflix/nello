@@ -3,7 +3,7 @@ import { logSupabaseError } from '@/lib/supabase/query-helpers';
 
 const rpc = async (name, payload = {}) => {
   const { data, error } = await supabase.rpc(name, payload);
-  if (error) logSupabaseError(`Erro no fluxo de privacidade: ${name}`, error);
+  if (error) logSupabaseError(name, error);
   return { data, error };
 };
 

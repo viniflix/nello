@@ -3,7 +3,7 @@ import { logSupabaseError } from '@/lib/supabase/query-helpers';
 
 export async function getMyDataExportSnapshot() {
   const { data, error } = await supabase.rpc('build_my_data_export_snapshot');
-  if (error) logSupabaseError('Erro ao preparar portabilidade de dados', error);
+  if (error) logSupabaseError("erro_ao_preparar_portabilidade_de_dados", error);
   return { data, error };
 }
 

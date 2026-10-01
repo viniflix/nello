@@ -31,7 +31,7 @@ export const getAnamnesisTemplates = async (nutritionistId) => {
         if (error) throw error;
         return { data, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao buscar templates de anamnese', error);
+        logSupabaseError("erro_ao_buscar_templates_de_anamnese", error);
         return { data: null, error };
     }
 };
@@ -50,7 +50,7 @@ export const getTemplateById = async (templateId) => {
         if (error) throw error;
         return { data, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao buscar template', error);
+        logSupabaseError("erro_ao_buscar_template", error);
         return { data: null, error };
     }
 };
@@ -76,7 +76,7 @@ export const createCustomTemplate = async (templateData) => {
         if (error) throw error;
         return { data, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao criar template', error);
+        logSupabaseError("erro_ao_criar_template", error);
         return { data: null, error };
     }
 };
@@ -110,7 +110,7 @@ export const getPatientAnamnesisList = async (patientId) => {
         if (error) throw error;
         return { data, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao buscar anamneses do paciente', error);
+        logSupabaseError("erro_ao_buscar_anamneses_do_paciente", error);
         return { data: null, error };
     }
 };
@@ -136,7 +136,7 @@ export const resolveAnamnesisId = async (patientId, slugOrId) => {
     );
     return { anamnesisId: match?.id || null, error: null };
   } catch (err) {
-    logSupabaseError('Erro ao resolver anamnese por short code', err);
+    logSupabaseError("erro_ao_resolver_anamnese_por_short_code", err);
     return { anamnesisId: null, error: err };
   }
 };
@@ -154,7 +154,7 @@ export const getAnamnesisById = async (anamnesisId) => {
             .single();
 
         if (anamnesisError) {
-            logSupabaseError('Erro ao buscar anamnesis_records', anamnesisError);
+            logSupabaseError("erro_ao_buscar_anamnesis_records", anamnesisError);
             throw anamnesisError;
         }
 
@@ -195,7 +195,7 @@ export const getAnamnesisById = async (anamnesisId) => {
 
         return { data: combinedData, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao buscar anamnese', error);
+        logSupabaseError("erro_ao_buscar_anamnese", error);
         return { data: null, error };
     }
 };
@@ -223,7 +223,7 @@ export const createAnamnesis = async (anamnesisData) => {
         if (error) throw error;
         return { data, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao criar anamnese', error);
+        logSupabaseError("erro_ao_criar_anamnese", error);
         return { data: null, error };
     }
 };
@@ -260,7 +260,7 @@ export const updateAnamnesis = async (anamnesisId, updatedData) => {
         if (error) throw error;
         return { data, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao atualizar anamnese', error);
+        logSupabaseError("erro_ao_atualizar_anamnese", error);
         return { data: null, error };
     }
 };
@@ -278,7 +278,7 @@ export const deleteAnamnesis = async (anamnesisId) => {
         if (error) throw error;
         return { error: null };
     } catch (error) {
-        logSupabaseError('Erro ao deletar anamnese', error);
+        logSupabaseError("erro_ao_deletar_anamnese", error);
         return { error };
     }
 };
@@ -298,7 +298,7 @@ export const checkPatientHasAnamnesis = async (patientId) => {
         if (error) throw error;
         return { hasAnamnesis: data && data.length > 0, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao verificar anamnese do paciente', error);
+        logSupabaseError("erro_ao_verificar_anamnese_do_paciente", error);
         return { hasAnamnesis: false, error };
     }
 };
@@ -344,7 +344,7 @@ export const getLatestAnamnesis = async (patientId, includeContent = false) => {
 
         return { data, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao buscar última anamnese', error);
+        logSupabaseError("erro_ao_buscar_ultima_anamnese", error);
         return { data: null, error };
     }
 };

@@ -42,7 +42,7 @@ export async function listClinicalAttachmentsByEpisode(
     p_status: status,
     p_cursor: parseCursor(cursor),
   });
-  if (error) throwRpcError('Erro ao listar anexos clínicos', error);
+  if (error) throwRpcError("erro_ao_listar_anexos_clinicos", error);
 
   return {
     items: Array.isArray(data?.items)
@@ -57,7 +57,7 @@ export async function listPatientClinicalAttachments(episodeId) {
   const { data, error } = await supabase.rpc('list_patient_clinical_attachments', {
     p_care_episode_id: episodeId,
   });
-  if (error) throwRpcError('Erro ao listar documentos do paciente', error);
+  if (error) throwRpcError("erro_ao_listar_documentos_do_paciente", error);
 
   return Array.isArray(data?.items)
     ? data.items
@@ -72,7 +72,7 @@ export async function createClinicalAttachmentSignedUrl(attachmentId) {
     { p_attachment_id: attachmentId },
   );
   if (authorizationError) {
-    throwRpcError('Erro ao autorizar abertura do anexo clínico', authorizationError);
+    throwRpcError("erro_ao_autorizar_abertura_do_anexo_clinico", authorizationError);
   }
 
   if (
@@ -87,7 +87,7 @@ export async function createClinicalAttachmentSignedUrl(attachmentId) {
   const { data, error } = await supabase.storage
     .from(authorization.storage_bucket)
     .createSignedUrl(authorization.storage_path, CLINICAL_ATTACHMENT_SIGNED_URL_TTL_SECONDS);
-  if (error) throwRpcError('Erro ao criar acesso temporário ao anexo clínico', error);
+  if (error) throwRpcError("erro_ao_criar_acesso_temporario_ao_anexo_clinico", error);
   if (!data?.signedUrl) {
     throwRpcError('Resposta inválida do armazenamento clínico', new Error('signed_url_missing'));
   }
@@ -126,7 +126,7 @@ export async function uploadClinicalAttachment({
       p_size_bytes: file.size,
     },
   );
-  if (intentError) throwRpcError('Erro ao reservar envio do anexo clínico', intentError);
+  if (intentError) throwRpcError("erro_ao_reservar_envio_do_anexo_clinico", intentError);
 
   const validIntent = intent?.storage_bucket === CLINICAL_ATTACHMENT_BUCKET
     && UUID_PATH_PATTERN.test(intent?.storage_path || '')
@@ -141,7 +141,7 @@ export async function uploadClinicalAttachment({
       p_attachment_id: intent.attachment_id,
       p_reason: 'storage_upload_failed',
     });
-    throwRpcError('Erro ao enviar anexo clínico', uploadError);
+    throwRpcError("erro_ao_enviar_anexo_clinico", uploadError);
   }
 
   const { data, error } = await supabase.rpc('confirm_clinical_attachment_upload', {
@@ -150,7 +150,7 @@ export async function uploadClinicalAttachment({
     p_size_bytes: file.size,
     p_mime_type: file.type,
   });
-  if (error) throwRpcError('Erro ao confirmar anexo clínico', error);
+  if (error) throwRpcError("erro_ao_confirmar_anexo_clinico", error);
   return data;
 }
 
@@ -171,7 +171,7 @@ export async function reviewPatientClinicalAttachment(attachmentId, {
     p_clinical_date: clinicalDate,
     p_clinical_record_id: clinicalRecordId,
   });
-  if (error) throwRpcError('Erro ao revisar documento do paciente', error);
+  if (error) throwRpcError("erro_ao_revisar_documento_do_paciente", error);
   return data;
 }
 
@@ -181,7 +181,7 @@ export async function changeClinicalAttachmentVisibility(attachmentId, visibilit
     p_visibility: visibility,
     p_reason: reason,
   });
-  if (error) throwRpcError('Erro ao alterar compartilhamento do anexo', error);
+  if (error) throwRpcError("erro_ao_alterar_compartilhamento_do_anexo", error);
   return data;
 }
 
@@ -190,13 +190,13 @@ export async function invalidateClinicalAttachment(attachmentId, reason) {
     p_attachment_id: attachmentId,
     p_reason: reason,
   });
-  if (error) throwRpcError('Erro ao invalidar anexo clínico', error);
+  if (error) throwRpcError("erro_ao_invalidar_anexo_clinico", error);
   return data;
 }
 
 export async function getMyClinicalDocumentContext() {
   const { data, error } = await supabase.rpc('get_my_clinical_document_context');
-  if (error) throwRpcError('Erro ao localizar atendimento para documentos', error);
+  if (error) throwRpcError("erro_ao_localizar_atendimento_para_documentos", error);
   return data || {};
 }
 
@@ -204,7 +204,7 @@ export async function listMyClinicalDocuments(episodeId) {
   const { data, error } = await supabase.rpc('list_my_clinical_documents', {
     p_care_episode_id: episodeId,
   });
-  if (error) throwRpcError('Erro ao listar seus documentos clínicos', error);
+  if (error) throwRpcError("erro_ao_listar_seus_documentos_clinicos", error);
   return Array.isArray(data?.items)
     ? data.items
       .map((item) => normalizeClinicalAttachment(item, { audience: 'patient_documents' }))

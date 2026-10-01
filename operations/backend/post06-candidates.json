@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "migrations": [
+    {
+      "file": "supabase/migrations/releases/20261001180000_post06_clinical_and_invitation_repairs.sql",
+      "sha256": "d6c30e91abe6598d9d30dbbdd0a6a316a4123f3ad1d22656d2368bb1241ba4eb"
+    }
+  ]
+}

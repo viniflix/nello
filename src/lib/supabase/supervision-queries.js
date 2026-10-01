@@ -15,13 +15,13 @@ async function call(rpc, args, message) {
 }
 
 export function getMyStudentSupervisions() {
-  return call('get_my_student_supervisions', undefined, 'Erro ao consultar supervisões');
+  return call('get_my_student_supervisions', undefined, "erro_ao_consultar_supervisoes");
 }
 
 export function requestStudentSupervision(email) {
   return call('request_student_supervision_by_email', {
     p_supervisor_email: email.trim().toLowerCase()
-  }, 'Erro ao solicitar supervisão');
+  }, "erro_ao_solicitar_supervisao");
 }
 
 export function respondStudentSupervision(supervisionId, decision, reason) {
@@ -29,12 +29,12 @@ export function respondStudentSupervision(supervisionId, decision, reason) {
     p_supervision_id: supervisionId,
     p_decision: decision,
     p_reason: reason
-  }, 'Erro ao responder supervisão');
+  }, "erro_ao_responder_supervisao");
 }
 
 export function endStudentSupervision(supervisionId, reason) {
   return call('end_student_supervision', {
     p_supervision_id: supervisionId,
     p_reason: reason
-  }, 'Erro ao encerrar supervisão');
+  }, "erro_ao_encerrar_supervisao");
 }

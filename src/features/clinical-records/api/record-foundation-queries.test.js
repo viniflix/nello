@@ -43,14 +43,14 @@ describe('record foundation RPC wrappers', () => {
 
     await expect(getPatientRecordFoundation('patient-1')).resolves.toEqual({ data: null, error });
     expect(logSupabaseError).toHaveBeenCalledOnce();
-    expect(logSupabaseError).toHaveBeenCalledWith('Erro ao buscar fundação do prontuário', error);
+    expect(logSupabaseError).toHaveBeenCalledWith('erro_ao_buscar_fundacao_do_prontuario', error);
   });
 
   it('captures and logs exceptions thrown by the Supabase boundary', async () => {
     const error = new Error('network');
     rpc.mockRejectedValueOnce(error);
     await expect(getPatientRecordFoundation('patient-1')).resolves.toEqual({ data: null, error });
-    expect(logSupabaseError).toHaveBeenCalledWith('Erro ao buscar fundação do prontuário', error);
+    expect(logSupabaseError).toHaveBeenCalledWith('erro_ao_buscar_fundacao_do_prontuario', error);
   });
 
   it.each([

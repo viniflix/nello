@@ -3,7 +3,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-libra
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import PrivacyPreferences from './PrivacyPreferences';
-import { bindConsentOwner, hasAnalyticsConsent, markPendingAnalyticsRevocation } from '../consent';
+import { bindConsentOwner, hasAnalyticsConsent, markPendingAnalyticsRevocation, LEGAL_VERSION } from '../consent';
 
 const mocks = vi.hoisted(() => ({ user: { id: 'qa-account' }, rpc: vi.fn(), optIn: vi.fn(), optOut: vi.fn(), reset: vi.fn() }));
 vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ user: mocks.user }) }));
@@ -49,4 +49,33 @@ it('keeps a locally pending revocation denied even if the account still says all
   await act(async () => {});
   expect(hasAnalyticsConsent()).toBe(false);
   expect(mocks.optIn).not.toHaveBeenCalled();
+});
+
+it('offers a first-visit refusal and remembers it without granting metrics', async () => {
+  mocks.user = null;
+  const view = render(ui());
+  expect(screen.getByRole('button', { name: 'Aceitar todos' })).toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name: 'Recusar não essenciais' }));
+  await waitFor(() => expect(screen.queryByRole('button', { name: 'Aceitar todos' })).not.toBeInTheDocument());
+  expect(hasAnalyticsConsent()).toBe(false);
+  view.unmount(); render(ui());
+  expect(screen.queryByRole('button', { name: 'Aceitar todos' })).not.toBeInTheDocument();
+  expect(mocks.optIn).not.toHaveBeenCalled();
+});
+
+it('does not reuse an older legal version as permission for the new text', async () => {
+  mocks.rpc.mockResolvedValue({ data: { version: '2026-10-01', analytics_allowed: true, terms_accepted: true, analytics_choice_recorded: true } });
+  render(ui());
+  await act(async () => {});
+  expect(hasAnalyticsConsent()).toBe(false);
+  expect(screen.getByRole('button', { name: 'Aceitar todos' })).toBeVisible();
+  expect(mocks.optIn).not.toHaveBeenCalled();
+});
+
+it('accepts optional metrics without silently accepting terms', async () => {
+  render(ui());
+  await act(async () => {});
+  fireEvent.click(screen.getByRole('button', { name: 'Aceitar todos' }));
+  await waitFor(() => expect(mocks.rpc).toHaveBeenCalledWith('record_my_privacy_choice', { p_version: LEGAL_VERSION, p_terms: false, p_analytics: true }));
+  expect(hasAnalyticsConsent()).toBe(true);
 });

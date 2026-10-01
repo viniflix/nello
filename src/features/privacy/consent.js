@@ -1,4 +1,4 @@
-export const LEGAL_VERSION = '2026-10-01';
+export const LEGAL_VERSION = '2026-10-01.2';
 export const SUPPORT_EMAIL = 'suporte@nellonutri.com.br';
 const KEY = 'nello_analytics_choice_v1';
 const MAX_AGE = 180 * 24 * 60 * 60 * 1000;
@@ -8,14 +8,18 @@ const blockedOwners = new Set();
 const pendingRevocations = new Set();
 
 export function bindConsentOwner(userId) { owner = userId || 'anonymous'; }
-export function hasAnalyticsConsent(expectedOwner = owner) {
-  if (blockedOwners.has(expectedOwner)) return false;
+export function hasAnalyticsChoice(expectedOwner = owner) {
   try {
     const record = JSON.parse(localStorage.getItem(KEY));
     return record?.owner === expectedOwner && record.version === LEGAL_VERSION
-      && record.allowed === true && Date.now() - record.at >= 0
+      && typeof record.allowed === 'boolean' && Date.now() - record.at >= 0
       && Date.now() - record.at < MAX_AGE;
   } catch { return false; }
+}
+export function suspendAnalyticsConsent() { blockedOwners.add(owner); }
+export function hasAnalyticsConsent(expectedOwner = owner) {
+  if (blockedOwners.has(expectedOwner) || !hasAnalyticsChoice(expectedOwner)) return false;
+  try { return JSON.parse(localStorage.getItem(KEY)).allowed === true; } catch { return false; }
 }
 export function storeAnalyticsChoice(allowed) {
   blockedOwners.add(owner);

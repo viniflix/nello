@@ -83,7 +83,7 @@ export const getMessageTemplates = async ({
 
         return { data: merged, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao buscar templates de mensagem', error);
+        logSupabaseError("erro_ao_buscar_templates_de_mensagem", error);
         return { data: [], error };
     }
 };
@@ -134,7 +134,7 @@ export const copyDefaultTemplate = async ({ defaultTemplateId, nutritionistId })
             metadata:       { copied_from_default_id: defaultTpl.id, ...(defaultTpl.metadata || {}) }
         });
     } catch (error) {
-        logSupabaseError('Erro ao duplicar template padrão', error);
+        logSupabaseError("erro_ao_duplicar_template_padrao", error);
         return { data: null, error };
     }
 };
@@ -170,7 +170,7 @@ export const createMessageTemplate = async ({
         if (error) throw error;
         return { data, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao criar template de mensagem', error);
+        logSupabaseError("erro_ao_criar_template_de_mensagem", error);
         return { data: null, error };
     }
 };
@@ -201,7 +201,7 @@ export const updateMessageTemplate = async ({
         if (error) throw error;
         return { data, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao atualizar template de mensagem', error);
+        logSupabaseError("erro_ao_atualizar_template_de_mensagem", error);
         return { data: null, error };
     }
 };
@@ -217,7 +217,7 @@ export const deleteMessageTemplate = async ({ templateId, nutritionistId }) => {
         if (error) throw error;
         return { data: true, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao excluir template de mensagem', error);
+        logSupabaseError("erro_ao_excluir_template_de_mensagem", error);
         return { data: false, error };
     }
 };
@@ -274,7 +274,7 @@ export const dispatchMessageTemplate = async ({
         if (error) throw error;
         return { data: data || null, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao disparar template de mensagem', error);
+        logSupabaseError("erro_ao_disparar_template_de_mensagem", error);
         return { data: null, error };
     }
 };
@@ -308,7 +308,7 @@ export const getTemplateDispatchHistory = async ({
         return { data: data || [], error: null };
     } catch (error) {
         if (error?.code === 'PGRST205') return { data: [], error: null };
-        logSupabaseError('Erro ao buscar histórico de disparo de templates', error);
+        logSupabaseError("erro_ao_buscar_historico_de_disparo_de_templates", error);
         return { data: [], error };
     }
 };

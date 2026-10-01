@@ -1,3 +1,4 @@
+import { isPatientAccessPending } from '@/lib/utils/patientAccessStatus';
 import React, { useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { patientRoute } from '@/lib/utils/patientRoutes';
@@ -45,7 +46,7 @@ const PatientCard = ({ patient, isOnline, onArchive, onDelete }) => {
     const deleteCheckRef = useRef(null);
 
     const isArchived = patient.is_active === false || patient.arquivadoHistorico;
-    const isPending = !isArchived && patient.needs_password_reset === true;
+    const isPending = !isArchived && isPatientAccessPending(patient);
 
     const handleDropdownOpen = useCallback(async (open) => {
         if (open && !isArchived && deleteCheckRef.current === null) {

@@ -15,7 +15,7 @@ export const getPermissionsByRole = async (role) => {
         if (error) throw error;
         return { data: data || [], error: null };
     } catch (error) {
-        logSupabaseError('Erro ao buscar permissões', error);
+        logSupabaseError("erro_ao_buscar_permissoes", error);
         return { data: [], error };
     }
 };

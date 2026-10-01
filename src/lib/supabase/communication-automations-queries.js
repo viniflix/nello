@@ -24,7 +24,7 @@ export const getCommunicationAutomations = async (nutritionistId) => {
     if (error) throw error;
     return { data: data || [], error: null };
   } catch (error) {
-    logSupabaseError('Erro ao buscar automações de comunicação', error);
+    logSupabaseError("erro_ao_buscar_automacoes_de_comunicacao", error);
     return { data: [], error };
   }
 };
@@ -51,7 +51,7 @@ export const upsertCommunicationAutomation = async ({
     if (error) throw error;
     return { data, error: null };
   } catch (error) {
-    logSupabaseError('Erro ao salvar automação de comunicação', error);
+    logSupabaseError("erro_ao_salvar_automacao_de_comunicacao", error);
     return { data: null, error };
   }
 };
@@ -79,7 +79,7 @@ export const deleteCommunicationAutomation = async ({ nutritionistId, automation
     if (error) throw error;
     return { data: true, error: null };
   } catch (error) {
-    logSupabaseError('Erro ao excluir automação de comunicação', error);
+    logSupabaseError("erro_ao_excluir_automacao_de_comunicacao", error);
     return { data: false, error };
   }
 };

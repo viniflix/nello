@@ -39,7 +39,7 @@ export const logClinicalImpact = async ({
         if (error) throw error;
         return { data, error: null };
     } catch (error) {
-        logSupabaseError('Erro ao registrar impacto clínico', error);
+        logSupabaseError("erro_ao_registrar_impacto_clinico", error);
         return { data: null, error };
     }
 };

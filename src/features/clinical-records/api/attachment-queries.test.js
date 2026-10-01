@@ -138,8 +138,7 @@ describe('clinical attachment read API', () => {
     mocks.rpc.mockResolvedValue({ data: null, error });
 
     await expect(createClinicalAttachmentSignedUrl(attachmentId)).rejects.toBe(error);
-    expect(mocks.logSupabaseError).toHaveBeenCalledWith(
-      'Erro ao autorizar abertura do anexo clínico',
+    expect(mocks.logSupabaseError).toHaveBeenCalledWith('erro_ao_autorizar_abertura_do_anexo_clinico',
       error,
     );
     expect(mocks.createSignedUrl).not.toHaveBeenCalled();
