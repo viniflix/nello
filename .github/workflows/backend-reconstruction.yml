@@ -47,7 +47,9 @@ jobs:
         run: node scripts/backend/snapshot-restore.mjs
       - name: Verify all captured Edge workers start
         if: ${{ !cancelled() && steps.rebuild.outcome == 'success' }}
-        run: node scripts/backend/edge-boot-smoke.mjs
+        run: |
+          node scripts/qa/edge-gateway-parity.mjs
+          node scripts/backend/edge-boot-smoke.mjs
       - name: Verify forward detachment contract on the synthetic PostgreSQL 17 clone
         if: ${{ !cancelled() && steps.rebuild.outcome == 'success' }}
         run: node scripts/backend/forward-contracts.mjs
@@ -62,6 +64,8 @@ jobs:
         run: |
           node scripts/qa/browser-fixture.mjs
           node scripts/qa/auth-onboarding.mjs
+          node scripts/qa/edge-boundaries.mjs
+          node scripts/qa/edge-expiry.mjs
           node scripts/qa/auth-captcha.mjs
           npm run build
           npx --no-install vite build --config e2e/qa-build.config.mjs
@@ -81,6 +85,7 @@ jobs:
             type-generation.log
             .backend-ci/restore-results/
             .backend-ci/edge-results/
+            .backend-ci/edge-boundary-results/
             .backend-ci/forward-results/
             .backend-ci/auth-onboarding-results/
             .backend-ci/auth-captcha-results/

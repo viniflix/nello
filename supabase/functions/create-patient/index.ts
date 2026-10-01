@@ -1,10 +1,7 @@
+import { edgeBoundary, timedFetch } from '../_shared/http.ts';
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
+const corsHeaders = {};
 
 const jsonResponse = (status: number, payload: Record<string, unknown>) =>
   new Response(JSON.stringify(payload), {
@@ -23,7 +20,7 @@ const generateSecureInviteCode = () => {
   return `${getRandomString(4)}-${getRandomString(4)}`;
 };
 
-Deno.serve(async (req) => {
+Deno.serve(edgeBoundary(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
@@ -73,10 +70,11 @@ Deno.serve(async (req) => {
 
   const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
     auth: { persistSession: false },
+    global: { fetch: timedFetch },
   });
   const supabaseAuth = createClient(supabaseUrl, supabaseServiceKey, {
     auth: { persistSession: false },
-    global: { headers: { Authorization: authHeader } },
+    global: { headers: { Authorization: authHeader }, fetch: timedFetch },
   });
 
   const { data: authData, error: authError } = await supabaseAuth.auth.getUser();
@@ -87,11 +85,11 @@ Deno.serve(async (req) => {
 
   const { data: callerProfile, error: callerProfileError } = await supabaseAdmin
     .from("user_profiles")
-    .select("user_type, is_admin")
+    .select("user_type, is_admin, is_active")
     .eq("id", caller.id)
     .single();
 
-  if (callerProfileError || !callerProfile) {
+  if (callerProfileError || !callerProfile || callerProfile.is_active === false) {
     return jsonResponse(403, { error: "Caller profile not authorized" });
   }
 
@@ -226,4 +224,4 @@ Deno.serve(async (req) => {
   }
 
   return jsonResponse(200, { userId: userData.user.id, initialPasswordAvailable: true, invitationSent: true });
-});
+}));

@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "migrations": [
+    {
+      "file": "supabase/migrations/releases/20261001150000_wave06_edge_quotas.sql",
+      "sha256": "43ddca1e636d1cbe409da874a7b994ca0df89afbf25102849a84e702c6ce6539"
+    }
+  ]
+}

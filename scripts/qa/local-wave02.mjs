@@ -12,6 +12,7 @@ if(!existsSync('.backend-ci'))node(['scripts/backend/prepare.mjs','--baseline-on
 // Supabase start prints disposable credentials on stdout; keep them out of QA logs.
 sb(['start','--workdir','.backend-ci','--exclude','studio,logflare,vector,imgproxy'],{timeout:1200000,stdio:['ignore','ignore','inherit']});
 console.log('PASS: isolated Supabase services started');
+node(['scripts/qa/edge-gateway-parity.mjs']);
 sql(readFileSync('scripts/backend/provider-defaults.sql','utf8'));
 const catalog=run('docker',['exec','-i','-e','PGPASSWORD=postgres','supabase_db_nello-reconstruction','psql','-X','-h','127.0.0.1','-U','postgres','-d','postgres','-t','-A','-v','ON_ERROR_STOP=1'],{input:readFileSync('scripts/backend/catalog.sql','utf8'),encoding:'utf8',stdio:['pipe','pipe','pipe'],maxBuffer:64*1024*1024});
 mkdirSync('.backend-ci/local-results',{recursive:true});writeFileSync('.backend-ci/local-results/catalog.json',catalog);
@@ -24,6 +25,8 @@ node(['scripts/backend/compare-types.mjs','src/lib/database.types.ts','.backend-
 node(['scripts/backend/snapshot-restore.mjs']);node(['scripts/backend/edge-boot-smoke.mjs']);node(['scripts/backend/forward-contracts.mjs']);
 node(['scripts/backend/sql-matrix.mjs']);node(['scripts/backend/gate-injections.mjs']);node(['scripts/qa/browser-fixture.mjs']);
 node(['scripts/qa/auth-onboarding.mjs']);
+node(['scripts/qa/edge-boundaries.mjs']);
+node(['scripts/qa/edge-expiry.mjs']);
 node(['scripts/qa/auth-captcha.mjs']);
 node(['node_modules/vite/bin/vite.js','build']);node(['node_modules/vite/bin/vite.js','build','--config','e2e/qa-build.config.mjs']);node(['scripts/qa/css-gate-injection.mjs']);
 node(['node_modules/playwright/cli.js','install','chromium']);node(['node_modules/playwright/cli.js','test',...process.argv.slice(2)]);

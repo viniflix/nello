@@ -1514,7 +1514,7 @@
           "file": "index.ts",
           "sha256": "e264892f43ee4a31612480cf498e8a09c61ecc859fb2942438ecb99b6371a6d3",
           "matchedLocal": false,
-          "repositorySha256": "e264892f43ee4a31612480cf498e8a09c61ecc859fb2942438ecb99b6371a6d3"
+          "repositorySha256": "a5a0cc1accdbcbb3e15612ba328cea3e5389972dbaa8d440745b86b2bee569f2"
         }
       ],
       "sourcePolicy": "Published source"
@@ -1528,7 +1528,7 @@
           "file": "index.ts",
           "sha256": "e2f1566ae5bfa8faa911976d2b1882bb6893d5ee64ef7d4b752ac064e8d86e21",
           "matchedLocal": true,
-          "repositorySha256": "14f94b4cd39559714fe8f11bdcd092bc9e793196377b779caa084e79b9a2043e",
+          "repositorySha256": "28c907fc022ed6154f25c7f828c67f3dc0335841f7b81c2cdb2f54774f66ef09",
           "releaseEvidence": "Wave04: verified professional, metadata allowlist, server-derived initial credential, quota and invitation-preserving fallback. Historical provider checksum retained."
         }
       ],
@@ -1543,7 +1543,7 @@
           "file": "index.ts",
           "sha256": "f0015be07e3d70272d3cae068e28708aa46954eacb621c848f2e45bc6e7bfea5",
           "matchedLocal": false,
-          "repositorySha256": "f0015be07e3d70272d3cae068e28708aa46954eacb621c848f2e45bc6e7bfea5"
+          "repositorySha256": "b618c20ec811d8304cdb50e31c5b75ce4936fc7aab20833ca9ca85f4b5d0459f"
         }
       ],
       "sourcePolicy": "Published source"
@@ -1557,7 +1557,7 @@
           "file": "index.ts",
           "sha256": "eecaa449cc22b6b96691c3bfb505ed5f0ce0e9c8b51be248416e26365e72bb6d",
           "matchedLocal": false,
-          "repositorySha256": "eecaa449cc22b6b96691c3bfb505ed5f0ce0e9c8b51be248416e26365e72bb6d"
+          "repositorySha256": "2c634f8b5c2df9a71c6518c0899038dc430eecd26db8f89e4683c8d6af3267a6"
         },
         {
           "file": "deno.json",
@@ -1577,7 +1577,7 @@
           "file": "index.ts",
           "sha256": "899f056d02164781913d5befc978a030211c8ccf0ac25960d21c300c79a5de38",
           "matchedLocal": false,
-          "repositorySha256": "899f056d02164781913d5befc978a030211c8ccf0ac25960d21c300c79a5de38"
+          "repositorySha256": "ea485eccfbd1396126b3d49a43ba8f85a7cac6d4685d399bfac42448aff76248"
         }
       ],
       "sourcePolicy": "Published source"
@@ -1591,7 +1591,7 @@
           "file": "index.ts",
           "sha256": "7bf47345341abf597e767b2ec54c241802724d75b65010c4e17256a9ceb67271",
           "matchedLocal": true,
-          "repositorySha256": "dfab5a3aad2e0b828c1837afc7ec9e140b557b8ceaf13bf1e1709cf42fcb959f"
+          "repositorySha256": "0cc7b74d1522803d6402a18388010ab840e4fa7327fbd9259c2de5fde7f580c0"
         }
       ],
       "sourcePolicy": "Published source"
@@ -1605,7 +1605,7 @@
           "file": "index.ts",
           "sha256": "a80668a9f991bc3fabf1eb4aaff2733700e0d72600813aaa7b518f3fb2e24211",
           "matchedLocal": false,
-          "repositorySha256": "a80668a9f991bc3fabf1eb4aaff2733700e0d72600813aaa7b518f3fb2e24211"
+          "repositorySha256": "ca012c688757925e533f02b7b3fd5bb540959d8e95fbf74cd2c91d80d082735d"
         },
         {
           "file": "validation.ts",
@@ -1625,7 +1625,7 @@
           "file": "index.ts",
           "sha256": "02edb0b6c8d910f08f168786a37e04f3ffb6f4199fb41a6a4b1c57ba636ddbec",
           "matchedLocal": true,
-          "repositorySha256": "bc893f9c543ad0bd8b96267b227afc0df7c3acc112c5f4948cdf50d810e5f8c8"
+          "repositorySha256": "cd56fa3640be79ec30ff2e6eb3fba5344f0e118987f2a6bda975bc4731600e47"
         },
         {
           "file": "assetValidation.ts",
@@ -1635,6 +1635,20 @@
         }
       ],
       "sourcePolicy": "Published source"
+    }
+  ],
+  "sharedFunctions": [
+    {
+      "file": "actor.ts",
+      "repositorySha256": "e7889203f8998471378311f7c0f0cabba8ce613c35eb2602eba293ca408d180f"
+    },
+    {
+      "file": "http.ts",
+      "repositorySha256": "a63532564d9ae4efdea8bd13488d9b823170bb35b216853ac9d1c611e31ddebe"
+    },
+    {
+      "file": "quota.ts",
+      "repositorySha256": "313c64cc41588126ab0353b2cf210cf0a7fbf3a8cf77351032e491feacbebda9"
     }
   ]
 }

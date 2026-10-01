@@ -1,11 +1,9 @@
+import { edgeBoundary, timedFetch } from '../_shared/http.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { validateFoodRequest } from './validation.ts';
+import { activeActor } from '../_shared/actor.ts';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
+const corsHeaders = {};
 const offHeaders = { 'User-Agent': 'Nello/1.0 (food lookup; https://nellonutri.com.br)' };
 const resultCache = new Map<string, { expires: number; value: unknown }>();
 let fatSecretToken: { value: string; expires: number } | null = null;
@@ -18,7 +16,7 @@ function json(status: number, body: unknown, extraHeaders: Record<string, string
 }
 
 async function externalJson(url: string, init: RequestInit = {}) {
-  const response = await fetch(url, { ...init, signal: AbortSignal.timeout(5000) });
+  const response = await timedFetch(url, { ...init, signal: AbortSignal.timeout(5000) });
   if (!response.ok) throw new Error('upstream_unavailable');
   return response.json();
 }
@@ -62,9 +60,10 @@ function remember(key: string, value: unknown) {
   resultCache.set(key, { expires: Date.now() + 60_000, value });
 }
 
-Deno.serve(async (req: Request) => {
+Deno.serve(edgeBoundary(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (req.method !== 'POST') return json(405, { error: 'method_not_allowed' });
+  await activeActor(req, ['nutritionist', 'patient', 'admin']);
 
   const authorization = req.headers.get('Authorization') || '';
   const token = /^Bearer\s+([^\s]+)$/i.exec(authorization)?.[1];
@@ -73,7 +72,7 @@ Deno.serve(async (req: Request) => {
   const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
   if (!supabaseUrl || !serviceKey) return json(503, { error: 'service_unavailable' });
 
-  const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
+  const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false }, global: { fetch: timedFetch } });
   const { data: { user }, error: authError } = await admin.auth.getUser(token);
   if (authError || !user) return json(401, { error: 'unauthorized' });
 
@@ -89,12 +88,12 @@ Deno.serve(async (req: Request) => {
   if (!payload) return json(400, { error: 'invalid_request' });
 
   const key = payload.action === 'search' ? `search:${payload.query.toLowerCase()}` : `product:${payload.productCode}`;
-  const hit = cached(key);
-  if (hit) return json(200, hit);
 
   const { data: allowed, error: quotaError } = await admin.rpc('claim_food_proxy_quota', { p_user_id: user.id });
   if (quotaError) return json(503, { error: 'service_unavailable' });
   if (!allowed) return json(429, { error: 'rate_limited' }, { 'Retry-After': '60' });
+  const hit = cached(key);
+  if (hit) return json(200, hit);
 
   try {
     if (payload.action === 'search') {
@@ -153,4 +152,4 @@ Deno.serve(async (req: Request) => {
   } catch {
     return json(502, { error: 'upstream_unavailable' });
   }
-});
+}));

@@ -28,6 +28,7 @@ export async function generatePdfViaEdge({ title, fileName, lines = [] }) {
     title: title || 'Documento',
     fileName: fileName || `documento-${Date.now()}.pdf`,
     lines: Array.isArray(lines) ? lines.slice(0, 1200) : [],
+    format: 'binary',
   };
 
   const { data, error } = await supabase.functions.invoke('generate-pdf', {
@@ -38,6 +39,11 @@ export async function generatePdfViaEdge({ title, fileName, lines = [] }) {
     throw new Error(error.message || 'Falha ao gerar PDF no servidor');
   }
 
+  if (data instanceof Blob && data.size > 0) {
+    triggerDownload(new Blob([data], { type: 'application/pdf' }), payload.fileName);
+    return;
+  }
+
   if (!data?.base64Pdf || !data?.fileName) {
     throw new Error('Resposta inválida da função de PDF');
   }
@@ -45,4 +51,3 @@ export async function generatePdfViaEdge({ title, fileName, lines = [] }) {
   const blob = base64ToBlob(data.base64Pdf);
   triggerDownload(blob, data.fileName);
 }
-

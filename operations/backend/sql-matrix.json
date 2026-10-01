@@ -231,6 +231,11 @@
       "file": "wave05_authorization_matrix.sql",
       "kind": "assertion-suite",
       "fixtures": []
+    },
+    {
+      "file": "wave06_edge_quotas.sql",
+      "kind": "assertion-suite",
+      "fixtures": []
     }
   ]
 }

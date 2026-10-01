@@ -1,19 +1,13 @@
+import { edgeBoundary, timedFetch } from '../_shared/http.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { verifyDocumentAssetBytes } from './assetValidation.ts';
+import { activeActor } from '../_shared/actor.ts';
+import { consumeQuota } from '../_shared/quota.ts';
 
-const ALLOWED_ORIGINS = new Set([
-  'https://nellonutri.com.br',
-  'https://www.nellonutri.com.br',
-  'http://localhost:5173',
-  'http://127.0.0.1:5173',
-  'http://localhost:4173',
-  'http://127.0.0.1:4173',
-]);
 
-function headersFor(req: Request): HeadersInit {
-  const origin = req.headers.get('origin');
+
+function headersFor(_req: Request): HeadersInit {
   return {
-    ...(origin && ALLOWED_ORIGINS.has(origin) ? { 'Access-Control-Allow-Origin': origin } : {}),
     'Access-Control-Allow-Headers': 'authorization, apikey, x-client-info, content-type',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Vary': 'Origin',
@@ -26,11 +20,11 @@ function response(req: Request, status: number, body: unknown) {
   return new Response(JSON.stringify(body), { status, headers: headersFor(req) });
 }
 
-Deno.serve(async (req: Request) => {
-  const origin = req.headers.get('origin');
-  if (origin && !ALLOWED_ORIGINS.has(origin)) return response(req, 403, { error: 'origin_not_allowed' });
+Deno.serve(edgeBoundary(async (req: Request) => {
   if (req.method === 'OPTIONS') return response(req, 200, { ok: true });
   if (req.method !== 'POST') return response(req, 405, { error: 'method_not_allowed' });
+  const actor = await activeActor(req, ['nutritionist', 'admin']);
+  await consumeQuota(actor.id, 'document');
 
   const authHeader = req.headers.get('authorization');
   const url = Deno.env.get('SUPABASE_URL');
@@ -51,12 +45,12 @@ Deno.serve(async (req: Request) => {
     return response(req, 400, { error: 'invalid_upload_id' });
   }
 
-  const authClient = createClient(url, anonKey, { auth: { persistSession: false } });
+  const authClient = createClient(url, anonKey, { auth: { persistSession: false }, global: { fetch: timedFetch } });
   const { data: authData, error: authError } = await authClient.auth.getUser(authHeader.slice(7));
   if (authError || !authData?.user) return response(req, 401, { error: 'invalid_session' });
   const actorId = authData.user.id;
 
-  const admin = createClient(url, serviceKey, { auth: { persistSession: false } });
+  const admin = createClient(url, serviceKey, { auth: { persistSession: false }, global: { fetch: timedFetch } });
   const { data: upload, error: uploadError } = await admin
     .from('document_asset_uploads')
     .select('id,professional_id,status,expires_at,storage_bucket,storage_path,mime_type,size_bytes')
@@ -88,6 +82,6 @@ Deno.serve(async (req: Request) => {
     p_size_bytes: verified.sizeBytes,
     p_mime_type: verified.mimeType,
   });
-  if (error) return response(req, 409, { error: error.message || 'asset_confirmation_failed' });
+  if (error) return response(req, 409, { error: 'asset_confirmation_failed' });
   return response(req, 200, data);
-});
+}));

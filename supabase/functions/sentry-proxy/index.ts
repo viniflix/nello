@@ -1,34 +1,6 @@
-const DEFAULT_ALLOWED_ORIGINS = [
-  'https://nellonutri.com.br',
-  'https://www.nellonutri.com.br',
-  'http://127.0.0.1:4173',
-  'http://localhost:4173',
-  'http://localhost:5173',
-];
-
-function allowedOrigins() {
-  const configured = (Deno.env.get('OBSERVABILITY_ALLOWED_ORIGINS') || '')
-    .split(',')
-    .map((origin) => origin.trim())
-    .filter(Boolean);
-
-  return new Set([...DEFAULT_ALLOWED_ORIGINS, ...configured]);
-}
-
-function corsHeaders(req: Request) {
-  const origin = req.headers.get('origin');
-  const headers: Record<string, string> = {
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Vary': 'Origin',
-  };
-
-  if (origin && allowedOrigins().has(origin)) {
-    headers['Access-Control-Allow-Origin'] = origin;
-  }
-
-  return headers;
-}
+import { edgeBoundary, timedFetch } from '../_shared/http.ts';
+import { consumeQuota } from '../_shared/quota.ts';
+function corsHeaders(_req: Request) { return {}; }
 
 function json(req: Request, status: number, body: unknown) {
   return new Response(JSON.stringify(body), {
@@ -45,13 +17,13 @@ async function requireAdmin(req: Request) {
   if (!authorization || !supabaseUrl || !anonKey) return null;
 
   const authHeaders = { authorization, apikey: anonKey };
-  const userResponse = await fetch(`${supabaseUrl}/auth/v1/user`, { headers: authHeaders });
+  const userResponse = await timedFetch(`${supabaseUrl}/auth/v1/user`, { headers: authHeaders });
   if (!userResponse.ok) return null;
 
   const user = await userResponse.json();
   if (!user?.id) return null;
 
-  const accessResponse = await fetch(`${supabaseUrl}/rest/v1/rpc/admin_access_status`, {
+  const accessResponse = await timedFetch(`${supabaseUrl}/rest/v1/rpc/admin_access_status`, {
     method: 'POST',
     headers: { ...authHeaders, 'content-type': 'application/json' },
     body: '{}',
@@ -61,12 +33,7 @@ async function requireAdmin(req: Request) {
   return access?.authorized === true ? user : null;
 }
 
-Deno.serve(async (req: Request) => {
-  const origin = req.headers.get('origin');
-  if (origin && !allowedOrigins().has(origin)) {
-    return json(req, 403, { error: 'Origin not allowed' });
-  }
-
+Deno.serve(edgeBoundary(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders(req) });
   }
@@ -79,6 +46,7 @@ Deno.serve(async (req: Request) => {
   if (!admin) {
     return json(req, 403, { error: 'Admin access required' });
   }
+  await consumeQuota(admin.id, 'sentry');
 
   const sentryToken = Deno.env.get('SENTRY_API_TOKEN') || Deno.env.get('SENTRY_AUTH_TOKEN');
   const sentryOrg = Deno.env.get('SENTRY_ORG') || 'nello';
@@ -103,6 +71,15 @@ Deno.serve(async (req: Request) => {
       return json(req, 400, { error: 'Invalid issue ID' });
     }
 
+    if (action === 'latest_event') {
+      const configuredProject = await timedFetch(`https://sentry.io/api/0/projects/${encodeURIComponent(sentryOrg)}/${encodeURIComponent(sentryProject)}/`, { headers: { Authorization: `Bearer ${sentryToken}` } });
+      const requestedIssue = await timedFetch(`https://sentry.io/api/0/issues/${issueId}/`, { headers: { Authorization: `Bearer ${sentryToken}` } });
+      if (!configuredProject.ok || !requestedIssue.ok) return json(req, 404, { error: 'issue_not_found' });
+      const project = await configuredProject.json();
+      const issue = await requestedIssue.json();
+      if (String(issue.project?.id) !== String(project.id) || !project.id) return json(req, 404, { error: 'issue_not_found' });
+    }
+
     const url = action === 'latest_event'
       ? new URL(`https://sentry.io/api/0/issues/${issueId}/events/latest/`)
       : new URL(
@@ -115,7 +92,7 @@ Deno.serve(async (req: Request) => {
       url.searchParams.set('query', correlation ? `correlation.id:${correlation}` : 'is:unresolved');
     }
 
-    const response = await fetch(url, {
+    const response = await timedFetch(url, {
       headers: { Authorization: `Bearer ${sentryToken}` },
     });
 
@@ -191,4 +168,4 @@ Deno.serve(async (req: Request) => {
     });
     return json(req, 500, { error: 'Unable to query Sentry' });
   }
-});
+}));

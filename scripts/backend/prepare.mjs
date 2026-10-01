@@ -15,6 +15,11 @@ for (const m of manifest.migrations) {
   if (sha(readFileSync(join(source, m.file), 'utf8')) !== m.sha256) throw Error(`Applied migration checksum drift: ${m.file}`);
 }
 console.log(`Verified ${actual.length} immutable applied migrations.`);
+const sharedActual = readdirSync(resolve('supabase/functions/_shared')).sort();
+if (JSON.stringify(sharedActual) !== JSON.stringify((manifest.sharedFunctions || []).map(file => file.file).sort())) throw Error('Unreviewed shared Edge source');
+for (const shared of manifest.sharedFunctions || []) {
+  if (sha(readFileSync(resolve('supabase/functions/_shared', shared.file),'utf8')) !== shared.repositorySha256) throw Error(`Shared Edge source checksum drift: ${shared.file}`);
+}
 for (const fn of manifest.functions) {
   for (const f of fn.files) {
     if (sha(readFileSync(resolve('supabase/functions', fn.slug, f.file), 'utf8')) !== f.repositorySha256) {
