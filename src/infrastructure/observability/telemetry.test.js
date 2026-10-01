@@ -19,6 +19,7 @@ vi.mock('@/infrastructure/analytics/posthog', () => ({
   Events: { OPERATION_FAILED: 'operation_failed' },
   identifyUser: vi.fn(),
   resetUser: vi.fn(),
+  getObservabilitySessionId: vi.fn(() => '018d3b7f-81d8-7abc-8f12-aabbccddeeff'),
   track: vi.fn(),
 }));
 

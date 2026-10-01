@@ -1,0 +1,30 @@
+name: Production observation
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: production-observation
+  cancel-in-progress: false
+jobs:
+  observe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - name: Check live health, assets, headers, status and real 404 contracts
+        run: node scripts/availability/production-check.mjs
+        env:
+          SENTRY_DSN: ${{ secrets.PRODUCTION_MONITOR_SENTRY_DSN }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: production-observation-${{ github.run_id }}
+          path: production-check.json
+          retention-days: 7

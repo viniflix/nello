@@ -3,6 +3,7 @@ import {
   Events,
   identifyUser,
   resetUser,
+  getObservabilitySessionId,
   track,
 } from '@/infrastructure/analytics/posthog';
 
@@ -24,9 +25,10 @@ function safeFailureReason(error) {
 }
 
 function normalizeError(error, operation = 'operation') {
-  const code = error?.code ? `[${String(error.code)}] ` : '';
+  const code = /^[A-Z0-9_]{1,40}$/.test(String(error?.code || '')) ? `[${String(error.code)}] ` : '';
   const normalized = new Error(`${code}${operation} failed (${safeFailureReason(error)})`);
-  normalized.name = error?.name || 'OperationalError';
+  normalized.name = ['TypeError', 'RangeError', 'AbortError', 'Error'].includes(error?.name) ? error.name : 'OperationalError';
+  if (typeof error?.stack === 'string') normalized.stack = `${normalized.name}: ${normalized.message}\n${error.stack.split('\n').filter(line => /^\s+at /.test(line)).join('\n')}`;
   return normalized;
 }
 
@@ -66,14 +68,18 @@ export function setObservabilityUser(user) {
 export function clearObservabilityUser() {
   Sentry.setUser(null);
   resetUser();
+  recentErrors.clear();
+  Sentry.setTag('user.type', 'anonymous');
+  Sentry.setTag('user.is_admin', 'false');
+  Sentry.setTag('session.id', '');
 }
 
 export function captureOperationalError(error, context = {}) {
-  const operation = String(context.operation || 'unknown_operation').slice(0, 120);
+  const operation = /^[a-z0-9_.:-]{1,120}$/i.test(context.operation || '') ? context.operation : 'unknown_operation';
   const normalized = normalizeError(error, operation);
   const module = String(context.module || 'unknown').slice(0, 80);
   const source = String(context.source || 'application').slice(0, 40);
-  const errorCode = error?.code ? String(error.code).slice(0, 40) : 'unknown';
+  const errorCode = /^[A-Z0-9_]{1,40}$/.test(String(error?.code || '')) ? String(error.code) : 'unknown';
   const failureReason = safeFailureReason(error);
   const status = safeStatus(error);
   const route = typeof window !== 'undefined' ? window.location.pathname : 'server';
@@ -84,6 +90,7 @@ export function captureOperationalError(error, context = {}) {
 
   const properties = {
     correlation_id: id,
+    session_id: getObservabilitySessionId(),
     operation,
     module,
     source,
@@ -98,6 +105,7 @@ export function captureOperationalError(error, context = {}) {
     scope.setLevel(status === 403 || errorCode === '42501' ? 'warning' : 'error');
     scope.setTags({
       'correlation.id': id,
+      'session.id': properties.session_id || 'unavailable',
       'error.source': source,
       'error.module': module,
       'error.code': errorCode,

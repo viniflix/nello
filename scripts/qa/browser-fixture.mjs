@@ -47,5 +47,5 @@ insert into public.nutritionist_patients(nutritionist_id,patient_id,status) valu
 }
 mkdirSync('.backend-ci/browser-runtime',{recursive:true});
 writeFileSync('.backend-ci/browser-runtime/fixture.json',JSON.stringify({url,anonKey:status.ANON_KEY,password,personas}),{mode:0o600});
-writeFileSync('.env.production.local', `VITE_SUPABASE_URL=${url}\nVITE_SUPABASE_ANON_KEY=${status.ANON_KEY}\nVITE_POSTHOG_KEY=\nVITE_SENTRY_DSN=\n` ,{mode:0o600});
+writeFileSync('.env.production.local', `VITE_SUPABASE_URL=${url}\nVITE_SUPABASE_ANON_KEY=${status.ANON_KEY}\nVITE_PUBLIC_POSTHOG_KEY=\nVITE_PUBLIC_POSTHOG_HOST=\nVITE_SENTRY_DSN=\n` ,{mode:0o600});
 console.log('Nine synthetic Auth personas created on loopback only; production credentials unavailable.');

@@ -1,39 +1,23 @@
-# Execução e recuperação de releases do Nello
+# Entrega e recuperação do Nello
 
-Responsável técnico: executor da wave. Responsável pelo produto e contas dos provedores: viniflix. Domínio canônico e critérios iniciais em `release-policy.json`. Metas são objetivos iniciais; não representam SLO medido nem backup contratado.
+O fluxo é desenvolvimento na main, validação local com dados sintéticos e deploy direto em produção. Um banco permanente; nenhuma branch, preview, staging, tag ou espera fixa é pré-requisito.
 
-## Antes de uma mudança
+## Antes de publicar
 
-## Severidades e parada
+Revisar contratos e consumidores; executar verify:release e, para alterações clínicas/de banco, reconstrução, SQL/RLS/concorrência e browser em QA local isolado. Preservar arquivos locais e históricos aplicados. Conferir recuperação, dados incompatíveis e ordem de aplicação antes de SQL em produção. Nenhum reset, seed, injeção de falha ou fixture automática em produção.
 
-- SEV1: acesso cruzado, perda/corrupção de dados, cálculo clínico incorreto ou segredo/PII clínica na telemetria. Suspender promoção imediatamente; preservar evidências sem PII, conter o caminho afetado e recuperar a última versão compatível.
-- SEV2: indisponibilidade de login/jornada crítica ou falhas inesperadas recorrentes. Suspender promoção e recuperar se atribuível ao candidato.
-- SEV3: degradação parcial com recuperação disponível. Permanecer na wave até testes e consumidores passarem.
-- Erro esperado de validação, vínculo ou autenticação não é SEV1 sem evidência de acesso incorreto. Separar essas recusas de falha técnica.
+Commit validado com autoria Vinicius Costa e push apenas da main. O GitHub confirma os gates e a instalação; Vercel entrega diretamente a main. Não testar reparos por repetidos pushes.
 
-## Deploy e observação
+## Validação imediata e observação contínua
 
-Revisar diff e gates e enviar o candidato na branch antes de integrar a main. Conferir **todos** os workflows do SHA e o deployment Vercel desse mesmo SHA: Quality, reconstrução, regressão da instalação e Vercel devem terminar verdes. GitHub verde não autoriza promoção quando Vercel está Error/pending. Capturar os resultados atuais pelas APIs dos provedores em evidência privada (`sha`, `project`, `github.checks`, `github.runs`, `candidateDeployment`) e executar `node scripts/release/readiness.mjs <SHA> <evidência.json>`. Saída não zero bloqueia a integração; não usar um arquivo antigo para outro commit nem tratar uma suíte SQL incompleta como aprovada. O script valida a evidência, não configura proteção da branch no provedor.
+Conferir todos os jobs, deployment READY do SHA exato, domínio canônico, assets/headers, health real, Auth, Storage, REST, status e 404. Capturar evidência atual e executar readiness e controlledRelease como verificação da produção já publicada, sem promover canário ou aguardar cronômetro.
 
-Depois desse gate, integrar sem force push e enviar a main. Confirmar deployment de produção `READY`, SHA exato e domínio canônico. Executar `node scripts/qa/release-smoke.mjs` e smoke sintético dos contratos afetados. Consultar Sentry/PostHog desde o deploy, separados por release e ambiente; internos separados de externos. Sem tráfego, ausência de erro não comprova a jornada.
+Sentry acompanha falhas/performance; PostHog navegação/operações com IDs técnicos por usuário/sessão e correlação; monitor externo valida disponibilidade sem depender de usuários ou desta máquina. Não coletar prontuários, tokens ou texto livre. Replay e console bruto ficam desativados. Consultar sinais pelo release e ambiente e comprovar uma ocorrência técnica controlada. Ausência de alertas sem uso não comprova correção clínica.
 
-Para artefatos operacionais sem alteração funcional, observar ao menos cinco minutos e comprovar que o código funcional permaneceu igual; a identificação de release pode mudar os bytes do bundle. Para mudanças runtime, observar ao menos 30 minutos; mudanças clínicas, de dados ou autorização exigem canário e janela mínima de 24 horas antes de expansão integral. Continuar coleta durante essa janela sem declarar conclusão antecipada.
+## Contenção e recuperação
 
-Somente criar `wave-XX-verified` depois dos gates, domínio, SHA e smoke confirmados. Nunca mover a tag publicada. Registrar decisão por achado: corrigido, mitigado, aceito explicitamente ou não reproduzido com evidência. Plano/documentação não encerram defeito runtime.
+Acesso cruzado, perda/corrupção de dados, cálculo clínico incorreto, segredo ou dado clínico na telemetria interrompem o avanço. Conter o caminho afetado e recuperar a última aplicação compatível quando a regressão for atribuível à entrega.
 
-## Rollback de frontend
+Registrar o deployment anterior e confirmar que ainda está READY no mesmo projeto. Antes de rollback automático, conferir que o domínio continua no deployment desta entrega: não sobrescrever uma publicação concorrente. Rollback do frontend não desfaz SQL, Auth ou Storage. Migrações exigem recuperação própria; não reaplicar SQL histórico nem ajustar dados clínicos silenciosamente.
 
-1. Identificar o deployment anterior `READY`, seu SHA e contratos de banco/functions que permanecem compatíveis.
-2. Via Vercel selecionar esse deployment como rollback ou usar `vercel rollback <url-anterior> --yes`; verificar a conta/projeto antes de confirmar.
-3. Confirmar alias do domínio, SHA, assets, login e smoke das jornadas afetadas. Registrar horário e incidente. Parar promoções até a correção.
-4. Alternativa quando rollback de alias não estiver disponível: `git revert <commit-da-wave>` em branch de correção, gates, integração e novo deploy. Nunca reset/force push da main.
-
-Referência oficial: [Vercel rollback](https://vercel.com/docs/cli/rollback). Ensaio documental verifica identidade, permissão de leitura e disponibilidade da referência; não equivale a restauração realizada.
-
-## Backend e recuperação
-
-Rollback de frontend não desfaz SQL, Storage, Auth ou Edge Functions. Preservar contrato antigo nas migrações. Reimplantar função anterior somente com fonte/versionamento e configuração JWT comprovados. DDL irreversível exige backup e restore isolado comprovado; na ausência dessas evidências, bloquear DDL. RTO 60 min/RPO 15 min são objetivos a validar na Wave 3 e certificar na Wave 16.
-
-## Retomada
-
-Ler checkpoint e seção da wave, conferir Git, SHA/estado Vercel e tag. Retomar a primeira verificação não comprovada. Se houve push, verificar o deployment existente antes de criar outro. Preservar logs de falha; classificar defeito da wave, preexistente ou provedor. Corrigir e retestar os consumidores antes de avançar.
+Registrar evidências e limites reais. Avançar para a próxima wave somente com gates aplicáveis aprovados e sem regressão crítica conhecida. A observação continua em produção enquanto novas correções locais avançam.

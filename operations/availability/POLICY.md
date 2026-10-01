@@ -22,4 +22,4 @@ GNU tar do ambiente Linux de QA preserva os atributos estendidos dos objetos. Bu
 
 ## Gate de publicação
 
-Primeiro: testes completos locais, cobertura, build, orçamento, auditoria, browser Windows/Linux, smoke de disponibilidade e restore. Depois: um único candidato para validar CI e deployment do mesmo SHA. Promoção de produção exige resolver os gates anteriores, smoke do candidato e domínio, rollback disponível e observação exigida por `RELEASE_RUNBOOK.md`. Health/404 novos são obrigatórios no smoke do candidato Wave 3; o alvo anterior de rollback usa o contrato correspondente à sua versão. Não certificar a Wave 3 nem iniciar a Wave 4 com checks pendentes.
+Primeiro: validação local proporcional, incluindo SQL e jornadas afetadas. Depois: um único push validado na main e deploy direto de produção. Confirmar todos os jobs, instalação, SHA, domínio, smoke e recuperação. Observação contínua em Sentry/PostHog e monitor externo; nenhuma espera fixa, canário separado ou tag é gate universal. Não certificar entrega com checks pendentes.

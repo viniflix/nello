@@ -1,8 +1,6 @@
 name: Backend reconstruction
 on:
   push:
-    branches: [main, 'codex/wave-*']
-  pull_request:
     branches: [main]
 permissions:
   contents: read

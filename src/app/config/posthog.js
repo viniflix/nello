@@ -7,8 +7,9 @@ export function createPosthogOptions(env) {
     autocapture: false,
     capture_pageview: 'history_change',
     capture_pageleave: true,
-    capture_exceptions: true,
-    capture_dead_clicks: true,
+    // Handled failures use the minimized, correlated operation_failed contract.
+    capture_exceptions: false,
+    capture_dead_clicks: false,
     // Health data must not be replayed until a consent/legal-basis gate exists.
     disable_session_recording: true,
     enable_recording_console_log: false,

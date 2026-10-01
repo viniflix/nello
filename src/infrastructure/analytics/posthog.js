@@ -1,4 +1,5 @@
 import posthog from 'posthog-js';
+import { technicalIdentity } from '@/infrastructure/observability/technicalIdentity';
 
 export const POSTHOG_KEY = import.meta.env.VITE_PUBLIC_POSTHOG_KEY;
 export const POSTHOG_HOST = import.meta.env.VITE_PUBLIC_POSTHOG_HOST || 'https://us.i.posthog.com';
@@ -17,6 +18,15 @@ const SENSITIVE_KEYS = new Set([
   'patient_name',
   'phone',
   'username',
+  'authorization',
+  'password',
+  'token',
+  'access_token',
+  'refresh_token',
+  'cookie',
+  'cookies',
+  'headers',
+  'body',
 ]);
 
 function normalizeKey(key) {
@@ -31,7 +41,7 @@ export function scrubAnalyticsString(value) {
     .replace(/(\/f\/)[^/?#\s]+/gi, '$1:token')
     .replace(/(\/verificar-documento\/)[^/?#\s]+/gi, '$1:code')
     .replace(/\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b/g, '[CPF]')
-    .replace(/\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/gi, '[UUID]')
+    .replace(/\b[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/gi, '[UUID]')
     .replace(/(https?:\/\/[^\s?#]+)[?#][^\s]*/gi, '$1');
 }
 
@@ -49,14 +59,34 @@ export function sanitizeAnalyticsProperties(value) {
 
 export function sanitizePosthogEvent(captureResult) {
   if (!captureResult) return null;
+  const allowed = new Set(['distinct_id', '$anon_distinct_id', '$device_id', '$session_id', '$window_id', '$insert_id',
+    '$current_url', '$pathname', '$host', '$browser', '$browser_version', '$os', '$os_version',
+    '$device_type', '$screen_height', '$screen_width', '$viewport_height', '$viewport_width',
+    '$lib', '$lib_version', '$is_identified', '$process_person_profile', '$set', '$set_once',
+    'user_type', 'is_admin', 'correlation_id', 'session_id', 'operation', 'module', 'source',
+    'error_code', 'failure_reason', 'http_status', 'route', 'duration_ms', 'result_count',
+    'pages', 'page', 'flow', 'outcome', 'platform', 'app_release', 'environment', 'pixel_ratio']);
+  const original = captureResult.properties || {};
+  const properties = sanitizeAnalyticsProperties(Object.fromEntries(Object.entries(original).filter(([key]) => allowed.has(key))));
+  for (const key of ['distinct_id', '$anon_distinct_id', '$device_id', '$session_id', '$window_id', '$insert_id', 'correlation_id', 'session_id']) {
+    const id = technicalIdentity(original[key]);
+    if (id) properties[key] = id;
+  }
+  for (const key of ['$set', '$set_once']) {
+    if (original[key]) properties[key] = sanitizeAnalyticsProperties(Object.fromEntries(Object.entries(original[key]).filter(([name]) => ['user_type', 'is_admin'].includes(name))));
+  }
   return {
     ...captureResult,
     properties: {
-      ...sanitizeAnalyticsProperties(captureResult.properties || {}),
+      ...properties,
       app_release: import.meta.env.VITE_APP_RELEASE || 'development',
       environment: import.meta.env.MODE || 'development',
     },
   };
+}
+
+export function getObservabilitySessionId() {
+  try { return technicalIdentity(posthog.get_session_id?.()); } catch { return null; }
 }
 
 export function identifyUser(user) {
@@ -85,12 +115,14 @@ export function resetUser() {
 export function track(event, properties = {}) {
   try {
     if (!POSTHOG_KEY) return;
-    posthog.capture(event, {
-      ...sanitizeAnalyticsProperties(properties),
+    posthog.capture(event, sanitizePosthogEvent({ event, properties: {
+      ...properties,
+      session_id: getObservabilitySessionId(),
+      pixel_ratio: typeof window !== 'undefined' ? window.devicePixelRatio : undefined,
       platform: 'nello',
       app_release: import.meta.env.VITE_APP_RELEASE || 'development',
       environment: import.meta.env.MODE || 'development',
-    });
+    } }).properties);
   } catch (err) {
     if (import.meta.env.DEV) console.warn('[PostHog] track failed:', err.message);
   }
