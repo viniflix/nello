@@ -160,5 +160,8 @@ try {
   writeFileSync('.backend-ci/auth-onboarding-results/result.json',JSON.stringify({passed:true,assertions,realAuth:true,syntheticData:true,productionData:false,capturedAt:new Date().toISOString()},null,2));
   console.log(`PASS: ${assertions} actual Auth/onboarding/privacy/quota assertions, loopback only.`);
 } finally {
-  for(const id of created) { const removed=await service.auth.admin.deleteUser(id);if(removed.error)throw Error('Synthetic Auth cleanup failed'); }
+  for(const id of created) {
+    sql(`delete from public.verification_events where verification_id in (select id from public.professional_verifications where user_id='${id}') and metadata->>'operation'='prelaunch_tester_continuity';`);
+    const removed=await service.auth.admin.deleteUser(id);if(removed.error)throw Error('Synthetic Auth cleanup failed');
+  }
 }

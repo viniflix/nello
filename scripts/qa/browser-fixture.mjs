@@ -36,7 +36,7 @@ for (const persona of JSON.parse(readFileSync('operations/synthetic-personas.jso
     user_metadata:{ user_type:'nutritionist', name:'QA ' + persona.key, legal_version:'2026-10-01.2',terms_accepted:true,analytics_allowed:false }, ...(persona.status==='disabled'?{ban_duration:'100h'}:{}) });
   if (error) throw error;
   if (!/^[a-f0-9-]{36}$/.test(data.user.id)) throw Error('Invalid synthetic user identifier');
-  if(type!=='nutritionist') sql(`delete from public.professional_verifications where user_id='${data.user.id}';update public.user_profiles set user_type='patient' where id='${data.user.id}';`);
+  if(type!=='nutritionist') sql(`delete from public.verification_events where verification_id in (select id from public.professional_verifications where user_id='${data.user.id}');delete from public.professional_verifications where user_id='${data.user.id}';update public.user_profiles set user_type='patient' where id='${data.user.id}';`);
   personas[persona.key] = { ...persona, id:data.user.id };
 }
 const id = key=>personas[key].id;
