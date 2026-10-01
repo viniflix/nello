@@ -25,4 +25,11 @@ describe('restore explicit default owner ACL without relaxing catalog comparison
     expect(build([{ ...relation, name: "patient's\"table" }])).toContain("patient''s");
     expect(() => defaultOwnerAclSql({ relations: [relation] }, 'postgres')).toThrow('isolated');
   });
+  it('permits only generated Wave 3 recovery clones while checking the exact runtime database', () => {
+    expect(defaultOwnerAclSql({ relations: [relation] }, 'nello_wave03_recovery_abcdef012345'))
+      .toContain("current_database() <> 'nello_wave03_recovery_abcdef012345'");
+    for (const database of ['postgres', 'nello_wave03_recovery_', 'nello_wave03_recovery_abcdef012345_suffix', "nello_wave03_recovery_abcdef012345';"]) {
+      expect(() => defaultOwnerAclSql({ relations: [relation] }, database)).toThrow('isolated');
+    }
+  });
 });

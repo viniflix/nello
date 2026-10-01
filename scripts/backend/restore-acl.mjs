@@ -2,7 +2,7 @@
 // Materialize that representation in the disposable clone, without changing any
 // effective privileges or accepting drift in the independent catalog comparator.
 export function defaultOwnerAclSql(catalog, database) {
-  if (database !== 'nello_qa_wave02_template') throw Error('ACL materialization requires the isolated restore database');
+  if (database !== 'nello_qa_wave02_template' && !/^nello_wave03_recovery_[a-f0-9]{12}$/.test(database)) throw Error('ACL materialization requires the isolated restore database');
   const literal = (value) => "'" + value.replaceAll("'", "''") + "'";
   const relations = catalog.relations.filter((r) => ['public', 'private'].includes(r.schema)
     && ['r', 'p'].includes(r.kind) && /^[a-z_][a-z0-9_]*$/.test(r.owner)

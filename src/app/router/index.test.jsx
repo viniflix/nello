@@ -1,15 +1,18 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import AppRouter from './index';
+import { afterEach } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   user: null,
+  loading: false,
 }));
+afterEach(() => { mocks.loading = false; vi.unstubAllGlobals(); });
 
 vi.mock('@/contexts/AuthContext', () => ({
-  useAuth: () => ({ user: mocks.user, loading: false }),
+  useAuth: () => ({ user: mocks.user, loading: mocks.loading }),
 }));
 vi.mock('@/contexts/ChatContext', () => ({
   ChatProvider: ({ children }) => children,
@@ -35,15 +38,23 @@ function renderUnknownRoute() {
 }
 
 describe('fallback de rotas desconhecidas', () => {
-  it('leva paciente autenticado para o portal correto', async () => {
+  it('exibe o status enquanto o serviço de autenticação ainda está carregando', () => {
+    mocks.loading = true;
+    vi.stubGlobal('fetch', vi.fn(() => new Promise(() => {})));
+    render(<MemoryRouter initialEntries={['/status']}><AppRouter /></MemoryRouter>);
+    expect(screen.getByRole('heading', { name: 'Status do Nello' })).toBeInTheDocument();
+  });
+  it('preserva a URL inválida e informa o erro ao paciente autenticado', () => {
     mocks.user = { profile: { user_type: 'patient', is_admin: false } };
     renderUnknownRoute();
-    await waitFor(() => expect(screen.getByLabelText('rota atual')).toHaveTextContent('/patient'));
+    expect(screen.getByLabelText('rota atual')).toHaveTextContent('/nutritionist/dashboard');
+    expect(screen.getByRole('heading', { name: 'Página não encontrada' })).toBeInTheDocument();
   });
 
-  it('leva visitante para o login', async () => {
+  it('informa página inexistente ao visitante sem redirecionar em silêncio', () => {
     mocks.user = null;
     renderUnknownRoute();
-    await waitFor(() => expect(screen.getByLabelText('rota atual')).toHaveTextContent('/login'));
+    expect(screen.getByLabelText('rota atual')).toHaveTextContent('/nutritionist/dashboard');
+    expect(screen.getByRole('link', { name: 'Voltar ao início' })).toHaveAttribute('href', '/');
   });
 });

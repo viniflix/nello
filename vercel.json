@@ -4,7 +4,275 @@
   "buildCommand": "npm run build",
   "rewrites": [
     {
-      "source": "/((?!assets/).*)",
+      "source": "/login",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/register",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/confirm-signup",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/update-password",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/convite",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/auth/v1/verify",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/auth/verify",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/nutritionist",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/nutritionist/profile",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/nutritionist/notifications",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/nutritionist/calculations",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/nutritionist/patients",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/nutritionist/patients/:patientId/hub",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/nutritionist/patients/:patientId/anamnese",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/nutritionist/patients/:patientId/anamnese/new",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/nutritionist/patients/:patientId/anamnese/:anamnesisId/edit",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/nutritionist/patients/:patientId/anthropometry",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/nutritionist/patients/:patientId/meal-plan",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/nutritionist/patients/:patientId/meal-plan/:planId/summary",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/nutritionist/patients/:patientId/energy-expenditure",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/nutritionist/patients/:patientId/lab-results",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/nutritionist/patients/:patientId/goals",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/nutritionist/patients/:patientId/food-diary",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/nutritionist/patients/:patientId/achievements",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/nutritionist/patients/:patientId/photos",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/nutritionist/alerts",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/nutritionist/chat",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/nutritionist/chat/:patientId",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/nutritionist/food-bank",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/nutritionist/financial",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/nutritionist/agenda",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/nutritionist/message-templates",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/nutritionist/checkins",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/nutritionist/templates",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/nutritionist/templates/new/:type",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/nutritionist/templates/edit/:type/:id",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/nutritionist/templates/forms/new",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/nutritionist/templates/forms/:templateId/edit",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/nutritionist/templates/checkins/new",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/nutritionist/templates/checkins/:templateId/edit",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/nutritionist/foods",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/patient",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/patient/invites",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/patient/diario",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/patient/progresso",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/patient/chat",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/patient/perfil",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/patient/editar-perfil",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/patient/conquistas",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/patient/registros-clinicos",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/patient/add-food/:mealId?",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/patient/add-meal",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/patient/checkin/:sessionId",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/admin",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/admin/dashboard",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/admin/bugs",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/admin/users",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/admin/users/:id",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/admin/financial",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/admin/study",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/admin/operations",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/admin/security",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/admin/verifications",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/admin/privacy",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/f/:token",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/verificar-documento/:code?",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/status",
       "destination": "/index.html"
     }
   ],

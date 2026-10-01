@@ -3,8 +3,9 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const config = JSON.parse(readFileSync(resolve(process.cwd(), 'vercel.json'), 'utf8'));
-const spaRewrite = config.rewrites.find((rewrite) => rewrite.destination === '/index.html');
-const rewritePattern = new RegExp(`^${spaRewrite.source}$`);
+const rewritePatterns = config.rewrites.filter(rewrite => rewrite.destination === '/index.html')
+  .map(rewrite => new RegExp(`^${rewrite.source.replace(/\/:\w+\?/g, '(?:/[^/]+)?').replace(/:\w+/g, '[^/]+')}/?$`));
+const rewritePattern = { test: path => rewritePatterns.some(pattern => pattern.test(path)) };
 const catchAllHeaders = config.headers.find((entry) => entry.source === '/(.*)')?.headers || [];
 const contentSecurityPolicy = catchAllHeaders.find((header) => header.key === 'Content-Security-Policy')?.value || '';
 
@@ -17,6 +18,11 @@ describe('roteamento da SPA na Vercel', () => {
   it('não transforma chunks ausentes em HTML', () => {
     expect(rewritePattern.test('/assets/MealPlanPage-old.js')).toBe(false);
     expect(rewritePattern.test('/assets/index-old.css')).toBe(false);
+    expect(rewritePattern.test('/api/health')).toBe(false);
+    expect(rewritePattern.test('/api/missing')).toBe(false);
+    expect(rewritePattern.test('/pagina-que-nao-existe')).toBe(false);
+    expect(rewritePattern.test('/patient/rota-inexistente')).toBe(false);
+    expect(rewritePattern.test('/robots.txt')).toBe(false);
   });
 });
 

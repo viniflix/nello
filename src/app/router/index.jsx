@@ -1,5 +1,5 @@
 import React, { Suspense } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { ChatProvider } from '@/contexts/ChatContext';
 import { PageLoadingFallback } from './routeGuards';
@@ -10,6 +10,8 @@ import { adminRoutes } from './adminRoutes';
 import PresenceGlobal from '@/components/PresenceGlobal';
 import { getHomePath } from './homePath';
 import { lazyWithReload } from '@/lib/utils/lazyWithReload';
+import StatusPage from '@/pages/public/StatusPage';
+import NotFoundPage from '@/pages/public/NotFoundPage';
 
 // Rota Omnichannel Public Facing (Sem Auth Block)
 const PatientFacingAnamnesis = lazyWithReload(() => import('@/pages/public/anamnesis/PatientFacingUi.jsx'), 'public:anamnesis');
@@ -17,6 +19,10 @@ const DocumentAuthenticityPage = lazyWithReload(() => import('@/pages/public/Doc
 
 const AppRouter = () => {
   const { user, loading } = useAuth();
+  const { pathname } = useLocation();
+
+  // Operational status must remain readable while authentication is unavailable.
+  if (pathname === '/status' || pathname === '/status/') return <StatusPage />;
 
   if (loading) {
     return <PageLoadingFallback />;
@@ -39,7 +45,7 @@ const AppRouter = () => {
               
               {/* Rotas de redirecionamento */}
               <Route path="/" element={<Navigate to={getHomePath(user)} replace />} />
-              <Route path="*" element={<Navigate to={getHomePath(user)} replace />} />
+              <Route path="*" element={<NotFoundPage />} />
             </Routes>
           </Suspense>
         </div>

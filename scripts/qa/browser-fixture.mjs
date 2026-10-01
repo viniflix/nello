@@ -4,14 +4,27 @@ import { execFileSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 import { candidateMigrations } from '../backend/candidate-migrations.mjs';
+import { applyFixtureCandidates } from './fixture-candidates.mjs';
+import { inspectHealth } from '../../operations/availability/health.mjs';
 assertIsolatedRuntime();
 const status = JSON.parse(execFileSync(supabaseCommand,supabaseArgs(['status','--workdir','.backend-ci','--output','json']), { encoding: 'utf8' }));
 const api = new URL(status.API_URL);
-if (api.protocol !== 'http:' || !['127.0.0.1','localhost'].includes(api.hostname) || api.port !== '54321') throw Error('Loopback disposable Supabase required.');
-const sql = input => execFileSync('docker', ['exec', '-i', '-e', 'PGPASSWORD=postgres', 'supabase_db_nello-reconstruction', 'psql', '-X', '-h', '127.0.0.1', '-U', 'supabase_admin', '-d', 'postgres', '-t', '-A', '-v', 'ON_ERROR_STOP=1'], { input, encoding: 'utf8', timeout: 30000 });
+const project = readFileSync('.backend-ci/supabase/config.toml', 'utf8').match(/^project_id\s*=\s*"([^"]+)"/m)?.[1];
+const qaPort = { 'nello-reconstruction': '54321', 'nello-wave03-qa': '55321' }[project];
+if (api.protocol !== 'http:' || !['127.0.0.1','localhost'].includes(api.hostname) || !qaPort || api.port !== qaPort) throw Error('Registered loopback disposable Supabase required.');
+const sql = input => execFileSync('docker', ['exec', '-i', '-e', 'PGPASSWORD=postgres', `supabase_db_${project}`, 'psql', '-X', '-h', '127.0.0.1', '-U', 'supabase_admin', '-d', 'postgres', '-t', '-A', '-v', 'ON_ERROR_STOP=1'], { input, encoding: 'utf8', timeout: 30000 });
 if (sql('select (select count(*) from auth.users)+(select count(*) from public.user_profiles);').trim() !== '0') throw Error('Browser fixture requires empty reconstructed accounts.');
-for(const migration of candidateMigrations())sql(migration.content);
-const url = 'http://localhost:54321';
+applyFixtureCandidates(sql, candidateMigrations());
+const url = `http://localhost:${qaPort}`;
+// A CLI reset can finish while Auth/Storage are still reconnecting. Wait on
+// read-only contracts before creating accounts; never retry account mutations.
+let ready = 0;
+for (let attempt = 0; attempt < 30 && ready < 3; attempt++) {
+  const health = await inspectHealth({ env: { NELLO_LOCAL_QA: 'isolated', SUPABASE_URL: url, SUPABASE_ANON_KEY: status.ANON_KEY } });
+  ready = health.status === 'operational' ? ready + 1 : 0;
+  if (ready < 3) await new Promise(resolve => setTimeout(resolve, 1000));
+}
+if (ready < 3) throw Error('Disposable services did not become ready after reconstruction.');
 const admin = createClient(url, status.SERVICE_ROLE_KEY, { auth: { persistSession:false, autoRefreshToken:false } });
 const password = 'Qa1!' + randomBytes(24).toString('hex');
 const personas = {};
