@@ -68,6 +68,9 @@ export function sanitizePosthogEvent(captureResult) {
     'pages', 'page', 'flow', 'outcome', 'platform', 'app_release', 'environment', 'pixel_ratio']);
   const original = captureResult.properties || {};
   const properties = sanitizeAnalyticsProperties(Object.fromEntries(Object.entries(original).filter(([key]) => allowed.has(key))));
+  // The SDK needs its configured public project key to route the event.
+  // Never preserve arbitrary tokens or any authentication credentials.
+  if (POSTHOG_KEY && original.token === POSTHOG_KEY) properties.token = POSTHOG_KEY;
   for (const key of ['distinct_id', '$anon_distinct_id', '$device_id', '$session_id', '$window_id', '$insert_id', 'correlation_id', 'session_id']) {
     const id = technicalIdentity(original[key]);
     if (id) properties[key] = id;
@@ -75,7 +78,7 @@ export function sanitizePosthogEvent(captureResult) {
   for (const key of ['$set', '$set_once']) {
     if (original[key]) properties[key] = sanitizeAnalyticsProperties(Object.fromEntries(Object.entries(original[key]).filter(([name]) => ['user_type', 'is_admin'].includes(name))));
   }
-  return {
+  const result = {
     ...captureResult,
     properties: {
       ...properties,
@@ -83,6 +86,11 @@ export function sanitizePosthogEvent(captureResult) {
       environment: import.meta.env.MODE || 'development',
     },
   };
+  // The SDK also sends person updates at the envelope root, not just properties.
+  for (const key of ['$set', '$set_once']) {
+    if (captureResult[key]) result[key] = sanitizeAnalyticsProperties(Object.fromEntries(Object.entries(captureResult[key]).filter(([name]) => ['user_type', 'is_admin'].includes(name))));
+  }
+  return result;
 }
 
 export function getObservabilitySessionId() {

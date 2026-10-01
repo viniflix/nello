@@ -3,6 +3,13 @@ import { sanitizeAnalyticsProperties, sanitizePosthogEvent } from './posthog';
 vi.mock('posthog-js', () => ({ default: { capture: vi.fn(), get_session_id: () => '018d3b7f-81d8-7abc-8f12-aabbccddeeff' } }));
 
 describe('sanitizeAnalyticsProperties', () => {
+  it('minimizes root-level SDK person updates including initial URLs and arbitrary clinical fields', () => {
+    const safe = sanitizePosthogEvent({ event: '$identify', properties: {}, $set: { user_type: 'patient', email: 'private@example.invalid', arbitrary: 'clinical secret' }, $set_once: { '$initial_current_url': 'https://example.invalid/f/secret-token', is_admin: false } });
+    expect(safe.$set).toEqual({ user_type: 'patient' });
+    expect(safe.$set_once).toEqual({ is_admin: false });
+    expect(JSON.stringify(safe)).not.toContain('secret');
+    expect(JSON.stringify(safe)).not.toContain('private@example');
+  });
   it('preserves correlation through track and the final SDK sanitizer without sending arbitrary text', async () => {
     vi.resetModules();
     vi.stubEnv('VITE_PUBLIC_POSTHOG_KEY', 'test-key');
@@ -14,6 +21,15 @@ describe('sanitizeAnalyticsProperties', () => {
     expect(final.properties.correlation_id).toBe(id);
     expect(final.properties.session_id).toBe('018d3b7f-81d8-7abc-8f12-aabbccddeeff');
     expect(JSON.stringify(final)).not.toContain('private clinical text');
+  });
+  it('preserves only the configured SDK project routing key and rejects authentication tokens', async () => {
+    vi.resetModules();
+    vi.stubEnv('VITE_PUBLIC_POSTHOG_KEY', 'phc_synthetic_project');
+    const { sanitizePosthogEvent: sanitize } = await import('./posthog');
+    const safe = sanitize({ event: 'operation_failed', properties: { token: 'phc_synthetic_project', access_token: 'private-auth', refresh_token: 'private-refresh' } });
+    expect(safe.properties.token).toBe('phc_synthetic_project');
+    expect(JSON.stringify(safe)).not.toContain('private-');
+    expect(sanitize({ event: 'operation_failed', properties: { token: 'private-auth' } }).properties.token).toBeUndefined();
   });
   it('preserves distinct users and v7 sessions while denying arbitrary payloads and person properties', () => {
     const a = '9ba45c9b-d0d4-490d-96a0-6addd7826833';
