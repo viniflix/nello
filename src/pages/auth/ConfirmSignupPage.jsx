@@ -1,3 +1,5 @@
+import PublicHelpLinks from '@/features/privacy/components/PublicHelpLinks';
+import AuthCaptcha, { useAuthCaptcha } from '@/features/auth/AuthCaptcha';
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Mail } from 'lucide-react';
@@ -25,6 +27,7 @@ const readCooldown = (email, sentAt) => {
 };
 
 export default function ConfirmSignupPage() {
+  const captcha = useAuthCaptcha();
   const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -52,6 +55,7 @@ export default function ConfirmSignupPage() {
 
   const handleConfirm = async (event) => {
     event.preventDefault();
+    if (busy) return;
     setBusy(true);
     setFeedback('');
     try {
@@ -69,10 +73,11 @@ export default function ConfirmSignupPage() {
   };
 
   const handleResend = async () => {
+    if (busy || !captcha.ready || secondsLeft > 0) return;
     setBusy(true);
     setFeedback('');
     try {
-      await resendEmailConfirmation(supabase, email, publicOrigin());
+      await resendEmailConfirmation(supabase, email, publicOrigin(), captcha.options);
       startCooldown(RESEND_COOLDOWN_MS);
       setCode('');
       toast({ title: 'Novo código enviado', description: 'Use somente o código mais recente. Confira também a caixa de spam.' });
@@ -87,6 +92,7 @@ export default function ConfirmSignupPage() {
         setFeedback(toPortugueseError(error, 'Não foi possível reenviar o código. Tente novamente.'));
       }
     } finally {
+      captcha.reset();
       setBusy(false);
     }
   };
@@ -112,12 +118,13 @@ export default function ConfirmSignupPage() {
             {feedback && <p role="alert" className="text-sm text-destructive">{feedback}</p>}
             <Button type="submit" className="w-full" disabled={busy || code.length !== 6}>Confirmar e-mail</Button>
           </form>
-          <Button type="button" variant="outline" className="w-full" disabled={busy || secondsLeft > 0 || !email.trim()} onClick={handleResend}>
+          <AuthCaptcha {...captcha.widget} />
+          <Button type="button" variant="outline" className="w-full" disabled={busy || !captcha.ready || secondsLeft > 0 || !email.trim()} onClick={handleResend}>
             {secondsLeft > 0 ? `Pedir novo código em ${secondsLeft}s` : 'Pedir novo código'}
           </Button>
           <p className="text-center text-xs text-muted-foreground">Use apenas o código mais recente. Se não receber, confira o spam.</p>
           <p className="text-center text-sm"><Link to="/login" className="text-primary hover:underline">Voltar ao login</Link></p>
-        </CardContent>
+        <PublicHelpLinks /></CardContent>
       </Card>
     </div>
   );

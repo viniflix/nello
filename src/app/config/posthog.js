@@ -1,4 +1,7 @@
 import { sanitizePosthogEvent } from '@/infrastructure/analytics/posthog';
+import { hasAnalyticsConsent } from '@/features/privacy/consent';
+
+export const captureWithConsent = event => hasAnalyticsConsent() ? sanitizePosthogEvent(event) : null;
 
 export function createPosthogOptions(env) {
   return {
@@ -18,6 +21,9 @@ export function createPosthogOptions(env) {
     mask_personal_data_properties: true,
     custom_personal_data_properties: ['email', 'phone', 'cpf', 'patient', 'patient_id'],
     person_profiles: 'identified_only',
+    opt_out_capturing_by_default: true,
+    opt_out_persistence_by_default: true,
+    persistence: 'memory',
     session_recording: {
       blockSelector: 'img, video, audio, canvas, [data-posthog-block]',
       maskTextSelector: '*',
@@ -27,7 +33,7 @@ export function createPosthogOptions(env) {
       recordHeaders: false,
       recordBody: false,
     },
-    before_send: sanitizePosthogEvent,
+    before_send: captureWithConsent,
   };
 }
 

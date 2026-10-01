@@ -6,6 +6,7 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import AppRouter from '@/app/router';
 import ClientErrorBoundary from '@/components/ClientErrorBoundary';
+import PrivacyPreferences from '@/features/privacy/components/PrivacyPreferences';
 
 const App = () => {
   return (
@@ -21,6 +22,7 @@ const App = () => {
               <AppRouter />
             </ClientErrorBoundary>
             <SmartToaster />
+            <PrivacyPreferences />
           </AuthProvider>
         </Router>
       </HelmetProvider>

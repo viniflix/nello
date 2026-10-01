@@ -23,6 +23,8 @@ writeFileSync('.backend-ci/local-results/reconstructed.types.ts',types);
 node(['scripts/backend/compare-types.mjs','src/lib/database.types.ts','.backend-ci/local-results/reconstructed.types.ts']);
 node(['scripts/backend/snapshot-restore.mjs']);node(['scripts/backend/edge-boot-smoke.mjs']);node(['scripts/backend/forward-contracts.mjs']);
 node(['scripts/backend/sql-matrix.mjs']);node(['scripts/backend/gate-injections.mjs']);node(['scripts/qa/browser-fixture.mjs']);
+node(['scripts/qa/auth-onboarding.mjs']);
+node(['scripts/qa/auth-captcha.mjs']);
 node(['node_modules/vite/bin/vite.js','build']);node(['node_modules/vite/bin/vite.js','build','--config','e2e/qa-build.config.mjs']);node(['scripts/qa/css-gate-injection.mjs']);
 node(['node_modules/playwright/cli.js','install','chromium']);node(['node_modules/playwright/cli.js','test',...process.argv.slice(2)]);
 const recording=process.argv.slice(2).some(arg=>arg.startsWith('--update-snapshots'));

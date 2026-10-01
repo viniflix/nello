@@ -21,6 +21,7 @@ import PatientEditProfileModal from '@/components/patient-hub/PatientEditProfile
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useToast } from '@/components/ui/use-toast';
 import { publicOrigin } from '@/lib/utils/publicOrigin';
+import { supabase } from '@/lib/customSupabaseClient';
 
 const TabContentOverview = lazy(() => import('@/components/patient-hub/tabs/TabContentOverview'));
 const TabContentFeed = lazy(() => import('@/components/patient-hub/tabs/TabContentFeed'));
@@ -59,13 +60,28 @@ function PatientInvite({ patientData, nutritionistName }) {
     const [expanded, setExpanded] = useState(false);
     const [copyState, setCopyState] = useState('idle');
     const { toast } = useToast();
+    const [renewedCode, setRenewedCode] = useState(null);
+    const [renewing, setRenewing] = useState(false);
     if (!patientData?.patient_invite_code) return null;
 
-    const invitationUrl = `${publicOrigin()}/convite?token=${patientData.patient_invite_code}`;
+    const code = renewedCode || patientData.patient_invite_code;
+    const invitationUrl = `${publicOrigin()}/convite?token=${code}`;
+    const renew = async () => {
+        if (renewing) return;
+        setRenewing(true);
+        try {
+            const { data, error } = await supabase.rpc('renew_patient_invitation', { p_patient: patientData.id });
+            if (error || !data?.code) throw new Error('renewal_failed');
+            setRenewedCode(data.code); setCopyState('idle');
+            toast({ title: 'Convite renovado', description: 'Compartilhe o novo código, válido por 7 dias. O código anterior deixou de funcionar.' });
+        } catch {
+            toast({ title: 'Não foi possível renovar', description: 'Confira sua verificação profissional e a conexão. Contas já ativadas precisam usar a recuperação de senha.', variant: 'destructive' });
+        } finally { setRenewing(false); }
+    };
     const copy = async (type) => {
         const value = type === 'link'
             ? `Olá, aqui é ${nutritionistName || 'seu nutricionista'}! Seu acompanhamento no Nello está pronto. Acesse e crie sua senha: ${invitationUrl}`
-            : patientData.patient_invite_code;
+            : code;
         try {
             await navigator.clipboard.writeText(value);
             setCopyState(type);
@@ -92,9 +108,13 @@ function PatientInvite({ patientData, nutritionistName }) {
                             </div>
                             <div className="rounded-lg border border-sky-200 bg-white p-3">
                                 <p className="flex items-center gap-2 text-xs font-semibold text-sky-900"><Hash className="h-4 w-4" /> Código do convite</p>
-                                <p className="mt-2 font-mono text-base font-bold tracking-widest text-sky-700">{patientData.patient_invite_code}</p>
+                                <p className="mt-2 font-mono text-base font-bold tracking-widest text-sky-700">{code}</p>
                                 <Button size="sm" variant="outline" onClick={() => copy('code')} className="mt-3 w-full border-sky-200 text-sky-700">{copyState === 'code' ? <><Check className="mr-2 h-4 w-4" />Copiado</> : <><Copy className="mr-2 h-4 w-4" />Copiar código</>}</Button>
                             </div>
+                        </div>
+                        <div className="px-4 pb-4 text-xs text-sky-900 sm:px-5">
+                            <p>Convite de uso único, válido por 7 dias. Se expirar, gere um novo para compartilhar.</p>
+                            <Button type="button" size="sm" variant="outline" className="mt-2" disabled={renewing} onClick={renew}>{renewing ? 'Renovando...' : 'Renovar convite'}</Button>
                         </div>
                     </motion.div>
                 )}

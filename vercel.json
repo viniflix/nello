@@ -274,6 +274,22 @@
     {
       "source": "/status",
       "destination": "/index.html"
+    },
+    {
+      "source": "/termos",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/privacidade",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/ajuda",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/seguranca",
+      "destination": "/index.html"
     }
   ],
   "headers": [
@@ -302,7 +318,7 @@
         },
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; script-src 'self' 'wasm-unsafe-eval' https://*.posthog.com https://*.sentry.io; connect-src 'self' data: https://*.supabase.co wss://*.supabase.co https://*.posthog.com https://*.sentry.io; img-src 'self' data: blob: https://*.supabase.co https://*.shutterstock.com https://*.openfoodfacts.org; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com https://cdnjs.cloudflare.com; media-src 'self' data: blob: https://*.supabase.co; worker-src 'self' blob:; frame-src 'self'; object-src 'none'; upgrade-insecure-requests;"
+          "value": "default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; script-src 'self' 'wasm-unsafe-eval' https://challenges.cloudflare.com https://*.posthog.com https://*.sentry.io; connect-src 'self' data: https://challenges.cloudflare.com https://*.supabase.co wss://*.supabase.co https://*.posthog.com https://*.sentry.io; img-src 'self' data: blob: https://*.supabase.co https://*.shutterstock.com https://*.openfoodfacts.org; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com https://cdnjs.cloudflare.com; media-src 'self' data: blob: https://*.supabase.co; worker-src 'self' blob:; frame-src 'self' https://challenges.cloudflare.com; object-src 'none'; upgrade-insecure-requests;"
         },
         {
           "key": "Cache-Control",

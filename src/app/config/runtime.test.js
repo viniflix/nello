@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { queryClient, queryClientOptions } from './queryClient';
 import { createPosthogOptions } from './posthog';
-import { sanitizePosthogEvent } from '@/infrastructure/analytics/posthog';
+import { captureWithConsent } from './posthog';
 
 const securePosthogDefaults = {
   defaults: '2026-01-30',
@@ -17,6 +17,9 @@ const securePosthogDefaults = {
   mask_personal_data_properties: true,
   custom_personal_data_properties: ['email', 'phone', 'cpf', 'patient', 'patient_id'],
   person_profiles: 'identified_only',
+  opt_out_capturing_by_default: true,
+  opt_out_persistence_by_default: true,
+  persistence: 'memory',
   session_recording: {
     blockSelector: 'img, video, audio, canvas, [data-posthog-block]',
     maskTextSelector: '*',
@@ -26,7 +29,7 @@ const securePosthogDefaults = {
     recordHeaders: false,
     recordBody: false,
   },
-  before_send: sanitizePosthogEvent,
+  before_send: captureWithConsent,
 };
 
 describe('application runtime configuration', () => {

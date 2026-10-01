@@ -1,6 +1,7 @@
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import posthog from 'posthog-js';
 import { technicalIdentity } from '@/infrastructure/observability/technicalIdentity';
+import { bindConsentOwner, clearAnalyticsChoice, hasAnalyticsConsent } from '@/features/privacy/consent';
 
 export const POSTHOG_KEY = import.meta.env.VITE_PUBLIC_POSTHOG_KEY;
 export const POSTHOG_HOST = import.meta.env.VITE_PUBLIC_POSTHOG_HOST || 'https://us.i.posthog.com';
@@ -95,12 +96,14 @@ export function sanitizePosthogEvent(captureResult) {
 }
 
 export function getObservabilitySessionId() {
+  if (!hasAnalyticsConsent()) return null;
   try { return technicalIdentity(posthog.get_session_id?.()); } catch { return null; }
 }
 
 export function identifyUser(user) {
   try {
-    if (!POSTHOG_KEY || !user?.id) return;
+    bindConsentOwner(user?.id);
+    if (!POSTHOG_KEY || !user?.id || !hasAnalyticsConsent(user.id)) return;
     if (!posthog?.__loaded && !posthog?.initialized) return;
 
     posthog.identify(user.id, {
@@ -113,6 +116,8 @@ export function identifyUser(user) {
 }
 
 export function resetUser() {
+  clearAnalyticsChoice();
+  bindConsentOwner(null);
   try {
     if (!POSTHOG_KEY) return;
     posthog.reset();
@@ -123,7 +128,7 @@ export function resetUser() {
 
 export function track(event, properties = {}) {
   try {
-    if (!POSTHOG_KEY) return;
+    if (!POSTHOG_KEY || !hasAnalyticsConsent()) return;
     posthog.capture(event, sanitizePosthogEvent({ event, properties: {
       ...properties,
       session_id: getObservabilitySessionId(),
@@ -143,6 +148,9 @@ export const Events = {
   DATA_LOAD_TIMING: 'data_load_timing',
   UI_ACTION_OUTCOME: 'ui_action_outcome',
   AUTH_LOGIN_FAILED: 'auth_login_failed',
+  AUTH_SIGNUP_STARTED: 'auth_signup_started',
+  AUTH_SIGNUP_SUBMITTED: 'auth_signup_submitted',
+  AUTH_SIGNUP_FAILED: 'auth_signup_failed',
   AUTH_PASSWORD_RECOVERY_REQUESTED: 'auth_password_recovery_requested',
   AUTH_PASSWORD_UPDATED: 'auth_password_updated',
   AUTH_INVITE_REDEEMED: 'auth_invite_redeemed',

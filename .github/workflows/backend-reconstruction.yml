@@ -61,6 +61,8 @@ jobs:
         if: ${{ !cancelled() && steps.rebuild.outcome == 'success' }}
         run: |
           node scripts/qa/browser-fixture.mjs
+          node scripts/qa/auth-onboarding.mjs
+          node scripts/qa/auth-captcha.mjs
           npm run build
           npx --no-install vite build --config e2e/qa-build.config.mjs
           node scripts/qa/css-gate-injection.mjs
@@ -80,6 +82,8 @@ jobs:
             .backend-ci/restore-results/
             .backend-ci/edge-results/
             .backend-ci/forward-results/
+            .backend-ci/auth-onboarding-results/
+            .backend-ci/auth-captcha-results/
             .backend-ci/sql-results/
             .backend-ci/browser-results/
             .backend-ci/fault-results/

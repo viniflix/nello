@@ -1528,7 +1528,8 @@
           "file": "index.ts",
           "sha256": "e2f1566ae5bfa8faa911976d2b1882bb6893d5ee64ef7d4b752ac064e8d86e21",
           "matchedLocal": true,
-          "repositorySha256": "563be07dd8b67f1c4af3dad35dec8f73f44fe69613ed1d58ad8f3e517e66dba4"
+          "repositorySha256": "14f94b4cd39559714fe8f11bdcd092bc9e793196377b779caa084e79b9a2043e",
+          "releaseEvidence": "Wave04: verified professional, metadata allowlist, server-derived initial credential, quota and invitation-preserving fallback. Historical provider checksum retained."
         }
       ],
       "sourcePolicy": "Published source"

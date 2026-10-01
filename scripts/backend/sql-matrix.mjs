@@ -48,6 +48,11 @@ for (const [index, source] of manifest.sources.entries()) {
       contents[0]=contents[0].replace('create function pg_temp.assert_client_rpc_surface()',overrides+'\ncreate function pg_temp.assert_client_rpc_surface()');
     }
     hashes = [...candidates.map(({file,sha256})=>({file,sha256})), ...inputs.map((file, index) => ({ file, sha256: createHash('sha256').update(contents[index]).digest('hex') }))];
+    if(candidates.some(m=>m.file.includes('wave04_identity_onboarding'))) {
+      const reviewed=readFileSync('supabase/fixtures/wave02/wave04-client-rpc-contract.sql','utf8');
+      contents[0]=contents[0].replace('create function pg_temp.assert_client_rpc_surface()',reviewed+'\ncreate function pg_temp.assert_client_rpc_surface()');
+      hashes.push({file:'supabase/fixtures/wave02/wave04-client-rpc-contract.sql',sha256:createHash('sha256').update(reviewed).digest('hex')});
+    }
     const script = contents.join('\n');
     log = docker('psql', ['-X', '-v', 'ON_ERROR_STOP=1', '-v', 'VERBOSITY=verbose', '-d', database], { input: script, encoding: 'utf8' });
     if (source.kind === 'concurrency-setup') {

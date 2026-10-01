@@ -2,7 +2,7 @@ import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { Loader2 } from 'lucide-react';
 import { supabase } from '@/lib/customSupabaseClient';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   captureOperationalError,
   clearObservabilityUser,
@@ -14,6 +14,7 @@ import { getMyProfessionalVerification } from '@/lib/supabase/verification-queri
 import { redeemPatientInvite } from '@/features/auth/authFlows';
 import { Events, track } from '@/infrastructure/analytics/posthog';
 import { clearPrivateDraftStorage } from '@/lib/utils/privateDraftStorage';
+import { clearPasswordReminders } from '@/features/auth/passwordReminder';
 
 const AuthLoadingFallback = () => (
   <div className="flex min-h-screen items-center justify-center bg-background">
@@ -40,11 +41,13 @@ export function AuthProvider({ children }) {
   const [initializing, setInitializing] = useState(true);
   const [isOffline, setIsOffline] = useState(!window.navigator.onLine);
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const processingSession = useRef(false);
   const identityRef = useRef(null);
   const queryClient = useQueryClient();
 
   const clearPrivateClientState = useCallback(() => {
+    clearPasswordReminders();
     try { clearPrivateDraftStorage(); } catch { /* Storage can be unavailable. */ }
     queryClient.clear();
     clearObservabilityUser();
@@ -345,7 +348,8 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider value={value}>
-      {(initializing || (loading && !user) || (user && !user.profile)) ? <AuthLoadingFallback /> : children}
+      {!['/status', '/termos', '/privacidade', '/ajuda', '/seguranca'].includes(pathname.replace(/\/$/, ''))
+        && (initializing || (loading && !user) || (user && !user.profile)) ? <AuthLoadingFallback /> : children}
     </AuthContext.Provider>
   );
 }

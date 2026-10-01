@@ -30,9 +30,13 @@ const password = 'Qa1!' + randomBytes(24).toString('hex');
 const personas = {};
 for (const persona of JSON.parse(readFileSync('operations/synthetic-personas.json')).personas.filter(p=>p.key!=='anonymous')) {
   const type = persona.role === 'operator' ? 'admin' : persona.role;
-  const { data, error } = await admin.auth.admin.createUser({ email:persona.email, password, email_confirm:true, user_metadata:{ user_type:type, name:'QA ' + persona.key }, ...(persona.status==='disabled'?{ban_duration:'100h'}:{}) });
+  // GoTrue applies app_metadata after its INSERT trigger. Provision minimal
+  // legal accounts, then let the isolated SQL operator assign fixture roles.
+  const { data, error } = await admin.auth.admin.createUser({ email:persona.email, password, email_confirm:true,
+    user_metadata:{ user_type:'nutritionist', name:'QA ' + persona.key, legal_version:'2026-10-01',terms_accepted:true,analytics_allowed:false }, ...(persona.status==='disabled'?{ban_duration:'100h'}:{}) });
   if (error) throw error;
   if (!/^[a-f0-9-]{36}$/.test(data.user.id)) throw Error('Invalid synthetic user identifier');
+  if(type!=='nutritionist') sql(`delete from public.professional_verifications where user_id='${data.user.id}';update public.user_profiles set user_type='patient' where id='${data.user.id}';`);
   personas[persona.key] = { ...persona, id:data.user.id };
 }
 const id = key=>personas[key].id;
@@ -47,5 +51,5 @@ insert into public.nutritionist_patients(nutritionist_id,patient_id,status) valu
 }
 mkdirSync('.backend-ci/browser-runtime',{recursive:true});
 writeFileSync('.backend-ci/browser-runtime/fixture.json',JSON.stringify({url,anonKey:status.ANON_KEY,password,personas}),{mode:0o600});
-writeFileSync('.env.production.local', `VITE_SUPABASE_URL=${url}\nVITE_SUPABASE_ANON_KEY=${status.ANON_KEY}\nVITE_PUBLIC_POSTHOG_KEY=\nVITE_PUBLIC_POSTHOG_HOST=\nVITE_SENTRY_DSN=\n` ,{mode:0o600});
+writeFileSync('.env.production.local', `VITE_SUPABASE_URL=${url}\nVITE_SUPABASE_ANON_KEY=${status.ANON_KEY}\nVITE_PUBLIC_POSTHOG_KEY=phc_nello_synthetic_telemetry\nVITE_PUBLIC_POSTHOG_HOST=http://localhost:4173\nVITE_SENTRY_DSN=\nVITE_TURNSTILE_SITE_KEY=\n` ,{mode:0o600});
 console.log('Nine synthetic Auth personas created on loopback only; production credentials unavailable.');

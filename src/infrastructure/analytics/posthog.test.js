@@ -14,6 +14,8 @@ describe('sanitizeAnalyticsProperties', () => {
     vi.resetModules();
     vi.stubEnv('VITE_PUBLIC_POSTHOG_KEY', 'test-key');
     const { default: sdk, track } = await import('./posthog');
+    const { storeAnalyticsChoice } = await import('@/features/privacy/consent');
+    storeAnalyticsChoice(true);
     const id = '9ba45c9b-d0d4-490d-96a0-6addd7826833';
     track('operation_failed', { correlation_id: id, payload: 'private clinical text' });
     const [event, properties] = sdk.capture.mock.calls.at(-1);

@@ -5,6 +5,9 @@ describe('createPosthogOptions', () => {
   it('captures minimized failures and navigation with replay disabled', () => {
     expect(createPosthogOptions({})).toMatchObject({
       autocapture: false,
+      opt_out_capturing_by_default: true,
+      opt_out_persistence_by_default: true,
+      persistence: 'memory',
       capture_pageview: 'history_change',
       capture_pageleave: true,
       capture_exceptions: false,

@@ -1,3 +1,4 @@
+import AuthCaptcha, { useAuthCaptcha } from '@/features/auth/AuthCaptcha';
 import React, { useState } from 'react';
 import { Eye, EyeOff, Loader2, Lock, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/lib/customSupabaseClient';
@@ -16,8 +17,11 @@ import {
 } from '@/features/auth/authFlows';
 import { captureOperationalError } from '@/infrastructure/observability/telemetry';
 import { Events, track } from '@/infrastructure/analytics/posthog';
+import { dismissPasswordReminder } from '@/features/auth/passwordReminder';
 
-export default function ForcePasswordUpdate() {
+export default function ForcePasswordUpdate({ children }) {
+  const [dismissedFor, setDismissedFor] = useState(null);
+  const captcha = useAuthCaptcha();
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -29,6 +33,7 @@ export default function ForcePasswordUpdate() {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    if (loading || !captcha.ready) return;
     const validationError = validateNewPassword(password, confirmPassword);
     if (validationError) {
       toast({ title: 'Revise a senha', description: validationError, variant: 'destructive' });
@@ -43,6 +48,7 @@ export default function ForcePasswordUpdate() {
       await updateAndVerifyPassword(supabase, {
         session: sessionData?.session,
         password,
+        captchaOptions: captcha.options,
       });
       await clearForcedPasswordReset(supabase, user.id);
 
@@ -69,10 +75,12 @@ export default function ForcePasswordUpdate() {
         variant: 'destructive',
       });
     } finally {
+      captcha.reset();
       setLoading(false);
     }
   };
 
+  if (dismissedFor === user?.id) return children;
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-background p-4">
       <Card className="w-full max-w-md rounded-2xl border-border bg-card shadow-xl">
@@ -81,10 +89,10 @@ export default function ForcePasswordUpdate() {
             <Lock className="w-8 h-8 text-amber-600" />
           </div>
           <div>
-            <CardTitle className="patient-page-title">AÇÃO NECESSÁRIA</CardTitle>
+            <CardTitle className="patient-page-title">PROTEJA SEU ACESSO</CardTitle>
             <CardDescription className="mt-2 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-left text-amber-800">
               <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
-              <span>Por segurança, defina uma senha pessoal antes de continuar.</span>
+              <span>Recomendamos uma senha pessoal. A senha inicial por nascimento é fácil de adivinhar. Você pode alterá-la agora ou continuar e trocar depois pelo link enviado ao seu email.</span>
             </CardDescription>
           </div>
         </CardHeader>
@@ -156,14 +164,19 @@ export default function ForcePasswordUpdate() {
               )}
             </div>
 
+            <AuthCaptcha {...captcha.widget} />
             <Button
               type="submit"
               className="w-full"
-              disabled={loading || passwordsDiffer || !password || !confirmPassword}
+              disabled={loading || !captcha.ready || passwordsDiffer || !password || !confirmPassword}
             >
               {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Validando...</> : 'Definir e validar senha'}
             </Button>
           </form>
+          <Button type="button" variant="outline" className="mt-4 w-full" disabled={loading} onClick={() => {
+            dismissPasswordReminder(user.id);
+            setDismissedFor(user.id);
+          }}>Continuar com a senha atual</Button>
         </CardContent>
       </Card>
     </div>

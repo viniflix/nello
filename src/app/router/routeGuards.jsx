@@ -3,6 +3,7 @@ import { Loader2, WifiOff } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import ForcePasswordUpdate from '@/components/patient/ForcePasswordUpdate';
 import { getHomePath, hasRequiredUserType, resolveAuthenticatedPath } from './homePath';
+import { hasDismissedPasswordReminder } from '@/features/auth/passwordReminder';
 
 // Fallback de carregamento para Suspense
 export const PageLoadingFallback = () => (
@@ -93,8 +94,8 @@ export const ProtectedRoute = ({ children, userType, allowAnyUserType = false })
   }
 
   // Interceptador para paciente que não atualizou a senha ainda
-  if (user?.profile?.user_type === 'patient' && user?.profile?.needs_password_reset === true) {
-    return <ForcePasswordUpdate />;
+  if (user?.profile?.user_type === 'patient' && user?.profile?.needs_password_reset === true && !hasDismissedPasswordReminder(user.id)) {
+    return <ForcePasswordUpdate>{children}</ForcePasswordUpdate>;
   }
 
   return children;

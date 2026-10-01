@@ -1,9 +1,9 @@
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
+import AuthCaptcha, { useAuthCaptcha } from '@/features/auth/AuthCaptcha';
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Eye, EyeOff, Mail, Lock, User, UserCircle, Scale, Ruler, Ticket } from 'lucide-react';
-import { DateInputWithCalendar } from '@/components/ui/date-input';
+import { motion } from 'framer-motion';
+import { Eye, EyeOff, Mail, Lock, User, UserCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,6 +14,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toPortugueseError } from '@/lib/utils/errorMessages';
 import { authFlowPolicy, validateNewPassword } from '@/features/auth/authFlows';
 import { publicOrigin } from '@/lib/utils/publicOrigin';
+import LegalSignupChoice from '@/features/privacy/components/LegalSignupChoice';
+import PublicHelpLinks from '@/features/privacy/components/PublicHelpLinks';
+import { signupLegalMetadata } from '@/features/privacy/consent';
+import { Events, track } from '@/infrastructure/analytics/posthog';
+import { captureOperationalError } from '@/infrastructure/observability/telemetry';
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -22,16 +27,14 @@ export default function RegisterPage() {
     password: '',
     confirmPassword: '',
     type: '',
-    birth_date: '',
-    gender: '',
-    height: '',
-    weight: '',
-    goal: '',
     inviteCode: ''
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [accepted, setAccepted] = useState(false);
+  const [analytics, setAnalytics] = useState(false);
+  const captcha = useAuthCaptcha();
   const { signUp } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -44,72 +47,36 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
-
+    if (loading || !captcha.ready) return;
     const passwordError = validateNewPassword(formData.password, formData.confirmPassword);
-    if (passwordError) {
-      toast({
-        title: "Erro no cadastro",
-        description: passwordError,
-        variant: "destructive",
+    const inviteCode = formData.inviteCode.trim().toUpperCase();
+    const invalid = passwordError || (!accepted && 'Leia e aceite os termos para criar sua conta.')
+      || (!['nutritionist', 'patient'].includes(formData.type) && 'Selecione o tipo de acesso.')
+      || (formData.type === 'patient' && !inviteCode && 'Para entrar como paciente, peça um convite ao seu profissional.');
+    if (invalid) { toast({ title: 'Revise o cadastro', description: invalid, variant: 'destructive' }); return; }
+    setLoading(true);
+    track(Events.AUTH_SIGNUP_STARTED, { flow: formData.type });
+    try {
+      const { error } = await signUp({
+        email: formData.email.trim().toLowerCase(), password: formData.password,
+        options: { ...captcha.options, data: { name: formData.name.trim(), user_type: formData.type,
+          ...(formData.type === 'patient' ? { invite_code: inviteCode } : {}),
+          ...signupLegalMetadata(analytics) }, emailRedirectTo: `${publicOrigin()}/login` },
       });
-      setLoading(false);
-      return;
-    }
-
-    const role = ['patient', 'nutritionist'].includes(formData.type) ? formData.type : 'patient';
-    const profileData = {
-      full_name: formData.name,
-      name: formData.name,
-      display_name: formData.name,
-      role,
-      user_type: role,
-      crn: null,
-      birth_date: formData.type === 'patient' ? formData.birth_date : null,
-      gender: formData.type === 'patient' ? formData.gender : null,
-      height: formData.type === 'patient' && formData.height ? parseInt(formData.height) : null,
-      weight: formData.type === 'patient' && formData.weight ? parseFloat(formData.weight) : null,
-      goal: formData.type === 'patient' ? formData.goal : null,
-    };
-
-    if (!role || !['patient', 'nutritionist'].includes(role)) {
-      toast({
-        title: "Erro no cadastro",
-        description: "Tipo de usuário inválido. Por favor, selecione um tipo válido.",
-        variant: "destructive",
-      });
-      setLoading(false);
-      return;
-    }
-
-    const { error } = await signUp({
-      email: formData.email,
-      password: formData.password,
-      options: {
-        data: profileData,
-        emailRedirectTo: `${publicOrigin()}/login`,
+      if (error) throw error;
+      if (formData.type === 'patient') {
+        try { localStorage.setItem('pending_invite_code', inviteCode); }
+        catch { /* The confirmation link and manual invitation remain available. */ }
       }
-    });
-
-    setLoading(false);
-
-    if (error) {
-      logDiagnostic('error', 'pages/auth/RegisterPage.jsx:96', '[RegisterPage] Erro no cadastro:', error);
-      toast({
-        title: "Erro no cadastro",
-        description: toPortugueseError(error, 'Não foi possível concluir o cadastro.'),
-        variant: "destructive",
-      });
-    } else {
-      if (formData.inviteCode) {
-        localStorage.setItem('pending_invite_code', formData.inviteCode);
-      }
-      toast({
-        title: "Cadastro realizado com sucesso!",
-        description: "Enviamos um código de confirmação para o seu e-mail.",
-      });
-      navigate('/confirm-signup', { state: { email: formData.email, sentAt: Date.now() } });
-    }
+      track(Events.AUTH_SIGNUP_SUBMITTED, { flow: formData.type });
+      toast({ title: 'Cadastro enviado', description: 'Confira seu email para confirmar o acesso. Se a conta já existir, use o login ou a recuperação.' });
+      navigate('/confirm-signup', { state: { email: formData.email.trim().toLowerCase(), sentAt: Date.now() } });
+    } catch (error) {
+      logDiagnostic('error', 'auth.register', error);
+      if (!error.status || error.status >= 500) captureOperationalError(error, { operation: 'auth.signup', module: 'authentication', source: 'supabase_auth' });
+      track(Events.AUTH_SIGNUP_FAILED, { flow: formData.type, error_code: error.code || 'unknown', http_status: error.status });
+      toast({ title: 'Não foi possível cadastrar', description: toPortugueseError(error, 'Confira o convite e os dados de acesso. Em caso de limite de envios, aguarde antes de tentar novamente.'), variant: 'destructive' });
+    } finally { captcha.reset(); setLoading(false); }
   };
 
   return (
@@ -202,107 +169,14 @@ export default function RegisterPage() {
                 </div>
               </div>
 
-              {/* Patient-specific fields */}
-              <AnimatePresence mode="wait">
-                {formData.type === 'patient' && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.3 }}
-                    className="space-y-4 pt-2 border-t border-border"
-                  >
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="birthDate" className="text-sm font-medium">Data de nascimento</Label>
-                        <DateInputWithCalendar
-                          id="birthDate"
-                          value={formData.birth_date}
-                          onChange={(value) => handleInputChange('birth_date', value)}
-                          required
-                          max={new Date().toISOString().split('T')[0]}
-                          className="h-10"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="gender" className="text-sm font-medium">Sexo</Label>
-                        <Select value={formData.gender} onValueChange={(value) => handleInputChange('gender', value)} required>
-                          <SelectTrigger className="h-10">
-                            <SelectValue placeholder="Selecione" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="male">Masculino</SelectItem>
-                            <SelectItem value="female">Feminino</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="height" className="text-sm font-medium">
-                          Altura (cm) <span className="text-xs text-muted-foreground">(opcional)</span>
-                        </Label>
-                        <div className="relative">
-                          <Ruler className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                          <Input
-                            id="height"
-                            type="number"
-                            placeholder="175"
-                            value={formData.height}
-                            onChange={(e) => handleInputChange('height', e.target.value)}
-                            min={50}
-                            max={250}
-                            onInput={(e) => e.target.value = e.target.value.slice(0, 3)}
-                            className="pl-10 h-10"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="weight" className="text-sm font-medium">
-                          Peso (kg) <span className="text-xs text-muted-foreground">(opcional)</span>
-                        </Label>
-                        <div className="relative">
-                          <Scale className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                          <Input
-                            id="weight"
-                            type="number"
-                            step="0.1"
-                            placeholder="70.5"
-                            value={formData.weight}
-                            onChange={(e) => handleInputChange('weight', e.target.value)}
-                            min={10}
-                            max={500}
-                            onInput={(e) => e.target.value = e.target.value.slice(0, 5)}
-                            className="pl-10 h-10"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="space-y-2 sm:col-span-2">
-                        <Label htmlFor="inviteCode" className="text-sm font-medium">
-                          Código de Convite <span className="text-xs text-muted-foreground">(opcional)</span>
-                        </Label>
-                        <div className="relative">
-                          <Ticket className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                          <Input
-                            id="inviteCode"
-                            type="text"
-                            placeholder="Ex: ABCD-1234"
-                            value={formData.inviteCode}
-                            onChange={(e) => handleInputChange('inviteCode', e.target.value)}
-                            maxLength={20}
-                            className="pl-10 h-10"
-                          />
-                        </div>
-                        <p className="text-[10px] text-muted-foreground px-1">
-                          Se o seu nutricionista te passou um código, insira-o aqui para se vincular automaticamente.
-                        </p>
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+              {formData.type === 'patient' ? <div className="space-y-2 rounded-lg border p-3">
+                <Label htmlFor="inviteCode">Código de convite do profissional</Label>
+                <Input id="inviteCode" required maxLength={128} value={formData.inviteCode}
+                  onChange={e => handleInputChange('inviteCode', e.target.value)} placeholder="Código recebido do profissional" />
+                <p className="text-xs text-muted-foreground">O vínculo será confirmado após verificar seu email. Informações clínicas são registradas durante o acompanhamento.</p>
+              </div> : formData.type === 'nutritionist' && <p className="rounded-lg border p-3 text-sm text-muted-foreground">
+                Sua conta começa pendente de verificação profissional. Após confirmar o email, envie os documentos pela tela de verificação. Recursos clínicos protegidos exigem aprovação.
+              </p>}
 
               {/* Password fields */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-border">
@@ -326,6 +200,7 @@ export default function RegisterPage() {
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
+                      aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"} aria-pressed={showPassword}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                     >
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -355,6 +230,7 @@ export default function RegisterPage() {
                     <button
                       type="button"
                       onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      aria-label={showConfirmPassword ? "Ocultar confirmação" : "Mostrar confirmação"} aria-pressed={showConfirmPassword}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                     >
                       {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -368,10 +244,12 @@ export default function RegisterPage() {
                 </div>
               </div>
 
+              <LegalSignupChoice accepted={accepted} analytics={analytics} onAccepted={setAccepted} onAnalytics={setAnalytics} />
+              <AuthCaptcha {...captcha.widget} />
               <Button
                 type="submit"
                 className="w-full h-10 bg-primary hover:bg-primary/90 text-white font-medium mt-6"
-                disabled={loading || !formData.type || passwordsDiffer}
+                disabled={loading || !captcha.ready || !formData.type || passwordsDiffer || !accepted}
               >
                 {loading ? "Cadastrando..." : "Criar conta"}
               </Button>
@@ -388,6 +266,7 @@ export default function RegisterPage() {
                 </Link>
               </p>
             </div>
+            <PublicHelpLinks />
           </CardContent>
         </Card>
 

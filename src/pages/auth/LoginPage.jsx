@@ -1,3 +1,5 @@
+import PublicHelpLinks from '@/features/privacy/components/PublicHelpLinks';
+import AuthCaptcha, { useAuthCaptcha } from '@/features/auth/AuthCaptcha';
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -24,6 +26,7 @@ import { supabase } from '@/lib/customSupabaseClient';
 import { toPortugueseError } from '@/lib/utils/errorMessages';
 import {
   isExpectedLoginRejection,
+  confirmationRetryAfterMs,
   normalizeAuthEmail,
   requestPasswordRecovery,
 } from '@/features/auth/authFlows';
@@ -31,6 +34,8 @@ import { captureOperationalError } from '@/infrastructure/observability/telemetr
 import { Events, track } from '@/infrastructure/analytics/posthog';
 
 export default function LoginPage() {
+  const captcha = useAuthCaptcha();
+  const recoveryCaptcha = useAuthCaptcha();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -38,6 +43,14 @@ export default function LoginPage() {
   const [resetEmail, setResetEmail] = useState('');
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [confirmationPending, setConfirmationPending] = useState(false);
+  const [retryAt, setRetryAt] = useState(0);
+  const [now, setNow] = useState(Date.now);
+  const secondsLeft = Math.max(0, Math.ceil((retryAt - now) / 1000));
+  useEffect(() => {
+    if (!retryAt) return undefined;
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [retryAt]);
 
   const { signIn, user, loading: authLoading } = useAuth();
   const { toast } = useToast();
@@ -69,13 +82,15 @@ export default function LoginPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (loading || !captcha.ready || retryAt > Date.now()) return;
     setLoading(true);
-
-    const { data, error } = await signIn({ email: normalizeAuthEmail(email), password });
+    try {
+    const { data, error } = await signIn({ email: normalizeAuthEmail(email), password, options: captcha.options });
 
     if (error) {
+      if (Number(error.status) === 429) setRetryAt(Date.now() + confirmationRetryAfterMs(error));
       setConfirmationPending(error.code === 'email_not_confirmed' || /email not confirmed/i.test(error.message || ''));
-      if (!isExpectedLoginRejection(error)) {
+      if (!isExpectedLoginRejection(error) && Number(error.status) !== 429) {
         captureOperationalError(error, {
           operation: 'auth.sign_in_with_password',
           module: 'authentication',
@@ -95,10 +110,14 @@ export default function LoginPage() {
         description: `Bem-vindo(a) de volta!`,
       });
     }
-    setLoading(false);
+    } catch (error) {
+      captureOperationalError(error, { operation: 'auth.sign_in_with_password', module: 'authentication', source: 'supabase_auth' });
+      toast({ title: 'Falha de conexão', description: 'Confira a conexão e tente entrar novamente.', variant: 'destructive' });
+    } finally { captcha.reset(); setLoading(false); }
   };
 
   const handlePasswordReset = async () => {
+    if (loading || !recoveryCaptcha.ready || retryAt > Date.now()) return;
     if (resetEmail.trim() === '') {
       toast({
         title: "Erro",
@@ -112,17 +131,19 @@ export default function LoginPage() {
 
     let error = null;
     try {
-      await requestPasswordRecovery(supabase, resetEmail, publicOrigin());
+      await requestPasswordRecovery(supabase, resetEmail, publicOrigin(), recoveryCaptcha.options);
       track(Events.AUTH_PASSWORD_RECOVERY_REQUESTED);
     } catch (recoveryError) {
       error = recoveryError;
-      captureOperationalError(recoveryError, {
+      if (Number(recoveryError.status) === 429) setRetryAt(Date.now() + confirmationRetryAfterMs(recoveryError));
+      else captureOperationalError(recoveryError, {
         operation: 'auth.request_password_recovery',
         module: 'authentication',
         source: 'supabase_auth',
       });
     }
 
+    recoveryCaptcha.reset();
     setLoading(false);
 
     if (error) {
@@ -249,10 +270,11 @@ export default function LoginPage() {
                   </div>
                 </div>
 
+                {!isAlertOpen && <AuthCaptcha {...captcha.widget} />}
                 <Button
                   type="submit"
                   className="w-full h-10 bg-primary hover:bg-primary/90 text-white font-medium mt-6"
-                  disabled={loading}
+                  disabled={loading || !captcha.ready || secondsLeft > 0}
                 >
                   {loading ? (
                     "Entrando..."
@@ -263,6 +285,7 @@ export default function LoginPage() {
                     </span>
                   )}
                 </Button>
+                {secondsLeft > 0 && <p role="status" className="text-sm text-muted-foreground">Muitas tentativas. Aguarde {secondsLeft}s e tente novamente.</p>}
               </form>
 
               {callbackError && (
@@ -290,7 +313,7 @@ export default function LoginPage() {
                   </Link>
                 </p>
               </div>
-            </CardContent>
+            <PublicHelpLinks /></CardContent>
           </Card>
 
           {/* Footer Info */}
@@ -322,10 +345,11 @@ export default function LoginPage() {
             className="mt-2"
           />
         </div>
+        <AuthCaptcha {...recoveryCaptcha.widget} />
         <AlertDialogFooter>
           <AlertDialogCancel disabled={loading}>Cancelar</AlertDialogCancel>
           <AlertDialogAction asChild>
-            <Button onClick={handlePasswordReset} disabled={loading} className="bg-primary hover:bg-primary/90">
+            <Button onClick={handlePasswordReset} disabled={loading || !recoveryCaptcha.ready || secondsLeft > 0} className="bg-primary hover:bg-primary/90">
               {loading ? "Enviando..." : "Enviar link"}
             </Button>
           </AlertDialogAction>

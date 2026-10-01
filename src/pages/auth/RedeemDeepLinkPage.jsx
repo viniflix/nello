@@ -1,4 +1,8 @@
+import LegalSignupChoice from '@/features/privacy/components/LegalSignupChoice';
+import PublicHelpLinks from '@/features/privacy/components/PublicHelpLinks';
+import { signupLegalMetadata } from '@/features/privacy/consent';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
+import AuthCaptcha, { useAuthCaptcha } from '@/features/auth/AuthCaptcha';
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -29,6 +33,7 @@ const RedeemDeepLinkPage = () => {
     const { toast } = useToast();
     const { user, signUp, signOut } = useAuth();
 
+    const captcha = useAuthCaptcha();
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [inviteData, setInviteData] = useState(null);
@@ -40,29 +45,33 @@ const RedeemDeepLinkPage = () => {
         password: '',
         confirmPassword: ''
     });
+    const [accepted, setAccepted] = useState(false);
+    const [analytics, setAnalytics] = useState(false);
     const [honeypot, setHoneypot] = useState(''); // Anti-spam bot trap
     const passwordsDiffer = formData.confirmPassword.length > 0
         && formData.password !== formData.confirmPassword;
 
     useEffect(() => {
         if (!token) {
-            navigate('/login');
+            navigate('/register', { replace: true });
             return;
         }
 
+        let active = true;
         const fetchDetails = async () => {
             setLoading(true);
-            const res = await getInviteDetails(token);
-            if (!res.success) {
-                setError(res.message);
-            } else {
-                setInviteData(res.data);
-                setFormData(prev => ({ ...prev, name: res.data.patient_name || '' }));
-            }
-            setLoading(false);
+            setError(null);
+            try {
+                const res = await getInviteDetails(token);
+                if (!active) return;
+                if (!res.success) setError(res.message);
+                else setInviteData(res.data);
+            } catch {
+                if (active) setError('Não foi possível verificar o convite. Confira a conexão e tente novamente.');
+            } finally { if (active) setLoading(false); }
         };
-
         fetchDetails();
+        return () => { active = false; };
     }, [token, navigate]);
 
     const handleInputChange = (field, value) => {
@@ -80,6 +89,7 @@ const RedeemDeepLinkPage = () => {
         e.preventDefault();
 
         // 0. Anti-spam: Honeypot (se preenchido, rejeita silenciosamente)
+        if (submitting || !accepted || !captcha.ready) return;
         if (honeypot) {
             logDiagnostic('warn', 'pages/auth/RedeemDeepLinkPage.jsx:83', 'Bot detectado.');
             return;
@@ -110,18 +120,20 @@ const RedeemDeepLinkPage = () => {
         }
 
         setSubmitting(true);
+        try {
         const profileData = {
             full_name: cleanName,
             name: cleanName,
             display_name: cleanName,
             role: 'patient',
-            user_type: 'patient'
+            user_type: 'patient', invite_code: token, ...signupLegalMetadata(analytics)
         };
 
         const { data, error } = await signUp({
             email: cleanEmail,
             password: formData.password,
             options: {
+                ...captcha.options,
                 data: profileData,
                 emailRedirectTo: `${publicOrigin()}/convite?token=${encodeURIComponent(token)}&confirmed=1`,
             }
@@ -134,17 +146,23 @@ const RedeemDeepLinkPage = () => {
         }
 
         // Armazena no localStorage. O AuthContext processa automaticamente após o login
-        localStorage.setItem('pending_invite_code', token);
+        try { localStorage.setItem('pending_invite_code', token); }
+        catch { /* The confirmation link and manual invitation remain available. */ }
         
         toast({
             title: "Conta criada com sucesso!",
-            description: "Você já pode acessar seu Prontuário Digital.",
+            description: "Confirme seu email para concluir o vínculo e acessar o acompanhamento.",
         });
-        navigate('/login');
+        navigate('/confirm-signup', { state: { email: cleanEmail, sentAt: Date.now() } });
+        } catch (registrationError) {
+            captureOperationalError(registrationError, { operation: 'auth.deep_link_signup', module: 'authentication', source: 'supabase_auth' });
+            toast({ title: 'Erro no cadastro', description: toPortugueseError(registrationError), variant: 'destructive' });
+        } finally { captcha.reset(); setSubmitting(false); }
     };
 
     // Fluxo 2: Logado -> Validação de Conflito e Vinculação
     const handleAcceptAsLoggedIn = async () => {
+        if (submitting) return;
         setSubmitting(true);
         try {
             const data = await redeemPatientInvite(supabase, token);
@@ -153,7 +171,7 @@ const RedeemDeepLinkPage = () => {
             
             toast({
                 title: "Vínculo concluído!",
-                description: `Você agora está vinculado a ${inviteData.nutritionist_name}.`,
+                description: `Seu vínculo de acompanhamento foi confirmado.`,
             });
             navigate('/patient');
         } catch (err) {
@@ -207,7 +225,7 @@ const RedeemDeepLinkPage = () => {
                         <Button className="w-full h-11" onClick={() => navigate('/login')}>
                             Fazer Login
                         </Button>
-                    </CardContent>
+                    <PublicHelpLinks /></CardContent>
                 </Card>
             </div>
         );
@@ -216,7 +234,7 @@ const RedeemDeepLinkPage = () => {
     // Tela para usuários já LOGADOS
     if (user && inviteData) {
         // Warning: Nomes diferentes!
-        const isDifferentPerson = user.profile?.name?.split(' ')[0].toLowerCase() !== inviteData.patient_name?.split(' ')[0].toLowerCase();
+        const isDifferentPerson = Boolean(inviteData.patient_name) && user.profile?.name?.split(' ')[0].toLowerCase() !== inviteData.patient_name?.split(' ')[0].toLowerCase();
         
         return (
             <div className="min-h-screen flex items-center justify-center bg-background p-4">
@@ -233,7 +251,7 @@ const RedeemDeepLinkPage = () => {
                                 <AlertCircle className="h-4 w-4" />
                                 <AlertTitle>Atenção ao vincular</AlertTitle>
                                 <AlertDescription>
-                                    Este convite de acompanhamento foi enviado por <strong>{inviteData.nutritionist_name}</strong> para o paciente chamado <strong>{inviteData.patient_name}</strong>.
+                                    Confira que está usando a conta destinada a este convite. Os dados do acompanhamento só são mostrados após confirmar o vínculo.
                                 </AlertDescription>
                             </Alert>
                             
@@ -267,10 +285,10 @@ const RedeemDeepLinkPage = () => {
                                     onClick={handleSwitchAccount}
                                 >
                                     <LogOut className="w-4 h-4 mr-2" />
-                                    Sair e criar conta para {inviteData.patient_name?.split(' ')[0]}
+                                    Sair e usar outra conta
                                 </Button>
                             </div>
-                        </CardContent>
+                        <PublicHelpLinks /></CardContent>
                     </Card>
                 </motion.div>
             </div>
@@ -300,10 +318,10 @@ const RedeemDeepLinkPage = () => {
                             Acesso Exclusivo
                         </Badge>
                         <h1 className="text-4xl font-black tracking-tight text-foreground leading-tight">
-                            Seu Plano Alimentar está pronto para acesso.
+                            Seu convite de acompanhamento está disponível.
                         </h1>
                         <p className="text-lg text-muted-foreground">
-                            {getPronoun(inviteData?.nutritionist_gender)} <strong>{inviteData?.nutritionist_name}</strong> montou e liberou o seu acompanhamento completo no Nello.
+                            {getPronoun(inviteData?.nutritionist_gender)} <strong>{inviteData?.nutritionist_name}</strong> convidou você para acompanhar seu atendimento no Nello.
                         </p>
                     </motion.div>
 
@@ -339,7 +357,7 @@ const RedeemDeepLinkPage = () => {
                         className="h-10 w-auto mx-auto mb-4"
                     />
                     <h1 className="text-2xl font-black text-foreground max-w-[280px] mx-auto">
-                        Seu Plano Alimentar está pronto
+                        Seu convite está disponível
                     </h1>
                     <p className="text-sm text-muted-foreground max-w-sm mx-auto">
                         {getPronoun(inviteData?.nutritionist_gender)} <strong>{inviteData?.nutritionist_name}</strong> liberou seu acesso.
@@ -444,20 +462,22 @@ const RedeemDeepLinkPage = () => {
                                     </p>
                                 )}
 
+                                <LegalSignupChoice accepted={accepted} analytics={analytics} onAccepted={setAccepted} onAnalytics={setAnalytics} />
+                                <AuthCaptcha {...captcha.widget} />
                                 <Button
                                     type="submit"
                                     className="w-full h-12 text-base font-bold mt-6 group"
-                                    disabled={submitting || passwordsDiffer}
+                                    disabled={submitting || !captcha.ready || passwordsDiffer || !accepted}
                                 >
                                     {submitting ? "Acessando..." : "Ver Meu Plano Agora"}
                                     {!submitting && <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />}
                                 </Button>
                                 
                                 <p className="text-[11px] text-center text-muted-foreground mt-4 px-4 leading-tight">
-                                    Ao acessar, você concorda em compartilhar seus dados clínicos com seu(ua) nutricionista.
+                                    O convite vincula sua conta ao acompanhamento do profissional. Não compartilhe o código ou o link.
                                 </p>
                             </form>
-                        </CardContent>
+                        <PublicHelpLinks /></CardContent>
                     </Card>
                 </motion.div>
             </div>

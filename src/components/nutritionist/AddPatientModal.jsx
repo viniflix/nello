@@ -232,10 +232,6 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded }) => {
             city: formData.city, state: formData.state,
         } : null;
 
-        const defaultPassword = formData.birth_date 
-            ? format(formData.birth_date, 'ddMMyy') 
-            : Math.random().toString(36).slice(-8);
-
         const clean = (val) => typeof val === 'string' ? val.trim() : val;
 
         const metadata = {
@@ -266,7 +262,6 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded }) => {
             email: isOffline ? null : clean(formData.email),
             metadata: metadata,
             redirectTo: redirectTo,
-            defaultPassword: defaultPassword,
             isOffline: isOffline,
             sendInvite: sendInvite
         };
@@ -280,7 +275,9 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded }) => {
             if (functionError) {
                 const errorData = functionError.context ? await functionError.context.json() : null;
                 if (errorData && errorData.error) {
-                    throw new Error(errorData.error);
+                    const invitationError = new Error(errorData.error);
+                    invitationError.status = functionError.context.status;
+                    throw invitationError;
                 }
                 throw functionError;
             }
@@ -288,11 +285,13 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded }) => {
             if (isOffline && data?.inviteCode) {
                 toast({
                     title: "Paciente offline criado!",
-                    description: `Código de acesso: ${data.inviteCode}. Salve este código para o paciente resgatar o perfil depois.`,
+                    description: `Código de acesso: ${data.inviteCode}. Válido por 7 dias para o paciente ativar o acesso.`,
                     duration: 10000,
                 });
-            } else if (!isOffline && sendInvite) {
-                toast({ title: "Sucesso!", description: `Convite enviado para ${formData.name}.`, variant: "success" });
+            } else if (!isOffline) {
+                toast({ title: "Convite enviado", description: data?.initialPasswordAvailable === false
+                    ? 'A conta foi preservada e o convite foi enviado. O paciente deve usar o link do email para definir a senha; a senha inicial não foi configurada.'
+                    : `Convite enviado para ${formData.name}. O paciente pode usar a senha inicial ou definir uma senha pelo email.`, variant: "success" });
             } else {
                 toast({ title: "Sucesso!", description: `Paciente ${formData.name} adicionado.`, variant: "success" });
             }
@@ -391,8 +390,9 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded }) => {
                                         <Lock className="w-4 h-4 text-primary" />
                                     </div>
                                     <p className="text-xs text-primary/80 leading-relaxed font-medium">
-                                        <strong>Atenção:</strong> A senha inicial será a data de nascimento no formato **DDMMAA**. 
+                                        <strong>Atenção:</strong> A senha inicial será a data de nascimento no formato DDMMAA.
                                         <br />Ex: 07/08/2001 &rarr; <span className="font-mono bg-primary/10 px-1 rounded">070801</span>.
+                                        <br />Também enviaremos um convite por email para definir uma senha pessoal. A troca é opcional, mas recomendada: a senha por nascimento é previsível.
                                     </p>
                                 </motion.div>
                             )}

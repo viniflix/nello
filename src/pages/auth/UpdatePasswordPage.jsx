@@ -1,3 +1,5 @@
+import PublicHelpLinks from '@/features/privacy/components/PublicHelpLinks';
+import AuthCaptcha, { useAuthCaptcha } from '@/features/auth/AuthCaptcha';
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Leaf, Loader2 } from 'lucide-react';
@@ -20,6 +22,7 @@ import { captureOperationalError } from '@/infrastructure/observability/telemetr
 import { Events, track } from '@/infrastructure/analytics/posthog';
 
 export default function UpdatePasswordPage() {
+  const captcha = useAuthCaptcha();
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -64,6 +67,7 @@ export default function UpdatePasswordPage() {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    if (loading || !captcha.ready) return;
     const validationError = validateNewPassword(password, confirmPassword);
     if (validationError) {
       toast({ title: 'Revise a senha', description: validationError, variant: 'destructive' });
@@ -80,7 +84,7 @@ export default function UpdatePasswordPage() {
 
     setLoading(true);
     try {
-      await updateAndVerifyPassword(supabase, { session, password });
+      await updateAndVerifyPassword(supabase, { session, password, captchaOptions: captcha.options });
       try {
         await clearForcedPasswordReset(supabase, session.user.id);
       } catch (profileError) {
@@ -123,6 +127,7 @@ export default function UpdatePasswordPage() {
         variant: 'destructive',
       });
     } finally {
+      captcha.reset();
       setLoading(false);
     }
   };
@@ -152,7 +157,7 @@ export default function UpdatePasswordPage() {
             <Button className="w-full" onClick={() => navigate('/login', { replace: true })}>
               Voltar ao acesso
             </Button>
-          </CardContent>
+          <PublicHelpLinks /></CardContent>
         </Card>
       </div>
     );
@@ -243,15 +248,16 @@ export default function UpdatePasswordPage() {
               )}
             </div>
 
+            <AuthCaptcha {...captcha.widget} />
             <Button
               type="submit"
               className="w-full"
-              disabled={loading || passwordsDiffer || !password || !confirmPassword}
+              disabled={loading || !captcha.ready || passwordsDiffer || !password || !confirmPassword}
             >
               {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Validando...</> : 'Atualizar e validar senha'}
             </Button>
           </form>
-        </CardContent>
+        <PublicHelpLinks /></CardContent>
       </Card>
     </div>
   );

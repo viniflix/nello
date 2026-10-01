@@ -2,6 +2,26 @@ import { test, expect } from '@playwright/test';
 import { gunzipSync } from 'node:zlib';
 test.use({ userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36' });
 
+test('real analytics SDK respects default denial and immediate revocation', async ({ page }) => {
+  const sent = [];
+  await page.route('**/login', route => route.fulfill({ contentType: 'text/html', body: '<!doctype html><html><body>Isolated privacy fixture</body></html>' }));
+  await page.route('**/array/**/config.js', route => route.fulfill({ contentType: 'application/javascript', body: '' }));
+  await page.route('**/flags/**', route => route.fulfill({ contentType: 'application/json', body: '{"featureFlags":{}}' }));
+  await page.route('**/e/**', async route => {
+    let bytes = route.request().postDataBuffer();
+    if (bytes[0] === 31 && bytes[1] === 139) bytes = gunzipSync(bytes);
+    const body = JSON.parse(bytes.toString());
+    sent.push(...(Array.isArray(body) ? body : body.batch || [body]));
+    await route.fulfill({ contentType: 'application/json', body: '{"status":"Ok"}' });
+  });
+  await page.goto('/login');
+  const state = await page.evaluate(async () => { const { syntheticAnalyticsPrivacyBoundary } = await import('/__qa__/harness.js'); return syntheticAnalyticsPrivacyBoundary(); });
+  expect(state.optedOut).toBe(true);
+  await expect.poll(() => sent.filter(event => event.event === 'qa_explicit_grant').length).toBe(1);
+  expect(sent.some(event => ['qa_default_denied', 'qa_revoked_denied'].includes(event.event))).toBe(false);
+  expect(JSON.stringify(sent)).not.toContain('PRIVATE_SYNTHETIC_SENTINEL');
+});
+
 test('real analytics SDK sends sanitized events with routing token and separates users after logout', async ({ page }) => {
   const sent = [];
   await page.route('**/login', route => route.fulfill({ contentType: 'text/html', body: '<!doctype html><html><body>Isolated SDK transport fixture</body></html>' }));

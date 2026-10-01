@@ -35,5 +35,5 @@ describe('development boundaries and diagnostics', () => {
     register({ type: 'redirect', raw: 'qa', url: '/qa', redirect: 'file:///package.json' });
     expect(registrations).toHaveLength(1);
     expect(path.resolve(registrations[0].redirect)).toBe(path.resolve(config.root, 'package.json'));
-  });
+  }, 15_000); // Resolving Vite plugins can exceed 5s during the full concurrent suite.
 });

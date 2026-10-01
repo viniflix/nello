@@ -41,13 +41,13 @@ export function confirmationRetryAfterMs(error, fallbackMs = 60_000) {
   return fallbackMs;
 }
 
-export async function resendEmailConfirmation(authClient, email, origin) {
+export async function resendEmailConfirmation(authClient, email, origin, captchaOptions = {}) {
   const normalizedEmail = normalizeAuthEmail(email);
   if (!normalizedEmail) throw new Error('Informe um e-mail válido.');
   const { error } = await authClient.auth.resend({
     type: 'signup',
     email: normalizedEmail,
-    options: { emailRedirectTo: `${origin}/login` },
+    options: { emailRedirectTo: `${origin}/login`, ...captchaOptions },
   });
   if (error) throw error;
 }
@@ -78,12 +78,13 @@ export function validateNewPassword(password, confirmation = password) {
   return null;
 }
 
-export async function requestPasswordRecovery(authClient, email, origin) {
+export async function requestPasswordRecovery(authClient, email, origin, captchaOptions = {}) {
   const normalizedEmail = normalizeAuthEmail(email);
   if (!normalizedEmail) throw new Error('Informe um e-mail válido.');
 
   const { data, error } = await authClient.auth.resetPasswordForEmail(normalizedEmail, {
     redirectTo: `${origin}/update-password?mode=recovery`,
+    ...captchaOptions,
   });
   if (error) throw error;
   return data;
@@ -94,7 +95,7 @@ export async function requestPasswordRecovery(authClient, email, origin) {
  * the controlled form authenticates. A success toast must only be shown after
  * both remote operations succeed.
  */
-export async function updateAndVerifyPassword(authClient, { session, password }) {
+export async function updateAndVerifyPassword(authClient, { session, password, captchaOptions }) {
   const email = normalizeAuthEmail(session?.user?.email);
   if (!session?.user?.id || !email) {
     throw new Error('Sessão de recuperação inválida ou expirada. Solicite um novo link.');
@@ -109,6 +110,7 @@ export async function updateAndVerifyPassword(authClient, { session, password })
   const { data: verified, error: verifyError } = await authClient.auth.signInWithPassword({
     email,
     password,
+    ...(captchaOptions ? { options: captchaOptions } : {}),
   });
   if (verifyError || verified?.user?.id !== session.user.id) {
     const error = verifyError || new Error('A nova senha não pôde ser validada.');

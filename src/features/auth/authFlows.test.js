@@ -15,6 +15,22 @@ import {
 } from './authFlows';
 
 describe('authFlows', () => {
+  it('forwards CAPTCHA to confirmation resend, recovery and the verification of the new password', async () => {
+    const captchaOptions = { captchaToken: 'synthetic-one-use-token' };
+    const auth = {
+      resend: vi.fn().mockResolvedValue({ error: null }),
+      resetPasswordForEmail: vi.fn().mockResolvedValue({ data: {}, error: null }),
+      updateUser: vi.fn().mockResolvedValue({ data: { user: { id: 'qa' } }, error: null }),
+      signInWithPassword: vi.fn().mockResolvedValue({ data: { user: { id: 'qa' } }, error: null }),
+    };
+    await resendEmailConfirmation({ auth }, 'qa@example.invalid', 'https://nello.example', captchaOptions);
+    await requestPasswordRecovery({ auth }, 'qa@example.invalid', 'https://nello.example', captchaOptions);
+    await updateAndVerifyPassword({ auth }, { session: { user: { id: 'qa', email: 'qa@example.invalid' } }, password: 'Synthetic1!', captchaOptions });
+    expect(auth.resend).toHaveBeenCalledWith({ type: 'signup', email: 'qa@example.invalid', options: { emailRedirectTo: 'https://nello.example/login', ...captchaOptions } });
+    expect(auth.resetPasswordForEmail).toHaveBeenCalledWith('qa@example.invalid', { redirectTo: 'https://nello.example/update-password?mode=recovery', ...captchaOptions });
+    expect(auth.signInWithPassword).toHaveBeenCalledWith({ email: 'qa@example.invalid', password: 'Synthetic1!', options: captchaOptions });
+    expect(auth.updateUser).toHaveBeenCalledWith({ password: 'Synthetic1!' });
+  });
   it('normalizes only the email and preserves the exact password credential', async () => {
     const updateUser = vi.fn().mockResolvedValue({
       data: { user: { id: 'user-1' } },
