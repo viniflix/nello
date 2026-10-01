@@ -4,6 +4,10 @@
     {
       "file": "supabase/migrations/releases/20261001062000_wave04_identity_onboarding.sql",
       "sha256": "975d3f53491858983de8301644b7ed2d65efcfb8b375af3b5f1c62adf43584f1"
+    },
+    {
+      "file": "supabase/migrations/releases/20261001203000_wave04_identity_onboarding.sql",
+      "sha256": "005be50966ed69dc4fe055810e0a23f8ec95cf7f19e3f741b5f9eb9301bd8950"
     }
   ]
 }

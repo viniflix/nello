@@ -4,6 +4,12 @@ import { describe, expect, it, vi } from 'vitest';
 import VerificationStatusCard from './VerificationStatusCard';
 
 describe('VerificationStatusCard', () => {
+  it('shows suspension instead of the previous migration approval', () => {
+    render(<VerificationStatusCard verification={{ status: 'suspended', verification_method: 'approved_by_migration', has_clinical_capacity: false }} />);
+    expect(screen.getByText('Verificação suspensa')).toBeInTheDocument();
+    expect(screen.getByText(/temporariamente bloqueadas/)).toBeInTheDocument();
+    expect(screen.queryByText(/continuidade do ambiente alpha/i)).not.toBeInTheDocument();
+  });
   it('explains that an unverified account can only simulate', () => {
     render(<VerificationStatusCard verification={{ status: 'not_submitted' }} />);
     expect(screen.getByText('Verificação não enviada')).toBeInTheDocument();

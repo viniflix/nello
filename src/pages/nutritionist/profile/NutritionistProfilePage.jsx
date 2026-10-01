@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Settings, User, Calendar, DollarSign, Key, FileSignature, BookOpenCheck } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,8 +18,18 @@ import AccountEmailChange from '@/components/profile/AccountEmailChange';
 
 const NutritionistProfilePage = () => {
     const { user, updateUserProfile } = useAuth();
+    const [searchParams, setSearchParams] = useSearchParams();
+    const location = useLocation();
+    const requestedTab = searchParams.get('tab');
+    const activeTab = ['personal', 'agenda', 'financial', 'documents', 'protocols', 'account'].includes(requestedTab) ? requestedTab : 'personal';
     const [loading, setLoading] = useState(true);
     const [profile, setProfile] = useState(null);
+
+    useEffect(() => {
+        if (!loading && activeTab === 'account' && location.hash === '#professional-verification') {
+            document.getElementById('professional-verification')?.scrollIntoView({ block: 'start' });
+        }
+    }, [loading, activeTab, location.hash]);
 
     useEffect(() => {
         if (user) {
@@ -87,7 +98,7 @@ const NutritionistProfilePage = () => {
                     {/* Tabs */}
                     <Card>
                         <CardContent className="p-0">
-                            <Tabs defaultValue="personal" className="w-full">
+                            <Tabs value={activeTab} onValueChange={(tab) => setSearchParams(previous => { const next = new URLSearchParams(previous); next.set('tab', tab); return next; }, { replace: true })} className="w-full">
                                 <TabsList className="grid w-full grid-cols-2 md:grid-cols-6 h-auto p-1">
                                     <TabsTrigger value="personal" className="flex items-center gap-2 py-3">
                                         <User className="w-4 h-4" />

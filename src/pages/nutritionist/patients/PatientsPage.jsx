@@ -336,17 +336,18 @@ const PatientsPage = () => {
                         </Button>
                     </div>
 
-                    {!verificationCapabilities.canUseRealPatients ? (
-                      <Alert>
+                </div>
+
+                {!verificationCapabilities.canUseRealPatients ? (
+                      <Alert className="mb-6 md:mb-8">
                         <ShieldAlert />
-                        <AlertTitle>Verificação necessária para pacientes reais</AlertTitle>
+                        <AlertTitle className="normal-case tracking-normal leading-snug">Acesso clínico restrito</AlertTitle>
                         <AlertDescription className="flex flex-col gap-3">
-                          <p>Você pode explorar as ferramentas do Nello, mas convites e novos atendimentos reais ficam disponíveis após a validação profissional.</p>
-                          <div><Button variant="outline" size="sm" onClick={() => navigate('/nutritionist/profile')}>Abrir verificação profissional</Button></div>
+                          <p>O cadastro de pacientes, os convites e as alterações em atendimentos reais exigem acesso profissional aprovado. Consulte o status da sua conta na seção de verificação profissional.</p>
+                          <div><Button variant="outline" size="sm" className="h-auto min-h-10 py-2 whitespace-normal text-left" onClick={() => navigate('/nutritionist/profile?tab=account#professional-verification')}>Consultar verificação profissional</Button></div>
                         </AlertDescription>
                       </Alert>
                     ) : null}
-                </div>
 
                 {/* ── Pending Requests Section ── */}
                 <AnimatePresence>

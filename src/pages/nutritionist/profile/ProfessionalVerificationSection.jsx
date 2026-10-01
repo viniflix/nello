@@ -54,7 +54,7 @@ export default function ProfessionalVerificationSection({ initialVerification })
   };
 
   return (
-    <Card>
+    <Card id="professional-verification" className="scroll-mt-24">
       <CardHeader>
         <CardTitle className="flex items-center gap-2"><ShieldCheck /> Verificação profissional</CardTitle>
         <CardDescription>Habilitação para atender, convidar pacientes reais e emitir documentos profissionais.</CardDescription>

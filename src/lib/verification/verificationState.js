@@ -17,6 +17,6 @@ export function getVerificationCapabilities(verification = {}) {
     canSubmitVerification: RESUBMITTABLE_STATUSES.has(status),
     isRealClinicalReadOnly: !hasClinicalCapacity,
     requiresSupervisor: isStudent && status === 'approved' && !hasClinicalCapacity,
-    isLegacyApproval: verification?.verification_method === 'approved_by_migration'
+    isLegacyApproval: status === 'approved' && hasClinicalCapacity && verification?.verification_method === 'approved_by_migration'
   };
 }

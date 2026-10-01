@@ -35,13 +35,14 @@ try {
   assert(!profileError);
   assert.deepEqual(profile,{user_type:'nutritionist',is_admin:false,birth_date:null,height:null,weight:null,nutritionist_id:null,observations:null}); assertions++;
   const {data:verification,error:verificationError}=await service.from('professional_verifications').select('status,valid_until').eq('user_id',signup.data.user.id).single();
-  assert(!verificationError); assert.deepEqual(verification,{status:'not_submitted',valid_until:null}); assertions++;
+  assert(!verificationError); assert.equal(verification.status,'approved'); assert(Date.parse(verification.valid_until)>Date.now()); assertions++;
   const unconfirmed=await anon().auth.signInWithPassword({email:signup.data.user.email,password});
   assert(unconfirmed.error?.code==='email_not_confirmed'
     || /email not confirmed/i.test(unconfirmed.error?.message || ''),'Email confirmation must remain enforced'); assertions++;
   // Service confirms only synthetic email; do not require an external SMTP provider for QA.
   const confirmation=await service.auth.admin.updateUserById(signup.data.user.id,{email_confirm:true}); assert(!confirmation.error);
   const user=anon(); const session=await user.auth.signInWithPassword({email:signup.data.user.email,password}); assert(!session.error);
+  const clinicalAccess=await user.rpc('get_my_professional_verification'); assert(!clinicalAccess.error); assert.equal(clinicalAccess.data.has_clinical_capacity,true); assertions++;
   const preferences=await user.rpc('get_my_privacy_preferences'); assert(!preferences.error);
   assert.equal(preferences.data.terms_accepted,true);assert.equal(preferences.data.analytics_allowed,false); assertions++;
   assert.equal(preferences.data.version,'2026-10-01.2');assert.equal(preferences.data.analytics_choice_recorded,true);assertions++;
@@ -76,6 +77,8 @@ try {
       headers:{Authorization:`Bearer ${token}`,apikey:status.ANON_KEY,'Content-Type':'application/json'},body:JSON.stringify(payload)});
     return {status:response.status,retryAfter:response.headers.get('Retry-After'),body:await response.json()};
   };
+  // Explicit suspension still denies clinical operations during open testing.
+  sql(`update public.professional_verifications set status='suspended' where user_id='${signup.data.user.id}';`);
   const pendingSession=(await user.auth.getSession()).data.session;
   const metadata={name:'QA edge patient',birth_date:'1990-01-01',user_type:'patient',nutritionist_id:owner.id};
   const pendingEdge=await invokePatient({email:email(),isOffline:false,metadata:{...metadata,nutritionist_id:signup.data.user.id}},pendingSession.access_token);
