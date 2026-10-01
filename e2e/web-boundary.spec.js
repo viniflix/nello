@@ -5,7 +5,7 @@ test('production CSP blocks inline code and reports only a sanitized technical e
  const headers=response.headers();
  expect(headers['content-security-policy']).toContain('report-uri /api/csp-report');
  expect(headers['reporting-endpoints']).toContain('nello-csp=');
- expect(headers['access-control-allow-origin']).toBeUndefined();
+ expect(headers['access-control-allow-origin']).toBe('https://nellonutri.com.br');
  expect(headers['permissions-policy']).toContain('camera=()');
  const violations=[];
  await page.exposeFunction('__qaPolicyViolation',directive=>violations.push(directive));

@@ -327,6 +327,10 @@
         {
           "key": "Reporting-Endpoints",
           "value": "nello-csp=\"https://nellonutri.com.br/api/csp-report\""
+        },
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "https://nellonutri.com.br"
         }
       ]
     },

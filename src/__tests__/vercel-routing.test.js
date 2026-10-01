@@ -27,6 +27,9 @@ describe('roteamento da SPA na Vercel', () => {
 });
 
 describe('headers de segurança da produção', () => {
+  it('overrides the platform static wildcard with only the application origin', () => {
+    expect(catchAllHeaders.find(header => header.key === 'Access-Control-Allow-Origin')?.value).toBe('https://nellonutri.com.br');
+  });
   it('bloqueia JavaScript dinâmico e script inline, preservando WebAssembly usado nos PDFs', () => {
     expect(contentSecurityPolicy).not.toContain("'unsafe-eval'");
     expect(contentSecurityPolicy).toContain("'wasm-unsafe-eval'");

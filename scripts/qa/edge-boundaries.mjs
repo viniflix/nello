@@ -3,6 +3,7 @@ import {readFileSync,mkdirSync,writeFileSync} from 'node:fs';
 import {createClient} from '@supabase/supabase-js';
 import assert from 'node:assert/strict';
 assertIsolatedRuntime();
+await import('./edge-gateway-parity.mjs');
 const fixture=JSON.parse(readFileSync('.backend-ci/browser-runtime/fixture.json','utf8'));
 if(!['http://127.0.0.1:54321','http://localhost:54321'].includes(new URL(fixture.url).origin))throw Error('Only disposable loopback accepted');
 const results=[];
