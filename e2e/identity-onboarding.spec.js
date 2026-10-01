@@ -6,6 +6,24 @@ import { randomUUID } from 'node:crypto';
 import { supabaseCommand, supabaseArgs, assertIsolatedRuntime } from '../scripts/qa/isolated-runtime.mjs';
 assertIsolatedRuntime();
 
+test('production CSP permits the CAPTCHA script and frame without an intersecting HTML policy', async ({ page }) => {
+  const script = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+  const frame = 'https://challenges.cloudflare.com/nello-synthetic-csp-check';
+  await page.route(script, route => route.fulfill({ contentType: 'application/javascript', body: 'window.__qaCaptchaScriptLoaded = true;' }));
+  await page.route(frame, route => route.fulfill({ contentType: 'text/html', body: '<!doctype html><html><body>QA CAPTCHA frame permitted</body></html>' }));
+  await page.goto('/login');
+  await page.addScriptTag({ url: script });
+  expect(await page.evaluate(() => window.__qaCaptchaScriptLoaded)).toBe(true);
+  await page.evaluate(url => {
+    const iframe = document.createElement('iframe');
+    iframe.title = 'Synthetic CAPTCHA CSP check';
+    iframe.src = url;
+    document.body.append(iframe);
+  }, frame);
+  await expect(page.frameLocator('iframe[title="Synthetic CAPTCHA CSP check"]').getByText('QA CAPTCHA frame permitted')).toBeVisible();
+  expect(await page.locator('meta[http-equiv="Content-Security-Policy"]').count()).toBe(0);
+});
+
 for (const width of [390, 1440]) {
   test(`public legal/help pages remain readable without Auth at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });

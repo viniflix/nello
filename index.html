@@ -6,11 +6,7 @@
 		<link rel="icon" type="image/x-icon" href="/favicon.ico" />
 		<meta name="generator" content="Nello" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<!-- 
-		  CSP: Protege contra injeção de scripts e define origens permitidas.
-		  Configurado para garantir segurança máxima em produção e compatibilidade com ambiente local.
-		-->
-		<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' https://*.posthog.com https://*.sentry.io; connect-src 'self' data: https://*.supabase.co wss://*.supabase.co https://*.posthog.com https://*.sentry.io http://localhost:* ws://localhost:* https://cdnjs.cloudflare.com; img-src 'self' data: blob: https://*.supabase.co http://localhost:* https://*.shutterstock.com https://*.openfoodfacts.org; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com https://cdnjs.cloudflare.com; media-src 'self' data: blob: https://*.supabase.co; worker-src 'self' blob:; frame-src 'self'; object-src 'none';" />
+		<!-- A política CSP de produção é enviada pelo header configurado em vercel.json. -->
 		<title>Nello - Software de Nutrição Clínica</title>
 		<meta name="description" content="Nello é um software de nutrição focado em dados clínicos, antropometria e planos alimentares precisos." />
 		<meta property="og:title" content="Nello - Software de Nutrição Clínica" />
