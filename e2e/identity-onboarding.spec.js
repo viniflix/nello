@@ -65,7 +65,9 @@ test('minimal professional signup requires legal choice, defaults analytics off 
     await expect(page).toHaveURL(/\/confirm-signup/);
     const profile=await admin.from('user_profiles').select('user_type,is_admin,birth_date,height,weight').eq('id',created).single();
     expect(profile.data).toEqual({user_type:'nutritionist',is_admin:false,birth_date:null,height:null,weight:null});
-    const verification=await admin.from('professional_verifications').select('status').eq('user_id',created).single();expect(verification.data.status).toBe('not_submitted');
+    const verification=await admin.from('professional_verifications').select('status,verification_method,valid_until').eq('user_id',created).single();
+    expect(verification.error).toBeNull();expect(verification.data.status).toBe('approved');
+    expect(verification.data.verification_method).toBe('pre_paywall_auto_approval');expect(Date.parse(verification.data.valid_until)).toBeGreaterThan(Date.now());
   } finally { if(created)expect((await admin.auth.admin.deleteUser(created)).error).toBeNull(); }
 });
 

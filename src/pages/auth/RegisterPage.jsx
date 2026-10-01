@@ -175,7 +175,7 @@ export default function RegisterPage() {
                   onChange={e => handleInputChange('inviteCode', e.target.value)} placeholder="Código recebido do profissional" />
                 <p className="text-xs text-muted-foreground">O vínculo será confirmado após verificar seu email. Informações clínicas são registradas durante o acompanhamento.</p>
               </div> : formData.type === 'nutritionist' && <p className="rounded-lg border p-3 text-sm text-muted-foreground">
-                Sua conta começa pendente de verificação profissional. Após confirmar o email, envie os documentos pela tela de verificação. Recursos clínicos protegidos exigem aprovação.
+                Durante os testes do Nello, nutricionistas têm acesso às funções da plataforma após confirmar o email. A verificação profissional formal será tratada antes do lançamento.
               </p>}
 
               {/* Password fields */}
