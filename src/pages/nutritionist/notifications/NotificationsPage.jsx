@@ -1,3 +1,4 @@
+import { markOwnNotificationsRead } from '@/lib/supabase/notification-mutations';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -174,14 +175,15 @@ const NotificationsPage = () => {
         }
     }, [user, fetchNotifications]);
 
-
-    const handleMarkAsRead = async (id) => {
-        await supabase.from('notifications').update({ is_read: true }).eq('id', id);
+  const handleMarkAsRead = async (id) => {
+        const { error } = await markOwnNotificationsRead(user?.id, [id]);
+        if (error) { return false; }
         setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
     };
 
     const handleMarkAllAsRead = async () => {
-        await supabase.from('notifications').update({ is_read: true }).eq('user_id', user.id).eq('is_read', false);
+        const { error } = await markOwnNotificationsRead(user?.id, notifications.filter(n => !n.is_read).map(n => n.id));
+        if (error) { return; }
         setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
     };
 

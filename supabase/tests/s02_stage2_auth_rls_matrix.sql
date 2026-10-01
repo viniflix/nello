@@ -8,9 +8,10 @@ begin
   from pg_policies
   where schemaname = 'public'
     and tablename = 'anamnesis_templates';
-  if v_count <> 4 then
+  if v_count <> 5 then
     raise exception 's02_anamnesis_template_policy_count:%', v_count;
   end if;
+  if not exists(select 1 from pg_policies where schemaname='public' and tablename='anamnesis_templates' and policyname='wave05_active_actor' and permissive='RESTRICTIVE') then raise exception 'wave05_active_actor_policy_missing';end if;
 
   if exists (
     select 1

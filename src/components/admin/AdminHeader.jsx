@@ -1,3 +1,4 @@
+import { markOwnNotificationsRead, deleteOwnNotifications } from '@/lib/supabase/notification-mutations';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
@@ -62,7 +63,8 @@ export default function AdminHeader() {
     const unreadIds = notifications.filter((n) => !n.is_read).map((n) => n.id);
     if (!unreadIds.length) return;
     try {
-      await supabase.from('notifications').update({ is_read: true }).in('id', unreadIds);
+      const { error } = await markOwnNotificationsRead(user?.id, unreadIds);
+      if (error) throw error;
       setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
     } catch (err) {
       logDiagnostic('error', 'components/admin/AdminHeader.jsx:67', 'Error marking as read:', err);
@@ -73,7 +75,8 @@ export default function AdminHeader() {
     const readIds = notifications.filter((n) => n.is_read).map((n) => n.id);
     if (!readIds.length) return;
     try {
-      await supabase.from('notifications').delete().in('id', readIds);
+      const { error } = await deleteOwnNotifications(user?.id, readIds);
+      if (error) throw error;
       setNotifications((prev) => prev.filter((n) => !n.is_read));
     } catch (err) {
       logDiagnostic('error', 'components/admin/AdminHeader.jsx:78', 'Error clearing notifications:', err);

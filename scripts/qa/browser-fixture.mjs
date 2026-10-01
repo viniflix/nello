@@ -47,6 +47,7 @@ insert into private.admin_operators(user_id,grant_reason) values
 ('${id('admin-aal1')}','synthetic QA'),('${id('admin-aal2')}','synthetic QA');`);
 for (const [pro, patient] of [['nutritionist-a','patient-a'],['nutritionist-b','patient-b']]) {
   sql(`update public.user_profiles set nutritionist_id='${id(pro)}',name='QA ${patient}',birth_date='1990-01-01',weight=60,height=165 where id='${id(patient)}';
+insert into public.growth_records(patient_id,weight,height,record_date) values('${id(patient)}',60,165,current_date);
 insert into public.nutritionist_patients(nutritionist_id,patient_id,status) values('${id(pro)}','${id(patient)}','active');`);
 }
 mkdirSync('.backend-ci/browser-runtime',{recursive:true});

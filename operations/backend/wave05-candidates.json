@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "migrations": [
+    {
+      "file": "supabase/migrations/releases/20261001120000_wave05_authorization_boundaries.sql",
+      "sha256": "3528b06fee39513b4d53b97fe3360aa345258fafb172cfe03fe4b6d94cb7132a"
+    }
+  ]
+}

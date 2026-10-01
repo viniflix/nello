@@ -226,6 +226,11 @@
       "file": "wave4_rpc_grants.sql",
       "kind": "assertion-suite",
       "fixtures": []
+    },
+    {
+      "file": "wave05_authorization_matrix.sql",
+      "kind": "assertion-suite",
+      "fixtures": []
     }
   ]
 }

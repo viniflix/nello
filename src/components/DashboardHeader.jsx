@@ -1,3 +1,4 @@
+import { markOwnNotificationsRead, deleteOwnNotifications } from '@/lib/supabase/notification-mutations';
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { LogOut, User, Menu, Bell, Check, Trash2, Shield, MessageSquare } from 'lucide-react';
@@ -279,16 +280,15 @@ const DashboardHeader = ({ user, logout }) => {
   }, [shouldShowNotifications, user?.id, fetchNotifications]);
 
   const handleMarkAsRead = async (notificationId) => {
-    const { error } = await supabase.from('notifications').update({ is_read: true }).eq('id', notificationId);
+    const { error } = await markOwnNotificationsRead(user?.id, [notificationId]);
     if (error) {
-      toast({ title: 'Erro', description: 'Não foi possível marcar como lida.', variant: 'destructive' });
       return;
     }
     setNotifications((prev) => prev.map((n) => (n.id === notificationId ? { ...n, is_read: true } : n)));
   };
 
   const deleteNotification = async (notificationId) => {
-    const { error } = await supabase.from('notifications').delete().eq('id', notificationId);
+    const { error } = await deleteOwnNotifications(user?.id, [notificationId]);
     if (!error) {
       setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
     }
@@ -313,9 +313,8 @@ const DashboardHeader = ({ user, logout }) => {
     const unreadIds = notifications.filter((n) => !n.is_read).map((n) => n.id);
     if (!unreadIds.length) return;
 
-    const { error } = await supabase.from('notifications').update({ is_read: true }).in('id', unreadIds);
+    const { error } = await markOwnNotificationsRead(user?.id, unreadIds);
     if (error) {
-      toast({ title: 'Erro', description: 'Não foi possível marcar todas como lidas.', variant: 'destructive' });
       return;
     }
     setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
@@ -325,9 +324,8 @@ const DashboardHeader = ({ user, logout }) => {
     const readIds = notifications.filter((n) => n.is_read).map((n) => n.id);
     if (!readIds.length) return;
 
-    const { error } = await supabase.from('notifications').delete().in('id', readIds);
+    const { error } = await deleteOwnNotifications(user?.id, readIds);
     if (error) {
-      toast({ title: 'Erro', description: 'Não foi possível excluir notificações lidas.', variant: 'destructive' });
       return;
     }
     setNotifications((prev) => prev.filter((n) => !n.is_read));

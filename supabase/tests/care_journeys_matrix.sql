@@ -44,6 +44,7 @@ end $$;
 select public.end_care_episode('20000000-0000-0000-0000-000000000031', 'qa_patient_unlinked');
 
 do $$ begin
+  if not (select is_active from public.user_profiles where id=auth.uid()) then raise exception 'Ending care disabled the account';end if;
   if (public.get_my_care_relationship()->>'status') <> 'ended' then
     raise exception 'Encerramento unilateral não ficou visível ao paciente';
   end if;

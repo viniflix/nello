@@ -38,20 +38,20 @@ for (const [index, source] of manifest.sources.entries()) {
     for(const migration of candidates)sql(database,migration.content);
     const inputs = [...(source.kind==='storage-fixture'?[]:['supabase/fixtures/wave02/client-rpc-contract.sql']), ...(source.fixtures || []), path.join('supabase/tests', source.file)];
     const contents = inputs.map(file => readFileSync(file, 'utf8'));
-    // Reviewed candidate bodies come from the checksum-pinned migration, never from
-    // the database under test. Unchanged RPCs retain the independently captured digest.
-    if(candidates.length){
-      const overrides=candidates.flatMap(migration=>[...migration.content.matchAll(/CREATE OR REPLACE FUNCTION public\.(\w+)\([\s\S]*?AS \$function\$([\s\S]*?)\$function\$;/g)].map(match=>{
-        const digest=createHash('md5').update(match[2].replaceAll('\r\n','\n')).digest('hex');
-        return `update wave02_client_rpc_contract set definition_md5='${digest}',body_only=true where signature like '${match[1]}(%';`;
-      })).join('\n');
-      contents[0]=contents[0].replace('create function pg_temp.assert_client_rpc_surface()',overrides+'\ncreate function pg_temp.assert_client_rpc_surface()');
-    }
     hashes = [...candidates.map(({file,sha256})=>({file,sha256})), ...inputs.map((file, index) => ({ file, sha256: createHash('sha256').update(contents[index]).digest('hex') }))];
     if(candidates.some(m=>m.file.includes('wave04_identity_onboarding'))) {
       const reviewed=readFileSync('supabase/fixtures/wave02/wave04-client-rpc-contract.sql','utf8');
       contents[0]=contents[0].replace('create function pg_temp.assert_client_rpc_surface()',reviewed+'\ncreate function pg_temp.assert_client_rpc_surface()');
       hashes.push({file:'supabase/fixtures/wave02/wave04-client-rpc-contract.sql',sha256:createHash('sha256').update(reviewed).digest('hex')});
+    }
+    // Reviewed candidate bodies come from the checksum-pinned migration, never from
+    // the database under test. Unchanged RPCs retain the independently captured digest.
+    if(candidates.length){
+      const overrides=candidates.flatMap(migration=>[...migration.content.matchAll(/CREATE OR REPLACE FUNCTION public\.(\w+)\([\s\S]*?AS \$function\$([\s\S]*?)\$function\$;/gi)].map(match=>{
+        const digest=createHash('md5').update(match[2].replaceAll('\r\n','\n')).digest('hex');
+        return `update wave02_client_rpc_contract set definition_md5='${digest}',body_only=true where signature like '${match[1]}(%';`;
+      })).join('\n');
+      contents[0]=contents[0].replace('create function pg_temp.assert_client_rpc_surface()',overrides+'\ncreate function pg_temp.assert_client_rpc_surface()');
     }
     const script = contents.join('\n');
     log = docker('psql', ['-X', '-v', 'ON_ERROR_STOP=1', '-v', 'VERBOSITY=verbose', '-d', database], { input: script, encoding: 'utf8' });

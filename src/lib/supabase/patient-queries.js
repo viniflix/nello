@@ -1674,7 +1674,7 @@ export const fetchAllNutritionistPatients = async (nutritionistId) => {
 };
 
 /**
- * Realiza o Soft Delete de um paciente, inserindo no histórico de arquivados e invalidando a flag is_active
+ * Encerra o acompanhamento e preserva o histórico e o acesso à conta do paciente
  */
 export const archivePatient = async (patientId, nutritionistId) => {
     try {
@@ -1727,23 +1727,8 @@ export const endMyCareRelationship = async (patientId, reason = 'ended_by_patien
  */
 export const unarchivePatient = async (patientId, nutritionistId) => {
     try {
-        // Remove do histórico de arquivados
-        await supabase
-            .from('archived_patient_links')
-            .delete()
-            .eq('patient_id', patientId)
-            .eq('nutritionist_id', nutritionistId);
-
-        // Volta a flag is_active para true (se ainda estiver vinculado)
-        const { data, error } = await supabase
-            .from('user_profiles')
-            .update({ is_active: true })
-            .eq('id', patientId)
-            .eq('nutritionist_id', nutritionistId)
-            .select()
-            .single();
-            
-        return { success: !error, error, data };
+        const { data, error } = await supabase.rpc('start_care_episode', { p_patient_id: patientId, p_start_reason: 'restarted_by_nutritionist' });
+        return { success: !error && data?.success === true, error, data };
     } catch (error) {
         logSupabaseError('Erro ao reativar paciente', error);
         return { success: false, error };

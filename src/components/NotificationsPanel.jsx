@@ -1,3 +1,4 @@
+import { markOwnNotificationsRead, deleteOwnNotifications } from '@/lib/supabase/notification-mutations';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/customSupabaseClient';
@@ -182,12 +183,14 @@ const NotificationsPanel = ({ isOpen, setIsOpen }) => {
   }, [user, fetchNotifications]);
 
   const handleMarkAsRead = async (id) => {
-    await supabase.from('notifications').update({ is_read: true }).eq('id', id);
+    const { error } = await markOwnNotificationsRead(user?.id, [id]);
+    if (error) { return false; }
     setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, is_read: true } : n)));
   };
 
   const deleteNotification = async (id) => {
-    await supabase.from('notifications').delete().eq('id', id);
+    const { error } = await deleteOwnNotifications(user?.id, [id]);
+    if (error) { return false; }
     setNotifications((prev) => prev.filter((n) => n.id !== id));
   };
 
@@ -208,9 +211,8 @@ const NotificationsPanel = ({ isOpen, setIsOpen }) => {
   const handleMarkAllAsRead = async () => {
     const unreadIds = notifications.filter((n) => !n.is_read).map((n) => n.id);
     if (!unreadIds.length) return;
-    const { error } = await supabase.from('notifications').update({ is_read: true }).in('id', unreadIds);
+    const { error } = await markOwnNotificationsRead(user?.id, unreadIds);
     if (error) {
-      toast({ title: 'Erro', description: 'Não foi possível marcar as notificações como lidas.', variant: 'destructive' });
       return;
     }
     fetchNotifications();
@@ -219,9 +221,8 @@ const NotificationsPanel = ({ isOpen, setIsOpen }) => {
   const handleClearRead = async () => {
     const readIds = notifications.filter((n) => n.is_read).map((n) => n.id);
     if (!readIds.length) return;
-    const { error } = await supabase.from('notifications').delete().in('id', readIds);
+    const { error } = await deleteOwnNotifications(user?.id, readIds);
     if (error) {
-      toast({ title: 'Erro', description: 'Não foi possível limpar as notificações.', variant: 'destructive' });
       return;
     }
     fetchNotifications();
