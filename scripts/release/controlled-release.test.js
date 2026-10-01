@@ -8,3 +8,7 @@ it('post-promotion smoke failure restores and validates the previous synthetic d
 it('red checks block all provider mutations',async()=>{const s=setup();s.args.evidence.github.checks[0].conclusion='failure';s.args.provider.promote=vi.fn();await expect(controlledRelease(s.args)).rejects.toThrow('not green');expect(s.args.provider.promote).not.toHaveBeenCalled();});
 
 it('a failure late in the observation window triggers the same automatic rollback',async()=>{const s=setup();s.args.observe=async()=>{throw Error('late runtime regression');};await expect(controlledRelease(s.args)).rejects.toThrow('late runtime');expect(s.active.id).toBe('dpl_old');expect(s.calls).toContain('rollback');});
+
+it('an inaccessible recovery URL never rolls back the healthy live release',async()=>{const s=setup('rollback-target');await expect(controlledRelease(s.args)).rejects.toThrow('injected');expect(s.active.id).toBe('dpl_new');expect(s.calls).toEqual(['rollback-target']);});
+
+it('invalid recovery metadata never mutates the canonical deployment',async()=>{const s=setup();const inspect=s.args.provider.inspect;s.args.provider.inspect=async id=>({...await inspect(id),readyState:id==='dpl_old'?'ERROR':'READY'});await expect(controlledRelease(s.args)).rejects.toThrow('Rollback target');expect(s.active.id).toBe('dpl_new');expect(s.calls).toEqual([]);});
