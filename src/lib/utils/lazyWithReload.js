@@ -4,26 +4,21 @@ const CHUNK_ERROR_PATTERN = /(?:Failed to fetch dynamically imported module|Impo
 
 export const isChunkLoadError = (error) => CHUNK_ERROR_PATTERN.test(String(error?.message || error || ''));
 
-/**
- * Recupera automaticamente abas que ficaram abertas durante um deploy.
- * O navegador antigo pode apontar para um chunk que deixou de existir; nesse
- * caso, uma única recarga obtém o HTML e o manifesto da versão atual.
- */
-export const lazyWithReload = (importer, componentKey) => lazy(async () => {
-    const release = import.meta.env.VITE_APP_RELEASE || 'development';
-    const reloadKey = `nello:chunk-reload:${release}:${componentKey}`;
-
+/** Chunk errors are recovered explicitly without automatically discarding drafts. */
+export const lazyWithReload = (importer) => lazy(async () => {
     try {
         const module = await importer();
-        window.sessionStorage.removeItem(reloadKey);
         return module;
     } catch (error) {
-        if (isChunkLoadError(error) && window.sessionStorage.getItem(reloadKey) !== '1') {
-            window.sessionStorage.setItem(reloadKey, '1');
-            window.location.reload();
-            return new Promise(() => {});
-        }
-
         throw error;
     }
 });
+
+// Explicit consent, once per release across all routes; never auto-reload drafts.
+export function requestReleaseReload({release=import.meta.env.VITE_APP_RELEASE || 'development',storage,reload=()=>window.location.reload(),confirm=()=>window.confirm('Atualizar a página pode descartar alterações ainda não salvas. Deseja continuar?'),onBlocked=()=>{}}={}) {
+    const key=`nello:chunk-reload:${release}`;
+    try { storage=storage||window.sessionStorage;if(storage.getItem(key)==='1'){onBlocked();return false;} }catch{onBlocked();return false;}
+    try { if(!confirm())return false; }catch{onBlocked();return false;}
+    try { storage.setItem(key,'1'); }catch{onBlocked();return false;}
+    try { reload();return true; }catch{onBlocked();return false;}
+}

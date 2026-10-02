@@ -26,6 +26,21 @@ const ConductSuggestionsCard = ({ patientId }) => {
     const [actionLoading, setActionLoading] = useState(null);
     const [expanded, setExpanded] = useState(true);
 
+    const loadSuggestions = useCallback(async () => {
+        if (!user?.id || !patientId) return;
+        setLoading(true);
+        try {
+            const { data } = await getConductSuggestions({
+                nutritionistId: user.id,
+                patientId,
+                limit: 15
+            });
+            setSuggestions(data || []);
+        } finally {
+            setLoading(false);
+        }
+    }, [user?.id, patientId]);
+
     const loadEvaluated = useCallback(async () => {
         if (!user?.id || !patientId) return;
         setEvaluating(true);
@@ -70,21 +85,6 @@ const ConductSuggestionsCard = ({ patientId }) => {
             setEvaluating(false);
         }
     }, [user?.id, patientId, loadSuggestions, toast]);
-
-    const loadSuggestions = useCallback(async () => {
-        if (!user?.id || !patientId) return;
-        setLoading(true);
-        try {
-            const { data } = await getConductSuggestions({
-                nutritionistId: user.id,
-                patientId,
-                limit: 15
-            });
-            setSuggestions(data || []);
-        } finally {
-            setLoading(false);
-        }
-    }, [user?.id, patientId]);
 
     useEffect(() => { loadSuggestions(); }, [loadSuggestions]);
 

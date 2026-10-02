@@ -1,3 +1,4 @@
+import { VisibleChart } from '@/components/ui/visible-chart';
 import { civilDateToDate } from '@/lib/utils/date';
 import React from 'react';
 import { format } from 'date-fns';
@@ -10,7 +11,6 @@ import {
     CartesianGrid,
     Tooltip,
     Legend,
-    ResponsiveContainer,
     ReferenceLine,
     Area,
     ComposedChart
@@ -117,7 +117,7 @@ const IMCChart = ({ data = [], patientAge = null, patientSex = null, patientEthn
                 </div>
             </CardHeader>
             <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
+                <VisibleChart width="100%" height={300}>
                     <ComposedChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                         <XAxis
@@ -174,7 +174,7 @@ const IMCChart = ({ data = [], patientAge = null, patientSex = null, patientEthn
                             activeDot={{ r: 6 }}
                         />
                     </ComposedChart>
-                </ResponsiveContainer>
+                </VisibleChart>
 
                 {/* Estatísticas resumidas */}
                 <div className="grid grid-cols-3 gap-4 mt-4 pt-4 border-t">

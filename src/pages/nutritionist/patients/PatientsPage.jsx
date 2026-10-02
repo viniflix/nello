@@ -1,3 +1,5 @@
+import ListActionsMenu from '@/components/nutritionist/PatientListActions';
+import { usePatientListData } from '@/hooks/usePatientListData';
 import { isPatientAccessPending } from '@/lib/utils/patientAccessStatus';
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -23,13 +25,13 @@ import {
 } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ScrollArea } from '@/components/ui/scroll-area';
+
 import AddPatientModal from '@/components/nutritionist/AddPatientModal';
 import ArchivedPatientsModal from '@/components/nutritionist/ArchivedPatientsModal';
 import PatientCard from '@/components/nutritionist/PatientCard';
 import { usePatientFormStore } from '@/stores/usePatientFormStore';
 import {
-    fetchAllNutritionistPatients, archivePatient, removeEmptyPatient, getEmptyPatientRemovalStatus,
+    archivePatient, removeEmptyPatient, getEmptyPatientRemovalStatus,
     approvePatientLink, rejectPatientLink
 } from '@/lib/supabase/patient-queries';
 import { useOnlinePresence } from '@/hooks/useOnlinePresence';
@@ -59,78 +61,6 @@ const sortOptions = {
 const THIRTY_DAYS_AGO = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
 // ── ListActionsMenu (For Table View) ─────────────────────────────────────────
-const ListActionsMenu = ({ patient, onArchive, onDelete }) => {
-    const navigate = useNavigate();
-    const [showArchive, setShowArchive] = useState(false);
-    const [showDelete, setShowDelete] = useState(false);
-    const [isCheckingData, setIsCheckingData] = useState(false);
-    const canDeleteRef = React.useRef(null);
-    const isArchived = patient.is_active === false || patient.arquivadoHistorico;
-
-    const handleOpen = async (open) => {
-        if (open && !isArchived && canDeleteRef.current === null) {
-            setIsCheckingData(true);
-            try {
-                const { data } = await getEmptyPatientRemovalStatus(patient.id);
-                canDeleteRef.current = data?.can_remove === true;
-            } catch { canDeleteRef.current = false; }
-            finally { setIsCheckingData(false); }
-        }
-    };
-
-    return (
-        <>
-            <div 
-                onClick={e => e.stopPropagation()} 
-                onPointerDown={e => e.stopPropagation()}
-                onPointerUp={e => e.stopPropagation()}
-            >
-                <DropdownMenu onOpenChange={handleOpen} modal={false}>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                            {isCheckingData ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /> : <MoreVertical className="h-4 w-4" />}
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-44">
-                        {isArchived ? (
-                            <DropdownMenuItem onClick={() => navigate(patientRoute(patient, 'hub'))} className="cursor-pointer">
-                                <FileText className="mr-2 h-4 w-4" /> Ver Histórico
-                            </DropdownMenuItem>
-                        ) : (
-                            <>
-                                <DropdownMenuItem onClick={() => navigate(patientRoute(patient, 'hub'))} className="cursor-pointer"><FileText className="mr-2 h-4 w-4" /> Prontuário</DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => navigate(`/nutritionist/chat?patient=${patient.id}`)} className="cursor-pointer"><MessageCircle className="mr-2 h-4 w-4" /> Chat</DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem onClick={() => setShowArchive(true)} className="cursor-pointer"><Archive className="mr-2 h-4 w-4" /> Encerrar acompanhamento</DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem onClick={() => setShowDelete(true)} disabled={isCheckingData || !canDeleteRef.current} className={`cursor-pointer ${canDeleteRef.current ? 'text-destructive focus:text-destructive' : 'text-muted-foreground'}`}>
-                                    <Trash2 className="mr-2 h-4 w-4" /> Remover cadastro vazio
-                                </DropdownMenuItem>
-                            </>
-                        )}
-                    </DropdownMenuContent>
-                </DropdownMenu>
-            </div>
-
-            {/* Modals */}
-            <Dialog open={showArchive} onOpenChange={setShowArchive}>
-                <DialogContent>
-                    <DialogHeader><DialogTitle>Encerrar acompanhamento</DialogTitle><DialogDescription>O vínculo será encerrado imediatamente. O paciente ficará livre para outro convite e o histórico permanecerá preservado somente para os participantes deste episódio.</DialogDescription></DialogHeader>
-                    <DialogFooter><Button variant="outline" onClick={() => setShowArchive(false)}>Cancelar</Button><Button variant="destructive" onClick={() => { setShowArchive(false); onArchive(patient); }}>Confirmar encerramento</Button></DialogFooter>
-                </DialogContent>
-            </Dialog>
-
-            <Dialog open={showDelete} onOpenChange={setShowDelete}>
-                <DialogContent>
-                    <DialogHeader><DialogTitle className="text-destructive flex items-center gap-2"><AlertCircle className="h-5 w-5" /> Remover cadastro vazio</DialogTitle><DialogDescription>O cadastro de <strong>{patient.name}</strong> será removido da sua lista. Essa opção existe apenas para cadastros sem dados clínicos; a conta do paciente e a auditoria mínima da ação são preservadas.</DialogDescription></DialogHeader>
-                    <DialogFooter><Button variant="outline" onClick={() => setShowDelete(false)}>Cancelar</Button><Button variant="destructive" onClick={() => { setShowDelete(false); onDelete(patient); }}>Confirmar remoção</Button></DialogFooter>
-                </DialogContent>
-            </Dialog>
-        </>
-    );
-};
-
-
 // ── Component ─────────────────────────────────────────────────────────────────
 const PatientsPage = () => {
     const { user } = useAuth();
@@ -143,20 +73,20 @@ const PatientsPage = () => {
 
     // ── State (with sessionStorage persistence) ──
     const persisted = useMemo(loadPersistedState, []);
-    const [patients,            setPatients]            = useState([]);
+    const {patients,pendingRequests,loading,error:listError,fetchPatients}=usePatientListData(user?.id);
     const [searchTerm,          setSearchTerm]          = useState('');
-    const [loading,             setLoading]             = useState(true);
+
     const [sortOrder,           setSortOrder]           = useState(persisted.sortOrder     || 'name_asc');
     const [filterStatus,        setFilterStatus]        = useState(persisted.filterStatus  || 'all');
     const [viewMode,            setViewMode]            = useState(persisted.viewMode      || 'grid');
-    const [pendingRequests,     setPendingRequests]     = useState([]);
+
     const [activeChip,          setActiveChip]          = useState(null); // 'new30' | 'pending'
     const [showAddPatientModal, setShowAddPatientModal] = useState(false);
     const [showArchivedModal,   setShowArchivedModal]   = useState(false);
     const [copiedInvite,        setCopiedInvite]        = useState(false);
 
     // Persist state changes
-    useEffect(() => { Object.assign(sessionStorage, { [SESSION_KEY]: JSON.stringify({ sortOrder, filterStatus, viewMode }) }); }, [sortOrder, filterStatus, viewMode]);
+    useEffect(() => { try { sessionStorage.setItem(SESSION_KEY, JSON.stringify({ sortOrder, filterStatus, viewMode })); } catch { /* Interface remains usable when storage is unavailable. */ } }, [sortOrder, filterStatus, viewMode]);
 
     // Auto-open from URL params
     useEffect(() => {
@@ -169,22 +99,6 @@ const PatientsPage = () => {
     }, [searchParams, setSearchParams, updateField]);
 
     // ── Data fetching ────────────────────────────────────────────────────────
-    const fetchPatients = useCallback(async () => {
-        if (!user?.id) return;
-        setLoading(true);
-        const { active, archived, pending, error } = await fetchAllNutritionistPatients(user.id);
-        if (error) { toast({ title: "Erro", description: "Falha ao carregar.", variant: "destructive" }); }
-        else { 
-            setPatients([...active, ...archived]); 
-            setPendingRequests(pending || []);
-        }
-        setLoading(false);
-    }, [user?.id, toast]);
-
-    useEffect(() => { fetchPatients(); }, [fetchPatients]);
-
-
-
     // ── Actions ──────────────────────────────────────────────────────────────
     const handleArchive = async (patient) => {
         const { success } = await archivePatient(patient.id, user.id);
@@ -293,12 +207,13 @@ const PatientsPage = () => {
 
     // ── Contextual empty state message ───────────────────────────────────────  
     const emptyMessage = useMemo(() => {
+        if(listError)return {title:'Lista indisponível',sub:'Não foi possível confirmar os pacientes. Tente novamente.'};
         if (searchTerm) return { title: `Nenhum resultado para "${searchTerm}"`, sub: "Verifique a ortografia do nome ou e-mail." };
         if (activeChip === 'new30') return { title: "Nenhum paciente adicionado recentemente.", sub: "" };
         if (activeChip === 'pending') return { title: "Nenhum convite pendente.", sub: "Todos já acessaram a plataforma cruzando o primeiro acesso." };
         if (filterStatus === 'online') return { title: "Nenhum paciente online.", sub: "" };
         return { title: "Nenhum paciente encontrado.", sub: "" };
-    }, [searchTerm, filterStatus, activeChip]);
+    }, [searchTerm, filterStatus, activeChip, listError]);
 
     const handleChipClick = (chip) => setActiveChip(prev => prev === chip ? null : chip);
     const formatDate = (iso) => iso ? new Date(iso).toLocaleDateString('pt-BR') : '—';
@@ -306,6 +221,7 @@ const PatientsPage = () => {
     // ── Render ────────────────────────────────────────────────────────────────
     return (
         <div className="flex flex-col min-h-screen bg-background">
+{listError&&<section role="alert" className="m-4 rounded-lg border p-4"><p>{listError.message}</p><Button onClick={fetchPatients} variant="outline">Tentar novamente</Button></section>}
             <motion.div
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -475,7 +391,7 @@ const PatientsPage = () => {
                         </CardHeader>
 
                         <CardContent className="pt-4 bg-muted/10 p-0">
-                            <ScrollArea className="h-[400px] md:h-[550px] w-full p-4 md:p-6">
+                            <div className="h-[400px] md:h-[550px] w-full overflow-y-auto p-4 md:p-6" tabIndex={0} aria-label="Lista de pacientes">
                         {loading ? (
                             <div className="pr-1">
                                 {viewMode === 'grid' ? <GridSkeleton count={6} /> : <TableSkeleton rows={5} />}
@@ -574,7 +490,7 @@ const PatientsPage = () => {
                                 )}
                             </motion.div>
                         )}
-                    </ScrollArea>
+                    </div>
                 </CardContent>
             </Card>
 

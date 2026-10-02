@@ -311,7 +311,7 @@ export default function NutritionistDashboard() {
   const { toast } = useToast();
   const { user } = useAuth();
   const navigate = useNavigate();
-  
+
   const {
     patients,
     appointments,
@@ -327,16 +327,19 @@ export default function NutritionistDashboard() {
     patients90DaysSeries,
     active24hSeries,
     adherence24hSeries,
+    failures,
+    retry,
     statsLoading,
     appointmentsLoading,
     noShowLoading
   } = useDashboardController({ user, toast });
 
   return (
-    <div className="flex flex-col min-h-screen bg-background"> 
-      
-      
-      
+    <div className="flex flex-col min-h-screen bg-background">
+      {Object.keys(failures).length>0&&<section role="alert" className="m-4 rounded-lg border p-4"><h2 className="font-semibold">Alguns dados não foram atualizados</h2><p>Os resultados disponíveis foram mantidos. Não interprete os indicadores indisponíveis como zero.</p>{Object.entries(failures).map(([key,failure])=><p key={key}>{({stats:'Estatísticas',appointments:'Agenda',noShow:'Faltas',upcoming_count:'Total da agenda',today_count:'Agenda de hoje',canceled_count:'Canceladas'})[key]}: {failure.message} {failure.correlationId&&('Código: '+failure.correlationId)}</p>)}<Button variant="outline" onClick={retry}>Tentar novamente</Button></section>}
+
+
+
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -374,10 +377,10 @@ export default function NutritionistDashboard() {
             <div className="hidden lg:block">
               <AppointmentsCard2
                 appointments={appointments}
-                totalUpcoming={appointmentsTotalCount}
-                todayAppointments={appointmentsTodayCount}
+                totalUpcoming={failures.upcoming_count||failures.appointments?"—":appointmentsTotalCount}
+                todayAppointments={failures.today_count||failures.appointments?"—":appointmentsTodayCount}
                 appointmentsLoading={appointmentsLoading}
-                noShowStats={noShowStats}
+                noShowStats={failures.noShow?{noShowCount:"—",completedCount:"—",canceledCount:"—",eligibleCount:"—",noShowRate:"—"}:noShowStats}
                 noShowLoading={noShowLoading}
                 noShowPeriodDays={noShowPeriodDays}
                 onNoShowPeriodChange={setNoShowPeriodDays}
@@ -414,7 +417,7 @@ export default function NutritionistDashboard() {
                     </CardHeader>
                     <CardContent className="relative">
                       <div className="text-3xl lg:text-4xl font-bold text-white">
-                        {patients.length}
+                        {failures.stats?'—':patients.length}
                       </div>
                       <p className="text-xs text-white/70">
                         Evolução dos últimos 90 dias
@@ -433,10 +436,10 @@ export default function NutritionistDashboard() {
                     </CardHeader>
                     <CardContent className="relative">
                       <div className="text-3xl lg:text-4xl font-bold text-white">
-                        {activePatients24h}
+                        {failures.stats?'—':activePatients24h}
                       </div>
                       <p className="text-xs text-white/70 leading-tight">
-                        {newPatients30Days} novos nos últimos 30 dias
+                        {failures.stats?'—':newPatients30Days} novos nos últimos 30 dias
                       </p>
                     </CardContent>
                   </Card>
@@ -455,7 +458,7 @@ export default function NutritionistDashboard() {
                         {adherencePercent24h}
                       </div>
                       <p className="text-xs text-white/70">
-                        {adherentPatients24h}/{patients.length} com 2+ registros
+                        {failures.stats?'—':adherentPatients24h}/{failures.stats?'—':patients.length} com 2+ registros
                       </p>
                     </CardContent>
                   </Card>
@@ -477,7 +480,7 @@ export default function NutritionistDashboard() {
               totalUpcoming={appointmentsTotalCount}
               todayAppointments={appointmentsTodayCount}
               appointmentsLoading={appointmentsLoading}
-              noShowStats={noShowStats}
+              noShowStats={failures.noShow?{noShowCount:"—",completedCount:"—",canceledCount:"—",eligibleCount:"—",noShowRate:"—"}:noShowStats}
               noShowLoading={noShowLoading}
               noShowPeriodDays={noShowPeriodDays}
               onNoShowPeriodChange={setNoShowPeriodDays}

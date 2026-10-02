@@ -1,10 +1,11 @@
+import { VisibleChart } from '@/components/ui/visible-chart';
 import React, { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/customSupabaseClient';
 import { TrendingUp, Loader2, Info } from 'lucide-react';
 import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
-    ResponsiveContainer, Legend
+    Legend
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { format } from 'date-fns';
@@ -113,7 +114,7 @@ export function AnamnesisEvolutionChart({ patientId }) {
                 <span>Campos de escala 1-10 comparados entre anamneses concluídas, em ordem cronológica.</span>
             </div>
 
-            <ResponsiveContainer width="100%" height={280}>
+            <VisibleChart width="100%" height={280}>
                 <LineChart data={chartData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                     <XAxis
@@ -156,7 +157,7 @@ export function AnamnesisEvolutionChart({ patientId }) {
                         />
                     ))}
                 </LineChart>
-            </ResponsiveContainer>
+            </VisibleChart>
         </div>
     );
 }

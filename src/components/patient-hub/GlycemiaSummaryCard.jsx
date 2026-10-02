@@ -1,3 +1,4 @@
+import { VisibleChart } from '@/components/ui/visible-chart';
 import React, { useState, useEffect } from 'react';
 import { Activity, Droplets, Plus, Loader2 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
@@ -8,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { getGlycemiaRecords, insertGlycemiaRecord } from '@/lib/supabase/glycemia-queries';
 import { CardSkeleton } from '@/components/ui/card-skeleton';
 
@@ -100,7 +101,7 @@ const GlycemiaSummaryCard = ({ patientId, patient }) => {
                             </div>
                             
                             <div className="h-[200px] w-full flex-1">
-                                <ResponsiveContainer width="100%" height="100%">
+                                <VisibleChart width="100%" height="100%">
                                     <LineChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: -25 }}>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
                                         <XAxis 
@@ -133,7 +134,7 @@ const GlycemiaSummaryCard = ({ patientId, patient }) => {
                                             activeDot={{ r: 5, stroke: 'hsl(var(--background))', strokeWidth: 2 }} 
                                         />
                                     </LineChart>
-                                </ResponsiveContainer>
+                                </VisibleChart>
                             </div>
                         </div>
                     ) : (

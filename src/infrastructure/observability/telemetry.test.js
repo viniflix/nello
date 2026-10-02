@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as Sentry from '@sentry/react';
 import { track } from '@/infrastructure/analytics/posthog';
-import { captureOperationalError, clearObservabilityUser } from './telemetry';
+import { captureOperationalError, clearObservabilityUser, __testing } from './telemetry';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
 
 vi.mock('@sentry/react', () => ({
@@ -26,6 +26,17 @@ vi.mock('@/infrastructure/analytics/posthog', () => ({
 
 describe('captureOperationalError', () => {
   beforeEach(() => { clearObservabilityUser(); vi.clearAllMocks(); });
+  it('does not let repeated suppressed failures extend the suppression forever',()=>{
+    expect(__testing.shouldCapture('repeat',0)).toBe(true);expect(__testing.shouldCapture('repeat',1000)).toBe(false);expect(__testing.shouldCapture('repeat',4000)).toBe(false);expect(__testing.shouldCapture('repeat',6000)).toBe(true);
+  });
+  it('groups connectivity failures while retaining every distinct operation and drops intentional cancellation',()=>{
+    const fingerprints=[];Sentry.withScope.mockImplementationOnce(callback=>callback({setContext:vi.fn(),setFingerprint:value=>fingerprints.push(value),setLevel:vi.fn(),setTags:vi.fn()})).mockImplementationOnce(callback=>callback({setContext:vi.fn(),setFingerprint:value=>fingerprints.push(value),setLevel:vi.fn(),setTags:vi.fn()}));
+    captureOperationalError(new TypeError('Failed to fetch'),{operation:'dashboard_patients'});
+    captureOperationalError(new TypeError('Failed to fetch'),{operation:'dashboard_meals'});
+    expect(fingerprints[0]).toEqual(fingerprints[1]);expect(track).toHaveBeenCalledTimes(2);
+    expect(track.mock.calls.map(([,p])=>p.operation)).toEqual(['dashboard_patients','dashboard_meals']);
+    captureOperationalError({name:'AbortError'},{operation:'cancelled_navigation'});expect(track).toHaveBeenCalledTimes(2);
+  });
 
   it('keeps distinct real query operations and deduplicates only their repeats', () => {
     const error = { code: '42501', message: 'PRIVATE_CLINICAL_SENTINEL' };

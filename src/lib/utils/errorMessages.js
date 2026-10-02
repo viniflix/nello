@@ -33,7 +33,7 @@ const ERROR_TRANSLATIONS = [
 export function toPortugueseError(errorOrMessage, fallback = 'Ocorreu um erro. Tente novamente.') {
   const code = typeof errorOrMessage === 'string' ? '' : String(errorOrMessage?.code || '');
   if (['40001', 'PT409'].includes(code)) return 'Este registro mudou em outra aba. Recarregue e revise as versões antes de salvar.';
-  if (['OFFLINE','NETWORK_FAILURE','RETRY_EXPIRED','RETRY_LIMIT','SESSION_CHANGED'].includes(code)) return errorOrMessage.message;
+  if (['OFFLINE','NETWORK_FAILURE','RETRY_EXPIRED','RETRY_LIMIT','SESSION_CHANGED'].includes(code)) return 'A operação não foi concluída. Confira a conexão e a sessão antes de tentar novamente.';
   if (code === 'captcha_failed' || code === 'captcha_verification_failed') return 'A verificação de segurança expirou ou falhou. Complete a nova verificação e tente novamente.';
   if (code === 'email_not_confirmed') return 'Confirme seu e-mail antes de entrar. Digite o código recebido ou peça um novo.';
   if (code === 'over_email_send_rate_limit' || Number(errorOrMessage?.status) === 429) return 'Aguarde um minuto antes de pedir outro código. Confira também a caixa de spam.';

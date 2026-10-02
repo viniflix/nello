@@ -1,3 +1,4 @@
+import { VisibleChart } from '@/components/ui/visible-chart';
 import { civilDateToDate } from '@/lib/utils/date';
 import { useMemo } from 'react';
 import {
@@ -8,7 +9,6 @@ import {
   CartesianGrid,
   Tooltip,
   Legend,
-  ResponsiveContainer,
   ScatterChart,
   Scatter,
   ReferenceLine
@@ -129,7 +129,7 @@ export default function CompositionCharts({ data = [] }) {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={400}>
+          <VisibleChart width="100%" height={400}>
             <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
               <XAxis
@@ -197,7 +197,7 @@ export default function CompositionCharts({ data = [] }) {
                 </>
               )}
             </LineChart>
-          </ResponsiveContainer>
+          </VisibleChart>
           {!hasCompositionData && (
             <div className="mt-4 text-center text-sm text-muted-foreground">
               <p>Preencha dados de composição corporal (dobras cutâneas ou bioimpedância) para visualizar massa magra e massa gorda.</p>
@@ -216,7 +216,7 @@ export default function CompositionCharts({ data = [] }) {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={400}>
+            <VisibleChart width="100%" height={400}>
               <ScatterChart
                 margin={{ top: 20, right: 20, bottom: 60, left: 60 }}
               >
@@ -287,7 +287,7 @@ export default function CompositionCharts({ data = [] }) {
                   ))}
                 </Scatter>
               </ScatterChart>
-            </ResponsiveContainer>
+            </VisibleChart>
             <div className="mt-4 space-y-2">
               <div className="flex items-center justify-center gap-6 text-xs">
                 <div className="flex items-center gap-2">

@@ -1,3 +1,4 @@
+import { VisibleChart } from '@/components/ui/visible-chart';
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { format } from 'date-fns';
@@ -12,7 +13,7 @@ import {
 } from 'lucide-react';
 import {
   AreaChart, Area, BarChart, Bar, PieChart as RechartsPie, Pie, Cell,
-  XAxis, YAxis, Tooltip, ResponsiveContainer, Legend
+  XAxis, YAxis, Tooltip, Legend
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -126,7 +127,7 @@ function ActivityChart({ data, loading }) {
   }));
 
   return (
-    <ResponsiveContainer width="100%" height={200}>
+    <VisibleChart width="100%" height={200}>
       <BarChart data={chartData} barSize={14}>
         <XAxis dataKey="name" tick={{ fontSize: 11 }} />
         <YAxis tick={{ fontSize: 11 }} />
@@ -136,7 +137,7 @@ function ActivityChart({ data, loading }) {
         <Bar dataKey="refeicoes" name="Refeições Registradas" fill={CHART_COLORS[1]} radius={[3, 3, 0, 0]} />
         <Bar dataKey="medidas" name="Med. Antropométricas" fill={CHART_COLORS[2]} radius={[3, 3, 0, 0]} />
       </BarChart>
-    </ResponsiveContainer>
+    </VisibleChart>
   );
 }
 
@@ -154,14 +155,14 @@ function DistributionPie({ data, labelMap, loading }) {
   if (!entries.length) return <p className="text-sm text-muted-foreground text-center py-8">Nenhum registro</p>;
 
   return (
-    <ResponsiveContainer width="100%" height={200}>
+    <VisibleChart width="100%" height={200}>
       <RechartsPie>
         <Pie data={entries} cx="50%" cy="50%" outerRadius={70} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
           {entries.map((e, i) => <Cell key={i} fill={e.color} />)}
         </Pie>
         <Tooltip formatter={(v) => [num(v), '']} />
       </RechartsPie>
-    </ResponsiveContainer>
+    </VisibleChart>
   );
 }
 

@@ -1,3 +1,4 @@
+import { VisibleChart } from '@/components/ui/visible-chart';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -7,7 +8,7 @@ import { ArrowLeft, Settings, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { PieChart, Pie, Cell, Legend, Tooltip, ResponsiveContainer } from 'recharts';
+import { PieChart, Pie, Cell, Legend, Tooltip } from 'recharts';
 import {
     Table,
     TableBody,
@@ -253,7 +254,7 @@ const MealPlanSummaryPage = () => {
                     </CardHeader>
                     <CardContent>
                         {chartData.length > 0 ? (
-                            <ResponsiveContainer width="100%" height={300}>
+                            <VisibleChart width="100%" height={300}>
                                 <PieChart>
                                     <Pie
                                         data={chartData}
@@ -277,7 +278,7 @@ const MealPlanSummaryPage = () => {
                                     <Tooltip formatter={(value) => `${value} kcal`} />
                                     <Legend />
                                 </PieChart>
-                            </ResponsiveContainer>
+                            </VisibleChart>
                         ) : (
                             <div className="h-[300px] flex items-center justify-center text-muted-foreground">
                                 Nenhuma refeição com calorias registradas

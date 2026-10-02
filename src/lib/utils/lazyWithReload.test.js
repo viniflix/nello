@@ -1,7 +1,20 @@
-import { describe, expect, it } from 'vitest';
-import { isChunkLoadError } from './lazyWithReload';
+import { describe, expect, it, vi } from 'vitest';
+import { isChunkLoadError, requestReleaseReload } from './lazyWithReload';
 
 describe('isChunkLoadError', () => {
+    it('requires confirmation and permits only one reload per release across routes',()=>{
+      const storage=new Map(),reload=vi.fn(),confirm=vi.fn(()=>true);
+      const options={release:'test',storage:{getItem:k=>storage.get(k),setItem:(k,v)=>storage.set(k,v)},reload,confirm};
+      expect(requestReleaseReload({...options,confirm:()=>false})).toBe(false);
+      expect(reload).not.toHaveBeenCalled();
+      expect(requestReleaseReload(options)).toBe(true);
+      expect(requestReleaseReload(options)).toBe(false);
+      expect(reload).toHaveBeenCalledTimes(1);
+      expect(requestReleaseReload({...options,release:'next'})).toBe(true);
+    });
+    it('cannot create a reload loop when session storage is blocked',()=>{
+      const reload=vi.fn();expect(requestReleaseReload({storage:{getItem:()=>{throw Error('blocked')}},reload,confirm:()=>true})).toBe(false);expect(reload).not.toHaveBeenCalled();
+    });
     it.each([
         'Failed to fetch dynamically imported module: /assets/page-old.js',
         'Importing a module script failed.',

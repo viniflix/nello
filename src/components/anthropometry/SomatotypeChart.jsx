@@ -1,3 +1,4 @@
+import { VisibleChart } from '@/components/ui/visible-chart';
 import React from 'react';
 import {
   ScatterChart,
@@ -6,7 +7,6 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  ResponsiveContainer,
   ReferenceLine,
   Cell
 } from 'recharts';
@@ -101,7 +101,7 @@ const SomatotypeChart = ({ somatotype, className = '' }) => {
         <div className="space-y-4">
           {/* Gráfico */}
           <div className="relative">
-            <ResponsiveContainer width="100%" height={400}>
+            <VisibleChart width="100%" height={400}>
               <ScatterChart
                 margin={{ top: 20, right: 20, bottom: 20, left: 20 }}
                 data={data}
@@ -138,7 +138,7 @@ const SomatotypeChart = ({ somatotype, className = '' }) => {
                   ))}
                 </Scatter>
               </ScatterChart>
-            </ResponsiveContainer>
+            </VisibleChart>
             
             {/* Labels de referência nos cantos */}
             <div className="absolute top-4 left-4 text-xs font-semibold text-red-600 dark:text-red-400">

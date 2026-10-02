@@ -1,3 +1,4 @@
+import { VisibleChart } from '@/components/ui/visible-chart';
 import { civilDateToDate } from '@/lib/utils/date';
 import React from 'react';
 import { format } from 'date-fns';
@@ -10,7 +11,6 @@ import {
     CartesianGrid,
     Tooltip,
     Legend,
-    ResponsiveContainer,
     ReferenceLine
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -117,7 +117,7 @@ const WeightChart = ({ data = [], goalWeight = null }) => {
                 </div>
             </CardHeader>
             <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
+                <VisibleChart width="100%" height={300}>
                     <LineChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                         <XAxis
@@ -160,7 +160,7 @@ const WeightChart = ({ data = [], goalWeight = null }) => {
                             activeDot={{ r: 6 }}
                         />
                     </LineChart>
-                </ResponsiveContainer>
+                </VisibleChart>
 
                 {/* Estatísticas resumidas */}
                 <div className="grid grid-cols-3 gap-4 mt-4 pt-4 border-t">

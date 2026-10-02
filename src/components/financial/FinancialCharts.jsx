@@ -1,6 +1,7 @@
+import { VisibleChart } from '@/components/ui/visible-chart';
 import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format, parseISO, addDays, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -53,7 +54,7 @@ export default function FinancialCharts({ cashFlowData, expenseDistribution, pro
                             <div className="text-muted-foreground">Nenhum dado disponível</div>
                         </div>
                     ) : (
-                        <ResponsiveContainer width="100%" height={300}>
+                        <VisibleChart width="100%" height={300}>
                             <BarChart data={formattedCashFlow}>
                                 <XAxis
                                     dataKey="date"
@@ -88,7 +89,7 @@ export default function FinancialCharts({ cashFlowData, expenseDistribution, pro
                                     radius={[4, 4, 0, 0]}
                                 />
                             </BarChart>
-                        </ResponsiveContainer>
+                        </VisibleChart>
                     )}
                 </CardContent>
             </Card>
@@ -115,7 +116,7 @@ export default function FinancialCharts({ cashFlowData, expenseDistribution, pro
                                     <div className="text-muted-foreground">Nenhuma despesa registrada</div>
                                 </div>
                             ) : (
-                                <ResponsiveContainer width="100%" height={300}>
+                                <VisibleChart width="100%" height={300}>
                                     <PieChart>
                                         <Pie
                                             data={formattedExpenses}
@@ -143,7 +144,7 @@ export default function FinancialCharts({ cashFlowData, expenseDistribution, pro
                                             }}
                                         />
                                     </PieChart>
-                                </ResponsiveContainer>
+                                </VisibleChart>
                             )}
                         </TabsContent>
                         <TabsContent value="projection" className="mt-4">
@@ -156,7 +157,7 @@ export default function FinancialCharts({ cashFlowData, expenseDistribution, pro
                                     <div className="text-muted-foreground">Nenhuma projeção disponível</div>
                                 </div>
                             ) : (
-                                <ResponsiveContainer width="100%" height={300}>
+                                <VisibleChart width="100%" height={300}>
                                     <LineChart data={formattedProjection}>
                                         <XAxis
                                             dataKey="date"
@@ -187,7 +188,7 @@ export default function FinancialCharts({ cashFlowData, expenseDistribution, pro
                                             dot={{ r: 3 }}
                                         />
                                     </LineChart>
-                                </ResponsiveContainer>
+                                </VisibleChart>
                             )}
                         </TabsContent>
                     </Tabs>

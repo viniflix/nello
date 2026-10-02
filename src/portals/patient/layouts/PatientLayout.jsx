@@ -1,3 +1,4 @@
+import ClientErrorBoundary from '@/components/ClientErrorBoundary';
 import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { LogOut, Shield } from 'lucide-react';
 import { useChat } from '@/contexts/ChatContext';
@@ -124,7 +125,7 @@ export default function PatientLayout() {
 
       {/* MAIN CONTENT AREA */}
       <main className={`min-h-0 min-w-0 flex-1 md:ml-64 ${isChatPage ? 'overflow-hidden' : 'overflow-y-auto'}`}>
-        <Outlet />
+        <ClientErrorBoundary resetKey={`${user?.id}:${location.pathname}`}><Outlet /></ClientErrorBoundary>
       </main>
 
       {/* BOTTOM NAV (Mobile apenas) */}

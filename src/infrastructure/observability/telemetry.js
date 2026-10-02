@@ -1,4 +1,5 @@
 import * as Sentry from '@sentry/react';
+import { classifyFailure } from '@/lib/utils/failure';
 import {
   Events,
   identifyUser,
@@ -11,6 +12,9 @@ const recentErrors = new Map();
 const DEDUPLICATION_WINDOW_MS = 5000;
 
 function safeFailureReason(error) {
+  const kind = classifyFailure(error);
+  if (kind === 'offline' || kind === 'network') return 'network_failure';
+  if (kind === 'timeout') return 'request_timeout';
   const message = typeof error?.message === 'string' ? error.message : '';
   const code = String(error?.code || '');
   if (error?.name === 'AbortError') return 'request_aborted';
@@ -21,7 +25,7 @@ function safeFailureReason(error) {
   if (code === '23503') return 'missing_reference';
   if (code === '23505') return 'conflict';
   if (code === 'P0001') return 'business_rule_rejected';
-  return 'unclassified';
+  return ({forbidden:'access_denied',validation:'invalid_input',conflict:'conflict',missing:'record_missing',unauthenticated:'session_expired',rate_limit:'rate_limited'})[kind] || 'unclassified';
 }
 
 function normalizeError(error, operation = 'operation') {
@@ -46,13 +50,14 @@ function correlationId() {
 
 function shouldCapture(key, now = Date.now()) {
   const previous = recentErrors.get(key);
-  recentErrors.set(key, now);
 
   for (const [entry, timestamp] of recentErrors) {
     if (now - timestamp > DEDUPLICATION_WINDOW_MS) recentErrors.delete(entry);
   }
 
-  return !previous || now - previous > DEDUPLICATION_WINDOW_MS;
+  if(previous !== undefined && now >= previous && now - previous <= DEDUPLICATION_WINDOW_MS)return false;
+  recentErrors.set(key,now);
+  return true;
 }
 
 export function setObservabilityUser(user) {
@@ -75,6 +80,7 @@ export function clearObservabilityUser() {
 }
 
 export function captureOperationalError(error, context = {}) {
+  if (classifyFailure(error) === 'aborted') return null;
   const operation = /^[a-z0-9_.:-]{1,120}$/i.test(context.operation || '') ? context.operation : 'unknown_operation';
   const normalized = normalizeError(error, operation);
   const module = String(context.module || 'unknown').slice(0, 80);
@@ -101,7 +107,9 @@ export function captureOperationalError(error, context = {}) {
   };
 
   Sentry.withScope((scope) => {
-    scope.setFingerprint(['operational-error', source, module, operation, errorCode, failureReason]);
+    scope.setFingerprint(failureReason === 'network_failure'
+      ? ['connectivity-incident', properties.session_id || 'anonymous', String(Math.floor(Date.now() / 60000))]
+      : ['operational-error', source, module, operation, errorCode, failureReason]);
     scope.setLevel(status === 403 || errorCode === '42501' ? 'warning' : 'error');
     scope.setTags({
       'correlation.id': id,

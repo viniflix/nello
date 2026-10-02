@@ -1,6 +1,7 @@
+import { VisibleChart } from '@/components/ui/visible-chart';
 import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ResponsiveContainer, PieChart, Pie, Cell, Legend, Tooltip } from 'recharts';
+import { PieChart, Pie, Cell, Legend, Tooltip } from 'recharts';
 import { Target, TrendingUp } from 'lucide-react';
 
 const CHART_COLORS = {
@@ -65,7 +66,7 @@ export default function EnergyExpenditureResultsPanel({
       </CardHeader>
       <CardContent className="space-y-6">
         {hasChartData ? (
-          <ResponsiveContainer width="100%" height={280}>
+          <VisibleChart width="100%" height={280}>
             <PieChart>
               <Pie
                 data={chartData}
@@ -98,7 +99,7 @@ export default function EnergyExpenditureResultsPanel({
               <Tooltip formatter={(value) => [`${value} kcal`, '']} />
               <Legend />
             </PieChart>
-          </ResponsiveContainer>
+          </VisibleChart>
         ) : (
           <div className="h-[200px] flex items-center justify-center text-muted-foreground text-sm">
             Preencha biometria e protocolo para ver a composição.
