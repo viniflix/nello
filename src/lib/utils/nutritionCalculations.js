@@ -1,3 +1,4 @@
+import { foodPer100Grams, foodEnergyPer100Grams } from './nutrition-calculations';
 /**
  * src/lib/utils/nutritionCalculations.js
  * Utilitários para cálculos nutricionais avançados, conversões e equivalências.
@@ -10,16 +11,12 @@
  * @returns {number} Quantidade em gramas do substituto necessária
  */
 export function calculateEquivalentGrams(originalKcal, substituteFood) {
-    if (!originalKcal || !substituteFood || substituteFood.calories <= 0) return 0;
-    
-    // Todos os valores na tabela foods são baseados em portion_size (geralmente 100g)
-    const portion = substituteFood.portion_size || 100;
-    
-    // Kcal por 1 grama do substituto
-    const kcalPerGram = substituteFood.calories / portion;
-    
-    // Quantos gramas eu preciso para atingir a originalKcal?
-    return originalKcal / kcalPerGram;
+    const food = foodPer100Grams(substituteFood);
+    const original = Number(originalKcal);
+    const energy = foodEnergyPer100Grams(food);
+    if (!food || !Number.isFinite(original) || original <= 0 || !Number.isFinite(energy) || energy <= 0) return 0;
+    return original * 100 / energy;
+
 }
 
 /**
@@ -122,13 +119,14 @@ export function convertGramsToMeasure(targetGrams, foodMeasures = [], allMeasure
 export function checkMacroDeviations(originalKcal, originalProtein, originalCarbs, originalFat, substituteFood, substituteGrams) {
     if (!substituteFood || !substituteGrams) return { hasDeviation: false, messages: [] };
 
-    const portion = substituteFood.portion_size || 100;
-    const ratio = substituteGrams / portion;
+    const food = foodPer100Grams(substituteFood);
+    if (!food) return {hasDeviation:true,messages:['Porção base inválida.']};
+    const ratio = substituteGrams / 100;
 
-    const subKcal = substituteFood.calories * ratio;
-    const subProtein = substituteFood.protein * ratio;
-    const subCarbs = substituteFood.carbs * ratio;
-    const subFat = substituteFood.fat * ratio;
+    const subKcal = foodEnergyPer100Grams(food) * ratio;
+    const subProtein = food.protein * ratio;
+    const subCarbs = food.carbs * ratio;
+    const subFat = food.fat * ratio;
 
     const messages = [];
     let hasDeviation = false;

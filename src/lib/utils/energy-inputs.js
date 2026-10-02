@@ -17,6 +17,10 @@ export function normalizeEnergyInput(field, value) {
 }
 
 export function readAnthropometryEnergyValues(results) {
+  if (results?.protocol === 'durnin' &&
+      (results.equation_version !== 2 || !['male','female'].includes(results.sex_used) || !Number.isInteger(results.age_years))) {
+    return { body_fat_percentage: null, lean_mass_kg: null };
+  }
   if (['pollock3', 'pollock7'].includes(results?.protocol) &&
       (!results?.equation_version || !['male', 'female'].includes(results?.sex_used) || !Number.isInteger(results?.age_years))) {
     return { body_fat_percentage: null, lean_mass_kg: null };

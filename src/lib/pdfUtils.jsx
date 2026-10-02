@@ -1,14 +1,11 @@
+import { downloadSavedClinicalPdf } from './pdf/savedClinicalPdf';
 import { getTodayIsoDate } from '@/lib/utils/date';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import html2canvas from 'html2canvas';
-import { pdf } from '@react-pdf/renderer';
-import React from 'react';
-import MealPlanPDF from '@/components/pdf/MealPlanPDF';
 import { loadLogo } from './pdf/pdfAssets';
 import { generatePdfViaEdge } from './pdf/edgePdfFallback';
-import { summarizeMicronutrients } from './utils/micronutrientCoverage';
 import { formatFinancialDecimal } from './utils/financial-math';
 
 const withEdgePdfFallback = async (options, generateClientPdf) => {
@@ -390,105 +387,6 @@ export const exportAgendaToPdf = async (appointments, periodType, periodLabel, n
  * @param {Function} translateMealType - Função para traduzir tipo de refeição
  * @param {Function} formatQuantityWithUnit - Função para formatar quantidade
  */
-export const exportMealPlanToPdf = async (mealPlan, patientName, nutritionistName, includeNutrients, translateMealType, formatQuantityWithUnit) => {
-    await withEdgePdfFallback({
-        title: 'Plano Alimentar',
-        fileName: `plano-alimentar-${includeNutrients ? 'completo' : 'simples'}-${patientName?.replace(/\s+/g, '-').toLowerCase() || 'paciente'}-${getTodayIsoDate()}.pdf`,
-        lines: [
-            `Paciente: ${patientName || 'Não informado'}`,
-            `Nutricionista: ${nutritionistName || 'Não informado'}`,
-            `Observações Gerais: ${mealPlan?.description || 'Nenhuma'}`,
-            ...(mealPlan?.meals || []).flatMap((meal) => {
-                const mealName = translateMealType ? translateMealType(meal.meal_type) : (meal.name || meal.meal_type || 'Refeição');
-                const rows = (meal.foods || []).map((food) => {
-                    const qty = formatQuantityWithUnit
-                        ? formatQuantityWithUnit(food.quantity || 0, food.unit || '', food.measure)
-                        : `${food.quantity || 0} ${food.unit || ''}`;
-                    const foodName = food.patient_description || food.food?.name || 'Alimento';
-                    const substitutes = (food.substitutes || []).length > 0 
-                        ? ` (Opções: ${food.substitutes.map(s => s.name).join(', ')})` 
-                        : '';
-                    return `  - ${foodName}${substitutes} | ${qty}`;
-                });
-                const mealNotes = meal.notes ? [`  Obs: ${meal.notes}`] : [];
-                return [`${mealName}${meal.meal_time ? ` (${meal.meal_time})` : ''}`, ...rows, ...mealNotes];
-            }),
-        ],
-    }, async () => {
-        // Calcular totais do plano (macros e micros)
-        const planTotals = (mealPlan.meals || []).reduce((acc, meal) => {
-        const mealFoods = meal.foods || [];
-        const mealTotals = mealFoods.reduce((mealAcc, food) => ({
-            calories: mealAcc.calories + (food.calories || 0),
-            protein: mealAcc.protein + (food.protein || 0),
-            carbs: mealAcc.carbs + (food.carbs || 0),
-            fat: mealAcc.fat + (food.fat || 0),
-            // Micronutrientes
-            fiber: mealAcc.fiber + (food.food?.fiber ? (food.food.fiber * (food.quantity || 0) / 100) : 0),
-            sodium: mealAcc.sodium + (food.food?.sodium ? (food.food.sodium * (food.quantity || 0) / 100) : 0),
-            calcium: mealAcc.calcium + (food.food?.calcium ? (food.food.calcium * (food.quantity || 0) / 100) : 0),
-            iron: mealAcc.iron + (food.food?.iron ? (food.food.iron * (food.quantity || 0) / 100) : 0),
-            magnesium: mealAcc.magnesium + (food.food?.magnesium ? (food.food.magnesium * (food.quantity || 0) / 100) : 0),
-            potassium: mealAcc.potassium + (food.food?.potassium ? (food.food.potassium * (food.quantity || 0) / 100) : 0),
-            zinc: mealAcc.zinc + (food.food?.zinc ? (food.food.zinc * (food.quantity || 0) / 100) : 0),
-            vitamin_a: mealAcc.vitamin_a + (food.food?.vitamin_a ? (food.food.vitamin_a * (food.quantity || 0) / 100) : 0),
-            vitamin_c: mealAcc.vitamin_c + (food.food?.vitamin_c ? (food.food.vitamin_c * (food.quantity || 0) / 100) : 0),
-            vitamin_d: mealAcc.vitamin_d + (food.food?.vitamin_d ? (food.food.vitamin_d * (food.quantity || 0) / 100) : 0)
-        }), {
-            calories: 0, protein: 0, carbs: 0, fat: 0,
-            fiber: 0, sodium: 0, calcium: 0, iron: 0,
-            magnesium: 0, potassium: 0, zinc: 0,
-            vitamin_a: 0, vitamin_c: 0, vitamin_d: 0
-        });
-
-        return {
-            calories: acc.calories + mealTotals.calories,
-            protein: acc.protein + mealTotals.protein,
-            carbs: acc.carbs + mealTotals.carbs,
-            fat: acc.fat + mealTotals.fat,
-            fiber: acc.fiber + mealTotals.fiber,
-            sodium: acc.sodium + mealTotals.sodium,
-            calcium: acc.calcium + mealTotals.calcium,
-            iron: acc.iron + mealTotals.iron,
-            magnesium: acc.magnesium + mealTotals.magnesium,
-            potassium: acc.potassium + mealTotals.potassium,
-            zinc: acc.zinc + mealTotals.zinc,
-            vitamin_a: acc.vitamin_a + mealTotals.vitamin_a,
-            vitamin_c: acc.vitamin_c + mealTotals.vitamin_c,
-            vitamin_d: acc.vitamin_d + mealTotals.vitamin_d
-        };
-    }, {
-        calories: 0, protein: 0, carbs: 0, fat: 0,
-        fiber: 0, sodium: 0, calcium: 0, iron: 0,
-        magnesium: 0, potassium: 0, zinc: 0,
-        vitamin_a: 0, vitamin_c: 0, vitamin_d: 0
-    });
-
-    planTotals.vitamin_d_coverage = summarizeMicronutrients(mealPlan, ['vitamin_d']).vitamin_d;
-
-    // Renderizar PDF usando @react-pdf/renderer
-    const doc = <MealPlanPDF 
-      mealPlan={mealPlan} 
-      patientName={patientName} 
-      nutritionistName={nutritionistName} 
-      includeNutrients={includeNutrients} 
-      translateMealType={translateMealType} 
-      planTotals={planTotals} 
-    />;
-
-    const blob = await pdf(doc).toBlob();
-    
-    // Fazer download do arquivo
-    const nutrientsLabel = includeNutrients ? 'completo' : 'simples';
-    const fileName = `plano-alimentar-${nutrientsLabel}-${patientName?.replace(/\s+/g, '-').toLowerCase() || 'paciente'}-${getTodayIsoDate()}.pdf`;
-    
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = fileName;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    });
+export const exportMealPlanToPdf = async (mealPlan, _patientName, _nutritionistName, includeNutrients=true) => {
+    await downloadSavedClinicalPdf('mealPlanId',mealPlan?.id,{includeNutrients});
 };

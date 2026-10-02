@@ -23,6 +23,7 @@ import {
   calculateBodyFatPercent,
   calculatePollockComposition,
   getPollockSex,
+  DURNIN_REFERENCE,
   POLLOCK_SITES
 } from '@/lib/utils/anthropometry-calculations';
 import { classifyBMI, getBMICuts, calculateBMI } from '@/lib/utils/bmi-classification';
@@ -134,7 +135,9 @@ const AnthropometryForm = ({
             if (percent === null) return null;
             const fatMass = weight * percent / 100;
             return { body_density: density, body_fat_percent: percent, fat_mass_kg: fatMass,
-                lean_mass_kg: weight - fatMass, protocol, age_years: ageAtRecord, sex_used: pollockSex };
+                lean_mass_kg: weight - fatMass, protocol, age_years: ageAtRecord, sex_used: pollockSex,
+                equation_version: 2, formula_reference: DURNIN_REFERENCE,
+                age_source: manualAge !== '' ? 'manual' : 'birth_date' };
         }
         return null;
     }, [formData.weight, formData.skinfolds, formData.bioimpedance, protocol, pollockSex, ageAtRecord, manualAge]);

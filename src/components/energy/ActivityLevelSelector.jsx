@@ -1,7 +1,7 @@
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
-import { ACTIVITY_FACTORS } from '@/lib/utils/energy-calculations';
+import { ACTIVITY_FACTORS, PAL_REFERENCE } from '@/lib/utils/energy-calculations';
 import { 
     Sofa, 
     Footprints, 
@@ -36,7 +36,9 @@ const SELECTED_COLORS = {
 
 export default function ActivityLevelSelector({ value, onChange }) {
     return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+        <div className="space-y-3">
+          <p className="text-sm text-muted-foreground">PAL representa a rotina completa de 24 horas, incluindo trabalho, deslocamento e exercício. Os atalhos usam o início das faixas da FAO/WHO/UNU; ajuste o valor após avaliação individual. Não acrescentar METs ou termogênese novamente. <a href={PAL_REFERENCE} target="_blank" rel="noreferrer" className="underline">Referência: tabela 5.3</a></p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {ACTIVITY_FACTORS.map((factor) => {
                 const Icon = ACTIVITY_ICONS[factor.value] || Activity;
                 const isSelected = value === factor.value;
@@ -47,9 +49,11 @@ export default function ActivityLevelSelector({ value, onChange }) {
                         className={cn(
                             "cursor-pointer transition-all duration-200",
                             isSelected 
-                                ? SELECTED_COLORS[factor.value] 
-                                : ACTIVITY_COLORS[factor.value]
+                                ? SELECTED_COLORS[factor.value] || 'border-primary ring-2 ring-primary'
+                                : ACTIVITY_COLORS[factor.value] || 'border-gray-300 hover:bg-gray-50'
                         )}
+                        role="button" tabIndex={0} aria-pressed={isSelected}
+                        onKeyDown={event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();onChange?.(factor.value);}}}
                         onClick={() => onChange && onChange(factor.value)}
                     >
                         <CardContent className="p-4">
@@ -82,6 +86,10 @@ export default function ActivityLevelSelector({ value, onChange }) {
                     </Card>
                 );
             })}
+          </div>
+          <label className="block text-sm">PAL definido pelo profissional (1–3)
+            <input className="mt-1 block rounded-md border p-2" type="number" min="1" max="3" step="0.01" value={value ?? ''} onChange={event=>onChange?.(event.target.value === '' ? '' : Number(event.target.value))}/>
+          </label>
         </div>
     );
 }

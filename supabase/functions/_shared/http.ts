@@ -18,7 +18,8 @@ export class RequestError extends Error {
 
 export async function boundedBody(req: Request, limit: number, timeoutMs = 5000) {
   const length = req.headers.get('content-length');
-  if (length && (!/^\d+$/.test(length) || Number(length) > limit)) throw new RequestError(413, 'request_too_large');
+  if (length && !/^\d+$/.test(length)) throw new RequestError(413, 'request_too_large');
+  let oversized = !!length && Number(length) > limit;
   if (!req.body) return new Uint8Array();
   const reader = req.body.getReader();
   const chunks: Uint8Array[] = [];
@@ -32,9 +33,14 @@ export async function boundedBody(req: Request, limit: number, timeoutMs = 5000)
       const { done, value } = await Promise.race([reader.read(), deadline]);
       if (done) break;
       size += value.byteLength;
-      if (size > limit) throw new RequestError(413, 'request_too_large');
-      chunks.push(value);
+      // Finish a bounded, small overflow without buffering it. Returning before
+      // the gateway finishes forwarding a body can abort the worker response.
+      // Large/slow uploads still terminate within the fixed byte/time bounds.
+      if (size > limit) oversized = true;
+      if (size > limit + 65536) throw new RequestError(413, 'request_too_large');
+      if (!oversized) chunks.push(value);
     }
+    if (oversized) throw new RequestError(413, 'request_too_large');
     const bytes = new Uint8Array(size);
     let offset = 0;
     for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }

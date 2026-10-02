@@ -5,6 +5,7 @@ import { supabase } from '@/lib/customSupabaseClient';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
 import { calculateEnergyPlan, ENERGY_ENGINE_VERSION } from '@/lib/utils/energy-planning';
 import { parseFiniteEnergyNumber } from '@/lib/utils/energy-numbers';
+import { INJURY_CATALOG_VERSION, CLINICAL_FACTOR_REFERENCE } from '@/lib/constants/injury-factors';
 
 const fetchLatestEnergyCalculation = async (patientId) => {
   return supabase
@@ -80,8 +81,8 @@ function extractBiometryFromContent(obj, acc) {
       if (Number.isFinite(n) && acc.height == null) acc.height = n;
     }
     if (key === 'idade' || key === 'age') {
-      const n = typeof v === 'string' ? parseInt(v.replace(/\D/g, ''), 10) : Number(v);
-      if (Number.isFinite(n) && acc.age == null) acc.age = n;
+      const n = parseFiniteEnergyNumber(v);
+      if (Number.isInteger(n) && n >= 0 && acc.age == null) acc.age = n;
     }
     if (key === 'data_nascimento' || key === 'birth_date') {
       if (acc.birth_date == null) acc.birth_date = v;
@@ -177,9 +178,10 @@ if (age !== null) out.age = age;
         if (values.lean_mass_kg != null) sources.lean_mass_kg = 'anthropometry';
       }
     }
-    if (fromAnamnesis.weight != null && sources.weight == null) sources.weight = 'anamnesis';
-    if (fromAnamnesis.height != null && sources.height == null) sources.height = 'anamnesis';
-    if (fromAnamnesis.age != null || fromAnamnesis.birth_date != null) sources.age = sources.age || 'anamnesis';
+    if (profile?.weight == null && fromAnamnesis.weight != null && sources.weight == null) sources.weight = 'anamnesis';
+    if (profile?.height == null && fromAnamnesis.height != null && sources.height == null) sources.height = 'anamnesis';
+    if (out.age != null && profile?.birth_date && civilAge(profile.birth_date) != null) sources.age = 'profile';
+    else if (fromAnamnesis.age != null || fromAnamnesis.birth_date != null) sources.age = 'anamnesis';
     if (fromAnamnesis.gender != null && !normalizeEnergyInput('gender', profile?.gender)) sources.gender = 'anamnesis';
     if (fromAnamnesis.body_fat_percentage != null && sources.body_fat_percentage == null) sources.body_fat_percentage = 'anamnesis';
     if (fromAnamnesis.lean_mass_kg != null && sources.lean_mass_kg == null) sources.lean_mass_kg = 'anamnesis';
@@ -221,8 +223,7 @@ if (age !== null) out.age = age;
  */
 
 /**
- * Insere ou atualiza o cálculo de gasto energético do paciente.
- * Se já existir registro para o paciente, atualiza o mais recente; caso contrário, insere.
+ * Acrescenta um cálculo de gasto energético imutável; nunca sobrescreve o histórico.
  *
  * @param {SaveEnergyCalculationPayload} data
  * @returns {Promise<{data: object|null, error: object|null}>}
@@ -276,6 +277,8 @@ export const saveEnergyCalculation = async (data) => {
       tinsley: 'energy.tinsley_2018'
     };
     const inputSnapshot = {
+      biometry_sources: Object.fromEntries(['weight','height','age','gender','leanMass'].map(key=>[key,
+        ['profile','anthropometry','anamnesis','manual'].includes(data.biometry_sources?.[key]) ? data.biometry_sources[key] : 'not_recorded'])),
       weight_kg: data.weight,
       height_cm: data.height,
       age_years: data.age,
@@ -333,8 +336,9 @@ export const saveEnergyCalculation = async (data) => {
       get: data.get_result ?? null,
       protocol_code: protocolCodes[data.tmb_protocol] || `energy.${data.tmb_protocol}`,
       protocol_version: 1,
-      source_snapshot: { implementation_key: data.tmb_protocol, catalog_version: 1, injury_catalog_version: 1, engine_version: ENERGY_ENGINE_VERSION,
-        equation_version: plan.formula?.equationVersion ?? null },
+      source_snapshot: { implementation_key: data.tmb_protocol, catalog_version: 1, injury_catalog_version: INJURY_CATALOG_VERSION, engine_version: ENERGY_ENGINE_VERSION,
+        equation_version: plan.formula?.equationVersion ?? null, formula_reference: plan.formula?.reference,
+        arithmetic_policy: plan.arithmeticPolicy, activity_reference: plan.activityReference, clinical_factor_reference: plan.isHarris ? CLINICAL_FACTOR_REFERENCE : null },
       input_snapshot: inputSnapshot,
       output_snapshot: outputSnapshot,
       confirmed_by: data.nutritionist_id || null,

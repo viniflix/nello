@@ -1543,10 +1543,10 @@
           "file": "index.ts",
           "sha256": "f0015be07e3d70272d3cae068e28708aa46954eacb621c848f2e45bc6e7bfea5",
           "matchedLocal": false,
-          "repositorySha256": "b618c20ec811d8304cdb50e31c5b75ce4936fc7aab20833ca9ca85f4b5d0459f"
+          "repositorySha256": "ddb8696fb25d3dc2661ea64423400b2a99da83b4190fe6d34321ea3bc725ccf1"
         }
       ],
-      "sourcePolicy": "Published source"
+      "sourcePolicy": "Wave10: authorized stored clinical records, shared engine, bounded binary PDF; original published sha256 preserved."
     },
     {
       "slug": "sentry-issues",
@@ -1644,11 +1644,31 @@
     },
     {
       "file": "http.ts",
-      "repositorySha256": "195aaddb3dc2a52db3c1605e683dd399b55eaee027dfe2f5dac798310866ef87"
+      "repositorySha256": "16af8fc5633f80eab8dab088ee5e7d29c023fa43aa810182851beb316744da55"
     },
     {
       "file": "quota.ts",
       "repositorySha256": "313c64cc41588126ab0353b2cf210cf0a7fbf3a8cf77351032e491feacbebda9"
+    },
+    {
+      "file": "clinical-arithmetic.js",
+      "repositorySha256": "574a5dc9e59521484d00ef4dc6bd33019e717b96f2c498f4c21b82a34387cd9e"
+    },
+    {
+      "file": "clinical-document.js",
+      "repositorySha256": "84df126c318f362055ae730afbcb284c0538bedca79e73898cbc74977fcec935"
+    },
+    {
+      "file": "clinical-energy-plan.js",
+      "repositorySha256": "9b71fb3866e04d8b69c3795752570bd69b770d1e5b1c5b74ae8b4feafac3d966"
+    },
+    {
+      "file": "clinical-energy.js",
+      "repositorySha256": "1a14a230f294f97afc37939aafc4014a0ec6bec5499d2142293597819bea500b"
+    },
+    {
+      "file": "clinical-factors.js",
+      "repositorySha256": "3f268c0496617d3e26088bb0ba60650e21d9ae4eb62ff4410ae985916fe70268"
     }
   ]
 }

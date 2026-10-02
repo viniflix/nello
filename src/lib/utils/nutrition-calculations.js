@@ -1,11 +1,20 @@
 /**
  * Funções utilitárias para cálculos nutricionais
  * 
- * IMPORTANTE: Sempre recalcular calorias baseado nos macros usando a fórmula:
+ * Energia publicada por tabelas de referência tem precedência; sem fonte, usar a estimativa geral:
  * Calorias = (Proteína × 4) + (Carboidratos × 4) + (Gorduras × 9)
  * 
- * Não usar food.calories diretamente, pois pode estar desatualizado ou incorreto.
+ * Fatores gerais 4/4/9 não reproduzem necessariamente energia publicada (fibras/fatores específicos).
  */
+
+import { decimalFraction, exactOperation, fractionNumber } from '../../../supabase/functions/_shared/clinical-arithmetic.js';
+const multiply = (a,b) => fractionNumber(exactOperation('multiply',[decimalFraction(a),decimalFraction(b)]));
+export const NUTRITION_REFERENCE = 'https://www.fao.org/4/y5022e/y5022e04.htm';
+export const foodEnergyPer100Grams = food => {
+  const published = Number(food?.calories);
+  return ['TACO','TBCA','USDA','OFF','OPENFOODFACTS'].includes(String(food?.source || '').toUpperCase()) && food?.calories != null && Number.isFinite(published) && published >= 0
+    ? published : calculateCaloriesFromMacros(food?.protein || 0,food?.carbs || 0,food?.fat || 0);
+};
 
 /**
  * Calcula calorias baseado nos macronutrientes
@@ -15,28 +24,32 @@
  * @returns {number} Calorias calculadas
  */
 export function calculateCaloriesFromMacros(protein = 0, carbs = 0, fat = 0) {
-  return (protein * 4) + (carbs * 4) + (fat * 9);
+  return fractionNumber(exactOperation('add',[exactOperation('add',[exactOperation('multiply',[decimalFraction(protein),decimalFraction(4)]),exactOperation('multiply',[decimalFraction(carbs),decimalFraction(4)])]),exactOperation('multiply',[decimalFraction(fat),decimalFraction(9)])]));
 }
 
 /** Custom food macros are stored per portion_size; reference foods are per 100 g. */
 export function foodPer100Grams(food) {
   if (food?.source !== 'custom') return food;
+  if (food.nutrition_basis && food.portion_size === 100) return food;
   const portion = Number(food.portion_size);
   if (!Number.isFinite(portion) || portion <= 0) return null;
   const factor = 100 / portion;
-  return {
+  const normalized = {
     ...food,
-    protein: Number(food.protein || 0) * factor,
-    carbs: Number(food.carbs || 0) * factor,
-    fat: Number(food.fat || 0) * factor,
+    portion_size: 100,
+    protein: multiply(Number(food.protein || 0),factor),
+    carbs: multiply(Number(food.carbs || 0),factor),
+    fat: multiply(Number(food.fat || 0),factor),
     fiber: food.fiber == null ? null : Number(food.fiber) * factor,
     sodium: food.sodium == null ? null : Number(food.sodium) * factor,
   };
+  Object.defineProperty(normalized,'nutrition_basis',{value:{food,portion},enumerable:false});
+  return normalized;
 }
 
 /**
  * Calcula valores nutricionais para uma quantidade específica de alimento
- * Sempre recalcula calorias baseado nos macros
+ * Preserva energia publicada; a estimativa geral é alternativa sem fonte válida.
  * 
  * @param {object} food - Alimento com valores por 100g
  * @param {number} totalGrams - Quantidade total em gramas
@@ -55,25 +68,21 @@ export function calculateNutrition(food, totalGrams) {
     };
   }
 
-  const multiplier = totalGrams / 100;
-
-  // Calcular macros primeiro
-  const protein = (food.protein || 0) * multiplier;
-  const carbs = (food.carbs || 0) * multiplier;
-  const fat = (food.fat || 0) * multiplier;
-
-  // RECALCULAR calorias baseado nos macros (não usar food.calories diretamente)
-  const calories = calculateCaloriesFromMacros(protein, carbs, fat);
-
+  const grams = Number(totalGrams);
+  if (!Number.isFinite(grams)) throw new Error('invalid_food_quantity');
+  const basis = food.nutrition_basis;
+  const original = basis?.food || food;
+  const divisor = basis?.portion || 100;
+  const ratio = exactOperation('divide',[decimalFraction(grams),decimalFraction(divisor)]);
+  const scaled = value => fractionNumber(exactOperation('multiply',[decimalFraction(value),ratio]));
+  const nutrient = field => scaled(original[field] || 0);
   return {
-    grams: parseFloat(totalGrams.toFixed(2)),
-    calories: parseFloat(calories.toFixed(2)),
-    protein: parseFloat(protein.toFixed(2)),
-    carbs: parseFloat(carbs.toFixed(2)),
-    fat: parseFloat(fat.toFixed(2)),
-    fiber: food.fiber ? parseFloat((food.fiber * multiplier).toFixed(2)) : null,
-    sodium: food.sodium ? parseFloat((food.sodium * multiplier).toFixed(2)) : null
+    grams, calories: scaled(foodEnergyPer100Grams(original)),
+    protein: nutrient('protein'), carbs: nutrient('carbs'), fat: nutrient('fat'),
+    fiber: original.fiber == null ? null : nutrient('fiber'),
+    sodium: original.sodium == null ? null : nutrient('sodium'),
   };
+
 }
 
 /**

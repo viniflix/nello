@@ -91,7 +91,7 @@ export function useMealPlanDraft({ patientId, nutritionistId, enabled = false })
             });
         }
         return () => {
-            ++scopeRef.current;
+            scopeRef.current = scope + 1;
             if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
             pendingPlanInfoRef.current = null;
             latestDraftIdRef.current = null;

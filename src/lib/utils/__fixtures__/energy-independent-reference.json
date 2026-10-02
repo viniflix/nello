@@ -1,0 +1,2501 @@
+{
+  "oracle": "Python Decimal 50-digit, independently transcribed primary equations, no application imports",
+  "cases": [
+    {
+      "method": "harris",
+      "inputs": {
+        "weight": "70",
+        "height": "175",
+        "age": 30,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1702.0125"
+    },
+    {
+      "method": "mifflin",
+      "inputs": {
+        "weight": "70",
+        "height": "175",
+        "age": 30,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1648.75"
+    },
+    {
+      "method": "fao_1985",
+      "inputs": {
+        "weight": "70",
+        "height": "175",
+        "age": 30,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1691.0"
+    },
+    {
+      "method": "cunningham",
+      "inputs": {
+        "weight": "70",
+        "height": "175",
+        "age": 30,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1495.50"
+    },
+    {
+      "method": "tinsley",
+      "inputs": {
+        "weight": "70",
+        "height": "175",
+        "age": 30,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1455.975"
+    },
+    {
+      "method": "eer_iom",
+      "inputs": {
+        "weight": "70",
+        "height": "175",
+        "age": 30,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "inactive"
+      },
+      "expected": "2434.10"
+    },
+    {
+      "method": "dri_2023",
+      "inputs": {
+        "weight": "70",
+        "height": "175",
+        "age": 30,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "inactive"
+      },
+      "expected": "2552.67"
+    },
+    {
+      "method": "eer_iom",
+      "inputs": {
+        "weight": "70",
+        "height": "175",
+        "age": 30,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "low_active"
+      },
+      "expected": "2660.4800"
+    },
+    {
+      "method": "dri_2023",
+      "inputs": {
+        "weight": "70",
+        "height": "175",
+        "age": 30,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "low_active"
+      },
+      "expected": "2754.87"
+    },
+    {
+      "method": "eer_iom",
+      "inputs": {
+        "weight": "70",
+        "height": "175",
+        "age": 30,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "2948.6000"
+    },
+    {
+      "method": "dri_2023",
+      "inputs": {
+        "weight": "70",
+        "height": "175",
+        "age": 30,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "2934.62"
+    },
+    {
+      "method": "eer_iom",
+      "inputs": {
+        "weight": "70",
+        "height": "175",
+        "age": 30,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "very_active"
+      },
+      "expected": "3421.9400"
+    },
+    {
+      "method": "dri_2023",
+      "inputs": {
+        "weight": "70",
+        "height": "175",
+        "age": 30,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "very_active"
+      },
+      "expected": "3226.67"
+    },
+    {
+      "method": "harris",
+      "inputs": {
+        "weight": "72.35",
+        "height": "164.8",
+        "age": 19,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1757.600100"
+    },
+    {
+      "method": "mifflin",
+      "inputs": {
+        "weight": "72.35",
+        "height": "164.8",
+        "age": 19,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1663.500"
+    },
+    {
+      "method": "fao_1985",
+      "inputs": {
+        "weight": "72.35",
+        "height": "164.8",
+        "age": 19,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1785.955"
+    },
+    {
+      "method": "cunningham",
+      "inputs": {
+        "weight": "72.35",
+        "height": "164.8",
+        "age": 19,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1495.50"
+    },
+    {
+      "method": "tinsley",
+      "inputs": {
+        "weight": "72.35",
+        "height": "164.8",
+        "age": 19,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1455.975"
+    },
+    {
+      "method": "eer_iom",
+      "inputs": {
+        "weight": "72.35",
+        "height": "164.8",
+        "age": 19,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "inactive"
+      },
+      "expected": "2521.2793"
+    },
+    {
+      "method": "dri_2023",
+      "inputs": {
+        "weight": "72.35",
+        "height": "164.8",
+        "age": 19,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "inactive"
+      },
+      "expected": "2638.6350"
+    },
+    {
+      "method": "eer_iom",
+      "inputs": {
+        "weight": "72.35",
+        "height": "164.8",
+        "age": 19,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "low_active"
+      },
+      "expected": "2745.717723"
+    },
+    {
+      "method": "dri_2023",
+      "inputs": {
+        "weight": "72.35",
+        "height": "164.8",
+        "age": 19,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "low_active"
+      },
+      "expected": "2824.4490"
+    },
+    {
+      "method": "eer_iom",
+      "inputs": {
+        "weight": "72.35",
+        "height": "164.8",
+        "age": 19,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "3031.366625"
+    },
+    {
+      "method": "dri_2023",
+      "inputs": {
+        "weight": "72.35",
+        "height": "164.8",
+        "age": 19,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "3024.6345"
+    },
+    {
+      "method": "eer_iom",
+      "inputs": {
+        "weight": "72.35",
+        "height": "164.8",
+        "age": 19,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "very_active"
+      },
+      "expected": "3500.646964"
+    },
+    {
+      "method": "dri_2023",
+      "inputs": {
+        "weight": "72.35",
+        "height": "164.8",
+        "age": 19,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "very_active"
+      },
+      "expected": "3231.4865"
+    },
+    {
+      "method": "harris",
+      "inputs": {
+        "weight": "102",
+        "height": "181",
+        "age": 47,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "2057.2485"
+    },
+    {
+      "method": "mifflin",
+      "inputs": {
+        "weight": "102",
+        "height": "181",
+        "age": 47,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1921.25"
+    },
+    {
+      "method": "fao_1985",
+      "inputs": {
+        "weight": "102",
+        "height": "181",
+        "age": 47,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "2062.2"
+    },
+    {
+      "method": "cunningham",
+      "inputs": {
+        "weight": "102",
+        "height": "181",
+        "age": 47,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1495.50"
+    },
+    {
+      "method": "tinsley",
+      "inputs": {
+        "weight": "102",
+        "height": "181",
+        "age": 47,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1455.975"
+    },
+    {
+      "method": "eer_iom",
+      "inputs": {
+        "weight": "102",
+        "height": "181",
+        "age": 47,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "inactive"
+      },
+      "expected": "2813.586"
+    },
+    {
+      "method": "dri_2023",
+      "inputs": {
+        "weight": "102",
+        "height": "181",
+        "age": 47,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "inactive"
+      },
+      "expected": "2858.76"
+    },
+    {
+      "method": "eer_iom",
+      "inputs": {
+        "weight": "102",
+        "height": "181",
+        "age": 47,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "low_active"
+      },
+      "expected": "3099.53056"
+    },
+    {
+      "method": "dri_2023",
+      "inputs": {
+        "weight": "102",
+        "height": "181",
+        "age": 47,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "low_active"
+      },
+      "expected": "3098.64"
+    },
+    {
+      "method": "eer_iom",
+      "inputs": {
+        "weight": "102",
+        "height": "181",
+        "age": 47,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "3463.46000"
+    },
+    {
+      "method": "dri_2023",
+      "inputs": {
+        "weight": "102",
+        "height": "181",
+        "age": 47,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "3298.75"
+    },
+    {
+      "method": "eer_iom",
+      "inputs": {
+        "weight": "102",
+        "height": "181",
+        "age": 47,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "very_active"
+      },
+      "expected": "4061.34408"
+    },
+    {
+      "method": "dri_2023",
+      "inputs": {
+        "weight": "102",
+        "height": "181",
+        "age": 47,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "very_active"
+      },
+      "expected": "3747.74"
+    },
+    {
+      "method": "harris",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 29,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1521.2185"
+    },
+    {
+      "method": "mifflin",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 29,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1491.25"
+    },
+    {
+      "method": "fao_1985",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 29,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1597.0"
+    },
+    {
+      "method": "cunningham",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 29,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1495.50"
+    },
+    {
+      "method": "tinsley",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 29,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1455.975"
+    },
+    {
+      "method": "eer_iom",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 29,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "inactive"
+      },
+      "expected": "2230.57"
+    },
+    {
+      "method": "dri_2023",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 29,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "inactive"
+      },
+      "expected": "2357.50"
+    },
+    {
+      "method": "eer_iom",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 29,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "low_active"
+      },
+      "expected": "2433.5134"
+    },
+    {
+      "method": "dri_2023",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 29,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "low_active"
+      },
+      "expected": "2533.30"
+    },
+    {
+      "method": "eer_iom",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 29,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "2691.8050"
+    },
+    {
+      "method": "dri_2023",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 29,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "2721.15"
+    },
+    {
+      "method": "eer_iom",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 29,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "very_active"
+      },
+      "expected": "3116.1412"
+    },
+    {
+      "method": "dri_2023",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 29,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "very_active"
+      },
+      "expected": "2890.30"
+    },
+    {
+      "method": "harris",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 30,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1514.4635"
+    },
+    {
+      "method": "mifflin",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 30,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1486.25"
+    },
+    {
+      "method": "fao_1985",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 30,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1575.0"
+    },
+    {
+      "method": "cunningham",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 30,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1495.50"
+    },
+    {
+      "method": "tinsley",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 30,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1455.975"
+    },
+    {
+      "method": "eer_iom",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 30,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "inactive"
+      },
+      "expected": "2221.04"
+    },
+    {
+      "method": "dri_2023",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 30,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "inactive"
+      },
+      "expected": "2346.67"
+    },
+    {
+      "method": "eer_iom",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 30,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "low_active"
+      },
+      "expected": "2423.9834"
+    },
+    {
+      "method": "dri_2023",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 30,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "low_active"
+      },
+      "expected": "2522.47"
+    },
+    {
+      "method": "eer_iom",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 30,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "2682.2750"
+    },
+    {
+      "method": "dri_2023",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 30,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "2710.32"
+    },
+    {
+      "method": "eer_iom",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 30,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "very_active"
+      },
+      "expected": "3106.6112"
+    },
+    {
+      "method": "dri_2023",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 30,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "very_active"
+      },
+      "expected": "2879.47"
+    },
+    {
+      "method": "harris",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 59,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1318.5685"
+    },
+    {
+      "method": "mifflin",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 59,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1341.25"
+    },
+    {
+      "method": "fao_1985",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 59,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1575.0"
+    },
+    {
+      "method": "cunningham",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 59,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1495.50"
+    },
+    {
+      "method": "tinsley",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 59,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1455.975"
+    },
+    {
+      "method": "eer_iom",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 59,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "inactive"
+      },
+      "expected": "1944.67"
+    },
+    {
+      "method": "dri_2023",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 59,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "inactive"
+      },
+      "expected": "2032.60"
+    },
+    {
+      "method": "eer_iom",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 59,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "low_active"
+      },
+      "expected": "2147.6134"
+    },
+    {
+      "method": "dri_2023",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 59,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "low_active"
+      },
+      "expected": "2208.40"
+    },
+    {
+      "method": "eer_iom",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 59,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "2405.9050"
+    },
+    {
+      "method": "dri_2023",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 59,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "2396.25"
+    },
+    {
+      "method": "eer_iom",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 59,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "very_active"
+      },
+      "expected": "2830.2412"
+    },
+    {
+      "method": "dri_2023",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 59,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "very_active"
+      },
+      "expected": "2565.40"
+    },
+    {
+      "method": "harris",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 60,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1311.8135"
+    },
+    {
+      "method": "mifflin",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 60,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1336.25"
+    },
+    {
+      "method": "fao_1985",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 60,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1297.0"
+    },
+    {
+      "method": "cunningham",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 60,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1495.50"
+    },
+    {
+      "method": "tinsley",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 60,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1455.975"
+    },
+    {
+      "method": "eer_iom",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 60,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "inactive"
+      },
+      "expected": "1935.14"
+    },
+    {
+      "method": "dri_2023",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 60,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "inactive"
+      },
+      "expected": "2021.77"
+    },
+    {
+      "method": "eer_iom",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 60,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "low_active"
+      },
+      "expected": "2138.0834"
+    },
+    {
+      "method": "dri_2023",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 60,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "low_active"
+      },
+      "expected": "2197.57"
+    },
+    {
+      "method": "eer_iom",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 60,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "2396.3750"
+    },
+    {
+      "method": "dri_2023",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 60,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "2385.42"
+    },
+    {
+      "method": "eer_iom",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 60,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "very_active"
+      },
+      "expected": "2820.7112"
+    },
+    {
+      "method": "dri_2023",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 60,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "very_active"
+      },
+      "expected": "2554.57"
+    },
+    {
+      "method": "harris",
+      "inputs": {
+        "weight": "300",
+        "height": "255",
+        "age": 120,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "4657.1945"
+    },
+    {
+      "method": "mifflin",
+      "inputs": {
+        "weight": "300",
+        "height": "255",
+        "age": 120,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "3998.75"
+    },
+    {
+      "method": "fao_1985",
+      "inputs": {
+        "weight": "300",
+        "height": "255",
+        "age": 120,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "4537.0"
+    },
+    {
+      "method": "cunningham",
+      "inputs": {
+        "weight": "300",
+        "height": "255",
+        "age": 120,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1495.50"
+    },
+    {
+      "method": "tinsley",
+      "inputs": {
+        "weight": "300",
+        "height": "255",
+        "age": 120,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1455.975"
+    },
+    {
+      "method": "eer_iom",
+      "inputs": {
+        "weight": "300",
+        "height": "255",
+        "age": 120,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "inactive"
+      },
+      "expected": "5667.38"
+    },
+    {
+      "method": "dri_2023",
+      "inputs": {
+        "weight": "300",
+        "height": "255",
+        "age": 120,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "inactive"
+      },
+      "expected": "5340.97"
+    },
+    {
+      "method": "eer_iom",
+      "inputs": {
+        "weight": "300",
+        "height": "255",
+        "age": 120,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "low_active"
+      },
+      "expected": "6343.7678"
+    },
+    {
+      "method": "dri_2023",
+      "inputs": {
+        "weight": "300",
+        "height": "255",
+        "age": 120,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "low_active"
+      },
+      "expected": "5880.37"
+    },
+    {
+      "method": "eer_iom",
+      "inputs": {
+        "weight": "300",
+        "height": "255",
+        "age": 120,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "7204.6250"
+    },
+    {
+      "method": "dri_2023",
+      "inputs": {
+        "weight": "300",
+        "height": "255",
+        "age": 120,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "6140.82"
+    },
+    {
+      "method": "eer_iom",
+      "inputs": {
+        "weight": "300",
+        "height": "255",
+        "age": 120,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "very_active"
+      },
+      "expected": "8618.8904"
+    },
+    {
+      "method": "dri_2023",
+      "inputs": {
+        "weight": "300",
+        "height": "255",
+        "age": 120,
+        "gender": "M",
+        "leanMass": "45.25",
+        "driActivity": "very_active"
+      },
+      "expected": "7896.07"
+    },
+    {
+      "method": "harris",
+      "inputs": {
+        "weight": "70",
+        "height": "175",
+        "age": 30,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1507.9455"
+    },
+    {
+      "method": "mifflin",
+      "inputs": {
+        "weight": "70",
+        "height": "175",
+        "age": 30,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1482.75"
+    },
+    {
+      "method": "fao_1985",
+      "inputs": {
+        "weight": "70",
+        "height": "175",
+        "age": 30,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1438.0"
+    },
+    {
+      "method": "cunningham",
+      "inputs": {
+        "weight": "70",
+        "height": "175",
+        "age": 30,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1495.50"
+    },
+    {
+      "method": "tinsley",
+      "inputs": {
+        "weight": "70",
+        "height": "175",
+        "age": 30,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1455.975"
+    },
+    {
+      "method": "eer_iom",
+      "inputs": {
+        "weight": "70",
+        "height": "175",
+        "age": 30,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "inactive"
+      },
+      "expected": "2072.40"
+    },
+    {
+      "method": "dri_2023",
+      "inputs": {
+        "weight": "70",
+        "height": "175",
+        "age": 30,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "inactive"
+      },
+      "expected": "2195.30"
+    },
+    {
+      "method": "eer_iom",
+      "inputs": {
+        "weight": "70",
+        "height": "175",
+        "age": 30,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "low_active"
+      },
+      "expected": "2303.4840"
+    },
+    {
+      "method": "dri_2023",
+      "inputs": {
+        "weight": "70",
+        "height": "175",
+        "age": 30,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "low_active"
+      },
+      "expected": "2370.27"
+    },
+    {
+      "method": "eer_iom",
+      "inputs": {
+        "weight": "70",
+        "height": "175",
+        "age": 30,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "2592.3390"
+    },
+    {
+      "method": "dri_2023",
+      "inputs": {
+        "weight": "70",
+        "height": "175",
+        "age": 30,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "2508.25"
+    },
+    {
+      "method": "eer_iom",
+      "inputs": {
+        "weight": "70",
+        "height": "175",
+        "age": 30,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "very_active"
+      },
+      "expected": "2938.9650"
+    },
+    {
+      "method": "dri_2023",
+      "inputs": {
+        "weight": "70",
+        "height": "175",
+        "age": 30,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "very_active"
+      },
+      "expected": "2767.98"
+    },
+    {
+      "method": "harris",
+      "inputs": {
+        "weight": "72.35",
+        "height": "164.8",
+        "age": 19,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1562.985170"
+    },
+    {
+      "method": "mifflin",
+      "inputs": {
+        "weight": "72.35",
+        "height": "164.8",
+        "age": 19,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1497.500"
+    },
+    {
+      "method": "fao_1985",
+      "inputs": {
+        "weight": "72.35",
+        "height": "164.8",
+        "age": 19,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1559.545"
+    },
+    {
+      "method": "cunningham",
+      "inputs": {
+        "weight": "72.35",
+        "height": "164.8",
+        "age": 19,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1495.50"
+    },
+    {
+      "method": "tinsley",
+      "inputs": {
+        "weight": "72.35",
+        "height": "164.8",
+        "age": 19,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1455.975"
+    },
+    {
+      "method": "eer_iom",
+      "inputs": {
+        "weight": "72.35",
+        "height": "164.8",
+        "age": 19,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "inactive"
+      },
+      "expected": "2096.3540"
+    },
+    {
+      "method": "dri_2023",
+      "inputs": {
+        "weight": "72.35",
+        "height": "164.8",
+        "age": 19,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "inactive"
+      },
+      "expected": "2241.5845"
+    },
+    {
+      "method": "eer_iom",
+      "inputs": {
+        "weight": "72.35",
+        "height": "164.8",
+        "age": 19,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "low_active"
+      },
+      "expected": "2321.191280"
+    },
+    {
+      "method": "dri_2023",
+      "inputs": {
+        "weight": "72.35",
+        "height": "164.8",
+        "age": 19,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "low_active"
+      },
+      "expected": "2408.5890"
+    },
+    {
+      "method": "eer_iom",
+      "inputs": {
+        "weight": "72.35",
+        "height": "164.8",
+        "age": 19,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "2602.237880"
+    },
+    {
+      "method": "dri_2023",
+      "inputs": {
+        "weight": "72.35",
+        "height": "164.8",
+        "age": 19,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "2547.6510"
+    },
+    {
+      "method": "eer_iom",
+      "inputs": {
+        "weight": "72.35",
+        "height": "164.8",
+        "age": 19,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "very_active"
+      },
+      "expected": "2939.493800"
+    },
+    {
+      "method": "dri_2023",
+      "inputs": {
+        "weight": "72.35",
+        "height": "164.8",
+        "age": 19,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "very_active"
+      },
+      "expected": "2782.0920"
+    },
+    {
+      "method": "harris",
+      "inputs": {
+        "weight": "102",
+        "height": "181",
+        "age": 47,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1745.5867"
+    },
+    {
+      "method": "mifflin",
+      "inputs": {
+        "weight": "102",
+        "height": "181",
+        "age": 47,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1755.25"
+    },
+    {
+      "method": "fao_1985",
+      "inputs": {
+        "weight": "102",
+        "height": "181",
+        "age": 47,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1716.4"
+    },
+    {
+      "method": "cunningham",
+      "inputs": {
+        "weight": "102",
+        "height": "181",
+        "age": 47,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1495.50"
+    },
+    {
+      "method": "tinsley",
+      "inputs": {
+        "weight": "102",
+        "height": "181",
+        "age": 47,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1455.975"
+    },
+    {
+      "method": "eer_iom",
+      "inputs": {
+        "weight": "102",
+        "height": "181",
+        "age": 47,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "inactive"
+      },
+      "expected": "2298.01"
+    },
+    {
+      "method": "dri_2023",
+      "inputs": {
+        "weight": "102",
+        "height": "181",
+        "age": 47,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "inactive"
+      },
+      "expected": "2485.17"
+    },
+    {
+      "method": "eer_iom",
+      "inputs": {
+        "weight": "102",
+        "height": "181",
+        "age": 47,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "low_active"
+      },
+      "expected": "2570.2636"
+    },
+    {
+      "method": "dri_2023",
+      "inputs": {
+        "weight": "102",
+        "height": "181",
+        "age": 47,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "low_active"
+      },
+      "expected": "2679.18"
+    },
+    {
+      "method": "eer_iom",
+      "inputs": {
+        "weight": "102",
+        "height": "181",
+        "age": 47,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "2910.5806"
+    },
+    {
+      "method": "dri_2023",
+      "inputs": {
+        "weight": "102",
+        "height": "181",
+        "age": 47,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "2823.20"
+    },
+    {
+      "method": "eer_iom",
+      "inputs": {
+        "weight": "102",
+        "height": "181",
+        "age": 47,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "very_active"
+      },
+      "expected": "3318.9610"
+    },
+    {
+      "method": "dri_2023",
+      "inputs": {
+        "weight": "102",
+        "height": "181",
+        "age": 47,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "very_active"
+      },
+      "expected": "3105.15"
+    },
+    {
+      "method": "harris",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 29,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1398.4911"
+    },
+    {
+      "method": "mifflin",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 29,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1325.25"
+    },
+    {
+      "method": "fao_1985",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 29,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1378.0"
+    },
+    {
+      "method": "cunningham",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 29,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1495.50"
+    },
+    {
+      "method": "tinsley",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 29,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1455.975"
+    },
+    {
+      "method": "eer_iom",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 29,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "inactive"
+      },
+      "expected": "1913.11"
+    },
+    {
+      "method": "dri_2023",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 29,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "inactive"
+      },
+      "expected": "2028.01"
+    },
+    {
+      "method": "eer_iom",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 29,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "low_active"
+      },
+      "expected": "2124.2500"
+    },
+    {
+      "method": "dri_2023",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 29,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "low_active"
+      },
+      "expected": "2189.88"
+    },
+    {
+      "method": "eer_iom",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 29,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "2388.1750"
+    },
+    {
+      "method": "dri_2023",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 29,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "2326.46"
+    },
+    {
+      "method": "eer_iom",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 29,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "very_active"
+      },
+      "expected": "2704.8850"
+    },
+    {
+      "method": "dri_2023",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 29,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "very_active"
+      },
+      "expected": "2558.69"
+    },
+    {
+      "method": "harris",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 30,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1393.8155"
+    },
+    {
+      "method": "mifflin",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 30,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1320.25"
+    },
+    {
+      "method": "fao_1985",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 30,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1351.0"
+    },
+    {
+      "method": "cunningham",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 30,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1495.50"
+    },
+    {
+      "method": "tinsley",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 30,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1455.975"
+    },
+    {
+      "method": "eer_iom",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 30,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "inactive"
+      },
+      "expected": "1906.20"
+    },
+    {
+      "method": "dri_2023",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 30,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "inactive"
+      },
+      "expected": "2021.00"
+    },
+    {
+      "method": "eer_iom",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 30,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "low_active"
+      },
+      "expected": "2117.3400"
+    },
+    {
+      "method": "dri_2023",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 30,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "low_active"
+      },
+      "expected": "2182.87"
+    },
+    {
+      "method": "eer_iom",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 30,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "2381.2650"
+    },
+    {
+      "method": "dri_2023",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 30,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "2319.45"
+    },
+    {
+      "method": "eer_iom",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 30,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "very_active"
+      },
+      "expected": "2697.9750"
+    },
+    {
+      "method": "dri_2023",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 30,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "very_active"
+      },
+      "expected": "2551.68"
+    },
+    {
+      "method": "harris",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 59,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1258.2231"
+    },
+    {
+      "method": "mifflin",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 59,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1175.25"
+    },
+    {
+      "method": "fao_1985",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 59,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1351.0"
+    },
+    {
+      "method": "cunningham",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 59,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1495.50"
+    },
+    {
+      "method": "tinsley",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 59,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1455.975"
+    },
+    {
+      "method": "eer_iom",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 59,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "inactive"
+      },
+      "expected": "1705.81"
+    },
+    {
+      "method": "dri_2023",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 59,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "inactive"
+      },
+      "expected": "1817.71"
+    },
+    {
+      "method": "eer_iom",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 59,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "low_active"
+      },
+      "expected": "1916.9500"
+    },
+    {
+      "method": "dri_2023",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 59,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "low_active"
+      },
+      "expected": "1979.58"
+    },
+    {
+      "method": "eer_iom",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 59,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "2180.8750"
+    },
+    {
+      "method": "dri_2023",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 59,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "2116.16"
+    },
+    {
+      "method": "eer_iom",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 59,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "very_active"
+      },
+      "expected": "2497.5850"
+    },
+    {
+      "method": "dri_2023",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 59,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "very_active"
+      },
+      "expected": "2348.39"
+    },
+    {
+      "method": "harris",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 60,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1253.5475"
+    },
+    {
+      "method": "mifflin",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 60,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1170.25"
+    },
+    {
+      "method": "fao_1985",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 60,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1226.0"
+    },
+    {
+      "method": "cunningham",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 60,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1495.50"
+    },
+    {
+      "method": "tinsley",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 60,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1455.975"
+    },
+    {
+      "method": "eer_iom",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 60,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "inactive"
+      },
+      "expected": "1698.90"
+    },
+    {
+      "method": "dri_2023",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 60,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "inactive"
+      },
+      "expected": "1810.70"
+    },
+    {
+      "method": "eer_iom",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 60,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "low_active"
+      },
+      "expected": "1910.0400"
+    },
+    {
+      "method": "dri_2023",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 60,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "low_active"
+      },
+      "expected": "1972.57"
+    },
+    {
+      "method": "eer_iom",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 60,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "2173.9650"
+    },
+    {
+      "method": "dri_2023",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 60,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "2109.15"
+    },
+    {
+      "method": "eer_iom",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 60,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "very_active"
+      },
+      "expected": "2490.6750"
+    },
+    {
+      "method": "dri_2023",
+      "inputs": {
+        "weight": "60",
+        "height": "165",
+        "age": 60,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "very_active"
+      },
+      "expected": "2341.38"
+    },
+    {
+      "method": "harris",
+      "inputs": {
+        "weight": "300",
+        "height": "255",
+        "age": 120,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "3434.6915"
+    },
+    {
+      "method": "mifflin",
+      "inputs": {
+        "weight": "300",
+        "height": "255",
+        "age": 120,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "3832.75"
+    },
+    {
+      "method": "fao_1985",
+      "inputs": {
+        "weight": "300",
+        "height": "255",
+        "age": 120,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "3746.0"
+    },
+    {
+      "method": "cunningham",
+      "inputs": {
+        "weight": "300",
+        "height": "255",
+        "age": 120,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1495.50"
+    },
+    {
+      "method": "tinsley",
+      "inputs": {
+        "weight": "300",
+        "height": "255",
+        "age": 120,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "1455.975"
+    },
+    {
+      "method": "eer_iom",
+      "inputs": {
+        "weight": "300",
+        "height": "255",
+        "age": 120,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "inactive"
+      },
+      "expected": "4184.10"
+    },
+    {
+      "method": "dri_2023",
+      "inputs": {
+        "weight": "300",
+        "height": "255",
+        "age": 120,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "inactive"
+      },
+      "expected": "4715.30"
+    },
+    {
+      "method": "eer_iom",
+      "inputs": {
+        "weight": "300",
+        "height": "255",
+        "age": 120,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "low_active"
+      },
+      "expected": "4743.2160"
+    },
+    {
+      "method": "dri_2023",
+      "inputs": {
+        "weight": "300",
+        "height": "255",
+        "age": 120,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "low_active"
+      },
+      "expected": "5059.57"
+    },
+    {
+      "method": "eer_iom",
+      "inputs": {
+        "weight": "300",
+        "height": "255",
+        "age": 120,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "5442.1110"
+    },
+    {
+      "method": "dri_2023",
+      "inputs": {
+        "weight": "300",
+        "height": "255",
+        "age": 120,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "active"
+      },
+      "expected": "5238.75"
+    },
+    {
+      "method": "eer_iom",
+      "inputs": {
+        "weight": "300",
+        "height": "255",
+        "age": 120,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "very_active"
+      },
+      "expected": "6280.7850"
+    },
+    {
+      "method": "dri_2023",
+      "inputs": {
+        "weight": "300",
+        "height": "255",
+        "age": 120,
+        "gender": "F",
+        "leanMass": "45.25",
+        "driActivity": "very_active"
+      },
+      "expected": "5751.48"
+    }
+  ]
+}

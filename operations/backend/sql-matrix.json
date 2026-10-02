@@ -256,6 +256,11 @@
       "file": "wave09_data_integrity.sql",
       "kind": "assertion-suite",
       "fixtures": []
+    },
+    {
+      "file": "wave10_clinical_calculation_contract.sql",
+      "kind": "assertion-suite",
+      "fixtures": []
     }
   ]
 }

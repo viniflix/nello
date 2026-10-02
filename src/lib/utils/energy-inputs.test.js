@@ -6,6 +6,12 @@ import { calculateDri2023, driActivityOptionLabel } from './dri-energy';
 
 const patient = { weight: 70, height: 175, age: 30, gender: 'F' };
 describe('DRI missing input regression', () => {
+  it('does not reuse legacy Durnin lean mass in a new energetic calculation',()=>{
+    const valid={protocol:'durnin',equation_version:2,sex_used:'female',age_years:30,body_fat_percent:25.5,lean_mass_kg:52.15};
+    expect(readAnthropometryEnergyValues(valid).lean_mass_kg).toBe(52.15);
+    for(const changed of [{equation_version:1},{sex_used:'unknown'},{age_years:null}])
+      expect(readAnthropometryEnergyValues({...valid,...changed})).toEqual({body_fat_percentage:null,lean_mass_kg:null});
+  });
   it('passes the stored Pollock values to energy formulas without losing body fat', () => {
     expect(readAnthropometryEnergyValues({ protocol: 'pollock7', equation_version: 1, sex_used: 'female', age_years: 30, body_fat_percent: 25.5, lean_mass_kg: 52.15 })).toEqual({
       body_fat_percentage: 25.5, lean_mass_kg: 52.15,

@@ -114,21 +114,24 @@ export function calculateBodyDensityPollock7(chest, axillary, triceps, subscapul
  * @param {boolean} isMale - Gênero (true = masculino)
  * @returns {number|null} Densidade corporal (g/cm³)
  */
-export function calculateBodyDensityDurnin(triceps, biceps, subscapular, suprailiac, isMale) {
-  const t = parseFloat(triceps);
-  const b = parseFloat(biceps);
-  const s = parseFloat(subscapular);
-  const si = parseFloat(suprailiac);
-  if (isNaN(t) || isNaN(b) || isNaN(s) || isNaN(si)) return null;
+export const DURNIN_REFERENCE = Object.freeze({
+  equationVersion: 'durnin_womersley_1974_table5_four_folds_v2',
+  url: 'https://doi.org/10.1079/BJN19740060', table: 5,
+  densityUnit: 'g/cm3', foldUnit: 'mm', logarithmBase: 10,
+});
 
-  const sum = t + b + s + si;
-  const logSum = Math.log10(sum);
-
-  if (isMale) {
-    return 1.1714 - (0.0671 * logSum);
-  } else {
-    return 1.1665 - (0.0706 * logSum);
-  }
+export function calculateBodyDensityDurnin(triceps, biceps, subscapular, suprailiac, isMale, age) {
+  const years = clinicalNumber(age);
+  // Original population: men 17–72; women 16–68. No silent extrapolation.
+  if (typeof isMale !== 'boolean' || !Number.isInteger(years)
+    || years < (isMale ? 17 : 16) || years > (isMale ? 72 : 68)) return null;
+  const folds = [triceps, biceps, subscapular, suprailiac].map(clinicalNumber);
+  if (folds.some(value => value === null || value <= 0 || value > 100)) return null;
+  const index = years < 20 ? 0 : years < 30 ? 1 : years < 40 ? 2 : years < 50 ? 3 : 4;
+  const [intercept, slope] = (isMale
+    ? [[1.1620, .0630], [1.1631, .0632], [1.1422, .0544], [1.1620, .0700], [1.1715, .0779]]
+    : [[1.1549, .0678], [1.1599, .0717], [1.1423, .0632], [1.1333, .0612], [1.1339, .0645]])[index];
+  return intercept - slope * Math.log10(folds.reduce((sum, value) => sum + value, 0));
 }
 
 /**
@@ -151,7 +154,7 @@ export function calculateBodyDensity(skinfolds, age, isMale, protocol = 'pollock
     return calculateBodyDensityPollock7(peito, axilar, triceps, subescapular, abdominal, suprailiaca, coxa, age, isMale);
   } else if (protocol === 'durnin') {
     const { triceps, biceps, subescapular, suprailiaca } = skinfolds;
-    return calculateBodyDensityDurnin(triceps, biceps, subescapular, suprailiaca, isMale);
+    return calculateBodyDensityDurnin(triceps, biceps, subescapular, suprailiaca, isMale, age);
   }
 
   return null;

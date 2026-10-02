@@ -140,7 +140,7 @@ describe('one energy pipeline from biometry to VET', () => {
   });
   it('restores clinical and DRI selections and flags old records for review', () => {
     expect(restoreEnergyInputs({}).requiresReview).toBe(true);
-    expect(restoreEnergyInputs({ source_snapshot: { engine_version: 5 }, input_snapshot: { clinical_mobility: 'ambulatory', dri_activity: 'low_active', life_stage: 'adult', injury_factor_id: 'infection' } })).toEqual({ clinicalMobility: 'ambulatory', driActivity: 'low_active', lifeStage: 'adult', injuryFactorId: 'infection', requiresReview: false });
+    expect(restoreEnergyInputs({ source_snapshot: { engine_version: 6 }, input_snapshot: { clinical_mobility: 'ambulatory', dri_activity: 'low_active', life_stage: 'adult', injury_factor_id: 'peritonitis' } })).toEqual({ clinicalMobility: 'ambulatory', driActivity: 'low_active', lifeStage: 'adult', injuryFactorId: 'peritonitis', requiresReview: false });
     expect(restoreEnergyInputs({ tmb_protocol: 'harris', injury_factor: 1.4, source_snapshot: { engine_version: 2 } })).toMatchObject({ injuryFactorId: '', requiresReview: true });
     expect(restoreEnergyInputs({ tmb_protocol: 'harris', injury_factor: 1.4, source_snapshot: { engine_version: 3 }, input_snapshot: { injury_factor_id: 'surgery' } })).toMatchObject({ injuryFactorId: '', requiresReview: true });
   });

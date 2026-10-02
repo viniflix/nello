@@ -1,9 +1,5 @@
-/** Parse a single decimal value without accepting partial strings, blanks or non-finite values. */
+import { parseClinicalNumber } from '../../../supabase/functions/_shared/clinical-energy.js';
+/** Reject partial strings and decimal inputs that Number would silently truncate. */
 export function parseFiniteEnergyNumber(value) {
-  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
-  if (typeof value !== 'string') return null;
-  const normalized = value.trim();
-  if (!/^[+-]?(?:\d+(?:[.,]\d+)?|[.,]\d+)$/.test(normalized)) return null;
-  const number = Number(normalized.replace(',', '.'));
-  return Number.isFinite(number) ? number : null;
+  return parseClinicalNumber(value);
 }

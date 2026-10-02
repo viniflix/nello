@@ -7,8 +7,11 @@
  * @module energy-calculations
  */
 
-import { calculateDri2023, dri2023Breakdown, driPaCoefficient, validEnergyBiometry, normalizeEnergySex } from './dri-energy';
+import { calculateDri2023, driPaCoefficient, validEnergyBiometry, normalizeEnergySex } from './dri-energy';
 import { parseFiniteEnergyNumber } from './energy-numbers';
+import { energyFormulaTrace } from '../../../supabase/functions/_shared/clinical-energy.js';
+import { decimalFraction, exactOperation, fractionNumber } from '../../../supabase/functions/_shared/clinical-arithmetic.js';
+export { HARRIS_1919 } from '../../../supabase/functions/_shared/clinical-energy.js';
 
 // ============================================================================
 // PROTOCOLOS DE CÁLCULO DE BMR (Basal Metabolic Rate)
@@ -24,14 +27,8 @@ import { parseFiniteEnergyNumber } from './energy-numbers';
  * @param {string} gender - 'male' ou 'female'
  * @returns {number} BMR em kcal/dia
  */
-export const HARRIS_1919 = {
-  male: [66.473, 13.7516, 5.0033, 6.755],
-  female: [655.0955, 9.5634, 1.8496, 4.6756],
-};
 export const calculateHarrisBenedict = (weight, height, age, gender) => {
-  if (!validEnergyBiometry({ weight, height, age, gender })) return null;
-  const [c, w, h, a] = HARRIS_1919[normalizeEnergySex(gender)];
-  return c + w * Number(weight) + h * Number(height) - a * Number(age);
+  return energyFormulaTrace('harris', { weight, height, age, gender })?.resultKcal ?? null;
 };
 
 /**
@@ -46,12 +43,7 @@ export const calculateHarrisBenedict = (weight, height, age, gender) => {
  * @returns {number} BMR em kcal/dia
  */
 export const calculateMifflinStJeor = (weight, height, age, gender) => {
-  const w = parseFloat(weight);
-  const h = parseFloat(height);
-  const a = parseFloat(age);
-  if (isNaN(w) || isNaN(h) || isNaN(a) || w <= 0 || h <= 0 || a <= 0) return null;
-  const s = /^(male|masculino|m)$/i.test(String(gender || '').trim()) ? 5 : -161;
-  return (10 * w) + (6.25 * h) - (5 * a) + s;
+  return energyFormulaTrace('mifflin', { weight, height, age, gender })?.resultKcal ?? null;
 };
 
 /**
@@ -66,7 +58,7 @@ export const calculateMifflinStJeor = (weight, height, age, gender) => {
 export const calculateCunningham = (leanMassKg) => {
   const lMass = parseFiniteEnergyNumber(leanMassKg);
   if (lMass == null || lMass <= 0 || lMass > 300) return null;
-  return 500 + (22 * lMass);
+  return fractionNumber(exactOperation('add',[decimalFraction(500), exactOperation('multiply',[decimalFraction(22),decimalFraction(lMass)])]));
 };
 
 /**
@@ -82,7 +74,7 @@ export const calculateTinsley = (weight, leanMassKg) => {
   const totalWeight = parseFiniteEnergyNumber(weight);
   const lMass = parseFiniteEnergyNumber(leanMassKg);
   if (totalWeight == null || totalWeight <= 0 || lMass == null || lMass <= 0 || lMass > totalWeight) return null;
-  return 284 + (25.9 * lMass);
+  return fractionNumber(exactOperation('add',[decimalFraction(284), exactOperation('multiply',[decimalFraction(25.9),decimalFraction(lMass)])]));
 };
 
 /**
@@ -110,18 +102,7 @@ export const calculateFaoWho = (weight, height, age, gender) => {
  * @returns {number} BMR em kcal/dia
  */
 export const calculateFaoOms1985 = (weight, height, age, gender) => {
-  const w = parseFloat(weight);
-  const a = parseFloat(age);
-  if (isNaN(w) || isNaN(a) || w <= 0 || a <= 0) return null;
-  const isMale = /^(male|masculino|m)$/i.test(String(gender || '').trim());
-  if (isMale) {
-    if (a >= 18 && a < 30) return 15.3 * w + 679;
-    if (a >= 30 && a < 60) return 11.6 * w + 879;
-    return 13.5 * w + 487; // >60
-  }
-  if (a >= 18 && a < 30) return 14.7 * w + 496;
-  if (a >= 30 && a < 60) return 8.7 * w + 829;
-  return 10.5 * w + 596; // >60
+  return energyFormulaTrace('fao_1985', { weight, height, age, gender })?.resultKcal ?? null;
 };
 
 /**
@@ -172,17 +153,12 @@ export const EER_PA_COEFFICIENTS = {
  */
 export const calculateEerIom = (weight, heightCm, age, paCoefficient, gender) => {
   if (!validEnergyBiometry({ weight, height: heightCm, age, gender }, 19)) return null;
-  const w = Number(weight);
-  const heightM = Number(heightCm) / 100;
-  const a = Number(age);
-  const pa = Number(paCoefficient);
+  const pa = parseFiniteEnergyNumber(paCoefficient);
   const sex = normalizeEnergySex(gender);
-  if (!Object.keys(EER_PA_COEFFICIENTS[sex]).some(value => Number(value) === pa)) return null;
-  const isMale = sex === 'male';
-  if (isMale) {
-    return 662 - (9.53 * a) + pa * ((15.91 * w) + (539.6 * heightM));
-  }
-  return 354 - (6.91 * a) + pa * ((9.36 * w) + (726 * heightM));
+  const index = (sex === 'male' ? [1, 1.11, 1.25, 1.48] : [1, 1.12, 1.27, 1.45]).indexOf(pa);
+  if (index < 0) return null;
+  return energyFormulaTrace('eer_iom', { weight, height: heightCm, age, gender,
+    driActivity: ['inactive', 'low_active', 'active', 'very_active'][index] })?.resultKcal ?? null;
 };
 
 /**
@@ -206,37 +182,12 @@ export const activityFactorToEerPa = (activityFactor, gender) => {
  * GET = BMR × Fator de Atividade
  */
 export const ACTIVITY_FACTORS = [
-  { 
-    value: 1.2, 
-    label: 'Sedentário', 
-    desc: 'Pouco ou nenhum exercício',
-    short: 'Sedentário'
-  },
-  { 
-    value: 1.375, 
-    label: 'Levemente Ativo', 
-    desc: 'Exercício leve 1-3 dias/semana',
-    short: 'Leve'
-  },
-  { 
-    value: 1.55, 
-    label: 'Moderadamente Ativo', 
-    desc: 'Exercício moderado 3-5 dias/semana',
-    short: 'Moderado'
-  },
-  { 
-    value: 1.725, 
-    label: 'Muito Ativo', 
-    desc: 'Exercício pesado 6-7 dias/semana',
-    short: 'Muito Ativo'
-  },
-  { 
-    value: 1.9, 
-    label: 'Extremamente Ativo', 
-    desc: 'Trabalho físico pesado ou treino 2x ao dia',
-    short: 'Extremo'
-  },
+  { value: 1.4, label: 'Rotina leve', desc: 'PAL 1,40–1,69; ponto inicial 1,40', short: 'Leve' },
+  { value: 1.7, label: 'Rotina moderada', desc: 'PAL 1,70–1,99; ponto inicial 1,70', short: 'Moderada' },
+  { value: 2, label: 'Rotina vigorosa', desc: 'PAL 2,00–2,40; ponto inicial 2,00', short: 'Vigorosa' },
 ];
+export const PAL_REFERENCE = 'https://www.fao.org/4/y5686e/y5686e07.htm';
+
 
 /**
  * Calcula o Gasto Energético Total (GET) a partir do BMR e fator de atividade
@@ -248,11 +199,11 @@ export const ACTIVITY_FACTORS = [
  * @returns {number} GET em kcal/dia
  */
 export const calculateGET = (bmr, activityFactor, injuryFactor = 1.0) => {
-  const b = Number(bmr);
-  const af = Number(activityFactor);
-  const inj = Number(injuryFactor);
+  const b = parseFiniteEnergyNumber(bmr);
+  const af = parseFiniteEnergyNumber(activityFactor);
+  const inj = parseFiniteEnergyNumber(injuryFactor);
   if (![b, af, inj].every(Number.isFinite) || b <= 0 || af <= 0 || inj <= 0) return null;
-  const result = b * af * inj;
+  const result = fractionNumber(exactOperation('multiply',[exactOperation('multiply',[decimalFraction(b),decimalFraction(af)]),decimalFraction(inj)]));
   return Number.isFinite(result) ? result : null;
 };
 
@@ -270,8 +221,9 @@ export const calculateGET = (bmr, activityFactor, injuryFactor = 1.0) => {
  * @returns {number} Kcal gastas na atividade
  */
 export const calculateMetKcal = (met, weightKg, durationMin) => {
-  if (!met || !weightKg || !durationMin || durationMin <= 0) return 0;
-  return met * weightKg * (durationMin / 60);
+  const m=parseFiniteEnergyNumber(met),w=parseFiniteEnergyNumber(weightKg),duration=parseFiniteEnergyNumber(durationMin);
+  if(m==null || w==null || duration==null || m<=0 || m>100 || w<1 || w>300 || duration<=0 || duration>1440) return 0;
+  return fractionNumber(exactOperation('divide',[exactOperation('multiply',[exactOperation('multiply',[decimalFraction(m),decimalFraction(w)]),decimalFraction(duration)]),decimalFraction(60)]));
 };
 
 /**
@@ -288,20 +240,21 @@ export const calculateMetKcal = (met, weightKg, durationMin) => {
  */
 export const calculateActivityExpenditure = (met, weightKg, durationMin, freqValue, freqType) => {
   const kcalPerSession = calculateMetKcal(met, weightKg, durationMin);
-  const freq = Math.max(0, Number(freqValue) || 0);
+  const parsedFrequency = parseFiniteEnergyNumber(freqValue);
+  const freq = parsedFrequency != null && parsedFrequency > 0 ? parsedFrequency : 0;
   let averageDailyKcal = 0;
   switch (String(freqType || 'weekly').toLowerCase()) {
     case 'daily':
-      averageDailyKcal = kcalPerSession * freq;
+      averageDailyKcal = fractionNumber(exactOperation('multiply',[decimalFraction(kcalPerSession),decimalFraction(freq)]));
       break;
     case 'weekly':
-      averageDailyKcal = freq > 0 ? (kcalPerSession * freq) / 7 : 0;
+      averageDailyKcal = freq > 0 ? fractionNumber(exactOperation('divide',[exactOperation('multiply',[decimalFraction(kcalPerSession),decimalFraction(freq)]),decimalFraction(7)])) : 0;
       break;
     case 'monthly':
-      averageDailyKcal = freq > 0 ? (kcalPerSession * freq) / 30 : 0;
+      averageDailyKcal = freq > 0 ? fractionNumber(exactOperation('divide',[exactOperation('multiply',[decimalFraction(kcalPerSession),decimalFraction(freq)]),decimalFraction(30)])) : 0;
       break;
     default:
-      averageDailyKcal = freq > 0 ? (kcalPerSession * freq) / 7 : 0;
+      averageDailyKcal = freq > 0 ? fractionNumber(exactOperation('divide',[exactOperation('multiply',[decimalFraction(kcalPerSession),decimalFraction(freq)]),decimalFraction(7)])) : 0;
   }
   return { kcalPerSession, averageDailyKcal };
 };
@@ -459,12 +412,12 @@ export const calculateAllProtocols = (data) => {
     {
       id: 'cunningham', name: 'Cunningham (1980)',
       description: 'Estimativa por massa magra medida; requer avaliação de aplicabilidade para atletas.',
-      bmr: calculateCunningham(data.leanMass), category: 'athlete'
+      bmr: energyFormulaTrace('cunningham', data)?.resultKcal ?? null, category: 'athlete'
     },
     {
       id: 'tinsley', name: 'Tinsley (2018)',
       description: 'Estimativa por massa magra medida; requer avaliação de aplicabilidade para atletas.',
-      bmr: calculateTinsley(weight, data.leanMass), category: 'athlete'
+      bmr: energyFormulaTrace('tinsley', data)?.resultKcal ?? null, category: 'athlete'
     },
     {
       id: 'eer_iom',
@@ -575,111 +528,11 @@ export const getProtocolInfo = (protocolId) => {
  * @returns {Object|null} Objeto com breakdown da fórmula ou null se dados insuficientes
  */
 export const getFormulaBreakdown = (method, data) => {
-  if (method === 'dri_2023') return dri2023Breakdown(data, data.driActivity);
-  const { weight, height, age, gender, leanMass } = data;
-
-  // Normalizar gênero
+  if (!['fao', 'fao_2001'].includes(method)) return energyFormulaTrace(method, data);
+  // Retained historical methods are never offered for new calculations.
+  const { weight, height, age, gender } = data;
   const isMale = /^(male|masculino|m)$/i.test(String(gender || '').trim());
-
   switch (method) {
-    case 'harris': {
-      if (!weight || !height || !age || !gender) return null;
-
-      const [constant, weightCoeff, heightCoeff, ageCoeff] = HARRIS_1919[normalizeEnergySex(gender)] || [];
-      if (!validEnergyBiometry(data)) return null;
-
-      const weightTerm = weightCoeff * weight;
-      const heightTerm = heightCoeff * height;
-      const ageTerm = ageCoeff * age;
-
-      const result = constant + weightTerm + heightTerm - ageTerm;
-
-      return {
-        sourceUrl: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC6935811/',
-        formulaName: `Harris-Benedict (${isMale ? 'Masculino' : 'Feminino'})`,
-        equationVersion: 'harris_benedict_1919_full_precision',
-        terms: { constant, weight: weightTerm, height: heightTerm, age: ageTerm, result },
-        resultKcal: result,
-        equationStr: isMale
-          ? '66.473 + (13.7516 × P) + (5.0033 × A) - (6.755 × I)'
-          : '655.0955 + (9.5634 × P) + (1.8496 × A) - (4.6756 × I)',
-        appliedStr: `${String(constant)} + (${String(weightCoeff)} × ${weight}) + (${String(heightCoeff)} × ${height}) - (${String(ageCoeff)} × ${age})`,
-        steps: [
-          { label: 'Constante', value: String(constant) },
-          { label: 'Peso', value: `${String(weightCoeff)} × ${weight} = ${weightTerm.toFixed(2)}` },
-          { label: 'Altura', value: `${String(heightCoeff)} × ${height} = ${heightTerm.toFixed(2)}` },
-          { label: 'Idade', value: `${String(ageCoeff)} × ${age} = ${ageTerm.toFixed(2)}` },
-          { label: 'Resultado', value: `${result.toFixed(2)} kcal` }
-        ],
-        baseData: { weight, height, age, gender: isMale ? 'Masculino' : 'Feminino' }
-      };
-    }
-
-    case 'mifflin': {
-      if (!weight || !height || !age || !gender) return null;
-
-      const constant = isMale ? 5 : -161;
-      const weightTerm = 10 * weight;
-      const heightTerm = 6.25 * height;
-      const ageTerm = 5 * age;
-
-      const result = weightTerm + heightTerm - ageTerm + constant;
-
-      return {
-        formulaName: `Mifflin-St Jeor (${isMale ? 'Masculino' : 'Feminino'})`,
-        equationStr: '(10 × P) + (6.25 × A) - (5 × I) + S',
-        appliedStr: `(10 × ${weight}) + (6.25 × ${height}) - (5 × ${age}) + ${constant}`,
-        steps: [
-          { label: 'Peso', value: `10 × ${weight} = ${weightTerm}` },
-          { label: 'Altura', value: `6.25 × ${height} = ${heightTerm.toFixed(2)}` },
-          { label: 'Idade', value: `5 × ${age} = ${ageTerm}` },
-          { label: 'Constante (S)', value: constant.toString() },
-          { label: 'Resultado', value: `${result.toFixed(0)} kcal` }
-        ],
-        baseData: { weight, height, age, gender: isMale ? 'Masculino' : 'Feminino' }
-      };
-    }
-
-    case 'cunningham': {
-      if (!leanMass || leanMass <= 0) return null;
-
-      const constant = 500;
-      const leanMassTerm = 22 * leanMass;
-      const result = constant + leanMassTerm;
-
-      return {
-        formulaName: 'Cunningham (Atletas)',
-        equationStr: '500 + (22 × MM)',
-        appliedStr: `500 + (22 × ${leanMass})`,
-        steps: [
-          { label: 'Constante', value: '500' },
-          { label: 'Massa Magra', value: `22 × ${leanMass} = ${leanMassTerm.toFixed(2)}` },
-          { label: 'Resultado', value: `${result.toFixed(0)} kcal` }
-        ],
-        baseData: { leanMass, weight, height, age, gender: isMale ? 'Masculino' : 'Feminino' }
-      };
-    }
-
-    case 'tinsley': {
-      if (!weight || !leanMass || leanMass <= 0) return null;
-
-      const constant = 284;
-      const leanMassTerm = 25.9 * leanMass;
-      const result = leanMassTerm + constant;
-
-      return {
-        formulaName: 'Tinsley (Bodybuilding)',
-        equationStr: '284 + (25.9 × MM)',
-        appliedStr: `284 + (25.9 × ${leanMass})`,
-        steps: [
-          { label: 'Constante', value: '284' },
-          { label: 'Massa Magra', value: `25.9 × ${leanMass} = ${leanMassTerm.toFixed(2)}` },
-          { label: 'Resultado', value: `${result.toFixed(0)} kcal` }
-        ],
-        baseData: { leanMass, weight, height, age, gender: isMale ? 'Masculino' : 'Feminino' }
-      };
-    }
-
     case 'fao': {
       if (!weight || !gender) return null;
       const weightCoeff = isMale ? 15.3 : 14.7;
@@ -699,22 +552,6 @@ export const getFormulaBreakdown = (method, data) => {
       };
     }
 
-    case 'fao_1985': {
-      if (!validEnergyBiometry(data)) return null;
-      const [coefficient, constant] = isMale
-        ? (age < 30 ? [15.3, 679] : age < 60 ? [11.6, 879] : [13.5, 487])
-        : (age < 30 ? [14.7, 496] : age < 60 ? [8.7, 829] : [10.5, 596]);
-      const result = calculateFaoOms1985(weight, height, age, gender);
-      const band = age < 30 ? '18–<30' : age < 60 ? '30–<60' : '≥60';
-      return {
-        formulaName: `FAO/OMS 1985 (${isMale ? 'M' : 'F'}, ${band} anos)`,
-        equationStr: `${coefficient} × peso (kg) + ${constant}`,
-        appliedStr: `${coefficient} × ${weight} + ${constant} = ${result.toFixed(2)} kcal/dia`,
-        steps: [{ label: 'TMB', value: `${result.toFixed(2)} kcal` }],
-        baseData: { weight, height, age, gender: isMale ? 'Masculino' : 'Feminino' }
-      };
-    }
-
     case 'fao_2001': {
       if (!weight || !height || !age || !gender) return null;
       const result = calculateFaoOms2001(weight, height, age, gender);
@@ -728,27 +565,7 @@ export const getFormulaBreakdown = (method, data) => {
       };
     }
 
-    case 'eer_iom': {
-      if (!validEnergyBiometry(data, 19)) return null;
-      const pa = driPaCoefficient(data.driActivity, gender);
-      const result = calculateEerIom(weight, height, age, pa, gender);
-      if (result == null) return null;
-      return {
-        formulaName: 'DRIs / EER-IOM (2005) - GET direto',
-        sourceUrl: 'https://www.nationalacademies.org/read/10490/chapter/2',
-        equationStr: isMale
-          ? '662 - (9.53×I) + PA×[(15.91×P) + (539.6×A_m)]'
-          : '354 - (6.91×I) + PA×[(9.36×P) + (726×A_m)]',
-        appliedStr: isMale
-          ? `662 − (9.53 × ${age}) + ${pa} × [(15.91 × ${weight}) + (539.6 × ${height / 100})] = ${result.toFixed(2)} kcal/dia`
-          : `354 − (6.91 × ${age}) + ${pa} × [(9.36 × ${weight}) + (726 × ${height / 100})] = ${result.toFixed(2)} kcal/dia`,
-        steps: [{ label: 'GET', value: `${result.toFixed(0)} kcal/dia` }],
-        baseData: { weight, height, age, gender: isMale ? 'Masculino' : 'Feminino' }
-      };
-    }
-
-    default:
-      return null;
+    default: return null;
   }
 };
 
@@ -763,18 +580,19 @@ export const getFormulaBreakdown = (method, data) => {
 export const getGETBreakdown = (bmr, activityFactor, activityLabel = null) => {
   if (!bmr || !activityFactor) return null;
 
-  const get = bmr * activityFactor;
+  const get = calculateGET(bmr,activityFactor);
+  if(get == null) return null;
   const activityInfo = ACTIVITY_FACTORS.find(f => f.value === activityFactor);
 
   return {
     formulaName: 'Gasto Energético Total (GET)',
     equationStr: 'TMB × NAF',
-    appliedStr: `${Math.round(bmr)} × ${activityFactor} = ${Math.round(get)}`,
+    appliedStr: `${bmr} × ${activityFactor} = ${get}`,
     steps: [
       { label: 'Taxa Metabólica Basal (TMB)', value: `${Math.round(bmr)} kcal` },
       { label: 'Nível de Atividade (NAF)', value: `${activityFactor}${activityLabel ? ` (${activityLabel})` : ''}` },
       { label: 'GET', value: `${Math.round(get)} kcal/dia` }
     ],
-    baseData: { bmr: Math.round(bmr), activityFactor, activityLabel: activityLabel || activityInfo?.label || 'N/A' }
+    baseData: { bmr, activityFactor, activityLabel: activityLabel || activityInfo?.label || 'N/A' }
   };
 };

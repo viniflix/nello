@@ -1,6 +1,6 @@
 import { clinicalRpc, insertIdempotently, updateIdempotently, idempotentRpc } from '@/lib/supabase/idempotent-mutations';
 import { supabase } from '@/lib/customSupabaseClient';
-import { calculateCaloriesFromMacros } from '@/lib/utils/nutrition-calculations';
+import { calculateNutrition as calculateServingNutrition, foodPer100Grams } from '@/lib/utils/nutrition-calculations';
 import { getTodayIsoDate } from '@/lib/utils/date';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
 import { normalizeMealTime } from '@/lib/utils/mealTime';
@@ -1080,24 +1080,9 @@ export const calculateNutrition = async (food, quantity, unit) => {
             };
         }
 
-        // Calcular valores nutricionais (foods usa base 100g)
-        const factor = gramsEquivalent / 100;
-        
-        // Calcular macros primeiro
-        const protein = (food.protein || 0) * factor;
-        const carbs = (food.carbs || 0) * factor;
-        const fat = (food.fat || 0) * factor;
-        
-        // RECALCULAR calorias baseado nos macros (não usar food.calories diretamente)
-        // Fórmula: (Proteína × 4) + (Carboidratos × 4) + (Gorduras × 9)
-        const calories = calculateCaloriesFromMacros(protein, carbs, fat);
+        const values = calculateServingNutrition(foodPer100Grams(food),gramsEquivalent);
+        return { calories: values.calories, protein: values.protein, carbs: values.carbs, fat: values.fat };
 
-        return {
-            calories: parseFloat(calories.toFixed(2)),
-            protein: parseFloat(protein.toFixed(2)),
-            carbs: parseFloat(carbs.toFixed(2)),
-            fat: parseFloat(fat.toFixed(2))
-        };
     } catch (error) {
         logSupabaseError("erro_ao_calcular_nutricao", error);
         return {

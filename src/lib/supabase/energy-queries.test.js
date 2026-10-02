@@ -7,7 +7,7 @@ vi.mock('@/lib/supabase/query-helpers', () => ({ logSupabaseError: vi.fn() }));
 
 const payload = { patient_id: 'patient', nutritionist_id: 'professional', weight: 70, height: 175, age: 30,
   gender: 'M', tmb_protocol: 'harris', activity_factor: 1.9, injury_factor: 1.4,
-  clinical_mobility: 'bedridden', injury_factor_id: 'sepsis',
+  clinical_mobility: 'bedridden', injury_factor_id: 'peritonitis',
   tmb_result: 123, get_result: 999999, final_planned_kcal: 999999 };
 
 beforeEach(() => {
@@ -50,9 +50,9 @@ describe('energy persistence', () => {
     expect(data.get).toBe(data.get_result);
     expect(data.activity_factor).toBe(1);
     expect(data.protocol_code).toBe('energy.harris_benedict_1919_clinical');
-    expect(data.input_snapshot).toMatchObject({ clinical_mobility: 'bedridden', mobility_factor: 1.2, injury_factor_id: 'sepsis', mets_included_in_get: false });
+    expect(data.input_snapshot).toMatchObject({ clinical_mobility: 'bedridden', mobility_factor: 1.2, injury_factor_id: 'peritonitis', mets_included_in_get: false });
     expect(data.output_snapshot.calculation_details.appliedTotal).toContain('1.2 × 1.4');
-    expect(data.source_snapshot.engine_version).toBe(5);
+    expect(data.source_snapshot.engine_version).toBe(6);
     expect(data.source_snapshot.equation_version).toBe('harris_benedict_1919_full_precision');
     expect(data.output_snapshot.after_mobility_kcal).toBeCloseTo(2042.415, 6);
   });

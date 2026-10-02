@@ -47,7 +47,7 @@ export default defineConfig({
   maxWorkers: 4,
 		coverage: {
  provider: 'v8',
- include: ['src/lib/utils/energy-*.js','src/lib/utils/dri-energy.js','src/lib/utils/nutrition-calculations.js','src/features/auth/authFlows.js','src/lib/utils/authRedirect.js','src/features/clinical-records/model/attachmentSchema.js','supabase/functions/confirm-document-asset/assetValidation.ts'],
+ include: ['src/lib/utils/energy-*.js','src/lib/utils/dri-energy.js','src/lib/utils/nutrition-calculations.js','supabase/functions/_shared/clinical-*.js','src/features/auth/authFlows.js','src/lib/utils/authRedirect.js','src/features/clinical-records/model/attachmentSchema.js','supabase/functions/confirm-document-asset/assetValidation.ts'],
  exclude: ['**/*.test.js'],
  reporter: ['text','json-summary'],
  thresholds: { perFile: true, lines: 90, statements: 90, functions: 90, branches: 85 },

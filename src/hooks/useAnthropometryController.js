@@ -1,3 +1,4 @@
+import { downloadSavedClinicalPdf } from '@/lib/pdf/savedClinicalPdf';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useToast } from '@/components/ui/use-toast';
@@ -496,59 +497,9 @@ export const useAnthropometryController = ({ patientId, user, resolveLoading, re
     };
 
     const handleExportComparisonPdf = async () => {
-        if (!selectedRecord || !compareRecord || !comparison) return;
-
-        const { default: jsPDF } = await import('jspdf');
-        const doc = new jsPDF();
-        const title = 'Comparativo Antropométrico';
-        const patientLabel = patientName || `Paciente ${patientId}`;
-        let y = 16;
-        doc.setFontSize(16);
-        doc.text(title, 14, y);
-        y += 8;
-        doc.setFontSize(11);
-        doc.text(`Paciente: ${patientLabel}`, 14, y);
-        y += 6;
-        doc.text(`Registro atual: ${selectedRecord.record_date}`, 14, y);
-        y += 6;
-        doc.text(`Registro comparado: ${compareRecord.record_date}`, 14, y);
-        y += 8;
-        doc.text(`Objetivo clínico: ${formatObjectiveLabel(patientObjective)}`, 14, y);
-        y += 8;
-
-        const lines = [
-            `Peso: ${formatDelta(comparison.weight, 'kg')}`,
-            `Altura: ${formatDelta(comparison.height, 'cm')}`,
-            `IMC: ${formatDelta(comparison.bmi)}`,
-            `Fotos: ${comparison.photoFields > 0 ? `+${comparison.photoFields}` : comparison.photoFields}`,
-            `Circunferências (campos): ${comparison.circumferenceFields > 0 ? `+${comparison.circumferenceFields}` : comparison.circumferenceFields}`,
-            `Dobras (campos): ${comparison.skinfoldFields > 0 ? `+${comparison.skinfoldFields}` : comparison.skinfoldFields}`,
-            `Diâmetros (campos): ${comparison.diameterFields > 0 ? `+${comparison.diameterFields}` : comparison.diameterFields}`
-        ];
-
-        if (clinicalIndicator) {
-            y += 2;
-            doc.text(`Indicador clínico: ${clinicalIndicator.status === 'improved' ? 'Melhora' : clinicalIndicator.status === 'worsened' ? 'Piora' : 'Estável'}`, 14, y);
-            y += 6;
-        }
-
-        lines.forEach((line) => {
-            doc.text(line, 14, y);
-            y += 6;
-        });
-
-        if (clinicalIndicator?.reasons?.length) {
-            y += 2;
-            doc.text('Notas clínicas:', 14, y);
-            y += 6;
-            clinicalIndicator.reasons.forEach((reason) => {
-                doc.text(`- ${reason}`, 14, y);
-                y += 6;
-            });
-        }
-
-        const fileName = `comparativo_antropometria_${patientLabel.replace(/\s+/g, '_')}_${selectedRecord.record_date}.pdf`;
-        doc.save(fileName);
+        if (!selectedRecord || !compareRecord) return;
+        try { await downloadSavedClinicalPdf('anthropometryRecordId',selectedRecord.id,{compareRecordId:compareRecord.id}); }
+        catch(error) {logDiagnostic('error','anthropometry_comparison_pdf',error);toast({title:'Erro',description:'Não foi possível gerar o comparativo salvo.',variant:'destructive'});}
     };
 
     const filteredRecords = useMemo(() => {

@@ -2,7 +2,7 @@ import {describe,it,expect} from 'vitest';import * as e from './energy-calculati
 const adult={weight:60,height:165,age:30,gender:'female',leanMass:45,driActivity:'inactive'};
 describe('energy calculation cascade: displayed formulas, units and activity arithmetic',()=>{
  it.each([['male',20,1597],['male',30,1575],['male',60,1297],['female',20,1378],['female',30,1351],['female',60,1226]])('keeps FAO age bands and displayed results coherent for %s/%s',(gender,age,expected)=>{
-  expect(e.calculateFaoOms1985(60,165,age,gender)).toBeCloseTo(expected);const breakdown=e.getFormulaBreakdown('fao_1985',{...adult,gender,age});expect(breakdown.steps[0].value).toBe(`${expected.toFixed(2)} kcal`);
+  expect(e.calculateFaoOms1985(60,165,age,gender)).toBeCloseTo(expected);const breakdown=e.getFormulaBreakdown('fao_1985',{...adult,gender,age});expect(breakdown.steps[0].value).toBe(`${expected.toFixed(2)} kcal/dia`);
  });
  it('uses centimeters for Mifflin and meters only in EER',()=>{expect(e.calculateMifflinStJeor(60,165,30,'female')).toBe(1320.25);expect(e.calculateMifflinStJeor(60,165,30,'male')).toBe(1486.25);expect(e.calculateEerIom(60,165,30,1,'female')).toBeCloseTo(1906.2);expect(e.calculateEerIom(60,165,30,1,'male')).toBeCloseTo(2221.04);});
  it('keeps every explanatory formula populated and reports missing inputs explicitly',()=>{

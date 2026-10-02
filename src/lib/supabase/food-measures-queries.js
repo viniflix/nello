@@ -7,7 +7,7 @@
  */
 
 import { supabase } from '@/lib/customSupabaseClient';
-import { calculateNutrition } from '@/lib/utils/nutrition-calculations';
+import { calculateNutrition, foodPer100Grams } from '@/lib/utils/nutrition-calculations';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
 
 /**
@@ -211,7 +211,7 @@ export const calculateNutritionFromMeasure = async (food, quantity, measureId, f
   try {
     let totalGrams = 0;
 
-    if (measureId === null || measureId === 'gram') {
+    if (measureId === null || measureId === 'gram' || measureId === 'grams') {
       // Usuário digitou em gramas direto
       totalGrams = quantity;
     } else {
@@ -258,7 +258,7 @@ export const calculateNutritionFromMeasure = async (food, quantity, measureId, f
     }
 
     // Calcular todos os nutrientes (recalcula calorias baseado nos macros)
-    return calculateNutrition(food, totalGrams);
+    return calculateNutrition(foodPer100Grams(food), totalGrams);
   } catch (error) {
     logSupabaseError("erro_ao_calcular_nutricao", error);
     return {

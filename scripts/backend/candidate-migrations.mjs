@@ -16,10 +16,12 @@ export function candidateMigrations() {
   if(realtime.schemaVersion!==1||!Array.isArray(realtime.migrations))throw Error('Invalid Realtime manifest');
   const integrity=JSON.parse(readFileSync('operations/backend/wave09-candidates.json','utf8'));
   if(integrity.schemaVersion!==1||!Array.isArray(integrity.migrations))throw Error('Invalid data integrity manifest');
-  manifest.migrations.push(...identity.migrations,...authorization.migrations,...web.migrations,...repairs.migrations,...storage.migrations,...realtime.migrations,...integrity.migrations);
+  const clinical=JSON.parse(readFileSync('operations/backend/wave10-candidates.json','utf8'));
+  if(clinical.schemaVersion!==1||!Array.isArray(clinical.migrations))throw Error('Invalid clinical calculation manifest');
+  manifest.migrations.push(...identity.migrations,...authorization.migrations,...web.migrations,...repairs.migrations,...storage.migrations,...realtime.migrations,...integrity.migrations,...clinical.migrations);
   if(manifest.schemaVersion!==1||!Array.isArray(manifest.migrations))throw Error('Invalid candidate migration manifest');
   return manifest.migrations.map(({file,sha256})=>{
-    if(!/^supabase\/migrations\/(releases|applied)\/\d{14}_(restrict_anonymous_clinical_table_privileges|document_source_replacement_boundary|clinical_adversarial_boundaries|wave04_identity_onboarding|wave05_authorization_boundaries|wave06_edge_quotas|post06_clinical_and_invitation_repairs|wave07_private_storage|wave08_private_realtime|wave09_data_integrity)\.sql$/.test(file))throw Error('Unexpected candidate migration');
+    if(!/^supabase\/migrations\/(releases|applied)\/\d{14}_(restrict_anonymous_clinical_table_privileges|document_source_replacement_boundary|clinical_adversarial_boundaries|wave04_identity_onboarding|wave05_authorization_boundaries|wave06_edge_quotas|post06_clinical_and_invitation_repairs|wave07_private_storage|wave08_private_realtime|wave09_data_integrity|wave10_clinical_calculation_contract)\.sql$/.test(file))throw Error('Unexpected candidate migration');
     const content=readFileSync(file,'utf8');
     if(createHash('sha256').update(content).digest('hex')!==sha256)throw Error('Candidate migration checksum mismatch');
     return {file,sha256,content};

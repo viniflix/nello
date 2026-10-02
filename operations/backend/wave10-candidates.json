@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "migrations": [
+    {
+      "file": "supabase/migrations/releases/20261002060000_wave10_clinical_calculation_contract.sql",
+      "sha256": "21bf7e79363372a40c452e9c78a7b5686a9e2d9aa9a9719e68a6cd2b94875288"
+    }
+  ]
+}

@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Trash2, Flame } from 'lucide-react';
-import { searchPhysicalActivities } from '@/lib/constants/physical-activities';
+import { searchPhysicalActivities, MET_REFERENCE } from '@/lib/constants/physical-activities';
 import {
   calculateActivityExpenditure,
   sumMetsActivitiesAverageDaily
@@ -67,6 +67,7 @@ export default function MetsActivitiesForm({ activities = [], onChange, weightKg
     const numFields = ['met', 'duration_min', 'frequency_value', 'kcal_per_session', 'average_daily_kcal'];
     next[index] = {
       ...next[index],
+      ...(field === 'met' ? {reference:null,reference_code:null,reference_version:null} : {}),
       [field]: numFields.includes(field) ? (Number(value) || 0) : value
     };
     onChange(next);
@@ -78,7 +79,10 @@ export default function MetsActivitiesForm({ activities = [], onChange, weightKg
     next[index] = {
       ...next[index],
       name: activity.name,
-      met: activity.met
+      met: activity.met,
+      reference: activity.reference,
+      reference_code: activity.code,
+      reference_version: activity.version
     };
     onChange(next);
     setOpenCombo(null);
@@ -98,7 +102,7 @@ export default function MetsActivitiesForm({ activities = [], onChange, weightKg
           Atividades físicas (METs)
         </CardTitle>
         <CardDescription>
-          Selecione a atividade, duração e frequência. O gasto médio diário é calculado automaticamente.
+          Estimativa: MET × peso em kg × minutos ÷ 60. Um MET corresponde aproximadamente a 1 kcal/kg/h; o gasto individual varia. Confirme a intensidade. Este valor não é somado novamente ao GET. <a href={MET_REFERENCE} target="_blank" rel="noreferrer" className="underline">Compendium 2024</a>
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

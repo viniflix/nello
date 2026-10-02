@@ -1,6 +1,7 @@
 import {test,expect}from'@playwright/test';import{createClient}from'@supabase/supabase-js';import{readFileSync}from'node:fs';
 import {createHash,randomUUID} from 'node:crypto';
 import {PDFDocument} from 'pdf-lib';
+import {inspectPdf} from '../scripts/qa/pdf-content.mjs';
 const fixture=JSON.parse(readFileSync('.backend-ci/browser-runtime/fixture.json'));
 const client=()=>createClient(fixture.url,fixture.anonKey,{auth:{persistSession:false,autoRefreshToken:false}});
 async function actor(key){const c=client();const {error}=await c.auth.signInWithPassword({email:fixture.personas[key].email,password:fixture.password});expect(error).toBeNull();return c;}
@@ -68,8 +69,10 @@ test('signed canonical clinical artifact generates an actual PDF in Chromium',as
  await call('sign_document_artifact',{p_artifact_id:created.artifact_id});
  const artifact=await call('get_document_artifact',{p_artifact_id:created.artifact_id});expect(artifact.status).toBe('signed');expect(artifact.sha256).toMatch(/^[a-f0-9]{64}$/);
  await page.goto('/login');
+ await page.locator('#email').fill(fixture.personas['nutritionist-a'].email);await page.locator('#password').fill(fixture.password);await page.getByRole('button',{name:'Entrar',exact:true}).click();await expect(page).toHaveURL(/\/nutritionist/);
  const pdf=await page.evaluate(async artifact=>{const{renderCanonicalDocumentPdf}=await import('/__qa__/harness.js');const blob=await renderCanonicalDocumentPdf(artifact);return {type:blob.type,bytes:Array.from(new Uint8Array(await blob.arrayBuffer()))};},artifact);
- expect(pdf.type).toBe('application/pdf');expect(pdf.bytes.length).toBeGreaterThan(2000);expect(Buffer.from(pdf.bytes).subarray(0,5).toString()).toBe('%PDF-');expect(Buffer.from(pdf.bytes).toString()).toContain('QA patient-a');
+ expect(pdf.type).toBe('application/pdf');expect(pdf.bytes.length).toBeGreaterThan(0);expect(pdf.bytes.length).toBeLessThanOrEqual(2*1024*1024);expect(Buffer.from(pdf.bytes).subarray(0,5).toString()).toBe('%PDF-');
+ const content=await inspectPdf(Buffer.from(pdf.bytes));expect(content.pages).toBeGreaterThan(0);expect(content.pages).toBeLessThanOrEqual(50);expect(content.text).toContain('QA patient-a');expect(content.text).toContain(artifact.sha256);expect(content.text).toContain('Orientacao sintetica de QA sem dados reais');
 });
 
 test('browser File reaches the real verified upload helper and Edge decoder',async({page})=>{

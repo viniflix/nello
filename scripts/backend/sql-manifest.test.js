@@ -11,8 +11,8 @@ describe('complete SQL source classification', () => {
     const fixtureFiles = new Set(readdirSync('supabase/fixtures/wave02').map(file => `supabase/fixtures/wave02/${file}`));
     const configured = JSON.parse(readFileSync('operations/backend/sql-matrix.json', 'utf8'));
     expect(validateSqlManifest(configured, actual, fixtureFiles)).toBe(configured);
-    expect(actual).toHaveLength(45);
-    expect(configured.sources.filter(source => source.kind === 'assertion-suite')).toHaveLength(42);
+    expect(actual).toHaveLength(46);
+    expect(configured.sources.filter(source => source.kind === 'assertion-suite')).toHaveLength(43);
   });
   it.each([[], [source, source], [{ ...source, file: 'other.sql' }]])('blocks omissions, duplicates and renamed sources: %j', (...sources) => {
     expect(() => validateSqlManifest(manifest(sources), ['example.sql'], fixtures)).toThrow();

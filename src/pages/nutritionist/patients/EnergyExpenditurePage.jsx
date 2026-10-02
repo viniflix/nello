@@ -1,3 +1,4 @@
+import { roundClinicalFraction, decimalFraction } from '../../../../supabase/functions/_shared/clinical-arithmetic.js';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -42,8 +43,11 @@ import {
   calculateAllProtocols,
   sumMetsActivitiesAverageDaily,
 } from '@/lib/utils/energy-calculations';
-import { INJURY_FACTORS, getInjuryFactorValue } from '@/lib/constants/injury-factors';
+import { INJURY_FACTORS, getInjuryFactorValue, CLINICAL_FACTOR_REFERENCE } from '@/lib/constants/injury-factors';
+import { downloadSavedClinicalPdf } from '@/lib/pdf/savedClinicalPdf';
 import { Events, track } from '@/infrastructure/analytics/posthog';
+
+const energyDisplay = (value, exact) => value == null ? '—' : roundClinicalFraction(exact || decimalFraction(value)).replace('.', ',');
 
 const TMB_PROTOCOLS = [
   { id: 'mifflin', label: 'Mifflin-St Jeor' },
@@ -107,16 +111,16 @@ function EnergySummary({ protocolLabel, plan, isEer, activeTab, hasRequiredBiome
           {!isEer && (
             <div className="flex items-end justify-between gap-3 border-b pb-3">
               <span className="text-sm text-muted-foreground">TMB</span>
-              <strong className="text-lg">{plan.tmbResult != null ? Math.round(plan.tmbResult).toLocaleString('pt-BR') : '—'} <span className="text-xs font-normal text-muted-foreground">kcal/dia</span></strong>
+              <strong className="text-lg">{plan.tmbResult != null ? energyDisplay(plan.tmbResult,plan.exactResults.tmb) : '—'} <span className="text-xs font-normal text-muted-foreground">kcal/dia</span></strong>
             </div>
           )}
           <div className="flex items-end justify-between gap-3 border-b pb-3">
             <span className="text-sm text-muted-foreground">GET</span>
-            <strong className="text-xl text-primary">{ready ? Math.round(plan.getResult).toLocaleString('pt-BR') : '—'} <span className="text-xs font-normal text-muted-foreground">kcal/dia</span></strong>
+            <strong className="text-xl text-primary">{ready ? energyDisplay(plan.getResult,plan.exactResults.get) : '—'} <span className="text-xs font-normal text-muted-foreground">kcal/dia</span></strong>
           </div>
           <div className="rounded-xl bg-primary-50 p-4">
             <span className="text-xs font-semibold uppercase tracking-wide text-primary-700">Meta final (VET)</span>
-            <p className="mt-1 text-3xl font-bold text-primary-800">{ready ? Math.round(plan.finalPlannedKcal).toLocaleString('pt-BR') : '—'} <span className="text-sm font-medium">kcal</span></p>
+            <p className="mt-1 text-3xl font-bold text-primary-800">{ready ? energyDisplay(plan.finalPlannedKcal,plan.exactResults.planned) : '—'} <span className="text-sm font-medium">kcal</span></p>
           </div>
           <div className="flex gap-2 text-xs leading-relaxed text-muted-foreground">
             <CheckCircle2 className={`mt-0.5 h-4 w-4 shrink-0 ${ready ? 'text-primary' : 'text-muted-foreground/50'}`} />
@@ -165,6 +169,8 @@ function EnergyExpenditureForm({ resolvedPatient }) {
   const [driActivity, setDriActivity] = useState('');
   const [lifeStage, setLifeStage] = useState('');
   const [requiresReview, setRequiresReview] = useState(false);
+  const [savedCalculation, setSavedCalculation] = useState(null);
+  const [exporting, setExporting] = useState(false);
 
   const [suggestedActivity, setSuggestedActivity] = useState(null);
   const [suggestedGoal, setSuggestedGoal] = useState(null);
@@ -183,7 +189,9 @@ function EnergyExpenditureForm({ resolvedPatient }) {
       setLoading(false);
       return;
     }
-    loadPatientData();
+    let cancelled = false;
+    loadPatientData(() => !cancelled);
+    return () => { cancelled = true; };
   }, [patientId, resolveLoading]);
 
   // Substituir URL por slug quando acessada com UUID (igual às outras páginas do hub)
@@ -226,21 +234,27 @@ function EnergyExpenditureForm({ resolvedPatient }) {
     ...(factorsComplete && plan.valid && activeTab === 'venta' ? ['venta'] : []),
   ];
 
-  async function loadPatientData() {
+  async function loadPatientData(isCurrent) {
     if (!patientId) return;
     setLoading(true);
+    setSavedCalculation(null);
+    setWeight('');setHeight('');setAge('');setGender('');setLeanMass('');setBodyFatPct('');
+    setActivityFactor('');setClinicalMobility('');setInjuryFactorId('');setDriActivity('');setLifeStage('');
+    setVentaTargetWeight('');setVentaTimeframeDays('');setMetsActivities([]);setVentaConfirmedFor(null);
     try {
       const { data: profile } = await supabase
         .from('user_profiles')
         .select('name, slug')
         .eq('id', patientId)
         .single();
+      if (!isCurrent()) return;
       setPatientName(profile?.name || 'Paciente');
       setPatientSlug(profile?.slug || null);
 
       const [{ data: currentBiometry, error: biometryError }, { data: saved }] = await Promise.all([
         getInitialBiometryForEnergy(patientId), getLatestEnergyCalculation(patientId)
       ]);
+      if (!isCurrent()) return;
       const biometry = restoreEnergyBiometry(currentBiometry, saved);
       if (biometryError) toast({ title: 'Confira a biometria', description: 'Parte dos dados não pôde ser carregada. Confira os campos e a origem indicada antes de salvar.', variant: 'destructive' });
       if (biometry) {
@@ -265,41 +279,10 @@ function EnergyExpenditureForm({ resolvedPatient }) {
         getActiveGoalForEnergy(patientId)
       ]);
 
-      // Sprint E: Prioridade 1 — clinical_flags.activity_level (dado limpo e tipado)
-      const activityFromFlags = clinicalFlags?.activity_level?.value;
-      if (activityFromFlags) {
-        const levelMap = {
-          sedentary:    { factor: 1.2,   label: 'Sedentário (flags clínicas)' },
-          light:        { factor: 1.375, label: 'Levemente Ativo (flags clínicas)' },
-          moderate:     { factor: 1.55,  label: 'Moderadamente Ativo (flags clínicas)' },
-          active:       { factor: 1.725, label: 'Muito Ativo (flags clínicas)' },
-          very_active:  { factor: 1.9,   label: 'Extremamente Ativo (flags clínicas)' },
-        };
-        const mapped = levelMap[String(activityFromFlags).toLowerCase()];
-        if (mapped) {
-          setActivityFactor(mapped.factor);
-          setSuggestedActivity(mapped.label);
-        }
-      // Prioridade 2 — texto livre da anamnese (legado)
-      } else if (anamnesisResult?.data?.exerciseFrequency) {
-        const freq = String(anamnesisResult.data.exerciseFrequency).toLowerCase();
-        if (freq.includes('sedent') || freq.includes('não') || freq.includes('nao') || freq === '0') {
-          setActivityFactor(1.2);
-          setSuggestedActivity('Sedentário (anamnese)');
-        } else if (freq.includes('1-3') || freq.includes('leve')) {
-          setActivityFactor(1.375);
-          setSuggestedActivity('Levemente Ativo (anamnese)');
-        } else if (freq.includes('3-5') || freq.includes('moder')) {
-          setActivityFactor(1.55);
-          setSuggestedActivity('Moderadamente Ativo (anamnese)');
-        } else if (freq.includes('6-7') || freq.includes('muito')) {
-          setActivityFactor(1.725);
-          setSuggestedActivity('Muito Ativo (anamnese)');
-        } else if (freq.includes('2x') || freq.includes('extremo')) {
-          setActivityFactor(1.9);
-          setSuggestedActivity('Extremamente Ativo (anamnese)');
-        }
-      }
+      if (!isCurrent()) return;
+      // Exercise frequency alone does not identify total 24-hour PAL.
+      setSuggestedActivity(clinicalFlags?.activity_level?.value || anamnesisResult?.data?.exerciseFrequency
+        ? 'A anamnese descreve atividade; confirme o PAL pela rotina completa.' : '');
 
       if (goalResult?.data) {
         const gt = (goalResult.data.goal_type || goalResult.data.type || '').toLowerCase();
@@ -318,6 +301,7 @@ function EnergyExpenditureForm({ resolvedPatient }) {
       if (saved) {
         if (saved.tmb_protocol || saved.protocol) setSelectedProtocol(saved.tmb_protocol || saved.protocol);
         const restored = restoreEnergyInputs(saved);
+        setSavedCalculation(saved);
         setClinicalMobility(restored.clinicalMobility);
         setDriActivity(restored.driActivity);
         setLifeStage(restored.lifeStage);
@@ -331,12 +315,14 @@ function EnergyExpenditureForm({ resolvedPatient }) {
       }
 
       const { data: flags } = await getPatientModuleSyncFlags(patientId);
+      if (!isCurrent()) return;
       setSyncFlags(flags || null);
     } catch (err) {
+      if (!isCurrent()) return;
       logDiagnostic('error', 'pages/nutritionist/patients/EnergyExpenditurePage.jsx:335', err);
       toast({ title: 'Erro', description: err?.message || 'Não foi possível carregar os dados do paciente.', variant: 'destructive' });
     } finally {
-      setLoading(false);
+      if (isCurrent()) setLoading(false);
     }
   }
 
@@ -354,12 +340,13 @@ function EnergyExpenditureForm({ resolvedPatient }) {
     if (!ventaConfirmed) throw new Error('Confirme a avaliação clínica da meta de peso.');
     const payload = {
       patient_id: patientId,
+      biometry_sources: dataSource,
       nutritionist_id: user?.id || null,
       height: h,
       weight: w,
       age: a,
       gender: gender,
-      body_fat_percentage: bodyFatPct || null,
+      body_fat_percentage: bodyFatPct === '' ? null : bodyFatPct,
       lean_mass_kg: leanMass || null,
       tmb_protocol: selectedProtocol,
       tmb_result: selectedProtocolData?.bmr ?? null,
@@ -379,9 +366,10 @@ function EnergyExpenditureForm({ resolvedPatient }) {
       venta_adjustment_kcal: ventaAdjustmentKcal,
       final_planned_kcal: finalPlannedKcal
     };
-    const { error } = await saveEnergyCalculation(payload);
+    const { data: saved, error } = await saveEnergyCalculation(payload);
     if (error) throw error;
     setRequiresReview(false);
+    setSavedCalculation(saved);
     await logActivityEvent({
       eventName: 'energy.calculation.updated',
       sourceModule: 'energy',
@@ -621,12 +609,14 @@ function EnergyExpenditureForm({ resolvedPatient }) {
                   <div className="space-y-2"><Label>Condição do paciente *</Label>
                   <Select value={clinicalMobility} onValueChange={setClinicalMobility}><SelectTrigger aria-label="Condição do paciente"><SelectValue placeholder="Selecione a condição" /></SelectTrigger><SelectContent>
                     <SelectItem value="bedridden">Acamado (×1,2)</SelectItem><SelectItem value="ambulatory">Ambulante (×1,3)</SelectItem>
+                    <SelectItem value="bedridden_ventilated">Acamado no ventilador (×1,1)</SelectItem><SelectItem value="bedridden_mobile">Acamado com mobilidade (×1,25)</SelectItem>
                   </SelectContent></Select></div>
                   <div className="space-y-2"><Label>Fator de injúria / estresse clínico *</Label>
                   <Select value={injuryFactorId} onValueChange={setInjuryFactorId}><SelectTrigger aria-label="Fator de injúria"><SelectValue placeholder="Selecione a condição" /></SelectTrigger><SelectContent>
                     {INJURY_FACTORS.map(f => <SelectItem key={f.id} value={f.id}>{f.label} (×{f.value})</SelectItem>)}
                   </SelectContent></Select></div>
                   <div className="rounded-xl bg-primary-50 p-3 text-xs leading-relaxed text-primary-900"><strong>Fórmula aplicada:</strong> TMB × mobilidade clínica × fator de injúria. Sem injúria: ×1. Confira a condição e o coeficiente com o contexto clínico; a estimativa não substitui a avaliação profissional.</div>
+                  <p className="text-xs text-muted-foreground">{CLINICAL_FACTOR_REFERENCE.limitation} Os fatores são específicos para as condições descritas; diabetes, câncer, jejum ou desnutrição isolados não definem um multiplicador automático. Este cálculo não inclui fator térmico de febre. <a href={CLINICAL_FACTOR_REFERENCE.url} target="_blank" rel="noreferrer" className="underline">Consultar protocolo e fatores (p. 22, versão de 2024)</a>.</p>
                 </CardContent></Card>
             ) : isEer ? (
               <Card className="rounded-2xl border-0 shadow-card"><CardHeader className="border-b p-4 sm:p-6"><CardTitle className="flex items-center gap-3 text-lg sm:text-xl"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-50 text-primary"><Activity className="h-5 w-5" /></span>2. Atividade nas DRIs</CardTitle><CardDescription className="sm:pl-[52px]">Para adultos a partir de 19 anos. A categoria escolhida já faz parte da equação do GET.</CardDescription></CardHeader><CardContent className="space-y-5 p-4 sm:p-6">
@@ -647,8 +637,8 @@ function EnergyExpenditureForm({ resolvedPatient }) {
             </details>}
             {selectedProtocol && !plan.valid && <Alert variant="destructive"><AlertDescription>{plan.errors.join(' ')}</AlertDescription></Alert>}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:hidden">
-              {!isEer && <Card className="rounded-xl"><CardContent className="p-4"><p className="text-xs uppercase tracking-wide text-muted-foreground">TMB</p><p className="mt-1 text-2xl font-bold">{Math.round(tmbResult || 0).toLocaleString('pt-BR')} <span className="text-sm font-normal">kcal/dia</span></p></CardContent></Card>}
-              <Card className="rounded-xl border-primary/25 bg-primary-50"><CardContent className="p-4"><p className="text-xs uppercase tracking-wide text-primary-700">Gasto Energético Total</p><p className="mt-1 text-2xl font-bold text-primary-800">{plan.valid ? Math.round(getResult).toLocaleString('pt-BR') : '—'} <span className="text-sm font-normal">kcal/dia</span></p></CardContent></Card>
+              {!isEer && <Card className="rounded-xl"><CardContent className="p-4"><p className="text-xs uppercase tracking-wide text-muted-foreground">TMB</p><p className="mt-1 text-2xl font-bold">{energyDisplay(tmbResult,plan.exactResults.tmb)} <span className="text-sm font-normal">kcal/dia</span></p></CardContent></Card>}
+              <Card className="rounded-xl border-primary/25 bg-primary-50"><CardContent className="p-4"><p className="text-xs uppercase tracking-wide text-primary-700">Gasto Energético Total</p><p className="mt-1 text-2xl font-bold text-primary-800">{plan.valid ? energyDisplay(getResult,plan.exactResults.get) : '—'} <span className="text-sm font-normal">kcal/dia</span></p></CardContent></Card>
             </div>
             {plan.valid && <EnergyFormulaDetails plan={plan} />}
 
@@ -726,7 +716,7 @@ function EnergyExpenditureForm({ resolvedPatient }) {
               <CardContent className="p-5 sm:p-6">
                 <div className="flex flex-col gap-1 text-center sm:flex-row sm:items-end sm:justify-between sm:text-left">
                   <div><p className="text-sm font-medium text-primary-700">Meta calórica final (VET)</p><p className="text-xs text-muted-foreground">Valor diário para o planejamento alimentar</p></div>
-                  <p className="mt-2 text-4xl font-bold text-primary-800 sm:mt-0">{plan.valid ? Math.round(finalPlannedKcal).toLocaleString('pt-BR') : '—'} <span className="text-lg font-medium">kcal</span></p>
+                  <p className="mt-2 text-4xl font-bold text-primary-800 sm:mt-0">{plan.valid ? energyDisplay(finalPlannedKcal,plan.exactResults.planned) : '—'} <span className="text-lg font-medium">kcal</span></p>
                 </div>
               </CardContent>
             </Card>
@@ -742,6 +732,17 @@ function EnergyExpenditureForm({ resolvedPatient }) {
             </div>
           </TabsContent>
         </Tabs>
+        {savedCalculation && <section className="mt-5 rounded-xl border bg-white p-4 space-y-3">
+          <h2 className="font-semibold">Último cálculo salvo — histórico preservado</h2>
+          <p className="text-sm text-muted-foreground">{savedCalculation.created_at ? new Date(savedCalculation.created_at).toLocaleString('pt-BR') : 'Registro anterior'} · Motor {savedCalculation.source_snapshot?.engine_version ?? 'legado'}. Alterações acima são uma nova avaliação; só mudam o histórico ao salvar um novo registro.</p>
+          <p className="text-sm">TMB: {energyDisplay(savedCalculation.tmb_result ?? savedCalculation.tmb, savedCalculation.output_snapshot?.calculation_details?.exactResults?.tmb)} · GET: {energyDisplay(savedCalculation.get_result ?? savedCalculation.get,savedCalculation.output_snapshot?.calculation_details?.exactResults?.get)} · VET: {savedCalculation.final_planned_kcal ?? energyDisplay(savedCalculation.get_result ?? savedCalculation.get,savedCalculation.output_snapshot?.calculation_details?.exactResults?.get)} kcal/dia</p>
+          <Button type="button" variant="outline" disabled={exporting} onClick={async()=>{
+            setExporting(true);
+            try {await downloadSavedClinicalPdf('energyCalculationId',savedCalculation.id);}
+            catch {toast({title:'Documento indisponível',description:'Não foi possível exportar o cálculo salvo. Tente novamente.',variant:'destructive'});}
+            finally {setExporting(false);}
+          }}>{exporting ? 'Gerando documento...' : 'Exportar PDF do cálculo salvo'}</Button>
+        </section>}
       </section>
     </div>
   );
