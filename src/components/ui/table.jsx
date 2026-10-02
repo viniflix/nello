@@ -2,13 +2,17 @@ import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
-const Table = React.forwardRef(({ className, ...props }, ref) => (
-  <div className="relative w-full overflow-auto">
+const MobileTableContext = React.createContext(null);
+const Table = React.forwardRef(({ className, mobileLabels, children, ...props }, ref) => (
+  <div className="relative w-full min-w-0 overflow-auto focus-visible:outline-ring" tabIndex={0} role="region" aria-label={props['aria-label'] || 'Tabela: use as setas para rolar quando necessário'}>
+    <MobileTableContext.Provider value={mobileLabels}>
     <table
       ref={ref}
       className={cn("w-full caption-bottom text-sm", className)}
       {...props}
-    />
+      data-responsive={mobileLabels ? 'cards' : undefined}
+    >{children}</table>
+    </MobileTableContext.Provider>
   </div>
 ))
 Table.displayName = "Table"
@@ -39,7 +43,9 @@ const TableFooter = React.forwardRef(({ className, ...props }, ref) => (
 ))
 TableFooter.displayName = "TableFooter"
 
-const TableRow = React.forwardRef(({ className, ...props }, ref) => (
+const TableRow = React.forwardRef(({ className, children, ...props }, ref) => {
+  const labels = React.useContext(MobileTableContext);
+  return (
   <tr
     ref={ref}
     className={cn(
@@ -47,12 +53,14 @@ const TableRow = React.forwardRef(({ className, ...props }, ref) => (
       className
     )}
     {...props}
-  />
-))
+  >{React.Children.map(children, (child, index) => labels && React.isValidElement(child) && child.type === TableCell ? React.cloneElement(child, { 'data-label': labels[index], 'data-span': child.props.colSpan > 1 ? 'all' : undefined }) : child)}</tr>
+  );
+})
 TableRow.displayName = "TableRow"
 
 const TableHead = React.forwardRef(({ className, ...props }, ref) => (
   <th
+    scope="col"
     ref={ref}
     className={cn(
       "h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0",

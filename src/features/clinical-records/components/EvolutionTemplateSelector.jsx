@@ -87,7 +87,7 @@ const EvolutionTemplateSelector = ({ open, onOpenChange, onSelectTemplate }) => 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[85vh] flex-col sm:max-w-[600px]">
+      <DialogContent className="flex max-h-[85dvh] flex-col sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle className="text-xl">Nova Evolução Clínica</DialogTitle>
           <DialogDescription>

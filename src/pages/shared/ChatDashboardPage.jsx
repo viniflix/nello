@@ -38,17 +38,17 @@ const ConversationItem = ({ conversation, isActive, onClick }) => {
   };
 
   return (
-    <div
+    <button type="button"
       onClick={onClick}
-      className={`flex items-center gap-3 p-3 cursor-pointer transition-colors relative border-b border-border/50
+      className={`flex w-full text-left items-center gap-3 p-3 cursor-pointer transition-colors relative border-b border-border/50
         ${isActive ? 'bg-primary/10 border-r-4 border-r-primary' : 'hover:bg-muted/50'}`}
     >
       <div className="relative shrink-0">
         <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden border">
           {conversation.recipient_avatar ? (
             <PrivateImage
-              src={conversation.recipient_avatar} 
-              alt={conversation.recipient_name} 
+              src={conversation.recipient_avatar}
+              alt={conversation.recipient_name}
               className="w-full h-full object-cover"
             />
           ) : (
@@ -65,7 +65,7 @@ const ConversationItem = ({ conversation, isActive, onClick }) => {
           <span className="font-semibold text-sm truncate text-foreground">
             {conversation.recipient_name}
           </span>
-          <span className="text-[10px] text-muted-foreground shrink-0">
+          <span className="text-xs text-muted-foreground shrink-0">
             {formatMessageTime(conversation.last_message_at)}
           </span>
         </div>
@@ -80,20 +80,20 @@ const ConversationItem = ({ conversation, isActive, onClick }) => {
                 {conversation.last_message_content || 'Sem mensagens'}
               </p>
               {!isOnline && conversation.last_seen_at && (
-                <p className="text-[9px] text-muted-foreground/60 leading-none">
+                <p className="text-xs text-muted-foreground leading-none">
                   {formatLastSeenCompact(conversation.last_seen_at)}
                 </p>
               )}
             </div>
           )}
           {conversation.unread_count > 0 && (
-            <span className="bg-primary text-primary-foreground text-[10px] font-bold h-5 min-w-5 px-1 rounded-full flex items-center justify-center shrink-0">
+            <span className="bg-primary text-primary-foreground text-xs font-bold h-5 min-w-5 px-1 rounded-full flex items-center justify-center shrink-0">
               {conversation.unread_count}
             </span>
           )}
         </div>
       </div>
-    </div>
+    </button>
   );
 };
 
@@ -119,27 +119,27 @@ const ChatDashboardPage = () => {
   };
 
   return (
-    <div className="flex h-[calc(100vh-64px)] bg-background overflow-hidden">
+    <div className="flex h-[calc(100dvh-64px)] bg-background overflow-hidden">
       {/* Sidebar - Lista de Conversas */}
-      <aside className={`w-full md:w-80 lg:w-96 border-r flex flex-col bg-card shrink-0 
+      <aside className={`w-full md:w-80 lg:w-96 border-r flex flex-col bg-card shrink-0
         ${patientId ? 'hidden md:flex' : 'flex'}`}>
-        
+
         <div className="p-4 border-b space-y-4">
           <div className="flex items-center justify-between">
             <h1 className="text-xl font-bold flex items-center gap-2">
               <MessageSquare className="w-5 h-5 text-primary" />
               Conversas
             </h1>
-            <Button 
-                size="icon" 
-                className="rounded-full w-9 h-9 shadow-md bg-primary hover:bg-primary/90 transition-transform hover:scale-105" 
+            <Button
+                size="icon"
+                className="rounded-full w-9 h-9 shadow-md bg-primary hover:bg-primary/90 transition-transform hover:scale-105"
                 onClick={() => setIsNewChatModalOpen(true)}
                 title="Nova Conversa"
             >
                 <Plus className="w-5 h-5 text-white" />
             </Button>
           </div>
-          
+
           <div className="space-y-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -150,28 +150,28 @@ const ChatDashboardPage = () => {
                 onChange={(e) => setSearch(e.target.value)}
               />
             </div>
-            
+
             <div className="flex items-center justify-between px-1">
                 <div className="flex items-center space-x-2">
-                    <Switch 
-                        id="show-archived" 
-                        checked={showArchived} 
+                    <Switch
+                        id="show-archived"
+                        checked={showArchived}
                         onCheckedChange={setShowArchived}
                         className="scale-75 origin-left"
                     />
-                    <Label htmlFor="show-archived" className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground cursor-pointer">
+                    <Label htmlFor="show-archived" className="text-xs uppercase tracking-wider font-bold text-muted-foreground cursor-pointer">
                         Ver Arquivados
                     </Label>
                 </div>
-                <Badge variant="secondary" className="text-[9px] font-bold px-1.5 py-0 h-4 uppercase tracking-tighter opacity-70">
+                <Badge variant="secondary" className="text-xs font-bold px-1.5 py-0 h-4 uppercase tracking-tighter">
                     {filteredConversations.length} {filteredConversations.length === 1 ? 'conversa' : 'conversas'}
                 </Badge>
             </div>
           </div>
         </div>
 
-        <NewChatModal 
-            open={isNewChatModalOpen} 
+        <NewChatModal
+            open={isNewChatModalOpen}
             onOpenChange={setIsNewChatModalOpen}
             onSelectPatient={(patient) => {
                 setIsNewChatModalOpen(false);
@@ -200,7 +200,7 @@ const ChatDashboardPage = () => {
       </aside>
 
       {/* Main Area - Conteúdo do Chat */}
-      <main className={`flex-1 flex flex-col min-w-0 h-full relative 
+      <main className={`flex-1 flex flex-col min-w-0 h-full relative
         ${!patientId ? 'hidden md:flex' : 'flex'}`}>
         <AnimatePresence mode="wait">
           {patientId ? (
@@ -219,13 +219,13 @@ const ChatDashboardPage = () => {
                   ? 'Olá! Gostaria de conversar sobre seu acompanhamento e as orientações do plano alimentar.'
                   : ''}
               />
-              
+
               {/* Botão de Voltar Mobile */}
               <Button
                 variant="outline"
                 size="icon"
                 className="absolute top-4 left-4 z-40 md:hidden shadow-md bg-white/80 backdrop-blur rounded-full"
-                onClick={() => navigate('/nutritionist/chat')}
+                aria-label="Voltar à lista de conversas" onClick={() => navigate('/nutritionist/chat')}
               >
                 <Search className="w-4 h-4" /> {/* Poderia ser ArrowLeft, mas Search combina com a lista */}
               </Button>

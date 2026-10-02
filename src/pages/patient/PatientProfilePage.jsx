@@ -134,7 +134,7 @@ export default function PatientProfilePage() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-background">
+    <div className="flex flex-col min-h-dvh bg-background">
       <div className="patient-page-content space-y-6">
         {/* Header */}
         <div className="mb-2 flex justify-between items-start">

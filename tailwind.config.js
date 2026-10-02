@@ -51,7 +51,7 @@ module.exports = {
           300: '#F9BB8B',
           400: '#F7A464',
           500: '#F48D3D',
-          DEFAULT: '#F27507', // Nosso Laranja Principal
+          DEFAULT: '#A34F04', // Texto e botões com contraste AA em superfícies claras.
           600: '#F27507',
           700: '#C25E06',
           800: '#914604',
@@ -61,7 +61,7 @@ module.exports = {
 
         // Cores Semânticas
         destructive: {
-          DEFAULT: colors.red[600],
+          DEFAULT: colors.red[700],
           foreground: colors.white,
         },
         success: {

@@ -100,6 +100,7 @@ jobs:
             .backend-ci/forward-results/
             .backend-ci/wave09-results/
             .backend-ci/wave12-results/
+            .backend-ci/wave13-results/
             .backend-ci/auth-onboarding-results/
             .backend-ci/auth-captcha-results/
             .backend-ci/sql-results/

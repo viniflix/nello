@@ -13,6 +13,7 @@ import { getHomePath } from './homePath';
 import { lazyWithReload } from '@/lib/utils/lazyWithReload';
 import StatusPage from '@/pages/public/StatusPage';
 import NotFoundPage from '@/pages/public/NotFoundPage';
+const LandingPage = lazyWithReload(() => import('@/pages/public/LandingPage'), 'public:landing');
 const LegalInformationPage = lazyWithReload(() => import('@/pages/public/LegalInformationPage'), 'public:legal-information');
 
 // Rota Omnichannel Public Facing (Sem Auth Block)
@@ -28,24 +29,26 @@ const AppRouter = () => {
   const publicPath = pathname.replace(/\/$/, '');
   if (['/termos', '/privacidade', '/ajuda', '/seguranca'].includes(publicPath)) return <Suspense fallback={<PageLoadingFallback />}><LegalInformationPage pathname={publicPath} /></Suspense>;
 
+  if (pathname === '/' && !user) return <Suspense fallback={<PageLoadingFallback />}><LandingPage /></Suspense>;
+
   if (loading) {
     return <PageLoadingFallback />;
   }
 
   return (
     <RealtimeProvider><NotificationsCacheOwner><ChatProvider>
-        <div className="min-h-screen bg-background">
+        <div className="min-h-dvh bg-background">
           <Suspense fallback={<PageLoadingFallback />}>
             <Routes>
               {authRoutes}
               {nutritionistRoutes}
               {patientRoutes}
               {adminRoutes}
-              
+
               {/* Rota Externa Segura: Formulários Omnichannel Mobile-First */}
               <Route path="/f/:token" element={<PatientFacingAnamnesis />} />
               <Route path="/verificar-documento/:code?" element={<DocumentAuthenticityPage />} />
-              
+
               {/* Rotas de redirecionamento */}
               <Route path="/" element={<Navigate to={getHomePath(user)} replace />} />
               <Route path="*" element={<NotFoundPage />} />

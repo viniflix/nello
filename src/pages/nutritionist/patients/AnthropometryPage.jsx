@@ -50,13 +50,13 @@ const AnthropometryPage = () => {
         historyFilter,
         sectionHighlights,
         formExpanded,
-        
+
         setRecordDetailOpen,
         setCompareRecordId,
         setHistoryFilter,
         setFormExpanded,
         setEditingRecord,
-        
+
         loadData,
         handleSubmit,
         handleEdit,
@@ -66,7 +66,7 @@ const AnthropometryPage = () => {
         handleCancelEdit,
         handleExportComparisonPdf,
         toggleSectionHighlight,
-        
+
         formatDelta,
         formatObjectiveLabel,
         statusLabel,
@@ -92,7 +92,7 @@ const AnthropometryPage = () => {
             );
         }
         return (
-            <div className="flex flex-col items-center justify-center min-h-[50vh] p-4">
+            <div className="flex flex-col items-center justify-center min-h-[50dvh] p-4">
                 <Alert variant="destructive" className="max-w-md mb-6">
                     <AlertDescription>Paciente não encontrado.</AlertDescription>
                 </Alert>
@@ -139,18 +139,18 @@ const AnthropometryPage = () => {
                     </p>
                     <div className="mt-3 flex flex-wrap gap-2.5">
                         <div className="rounded-md border bg-muted/30 px-3 py-2 shadow-sm">
-                            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Objetivo clínico</p>
+                            <p className="text-xs uppercase tracking-wide text-muted-foreground">Objetivo clínico</p>
                             <p className="text-sm font-semibold text-foreground">{formatObjectiveLabel(patientObjective)}</p>
                         </div>
                         {latestRecord && latestRecord.weight && (
                             <div className="rounded-md border bg-card px-3 py-2 shadow-sm">
-                                <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Peso atual</p>
+                                <p className="text-xs uppercase tracking-wide text-muted-foreground">Peso atual</p>
                                 <p className="text-sm font-semibold text-foreground">{latestRecord.weight} kg</p>
                             </div>
                         )}
                         {idealWeightRange?.min !== undefined && idealWeightRange?.max !== undefined && (
                             <div className="rounded-md border bg-primary/5 border-primary/20 px-3 py-2 shadow-sm">
-                                <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Faixa de referência por IMC</p>
+                                <p className="text-xs uppercase tracking-wide text-muted-foreground">Faixa de referência por IMC</p>
                                 <p className="text-sm font-semibold text-[#5f6f52]">
                                     {idealWeightRange.min.toFixed(1)} - {idealWeightRange.max.toFixed(1)} kg
                                 </p>
@@ -158,7 +158,7 @@ const AnthropometryPage = () => {
                         )}
                         {idealWeightRange?.current && (
                             <div className="rounded-md border bg-card px-3 py-2 shadow-sm">
-                                <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Status atual</p>
+                                <p className="text-xs uppercase tracking-wide text-muted-foreground">Status atual</p>
                                 <Badge className={`text-xs ${
                                     idealWeightRange.current < idealWeightRange.min
                                         ? 'bg-blue-100 text-blue-700 hover:bg-blue-100'
@@ -203,7 +203,7 @@ const AnthropometryPage = () => {
                                                     Score {item.score}
                                                 </span>
                                             </div>
-                                            <p className="text-[11px] text-muted-foreground mt-1">
+                                            <p className="text-xs text-muted-foreground mt-1">
                                                 Delta peso: {item.weight_delta ?? 'N/A'} kg
                                             </p>
                                         </div>
@@ -276,12 +276,12 @@ const AnthropometryPage = () => {
                 {records.some(r => r.results || r.bioimpedance) && (
                     <CompositionCharts data={records} />
                 )}
-                
+
                 {/* Somatotipo Chart (se houver dados do último registro) */}
                 {latestRecord?.results?.somatotype && typeof latestRecord.results.somatotype === 'object' && (
                     <SomatotypeChart somatotype={latestRecord.results.somatotype} />
                 )}
-                
+
                 {/* Gráficos tradicionais */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <WeightChart data={chartData} />
@@ -369,7 +369,7 @@ const AnthropometryPage = () => {
             </div>
 
             <Dialog open={recordDetailOpen} onOpenChange={setRecordDetailOpen}>
-                <DialogContent className="w-[calc(100vw-2rem)] max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogContent className="w-[calc(100vw-2rem)] max-w-2xl max-h-[90dvh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle>Detalhes do Registro</DialogTitle>
                         <DialogDescription>
@@ -453,19 +453,19 @@ const AnthropometryPage = () => {
 
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                                 <div className="rounded-md border p-2">
-                                    <p className="text-[11px] uppercase text-muted-foreground">Peso</p>
+                                    <p className="text-xs uppercase text-muted-foreground">Peso</p>
                                     <p className="font-semibold">{selectedRecord.weight ?? 'N/A'} {selectedRecord.weight ? 'kg' : ''}</p>
                                 </div>
                                 <div className="rounded-md border p-2">
-                                    <p className="text-[11px] uppercase text-muted-foreground">Altura</p>
+                                    <p className="text-xs uppercase text-muted-foreground">Altura</p>
                                     <p className="font-semibold">{selectedRecord.height ?? 'N/A'} {selectedRecord.height ? 'cm' : ''}</p>
                                 </div>
                                 <div className="rounded-md border p-2">
-                                    <p className="text-[11px] uppercase text-muted-foreground">Circ.</p>
+                                    <p className="text-xs uppercase text-muted-foreground">Circ.</p>
                                     <p className="font-semibold">{getFilledCount(selectedRecord.circumferences)} campos</p>
                                 </div>
                                 <div className="rounded-md border p-2">
-                                    <p className="text-[11px] uppercase text-muted-foreground">Dobras</p>
+                                    <p className="text-xs uppercase text-muted-foreground">Dobras</p>
                                     <p className="font-semibold">{getFilledCount(selectedRecord.skinfolds)} campos</p>
                                 </div>
                             </div>
@@ -618,7 +618,7 @@ const AnthropometryPage = () => {
                                                             );
                                                         })}
                                                         {changes.length > 6 && (
-                                                            <p className="text-[11px] text-muted-foreground">
+                                                            <p className="text-xs text-muted-foreground">
                                                                 +{changes.length - 6} mudanças adicionais...
                                                             </p>
                                                         )}

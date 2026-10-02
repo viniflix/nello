@@ -97,7 +97,7 @@ export default function NutritionistPatientAchievementsPage() {
 
   if (resolveLoading || !patientId) {
     return (
-      <div className="flex items-center justify-center min-h-[50vh]">
+      <div className="flex items-center justify-center min-h-[50dvh]">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
       </div>
     );
@@ -117,7 +117,7 @@ export default function NutritionistPatientAchievementsPage() {
   const patient = patientData || { id: patientId, slug: paramValue };
 
   return (
-    <div className="flex flex-col min-h-screen bg-background">
+    <div className="flex flex-col min-h-dvh bg-background">
       <div className="max-w-7xl mx-auto w-full px-4 md:px-8 py-6">
         <Button
           variant="ghost"

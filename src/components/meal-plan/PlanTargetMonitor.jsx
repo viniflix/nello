@@ -17,21 +17,21 @@ import { cn } from '@/lib/utils';
 
 /**
  * PlanTargetMonitor Component
- * 
+ *
  * Monitor que compara as calorias prescritas no plano alimentar
  * com a meta calculada no módulo de energia.
- * 
+ *
  * @param {number} targetCalories - Meta calculada (GET) do módulo de energia
  * @param {number} currentCalories - Calorias prescritas no plano atual
  * @param {string} patientId - ID do paciente (para navegação)
  * @param {object} energyCalculation - Dados do cálculo de energia (opcional, para tooltip)
  */
-const PlanTargetMonitor = ({ 
-    targetCalories, 
-    currentCalories = 0, 
+const PlanTargetMonitor = ({
+    targetCalories,
+    currentCalories = 0,
     patientId,
     patientSlugOrId,
-    energyCalculation = null 
+    energyCalculation = null
 }) => {
     const navigate = useNavigate();
     const patientSegment = patientSlugOrId ?? patientId;
@@ -56,7 +56,7 @@ const PlanTargetMonitor = ({
                             variant="default"
                             size="lg"
                             onClick={() => navigate(`/nutritionist/patients/${patientSegment}/energy-expenditure`)}
-                            className="bg-amber-700 hover:bg-amber-800 text-white font-bold h-12 px-6 rounded-xl shadow-md transition-all active:scale-95"
+                            className="bg-amber-700 hover:bg-amber-800 text-white font-bold min-h-12 h-auto py-3 max-w-full px-6 rounded-xl shadow-md transition-all active:scale-95"
                         >
                             <Target className="w-4 h-4 mr-2" />
                             {needsVentaReview ? 'Revisar cálculo energético' : 'Definir Gasto Energético'}
@@ -73,7 +73,7 @@ const PlanTargetMonitor = ({
     const percentage = targetCalories > 0 ? Math.min(100, (currentCalories / targetCalories) * 100) : 0;
 
     // Determinar cor baseado na diferença
-    let statusColor = 'text-green-600';
+    let statusColor = 'text-green-700';
     let statusBg = 'bg-green-100 dark:bg-green-900/30';
     let statusBorder = 'border-green-500/50';
     let statusIcon = CheckCircle2;
@@ -82,7 +82,7 @@ const PlanTargetMonitor = ({
 
     if (differenceAbs <= 50) {
         // Dentro de 50kcal - Verde
-        statusColor = 'text-green-600';
+        statusColor = 'text-green-700';
         statusBg = 'bg-green-100 dark:bg-green-900/30';
         statusBorder = 'border-green-500/50';
         statusIcon = CheckCircle2;
@@ -90,7 +90,7 @@ const PlanTargetMonitor = ({
         cardBg = 'bg-green-50/30';
     } else if (differenceAbs <= 200) {
         // Dentro de 200kcal - Amarelo
-        statusColor = 'text-yellow-600';
+        statusColor = 'text-yellow-800';
         statusBg = 'bg-yellow-100 dark:bg-yellow-900/30';
         statusBorder = 'border-yellow-500/50';
         statusIcon = AlertCircle;
@@ -98,7 +98,7 @@ const PlanTargetMonitor = ({
         cardBg = 'bg-yellow-50/30';
     } else {
         // Fora de 200kcal - Vermelho
-        statusColor = 'text-red-600';
+        statusColor = 'text-red-700';
         statusBg = 'bg-red-100 dark:bg-red-900/30';
         statusBorder = 'border-red-500/50';
         statusIcon = AlertCircle;
@@ -148,7 +148,7 @@ const PlanTargetMonitor = ({
                 <div className="flex flex-col md:flex-row items-center">
                     {/* Status Indicator Bar */}
                     <div className={cn("w-full md:w-3 h-3 md:h-auto self-stretch", statusBg.replace('bg-', 'bg-opacity-80 bg-'))} />
-                    
+
                     <div className="flex-1 p-5 space-y-4">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                             <div className="flex items-center gap-3">
@@ -163,21 +163,21 @@ const PlanTargetMonitor = ({
 
                             <div className="flex items-center gap-6">
                                 <div className="text-right">
-                                    <p className="text-[10px] text-muted-foreground font-black uppercase tracking-wider mb-0.5">Diferença</p>
+                                    <p className="text-xs text-muted-foreground font-black uppercase tracking-wider mb-0.5">Diferença</p>
                                     <p className={cn(
                                         "text-lg font-black drop-shadow-sm leading-none",
-                                        difference > 0 ? "text-red-500" : 
-                                        difference < 0 ? "text-blue-500" : 
-                                        "text-green-500"
+                                        difference > 0 ? "text-red-700" :
+                                        difference < 0 ? "text-blue-700" :
+                                        "text-green-700"
                                     )}>
-                                        {difference > 0 ? '+' : ''}{Math.round(difference)} <span className="text-[10px] font-bold">kcal</span>
+                                        {difference > 0 ? '+' : ''}{Math.round(difference)} <span className="text-xs font-bold">kcal</span>
                                     </p>
                                 </div>
 
                                 <div className="h-10 w-px bg-border/60" />
 
                                 <div className="text-right">
-                                    <p className="text-[10px] text-muted-foreground font-black uppercase tracking-wider mb-0.5">Alinhamento</p>
+                                    <p className="text-xs text-muted-foreground font-black uppercase tracking-wider mb-0.5">Alinhamento</p>
                                     <p className={cn("text-lg font-black leading-none", statusColor)}>
                                         {percentage.toFixed(1)}%
                                     </p>
@@ -206,16 +206,16 @@ const PlanTargetMonitor = ({
                             <div className="flex items-center gap-x-6 gap-y-2 shrink-0 order-2 sm:order-2 ml-0 sm:ml-auto px-1">
                                 <div className="flex items-center gap-2">
                                     <div className={cn("w-2.5 h-2.5 rounded-full border border-black/5 shadow-sm", dotColor)} />
-                                    <span className="text-xs font-bold text-muted-foreground whitespace-nowrap">Plano: {Math.round(currentCalories)} <span className="text-[10px] font-medium ml-0.5">kcal</span></span>
+                                    <span className="text-xs font-bold text-muted-foreground whitespace-nowrap">Plano: {Math.round(currentCalories)} <span className="text-xs font-medium ml-0.5">kcal</span></span>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <div className="w-2.5 h-2.5 rounded-full bg-primary shadow-sm border border-black/5" />
                                     <div className="flex items-center gap-1.5">
-                                        <span className="text-xs font-bold text-foreground whitespace-nowrap">Meta: {Math.round(targetCalories)} <span className="text-[10px] font-medium ml-0.5">kcal</span></span>
+                                        <span className="text-xs font-bold text-foreground whitespace-nowrap">Meta: {Math.round(targetCalories)} <span className="text-xs font-medium ml-0.5">kcal</span></span>
                                         {breakdown && (
                                             <Popover>
                                                 <PopoverTrigger asChild>
-                                                    <button className="text-muted-foreground hover:text-foreground transition-all hover:scale-110">
+                                                    <button type="button" aria-label="Detalhes da meta energética" className="text-muted-foreground hover:text-foreground transition-all hover:scale-110">
                                                         <Info className="w-3.5 h-3.5" />
                                                     </button>
                                                 </PopoverTrigger>

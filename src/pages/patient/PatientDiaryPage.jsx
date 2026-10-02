@@ -85,7 +85,7 @@ export default function PatientDiaryPage() {
     if (mealPlanError) {
       logDiagnostic('error', 'pages/patient/PatientDiaryPage.jsx:85', 'Erro ao carregar plano alimentar:', mealPlanError);
     }
-    
+
     setMealPlan(mealPlanData);
 
     // Definir metas nutricionais (prioridade: plano alimentar ativo > padrão)
@@ -340,7 +340,7 @@ export default function PatientDiaryPage() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-background">
+    <div className="flex flex-col min-h-dvh bg-background">
       <div className="patient-page-content space-y-6">
         {/* Header */}
         <div className="mb-2 flex flex-wrap items-start justify-between gap-3">
@@ -565,7 +565,7 @@ export default function PatientDiaryPage() {
               >
                 {!hasMeals ? (
                   // Ghost Card - Empty State (Acts as Button)
-                  <Card
+                  <Card as="button" type="button"
                     className="border-2 border-dashed border-muted-foreground/30 bg-muted/20 hover:bg-muted/30 hover:border-primary/40 transition-all cursor-pointer"
                     onClick={() => handleAddMeal(mealType)}
                   >

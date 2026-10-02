@@ -1,32 +1,32 @@
 import { getTodayIsoDate } from '@/lib/utils/date';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState, useEffect, useRef } from 'react';
-import { usePatientFormStore } from '@/stores/usePatientFormStore'; 
-import InputMask from 'react-input-mask'; 
-import { useAuth } from '@/contexts/AuthContext'; 
-import { supabase } from '@/lib/customSupabaseClient'; 
-import { useToast } from '@/components/ui/use-toast'; 
+import { usePatientFormStore } from '@/stores/usePatientFormStore';
+import InputMask from 'react-input-mask';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/lib/customSupabaseClient';
+import { useToast } from '@/components/ui/use-toast';
 import { publicOrigin } from '@/lib/utils/publicOrigin';
 
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"; 
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Textarea } from "@/components/ui/textarea";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"; 
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
-import { 
-    Calendar as CalendarIcon, Loader2, User, Mail, Phone, Users, FileText, 
+import {
+    Calendar as CalendarIcon, Loader2, User, Mail, Phone, Users, FileText,
     Briefcase, Heart, PenSquare, MapPin, Map, Hash, Building2, Home, Building, Landmark,
     Smartphone, UserCircle, Layout, Lock, Info, CheckCircle2, UserPlus, ToggleLeft, ToggleRight
 } from "lucide-react";
 import { format, parse } from "date-fns";
 import { ptBR } from 'date-fns/locale';
-import { cn } from "@/lib/utils"; 
+import { cn } from "@/lib/utils";
 import { toPortugueseError } from '@/lib/utils/errorMessages';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -59,7 +59,7 @@ const DateInputWithCalendar = ({ value, onChange, required }) => {
 
     const handleDateInputChange = (e) => {
         const dateStr = e.target.value;
-        setLocalDateString(dateStr); 
+        setLocalDateString(dateStr);
 
         if (dateStr.replace(/[_/]/g, '').length === 8) {
             try {
@@ -78,8 +78,8 @@ const DateInputWithCalendar = ({ value, onChange, required }) => {
     };
 
     const handleDateSelect = (date) => {
-        onChange(date); 
-        setLocalDateString(date ? format(date, 'dd/MM/yyyy') : ''); 
+        onChange(date);
+        setLocalDateString(date ? format(date, 'dd/MM/yyyy') : '');
         setCalendarOpen(false);
     };
 
@@ -94,21 +94,21 @@ const DateInputWithCalendar = ({ value, onChange, required }) => {
                     onChange={handleDateInputChange}
                 >
                     {(inputProps) => (
-                        <Input 
-                            {...inputProps} 
-                            id="birth_date" 
-                            className="bg-muted/50 focus:bg-background shadow-sm pl-10 h-10 transition-all border-muted-foreground/20" 
-                            required={required} 
+                        <Input
+                            {...inputProps}
+                            id="birth_date"
+                            className="bg-muted/50 focus:bg-background shadow-sm pl-10 h-10 transition-all border-muted-foreground/20"
+                            required={required}
                         />
                     )}
                 </InputMask>
             </div>
-            
+
             <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
                 <PopoverTrigger asChild>
-                    <Button 
-                        variant="outline" 
-                        size="icon" 
+                    <Button
+                        variant="outline"
+                        size="icon"
                         className="h-10 w-10 shrink-0 bg-muted/30 hover:bg-primary/10 hover:text-primary border-muted-foreground/20 transition-colors"
                         type="button"
                     >
@@ -134,13 +134,13 @@ const DateInputWithCalendar = ({ value, onChange, required }) => {
 
 
 const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded }) => {
-    const { user } = useAuth(); 
-    const { toast } = useToast(); 
+    const { user } = useAuth();
+    const { toast } = useToast();
     const [step, setStep] = useState("1");
-    
+
     const { formData, updateField, resetForm, fillAddress } = usePatientFormStore();
-    const [loading, setLoading] = useState(false); 
-    const [cepLoading, setCepLoading] = useState(false); 
+    const [loading, setLoading] = useState(false);
+    const [cepLoading, setCepLoading] = useState(false);
     const [sendInvite, setSendInvite] = useState(true);
     const creationRequestId = useRef(crypto.randomUUID());
 
@@ -150,7 +150,7 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded }) => {
     // These handlers are now part of the DateInputWithCalendar component
     // const handleDateInputChange = (e) => {
     //     const dateStr = e.target.value;
-    //     setLocalDateString(dateStr); 
+    //     setLocalDateString(dateStr);
 
     //     if (dateStr.length === 10) {
     //         try {
@@ -169,8 +169,8 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded }) => {
     // };
 
     // const handleDateSelect = (date) => {
-    //     updateField('birth_date', date); 
-    //     setLocalDateString(date ? format(date, 'dd/MM/yyyy') : ''); 
+    //     updateField('birth_date', date);
+    //     setLocalDateString(date ? format(date, 'dd/MM/yyyy') : '');
     //     setCalendarOpen(false);
     // };
     // --- FIM DAS ALTERAÇÕES ---
@@ -185,7 +185,7 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded }) => {
 
     // (handleCepBlur ... sem mudanças)
     const handleCepBlur = async (cep) => {
-        const cleanedCep = cep.replace(/\D/g, ''); 
+        const cleanedCep = cep.replace(/\D/g, '');
         if (cleanedCep.length !== 8) return;
         setCepLoading(true);
         try {
@@ -195,7 +195,7 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded }) => {
             if (data.erro) {
                 toast({ title: "Erro", description: "CEP não encontrado.", variant: "destructive" });
             } else {
-                fillAddress(data); 
+                fillAddress(data);
             }
         } catch (error) {
             toast({ title: "Erro de Rede", description: "Não foi possível buscar o CEP.", variant: "destructive" });
@@ -236,14 +236,14 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded }) => {
         const clean = (val) => typeof val === 'string' ? val.trim() : val;
 
         const metadata = {
-            name: clean(formData.name), 
-            user_type: 'patient', 
-            nutritionist_id: user.id, 
+            name: clean(formData.name),
+            user_type: 'patient',
+            nutritionist_id: user.id,
             birth_date: formData.birth_date ? format(formData.birth_date, 'yyyy-MM-dd') : null,
-            gender: formData.gender, 
-            phone: clean(formData.phone), 
+            gender: formData.gender,
+            phone: clean(formData.phone),
             cpf: clean(formData.cpf),
-            occupation: clean(formData.occupation), 
+            occupation: clean(formData.occupation),
             civil_status: formData.civil_status,
             observations: clean(formData.observations),
             needs_password_reset: true
@@ -255,7 +255,7 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded }) => {
                 Object.entries(addressData).map(([k, v]) => [k, clean(v)])
             );
         }
-        
+
         const redirectTo = `${publicOrigin()}/update-password?mode=invite`;
 
         const body = {
@@ -296,11 +296,11 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded }) => {
             } else {
                 toast({ title: "Sucesso!", description: `Paciente ${formData.name} adicionado.`, variant: "success" });
             }
-            
+
             creationRequestId.current = crypto.randomUUID();
-            resetForm(); 
+            resetForm();
             onPatientAdded(); // Atualiza a lista na página
-            handleClose(); 
+            handleClose();
 
         } catch (error) {
             logDiagnostic('error', 'components/nutritionist/AddPatientModal.jsx:305', '[AddPatientModal] Erro ao adicionar paciente:', error);
@@ -309,17 +309,17 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded }) => {
             setLoading(false);
         }
     };
-    
+
     return (
         <Dialog open={isOpen} onOpenChange={handleClose}>
-            <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+            <DialogContent className="sm:max-w-[700px] max-h-[90dvh] overflow-y-auto">
                 <DialogHeader className="pb-2">
                     <DialogTitle className="font-heading text-3xl font-black text-primary tracking-tight">
                         {isOffline ? "Novo Perfil Offline" : "Convidar Paciente"}
                     </DialogTitle>
                     <DialogDescription className="text-muted-foreground font-medium">
-                        {isOffline 
-                            ? "Crie um perfil para gestão interna dos dados do paciente." 
+                        {isOffline
+                            ? "Crie um perfil para gestão interna dos dados do paciente."
                             : "O paciente será cadastrado e receberá um acesso digital via e-mail."}
                     </DialogDescription>
                 </DialogHeader>
@@ -341,13 +341,13 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded }) => {
                                     Nome Completo <span className="text-destructive">*</span>
                                 </Label>
                                 <IconInputWrapper icon={User}>
-                                    <Input 
-                                        id="name" 
-                                        value={formData.name} 
-                                        onChange={(e) => updateField('name', e.target.value)} 
+                                    <Input
+                                        id="name"
+                                        value={formData.name}
+                                        onChange={(e) => updateField('name', e.target.value)}
                                         placeholder="Nome oficial do paciente"
                                         maxLength={100}
-                                        className="bg-muted/50 focus:bg-background shadow-sm pl-10 h-10 transition-all font-medium border-muted-foreground/20" 
+                                        className="bg-muted/50 focus:bg-background shadow-sm pl-10 h-10 transition-all font-medium border-muted-foreground/20"
                                     />
                                 </IconInputWrapper>
                             </div>
@@ -382,7 +382,7 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded }) => {
                             </div>
 
                             {!isOffline && (
-                                <motion.div 
+                                <motion.div
                                     initial={{ opacity: 0, y: -10 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     className="md:col-span-2 bg-primary/5 border border-primary/20 rounded-xl p-4 flex gap-3 items-center"
@@ -402,7 +402,7 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded }) => {
                                 <Label htmlFor="phone" className="text-xs font-black uppercase tracking-widest text-muted-foreground">Telefone</Label>
                                 <IconInputWrapper icon={Phone}>
                                     <InputMask
-                                        mask="(99) 99999-9999" 
+                                        mask="(99) 99999-9999"
                                         value={formData.phone}
                                         onChange={(e) => updateField('phone', e.target.value)}
                                     >
@@ -530,8 +530,8 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded }) => {
                     <Button variant="ghost" onClick={handleClose} disabled={loading} className="font-bold text-xs uppercase tracking-widest h-11 px-6">
                         Cancelar
                     </Button>
-                    <Button 
-                        onClick={handleSavePatient} 
+                    <Button
+                        onClick={handleSavePatient}
                         disabled={loading}
                         className="font-bold text-xs uppercase tracking-widest bg-primary hover:bg-primary/90 h-11 px-8 shadow-lg shadow-primary/20"
                     >

@@ -51,7 +51,7 @@ const PatientPendingCheckinsWidget = () => {
                   {session.checkin_templates?.name || 'Seu nutricionista solicitou informações do seu progresso.'}
                 </p>
                 <div className="flex flex-wrap items-center gap-2 mt-2">
-                  <span className="flex items-center gap-1.5 text-[11px] font-bold text-amber-700 bg-amber-100 border border-amber-200 px-2 py-0.5 rounded-full">
+                  <span className="flex items-center gap-1.5 text-xs font-bold text-amber-700 bg-amber-100 border border-amber-200 px-2 py-0.5 rounded-full">
                     <AlertCircle className="w-3.5 h-3.5" />
                     Responda o quanto antes
                   </span>
@@ -61,8 +61,8 @@ const PatientPendingCheckinsWidget = () => {
                 </div>
               </div>
             </div>
-            
-            <Button 
+
+            <Button
               onClick={() => navigate(`/patient/checkin/${session.id}`)}
               className="w-full sm:w-auto shrink-0 shadow-md font-semibold bg-primary hover:bg-primary/90"
             >

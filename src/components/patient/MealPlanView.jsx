@@ -71,8 +71,8 @@ const MealPlanView = ({ mealPlanItems }) => {
                         </span>
                       </div>
                       {foodItem.substitutes && foodItem.substitutes.length > 0 && (
-                        <div className="text-[11px] text-muted-foreground ml-3 bg-muted/30 p-1 rounded italic">
-                          <span className="font-semibold text-[10px] uppercase mr-1">Opções:</span>
+                        <div className="text-xs text-muted-foreground ml-3 bg-muted/30 p-1 rounded italic">
+                          <span className="font-semibold text-xs uppercase mr-1">Opções:</span>
                           {foodItem.substitutes.map(s => s.name).join(', ')}
                         </div>
                       )}

@@ -28,7 +28,7 @@ export default function StatusPage() {
     const interval = setInterval(refresh, 30000);
     return () => { active = false; clearInterval(interval); clearTimeout(timer); controller?.abort(); };
   }, []);
-  return <main className="min-h-screen max-w-2xl mx-auto p-8 space-y-6">
+  return <main id="main-content" tabIndex={-1} className="min-h-dvh max-w-2xl mx-auto p-8 space-y-6">
     <h1 className="text-3xl font-semibold">Status do Nello</h1>
     <section aria-live="polite" className="space-y-3">
       <h2 className="text-xl">{failed ? 'Não foi possível verificar a disponibilidade' : health ? labels[health.status] : 'Verificando disponibilidade…'}</h2>

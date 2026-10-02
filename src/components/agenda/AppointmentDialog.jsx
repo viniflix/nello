@@ -187,7 +187,7 @@ export default function AppointmentDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="w-[calc(100vw-2rem)] max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="w-[calc(100vw-2rem)] max-w-2xl max-h-[90dvh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>
                         {appointment ? 'Editar Agendamento' : 'Novo Agendamento'}
@@ -240,7 +240,7 @@ export default function AppointmentDialog({
                                         {patient.name}
                                     </button>
                                 ))}
-                                
+
                                 {/* Opção Adicionar Novo */}
                                 {!filteredPatients.some(p => p.name.toLowerCase() === patientSearchTerm.toLowerCase()) && (
                                     <button

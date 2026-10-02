@@ -210,7 +210,7 @@ const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName, initialData = n
                         {/* Nome para o Paciente */}
                         <div className="space-y-2">
                             <Label htmlFor="patientDescription">Descrição para o paciente</Label>
-                            <p className="text-[11px] text-muted-foreground">
+                            <p className="text-xs text-muted-foreground">
                                 O nome abaixo será exibido no material do plano alimentar do paciente. Ajuste se quiser usar a nomenclatura mais familiar para ele.
                             </p>
                             <div className="relative">
@@ -226,7 +226,7 @@ const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName, initialData = n
                                     <Button
                                         variant="ghost"
                                         size="xs"
-                                        className="absolute right-2 top-2 h-7 text-[10px] text-muted-foreground hover:text-primary border hover:bg-primary/5"
+                                        className="absolute right-2 top-2 h-7 text-xs text-muted-foreground hover:text-primary border hover:bg-primary/5"
                                         onClick={() => { touchedRef.current = true; setPatientDescription(''); }}
                                     >
                                         Restaurar nome original

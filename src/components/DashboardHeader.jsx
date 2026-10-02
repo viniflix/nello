@@ -267,11 +267,11 @@ const DashboardHeader = ({ user, logout }) => {
   };
 
   return (
-    <header className="sticky top-0 z-40 flex h-16 items-center justify-between gap-2 border-b bg-card px-3 md:px-6 min-w-0 overflow-hidden">
-      <div className="max-w-7xl mx-auto w-full flex items-center justify-between min-w-0 gap-2">
+    <header className="sticky top-0 z-40 flex min-h-16 py-2 items-center justify-between gap-2 border-b bg-card px-3 md:px-6 min-w-0">
+      <div className="max-w-7xl mx-auto w-full flex flex-wrap items-center justify-between min-w-0 gap-2">
 
           {/* Lado Esquerdo: Menu Hamburger (Mobile) + Logo + Navegação */}
-          <div className="flex items-center space-x-2 md:space-x-4 min-w-0 flex-1">
+          <div className="flex items-center space-x-2 md:space-x-4 min-w-[8rem] flex-1">
             {/* Menu Hamburger - Apenas Mobile */}
             <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
               <SheetTrigger asChild className="lg:hidden">
@@ -382,30 +382,30 @@ const DashboardHeader = ({ user, logout }) => {
           </div>
 
           {/* Lado Direito: Dropdown de Perfil */}
-          <div className="flex items-center space-x-1 md:space-x-4 shrink-0">
+          <div className="flex flex-wrap max-w-full items-center gap-1 md:gap-4">
             {shouldShowNotifications && (
               <>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="relative" 
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="relative"
                   onClick={() => navigate('/nutritionist/chat')}
                   title="Chat"
                 >
                   <MessageSquare className="h-5 w-5" />
                   {totalUnreadMessages > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 rounded-full bg-destructive px-1 text-[10px] font-bold text-white leading-4 text-center">
+                    <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 rounded-full bg-destructive px-1 text-xs font-bold text-white leading-4 text-center">
                       {totalUnreadMessages > 9 ? '9+' : totalUnreadMessages}
                     </span>
                   )}
                 </Button>
-                
+
                 <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="relative" aria-label="Abrir notificações">
                     <Bell className="h-5 w-5" />
                     {unreadCount > 0 && (
-                      <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 rounded-full bg-destructive px-1 text-[10px] font-bold text-white leading-4 text-center">
+                      <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 rounded-full bg-destructive px-1 text-xs font-bold text-white leading-4 text-center">
                         {unreadCount > 9 ? '9+' : unreadCount}
                       </span>
                     )}
@@ -438,9 +438,9 @@ const DashboardHeader = ({ user, logout }) => {
                         return (
                           <div
                             key={notification.id}
-                            onClick={() => handleNotificationAction(notification)}
+
                             className={`mb-1 w-full rounded-md border p-2 text-left transition-colors hover:bg-muted/60 ${
-                              notification.is_read ? 'opacity-70' : 'bg-primary/5'
+                              notification.is_read ? '' : 'bg-primary/5'
                             } cursor-pointer`}
                           >
                             <div className="flex items-start gap-2">
@@ -463,13 +463,13 @@ const DashboardHeader = ({ user, logout }) => {
                                   <p className="truncate text-sm font-medium leading-tight">
                                     {meta.isMessage ? sender?.name || meta.title : meta.title}
                                   </p>
-                                  <p className="shrink-0 text-[10px] text-muted-foreground">
+                                  <p className="shrink-0 text-xs text-muted-foreground">
                                     {formatNotificationTime(notification.created_at)}
                                   </p>
                                 </div>
 
                                 {meta.isMessage && (
-                                  <p className="mt-0.5 text-[11px] font-medium text-primary/80">
+                                  <p className="mt-0.5 text-xs font-medium text-primary/80">
                                     Nova mensagem
                                   </p>
                                 )}
@@ -482,7 +482,7 @@ const DashboardHeader = ({ user, logout }) => {
                                   <Button
                                     variant="outline"
                                     size="sm"
-                                    className="h-7 px-2 text-[11px]"
+                                    className="h-7 px-2 text-xs"
                                     onClick={(event) => {
                                       event.stopPropagation();
                                       handleNotificationAction(notification);

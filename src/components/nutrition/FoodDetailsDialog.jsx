@@ -43,7 +43,7 @@ const MacroHero = ({ value, unit, label, bg, text }) => (
 // Linha de micronutriente
 const MicroRow = ({ label, value, unit }) => {
     if (value == null) return null;
-    
+
     return (
         <div className="flex items-center justify-between py-2 border-b border-slate-100 last:border-0">
             <span className="text-sm text-slate-600">{label}</span>
@@ -57,9 +57,9 @@ const FoodDetailsDialog = ({ food, open, onOpenChange }) => {
     const [activeTab, setActiveTab] = useState('macros');
     const [amount, setAmount] = useState(100);
 
-    useEffect(() => { 
-        setDisplayFood(food); 
-        setActiveTab('macros'); 
+    useEffect(() => {
+        setDisplayFood(food);
+        setActiveTab('macros');
     }, [food]);
 
     useEffect(() => {
@@ -92,14 +92,14 @@ const FoodDetailsDialog = ({ food, open, onOpenChange }) => {
     };
 
     const src = SOURCE_CONFIG[f.source] || { label: f.source, short: f.source, color: 'bg-slate-100 text-slate-600 border-slate-200' };
-    
+
     const isNotNull = (v) => v != null;
-    const hasMinerals = isNotNull(f.calcium) || isNotNull(f.iron) || isNotNull(f.magnesium) || 
+    const hasMinerals = isNotNull(f.calcium) || isNotNull(f.iron) || isNotNull(f.magnesium) ||
                         isNotNull(f.phosphorus) || isNotNull(f.potassium) || isNotNull(f.zinc) || isNotNull(f.sodium);
-    const hasVitamins = isNotNull(f.vitamin_a) || isNotNull(f.vitamin_c) || isNotNull(f.vitamin_d) || 
+    const hasVitamins = isNotNull(f.vitamin_a) || isNotNull(f.vitamin_c) || isNotNull(f.vitamin_d) ||
                         isNotNull(f.vitamin_e) || isNotNull(f.vitamin_b12) || isNotNull(f.folate);
     const checkMicros = hasMinerals || hasVitamins;
-                        
+
     const hasDetails = isNotNull(f.fiber) || isNotNull(f.sugar);
 
     const TABS = [
@@ -131,10 +131,10 @@ const FoodDetailsDialog = ({ food, open, onOpenChange }) => {
                             <span className="text-4xl font-black text-white">{fmtInt(f.calories) ?? '—'}</span>
                             <span className="text-slate-300 text-sm">kcal</span>
                         </div>
-                        
+
                         {/* Seletor de Quantidade */}
                         <div className="flex flex-col items-end w-28">
-                            <label className="text-[10px] text-slate-300 mb-1 uppercase tracking-wider font-semibold">Porção</label>
+                            <label className="text-xs text-slate-300 mb-1 uppercase tracking-wider font-semibold">Porção</label>
                             <div className="relative w-full">
                                 <input
                                     type="number"
@@ -181,7 +181,7 @@ const FoodDetailsDialog = ({ food, open, onOpenChange }) => {
                 </div>
 
                 {/* ── Conteúdo ─────────────────────────────────────────────── */}
-                <ScrollArea className="max-h-[55vh]">
+                <ScrollArea className="max-h-[55dvh]">
                     <div className="p-5 bg-slate-50">
 
                         {/* TAB: Macros */}

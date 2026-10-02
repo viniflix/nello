@@ -28,7 +28,7 @@ const CheckinResponsePage = () => {
   const { submitCheckin } = useCheckins();
   const shadow = useShadowDraft({ ownerId: user?.id, draftKey: `checkin-response:${sessionId}`, enabled: Boolean(user?.id && isUuid(sessionId)) });
   const touchedRef = useRef(false);
-  
+
   const [session, setSession] = useState(null);
   const [fields, setFields] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -70,7 +70,7 @@ const CheckinResponsePage = () => {
 
         if (sessionError) throw sessionError;
         if (!sessionData) throw new Error('Check-in não encontrado.');
-        
+
         if (sessionData.status !== 'pending') {
           // Já completado
           setIsCompleted(true);
@@ -101,7 +101,7 @@ const CheckinResponsePage = () => {
 
         setSession(sessionData);
         setFields(fieldsData || []);
-        
+
         const initialResp = {};
         fieldsData?.forEach(f => {
            initialResp[f.id] = f.field_type === 'scale_1_10' ? [5] : '';
@@ -117,7 +117,7 @@ const CheckinResponsePage = () => {
         setLoading(false);
       }
     };
-    
+
     fetchSessionData();
   }, [sessionId]);
 
@@ -176,7 +176,7 @@ const CheckinResponsePage = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-background p-6 flex flex-col items-center justify-center text-center">
+      <div className="min-h-dvh bg-background p-6 flex flex-col items-center justify-center text-center">
         <div className="w-16 h-16 bg-destructive/10 text-destructive rounded-full flex items-center justify-center mb-4">
           <AlertCircle className="w-8 h-8" />
         </div>
@@ -189,7 +189,7 @@ const CheckinResponsePage = () => {
 
   if (isCompleted) {
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center animate-in zoom-in-95 duration-500">
+      <div className="min-h-dvh bg-background flex flex-col items-center justify-center p-6 text-center animate-in zoom-in-95 duration-500">
         <div className="mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-primary/10 text-primary shadow-sm">
           <CheckCircle2 className="w-12 h-12" />
         </div>
@@ -220,10 +220,10 @@ const CheckinResponsePage = () => {
   const scaleVal = isScale ? (Array.isArray(currentVal) ? currentVal[0] : parseInt(currentVal) || 5) : 0;
 
   return (
-    <div className="flex min-h-screen flex-col items-center bg-background lg:p-8">
-      <div className="flex min-h-screen w-full flex-col overflow-hidden border-border bg-card lg:min-h-[600px] lg:max-w-2xl lg:rounded-2xl lg:border lg:shadow-card">
+    <div className="flex min-h-dvh flex-col items-center bg-background lg:p-8">
+      <div className="flex min-h-dvh w-full flex-col overflow-hidden border-border bg-card lg:min-h-[600px] lg:max-w-2xl lg:rounded-2xl lg:border lg:shadow-card">
         {/* Header */}
-        <div 
+        <div
           className="p-6 text-primary-foreground relative overflow-hidden"
           style={{ backgroundColor: brandColor }}
         >
@@ -240,9 +240,9 @@ const CheckinResponsePage = () => {
               )}
               <div className="w-10" />
             </div>
-            
+
             <div className="h-2 w-full bg-black/20 rounded-full overflow-hidden mt-2">
-              <div 
+              <div
                 className="h-full bg-white transition-all duration-300 ease-out"
                 style={{ width: `${progress}%` }}
               />
@@ -286,8 +286,8 @@ const CheckinResponsePage = () => {
 
             {currentField?.field_type === 'yes_no' && (
               <div className="grid grid-cols-2 gap-4">
-                <Button 
-                  type="button" 
+                <Button
+                  type="button"
                   variant={currentVal === 'yes' ? 'default' : 'outline'}
                   className={`h-20 text-xl font-bold rounded-xl transition-all ${currentVal === 'yes' ? 'ring-2 ring-offset-2' : ''}`}
                   onClick={() => handleResponseChange(currentField.id, 'yes')}
@@ -295,8 +295,8 @@ const CheckinResponsePage = () => {
                 >
                   Sim
                 </Button>
-                <Button 
-                  type="button" 
+                <Button
+                  type="button"
                   variant={currentVal === 'no' ? 'destructive' : 'outline'}
                   className={`h-20 text-xl font-bold rounded-xl transition-all ${currentVal === 'no' ? 'ring-2 ring-offset-2 ring-destructive' : ''}`}
                   onClick={() => handleResponseChange(currentField.id, 'no')}
@@ -324,7 +324,7 @@ const CheckinResponsePage = () => {
             )}
 
             {currentField?.field_type === 'text' && (
-              <Textarea 
+              <Textarea
                 value={currentVal || ''}
                 onChange={(e) => handleResponseChange(currentField.id, e.target.value)}
                 placeholder="Escreva sua resposta (opcional)..."
@@ -335,7 +335,7 @@ const CheckinResponsePage = () => {
 
             {currentField?.field_type === 'number' && (
               <div className="relative max-w-xs mx-auto">
-                <Input 
+                <Input
                   type="number"
                   value={currentVal || ''}
                   onChange={(e) => handleResponseChange(currentField.id, e.target.value)}
@@ -364,9 +364,9 @@ const CheckinResponsePage = () => {
 
         {/* Footer Navigation */}
         <div className="p-4 sm:p-6 border-t bg-card flex justify-between items-center shadow-[0_-4px_20px_rgba(0,0,0,0.02)] z-10">
-          <Button 
-            variant="ghost" 
-            onClick={handlePrev} 
+          <Button
+            variant="ghost"
+            onClick={handlePrev}
             disabled={currentStep === 0 || isSubmitting}
             className="font-medium"
           >
@@ -380,9 +380,9 @@ const CheckinResponsePage = () => {
               <ChevronRight className="w-5 h-5 ml-2" />
             </Button>
           ) : (
-            <Button 
-              onClick={handleSubmit} 
-              disabled={isSubmitting || (currentField?.is_required && (!responses[currentField.id] || responses[currentField.id].length === 0))} 
+            <Button
+              onClick={handleSubmit}
+              disabled={isSubmitting || (currentField?.is_required && (!responses[currentField.id] || responses[currentField.id].length === 0))}
               className="h-12 rounded-xl px-8 text-base font-bold text-white shadow-md transition-all active:scale-95"
               style={{ backgroundColor: brandColor }}
             >

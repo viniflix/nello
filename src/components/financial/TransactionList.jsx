@@ -29,16 +29,16 @@ const TYPE_LABELS = {
     expense: 'Despesa'
 };
 
-export default function TransactionList({ 
-    transactions, 
-    loading, 
-    onEdit, 
+export default function TransactionList({
+    transactions,
+    loading,
+    onEdit,
     onDelete,
     onGenerateReceipt,
     onConfirmPayment,
     onRefund,
     filters,
-    onFiltersChange 
+    onFiltersChange
 }) {
     const [localSearch, setLocalSearch] = useState(filters?.search || '');
 
@@ -69,17 +69,17 @@ export default function TransactionList({
                     <div className="flex-1 relative min-w-0">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
-                            placeholder="Buscar por descrição..."
+                            aria-label="Buscar transações" placeholder="Buscar por descrição..."
                             value={localSearch}
                             onChange={(e) => handleSearchChange(e.target.value)}
                             className="pl-9 min-w-0"
                         />
                     </div>
-                    <Select 
-                        value={filters?.type || 'all'} 
+                    <Select
+                        value={filters?.type || 'all'}
                         onValueChange={(value) => handleFilterChange('type', value)}
                     >
-                        <SelectTrigger className="w-full sm:w-[180px]">
+                        <SelectTrigger aria-label="Filtro de transações" className="w-full sm:w-[180px]">
                             <SelectValue placeholder="Tipo" />
                         </SelectTrigger>
                         <SelectContent>
@@ -88,11 +88,11 @@ export default function TransactionList({
                             <SelectItem value="expense">Despesa</SelectItem>
                         </SelectContent>
                     </Select>
-                    <Select 
-                        value={filters?.status || 'all'} 
+                    <Select
+                        value={filters?.status || 'all'}
                         onValueChange={(value) => handleFilterChange('status', value)}
                     >
-                        <SelectTrigger className="w-full sm:w-[180px]">
+                        <SelectTrigger aria-label="Filtrar por status" className="w-full sm:w-[180px]">
                             <SelectValue placeholder="Status" />
                         </SelectTrigger>
                         <SelectContent>
@@ -127,7 +127,7 @@ export default function TransactionList({
                     </div>
                 ) : (
                     <div className="rounded-md border overflow-x-auto">
-                        <Table>
+                        <Table aria-label="Histórico de transações" mobileLabels={["Competência", "Pagamento", "Descrição", "Categoria", "Paciente", "Valor", "Status", "Ações"]}>
                             <TableHeader>
                                 <TableRow>
                                     <TableHead className="w-[100px]">Competência</TableHead>
@@ -152,7 +152,7 @@ export default function TransactionList({
                                         </TableCell>
                                         <TableCell>
                                             <Badge variant="outline">
-                                                {transaction.category || 
+                                                {transaction.category ||
                                                  (transaction.type === 'income' ? 'Receita' : 'Despesa')}
                                             </Badge>
                                         </TableCell>
@@ -160,7 +160,7 @@ export default function TransactionList({
                                             {transaction.patient?.name || '-'}
                                         </TableCell>
                                         <TableCell className={`text-right font-semibold ${
-                                            transaction.type === 'income' 
+                                            transaction.type === 'income'
                                                 ? 'text-primary'
                                                 : 'text-destructive'
                                         }`}>

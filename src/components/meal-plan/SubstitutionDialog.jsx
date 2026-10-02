@@ -45,16 +45,16 @@ const SubstitutionDialog = ({ isOpen, onClose, originalFood, initialSubstitutes 
 
     const loadSuggestions = async () => {
         if (!originalFood?.food?.group || loadingSuggestions) return;
-        
+
         setLoadingSuggestions(true);
         try {
             const baseKcal = (originalFood.calories / originalFood.quantity) * 100;
             const { data } = await getSuggestedSubstitutes(originalFood.food.group, baseKcal);
             const pool = data || [];
             setAllSuggestionsPool(pool);
-            
+
             // Filtrar itens que já estão na lista de substitutos iniciais
-            const filtered = pool.filter(item => 
+            const filtered = pool.filter(item =>
                 !initialSubstitutes.some(s => String(s.id) === String(item.id))
             );
             setSuggestions(filtered);
@@ -77,7 +77,7 @@ const SubstitutionDialog = ({ isOpen, onClose, originalFood, initialSubstitutes 
         const equivGrams = calculateEquivalentGrams(originalKcal, food);
 
         let bestMeasure = { quantity: Math.round(equivGrams) || 100, measureId: 'grams', isApproximate: false };
-        
+
         try {
             // Importar supabase client lazy ou global se já estiver
             const { supabase } = await import('@/lib/customSupabaseClient');
@@ -85,7 +85,7 @@ const SubstitutionDialog = ({ isOpen, onClose, originalFood, initialSubstitutes 
                 supabase.from('food_household_measures').select("id,measure_id,quantity,grams,food_id").eq('food_id', food.id),
                 supabase.from('household_measures').select("id,name,code,ml_equivalent,grams_equivalent,description,category,is_active,order_index,created_at,version,source_code,source_version,updated_at")
             ]);
-            
+
             if (foodMeasuresRes.data && allMeasuresRes.data) {
                 const match = convertGramsToMeasure(equivGrams, foodMeasuresRes.data, allMeasuresRes.data);
                 if (match) bestMeasure = match;
@@ -110,7 +110,7 @@ const SubstitutionDialog = ({ isOpen, onClose, originalFood, initialSubstitutes 
     const handleRemoveSubstitute = (foodId) => {
         const removed = substitutes.find(s => s.id === foodId);
         setSubstitutes(prev => prev.filter(s => s.id !== foodId));
-        
+
         // Se este item estava no pool original de sugestões, devolve ele
         if (removed && allSuggestionsPool.some(s => String(s.id) === String(removed.id))) {
             setSuggestions(prev => [...prev, removed].sort((a, b) => a.calories - b.calories));
@@ -119,12 +119,12 @@ const SubstitutionDialog = ({ isOpen, onClose, originalFood, initialSubstitutes 
 
     const renderDelta = (val, limit = 2) => {
         const numeric = Math.abs(val);
-        if (numeric < 0.1) return <span className="text-[10px] text-green-600 font-bold uppercase tracking-tighter">OK</span>;
+        if (numeric < 0.1) return <span className="text-xs text-green-600 font-bold uppercase tracking-tighter">OK</span>;
         const isOver = numeric > limit;
         return (
-            <span className={`text-[10px] px-1.5 py-0.5 rounded-md flex items-center gap-0.5 font-mono leading-none border transition-all ${
-                isOver 
-                ? 'bg-destructive/10 text-destructive font-bold border-destructive/20 shadow-sm' 
+            <span className={`text-xs px-1.5 py-0.5 rounded-md flex items-center gap-0.5 font-mono leading-none border transition-all ${
+                isOver
+                ? 'bg-destructive/10 text-destructive font-bold border-destructive/20 shadow-sm'
                 : 'bg-muted/50 text-muted-foreground border-transparent'
             }`}>
                 {val > 0 ? '+' : '-'}{numeric.toFixed(1)}
@@ -169,7 +169,7 @@ const SubstitutionDialog = ({ isOpen, onClose, originalFood, initialSubstitutes 
             <div className="mt-4 p-5 bg-background/60 backdrop-blur-md rounded-2xl border-2 border-primary/10 shadow-sm animate-in fade-in zoom-in duration-300">
                 <div className="mb-6 bg-card p-4 rounded-xl border border-primary/10 shadow-sm">
                     <Label className="text-sm font-bold text-primary mb-3 block">1. Ajustar Porção da Substituição</Label>
-                    <PremiumPortionSelector 
+                    <PremiumPortionSelector
                         food={subFood}
                         value={{ quantity: subFood.quantity || 100, measureId: subFood.unit && subFood.unit !== 'grams' ? subFood.unit : null, measureCode: subFood.unit === 'grams' ? 'gram' : (subFood.unit || 'gram') }}
                         onChange={(val) => {
@@ -188,7 +188,7 @@ const SubstitutionDialog = ({ isOpen, onClose, originalFood, initialSubstitutes 
                     {deviations.hasDeviation && (
                         <div className="flex flex-col gap-1 items-end">
                             {deviations.messages.map((msg, i) => (
-                                <Badge key={i} variant="destructive" className="text-[10px] py-0">{msg}</Badge>
+                                <Badge key={i} variant="destructive" className="text-xs py-0">{msg}</Badge>
                             ))}
                         </div>
                     )}
@@ -198,7 +198,7 @@ const SubstitutionDialog = ({ isOpen, onClose, originalFood, initialSubstitutes 
                     {/* Visualização de Macros Empilhada (Stacked) */}
                     <div className="space-y-6">
                         <div className="space-y-2">
-                            <div className="flex justify-between text-[10px] uppercase font-bold text-muted-foreground">
+                            <div className="flex justify-between text-xs uppercase font-bold text-muted-foreground">
                                 <span>Distribuição Calórica % (P/C/G)</span>
                             </div>
                             {/* Stacked Bar Original */}
@@ -207,7 +207,7 @@ const SubstitutionDialog = ({ isOpen, onClose, originalFood, initialSubstitutes 
                                 <div className="h-full bg-amber-500" style={{ width: `${origProps.c}%` }} title={`Original C: ${origProps.c.toFixed(0)}%`} />
                                 <div className="h-full bg-rose-500" style={{ width: `${origProps.f}%` }} title={`Original G: ${origProps.f.toFixed(0)}%`} />
                                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                    <span className="text-[9px] font-bold text-white drop-shadow-md">ORIGINAL</span>
+                                    <span className="text-xs font-bold text-white drop-shadow-md">ORIGINAL</span>
                                 </div>
                             </div>
                             {/* Stacked Bar Substituto */}
@@ -216,7 +216,7 @@ const SubstitutionDialog = ({ isOpen, onClose, originalFood, initialSubstitutes 
                                 <div className="h-full bg-amber-500" style={{ width: `${subProps.c}%` }} title={`Substituto C: ${subProps.c.toFixed(0)}%`} />
                                 <div className="h-full bg-rose-500" style={{ width: `${subProps.f}%` }} title={`Substituto G: ${subProps.f.toFixed(0)}%`} />
                                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                    <span className="text-[9px] font-bold text-white drop-shadow-md uppercase">{subFood.name}</span>
+                                    <span className="text-xs font-bold text-white drop-shadow-md uppercase">{subFood.name}</span>
                                 </div>
                             </div>
                         </div>
@@ -227,7 +227,7 @@ const SubstitutionDialog = ({ isOpen, onClose, originalFood, initialSubstitutes 
                                 const isDiff = Math.abs(m.sub - m.orig) > 2;
                                 return (
                                     <div key={m.label} className="space-y-1">
-                                        <div className="flex justify-between text-[10px] font-bold">
+                                        <div className="flex justify-between text-xs font-bold">
                                             <span className="flex items-center gap-1">
                                                 <span className={`w-2 h-2 rounded-full ${m.color}`} />
                                                 {m.label}
@@ -237,7 +237,7 @@ const SubstitutionDialog = ({ isOpen, onClose, originalFood, initialSubstitutes 
                                             </span>
                                         </div>
                                         <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
-                                            <div 
+                                            <div
                                                 className={`h-full transition-all duration-700 ease-out ${m.color}`}
                                                 style={{ width: `${(m.sub / max) * 100}%` }}
                                             />
@@ -256,35 +256,35 @@ const SubstitutionDialog = ({ isOpen, onClose, originalFood, initialSubstitutes 
                                     <Scale className="h-4 w-4 text-primary" />
                                 </div>
                                 <div>
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex flex-wrap items-center gap-2">
                                         <p className="font-bold text-sm text-primary leading-none">Análise Clínica</p>
                                         {analysis.similarityScore < 10 && (
-                                            <Badge variant="outline" className="h-4 text-[8px] bg-green-500 text-white border-none animate-pulse">MATCH PERFEITO</Badge>
+                                            <Badge variant="outline" className="h-4 text-xs bg-green-700 text-white border-none animate-pulse">MATCH PERFEITO</Badge>
                                         )}
                                     </div>
-                                    <p className="text-muted-foreground text-[11px] leading-relaxed mt-1.5 font-medium">
-                                        {analysis.isRecommended 
-                                            ? "Substituição clinicamente segura. Preserva a densidade energética e macro-calórica do plano original." 
+                                    <p className="text-muted-foreground text-xs leading-relaxed mt-1.5 font-medium">
+                                        {analysis.isRecommended
+                                            ? "Substituição clinicamente segura. Preserva a densidade energética e macro-calórica do plano original."
                                             : `Impacto identificado: ${analysis.reason}. A viabilidade depende do ajuste na gramagem sugerido.`}
                                     </p>
                                 </div>
                             </div>
-                            
+
                             <div className="pt-2 border-t border-primary/5 space-y-2">
-                                <p className="text-[10px] font-bold text-muted-foreground uppercase">Insights Extras:</p>
+                                <p className="text-xs font-bold text-muted-foreground uppercase">Insights Extras:</p>
                                 <div className="flex flex-wrap gap-2">
                                     {subFiber > originalBase.fiber && (
-                                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-[10px] py-0">
+                                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-xs py-0">
                                             + Fibras ({formatDiff(subFiber - originalBase.fiber, 'g')})
                                         </Badge>
                                     )}
                                     {subFood.sodium < (originalFood.sodium || 999) && (
-                                        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-[10px] py-0">
+                                        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs py-0">
                                             Menos Sódio
                                         </Badge>
                                     )}
                                     {analysis.groupMatch && (
-                                        <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200 text-[10px] py-0">
+                                        <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200 text-xs py-0">
                                             Mesmo Grupo
                                         </Badge>
                                     )}
@@ -320,19 +320,19 @@ const SubstitutionDialog = ({ isOpen, onClose, originalFood, initialSubstitutes 
                                     </div>
                                     <div className="flex gap-4 text-xs font-mono">
                                         <div className="text-center p-1 px-2 bg-background rounded">
-                                            <div className="text-muted-foreground text-[10px]">Kcal</div>
+                                            <div className="text-muted-foreground text-xs">Kcal</div>
                                             <div className="font-bold">{Math.round((originalFood.calories / originalFood.quantity) * 100)}</div>
                                         </div>
                                         <div className="text-center p-1 px-2 bg-background rounded">
-                                            <div className="text-muted-foreground text-[10px]">P</div>
+                                            <div className="text-muted-foreground text-xs">P</div>
                                             <div className="font-bold">{((originalFood.protein / originalFood.quantity) * 100).toFixed(1)}</div>
                                         </div>
                                         <div className="text-center p-1 px-2 bg-background rounded">
-                                            <div className="text-muted-foreground text-[10px]">C</div>
+                                            <div className="text-muted-foreground text-xs">C</div>
                                             <div className="font-bold">{((originalFood.carbs / originalFood.quantity) * 100).toFixed(1)}</div>
                                         </div>
                                         <div className="text-center p-1 px-2 bg-background rounded">
-                                            <div className="text-muted-foreground text-[10px]">G</div>
+                                            <div className="text-muted-foreground text-xs">G</div>
                                             <div className="font-bold">{((originalFood.fat / originalFood.quantity) * 100).toFixed(1)}</div>
                                         </div>
                                     </div>
@@ -358,9 +358,9 @@ const SubstitutionDialog = ({ isOpen, onClose, originalFood, initialSubstitutes 
                                             onClick={() => handleAddSubstitute(s)}
                                             className="text-left p-2 border rounded-lg bg-card hover:bg-green-50 hover:border-green-200 transition-all group"
                                         >
-                                            <div className="text-[11px] font-semibold truncate leading-tight group-hover:text-green-700">{s.name}</div>
+                                            <div className="text-xs font-semibold truncate leading-tight group-hover:text-green-700">{s.name}</div>
                                             <div className="flex items-center justify-between mt-1">
-                                                <span className="text-[10px] text-muted-foreground">{Math.round(s.calories)} kcal</span>
+                                                <span className="text-xs text-muted-foreground">{Math.round(s.calories)} kcal</span>
                                                 <Plus className="h-3 w-3 text-muted-foreground group-hover:text-green-600" />
                                             </div>
                                         </button>
@@ -390,7 +390,7 @@ const SubstitutionDialog = ({ isOpen, onClose, originalFood, initialSubstitutes 
                                         const dynP = sub.protein * subRatio;
                                         const dynC = sub.carbs * subRatio;
                                         const dynG = sub.fat * subRatio;
-                                        
+
                                         const analysis = getSubstitutionAnalysis({
                                             calories: originalFood.calories,
                                             protein: originalFood.protein,
@@ -399,30 +399,30 @@ const SubstitutionDialog = ({ isOpen, onClose, originalFood, initialSubstitutes 
                                             fiber: originalFood.fiber || 0,
                                             group: originalFood.food?.group
                                         }, { ...sub, calories: dynKcal, protein: dynP, carbs: dynC, fat: dynG });
-                                        
+
                                         const isExpanded = expandedId === sub.id;
 
                                         return (
                                             <div key={sub.id} className={`flex flex-col p-3 border rounded-xl transition-all ${analysis.isRecommended ? 'bg-green-50/20 border-green-100' : 'bg-card'}`}>
                                                 <div className="flex items-center justify-between">
-                                                    <div className="flex-1 cursor-pointer" onClick={() => setExpandedId(isExpanded ? null : sub.id)}>
+                                                    <button type="button" aria-expanded={isExpanded} aria-label={`Detalhes de ${sub.name}`} className="flex-1 min-w-0 text-left" onClick={() => setExpandedId(isExpanded ? null : sub.id)}>
                                                         <div className="flex items-center gap-2">
                                                             <span className="font-semibold">{sub.name}</span>
-                                                            <Badge variant="outline" className="h-5 text-[10px] bg-muted/50 border-muted font-bold text-primary">
+                                                            <Badge variant="outline" className="h-5 text-xs bg-muted/50 border-muted font-bold text-primary">
                                                                 {sub.quantity || 100} {sub.unit === 'grams' || !sub.unit ? 'g' : 'medida(s)'}
                                                             </Badge>
                                                             {analysis.isRecommended ? (
-                                                                <Badge className="h-5 text-[10px] bg-green-100 text-green-700 border-green-200 hover:bg-green-100">
+                                                                <Badge className="h-5 text-xs bg-green-100 text-green-700 border-green-200 hover:bg-green-100">
                                                                     Equivalente
                                                                 </Badge>
                                                             ) : (
-                                                                <Badge variant="outline" className="h-5 text-[10px] bg-amber-50 text-amber-700 border-amber-200">
+                                                                <Badge variant="outline" className="h-5 text-xs bg-amber-50 text-amber-700 border-amber-200">
                                                                     Atenção (Macros)
                                                                 </Badge>
                                                             )}
                                                             {isExpanded ? <ChevronUp className="h-3 w-3 text-muted-foreground" /> : <ChevronDown className="h-3 w-3 text-muted-foreground" />}
                                                         </div>
-                                                        <div className="text-xs text-muted-foreground mt-1 flex gap-4 items-center">
+                                                        <div className="text-xs text-muted-foreground mt-1 flex flex-wrap gap-4 items-center">
                                                             <div className="flex items-center gap-1.5 p-0.5 rounded">
                                                                 <span className="font-bold text-foreground">{Math.round(dynKcal)} kcal</span>
                                                                 {renderDelta(dynKcal - originalFood.calories, 30)}
@@ -440,20 +440,21 @@ const SubstitutionDialog = ({ isOpen, onClose, originalFood, initialSubstitutes 
                                                                 {renderDelta(dynG - originalFood.fat, 2)}
                                                             </div>
                                                         </div>
-                                                    </div>
-                                                    <div className="flex items-center gap-1">
-                                                        <Button 
-                                                            variant="ghost" 
-                                                            size="sm" 
+                                                    </button>
+                                                    <div className="flex flex-wrap items-center gap-1">
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            aria-label={`Detalhes de ${sub.name}`} aria-expanded={isExpanded}
                                                             onClick={() => setExpandedId(isExpanded ? null : sub.id)}
                                                             className="h-8 w-8 p-0"
                                                         >
                                                             <Info className="h-4 w-4 text-muted-foreground" />
                                                         </Button>
-                                                        <Button 
-                                                            variant="ghost" 
-                                                            size="sm" 
-                                                            onClick={() => handleRemoveSubstitute(sub.id)}
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            aria-label={`Remover substituto ${sub.name}`} onClick={() => handleRemoveSubstitute(sub.id)}
                                                             className="text-muted-foreground hover:text-destructive h-8 w-8 p-0"
                                                         >
                                                             <Trash2 className="h-4 w-4" />

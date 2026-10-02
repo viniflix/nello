@@ -18,7 +18,7 @@ const AdminVerificationsPage = route('verifications', () => import('@/pages/admi
 const AdminPrivacyRequestsPage = route('privacy', () => import('@/pages/admin/AdminPrivacyRequestsPage.jsx'));
 
 function LoadingFallback() {
-  return <div className="flex items-center justify-center min-h-screen"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" /></div>;
+  return <div className="flex items-center justify-center min-h-dvh"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" /></div>;
 }
 
 export const adminRoutes = (

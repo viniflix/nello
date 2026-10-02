@@ -305,7 +305,7 @@ const ReferenceValuesModal = ({ isOpen, onClose, planId }) => {
 
     return (
         <Dialog open={isOpen} onOpenChange={handleClose}>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-4xl max-h-[90dvh] overflow-y-auto">
                 <DialogHeader>
                     <div className="flex items-center gap-2">
                         <DialogTitle>Valores de Referência Nutricional</DialogTitle>
@@ -653,21 +653,21 @@ const ReferenceValuesModal = ({ isOpen, onClose, planId }) => {
                                     <div className="text-center p-3 sm:p-4 bg-white rounded-lg border">
                                         <div className="text-xs sm:text-sm text-muted-foreground mb-1">Proteínas</div>
                                         <div className="text-2xl sm:text-3xl font-bold text-blue-600 break-words">{targets.protein}g</div>
-                                        <div className="text-[10px] sm:text-xs text-muted-foreground mt-1 break-words">
+                                        <div className="text-xs sm:text-xs text-muted-foreground mt-1 break-words">
                                             {targets.proteinCal} kcal ({formData.macro_mode === 'percentage' ? `${formData.protein_pct.toFixed(1)}%` : `${formData.protein_g_per_kg}g/kg`})
                                         </div>
                                     </div>
                                     <div className="text-center p-3 sm:p-4 bg-white rounded-lg border">
                                         <div className="text-xs sm:text-sm text-muted-foreground mb-1">Carboidratos</div>
                                         <div className="text-2xl sm:text-3xl font-bold text-green-600 break-words">{targets.carbs}g</div>
-                                        <div className="text-[10px] sm:text-xs text-muted-foreground mt-1 break-words">
+                                        <div className="text-xs sm:text-xs text-muted-foreground mt-1 break-words">
                                             {targets.carbsCal} kcal ({formData.macro_mode === 'percentage' ? `${formData.carbs_pct.toFixed(1)}%` : `${formData.carbs_g_per_kg}g/kg`})
                                         </div>
                                     </div>
                                     <div className="text-center p-3 sm:p-4 bg-white rounded-lg border">
                                         <div className="text-xs sm:text-sm text-muted-foreground mb-1">Gorduras</div>
                                         <div className="text-2xl sm:text-3xl font-bold text-orange-600 break-words">{targets.fat}g</div>
-                                        <div className="text-[10px] sm:text-xs text-muted-foreground mt-1 break-words">
+                                        <div className="text-xs sm:text-xs text-muted-foreground mt-1 break-words">
                                             {targets.fatCal} kcal ({formData.macro_mode === 'percentage' ? `${formData.fat_pct.toFixed(1)}%` : `${formData.fat_g_per_kg}g/kg`})
                                         </div>
                                     </div>

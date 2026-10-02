@@ -239,7 +239,7 @@ const FoodDiaryPage = () => {
             <Button className="mt-3" onClick={() => setRetryKey(value => value + 1)}>Tentar novamente</Button>
         </div>
     ) : (
-        <div className="flex flex-col min-h-screen bg-background overflow-x-hidden">
+        <div className="flex flex-col min-h-dvh bg-background overflow-x-hidden">
             <div className="max-w-7xl mx-auto w-full px-4 md:px-6 py-4 md:py-6 min-w-0">
                 {/* Header */}
                 <div className="mb-6 min-w-0">
@@ -499,7 +499,7 @@ const MealCard = ({ meal, onClick, getMealTypeLabel, getMealTypeColor }) => {
     const colors = getMealTypeColor(meal.meal_type);
 
     return (
-        <Card
+        <Card as="button" type="button"
             className="hover:shadow-md transition-shadow cursor-pointer border-l-4"
             style={{ borderLeftColor: colors.border }}
             onClick={onClick}
@@ -570,7 +570,7 @@ const AuditLogCard = ({ log, getMealTypeLabel, onClick }) => {
     };
 
     return (
-        <Card
+        <Card as="button" type="button"
             className={cn(
                 "border-l-4 transition-shadow",
                 actionInfo.borderColor.replace('border-', 'border-l-'),
@@ -632,7 +632,7 @@ const AuditLogCard = ({ log, getMealTypeLabel, onClick }) => {
 const MealDetailsModal = ({ meal, history, open, onClose, getMealTypeLabel }) => {
     return (
         <Dialog open={open} onOpenChange={onClose}>
-            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-3xl max-h-[90dvh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <Utensils className="w-5 h-5 text-[#5f6f52]" />

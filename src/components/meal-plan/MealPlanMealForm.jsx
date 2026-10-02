@@ -134,9 +134,9 @@ const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null, ownerId
 
     const handleSaveSubstitutions = (substitutes) => {
         touchedRef.current = true;
-        setFoods(prev => prev.map(f => 
-            f.tempId === substitutingFood.tempId 
-                ? { ...f, substitutes } 
+        setFoods(prev => prev.map(f =>
+            f.tempId === substitutingFood.tempId
+                ? { ...f, substitutes }
                 : f
         ));
     };
@@ -242,7 +242,7 @@ const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null, ownerId
     return (
         <>
             <Dialog open={isOpen} onOpenChange={handleClose}>
-                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                <DialogContent className="max-w-4xl max-h-[90dvh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle>
                             {initialData ? 'Editar Refeição' : 'Nova Refeição'}
@@ -370,12 +370,12 @@ const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null, ownerId
                                                             {food.patient_description || food.food?.name}
                                                         </div>
                                                         {food.patient_description && (
-                                                            <span className="text-[10px] text-muted-foreground italic">
+                                                            <span className="text-xs text-muted-foreground italic">
                                                                 ({food.food?.name})
                                                             </span>
                                                         )}
                                                         {food.substitutes?.length > 0 && (
-                                                            <Badge variant="outline" className="h-5 text-[10px] bg-green-50 text-green-700 border-green-200">
+                                                            <Badge variant="outline" className="h-5 text-xs bg-green-50 text-green-700 border-green-200">
                                                                 {food.substitutes.length} substitutos
                                                             </Badge>
                                                         )}

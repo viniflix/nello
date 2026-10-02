@@ -52,7 +52,7 @@ import { summarizeFinancialTransactions, buildFinancialCashFlow, buildFinancialE
 export default function FinancialPage() {
     const { user } = useAuth();
     const { toast } = useToast();
-    
+
     // State
     const [selectedMonth, setSelectedMonth] = useState(new Date());
     const [monthRows, setMonthRows] = useState([]);
@@ -83,7 +83,7 @@ export default function FinancialPage() {
             : row.status === filters.status)) &&
         (!filters.search || String(row.description || '').toLocaleLowerCase('pt-BR').includes(filters.search.toLocaleLowerCase('pt-BR')))
     ).sort((a, b) => String(b.transaction_date).localeCompare(String(a.transaction_date)) || b.id - a.id), [monthRows, filters]);
-    
+
     // Load monthly goal from clinic settings
     useEffect(() => {
         if (user?.id) {
@@ -159,16 +159,16 @@ export default function FinancialPage() {
     const handleSaveTransaction = async (data) => {
         try {
             if (!user?.id) return;
-            
+
             // Handle multiple transactions (installments)
             if (data.multiple && data.transactions) {
                 const transactionsWithNutritionist = data.transactions.map(t => ({
                     ...t,
                     nutritionist_id: user.id
                 }));
-                
+
                 await saveMultipleTransactions(transactionsWithNutritionist);
-                
+
                 toast({
                     title: "Sucesso!",
                     description: `${data.transactions.length} parcelas criadas com sucesso.`
@@ -253,7 +253,7 @@ export default function FinancialPage() {
             Pagamento: t.paid_at ? format(new Date(t.paid_at + 'T00:00:00'), 'dd/MM/yyyy') : '-',
             Estorno: t.refunded_at ? format(new Date(t.refunded_at + 'T00:00:00'), 'dd/MM/yyyy') : '-'
         }));
-        
+
         const csv = Papa.unparse(csvData, { delimiter: ';' });
         const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement("a");
@@ -264,7 +264,7 @@ export default function FinancialPage() {
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
-        
+
         toast({
             title: "Exportado!",
             description: "Arquivo CSV baixado com sucesso."
@@ -320,7 +320,7 @@ export default function FinancialPage() {
             // Generate receipt
             const { generateReceipt } = await import('@/lib/pdf/receiptGenerator');
             await generateReceipt(transaction, nutritionistProfile, patientProfile);
-            
+
             toast({
                 title: "Sucesso!",
                 description: "Recibo gerado e baixado com sucesso."
@@ -359,8 +359,8 @@ export default function FinancialPage() {
     }, [summary.income, monthlyGoal]);
 
     return (
-        <div className="min-h-screen bg-background overflow-x-hidden">
-            <main className="max-w-7xl mx-auto w-full px-4 md:px-8 pt-4 md:pt-8 pb-8 min-w-0 overflow-x-hidden">
+        <div className="min-h-dvh bg-background min-w-0">
+            <main className="max-w-7xl mx-auto w-full px-4 md:px-8 pt-4 md:pt-8 pb-8 min-w-0 min-w-0">
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -383,7 +383,7 @@ export default function FinancialPage() {
                             </Button>
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                    <Button variant="outline" disabled={loading || loadError} className="w-full sm:w-auto border-primary text-primary hover:bg-primary hover:text-white">
+                                    <Button variant="outline" disabled={loading || loadError} className="w-full sm:w-auto px-2 border-primary text-primary hover:bg-primary hover:text-white">
                                         <Download className="w-4 h-4 mr-2" />
                                         <span className="hidden sm:inline">Exportar</span>
                                         <span className="sm:hidden">Exportar</span>
@@ -420,7 +420,7 @@ export default function FinancialPage() {
 
                     {/* Month Selector */}
                     <div className="mb-6">
-                        <MonthInputWithCalendar
+                        <MonthInputWithCalendar aria-label="Mês do financeiro"
                             value={format(selectedMonth, 'yyyy-MM')}
                             onChange={(value) => value && setSelectedMonth(new Date(value + '-02'))}
                             className="w-full sm:w-auto"
@@ -454,11 +454,11 @@ export default function FinancialPage() {
                                             </div>
                                             <div className="min-w-0">
                                                 <span className={`font-semibold break-all ${
-                                                    monthlyGoal - summary.income > 0 
+                                                    monthlyGoal - summary.income > 0
                                                         ? 'text-secondary'
                                                         : 'text-primary'
                                                 }`}>
-                                                    {monthlyGoal - summary.income > 0 
+                                                    {monthlyGoal - summary.income > 0
                                                         ? `Faltam R$ ${Math.max(0, monthlyGoal - summary.income).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
                                                         : `Superou em R$ ${Math.abs(monthlyGoal - summary.income).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
                                                     }
@@ -471,7 +471,7 @@ export default function FinancialPage() {
                                             <span className="text-muted-foreground">Progresso</span>
                                             <span className="font-semibold">{goalProgress.toFixed(1)}%</span>
                                         </div>
-                                        <Progress value={goalProgress} className="h-2" />
+                                        <Progress aria-label="Progresso da meta financeira mensal" value={goalProgress} className="h-2" />
                                     </div>
                                 </div>
                             </CardContent>

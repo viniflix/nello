@@ -11,9 +11,9 @@ const AdminLayout = () => {
   if (!user || !user?.profile) return null;
 
   return (
-    <div className="flex min-h-screen w-full flex-col bg-background">
+    <div className="flex min-h-dvh w-full flex-col bg-background">
       <AdminHeader />
-      <main className="flex-1 overflow-y-auto">
+      <main id="main-content" tabIndex={-1} className="flex-1 overflow-y-auto">
         <div className="max-w-7xl mx-auto w-full px-4 md:px-8 py-8">
           <ClientErrorBoundary resetKey={`${user?.id}:${location.pathname}`}><Outlet /></ClientErrorBoundary>
         </div>

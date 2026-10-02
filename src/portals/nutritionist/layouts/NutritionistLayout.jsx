@@ -13,12 +13,12 @@ const NutritionistLayout = () => {
   }
 
   return (
-    <div className="flex min-h-screen w-full flex-col overflow-x-hidden">
+    <div className="flex min-h-dvh w-full flex-col min-w-0">
       <DashboardHeader
         user={user}
         logout={signOut}
       />
-      <main className="flex-1 min-w-0 overflow-x-hidden">
+      <main id="main-content" tabIndex={-1} className="flex-1 min-w-0 min-w-0">
         <ClientErrorBoundary resetKey={`${user?.id}:${location.pathname}`}><Outlet /></ClientErrorBoundary>
       </main>
     </div>

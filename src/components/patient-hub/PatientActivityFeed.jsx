@@ -63,12 +63,12 @@ const ActivityItem = ({ activity, onClick }) => {
     };
 
     return (
-        <div
-            role={onClick ? 'button' : undefined}
-            tabIndex={onClick ? 0 : undefined}
+        <button type="button"
+
+
             onClick={onClick}
-            onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') e.preventDefault() || onClick(); } : undefined}
-            className="flex gap-3 p-3 hover:bg-muted/50 rounded-lg transition-colors cursor-pointer group"
+
+            className="w-full text-left flex gap-3 p-3 hover:bg-muted/50 rounded-lg transition-colors cursor-pointer group"
         >
             <div className="flex-shrink-0 mt-1">
                 <div className="p-2 rounded-full bg-background border border-border group-hover:border-primary/50 transition-colors">
@@ -99,7 +99,7 @@ const ActivityItem = ({ activity, onClick }) => {
                     </div>
                 )}
             </div>
-        </div>
+        </button>
     );
 };
 

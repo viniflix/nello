@@ -246,7 +246,7 @@ export default function TemplatesList() {
             {/* Modal de Preview */}
             {previewTemplate && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-muted/50 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-card rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col animate-in zoom-in-95 duration-200">
+                    <div className="bg-card rounded-2xl shadow-xl w-full max-w-2xl max-h-[90dvh] flex flex-col animate-in zoom-in-95 duration-200">
                         <div className="p-5 border-b border-border flex items-center justify-between shrink-0">
                             <div>
                                 <h2 className="text-lg font-bold text-foreground">{previewTemplate.title}</h2>
@@ -259,7 +259,7 @@ export default function TemplatesList() {
                                 <X className="w-5 h-5" />
                             </button>
                         </div>
-                        
+
                         <div className="flex-1 overflow-y-auto p-5 bg-muted/40">
                             <div className="space-y-6">
                                 {(Array.isArray(previewTemplate.sections) ? previewTemplate.sections : (Array.isArray(previewTemplate.sections?.sections) ? previewTemplate.sections.sections : [])).map((section, idx) => (
@@ -302,7 +302,7 @@ export default function TemplatesList() {
                             <Button variant="outline" onClick={() => setPreviewTemplate(null)}>
                                 Fechar
                             </Button>
-                            <Button 
+                            <Button
                                 className="bg-primary hover:bg-primary/90 text-white shadow-md hover:shadow-lg transition-all"
                                 onClick={() => {
                                     navigate(`/nutritionist/templates/forms/${previewTemplate.id}/edit`);

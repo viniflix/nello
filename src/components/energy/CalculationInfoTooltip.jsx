@@ -10,10 +10,10 @@ import { Badge } from '@/components/ui/badge';
 
 /**
  * CalculationInfoTooltip Component
- * 
+ *
  * Exibe um tooltip com breakdown detalhado de como um cálculo foi realizado.
  * Mostra a fórmula aplicada com os valores reais do paciente.
- * 
+ *
  * @param {Object} breakdown - Objeto retornado por getFormulaBreakdown ou getGETBreakdown
  * @param {string} [variant] - 'default' | 'compact' - Estilo do tooltip
  */
@@ -45,27 +45,27 @@ export default function CalculationInfoTooltip({ breakdown, variant = 'default' 
                 <p className="font-medium">Baseado em:</p>
                 <div className="flex flex-wrap gap-2">
                   {breakdown.baseData.weight && (
-                    <Badge variant="outline" className="text-[10px]">
+                    <Badge variant="outline" className="text-xs">
                       Peso: {breakdown.baseData.weight}kg
                     </Badge>
                   )}
                   {breakdown.baseData.height && (
-                    <Badge variant="outline" className="text-[10px]">
+                    <Badge variant="outline" className="text-xs">
                       Altura: {breakdown.baseData.height}cm
                     </Badge>
                   )}
                   {breakdown.baseData.age && (
-                    <Badge variant="outline" className="text-[10px]">
+                    <Badge variant="outline" className="text-xs">
                       Idade: {breakdown.baseData.age} anos
                     </Badge>
                   )}
                   {breakdown.baseData.leanMass && (
-                    <Badge variant="outline" className="text-[10px]">
+                    <Badge variant="outline" className="text-xs">
                       MM: {breakdown.baseData.leanMass}kg
                     </Badge>
                   )}
                   {breakdown.baseData.gender && (
-                    <Badge variant="outline" className="text-[10px]">
+                    <Badge variant="outline" className="text-xs">
                       {breakdown.baseData.gender}
                     </Badge>
                   )}
@@ -138,32 +138,32 @@ export default function CalculationInfoTooltip({ breakdown, variant = 'default' 
                   <p className="text-xs text-muted-foreground mb-2">Dados Utilizados:</p>
                   <div className="flex flex-wrap gap-1.5">
                     {breakdown.baseData.weight && (
-                      <Badge variant="secondary" className="text-[10px]">
+                      <Badge variant="secondary" className="text-xs">
                         Peso: {breakdown.baseData.weight}kg
                       </Badge>
                     )}
                     {breakdown.baseData.height && (
-                      <Badge variant="secondary" className="text-[10px]">
+                      <Badge variant="secondary" className="text-xs">
                         Altura: {breakdown.baseData.height}cm
                       </Badge>
                     )}
                     {breakdown.baseData.age && (
-                      <Badge variant="secondary" className="text-[10px]">
+                      <Badge variant="secondary" className="text-xs">
                         Idade: {breakdown.baseData.age} anos
                       </Badge>
                     )}
                     {breakdown.baseData.leanMass && (
-                      <Badge variant="default" className="text-[10px]">
+                      <Badge variant="default" className="text-xs">
                         MM: {breakdown.baseData.leanMass}kg
                       </Badge>
                     )}
                     {breakdown.baseData.gender && (
-                      <Badge variant="secondary" className="text-[10px]">
+                      <Badge variant="secondary" className="text-xs">
                         {breakdown.baseData.gender}
                       </Badge>
                     )}
                     {breakdown.baseData.activityLabel && (
-                      <Badge variant="outline" className="text-[10px]">
+                      <Badge variant="outline" className="text-xs">
                         {breakdown.baseData.activityLabel}
                       </Badge>
                     )}

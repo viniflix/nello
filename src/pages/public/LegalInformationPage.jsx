@@ -5,7 +5,7 @@ import PublicHelpLinks from '@/features/privacy/components/PublicHelpLinks';
 
 export default function LegalInformationPage({ pathname }) {
   const page = legalContent[pathname];
-  return <main className="mx-auto max-w-3xl space-y-6 p-6 pb-24 text-foreground">
+  return <main id="main-content" tabIndex={-1} className="mx-auto max-w-3xl space-y-6 p-6 pb-24 text-foreground">
     <Link to="/login" className="text-primary underline">Voltar ao acesso</Link>
     <h1 className="text-3xl font-semibold">{page.title}</h1>
     <p className="text-sm text-muted-foreground">Versão {LEGAL_VERSION} · Nello Beta</p>

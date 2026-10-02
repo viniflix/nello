@@ -282,7 +282,7 @@ export default function AddMealPage() {
   // Loading state para modo de edição
   if (editMode && loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-dvh">
         <div className="text-center">
           <p className="text-muted-foreground">Carregando dados da refeição...</p>
         </div>
@@ -293,7 +293,7 @@ export default function AddMealPage() {
   // Validação de mealType
   if (!mealType && !editMode) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-dvh">
         <div className="text-center">
           <p className="text-muted-foreground mb-4">Tipo de refeição não especificado</p>
           <Button onClick={() => navigate('/patient/diario')}>
@@ -305,7 +305,7 @@ export default function AddMealPage() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-background">
+    <div className="flex flex-col min-h-dvh bg-background">
       <div className="patient-page-content">
         {/* Header */}
         <div className="mb-6 flex items-start gap-2 sm:items-center sm:gap-4">

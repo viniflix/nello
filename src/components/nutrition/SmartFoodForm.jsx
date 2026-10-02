@@ -20,7 +20,7 @@ import { toPortugueseError } from '@/lib/utils/errorMessages';
 
 /**
  * SmartFoodForm - Formulário inteligente passo a passo para criar/editar alimentos
- * 
+ *
  * Features:
  * - Wizard passo a passo (5 etapas)
  * - Busca por código de barras ou nome (OpenFoodFacts)
@@ -28,14 +28,14 @@ import { toPortugueseError } from '@/lib/utils/errorMessages';
  * - Conversão automática de porção do rótulo para 100g
  * - Suporte completo a micronutrientes
  * - Opção de pular etapas opcionais
- * 
+ *
  * @param {Object} props
  * @param {Object} props.initialData - Dados iniciais (para edição)
  * @param {Function} props.onSuccess - Callback quando alimento é criado/editado
  * @param {string} props.mode - 'compact' | 'full' (layout mode)
  * @param {string} props.initialName - Nome inicial (para quick-add)
  */
-const SmartFoodForm = forwardRef(function SmartFoodForm({ 
+const SmartFoodForm = forwardRef(function SmartFoodForm({
     initialData = null,
     onSuccess,
     mode = 'full',
@@ -123,7 +123,7 @@ return (
                         <TabsTrigger value="100g">Dados por 100g</TabsTrigger>
                         <TabsTrigger value="portion">Dados do Rótulo (Porção)</TabsTrigger>
                     </TabsList>
-                    
+
                     <TabsContent value="100g" className="space-y-4 mt-4">
                                     <div className="p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
                                         <p className="text-sm text-blue-900 dark:text-blue-100 flex items-center gap-2">
@@ -132,7 +132,7 @@ return (
                         </p>
                                     </div>
                     </TabsContent>
-                    
+
                     <TabsContent value="portion" className="space-y-4 mt-4">
                         <div className="space-y-2">
                                         <Label htmlFor="labelPortionSize">
@@ -513,15 +513,15 @@ return (
                             </div>
                 <div className="flex flex-wrap gap-2">
                     {commonMeasures.map((measure, idx) => (
-                        <Badge
+                        <button type="button"
                             key={idx}
-                            variant="outline"
-                            className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors px-3 py-1"
+
+                            className="w-full text-left cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors px-3 py-1"
                             onClick={() => handleAddMeasure(measure)}
                         >
                             <Plus className="h-3 w-3 mr-1" />
                             {measure.label} ({measure.grams}g)
-                        </Badge>
+                        </button>
                     ))}
                 </div>
                 {householdMeasures.length > 0 && (
@@ -608,7 +608,7 @@ return (
 
             {/* Dialog for Product Selection */}
             <Dialog open={showResultsDialog} onOpenChange={setShowResultsDialog}>
-                <DialogContent className="max-w-2xl max-h-[90vh] w-[95vw] sm:w-full p-4 sm:p-6 flex flex-col">
+                <DialogContent className="max-w-2xl max-h-[90dvh] w-[95vw] sm:w-full p-4 sm:p-6 flex flex-col">
                     <DialogHeader className="pb-3 flex-shrink-0">
                         <DialogTitle className="text-base sm:text-lg">Selecione o Produto</DialogTitle>
                         <DialogDescription className="text-xs sm:text-sm">
@@ -618,7 +618,7 @@ return (
                     <div className="flex-1 min-h-0 overflow-y-auto pr-2 sm:pr-4">
                         <div className="space-y-2">
                             {searchResults.map((product) => (
-                                <Card
+                                <Card as="button" type="button"
                                     key={product.code}
                                     className="cursor-pointer hover:bg-muted transition-colors"
                                     onClick={() => handleSelectProduct(product.code)}

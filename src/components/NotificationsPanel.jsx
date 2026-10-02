@@ -200,7 +200,7 @@ const NotificationsPanel = ({ isOpen, setIsOpen }) => {
             </div>
           )}
         </CardHeader>
-        <CardContent className="max-h-[60vh] space-y-3 overflow-y-auto">
+        <CardContent className="max-h-[60dvh] space-y-3 overflow-y-auto">
           {notificationsError ? (<p role="alert" className="text-sm text-destructive">Falha ao atualizar. Tente novamente.</p>) : loading ? (
             <p>Carregando...</p>
           ) : notifications.length > 0 ? (
@@ -212,8 +212,8 @@ const NotificationsPanel = ({ isOpen, setIsOpen }) => {
               return (
                 <Card
                   key={notification.id}
-                  className={`transition-all ${notification.is_read ? 'opacity-70' : 'bg-primary/5'} cursor-pointer`}
-                  onClick={() => handleAction(notification)}
+                  className={`transition-all ${notification.is_read ? '' : 'bg-primary/5'} cursor-pointer`}
+
                 >
                   <CardContent className="p-3">
                     <div className="flex items-start gap-3">
@@ -236,12 +236,12 @@ const NotificationsPanel = ({ isOpen, setIsOpen }) => {
                           <p className="truncate text-sm font-semibold">
                             {meta.isMessage ? sender?.name || meta.title : meta.title}
                           </p>
-                          <p className="shrink-0 text-[11px] text-muted-foreground">
+                          <p className="shrink-0 text-xs text-muted-foreground">
                             {formatNotificationTime(notification.created_at)}
                           </p>
                         </div>
                         {meta.isMessage && (
-                          <p className="text-[11px] font-medium text-primary/80">Nova mensagem</p>
+                          <p className="text-xs font-medium text-primary/80">Nova mensagem</p>
                         )}
                         <p className="mt-1 line-clamp-3 text-sm text-muted-foreground">
                           {meta.description}
@@ -250,7 +250,7 @@ const NotificationsPanel = ({ isOpen, setIsOpen }) => {
                           <Button
                             variant="outline"
                             size="sm"
-                            className="h-7 px-2 text-[11px]"
+                            className="h-7 px-2 text-xs"
                             onClick={(event) => {
                               event.stopPropagation();
                               handleAction(notification);

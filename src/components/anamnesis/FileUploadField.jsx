@@ -153,8 +153,9 @@ export function FileUploadField({
                     }}
                     onDragLeave={() => setDragging(false)}
                     onDrop={handleDrop}
-                    onClick={() => !uploading && inputRef.current?.click()}
+
                 >
+                    <button type="button" disabled={uploading} className="w-full" onClick={() => inputRef.current?.click()}>
                     {uploading ? (
                         <div className="flex flex-col items-center gap-2 text-slate-500">
                             <Loader2 className="w-6 h-6 animate-spin text-blue-500" />
@@ -169,6 +170,7 @@ export function FileUploadField({
                             <p className="text-xs">JPG, PNG, WebP, PDF • máx. 10MB</p>
                         </div>
                     )}
+                    </button>
                     <input
                         ref={inputRef}
                         type="file"

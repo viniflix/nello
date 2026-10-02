@@ -198,7 +198,7 @@ export default function ImportMealFromProtocolDialog({ open, onOpenChange, nutri
                                             return (
                                                 <div
                                                     key={id}
-                                                    onClick={() => toggleMeal(id)}
+
                                                     className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
                                                         selectedMealIds.has(id)
                                                             ? 'border-emerald-400 bg-emerald-50'
@@ -206,6 +206,7 @@ export default function ImportMealFromProtocolDialog({ open, onOpenChange, nutri
                                                     }`}
                                                 >
                                                     <Checkbox
+                                                        aria-label={`Selecionar refeição ${meal.name || meal.meal_type || id}`}
                                                         checked={selectedMealIds.has(id)}
                                                         onCheckedChange={() => toggleMeal(id)}
                                                         className="mt-0.5 flex-shrink-0"
@@ -223,7 +224,7 @@ export default function ImportMealFromProtocolDialog({ open, onOpenChange, nutri
                                                                 <span className="text-xs text-slate-500 font-medium">{Math.round(meal.calories)} kcal</span>
                                                             )}
                                                             {getUnavailableTemplateFoods([meal]).length > 0 && (
-                                                                <Badge variant="destructive" className="text-[10px] py-0 bg-red-100 text-red-700 border-red-200">
+                                                                <Badge variant="destructive" className="text-xs py-0 bg-red-100 text-red-700 border-red-200">
                                                                     ⚠ Alimento ou medida indisponível
                                                                 </Badge>
                                                             )}

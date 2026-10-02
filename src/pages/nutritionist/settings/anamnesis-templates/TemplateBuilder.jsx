@@ -74,7 +74,7 @@ export default function TemplateBuilder() {
                 else if (data.sections?.sections) loadedSections = data.sections.sections;
 
                 const processSections = isDefault ? cloneAnamnesisSections(loadedSections) : loadedSections;
-                
+
                 setSectionsState(processSections);
                 setIsLoading(false);
                 if (processSections.length > 0) setActiveSectionId(processSections[0].id);
@@ -187,7 +187,7 @@ export default function TemplateBuilder() {
         );
     }
 
-    const activeFieldData = activeFieldId 
+    const activeFieldData = activeFieldId
         ? sections.find(s => s.id === activeSectionId)?.fields.find(f => f.id === activeFieldId)
         : null;
 
@@ -196,7 +196,7 @@ export default function TemplateBuilder() {
     const availableConditionFields = allFields.filter(f => f.id !== activeFieldId && f.label);
 
     return (
-        <div className="mx-auto flex min-h-[calc(100vh-80px)] w-full max-w-[1400px] min-w-0 flex-col overflow-x-hidden px-4 pt-4 pb-8 md:px-8 md:pt-8 lg:h-[calc(100vh-80px)]">
+        <div className="mx-auto flex min-h-[calc(100dvh-80px)] w-full max-w-[1400px] min-w-0 flex-col overflow-x-hidden px-4 pt-4 pb-8 md:px-8 md:pt-8 lg:h-[calc(100dvh-80px)]">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 md:mb-8 shrink-0">
                 <div className="flex min-w-0 items-center gap-3 sm:gap-4">
                     <Button variant="ghost" size="sm" onClick={() => navigate('/nutritionist/templates?group=forms&ftab=forms')}>
@@ -220,33 +220,33 @@ export default function TemplateBuilder() {
 
             <div className="flex flex-col lg:flex-row gap-6 flex-1 min-h-0 pb-6 lg:pb-0">
                 {/* Center Panel - Builder Canvas */}
-                <div className="flex-1 bg-card rounded-xl border border-border shadow-sm flex flex-col min-w-0 h-[60vh] lg:h-auto">
+                <div className="flex-1 bg-card rounded-xl border border-border shadow-sm flex flex-col min-w-0 h-[60dvh] lg:h-auto">
                     <div className="p-4 border-b border-border bg-muted/40 rounded-t-xl shrink-0">
-                        <Input 
+                        <Input
                             value={title}
                             onChange={e => setTitle(e.target.value)}
                             placeholder="Nome do Formulário (Ex: Anamnese Adulto)"
                             className="text-lg font-bold border-none bg-transparent shadow-none px-0 focus-visible:ring-0"
                         />
-                        <Input 
+                        <Input
                             value={description}
                             onChange={e => setDescription(e.target.value)}
                             placeholder="Descrição opcional..."
                             className="text-sm text-muted-foreground border-none bg-transparent shadow-none px-0 focus-visible:ring-0 h-8"
                         />
                     </div>
-                    
+
                     <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-muted/50">
                         {sections.map((section, sIdx) => (
-                            <div 
-                                key={section.id} 
+                            <div
+                                key={section.id}
                                 className={`bg-card rounded-lg border ${activeSectionId === section.id ? 'border-primary ring-1 ring-primary' : 'border-border'} transition-all`}
-                                onClick={() => setActiveSectionId(section.id)}
+
                             >
                                 <div className="p-4 border-b border-border flex items-center justify-between bg-muted/50 rounded-t-lg">
                                     <div className="flex-1 flex items-center gap-2">
-                                        <GripVertical className="w-4 h-4 text-muted-foreground cursor-move" />
-                                        <Input 
+                                        <button type="button" aria-label="Editar seção" aria-pressed={activeSectionId === section.id} onClick={() => {setActiveSectionId(section.id);setActiveFieldId(null);}}><GripVertical className="w-4 h-4 text-muted-foreground cursor-pointer" /></button>
+                                        <Input
                                             value={section.title}
                                             onChange={e => updateSection(section.id, { title: e.target.value })}
                                             className="font-semibold border-none bg-transparent h-8 focus-visible:ring-1"
@@ -259,23 +259,24 @@ export default function TemplateBuilder() {
                                 </div>
                                 <div className="p-4 space-y-3">
                                     {section.fields.map((field, fIdx) => (
-                                        <div 
+                                        <div
                                             key={field.id}
-                                            onClick={(e) => { e.stopPropagation(); setActiveFieldId(field.id); setActiveSectionId(section.id); }}
+
                                             className={`relative group p-3 rounded-md border ${activeFieldId === field.id ? 'border-primary bg-primary/5' : 'border-border bg-card hover:border-primary'} cursor-pointer flex gap-3`}
                                         >
+                                            <button type="button" aria-label="Editar campo" aria-pressed={activeFieldId === field.id} onClick={() => {setActiveFieldId(field.id);setActiveSectionId(section.id);}} className="self-start text-left">Editar</button>
                                             <div className="flex flex-col gap-1 items-center justify-center opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
-                                                <button onClick={(e) => { e.stopPropagation(); moveField(section.id, fIdx, 'up'); }} className="text-muted-foreground hover:text-foreground disabled:opacity-30" disabled={fIdx === 0}>
+                                                <button type="button" aria-label="Mover campo para cima" onClick={(e) => { e.stopPropagation(); moveField(section.id, fIdx, 'up'); }} className="text-muted-foreground hover:text-foreground disabled:opacity-30" disabled={fIdx === 0}>
                                                     <ChevronUp className="w-4 h-4" />
                                                 </button>
-                                                <button onClick={(e) => { e.stopPropagation(); moveField(section.id, fIdx, 'down'); }} className="text-muted-foreground hover:text-foreground disabled:opacity-30" disabled={fIdx === section.fields.length - 1}>
+                                                <button type="button" aria-label="Mover campo para baixo" onClick={(e) => { e.stopPropagation(); moveField(section.id, fIdx, 'down'); }} className="text-muted-foreground hover:text-foreground disabled:opacity-30" disabled={fIdx === section.fields.length - 1}>
                                                     <ChevronDown className="w-4 h-4" />
                                                 </button>
                                             </div>
                                             <div className="flex-1">
                                                 <div className="flex items-center gap-2 mb-1">
                                                     <span className="font-medium text-sm text-foreground">{field.label || 'Pergunta sem título'}</span>
-                                                    {field.required && <span className="text-[10px] text-red-500 font-bold">*</span>}
+                                                    {field.required && <span className="text-xs text-red-500 font-bold">*</span>}
                                                 </div>
                                                 <span className="text-xs text-muted-foreground px-2 py-0.5 bg-muted rounded-md">
                                                     {FIELD_TYPES.find(t => t.value === field.type)?.label || field.type}
@@ -286,7 +287,7 @@ export default function TemplateBuilder() {
                                             </button>
                                         </div>
                                     ))}
-                                    
+
                                     <Button variant="outline" size="sm" className="w-full mt-2 border-dashed text-muted-foreground" onClick={(e) => { e.stopPropagation(); addField(section.id); }}>
                                         <Plus className="w-4 h-4 mr-2" /> Adicionar Pergunta
                                     </Button>
@@ -301,7 +302,7 @@ export default function TemplateBuilder() {
                 </div>
 
                 {/* Right Panel - Properties */}
-                <div className="w-full lg:w-[320px] bg-card rounded-xl border border-border shadow-sm shrink-0 flex flex-col h-[50vh] lg:h-auto mt-4 lg:mt-0">
+                <div className="w-full lg:w-[320px] bg-card rounded-xl border border-border shadow-sm shrink-0 flex flex-col h-[50dvh] lg:h-auto mt-4 lg:mt-0">
                     <div className="p-4 border-b border-border bg-muted/80 rounded-t-xl flex items-center gap-2">
                         <Settings2 className="w-5 h-5 text-muted-foreground" />
                         <h3 className="font-semibold text-foreground">Propriedades</h3>
@@ -315,8 +316,8 @@ export default function TemplateBuilder() {
                             <>
                                 <div className="space-y-2">
                                     <Label>Tipo da Pergunta</Label>
-                                    <Select 
-                                        value={activeFieldData.type} 
+                                    <Select
+                                        value={activeFieldData.type}
                                         onValueChange={(val) => updateField(activeSectionId, activeFieldId, { type: val })}
                                     >
                                         <SelectTrigger><SelectValue /></SelectTrigger>
@@ -330,8 +331,8 @@ export default function TemplateBuilder() {
 
                                 <div className="space-y-2">
                                     <Label>Título / Pergunta</Label>
-                                    <Textarea 
-                                        value={activeFieldData.label} 
+                                    <Textarea
+                                        value={activeFieldData.label}
                                         onChange={(e) => updateField(activeSectionId, activeFieldId, { label: e.target.value })}
                                         rows={3}
                                     />
@@ -342,7 +343,7 @@ export default function TemplateBuilder() {
                                         <Label>Opções de Resposta</Label>
                                         {(activeFieldData.options || []).map((opt, oIdx) => (
                                             <div key={oIdx} className="flex gap-2 items-center">
-                                                <Input 
+                                                <Input
                                                     value={opt.label}
                                                     onChange={e => {
                                                         const newOpts = [...activeFieldData.options];
@@ -352,7 +353,7 @@ export default function TemplateBuilder() {
                                                     placeholder={`Opção ${oIdx + 1}`}
                                                     className="h-8 text-sm"
                                                 />
-                                                <button 
+                                                <button
                                                     onClick={() => {
                                                         const newOpts = activeFieldData.options.filter((_, i) => i !== oIdx);
                                                         updateField(activeSectionId, activeFieldId, { options: newOpts });
@@ -363,9 +364,9 @@ export default function TemplateBuilder() {
                                                 </button>
                                             </div>
                                         ))}
-                                        <Button 
-                                            variant="secondary" 
-                                            size="sm" 
+                                        <Button
+                                            variant="secondary"
+                                            size="sm"
                                             className="w-full text-xs"
                                             onClick={() => {
                                                 const newOpts = [...(activeFieldData.options || []), { label: '', value: '' }];
@@ -379,9 +380,9 @@ export default function TemplateBuilder() {
 
                                 <div className="flex items-center justify-between pt-4 border-t border-border">
                                     <Label className="cursor-pointer" htmlFor="req-switch">Obrigatória?</Label>
-                                    <Switch 
+                                    <Switch
                                         id="req-switch"
-                                        checked={activeFieldData.required} 
+                                        checked={activeFieldData.required}
                                         onCheckedChange={(checked) => updateField(activeSectionId, activeFieldId, { required: checked })}
                                     />
                                 </div>
@@ -390,13 +391,13 @@ export default function TemplateBuilder() {
                                 <div className="pt-4 border-t border-border space-y-3">
                                     <div className="flex items-center justify-between">
                                         <Label className="cursor-pointer" htmlFor="cond-switch">Lógica Condicional</Label>
-                                        <Switch 
+                                        <Switch
                                             id="cond-switch"
-                                            checked={!!activeFieldData.conditional_logic} 
+                                            checked={!!activeFieldData.conditional_logic}
                                             onCheckedChange={(checked) => {
                                                 if (checked) {
-                                                    updateField(activeSectionId, activeFieldId, { 
-                                                        conditional_logic: { field_id: '', operator: 'equals', value: '' } 
+                                                    updateField(activeSectionId, activeFieldId, {
+                                                        conditional_logic: { field_id: '', operator: 'equals', value: '' }
                                                     });
                                                 } else {
                                                     updateField(activeSectionId, activeFieldId, { conditional_logic: null });
@@ -409,10 +410,10 @@ export default function TemplateBuilder() {
                                         <div className="space-y-3 bg-primary/50 p-3 rounded-lg border border-primary/20">
                                             <div className="space-y-1">
                                                 <Label className="text-xs text-muted-foreground">Mostrar este campo quando:</Label>
-                                                <Select 
+                                                <Select
                                                     value={activeFieldData.conditional_logic.field_id}
-                                                    onValueChange={(val) => updateField(activeSectionId, activeFieldId, { 
-                                                        conditional_logic: { ...activeFieldData.conditional_logic, field_id: val } 
+                                                    onValueChange={(val) => updateField(activeSectionId, activeFieldId, {
+                                                        conditional_logic: { ...activeFieldData.conditional_logic, field_id: val }
                                                     })}
                                                 >
                                                     <SelectTrigger className="h-8 text-xs bg-card"><SelectValue placeholder="Selecione o campo..." /></SelectTrigger>
@@ -423,12 +424,12 @@ export default function TemplateBuilder() {
                                                     </SelectContent>
                                                 </Select>
                                             </div>
-                                            
+
                                             <div className="flex gap-2">
-                                                <Select 
+                                                <Select
                                                     value={activeFieldData.conditional_logic.operator}
-                                                    onValueChange={(val) => updateField(activeSectionId, activeFieldId, { 
-                                                        conditional_logic: { ...activeFieldData.conditional_logic, operator: val } 
+                                                    onValueChange={(val) => updateField(activeSectionId, activeFieldId, {
+                                                        conditional_logic: { ...activeFieldData.conditional_logic, operator: val }
                                                     })}
                                                 >
                                                     <SelectTrigger className="h-8 text-xs bg-card w-[120px]"><SelectValue /></SelectTrigger>
@@ -440,11 +441,11 @@ export default function TemplateBuilder() {
                                                         <SelectItem value="less_than">Menor que</SelectItem>
                                                     </SelectContent>
                                                 </Select>
-                                                
-                                                <Input 
+
+                                                <Input
                                                     value={activeFieldData.conditional_logic.value}
-                                                    onChange={(e) => updateField(activeSectionId, activeFieldId, { 
-                                                        conditional_logic: { ...activeFieldData.conditional_logic, value: e.target.value } 
+                                                    onChange={(e) => updateField(activeSectionId, activeFieldId, {
+                                                        conditional_logic: { ...activeFieldData.conditional_logic, value: e.target.value }
                                                     })}
                                                     placeholder="Valor esperado"
                                                     className="h-8 text-xs flex-1"
@@ -460,7 +461,7 @@ export default function TemplateBuilder() {
                                         <Label className="flex items-center gap-1.5 text-sm font-medium">
                                             🏷️ Chave Clínica
                                         </Label>
-                                        <p className="text-[11px] text-muted-foreground leading-snug">
+                                        <p className="text-xs text-muted-foreground leading-snug">
                                             Se preenchida, a resposta será salva como flag clínica no perfil do paciente automaticamente.
                                         </p>
                                     </div>
@@ -475,7 +476,7 @@ export default function TemplateBuilder() {
                                     {activeFieldData.clinical_flag_key && (
                                         <div className="flex items-start gap-2 p-2 rounded-lg bg-green-50 border border-green-100">
                                             <span className="text-green-600 text-xs mt-0.5">✓</span>
-                                            <p className="text-[11px] text-green-700">
+                                            <p className="text-xs text-green-700">
                                                 A resposta será salva como <code className="bg-green-100 px-1 rounded font-mono">{activeFieldData.clinical_flag_key}</code> nas flags clínicas do paciente.
                                             </p>
                                         </div>

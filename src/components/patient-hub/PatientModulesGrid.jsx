@@ -39,7 +39,7 @@ const ModuleCard = ({ title, description, icon: Icon, to, status, onClick }) => 
     };
 
     return (
-        <Card
+        <Card as="button" type="button" disabled={to === '#' && !onClick}
             className={`bg-card hover:shadow-lg hover:border-primary transition-all cursor-pointer group ${
                 to === '#' ? 'opacity-75 cursor-not-allowed' : ''
             }`}
@@ -58,7 +58,7 @@ const ModuleCard = ({ title, description, icon: Icon, to, status, onClick }) => 
                 </div>
                 <Badge
                     variant={statusBadge.variant}
-                    className={`text-[10px] ${statusBadge.className} shrink-0`}
+                    className={`text-xs ${statusBadge.className} shrink-0`}
                 >
                     {statusBadge.label}
                 </Badge>

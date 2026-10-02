@@ -1,8 +1,8 @@
 import { getTodayIsoDate } from '@/lib/utils/date';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { 
-    Save, X, Plus, Trash2, Edit, Calendar, CloudOff, Cloud, 
+import {
+    Save, X, Plus, Trash2, Edit, Calendar, CloudOff, Cloud,
     Loader2, AlertTriangle, CheckCircle2, History, FolderOpen, RefreshCw, Download
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -642,7 +642,7 @@ const MealPlanForm = ({
                                             disabled={loading}
                                             className="h-3 w-3 sm:h-4 sm:w-4"
                                         />
-                                        <span className="text-[10px] sm:text-sm leading-tight text-center">{day.label}</span>
+                                        <span className="text-xs sm:text-sm leading-tight text-center">{day.label}</span>
                                     </label>
                                 ))}
                             </div>

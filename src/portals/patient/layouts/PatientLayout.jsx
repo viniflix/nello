@@ -52,7 +52,7 @@ export default function PatientLayout() {
   }));
 
   return (
-    <div className="flex h-[100dvh] min-w-0 flex-col overflow-hidden bg-background md:flex-row">
+    <div className="flex h-[var(--app-viewport-height,100dvh)] min-w-0 flex-col overflow-hidden bg-background md:flex-row">
       {/* SIDEBAR (Desktop apenas) */}
       <aside className="fixed inset-y-0 left-0 z-30 hidden border-r border-border bg-card md:flex md:w-64 md:flex-col">
         <div className="border-b border-border p-6">
@@ -124,7 +124,7 @@ export default function PatientLayout() {
       </aside>
 
       {/* MAIN CONTENT AREA */}
-      <main className={`min-h-0 min-w-0 flex-1 md:ml-64 ${isChatPage ? 'overflow-hidden' : 'overflow-y-auto'}`}>
+      <main id="main-content" tabIndex={-1} className={`min-h-0 min-w-0 flex-1 md:ml-64 ${isChatPage ? 'overflow-hidden' : 'overflow-y-auto'}`}>
         <ClientErrorBoundary resetKey={`${user?.id}:${location.pathname}`}><Outlet /></ClientErrorBoundary>
       </main>
 
@@ -156,7 +156,7 @@ export default function PatientLayout() {
                         </span>
                       )}
                     </div>
-                    <span className={`mt-1 max-w-full truncate text-[10px] min-[375px]:text-xs ${itemIsActive ? 'font-semibold' : 'font-normal'}`}>
+                    <span className={`mt-1 max-w-full truncate text-xs min-[375px]:text-xs ${itemIsActive ? 'font-semibold' : 'font-normal'}`}>
                       {item.label}
                     </span>
                   </>

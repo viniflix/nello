@@ -244,7 +244,7 @@ function ModuleUsageBlock({ usage, errors, loading }) {
           </div>
           <span className="w-12 text-right font-medium">{num(cnt)}</span>
           {errors?.[mod] !== undefined && (
-            <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+            <Badge variant="outline" className="text-xs px-1.5 py-0">
               {round1(errors[mod])}% err
             </Badge>
           )}
@@ -267,7 +267,7 @@ function EngagementBlock({ distribution, loading }) {
         const val = Number(distribution[tier.label.toLowerCase().replace(' ', '_')] || 0);
         const percent = total > 0 ? (val / total) * 100 : 0;
         const TierIcon = tier.icon;
-        
+
         return (
           <div key={tier.label} className="flex items-center gap-3">
             <div className={`p-1.5 rounded-lg ${tier.bg}`}>
@@ -338,7 +338,7 @@ function FunnelBlock({ funnel, loading }) {
                 />
               </div>
               {dropOff && dropOff.val < 0 && (
-                <p className="text-[10px] text-red-500 mt-0.5">
+                <p className="text-xs text-red-500 mt-0.5">
                   -{Math.abs(dropOff.pct).toFixed(1)}% abandono
                 </p>
               )}
@@ -373,7 +373,7 @@ function AnalyticsPanel({ metrics }) {
             <div className="flex-1">
               <h3 className="font-semibold text-amber-900">Analytics Comportamental</h3>
               <p className="text-sm text-amber-700 mt-1">
-                Métricas de comportamento dos usuários na plataforma. Para análises avançadas 
+                Métricas de comportamento dos usuários na plataforma. Para análises avançadas
                 (funis, retenção, gravações de sessão), configure o PostHog.
               </p>
             </div>
@@ -425,9 +425,9 @@ function AnalyticsPanel({ metrics }) {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <EngagementBlock 
-            distribution={metrics?.engagement_distribution} 
-            loading={!metrics} 
+          <EngagementBlock
+            distribution={metrics?.engagement_distribution}
+            loading={!metrics}
           />
         </CardContent>
       </Card>
@@ -678,7 +678,7 @@ export default function AdminStudyPage() {
                         </svg>
                         <div className="absolute inset-0 flex flex-col items-center justify-center">
                           <span className="text-2xl font-bold">{m.anamnesis?.completion_rate_pct ?? 0}%</span>
-                          <span className="text-[10px] text-muted-foreground">validadas</span>
+                          <span className="text-xs text-muted-foreground">validadas</span>
                         </div>
                       </div>
                     </div>

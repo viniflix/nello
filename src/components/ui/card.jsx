@@ -1,11 +1,12 @@
 import { cn } from '@/lib/utils';
 import React from 'react';
 
-const Card = React.forwardRef(({ className, ...props }, ref) => (
-  <div
+const Card = React.forwardRef(({ className, as: Component = 'div', ...props }, ref) => (
+  <Component
     ref={ref}
     className={cn(
       'rounded-lg border bg-card text-card-foreground shadow-card',
+      Component === 'button' && 'w-full text-left',
       className
     )}
     {...props}

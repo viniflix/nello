@@ -17,7 +17,7 @@ import { clearPrivateDraftStorage } from '@/lib/utils/privateDraftStorage';
 import { clearPasswordReminders } from '@/features/auth/passwordReminder';
 
 const AuthLoadingFallback = () => (
-  <div className="flex min-h-screen items-center justify-center bg-background">
+  <div className="flex min-h-dvh items-center justify-center bg-background">
     <div className="flex flex-col items-center gap-3">
       <Loader2 className="h-8 w-8 animate-spin text-primary" />
       <p className="text-sm text-muted-foreground">Verificando sessão...</p>
@@ -93,7 +93,7 @@ export function AuthProvider({ children }) {
         if (JSON.stringify(prev.profile) === JSON.stringify(profile)) return prev;
         return { ...prev, profile };
       });
-      
+
       // Identifica o usuário no Analytics (agora com dados sanitizados)
       setObservabilityUser({ id: user.id, profile });
     } else if (isProfileError && isOffline) {
@@ -141,8 +141,8 @@ export function AuthProvider({ children }) {
 
         // Agora apenas definimos o usuário base. O perfil virá via useProfile hook.
         // Se já temos um perfil cacheado, mantemos para evitar UI flickering
-        setUser(prev => ({ 
-          ...nextSession.user, 
+        setUser(prev => ({
+          ...nextSession.user,
           profile: prev?.id === nextSession.user.id ? prev.profile : null,
           verification: prev?.id === nextSession.user.id ? prev.verification : null
         }));
@@ -194,7 +194,7 @@ export function AuthProvider({ children }) {
 
     const initAuth = async () => {
       // Não usamos setLoading(true) aqui, initializing=true (default) é suficiente para o splash screen.
-      
+
       // Failsafe de segurança: evita travar em "Verificando sessão..." para sempre
       const failsafe = setTimeout(() => {
         if (mounted) {
@@ -206,9 +206,9 @@ export function AuthProvider({ children }) {
       try {
         // Recupera a sessão da memória/armazenamento
         const { data, error } = await supabase.auth.getSession();
-        
+
         if (error) throw error;
-        
+
         if (!mounted) {
           clearTimeout(failsafe);
           return;
@@ -280,14 +280,14 @@ export function AuthProvider({ children }) {
           // Só mostra loading visual se for um login explicito (quando não temos usuário ainda)
           // Se já temos um usuário, o processSession ocorre silenciosamente em background.
           const isNewLogin = !user && !initializing;
-          
+
           if (isNewLogin) {
             setLoading(true);
           }
-          
+
           // processSession sincroniza perfil e dados
           await processSession(session, event);
-          
+
           if (isNewLogin) {
             setLoading(false);
           }

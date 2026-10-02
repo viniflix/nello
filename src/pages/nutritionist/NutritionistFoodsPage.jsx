@@ -27,7 +27,7 @@ import { formatNutrient } from '@/lib/utils';
 
 /**
  * NutritionistFoodsPage - Gerenciar Alimentos e Medidas Caseiras
- * 
+ *
  * Permite ao nutricionista:
  * - Buscar alimentos no banco de dados
  * - Editar medidas caseiras de cada alimento
@@ -55,7 +55,7 @@ export default function NutritionistFoodsPage() {
   // Don't render if not admin
   if (!user || !isAdmin) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-dvh">
         <Card className="max-w-md">
           <CardContent className="pt-6">
             <div className="flex flex-col items-center text-center space-y-4">
@@ -86,7 +86,7 @@ export default function NutritionistFoodsPage() {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [stats, setStats] = useState({ total: 0, custom: 0 });
   const observerTarget = useRef(null);
-  
+
   // Debounce search term (500ms)
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
@@ -127,13 +127,13 @@ export default function NutritionistFoodsPage() {
 
     try {
       const result = await searchFoodsPaginated(debouncedSearchTerm, targetPage);
-      
+
       if (append) {
         setFoods(prev => [...prev, ...result.data]);
       } else {
         setFoods(result.data);
       }
-      
+
       setHasMore(result.hasMore);
     } catch (error) {
       logDiagnostic('error', 'pages/nutritionist/NutritionistFoodsPage.jsx:138', 'Erro ao buscar alimentos:', error);
@@ -258,7 +258,7 @@ export default function NutritionistFoodsPage() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-background">
+    <div className="flex flex-col min-h-dvh bg-background">
       <div className="max-w-7xl mx-auto w-full px-4 md:px-8 py-8 space-y-6">
         {/* Header */}
         <div className="mb-2">
@@ -446,7 +446,7 @@ export default function NutritionistFoodsPage() {
 
       {/* Create Food Dialog */}
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Plus className="h-5 w-5" />
@@ -465,7 +465,7 @@ export default function NutritionistFoodsPage() {
 
       {/* Edit Food Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Edit className="h-5 w-5" />

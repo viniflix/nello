@@ -134,7 +134,7 @@ const AddFoodPage = () => {
 
     const calculateNutrients = (food, grams) => {
         if(!food || !grams) return { calories: 0, protein: 0, fat: 0, carbs: 0 };
-        
+
         // Calcular nutrição (recalcula calorias baseado nos macros)
         return calculateNutrition(foodPer100Grams(food), grams);
     };
@@ -146,7 +146,7 @@ const AddFoodPage = () => {
         setMeasure('grams');
         setMeasureType('direct');
         setQuantity('');
-        
+
         try {
             const measures = await getFoodMeasures(food.id);
             setConversions(measures.map(m => ({ measure_name: m.label, grams_equivalent: m.weight_in_grams ?? m.grams })));
@@ -160,7 +160,7 @@ const AddFoodPage = () => {
         if (!quantity) return 0;
         const parsedQuantity = parseFloat(quantity);
         if (isNaN(parsedQuantity) || parsedQuantity <= 0) return 0;
-        
+
         if(measureType === 'direct') {
             if(measure === 'grams' || measure === 'ml') return parsedQuantity;
             if(measure === 'unit') return parsedQuantity * 100; // Fallback
@@ -187,7 +187,7 @@ const AddFoodPage = () => {
              toast({ title: "Erro", description: "Não foi possível converter a medida para gramas.", variant: "destructive" });
              return;
         }
-        
+
         const nutrients = calculateNutrients(selectedFood, grams);
         const newItem = {
             id: Date.now(), food_id: selectedFood.id, food_source: selectedFood.source, name: selectedFood.name, food_name: selectedFood.name,
@@ -238,7 +238,7 @@ const AddFoodPage = () => {
     };
 
     return (
-        <div className="min-h-screen bg-background">
+        <div className="min-h-dvh bg-background">
             <header className="sticky top-0 z-10 border-b border-border bg-background/95 backdrop-blur-md">
                 <div className="mx-auto flex h-16 max-w-4xl items-center px-4 md:px-8">
                     <Button variant="ghost" size="icon" aria-label="Voltar" onClick={() => navigate(-1)} className="mr-2"><ArrowLeft className="w-5 h-5" /></Button>
@@ -262,10 +262,10 @@ const AddFoodPage = () => {
                                         {showResults && searchTerm && (
                                             <div className="mt-2 border rounded-lg bg-card max-h-48 overflow-y-auto z-20 absolute w-full shadow-lg">
                                                 {foods.map(food => (
-                                                    <div key={food.id} className="p-3 border-b cursor-pointer hover:bg-muted" onClick={() => handleSelectFood(food)}>
+                                                    <button type="button" key={food.id} className="block w-full text-left p-3 border-b hover:bg-muted" onClick={() => handleSelectFood(food)}>
                                                         <p className="font-medium">{food.name}</p>
                                                         <p className="text-xs text-muted-foreground">{formatNutrient(food.calories)} kcal por 100g</p>
-                                                    </div>
+                                                    </button>
                                                 ))}
                                                 {searching && <div className="p-3 text-center text-muted-foreground">Buscando alimentos...</div>}
                                                 {searchError && <div className="p-3 text-center text-destructive">Busca indisponível. Tente novamente.</div>}
@@ -284,7 +284,7 @@ const AddFoodPage = () => {
                                                 <div className="sm:col-span-1">
                                                     <Label htmlFor="measure">Medida</Label>
                                                     <Select value={measure} onValueChange={setMeasure}>
-                                                        <SelectTrigger><SelectValue/></SelectTrigger>
+                                                        <SelectTrigger id="measure"><SelectValue/></SelectTrigger>
                                                         <SelectContent>
                                                             {measureType === 'direct' ? (
                                                                 <>
@@ -327,7 +327,7 @@ const AddFoodPage = () => {
                                 <CardContent className="space-y-4">
                                     <div className="grid grid-cols-2 gap-4">
                                         <div><Label htmlFor="meal-time">Horário</Label><TimeInput id="meal-time" value={mealDetails.time} onChange={(value) => setMealDetails({ ...mealDetails, time: value, type: getMealType(value) })} /></div>
-                                        <div><Label htmlFor="meal-type">Tipo</Label><Select value={mealDetails.type} onValueChange={value => setMealDetails({...mealDetails, type: value})}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{mealTypes.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent></Select></div>
+                                        <div><Label htmlFor="meal-type">Tipo</Label><Select value={mealDetails.type} onValueChange={value => setMealDetails({...mealDetails, type: value})}><SelectTrigger id="meal-type"><SelectValue /></SelectTrigger><SelectContent>{mealTypes.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent></Select></div>
                                     </div>
                                     <div><Label htmlFor="meal-notes">Observações</Label><Textarea id="meal-notes" placeholder="Ex: senti muita fome, comi antes do treino..." value={mealDetails.notes} onChange={e => setMealDetails({...mealDetails, notes: e.target.value})} /></div>
                                     <div className="flex justify-between items-baseline p-3 bg-muted rounded-lg mt-4"><span className="font-medium text-foreground">Calorias</span><span className="text-2xl font-bold text-destructive">{Math.round(mealTotals.calories)} kcal</span></div>

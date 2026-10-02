@@ -10,10 +10,10 @@ import {
     DropdownMenuTrigger,
     DropdownMenuSeparator
 } from '@/components/ui/dropdown-menu';
-import { 
-    Edit, Download, MoreVertical, BarChart3, ShoppingCart, 
-    Send, Save, Archive, Calendar, CalendarCheck, CalendarDays, 
-    UtensilsCrossed, History, Info, ChevronUp, ChevronDown 
+import {
+    Edit, Download, MoreVertical, BarChart3, ShoppingCart,
+    Send, Save, Archive, Calendar, CalendarCheck, CalendarDays,
+    UtensilsCrossed, History, Info, ChevronUp, ChevronDown
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { patientRoute } from '@/lib/utils/patientRoutes';
@@ -220,11 +220,11 @@ const MealPlanViewer = ({
                                                                 style={{ width: `${Math.min(mealCalPct, 100)}%`, backgroundColor: mealColor, opacity: 0.7 }}
                                                             />
                                                         </div>
-                                                        <span className="text-[10px] text-muted-foreground w-8 text-right">
+                                                        <span className="text-xs text-muted-foreground w-8 text-right">
                                                             {mealCalPct.toFixed(0)}%
                                                         </span>
                                                     </div>
-                                                    <div className="text-[10px] text-muted-foreground mt-0.5">
+                                                    <div className="text-xs text-muted-foreground mt-0.5">
                                                         {meal.foods?.length || 0} alimento(s)
                                                     </div>
                                                 </div>
@@ -272,7 +272,7 @@ const MealPlanViewer = ({
                             <div className="flex items-center gap-2">
                                 <History className="w-4 h-4 text-muted-foreground" />
                                 <span className="text-sm font-semibold text-foreground">Histórico de Versões</span>
-                                <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">{mealPlanVersions.length}</Badge>
+                                <Badge variant="secondary" className="h-5 px-1.5 text-xs">{mealPlanVersions.length}</Badge>
                                 <div className="relative">
                                     <Info className="w-3.5 h-3.5 text-muted-foreground cursor-help peer" />
                                     <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-64 p-2.5 bg-foreground text-background text-xs rounded-lg shadow-lg opacity-0 pointer-events-none peer-hover:opacity-100 transition-opacity z-50">

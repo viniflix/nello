@@ -156,12 +156,12 @@ const AppointmentsCard2 = ({
           </div>
           <div className="flex items-center gap-1.5 flex-shrink-0">
             {hasTodayTag && (
-              <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap ${getAgendaCountTagClass(todayAppointments)}`}>
+              <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold whitespace-nowrap ${getAgendaCountTagClass(todayAppointments)}`}>
                 Hoje: {todayAppointments}
               </span>
             )}
             {hasTotalTag && (
-              <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap ${getAgendaCountTagClass(totalUpcoming)}`}>
+              <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold whitespace-nowrap ${getAgendaCountTagClass(totalUpcoming)}`}>
                 Total: {totalUpcoming}
               </span>
             )}
@@ -202,7 +202,7 @@ const AppointmentsCard2 = ({
                         {startTime ? format(parseISO(startTime), "d 'de' MMMM 'às' HH:mm", { locale: ptBR }) : '—'}
                       </p>
                     </div>
-                    <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium flex-shrink-0 ${urgency.badgeClass}`}>
+                    <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium flex-shrink-0 ${urgency.badgeClass}`}>
                       <span className={`h-1.5 w-1.5 rounded-full ${urgency.dotClass}`} />
                       {urgency.label}
                     </span>
@@ -263,7 +263,7 @@ const AppointmentsCard2 = ({
                           key={opt.value}
                           type="button"
                           onClick={() => onNoShowPeriodChange(opt.value)}
-                          className={`rounded px-2 py-1 text-[11px] font-medium transition ${
+                          className={`rounded px-2 py-1 text-xs font-medium transition ${
                             noShowPeriodDays === opt.value ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-muted'
                           }`}
                         >
@@ -278,22 +278,22 @@ const AppointmentsCard2 = ({
                     <>
                       <div className="grid grid-cols-2 gap-2">
                         <div className="rounded-lg border border-red-200 bg-red-50 p-2">
-                          <p className="text-[11px] text-red-700">No-show</p>
+                          <p className="text-xs text-red-700">No-show</p>
                           <p className="text-lg font-semibold text-red-700">{noShowStats?.noShowCount ?? 0}</p>
                         </div>
                         <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-2">
-                          <p className="text-[11px] text-emerald-700">Concluídas</p>
+                          <p className="text-xs text-emerald-700">Concluídas</p>
                           <p className="text-lg font-semibold text-emerald-700">{noShowStats?.completedCount ?? 0}</p>
                         </div>
                       </div>
                       <div className="rounded-lg border border-border bg-muted/20 p-2">
-                        <p className="text-[11px] text-muted-foreground">Taxa de no-show</p>
+                        <p className="text-xs text-muted-foreground">Taxa de no-show</p>
                         <p className="text-xl font-semibold text-foreground">{noShowStats?.noShowRate ?? 0}%</p>
-                        <p className="text-[11px] text-muted-foreground mt-1">
+                        <p className="text-xs text-muted-foreground mt-1">
                           Base: {noShowStats?.eligibleCount ?? 0} consultas
                         </p>
                       </div>
-                      <div className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] text-amber-700">
+                      <div className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs text-amber-700">
                         Canceladas no período: {noShowStats?.canceledCount ?? 0}
                       </div>
                     </>
@@ -335,7 +335,7 @@ export default function NutritionistDashboard() {
   } = useDashboardController({ user, toast });
 
   return (
-    <div className="flex flex-col min-h-screen bg-background">
+    <div className="flex flex-col min-h-dvh bg-background">
       {Object.keys(failures).length>0&&<section role="alert" className="m-4 rounded-lg border p-4"><h2 className="font-semibold">Alguns dados não foram atualizados</h2><p>Os resultados disponíveis foram mantidos. Não interprete os indicadores indisponíveis como zero.</p>{Object.entries(failures).map(([key,failure])=><p key={key}>{({stats:'Estatísticas',appointments:'Agenda',noShow:'Faltas',upcoming_count:'Total da agenda',today_count:'Agenda de hoje',canceled_count:'Canceladas'})[key]}: {failure.message} {failure.correlationId&&('Código: '+failure.correlationId)}</p>)}<Button variant="outline" onClick={retry}>Tentar novamente</Button></section>}
 
 

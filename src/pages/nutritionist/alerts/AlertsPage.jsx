@@ -9,7 +9,7 @@ const AlertsPage = () => {
     const { user, signOut } = useAuth();
 
     return (
-        <div className="flex flex-col min-h-screen bg-background overflow-x-hidden">
+        <div className="flex flex-col min-h-dvh bg-background overflow-x-hidden">
             <main className="max-w-4xl mx-auto w-full p-4 md:p-8 min-w-0">
                 <div className="mb-4">
                     <Button asChild variant="outline" size="sm">

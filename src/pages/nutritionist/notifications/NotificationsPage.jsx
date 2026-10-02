@@ -1,7 +1,7 @@
 import { useNotificationsData } from '@/hooks/useNotificationsData';
 import { markOwnNotificationsRead, markAllNotificationsRead } from '@/lib/supabase/notification-mutations';
 
-import React from 'react';
+import React, {useState} from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -97,29 +97,29 @@ const NotificationCard = ({ notification, onMarkAsRead, user }) => {
     };
 
     const details = getNotificationDetails(notification);
-    
+
     const handleClick = () => {
         if(details.action) details.action();
         if(!notification.is_read) onMarkAsRead(notification.id);
     }
 
     return (
-        <Card className={`transition-all ${notification.is_read ? 'opacity-60' : 'bg-primary/5'}`}>
+        <Card className={`transition-all ${notification.is_read ? 'bg-muted/30' : 'bg-primary/5'}`}>
             <CardContent className="p-4 flex items-center justify-between gap-4">
-                <div className="flex items-center gap-4 flex-grow cursor-pointer" onClick={handleClick}>
+                <button type="button" className="flex min-w-0 text-left items-center gap-4 flex-grow" onClick={handleClick}>
                      <div className="p-2 bg-primary/10 rounded-full">
                         {details.icon}
                     </div>
                     <div className="flex-grow">
                         <p className="font-semibold">{details.title}</p>
                         <p className="text-sm text-muted-foreground">{details.description}</p>
-                        <p className="text-xs text-muted-foreground/80 mt-1">
+                        <p className="text-xs text-muted-foreground mt-1">
                             {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true, locale: ptBR })}
                         </p>
                     </div>
-                </div>
+                </button>
                 {!notification.is_read && (
-                    <Button variant="ghost" size="icon" onClick={() => onMarkAsRead(notification.id)}>
+                    <Button variant="ghost" size="icon" aria-label="Marcar notificação como lida" onClick={() => onMarkAsRead(notification.id)}>
                         <Check className="w-5 h-5 text-primary" />
                     </Button>
                 )}
@@ -131,17 +131,20 @@ const NotificationCard = ({ notification, onMarkAsRead, user }) => {
 
 const NotificationsPage = () => {
     const { user } = useAuth();
+    const [mutationError, setMutationError] = useState(false);
     const { notifications, loading, error: notificationsError } = useNotificationsData();
 
   const handleMarkAsRead = async (id) => {
         const { error } = await markOwnNotificationsRead(user?.id, [id]);
-        if (error) { return false; }
+        if (error) { setMutationError(true); return false; }
+        setMutationError(false);
 
     };
 
     const handleMarkAllAsRead = async () => {
         const { error } = await markAllNotificationsRead(user?.id);
-        if (error) { return; }
+        if (error) { setMutationError(true); return; }
+        setMutationError(false);
 
     };
 
@@ -155,7 +158,7 @@ const NotificationsPage = () => {
             >
                 <Card className="glass-card">
                     <CardHeader>
-                        <div className="flex justify-between items-center">
+                        <div className="flex flex-wrap gap-3 justify-between items-center">
                             <CardTitle>Notificações</CardTitle>
                              {notifications.some(n => !n.is_read) && (
                                 <Button variant="outline" size="sm" onClick={handleMarkAllAsRead}>
@@ -165,6 +168,7 @@ const NotificationsPage = () => {
                         </div>
                     </CardHeader>
                     <CardContent className="space-y-4">
+                        {mutationError && <p role="alert" className="text-sm text-destructive">Não foi possível marcar a notificação como lida. Confira a conexão e tente novamente.</p>}
                         {notificationsError ? (<p role="alert" className="text-sm text-destructive">Falha ao atualizar. Tente novamente.</p>) : loading ? (
                             <p>Carregando...</p>
                         ) : notifications.length > 0 ? (

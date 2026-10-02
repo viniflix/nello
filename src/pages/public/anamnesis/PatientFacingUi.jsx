@@ -60,7 +60,7 @@ function ErrorScreen({ errorCode, customMessage }) {
     const screen = ERROR_SCREENS[errorCode] || ERROR_SCREENS.GENERIC;
     const Icon = screen.icon;
     return (
-        <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <div className="min-h-dvh bg-slate-50 flex items-center justify-center p-4">
             <Card className="max-w-md w-full shadow-xl">
                 <CardContent className="pt-8 pb-8 text-center space-y-4">
                     <div className={`w-16 h-16 ${screen.bgClass} rounded-full flex items-center justify-center mx-auto`}>
@@ -312,7 +312,7 @@ export default function PatientFacingUi() {
                         {field.options?.map((opt) => (
                             <div key={opt.value}
                                 className="flex items-center space-x-3 p-3.5 rounded-xl border border-slate-100 hover:bg-slate-50 hover:border-slate-200 transition-colors cursor-pointer"
-                                onClick={() => handleChange(field.id, opt.value)}
+
                             >
                                 <RadioGroupItem value={opt.value} id={`radio-${field.id}-${opt.value}`} />
                                 <Label htmlFor={`radio-${field.id}-${opt.value}`}
@@ -328,7 +328,7 @@ export default function PatientFacingUi() {
                             return (
                                 <div key={opt.value}
                                     className="flex items-center space-x-3 p-3.5 rounded-xl border border-slate-100 hover:bg-slate-50 hover:border-slate-200 transition-colors cursor-pointer"
-                                    onClick={() => handleCheckboxChange(field.id, opt.value, !isChecked)}
+
                                 >
                                     <Checkbox
                                         id={`check-${field.id}-${opt.value}`}
@@ -394,7 +394,7 @@ export default function PatientFacingUi() {
     // ── Estados de carregamento/erro ────────────────────────────
     if (loading) {
         return (
-            <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+            <div className="min-h-dvh bg-slate-50 flex items-center justify-center p-4">
                 <div className="w-full max-w-3xl">
                     <FormSkeleton />
                 </div>
@@ -411,7 +411,7 @@ export default function PatientFacingUi() {
     const template = record.template;
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white pb-28">
+        <div className="min-h-dvh bg-gradient-to-b from-slate-50 to-white pb-28">
             {/* Header fixo */}
             <div className="bg-white border-b border-slate-200 sticky top-0 z-10 shadow-sm">
                 <div className="max-w-2xl mx-auto px-4 py-4 flex items-center justify-between">

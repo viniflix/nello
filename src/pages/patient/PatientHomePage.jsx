@@ -56,7 +56,7 @@ export default function PatientHomePage() {
             .eq('nutritionist_id', user?.profile?.nutritionist_id)
             .eq('patient_id', user?.id)
             .maybeSingle();
-        
+
         if (linkData?.status === 'pending') resolvedLinkStatus = 'pending';
 
         // Se estiver pendente, não precisa carregar o resto
@@ -77,7 +77,7 @@ export default function PatientHomePage() {
     if (mealPlanError) {
       logDiagnostic('error', 'pages/patient/PatientHomePage.jsx:77', 'Erro ao carregar plano alimentar:', mealPlanError);
     }
-    
+
     setPrescription(mealPlanData);
 
     // 2. Buscar próxima consulta
@@ -157,7 +157,7 @@ export default function PatientHomePage() {
   const firstName = user?.profile?.name?.split(' ')[0] || 'Paciente';
 
   return (
-    <div className="flex flex-col min-h-screen bg-background">
+    <div className="flex flex-col min-h-dvh bg-background">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -176,11 +176,11 @@ export default function PatientHomePage() {
                 </div>
                 <h2 className="text-2xl font-bold text-amber-900 mb-2">Vínculo em Análise</h2>
                 <p className="text-amber-800/80 max-w-md mx-auto mb-8">
-                    Sua solicitação enviada para o nutricionista está aguardando aprovação. 
+                    Sua solicitação enviada para o nutricionista está aguardando aprovação.
                     Assim que ele aceitar, seu plano alimentar e diário serão liberados automaticamente.
                 </p>
-                <Button 
-                    variant="outline" 
+                <Button
+                    variant="outline"
                     className="border-amber-300 text-amber-700 hover:bg-amber-100"
                     onClick={() => loadData()}
                 >
@@ -302,7 +302,7 @@ export default function PatientHomePage() {
             >
               <Card
                 className="shadow-card-dark rounded-xl bg-card cursor-pointer hover:shadow-lg transition-shadow border-2 border-primary/20"
-                onClick={() => navigate('/patient/diario')}
+
               >
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
@@ -405,7 +405,7 @@ export default function PatientHomePage() {
             >
               <Card
                 className="shadow-card-dark rounded-xl bg-card cursor-pointer hover:shadow-lg transition-shadow"
-                onClick={() => navigate('/patient/diario')}
+
               >
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">

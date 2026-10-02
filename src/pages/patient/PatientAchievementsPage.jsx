@@ -113,7 +113,7 @@ export default function PatientAchievementsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex items-center justify-center h-dvh">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
@@ -122,7 +122,7 @@ export default function PatientAchievementsPage() {
   const progressPercentage = stats.total > 0 ? Math.round((stats.unlocked / stats.total) * 100) : 0;
 
   return (
-    <div className="flex flex-col min-h-screen bg-background">
+    <div className="flex flex-col min-h-dvh bg-background">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

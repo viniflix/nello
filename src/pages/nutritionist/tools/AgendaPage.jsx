@@ -25,7 +25,7 @@ export default function AgendaPage() {
     const [searchParams, setSearchParams] = useSearchParams();
     const [routePatientId, setRoutePatientId] = useState(null);
     const routeActionHandledRef = useRef(false);
-    
+
     const {
         summaryAppointments,
         summaryReady,
@@ -50,7 +50,7 @@ export default function AgendaPage() {
         filteredAppointments,
         groupedAppointments,
         appointmentsByDay,
-        
+
         setSelectedDate,
         setIsFormOpen,
         setEditingAppointment,
@@ -66,7 +66,7 @@ export default function AgendaPage() {
         setExportMonth,
         setAskToRegisterPatient,
         setAnamnesisModal,
-        
+
         handleSaveAppointment,
         handleDeleteClick,
         handleDeleteAppointment,
@@ -106,7 +106,7 @@ export default function AgendaPage() {
     }, [loading, patients, searchParams, setEditingAppointment, setIsFormOpen, setSearchParams]);
 
     return (
-        <div className="min-h-screen bg-background overflow-x-hidden">
+        <div className="min-h-dvh bg-background overflow-x-hidden">
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -131,12 +131,12 @@ export default function AgendaPage() {
                         >
                             <FileDown className="w-4 h-4 mr-2" /> Exportar PDF
                         </Button>
-                        <Button 
+                        <Button
                             onClick={() => {
                                 setRoutePatientId(null);
                                 setEditingAppointment(null);
                                 setIsFormOpen(true);
-                            }} 
+                            }}
                             className="bg-primary hover:bg-primary/90"
                         >
                             <Plus className="w-4 h-4 mr-2" /> Novo Agendamento
@@ -401,7 +401,7 @@ export default function AgendaPage() {
                                                                     <span className="text-xs lg:text-sm font-bold text-primary">
                                                                         {format(new Date(appt.appointment_time), 'HH:mm')}
                                                                     </span>
-                                                                    <span className="text-[10px] lg:text-xs text-muted-foreground">
+                                                                    <span className="text-xs lg:text-xs text-muted-foreground">
                                                                         {endTime}
                                                                     </span>
                                                                 </div>
@@ -414,7 +414,7 @@ export default function AgendaPage() {
                                                                             {appt.patient?.name || appt.unregistered_patient_name || 'Paciente não identificado'}
                                                                         </p>
                                                                         {!appt.patient_id && appt.unregistered_patient_name && (
-                                                                            <Badge variant="outline" className="text-[10px] bg-amber-50 text-amber-600 border-amber-200">
+                                                                            <Badge variant="outline" className="text-xs bg-amber-50 text-amber-600 border-amber-200">
                                                                                 Não Cadastrado
                                                                             </Badge>
                                                                         )}
@@ -792,8 +792,8 @@ export default function AgendaPage() {
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                             <AlertDialogCancel>Agora não</AlertDialogCancel>
-                            <AlertDialogAction 
-                                onClick={() => navigate(`/nutritionist/patients?addPatientName=${encodeURIComponent(askToRegisterPatient.name)}`)} 
+                            <AlertDialogAction
+                                onClick={() => navigate(`/nutritionist/patients?addPatientName=${encodeURIComponent(askToRegisterPatient.name)}`)}
                                 className="bg-primary hover:bg-primary/90"
                             >
                                 Cadastrar Paciente

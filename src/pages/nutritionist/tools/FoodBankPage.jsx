@@ -9,12 +9,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { 
-    Dialog, 
-    DialogContent, 
-    DialogHeader, 
-    DialogTitle, 
-    DialogDescription 
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription
 } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -29,7 +29,7 @@ const ITEMS_PER_PAGE = 20;
 const FoodBankPage = () => {
     const { user } = useAuth();
     const { toast } = useToast();
-    
+
     // State
     const [customFoods, setCustomFoods] = useState([]);
     const [publicFoods, setPublicFoods] = useState([]);
@@ -43,7 +43,7 @@ const FoodBankPage = () => {
     const [foodToEdit, setFoodToEdit] = useState(null);
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
     const [foodToDelete, setFoodToDelete] = useState(null);
-    
+
     // Pagination state
     const [customPage, setCustomPage] = useState(0);
     const [publicPage, setPublicPage] = useState(0);
@@ -51,7 +51,7 @@ const FoodBankPage = () => {
     const [publicTotal, setPublicTotal] = useState(0);
     const [loadingCustom, setLoadingCustom] = useState(false);
     const [loadingPublic, setLoadingPublic] = useState(false);
-    
+
     // Debounce search
     const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
@@ -164,7 +164,7 @@ const FoodBankPage = () => {
                     .neq('source', 'custom')
                     .is('nutritionist_id', null)
             ]);
-            
+
             return {
                 custom: customResult.count || 0,
                 public: publicResult.count || 0
@@ -303,7 +303,7 @@ const FoodBankPage = () => {
     const publicColumns = useMemo(() => splitIntoColumns(publicFoods), [publicFoods]);
 
     return (
-        <div className="flex flex-col min-h-screen bg-background overflow-x-hidden">
+        <div className="flex flex-col min-h-dvh bg-background overflow-x-hidden">
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -442,7 +442,7 @@ const FoodBankPage = () => {
                                             </Badge>
                                         </div>
                                     </div>
-                                    
+
                                     {loadingCustom ? (
                                         <div className="py-4">
                                             <SimpleListSkeleton />
@@ -474,7 +474,7 @@ const FoodBankPage = () => {
                                                     </div>
                                                 ))}
                                             </div>
-                                            
+
                                             {/* Pagination */}
                                             {customTotalPages > 1 && (
                                                 <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4">
@@ -532,7 +532,7 @@ const FoodBankPage = () => {
                                             </Badge>
                                         </div>
                                     </div>
-                                    
+
                                     {loadingPublic ? (
                                         <div className="py-4">
                                             <SimpleListSkeleton />
@@ -562,7 +562,7 @@ const FoodBankPage = () => {
                                                     </div>
                                                 ))}
                                             </div>
-                                            
+
                                             {/* Pagination */}
                                             {publicTotalPages > 1 && (
                                                 <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4">
@@ -644,7 +644,7 @@ const FoodBankPage = () => {
                                             </div>
                                         ))}
                                     </div>
-                                    
+
                                     {customTotalPages > 1 && (
                                         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4">
                                             <p className="text-xs sm:text-sm text-muted-foreground">
@@ -698,7 +698,7 @@ const FoodBankPage = () => {
 
             {/* Create Food Dialog */}
             <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-                <DialogContent className="max-w-4xl max-h-[95vh] overflow-y-auto">
+                <DialogContent className="max-w-4xl max-h-[95dvh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
                             <Plus className="h-5 w-5" />
@@ -717,7 +717,7 @@ const FoodBankPage = () => {
 
             {/* Edit Food Dialog */}
             <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-                <DialogContent className="max-w-4xl max-h-[95vh] overflow-y-auto">
+                <DialogContent className="max-w-4xl max-h-[95dvh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
                             Editar Alimento

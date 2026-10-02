@@ -134,7 +134,7 @@ export default function UpdatePasswordPage() {
 
   if (checkingSession) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4 bg-background">
+      <div className="min-h-dvh flex items-center justify-center p-4 bg-background">
         <div className="flex items-center gap-3 text-muted-foreground">
           <Loader2 className="h-6 w-6 animate-spin text-primary" />
           Validando seu link seguro...
@@ -145,7 +145,7 @@ export default function UpdatePasswordPage() {
 
   if (!session?.user) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4 bg-background">
+      <div className="min-h-dvh flex items-center justify-center p-4 bg-background">
         <Card className="w-full max-w-md">
           <CardHeader>
             <CardTitle>Link inválido ou expirado</CardTitle>
@@ -164,7 +164,7 @@ export default function UpdatePasswordPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-background">
+    <div className="min-h-dvh flex items-center justify-center p-4 bg-background">
       <Card className="w-full max-w-md shadow-xl">
         <CardHeader className="text-center space-y-4">
           <div className="flex justify-center">

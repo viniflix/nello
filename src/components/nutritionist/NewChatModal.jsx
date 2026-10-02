@@ -54,7 +54,7 @@ const NewChatModal = ({ open, onOpenChange, onSelectPatient }) => {
             Selecione um paciente para iniciar um novo chat.
           </DialogDescription>
         </DialogHeader>
-        
+
         <div className="p-4 bg-muted/30">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -68,7 +68,7 @@ const NewChatModal = ({ open, onOpenChange, onSelectPatient }) => {
           </div>
         </div>
 
-        <div className="max-h-[60vh] overflow-y-auto">
+        <div className="max-h-[60dvh] overflow-y-auto">
           {loading ? (
             <div className="flex items-center justify-center p-12">
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -84,8 +84,8 @@ const NewChatModal = ({ open, onOpenChange, onSelectPatient }) => {
                   <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden border border-border/50">
                     {patient.avatar_url ? (
                       <PrivateImage
-                        src={patient.avatar_url} 
-                        alt={patient.name} 
+                        src={patient.avatar_url}
+                        alt={patient.name}
                         className="w-full h-full object-cover"
                       />
                     ) : (
@@ -95,7 +95,7 @@ const NewChatModal = ({ open, onOpenChange, onSelectPatient }) => {
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-sm text-foreground truncate">{patient.name}</p>
                     {!patient.is_active && (
-                      <Badge variant="outline" className="text-[10px] h-4 px-1 absolute right-3 mt-[-18px]">
+                      <Badge variant="outline" className="text-xs h-4 px-1 absolute right-3 mt-[-18px]">
                         Arquivado
                       </Badge>
                     )}

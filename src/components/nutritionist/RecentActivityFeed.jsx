@@ -137,10 +137,10 @@ const RecentActivityFeed = ({ limit = 10, showHeader = true }) => {
                 ) : (
                     <div className="space-y-1">
                         {displayedActivities.map(activity => (
-                            <div
+                            <button type="button"
                                 key={activity.id}
                                 onClick={() => handleActivityClick(activity)}
-                                className="flex items-start gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer group"
+                                className="w-full text-left flex items-start gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer group"
                             >
                                 {/* Ícone */}
                                 <div className="flex-shrink-0 mt-0.5">
@@ -181,7 +181,7 @@ const RecentActivityFeed = ({ limit = 10, showHeader = true }) => {
                                         </Badge>
                                     </div>
                                 </div>
-                            </div>
+                            </button>
                         ))}
 
                         {/* Botão Carregar Mais */}

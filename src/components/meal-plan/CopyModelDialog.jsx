@@ -143,7 +143,7 @@ const CopyModelDialog = ({ isOpen, onClose, planId, planName, onCopy }) => {
                         {!loading && filteredPatients.length > 0 && (
                             <div className="space-y-2">
                                 {filteredPatients.map((patient) => (
-                                    <div
+                                    <button type="button"
                                         key={patient.id}
                                         className={`
                                             p-3 border rounded-lg cursor-pointer transition-all duration-150
@@ -175,7 +175,7 @@ const CopyModelDialog = ({ isOpen, onClose, planId, planName, onCopy }) => {
                                                 )}
                                             </div>
                                         </div>
-                                    </div>
+                                    </button>
                                 ))}
                             </div>
                         )}

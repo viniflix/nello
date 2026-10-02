@@ -65,7 +65,7 @@ const PatientAddFoodDialog = ({
     const [hasMore, setHasMore] = useState(false);
     const [loadingMore, setLoadingMore] = useState(false);
     const observerTarget = useRef(null);
-    
+
     // Debounce search term (500ms)
     const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
@@ -120,13 +120,13 @@ const PatientAddFoodDialog = ({
         try {
             const result = await searchFoodsPaginated(debouncedSearchTerm, targetPage, null, {signal:controller.signal});
             if (!current()) return;
-            
+
             if (append) {
                 setSearchResults(prev => [...prev, ...result.data]);
             } else {
                 setSearchResults(result.data);
             }
-            
+
             setHasMore(result.hasMore);
         } catch (error) {
             if (!current()) return;
@@ -233,7 +233,7 @@ const PatientAddFoodDialog = ({
 
         // Importar função de cálculo correto dinamicamente (para evitar bundle grande)
         const { calculateNutrition: calcNutrition } = await import('@/lib/utils/nutrition-calculations');
-        
+
         // Calcular nutrição (recalcula calorias baseado nos macros)
         const nutrition = calcNutrition(foodPer100Grams(selectedFood), totalGrams);
 
@@ -252,7 +252,7 @@ const PatientAddFoodDialog = ({
 
     const handleUnitChange = (value) => {
         setSelectedUnit(value);
-        
+
         if (value === 'g') {
             setSelectedMeasure(null);
         } else {
@@ -420,19 +420,19 @@ const PatientAddFoodDialog = ({
                                             <>
                                                 <div className="divide-y">
                                                     {searchResults.map((food) => (
-                                                        <div
+                                                        <button type="button"
                                                             key={food.id}
-                                                            className="p-3 hover:bg-accent cursor-pointer transition-colors"
+                                                            className="w-full text-left p-3 hover:bg-accent cursor-pointer transition-colors"
                                                             onClick={() => handleFoodSelect(food)}
                                                         >
                                                             <div className="font-medium">{food.name}</div>
                                                             <div className="text-xs text-muted-foreground">
                                                                 {food.group} • {formatNutrient(food.calories)} kcal/100g
                                                             </div>
-                                                        </div>
+                                                        </button>
                                                     ))}
                                                 </div>
-                                                
+
                                                 {/* Infinite scroll trigger */}
                                                 {hasMore && (
                                                     <div ref={observerTarget} className="p-3 text-center">
@@ -504,7 +504,7 @@ const PatientAddFoodDialog = ({
                                             <SelectItem value="g">
                                                 Gramas (g)
                                             </SelectItem>
-                                            
+
                                             {/* Dynamic options from food_measures */}
                                             {selectedFood.food_measures && selectedFood.food_measures.length > 0 && (
                                                 <>
@@ -523,7 +523,7 @@ const PatientAddFoodDialog = ({
                                     {errors.unit && (
                                         <p className="text-xs text-destructive">{errors.unit}</p>
                                     )}
-                                    
+
                                     {/* Show real weight if measure is selected */}
                                     {realWeight && selectedUnit !== 'g' && selectedMeasure && quantity && (
                                         <div className="mt-2 p-2 bg-primary/5 rounded-md border border-primary/20">
@@ -532,7 +532,7 @@ const PatientAddFoodDialog = ({
                                             </p>
                                         </div>
                                     )}
-                                    
+
                                     {/* Show grams if direct input */}
                                     {realWeight && selectedUnit === 'g' && quantity && (
                                         <div className="mt-2 p-2 bg-muted/50 rounded-md">

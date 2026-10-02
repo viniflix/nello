@@ -83,7 +83,7 @@ function RecommendedAction({ insights, onAction }) {
                     <div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${isSuccess ? 'bg-emerald-100 text-emerald-700' : 'bg-orange-100 text-[#b75d1b]'}`}><Icon className="h-4 w-4" /></div>
                     <div className="min-w-0">
                         <div className="flex items-center gap-1">
-                            <p className={`text-[11px] font-bold uppercase tracking-[0.09em] ${isSuccess ? 'text-emerald-700' : 'text-[#9a531f]'}`}>Próxima ação recomendada</p>
+                            <p className={`text-xs font-bold uppercase tracking-[0.09em] ${isSuccess ? 'text-emerald-700' : 'text-[#9a531f]'}`}>Próxima ação recomendada</p>
                             <RecommendationInfo insight={insight} />
                         </div>
                         <p className="mt-0.5 text-base font-semibold leading-6 text-slate-900 sm:text-lg">{insight.title}</p>
@@ -126,7 +126,7 @@ function PlanCard({ context, onAction }) {
                                 ].map(([value, label]) => (
                                     <div key={label} className="rounded-lg bg-[#efeeec] px-2 py-2 text-center shadow-[inset_0_1px_3px_rgba(39,45,35,0.07)]">
                                         <p className="text-sm font-bold text-slate-800">{value == null ? '—' : Math.round(Number(value))}</p>
-                                        <p className="text-[10px] text-slate-600">{label}</p>
+                                        <p className="text-xs text-slate-600">{label}</p>
                                     </div>
                                 ))}
                             </div>

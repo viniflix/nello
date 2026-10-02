@@ -148,7 +148,7 @@ export default function TemplateManagerDialog({
                 nutritionistId,
                 selectedTemplate.name
             );
-            
+
             if (onTemplateApplied) {
                 const { data: newPlan, error: planError } = await getMealPlanById(newPlanId);
                 if (planError) logDiagnostic('error', 'components/meal-plan/TemplateManagerDialog.jsx:153', 'Protocolo criado, mas a leitura do plano falhou:', planError);
@@ -243,7 +243,7 @@ export default function TemplateManagerDialog({
                                             {t.tags && t.tags.length > 0 && (
                                                 <div className="flex flex-wrap gap-1 mt-2">
                                                     {t.tags.slice(0, 3).map((tag, i) => (
-                                                        <span key={i} className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-600">
+                                                        <span key={i} className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-600">
                                                             <Tag className="w-2.5 h-2.5 mr-1" />{tag}
                                                         </span>
                                                     ))}
@@ -378,14 +378,14 @@ export default function TemplateManagerDialog({
                                                             <span className="text-xs text-slate-400 flex-shrink-0">#{i + 1}</span>
                                                             <span className="text-sm font-medium text-slate-700 truncate">{meal.name}</span>
                                                             {meal.meal_time && (
-                                                                <Badge variant="outline" className="text-[10px] py-0 px-1.5 flex-shrink-0">{meal.meal_time}</Badge>
+                                                                <Badge variant="outline" className="text-xs py-0 px-1.5 flex-shrink-0">{meal.meal_time}</Badge>
                                                             )}
                                                         </div>
                                                         <div className="flex items-center gap-2 flex-shrink-0 ml-2">
                                                             <span className="text-xs text-slate-400">{meal.foods?.length || 0} alim.</span>
                                                             <span className="text-xs font-semibold text-emerald-700">{Math.round(meal.calories || 0)} kcal</span>
                                                             {(meal.foods || []).some(f => !f.food || f.food.is_active === false) && (
-                                                                <Badge variant="destructive" className="text-[10px] py-0 px-1 bg-red-100 text-red-700 border-red-200">
+                                                                <Badge variant="destructive" className="text-xs py-0 px-1 bg-red-100 text-red-700 border-red-200">
                                                                     ⚠ Aviso
                                                                 </Badge>
                                                             )}

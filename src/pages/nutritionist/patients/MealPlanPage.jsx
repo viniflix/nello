@@ -82,7 +82,7 @@ const MealPlanPage = () => {
         versionsExpanded, setVersionsExpanded,
         energyCalculation,
         syncFlags, setSyncFlags,
-        
+
         handleDiscardPendingDraft,
         handleDiscardAllDrafts,
         handleResumePendingDraft,
@@ -99,7 +99,7 @@ const MealPlanPage = () => {
         handleDelete,
         handleSaveAsTemplate,
         handleRestoreVersion,
-        
+
         formatDate,
         getDaysLabel,
         formatRelativeTime,
@@ -166,7 +166,7 @@ const MealPlanPage = () => {
     if (loading) {
         return (
             <div className="container mx-auto px-4 py-8 max-w-6xl space-y-6">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap gap-3 items-center justify-between">
                     <Skeleton className="h-8 w-24" />
                     <Skeleton className="h-10 w-32" />
                 </div>
@@ -237,7 +237,7 @@ const MealPlanPage = () => {
 
             {/* Header */}
             <div className="flex flex-col gap-4 mb-6">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap gap-3 items-center justify-between">
                     <Button
                         variant="ghost"
                         size="sm"
@@ -256,7 +256,7 @@ const MealPlanPage = () => {
                     <div className="flex-1 min-w-0">
                         <h1 className="text-2xl sm:text-3xl font-bold text-foreground flex items-center gap-2">
                             <Utensils className="h-6 w-6 shrink-0 text-[#5f6f52] sm:h-8 sm:w-8" />
-                            <span className="min-w-0 leading-tight">Planos Alimentares</span>
+                            <span className="min-w-0 break-words leading-tight">Planos Alimentares</span>
                         </h1>
                         <p className="text-sm text-muted-foreground mt-1">
                             Gerencie os planos alimentares do paciente
@@ -270,9 +270,9 @@ const MealPlanPage = () => {
                                 <Badge variant="outline" className="ml-1 h-5 min-w-[20px] px-1 justify-center border-[#5f6f52] text-[#5f6f52] font-black">{plans.length}</Badge>
                             </Button>
                         )}
-                        <Button 
-                            size="sm" 
-                            onClick={() => setNewPlanChoiceOpen(true)} 
+                        <Button
+                            size="sm"
+                            onClick={() => setNewPlanChoiceOpen(true)}
                             className="flex-1 sm:flex-initial h-10 px-6 font-bold bg-primary hover:bg-primary/90 text-white transition-all active:scale-95 shadow-sm"
                         >
                             <Plus className="h-4 w-4 mr-2" />
@@ -285,7 +285,7 @@ const MealPlanPage = () => {
             <div className="flex flex-col gap-[3px]">
                 {/* Centro de Notificações Inteligentes */}
                 {!showForm && (
-                    <NotificationCenter 
+                    <NotificationCenter
                         isDiscarding={discardingDraft}
                         pendingDrafts={pendingDrafts}
                         syncFlags={syncFlags}
@@ -388,12 +388,12 @@ const MealPlanPage = () => {
                         <AlertDialogCancel onClick={() => setDraftToDelete(null)}>
                             Manter rascunho
                         </AlertDialogCancel>
-                        <AlertDialogAction 
+                        <AlertDialogAction
                             onClick={async () => {
                                 const id = draftToDelete.id;
                                 setDraftToDelete(null);
                                 await handleDiscardPendingDraft(id);
-                            }} 
+                            }}
                             className="bg-destructive hover:bg-destructive/90"
                         >
                             {discardingDraft ? 'Descartando...' : 'Descartar rascunho'}
@@ -416,8 +416,8 @@ const MealPlanPage = () => {
                         <AlertDialogCancel onClick={() => setDiscardAllDraftsDialogOpen(false)}>
                             Cancelar
                         </AlertDialogCancel>
-                        <AlertDialogAction 
-                            onClick={handleDiscardAllDrafts} 
+                        <AlertDialogAction
+                            onClick={handleDiscardAllDrafts}
                             className="bg-destructive hover:bg-destructive/90"
                         >
                             {discardingDraft ? 'Descartando...' : 'Descartar Tudo'}
@@ -528,7 +528,7 @@ const MealPlanPage = () => {
                         </DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-3 py-4">
-                        <Card
+                        <Card as="button" type="button"
                             className="cursor-pointer hover:bg-accent/50 transition-colors border-2 hover:border-primary"
                             onClick={() => handleExportPDF(false)}
                         >
@@ -545,7 +545,7 @@ const MealPlanPage = () => {
                             </CardContent>
                         </Card>
 
-                        <Card
+                        <Card as="button" type="button"
                             className="cursor-pointer hover:bg-accent/50 transition-colors border-2 hover:border-primary"
                             onClick={() => handleExportPDF(true)}
                         >
@@ -582,7 +582,7 @@ const MealPlanPage = () => {
                         </DialogDescription>
                     </DialogHeader>
                     <div className="grid grid-cols-1 gap-3 py-2">
-                        <Card
+                        <Card as="button" type="button"
                             className="cursor-pointer hover:bg-accent/50 transition-colors border-2 hover:border-primary"
                             onClick={() => {
                                 setNewPlanChoiceOpen(false);
@@ -604,7 +604,7 @@ const MealPlanPage = () => {
                             </CardContent>
                         </Card>
 
-                        <Card
+                        <Card as="button" type="button"
                             className="cursor-pointer hover:bg-accent/50 transition-colors border-2 hover:border-primary"
                             onClick={() => {
                                 setNewPlanChoiceOpen(false);

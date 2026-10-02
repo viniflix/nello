@@ -80,7 +80,7 @@ export default function ServicesManager({ open, onOpenChange, nutritionistId }) 
 
     const handleSaveService = async (e) => {
         e.preventDefault();
-        
+
         if (!formData.name || !formData.price) {
             toast({
                 title: "Erro",
@@ -139,7 +139,7 @@ export default function ServicesManager({ open, onOpenChange, nutritionistId }) 
     return (
         <>
             <Dialog open={open} onOpenChange={onOpenChange}>
-                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                <DialogContent className="max-w-4xl max-h-[90dvh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle>Gerenciar Serviços</DialogTitle>
                     </DialogHeader>
@@ -162,7 +162,7 @@ export default function ServicesManager({ open, onOpenChange, nutritionistId }) 
                         ) : (
                             <Card>
                                 <CardContent className="p-0">
-                                    <Table>
+                                    <Table aria-label="Serviços" mobileLabels={["Nome", "Descrição", "Categoria", "Preço", "Ações"]}>
                                         <TableHeader>
                                             <TableRow>
                                                 <TableHead>Nome</TableHead>

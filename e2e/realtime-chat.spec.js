@@ -19,8 +19,11 @@ test('switching the chat recipient cannot display the previous conversation',asy
 test('patient badge and notification panel share an exact count beyond the 200-row window',async({page})=>{
  const {execFileSync}=await import('node:child_process');const user=fixture.personas['patient-a'].id;
  const sql=input=>execFileSync('docker',['exec','-i','-e','PGPASSWORD=postgres','supabase_db_nello-reconstruction','psql','-X','-t','-A','-h','127.0.0.1','-U','supabase_admin','-d','postgres','-v','ON_ERROR_STOP=1'],{input,encoding:'utf8'}).trim();
+ // Login also schedules a reminder; await its real response before measuring.
+ const reminder = page.waitForResponse(response => response.url().includes('/rpc/process_patient_reminders') && response.status() === 200);
+ await login(page,'patient-a');await reminder;
  const before=Number(sql(`select count(*) from public.notifications where user_id='${user}' and is_read=false;`));
- await login(page,'patient-a');await expect.poll(()=>page.evaluate(()=>window.patientNotifications?.unreadCount)).toBe(before);
+ await expect.poll(()=>page.evaluate(()=>window.patientNotifications?.unreadCount)).toBe(before);
  try {
   sql(`insert into public.notifications(user_id,type,content) select '${user}','info','{"message":"Synthetic Wave8 count"}'::jsonb from generate_series(1,205);`);
   await expect.poll(()=>page.evaluate(()=>window.patientNotifications?.unreadCount)).toBe(before+205);

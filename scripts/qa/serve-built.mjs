@@ -32,8 +32,12 @@ createServer(async(req,res)=>{
   try{file=path.resolve(servingRoot,'.'+decodeURIComponent(relative));}catch{res.writeHead(400).end();return;}
   if (file!==servingRoot&&!file.startsWith(servingRoot+path.sep)) {res.writeHead(400).end();return;}
   if(path.extname(file)&&!existsSync(file)){res.writeHead(404).end();return;}
-  if(!existsSync(file)&&!matchesApplicationPath(requestPath,routing.rewrites)){res.writeHead(404).end();return;}
+  if(!existsSync(file)&&!matchesApplicationPath(requestPath,routing.rewrites)){
+    if(req.headers.accept?.includes('text/html')) res.writeHead(404,{'content-type':'text/html'}).end(readFileSync(path.join(root,'404.html')));
+    else res.writeHead(404).end();
+    return;
+  }
   const target=existsSync(file)&&path.extname(file)?file:path.join(root,'index.html');
-  const type={'.html':'text/html','.js':'application/javascript','.css':'text/css','.txt':'text/plain','.xml':'application/xml','.png':'image/png','.ico':'image/x-icon','.svg':'image/svg+xml','.webp':'image/webp','.woff2':'font/woff2'}[path.extname(target)]||'application/octet-stream';
+  const type={'.html':'text/html','.js':'application/javascript','.css':'text/css','.txt':'text/plain','.xml':'application/xml','.webmanifest':'application/manifest+json','.png':'image/png','.ico':'image/x-icon','.svg':'image/svg+xml','.webp':'image/webp','.woff2':'font/woff2'}[path.extname(target)]||'application/octet-stream';
   try {res.writeHead(200,{'content-type':type,'cache-control':'no-store'});res.end(readFileSync(target));} catch {res.writeHead(404).end();}
 }).listen(4173,'127.0.0.1');

@@ -52,7 +52,7 @@ const NutritionistProfilePage = () => {
 
     if (loading || !user) {
         return (
-            <div className="min-h-screen bg-background overflow-x-hidden">
+            <div className="min-h-dvh bg-background overflow-x-hidden">
                 <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 md:py-8 min-w-0 space-y-6">
                     <PageHeaderSkeleton />
                     <FormSkeleton fields={4} />
@@ -65,7 +65,7 @@ const NutritionistProfilePage = () => {
     const currentProfile = profile || {};
 
     return (
-        <div className="min-h-screen bg-background overflow-x-hidden">
+        <div className="min-h-dvh bg-background overflow-x-hidden">
             <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 md:py-8 min-w-0">
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}

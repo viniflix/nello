@@ -34,8 +34,8 @@ export function MealPlanAlertsBar({ patientId }) {
             hasAllergies ? 'border-red-200 bg-red-50' : 'border-amber-200 bg-amber-50'
         )}>
             {/* Header da barra */}
-            <div
-                className="flex items-center gap-3 px-4 py-3 cursor-pointer select-none"
+            <button type="button"
+                className="w-full text-left flex items-center gap-3 px-4 py-3 cursor-pointer select-none"
                 onClick={() => setExpanded(e => !e)}
             >
                 <div className={cn(
@@ -73,7 +73,7 @@ export function MealPlanAlertsBar({ patientId }) {
                         <X className="w-3.5 h-3.5 text-slate-400" />
                     </button>
                 </div>
-            </div>
+            </button>
 
             {/* Conteúdo expandido */}
             {expanded && (

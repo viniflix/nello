@@ -2,12 +2,12 @@ import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { ACTIVITY_FACTORS, PAL_REFERENCE } from '@/lib/utils/energy-calculations';
-import { 
-    Sofa, 
-    Footprints, 
-    Activity, 
-    Dumbbell, 
-    Zap 
+import {
+    Sofa,
+    Footprints,
+    Activity,
+    Dumbbell,
+    Zap
 } from 'lucide-react';
 
 const ACTIVITY_ICONS = {
@@ -42,18 +42,18 @@ export default function ActivityLevelSelector({ value, onChange }) {
             {ACTIVITY_FACTORS.map((factor) => {
                 const Icon = ACTIVITY_ICONS[factor.value] || Activity;
                 const isSelected = value === factor.value;
-                
+
                 return (
-                    <Card
+                    <Card as="button" type="button"
                         key={factor.value}
                         className={cn(
                             "cursor-pointer transition-all duration-200",
-                            isSelected 
+                            isSelected
                                 ? SELECTED_COLORS[factor.value] || 'border-primary ring-2 ring-primary'
                                 : ACTIVITY_COLORS[factor.value] || 'border-gray-300 hover:bg-gray-50'
                         )}
-                        role="button" tabIndex={0} aria-pressed={isSelected}
-                        onKeyDown={event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();onChange?.(factor.value);}}}
+                          aria-pressed={isSelected}
+
                         onClick={() => onChange && onChange(factor.value)}
                     >
                         <CardContent className="p-4">
@@ -75,8 +75,8 @@ export default function ActivityLevelSelector({ value, onChange }) {
                                 </div>
                                 <div className={cn(
                                     "text-xs font-mono px-2 py-1 rounded",
-                                    isSelected 
-                                        ? "bg-primary text-primary-foreground" 
+                                    isSelected
+                                        ? "bg-primary text-primary-foreground"
                                         : "bg-muted text-muted-foreground"
                                 )}>
                                     x{factor.value}

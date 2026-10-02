@@ -150,7 +150,7 @@ export default function PendingPaymentsWidget({ nutritionistId, onUpdate }) {
             <Card id="pending-payments" className="mb-6 border-2 border-orange-200 dark:border-orange-800 bg-orange-50/50 dark:bg-orange-950/20 overflow-hidden">
                 <CardHeader className="pb-3">
                     <div className="flex items-center gap-2 min-w-0">
-                        <AlertCircle className="w-5 h-5 text-orange-600 dark:text-orange-400 shrink-0" />
+                        <AlertCircle className="w-5 h-5 text-orange-700 dark:text-orange-400 shrink-0" />
                         <CardTitle className="text-base md:text-lg font-semibold text-orange-900 dark:text-orange-100 break-words">
                             Pagamentos Pendentes
                         </CardTitle>
@@ -191,16 +191,16 @@ export default function PendingPaymentsWidget({ nutritionistId, onUpdate }) {
                                                 Vence {formatTransactionDate(dueDate)}
                                             </span>
                                             <span>•</span>
-                                            <span className="font-semibold text-orange-600 dark:text-orange-400">
+                                            <span className="font-semibold text-orange-700 dark:text-orange-400">
                                                 {formatCurrency(transaction.amount)}
                                             </span>
                                         </div>
                                     </div>
-                                    <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+                                    <div className="flex flex-col sm:flex-row flex-wrap gap-2 w-full sm:w-auto">
                                         <Button
                                             size="sm"
                                             onClick={() => setConfirmDialog(transaction.id)}
-                                            className="flex-1 sm:flex-initial bg-primary hover:bg-primary/90 text-primary-foreground"
+                                            className="min-h-11 h-auto py-2 sm:flex-initial bg-primary hover:bg-primary/90 text-primary-foreground"
                                         >
                                             <CheckCircle2 className="w-4 h-4 mr-1.5" />
                                             <span className="hidden sm:inline">Confirmar Pagamento</span>
@@ -210,7 +210,7 @@ export default function PendingPaymentsWidget({ nutritionistId, onUpdate }) {
                                             size="sm"
                                             variant="outline"
                                             onClick={() => setRescheduleDialog({ id: transaction.id, date: dueDate })}
-                                            className="flex-1 sm:flex-initial"
+                                            className="min-h-11 h-auto py-2 sm:flex-initial"
                                         >
                                             <Calendar className="w-4 h-4 mr-1.5" />
                                             <span className="hidden sm:inline">Reagendar</span>
@@ -220,7 +220,7 @@ export default function PendingPaymentsWidget({ nutritionistId, onUpdate }) {
                                             size="sm"
                                             variant="outline"
                                             onClick={() => setCancelDialog(transaction.id)}
-                                            className="flex-1 sm:flex-initial text-destructive hover:text-destructive hover:bg-destructive/10"
+                                            className="min-h-11 h-auto py-2 sm:flex-initial text-destructive hover:text-destructive hover:bg-destructive/10"
                                         >
                                             <XCircle className="w-4 h-4 mr-1.5" />
                                             <span className="hidden sm:inline">Cancelar</span>

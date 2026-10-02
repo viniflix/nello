@@ -100,7 +100,7 @@ function AdminMfa({ onVerified }) {
     : qr?.startsWith('data:image/svg+xml;') ? qr : null;
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
+    <div className="flex min-h-dvh items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md border-border shadow-sm">
         <CardHeader className="space-y-3">
           <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary"><ShieldCheck /></div>
@@ -190,7 +190,7 @@ export default function AdminAccessGate({ children }) {
   }, [userId]);
 
   if (isOffline || error) return <div role="alert" className="p-8 text-center text-sm text-destructive">A conexão segura com o painel não pôde ser validada. Atualize a página quando estiver online.</div>;
-  if (!access || access.userId !== userId) return <div className="flex min-h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+  if (!access || access.userId !== userId) return <div className="flex min-h-dvh items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   if (!access.status.eligible) return <Navigate to={getHomePath(user)} replace />;
   if (!access.status.authorized) return <AdminMfa onVerified={refresh} />;
   return children;

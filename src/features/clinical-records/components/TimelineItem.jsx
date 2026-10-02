@@ -67,15 +67,15 @@ export default function TimelineItem({ item, patientSlug }) {
     ? `${format(occurredAt, "dd 'de' MMMM, yyyy", { locale: ptBR })} às ${format(occurredAt, 'HH:mm')}`
     : 'Data não informada';
   const content = (
-    <CardContent className="p-4 sm:p-5">
+    <CardContent className="p-2 sm:p-5 min-w-0 break-words">
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-2">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2 mb-1">
             <h4 className="font-semibold text-slate-800 text-base">{safeTitle}</h4>
           </div>
-          <div className="flex items-center text-xs text-slate-500 gap-1"><Calendar className="w-3 h-3" aria-hidden="true" /><span>{dateLabel}</span></div>
+          <div className="flex items-center text-xs text-slate-500 gap-1"><Calendar className="w-3 h-3 shrink-0" aria-hidden="true" /><span className="min-w-0">{dateLabel}</span></div>
         </div>
-        <Badge variant="secondary" className={cn('w-fit', ['completed', 'active', 'published', 'signed', 'finalized'].includes(item.status) ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-700')}>{STATUS_LABELS[item.status] || 'Registrado'}</Badge>
+        <Badge variant="secondary" className={cn('w-fit max-w-full whitespace-normal', ['completed', 'active', 'published', 'signed', 'finalized'].includes(item.status) ? 'bg-green-100 hover:bg-green-100 text-green-700' : 'bg-slate-100 hover:bg-slate-100 text-slate-700')}>{STATUS_LABELS[item.status] || 'Registrado'}</Badge>
       </div>
       <p className="text-sm text-slate-600 line-clamp-2 mt-2">{safeSummary || 'Registro do atendimento.'}</p>
       {route && <div className="mt-4 flex justify-end text-xs font-medium items-center text-slate-500 group-hover:text-blue-600">Ver detalhes <ChevronRight className="w-3 h-3 ml-1" aria-hidden="true" /></div>}
@@ -83,10 +83,10 @@ export default function TimelineItem({ item, patientSlug }) {
   );
 
   return (
-    <div className="relative pl-8 pb-8 group">
-      <div className="absolute top-0 bottom-0 left-[15px] w-px bg-slate-200 group-last:bg-transparent" aria-hidden="true" />
-      <div className={cn('absolute top-0 left-0 w-8 h-8 rounded-full flex items-center justify-center border-2 ring-4 ring-white z-10', config.bgClass, config.borderClass)} aria-hidden="true"><Icon className={cn('w-4 h-4', config.textClass)} /></div>
-      <Card className={cn('ml-4 border-l-4', config.accentClass, route && 'transition-all duration-200 hover:shadow-md')}>
+    <div className="relative sm:pl-8 pb-8 group">
+      <div className="hidden sm:block absolute top-0 bottom-0 left-[15px] w-px bg-slate-200 group-last:bg-transparent" aria-hidden="true" />
+      <div className={cn('hidden sm:flex absolute top-0 left-0 w-8 h-8 rounded-full items-center justify-center border-2 ring-4 ring-white z-10', config.bgClass, config.borderClass)} aria-hidden="true"><Icon className={cn('w-4 h-4', config.textClass)} /></div>
+      <Card className={cn('sm:ml-4 border-l-4', config.accentClass, route && 'transition-all duration-200 hover:shadow-md')}>
         {route ? <button type="button" className="block w-full text-left rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500" onClick={() => navigate(route)} aria-label={`Ver detalhes de ${item.title}`}>{content}</button> : content}
       </Card>
     </div>

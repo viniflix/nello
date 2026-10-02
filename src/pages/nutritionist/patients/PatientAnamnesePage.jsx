@@ -28,24 +28,24 @@ export default function PatientAnamnesePage() {
 
   const getTemplateScore = React.useCallback((template) => {
     if (!patientData) return 0;
-    
+
     let score = 0;
     const title = (template.title || '').toLowerCase();
-    
+
     let age = null;
     if (patientData.birth_date) {
       age = civilAge(patientData.birth_date);
     }
     const rawGender = (patientData?.gender || patientData?.sex || patientData?.biological_sex || 'unknown').toLowerCase();
-    
+
     if (rawGender.startsWith('f') && (title.includes('mulher') || title.includes('feminin'))) score += 10;
     if (rawGender.startsWith('m') && (title.includes('homem') || title.includes('masculin'))) score += 10;
-    
+
     if (age !== null && age < 12 && (title.includes('criança') || title.includes('infantil') || title.includes('pediatr'))) score += 10;
     if (age !== null && age >= 12 && age < 18 && title.includes('adolescente')) score += 10;
     if (age !== null && age >= 60 && title.includes('idoso')) score += 10;
     if (age !== null && age >= 18 && age < 60 && title.includes('adulto')) score += 10;
-    
+
     return score;
   }, [patientData]);
 
@@ -106,7 +106,7 @@ export default function PatientAnamnesePage() {
     <div className="container mx-auto p-4 sm:p-6 max-w-7xl space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap gap-3 items-center justify-between">
           <Button
             variant="ghost"
             size="sm"
@@ -116,12 +116,12 @@ export default function PatientAnamnesePage() {
             <ArrowLeft className="w-4 h-4 shrink-0" />
             Voltar
           </Button>
-          <div className="text-right flex-shrink-0">
+          <div className="text-right max-w-full">
             <Button
               onClick={() => setIsTemplateModalOpen(true)}
               disabled={!canWriteDisplayedEpisode}
               aria-describedby={!canWriteDisplayedEpisode ? 'anamnesis-write-restriction' : undefined}
-              className="gap-2 bg-[#5f6f52] hover:bg-[#4a5740]"
+              className="gap-2 max-w-full h-auto min-h-11 py-2 bg-[#5f6f52] hover:bg-[#4a5740]"
             >
               <Plus className="w-4 h-4" />Nova Anamnese
             </Button>
@@ -130,10 +130,10 @@ export default function PatientAnamnesePage() {
 
         <div className="flex-1 min-w-0">
           <div className="flex justify-between items-start">
-            <div>
+            <div className="min-w-0">
               <h1 className="text-2xl sm:text-3xl font-bold text-foreground flex items-center gap-2">
-                <FileText className="w-6 h-6 sm:w-8 sm:h-8 text-[#5f6f52]" />
-                <span className="break-words">Prontuário & Histórico</span>
+                <FileText className="w-6 h-6 shrink-0 sm:w-8 sm:h-8 text-[#5f6f52]" />
+                <span className="min-w-0 break-words">Prontuário & Histórico</span>
               </h1>
               <p className="text-sm text-muted-foreground mt-2">
                 Linha do tempo do episódio de atendimento selecionado.
@@ -149,19 +149,19 @@ export default function PatientAnamnesePage() {
       </div>
 
       <Tabs defaultValue="historico" className="w-full">
-        <TabsList className="mb-6 bg-slate-100/50 p-1">
-          <TabsTrigger value="historico" className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm">
+        <TabsList className="mb-6 w-full h-auto flex-wrap gap-1 bg-slate-100/50 p-1">
+          <TabsTrigger value="historico" className="flex max-w-full whitespace-normal items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm">
             <List className="w-4 h-4" />
             Histórico e Prontuário
           </TabsTrigger>
-          <TabsTrigger value="evolucao" className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm">
+          <TabsTrigger value="evolucao" className="flex max-w-full whitespace-normal items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm">
             <Activity className="w-4 h-4" />
             Evolução de Sintomas
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="historico">
-          <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 md:p-6 mb-8">
+          <div className="bg-slate-50 border border-slate-200 rounded-xl p-2 sm:p-4 md:p-6 mb-8">
             {foundationQuery.error ? (
               <div role="alert" className="p-4 bg-red-50 border border-red-200 rounded-md text-red-700 text-sm space-y-3">
                 <p>Não foi possível determinar o episódio deste atendimento.</p>
@@ -187,7 +187,7 @@ export default function PatientAnamnesePage() {
             <DialogDescription>Selecione qual formulário deseja preencher para este paciente.</DialogDescription>
           </DialogHeader>
           {loadingTemplates ? <div className="py-8"><SimpleListSkeleton /></div> : (
-            <div className="space-y-3 mt-4 max-h-[60vh] overflow-y-auto pr-2">
+            <div className="space-y-3 mt-4 max-h-[60dvh] overflow-y-auto pr-2">
               {sortedTemplates?.map((template) => {
                 const isRecommended = getTemplateScore(template) >= 5;
                 return (
@@ -195,9 +195,9 @@ export default function PatientAnamnesePage() {
                   <span>
                     <span className="font-semibold text-slate-800 flex items-center gap-2">
                       {template.title}
-                      {isRecommended && <Badge className="bg-amber-100 text-amber-800 border-amber-200 text-[10px]">⭐ Recomendado</Badge>}
-                      {template.is_system_default && !isRecommended && <Badge variant="secondary" className="text-[10px]">Nello</Badge>}
-                      {!template.is_system_default && <Badge variant="outline" className="text-[10px]">Customizado</Badge>}
+                      {isRecommended && <Badge className="bg-amber-100 text-amber-800 border-amber-200 text-xs">⭐ Recomendado</Badge>}
+                      {template.is_system_default && !isRecommended && <Badge variant="secondary" className="text-xs">Nello</Badge>}
+                      {!template.is_system_default && <Badge variant="outline" className="text-xs">Customizado</Badge>}
                     </span>
                     <span className="block text-xs text-slate-500 mt-1 line-clamp-1">{template.description || 'Sem descrição'}</span>
                   </span>

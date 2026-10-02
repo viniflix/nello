@@ -240,14 +240,14 @@ export default function ProgressPhotosPage() {
 
     if (resolveLoading || !patientId) {
         return (
-            <div className="min-h-screen bg-background flex items-center justify-center">
+            <div className="min-h-dvh bg-background flex items-center justify-center">
                 <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
             </div>
         );
     }
     if (resolveError) {
         return (
-            <div className="min-h-screen bg-background p-4">
+            <div className="min-h-dvh bg-background p-4">
                 <p className="text-destructive">Paciente não encontrado.</p>
                 <Button variant="outline" onClick={() => navigate('/nutritionist/patients')} className="gap-2">
                   <ArrowLeft className="w-4 h-4 shrink-0" />
@@ -262,7 +262,7 @@ export default function ProgressPhotosPage() {
     );
 
     return (
-        <div className="min-h-screen bg-background overflow-x-hidden">
+        <div className="min-h-dvh bg-background overflow-x-hidden">
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 md:py-8 min-w-0">
                 <div className="flex items-center gap-2 md:gap-4 mb-6 min-w-0">
                     <Button
@@ -361,12 +361,11 @@ export default function ProgressPhotosPage() {
                                                     key={photo.id}
                                                     className="relative group rounded-lg overflow-hidden border border-border bg-muted aspect-[3/4]"
                                                 >
-                                                    <img
+                                                    <button type="button" className="w-full h-full" aria-label={`Ampliar foto de ${format(new Date(photo.photo_date), 'dd/MM/yyyy')}`} onClick={() => setLightboxPhoto(photo)}><img
                                                         src={photo.photo_url}
                                                         alt={format(new Date(photo.photo_date), 'dd/MM/yyyy')}
                                                         className="w-full h-full object-cover cursor-pointer"
-                                                        onClick={() => setLightboxPhoto(photo)}
-                                                    />
+                                                    /></button>
                                                     <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 to-transparent p-3">
                                                         <div className="flex items-center justify-between gap-1 mb-0.5">
                                                             <p className="text-xs font-medium text-white">
@@ -374,7 +373,7 @@ export default function ProgressPhotosPage() {
                                                             </p>
                                                             <Badge
                                                                 variant="secondary"
-                                                                className="text-[10px] h-5 px-1.5 bg-white/20 text-white border-0"
+                                                                className="text-xs h-5 px-1.5 bg-white/20 text-white border-0"
                                                             >
                                                                 {isFromPatient ? (
                                                                     <><User className="w-2.5 h-2.5 mr-0.5" /> Paciente</>
@@ -384,7 +383,7 @@ export default function ProgressPhotosPage() {
                                                             </Badge>
                                                         </div>
                                                         {photo.notes && (
-                                                            <p className="text-[10px] text-white/90 line-clamp-2">{photo.notes}</p>
+                                                            <p className="text-xs text-white/90 line-clamp-2">{photo.notes}</p>
                                                         )}
                                                     </div>
                                                     <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -543,7 +542,7 @@ export default function ProgressPhotosPage() {
                             <img
                                 src={lightboxPhoto.photo_url}
                                 alt={format(new Date(lightboxPhoto.photo_date), 'dd/MM/yyyy')}
-                                className="w-full max-h-[85vh] object-contain rounded-lg"
+                                className="w-full max-h-[85dvh] object-contain rounded-lg"
                             />
                             <div className="text-center py-2 space-y-1">
                                 <p className="font-medium">{format(new Date(lightboxPhoto.photo_date), "dd/MM/yyyy", { locale: ptBR })}</p>

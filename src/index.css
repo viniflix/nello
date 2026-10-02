@@ -38,7 +38,7 @@
   }
 
   .patient-page-title {
-    @apply font-heading text-2xl font-bold uppercase tracking-wide text-primary sm:text-3xl;
+    @apply font-heading text-2xl font-bold tracking-wide text-primary sm:text-3xl;
   }
 
   .patient-dialog-content {
@@ -46,7 +46,7 @@
   }
 
   .patient-dialog-title {
-    @apply font-heading text-lg font-bold uppercase tracking-wide text-primary sm:text-xl;
+    @apply font-heading text-lg font-bold tracking-wide text-primary sm:text-xl;
   }
 }
 
@@ -68,7 +68,7 @@
     /* Cores primárias e secundárias (OK) */
     --primary: 100 31% 32%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 26 95% 48%;
+    --secondary: 26 90% 34%;
     --secondary-foreground: 0 0% 100%;
 
     /* TEXTO "MUTED" (Correção de Contraste) */
@@ -107,10 +107,10 @@
 
     --primary: 100 31% 38%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 26 95% 48%;
+    --secondary: 26 90% 34%;
     --secondary-foreground: 0 0% 100%;
 
-    --muted: 24 5.9% 10%; 
+    --muted: 24 5.9% 10%;
     --muted-foreground: 24 5.4% 63.9%; /* stone-400 */
 
     --accent: 24 5.9% 15%; /* stone-800 */
@@ -135,17 +135,17 @@
 
   /* Estilo base para os Títulos (ClashDisplay) */
   h1, h2, h3, h4, h5, h6 {
-    @apply font-heading font-semibold uppercase tracking-wide;
+    @apply font-heading font-semibold tracking-wide;
   }
 
   /* Evitar overflow horizontal em mobile (layout base) */
   html, body {
-    @apply overflow-x-hidden;
+    min-width: 0;
   }
 }
 
-/* 
-   Fix FINAL e ROBUSTO para Layout Shift: 
+/*
+   Fix FINAL e ROBUSTO para Layout Shift:
    1. Força a barra de rolagem a sempre existir, evitando mudança na largura da viewport.
    2. Neutraliza o padding-right que o Radix UI adiciona ao body.
 */
@@ -154,12 +154,12 @@ html {
   scrollbar-gutter: stable !important;
 }
 
-/* 
+/*
    Apenas o body e elementos que o Radix marca explicitamente como locker
-   devem ter o padding neutralizado, e NUNCA o margin-right, 
+   devem ter o padding neutralizado, e NUNCA o margin-right,
    pois o margin-right: auto é o que centraliza o layout.
 */
-body, 
+body,
 [data-radix-scroll-locker] {
   padding-right: 0px !important;
 }
@@ -203,4 +203,27 @@ body,
 .patient-hub-tab .shadow-xl,
 .patient-hub-tab .hover\:shadow-xl:hover {
   box-shadow: 0 4px 14px rgb(15 23 42 / 0.07) !important;
+}
+
+/* Functional controls stay usable with touch, text zoom and keyboard. */
+@layer base {
+  button, [role="button"], input:not([type="checkbox"]):not([type="radio"]), select, [role="combobox"] { min-height: 44px; }
+  button, [role="button"] { min-width: 44px; overflow-wrap: anywhere; }
+  :focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 3px; }
+  img, video { max-width: 100%; }
+  input, textarea, select { font-size: max(1rem, 16px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
+
+/* Preserve table headers and row/action contracts; narrow screens use labelled cards. */
+@media (max-width: 639px) {
+ table[data-responsive="cards"], table[data-responsive="cards"] tbody { display: block; width: 100%; }
+ table[data-responsive="cards"] thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+ table[data-responsive="cards"] tbody tr { display: block; padding: .75rem; border-bottom: 1px solid hsl(var(--border)); }
+ table[data-responsive="cards"] td { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; padding: .5rem 0; max-width: none; text-align: left; white-space: normal; overflow: visible; overflow-wrap: anywhere; }
+ table[data-responsive="cards"] td::before { content: attr(data-label); min-width: 6rem; font-weight: 600; color: hsl(var(--foreground)); }
+ table[data-responsive="cards"] td[data-span="all"]::before { content: none; }
+ table[data-responsive="cards"] td > div { min-width: 0; flex-wrap: wrap; }
 }

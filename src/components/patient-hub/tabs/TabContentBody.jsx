@@ -115,7 +115,7 @@ export default function TabContentBody({ patientId, patientData, modulesStatus =
                                 <div className="grid grid-cols-2 gap-2">
                                     {[['Antes', photos.first], ['Mais recente', photos.last]].map(([label, photo]) => <figure key={label} className="min-w-0 overflow-hidden rounded-lg border border-[#d8d5d0] bg-[#efeeec] shadow-inner">
                                         <img src={photo?.photo_url} alt={`Foto de progresso: ${label}`} className="aspect-[4/3] w-full object-cover" />
-                                        <figcaption className="px-2 py-2"><p className="text-xs font-semibold text-slate-700">{label}</p><p className="mt-0.5 text-[11px] text-slate-500">{formatDate(photo?.photo_date)}</p></figcaption>
+                                        <figcaption className="px-2 py-2"><p className="text-xs font-semibold text-slate-700">{label}</p><p className="mt-0.5 text-xs text-slate-500">{formatDate(photo?.photo_date)}</p></figcaption>
                                     </figure>)}
                                 </div>
                                 {photoWeightChange != null && <p className="text-xs leading-relaxed text-slate-500">Variação de peso entre as fotos: <span className="font-semibold text-slate-700">{photoWeightChange > 0 ? '+' : ''}{photoWeightChange.toFixed(1)} kg</span></p>}

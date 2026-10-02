@@ -35,7 +35,7 @@ export default function DocumentAuthenticityPage() {
   };
 
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-10 text-slate-900">
+    <main className="min-h-dvh bg-slate-50 px-4 py-10 text-slate-900">
       <div className="mx-auto max-w-2xl space-y-6">
         <header className="text-center"><div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-700"><FileCheck2 /></div><h1 className="mt-4 text-2xl font-bold uppercase">Verificar documento</h1><p className="mt-2 text-sm text-slate-600">Consulte a autenticidade sem expor dados do paciente ou o conteúdo clínico.</p></header>
         <Card><CardContent className="pt-6"><form className="flex flex-col gap-3 sm:flex-row" onSubmit={submit}><Input aria-label="Código de autenticidade" required value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Informe o código do documento" /><Button type="submit"><Search className="mr-2 h-4 w-4" />Verificar</Button></form></CardContent></Card>

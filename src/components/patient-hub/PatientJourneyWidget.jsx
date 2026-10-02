@@ -111,7 +111,7 @@ const PatientJourneyWidget = ({
                             <span className="text-sm font-bold text-[#5f6f52] truncate">
                                 Jornada Clínica
                             </span>
-                            <span className="px-1.5 py-0.5 rounded-full bg-[#a9b388]/20 text-[10px] sm:text-xs font-semibold text-[#5f6f52] border border-[#a9b388]/30 whitespace-nowrap">
+                            <span className="px-1.5 py-0.5 rounded-full bg-[#a9b388]/20 text-xs sm:text-xs font-semibold text-[#5f6f52] border border-[#a9b388]/30 whitespace-nowrap">
                                 {completedCount}/{totalCount}
                             </span>
                         </div>
@@ -136,8 +136,8 @@ const PatientJourneyWidget = ({
                     {nextStep && (
                         <div className="hidden lg:flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/60 border border-[#a9b388]/30">
                             <Circle className="w-2.5 h-2.5 text-[#c4661f] fill-[#c4661f]" />
-                            <span className="text-[10px] text-gray-600">Próximo:</span>
-                            <span className="text-[10px] font-semibold text-[#5f6f52] truncate max-w-[100px]">{nextStep.title}</span>
+                            <span className="text-xs text-gray-600">Próximo:</span>
+                            <span className="text-xs font-semibold text-[#5f6f52] truncate max-w-[100px]">{nextStep.title}</span>
                         </div>
                     )}
 
@@ -165,7 +165,7 @@ const PatientJourneyWidget = ({
                         <h3 className="text-sm font-bold text-[#5f6f52] truncate">
                             Guia de Atendimento
                         </h3>
-                        <p className="text-[10px] text-gray-600 mt-0.5 truncate">
+                        <p className="text-xs text-gray-600 mt-0.5 truncate">
                             Siga estas etapas para avaliação completa
                         </p>
                     </div>
@@ -182,7 +182,7 @@ const PatientJourneyWidget = ({
                             style={{ width: `${progressPercentage}%` }}
                         />
                     </div>
-                    <span className="text-[10px] font-bold text-gray-700 min-w-[2.5rem] text-right">
+                    <span className="text-xs font-bold text-gray-700 min-w-[2.5rem] text-right">
                         {progressPercentage}%
                     </span>
                 </div>
@@ -231,7 +231,7 @@ const PatientJourneyWidget = ({
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
                                     <span className={cn(
-                                        "text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded",
+                                        "text-xs sm:text-xs font-bold px-1.5 py-0.5 rounded",
                                         step.isComplete
                                             ? "bg-green-100 text-green-700"
                                             : isNext
@@ -241,10 +241,10 @@ const PatientJourneyWidget = ({
                                         ETAPA {index + 1}
                                     </span>
                                     {step.isComplete && (
-                                        <span className="text-[9px] sm:text-[10px] font-semibold text-green-600">✓ Concluída</span>
+                                        <span className="text-xs sm:text-xs font-semibold text-green-600">✓ Concluída</span>
                                     )}
                                     {isNext && !step.isComplete && (
-                                        <span className="text-[9px] sm:text-[10px] font-semibold text-[#c4661f] animate-pulse">• Pendente</span>
+                                        <span className="text-xs sm:text-xs font-semibold text-[#c4661f] animate-pulse">• Pendente</span>
                                     )}
                                 </div>
                                 <h4 className={cn(
@@ -253,7 +253,7 @@ const PatientJourneyWidget = ({
                                 )}>
                                     {step.title}
                                 </h4>
-                                <p className="text-[10px] sm:text-xs text-gray-600 truncate">
+                                <p className="text-xs sm:text-xs text-gray-600 truncate">
                                     {step.description}
                                 </p>
                             </div>
@@ -265,7 +265,7 @@ const PatientJourneyWidget = ({
                                         size="sm"
                                         onClick={() => navigate(step.route)}
                                         className={cn(
-                                            "h-7 sm:h-8 px-2 sm:px-3 text-[10px] sm:text-xs font-semibold",
+                                            "h-7 sm:h-8 px-2 sm:px-3 text-xs sm:text-xs font-semibold",
                                             "bg-gradient-to-r from-[#5f6f52] to-[#6d7e5f] hover:from-[#4a5841] hover:to-[#5f6f52]",
                                             "shadow-sm hover:shadow-md transition-all"
                                         )}
@@ -281,7 +281,7 @@ const PatientJourneyWidget = ({
                                         size="sm"
                                         variant="outline"
                                         onClick={() => navigate(step.route)}
-                                        className="h-7 sm:h-8 px-2 sm:px-3 text-[10px] sm:text-xs font-medium border-green-300 text-green-700 hover:bg-green-50"
+                                        className="h-7 sm:h-8 px-2 sm:px-3 text-xs sm:text-xs font-medium border-green-300 text-green-700 hover:bg-green-50"
                                     >
                                         <span className="hidden sm:inline">Revisar</span>
                                         <span className="sm:hidden">↻</span>

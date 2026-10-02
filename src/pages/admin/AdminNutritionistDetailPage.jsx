@@ -202,12 +202,12 @@ export default function AdminNutritionistDetailPage() {
                           <div className="flex flex-wrap items-center gap-2">
                             <p className="font-medium text-sm truncate">{patient.name || 'Sem nome'}</p>
                             {patient.goal && (
-                              <Badge variant="outline" className="text-[10px] font-normal">
+                              <Badge variant="outline" className="text-xs font-normal">
                                 {goalLabels[patient.goal] || patient.goal}
                               </Badge>
                             )}
                             {!patient.is_active && (
-                              <Badge variant="secondary" className="text-[10px]">Inativo</Badge>
+                              <Badge variant="secondary" className="text-xs">Inativo</Badge>
                             )}
                           </div>
                           <p className="text-xs text-muted-foreground truncate">{patient.email}</p>

@@ -170,7 +170,7 @@ export function AnamnesisLinkModal({ open, onOpenChange, patientId, patientName 
                                             <SelectItem key={t.id} value={t.id}>
                                                 {t.title}
                                                 {t.is_system_default && (
-                                                    <Badge variant="outline" className="ml-2 text-[10px]">Padrão</Badge>
+                                                    <Badge variant="outline" className="ml-2 text-xs">Padrão</Badge>
                                                 )}
                                             </SelectItem>
                                         ))}

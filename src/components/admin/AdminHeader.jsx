@@ -78,7 +78,7 @@ export default function AdminHeader() {
           <div className="md:hidden">
             <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-9 w-9"><Menu className="h-5 w-5" /></Button>
+                <Button aria-label="Abrir navegação administrativa" variant="ghost" size="icon" className="h-11 w-11"><Menu className="h-5 w-5" /></Button>
               </SheetTrigger>
               <SheetContent side="left" className="w-72 p-0">
                 <SheetHeader className="p-6 border-b">
@@ -92,7 +92,7 @@ export default function AdminHeader() {
                 <nav className="flex flex-col p-2 pt-4">
                   {NAV_ITEMS.map((group) => (
                     <div key={group.section} className="mb-4">
-                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider px-4 mb-2">{group.section}</p>
+                      <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider px-4 mb-2">{group.section}</p>
                       {group.items.map((item) => {
                         const IconComponent = item.icon;
                         return (
@@ -118,7 +118,7 @@ export default function AdminHeader() {
             </Sheet>
           </div>
 
-          <Link to="/admin/dashboard" className="flex items-center gap-2">
+          <Link aria-label="Nello — Administração" to="/admin/dashboard" className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
               <Shield className="w-4 h-4 text-primary" />
             </div>
@@ -158,10 +158,10 @@ export default function AdminHeader() {
         <div className="flex items-center gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="relative">
+              <Button aria-label="Notificações administrativas" variant="ghost" size="icon" className="relative">
                 <Bell className="h-5 w-5" />
                 {unreadCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 rounded-full bg-destructive px-1 text-[10px] font-bold text-white leading-4 text-center">
+                  <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 rounded-full bg-destructive px-1 text-xs font-bold text-white leading-4 text-center">
                     {unreadCount > 9 ? '9+' : unreadCount}
                   </span>
                 )}
@@ -171,8 +171,8 @@ export default function AdminHeader() {
               <div className="border-b px-3 py-2 flex items-center justify-between">
                 <p className="text-sm font-semibold">Notificações</p>
                 <div className="flex gap-1">
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleMarkAllAsRead}><Check className="h-3.5 w-3.5" /></Button>
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleClearRead}><Trash2 className="h-3.5 w-3.5" /></Button>
+                  <Button aria-label="Marcar notificações como lidas" variant="ghost" size="icon" className="h-7 w-7" onClick={handleMarkAllAsRead}><Check className="h-3.5 w-3.5" /></Button>
+                  <Button aria-label="Limpar notificações lidas" variant="ghost" size="icon" className="h-7 w-7" onClick={handleClearRead}><Trash2 className="h-3.5 w-3.5" /></Button>
                 </div>
               </div>
               <div className="max-h-60 overflow-y-auto p-2">
@@ -195,7 +195,7 @@ export default function AdminHeader() {
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="relative h-9 w-9 rounded-full p-0">
+              <Button aria-label="Abrir menu da conta" variant="ghost" className="relative h-11 w-11 rounded-full p-0">
                 {user.profile?.avatar_url ? (
                   <div className="h-9 w-9 rounded-full border-2 border-primary/40 overflow-hidden">
                     <PrivateImage src={user?.profile?.avatar_url} alt={user?.profile?.name} className="w-full h-full object-cover" />
@@ -212,7 +212,7 @@ export default function AdminHeader() {
                 <div className="flex flex-col space-y-1">
                   <p className="text-sm font-medium truncate">{user.profile?.name}</p>
                   <p className="text-xs text-muted-foreground truncate">{user.email}</p>
-                  <span className="text-[10px] font-medium text-primary bg-primary/10 rounded px-1.5 py-0.5 mt-1 w-fit">Administrador · MFA</span>
+                  <span className="text-xs font-medium text-primary bg-primary/10 rounded px-1.5 py-0.5 mt-1 w-fit">Administrador · MFA</span>
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />

@@ -841,11 +841,11 @@ const NutritionistActivityFeed = () => {
                                                 <span className="text-muted-foreground">·</span>
                                                 <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                                                 <span className="text-foreground/90">{displayTitle}</span>
-                                                <Badge variant="secondary" className={`text-[10px] px-1.5 py-0 font-medium ${tone.tag}`}>
+                                                <Badge variant="secondary" className={`text-xs px-1.5 py-0 font-medium ${tone.tag}`}>
                                                     {tagLabel}
                                                 </Badge>
                                                 {slaMeta && (
-                                                    <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${slaMeta.tag}`}>
+                                                    <Badge variant="outline" className={`text-xs px-1.5 py-0 ${slaMeta.tag}`}>
                                                         {slaMeta.label}
                                                     </Badge>
                                                 )}
@@ -856,7 +856,7 @@ const NutritionistActivityFeed = () => {
                                             {item.type === 'lab_high_risk' && item.riskReason && (
                                                 <p className="text-xs text-muted-foreground mt-1">{item.riskReason}</p>
                                             )}
-                                            <div className="flex items-center gap-2 mt-2 text-[11px] text-muted-foreground">
+                                            <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
                                                 {timeAgo && <span>{timeAgo}</span>}
                                                 <span className={priorityMeta.color}>· {priorityMeta.label}</span>
                                             </div>

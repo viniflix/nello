@@ -181,7 +181,7 @@ export default function PatientEditProfilePage() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-background">
+    <div className="flex flex-col min-h-dvh bg-background">
       <div className="patient-page-content max-w-3xl">
         {/* Header com botão voltar */}
         <div className="mb-6 flex items-start gap-2 sm:items-center sm:gap-4">

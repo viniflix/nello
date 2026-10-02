@@ -105,32 +105,32 @@ const AnthropometryTable = ({ records = [], onEdit, onDelete, onView, highlightS
                     <span className="text-xs font-semibold text-foreground whitespace-nowrap">
                         {formatDateNumeric(record.record_date)}
                     </span>
-                    <Badge variant={imcCategory.variant} className="text-[10px] px-1.5 py-0 h-5 whitespace-nowrap">
+                    <Badge variant={imcCategory.variant} className="text-xs px-1.5 py-0 h-5 whitespace-nowrap">
                         {imcCategory.short}
                     </Badge>
                 </div>
 
                 <div className="mt-2 grid grid-cols-3 gap-2">
                     <div>
-                        <p className="text-[10px] text-muted-foreground">Peso</p>
+                        <p className="text-xs text-muted-foreground">Peso</p>
                         <p className="text-sm font-semibold">{record.weight} kg</p>
                     </div>
                     <div>
-                        <p className="text-[10px] text-muted-foreground">Altura</p>
+                        <p className="text-xs text-muted-foreground">Altura</p>
                         <p className="text-sm font-semibold">{record.height ? `${record.height} cm` : 'N/A'}</p>
                     </div>
                     <div>
-                        <p className="text-[10px] text-muted-foreground">IMC</p>
+                        <p className="text-xs text-muted-foreground">IMC</p>
                         <p className="text-sm font-semibold">{bmi ? bmi.toFixed(1) : 'N/A'}</p>
                     </div>
                 </div>
 
-                <p className="mt-2 text-[11px] text-muted-foreground">
+                <p className="mt-2 text-xs text-muted-foreground">
                     {getSectionSummary(record)}
                 </p>
                 <div className="mt-2 flex flex-wrap gap-1">
                     {Object.entries(getRecordSections(record)).map(([key, enabled]) => (
-                        <Badge key={`${record.id}-${key}`} variant="outline" className={`text-[10px] h-5 ${sectionBadgeClass(enabled, key)}`}>
+                        <Badge key={`${record.id}-${key}`} variant="outline" className={`text-xs h-5 ${sectionBadgeClass(enabled, key)}`}>
                             {key === 'basico' && 'Básico'}
                             {key === 'circunferencias' && 'Circ.'}
                             {key === 'dobras' && 'Dobras'}
@@ -168,7 +168,7 @@ const AnthropometryTable = ({ records = [], onEdit, onDelete, onView, highlightS
                         {record.notes}
                     </p>
                 ) : (
-                    <p className="mt-2 text-[11px] text-muted-foreground italic">
+                    <p className="mt-2 text-xs text-muted-foreground italic">
                         Sem observações
                     </p>
                 )}
@@ -180,7 +180,7 @@ const AnthropometryTable = ({ records = [], onEdit, onDelete, onView, highlightS
         <>
             {/* Mobile: lista compacta */}
             <div className="md:hidden space-y-2">
-                <div className="px-1 text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
+                <div className="px-1 text-xs font-medium text-muted-foreground uppercase tracking-wide">
                     Histórico de registros
                 </div>
                 <div className="space-y-2">
@@ -219,12 +219,12 @@ const AnthropometryTable = ({ records = [], onEdit, onDelete, onView, highlightS
                                 <TableRow key={record.id}>
                                     <TableCell className="font-medium whitespace-nowrap">
                                         {formatDateNumeric(record.record_date)}
-                                        <p className="mt-1 text-[11px] text-muted-foreground">
+                                        <p className="mt-1 text-xs text-muted-foreground">
                                             {getSectionSummary(record)}
                                         </p>
                                         <div className="mt-1 flex flex-wrap gap-1">
                                             {Object.entries(getRecordSections(record)).map(([key, enabled]) => (
-                                                <Badge key={`${record.id}-${key}`} variant="outline" className={`text-[10px] h-5 ${sectionBadgeClass(enabled, key)}`}>
+                                                <Badge key={`${record.id}-${key}`} variant="outline" className={`text-xs h-5 ${sectionBadgeClass(enabled, key)}`}>
                                                     {key === 'basico' && 'Básico'}
                                                     {key === 'circunferencias' && 'Circ.'}
                                                     {key === 'dobras' && 'Dobras'}

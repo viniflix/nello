@@ -11,15 +11,15 @@ import SmartFoodForm from '@/components/nutrition/SmartFoodForm';
 
 /**
  * QuickFoodCreateDialog - Dialog para criar alimentos customizados
- * 
+ *
  * Usa SmartFoodForm com wizard completo (5 passos)
  * O próprio SmartFoodForm gerencia os botões de navegação
  */
-export default function QuickFoodCreateDialog({ 
-    open, 
-    onOpenChange, 
+export default function QuickFoodCreateDialog({
+    open,
+    onOpenChange,
     initialName = '',
-    onFoodCreated 
+    onFoodCreated
 }) {
     const formRef = useRef(null);
 
@@ -37,7 +37,7 @@ export default function QuickFoodCreateDialog({
 
     return (
         <Dialog open={open} onOpenChange={handleClose}>
-            <DialogContent className="max-w-4xl max-h-[95vh] overflow-y-auto">
+            <DialogContent className="max-w-4xl max-h-[95dvh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <Plus className="h-5 w-5" />

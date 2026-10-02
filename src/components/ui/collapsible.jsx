@@ -1,9 +1,11 @@
 import * as React from "react"
+import { Slot } from "@radix-ui/react-slot"
 import { cn } from "@/lib/utils"
 
 const CollapsibleContext = React.createContext({})
 
 const Collapsible = ({ open, onOpenChange, children, className, ...props }) => {
+  const contentId = React.useId()
   const handleToggle = () => {
     if (onOpenChange) {
       onOpenChange(!open)
@@ -11,7 +13,7 @@ const Collapsible = ({ open, onOpenChange, children, className, ...props }) => {
   }
 
   return (
-    <CollapsibleContext.Provider value={{ open, onToggle: handleToggle }}>
+    <CollapsibleContext.Provider value={{ open, contentId, onToggle: handleToggle }}>
       <div className={cn("w-full", className)} {...props}>
         {children}
       </div>
@@ -19,29 +21,31 @@ const Collapsible = ({ open, onOpenChange, children, className, ...props }) => {
   )
 }
 
-const CollapsibleTrigger = React.forwardRef(({ className, children, ...props }, ref) => {
-  const { onToggle } = React.useContext(CollapsibleContext)
+const CollapsibleTrigger = React.forwardRef(({ className, children, asChild = false, ...props }, ref) => {
+  const { open, contentId, onToggle } = React.useContext(CollapsibleContext)
+  const Component = asChild ? Slot : 'button'
 
   return (
-    <div
+    <Component type="button" aria-expanded={open} aria-controls={contentId}
       ref={ref}
       className={cn("cursor-pointer", className)}
       onClick={onToggle}
       {...props}
     >
       {children}
-    </div>
+    </Component>
   )
 })
 CollapsibleTrigger.displayName = "CollapsibleTrigger"
 
 const CollapsibleContent = React.forwardRef(({ className, children, ...props }, ref) => {
-  const { open } = React.useContext(CollapsibleContext)
+  const { open, contentId } = React.useContext(CollapsibleContext)
 
   if (!open) return null
 
   return (
     <div
+      id={contentId}
       ref={ref}
       className={cn("overflow-hidden transition-all", className)}
       {...props}

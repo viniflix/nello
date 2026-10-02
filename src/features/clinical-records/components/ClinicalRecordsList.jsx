@@ -49,7 +49,7 @@ const RecordButton = ({ record, onSelectRecord, historical = false }) => {
                     {record.record_type?.replace('_', ' ')}
                   </span>
                   {record.student_id ? (
-                    <Badge variant="outline" className="border-blue-200 text-[10px] uppercase text-blue-600 dark:border-blue-900 dark:text-blue-400">
+                    <Badge variant="outline" className="border-blue-200 text-xs uppercase text-blue-600 dark:border-blue-900 dark:text-blue-400">
                       Estudante
                     </Badge>
                   ) : null}

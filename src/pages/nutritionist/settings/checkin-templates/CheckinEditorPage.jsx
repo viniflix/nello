@@ -37,7 +37,7 @@ export default function CheckinEditorPage() {
     const [sendDay, setSendDayState] = useState(1);
     const [sendTime, setSendTimeState] = useState('09:00');
     const [channel, setChannelState] = useState('in_app');
-    
+
     const [fields, setFieldsState] = useState([
         { label: 'Como você avalia sua adesão à dieta nesta semana?', field_type: 'scale_1_10', options: [], score_weight: 1.0, is_required: true }
     ]);
@@ -130,7 +130,7 @@ export default function CheckinEditorPage() {
     }
 
     return (
-        <div className="mx-auto flex min-h-[calc(100vh-80px)] w-full max-w-[1000px] min-w-0 flex-col overflow-x-hidden px-4 pt-4 pb-8 md:px-8 md:pt-8">
+        <div className="mx-auto flex min-h-[calc(100dvh-80px)] w-full max-w-[1000px] min-w-0 flex-col overflow-x-hidden px-4 pt-4 pb-8 md:px-8 md:pt-8">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 md:mb-8 shrink-0">
                 <div className="flex min-w-0 items-center gap-3 sm:gap-4">
                     <Button variant="ghost" size="sm" onClick={() => navigate('/nutritionist/templates?group=forms&ftab=checkins')}>

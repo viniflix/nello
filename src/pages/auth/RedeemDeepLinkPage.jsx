@@ -94,7 +94,7 @@ const RedeemDeepLinkPage = () => {
             logDiagnostic('warn', 'pages/auth/RedeemDeepLinkPage.jsx:83', 'Bot detectado.');
             return;
         }
-        
+
         const cleanName = formData.name.trim();
         const cleanEmail = formData.email.trim();
 
@@ -148,7 +148,7 @@ const RedeemDeepLinkPage = () => {
         // Armazena no localStorage. O AuthContext processa automaticamente após o login
         try { localStorage.setItem('pending_invite_code', token); }
         catch { /* The confirmation link and manual invitation remain available. */ }
-        
+
         toast({
             title: "Conta criada com sucesso!",
             description: "Confirme seu email para concluir o vínculo e acessar o acompanhamento.",
@@ -168,7 +168,7 @@ const RedeemDeepLinkPage = () => {
             const data = await redeemPatientInvite(supabase, token);
             if (!data?.success) throw new Error(data?.message || 'Convite inválido ou expirado.');
             track(Events.AUTH_INVITE_REDEEMED, { flow: 'deep_link_existing_account' });
-            
+
             toast({
                 title: "Vínculo concluído!",
                 description: `Seu vínculo de acompanhamento foi confirmado.`,
@@ -196,7 +196,7 @@ const RedeemDeepLinkPage = () => {
 
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-background p-4">
+            <div className="min-h-dvh flex items-center justify-center bg-background p-4">
                 <div className="animate-pulse flex flex-col items-center">
                     <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin mb-4" />
                     <p className="text-muted-foreground">Validando convite...</p>
@@ -207,7 +207,7 @@ const RedeemDeepLinkPage = () => {
 
     if (error) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-background p-4">
+            <div className="min-h-dvh flex items-center justify-center bg-background p-4">
                 <Card className="w-full max-w-md shadow-lg border-red-100 dark:border-red-900/30">
                     <CardHeader className="text-center pb-2">
                         <div className="mx-auto w-12 h-12 bg-red-100 dark:bg-red-900/50 rounded-full flex items-center justify-center mb-4">
@@ -235,9 +235,9 @@ const RedeemDeepLinkPage = () => {
     if (user && inviteData) {
         // Warning: Nomes diferentes!
         const isDifferentPerson = Boolean(inviteData.patient_name) && user.profile?.name?.split(' ')[0].toLowerCase() !== inviteData.patient_name?.split(' ')[0].toLowerCase();
-        
+
         return (
-            <div className="min-h-screen flex items-center justify-center bg-background p-4">
+            <div className="min-h-dvh flex items-center justify-center bg-background p-4">
                 <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="w-full max-w-md">
                     <Card className="shadow-xl border-primary/20">
                         <CardHeader className="text-center pb-4">
@@ -254,7 +254,7 @@ const RedeemDeepLinkPage = () => {
                                     Confira que está usando a conta destinada a este convite. Os dados do acompanhamento só são mostrados após confirmar o vínculo.
                                 </AlertDescription>
                             </Alert>
-                            
+
                             <div className="bg-card border rounded-lg p-4 space-y-3">
                                 <div className="text-sm">Sua conta atual logada:</div>
                                 <div className="font-semibold text-lg flex items-center gap-2">
@@ -272,15 +272,15 @@ const RedeemDeepLinkPage = () => {
                             )}
 
                             <div className="space-y-3 pt-2">
-                                <Button 
-                                    className="w-full h-11 text-base font-semibold" 
-                                    onClick={handleAcceptAsLoggedIn} 
+                                <Button
+                                    className="w-full h-11 text-base font-semibold"
+                                    onClick={handleAcceptAsLoggedIn}
                                     disabled={submitting}
                                 >
                                     {submitting ? "Vinculando..." : "Sim, confirmar vínculo nesta conta"}
                                 </Button>
-                                <Button 
-                                    variant="outline" 
+                                <Button
+                                    variant="outline"
                                     className="w-full h-11 border-muted-foreground/30 hover:bg-muted"
                                     onClick={handleSwitchAccount}
                                 >
@@ -297,24 +297,24 @@ const RedeemDeepLinkPage = () => {
 
     // Tela Principal para Usuários DESLOGADOS
     return (
-        <div className="min-h-screen grid lg:grid-cols-2 bg-background">
+        <div className="min-h-dvh grid lg:grid-cols-2 bg-background">
             {/* Coluna Esquerda: Texto e Valor */}
             <div className="hidden lg:flex flex-col justify-center px-16 bg-muted/30 border-r border-border relative overflow-hidden">
                 <div className="absolute top-0 right-0 p-8 opacity-10 blur-3xl pointer-events-none">
                     <div className="w-96 h-96 bg-primary rounded-full" />
                 </div>
-                
+
                 <div className="z-10 max-w-lg space-y-6">
-                    <img 
+                    <img
                         src="/nello-logo.png"
-                        alt="Nello" 
+                        alt="Nello"
                         width="99"
                         height="40"
                         className="h-10 w-auto mb-8"
                     />
-                    
+
                     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-                        <Badge variant="outline" className="text-primary border-primary/30 bg-primary/5 uppercase tracking-widest text-[10px] px-3 py-1">
+                        <Badge variant="outline" className="text-primary border-primary/30 bg-primary/5 uppercase tracking-widest text-xs px-3 py-1">
                             Acesso Exclusivo
                         </Badge>
                         <h1 className="text-4xl font-black tracking-tight text-foreground leading-tight">
@@ -346,12 +346,12 @@ const RedeemDeepLinkPage = () => {
             </div>
 
             {/* Coluna Direita: O Formulário */}
-            <div className="flex flex-col justify-center p-6 sm:p-12 h-screen overflow-y-auto w-full">
+            <div className="flex flex-col justify-center p-6 sm:p-12 h-dvh overflow-y-auto w-full">
                 {/* Mobile Heading */}
                 <div className="lg:hidden mb-8 text-center space-y-4">
-                    <img 
+                    <img
                         src="/nello-logo.png"
-                        alt="Nello" 
+                        alt="Nello"
                         width="99"
                         height="40"
                         className="h-10 w-auto mx-auto mb-4"
@@ -364,9 +364,9 @@ const RedeemDeepLinkPage = () => {
                     </p>
                 </div>
 
-                <motion.div 
-                    initial={{ opacity: 0, x: 20 }} 
-                    animate={{ opacity: 1, x: 0 }} 
+                <motion.div
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.1 }}
                     className="w-full max-w-sm mx-auto"
                 >
@@ -472,8 +472,8 @@ const RedeemDeepLinkPage = () => {
                                     {submitting ? "Acessando..." : "Ver Meu Plano Agora"}
                                     {!submitting && <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />}
                                 </Button>
-                                
-                                <p className="text-[11px] text-center text-muted-foreground mt-4 px-4 leading-tight">
+
+                                <p className="text-xs text-center text-muted-foreground mt-4 px-4 leading-tight">
                                     O convite vincula sua conta ao acompanhamento do profissional. Não compartilhe o código ou o link.
                                 </p>
                             </form>

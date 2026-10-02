@@ -81,7 +81,7 @@ export default function PatientEditProfileModal({
   };
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
+      <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>Editar perfil do paciente</DialogTitle>
           <DialogDescription>Atualize os dados cadastrais e de contato.</DialogDescription>

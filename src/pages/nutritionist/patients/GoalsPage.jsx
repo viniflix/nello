@@ -53,7 +53,7 @@ import { patientHubRoute } from '@/lib/utils/patientRoutes';
 const GoalsPage = () => {
 const {loading,loadError,loadData,navigate,patientId,paramValue,patientName,activeGoal,showForm,setShowForm,formData,handleInputChange,deadlineRecommendation,loadingViability,viabilityPreview,getViabilityColor,getViabilityLabel,handleCreateGoal,submitting,showImpactConfirm,setShowImpactConfirm,handleConfirmCreateWithImpact,setShowProgressModal,handleCompleteGoal,handlePauseGoal,setShowCancelDialog,pastGoals,showProgressModal,newWeight,setNewWeight,handleUpdateProgress,showCancelDialog,handleCancelGoal}=useGoalsPageController();
 return loading ? null : loadError ? (<section role="alert" className="m-4 rounded-lg border p-4"><h1 className="font-semibold">Não foi possível carregar as metas</h1><p>{loadError.message}</p>{loadError.correlationId && <p>Código: {loadError.correlationId}</p>}<Button onClick={loadData}>Tentar novamente</Button></section>) : (
-        <div className="flex flex-col min-h-screen bg-background overflow-x-hidden">
+        <div className="flex flex-col min-h-dvh bg-background overflow-x-hidden">
             <div className="max-w-7xl mx-auto w-full px-4 md:px-8 py-4 md:py-8 min-w-0">
                 {/* Header */}
                 <div className="flex flex-col gap-4 mb-6">

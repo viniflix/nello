@@ -22,7 +22,7 @@ import { toPortugueseError } from '@/lib/utils/errorMessages';
 
 /**
  * FoodMeasureManager - Modal para gerenciar medidas caseiras de um alimento
- * 
+ *
  * Tabs:
  * - Informações Básicas (read-only)
  * - Medidas Caseiras (CRUD)
@@ -32,7 +32,7 @@ export default function FoodMeasureManager({ food, isOpen, onClose }) {
   const [measures, setMeasures] = useState([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  
+
   // Form state for new measure
   const [newMeasureLabel, setNewMeasureLabel] = useState('');
   const [newMeasureGrams, setNewMeasureGrams] = useState('');
@@ -92,7 +92,7 @@ export default function FoodMeasureManager({ food, isOpen, onClose }) {
       setMeasures(prev => [...prev, data]);
       setNewMeasureLabel('');
       setNewMeasureGrams('');
-      
+
       toast({
         title: 'Sucesso!',
         description: 'Medida adicionada com sucesso.'
@@ -124,7 +124,7 @@ export default function FoodMeasureManager({ food, isOpen, onClose }) {
       if (error) throw error;
 
       setMeasures(prev => prev.filter(m => m.id !== measureId));
-      
+
       toast({
         title: 'Sucesso!',
         description: 'Medida excluída com sucesso.'
@@ -150,7 +150,7 @@ export default function FoodMeasureManager({ food, isOpen, onClose }) {
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Gerenciar Alimento: {food?.name}</DialogTitle>
           <DialogDescription>

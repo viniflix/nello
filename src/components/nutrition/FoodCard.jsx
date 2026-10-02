@@ -7,7 +7,7 @@ import { motion } from 'framer-motion';
 
 /**
  * FoodCard - Card visual melhorado para exibir alimentos
- * 
+ *
  * @param {Object} food - Dados do alimento
  * @param {boolean} isCustom - Se é alimento personalizado do nutricionista
  * @param {Function} onView - Callback para ver detalhes
@@ -56,8 +56,8 @@ const FoodCard = ({ food, isCustom = false, onView, onEdit, onDelete }) => {
                                     )}
                                 </div>
                                 {food.source && (
-                                    <Badge 
-                                        variant="outline" 
+                                    <Badge
+                                        variant="outline"
                                         className={`${sourceColors[food.source] || 'bg-gray-100 text-gray-700'} text-xs flex-shrink-0`}
                                     >
                                         {sourceLabels[food.source] || food.source}
@@ -72,28 +72,28 @@ const FoodCard = ({ food, isCustom = false, onView, onEdit, onDelete }) => {
                                     <p className="text-sm font-bold text-red-600 dark:text-red-400">
                                         {food.calories ? Math.round(food.calories) : '—'}
                                     </p>
-                                    <p className="text-[10px] text-muted-foreground">kcal</p>
+                                    <p className="text-xs text-muted-foreground">kcal</p>
                                 </div>
                                 <div className="text-center p-2 bg-purple-50 dark:bg-purple-950/20 rounded-lg">
                                     <p className="text-xs text-muted-foreground mb-0.5">Proteína</p>
                                     <p className="text-sm font-bold text-purple-600 dark:text-purple-400">
                                         {food.protein ? food.protein.toFixed(1) : '—'}
                                     </p>
-                                    <p className="text-[10px] text-muted-foreground">g</p>
+                                    <p className="text-xs text-muted-foreground">g</p>
                                 </div>
                                 <div className="text-center p-2 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
                                     <p className="text-xs text-muted-foreground mb-0.5">Carbs</p>
                                     <p className="text-sm font-bold text-blue-600 dark:text-blue-400">
                                         {food.carbs ? food.carbs.toFixed(1) : '—'}
                                     </p>
-                                    <p className="text-[10px] text-muted-foreground">g</p>
+                                    <p className="text-xs text-muted-foreground">g</p>
                                 </div>
                                 <div className="text-center p-2 bg-orange-50 dark:bg-orange-950/20 rounded-lg">
                                     <p className="text-xs text-muted-foreground mb-0.5">Gorduras</p>
                                     <p className="text-sm font-bold text-orange-600 dark:text-orange-400">
                                         {food.fat ? food.fat.toFixed(1) : '—'}
                                     </p>
-                                    <p className="text-[10px] text-muted-foreground">g</p>
+                                    <p className="text-xs text-muted-foreground">g</p>
                                 </div>
                             </div>
 

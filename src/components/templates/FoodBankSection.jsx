@@ -111,10 +111,10 @@ export default function FoodBankSection() {
     try {
       const { data, error } = await supabase.rpc('get_food_stats', { p_nutritionist_id: user.id });
       if (error) throw error;
-      
+
       setStats({
-        public: data.public || 0, 
-        custom: data.custom || 0, 
+        public: data.public || 0,
+        custom: data.custom || 0,
         totalAll: data.total || 0,
         taco: data.taco || 0,
         tbca: data.tbca || 0,
@@ -476,7 +476,7 @@ export default function FoodBankSection() {
       <FoodDetailsDialog food={selectedFood} open={detailsOpen} onOpenChange={setDetailsOpen} />
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="max-w-4xl max-h-[95vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[95dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2"><Plus className="h-5 w-5" /> Novo Alimento Personalizado</DialogTitle>
             <DialogDescription>Crie um alimento com busca por código de barras e cálculo automático de macros.</DialogDescription>
@@ -486,7 +486,7 @@ export default function FoodBankSection() {
       </Dialog>
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="max-w-4xl max-h-[95vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[95dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Editar Alimento</DialogTitle>
             <DialogDescription>Edite as informações nutricionais e medidas caseiras.</DialogDescription>

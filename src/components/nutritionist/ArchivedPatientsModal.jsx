@@ -32,7 +32,7 @@ export default function ArchivedPatientsModal({
 
     return (
         <Dialog open={isOpen} onOpenChange={handleClose}>
-            <DialogContent className="sm:max-w-3xl max-h-[85vh] flex flex-col p-0">
+            <DialogContent className="sm:max-w-3xl max-h-[85dvh] flex flex-col p-0">
                 <DialogHeader className="p-6 pb-4 border-b">
                     <DialogTitle className="text-xl flex items-center gap-2 text-foreground">
                         <ArchiveRestore className="w-5 h-5 text-muted-foreground" />

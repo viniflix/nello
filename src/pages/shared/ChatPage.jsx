@@ -1,12 +1,13 @@
-import { uploadVerifiedFile } from '@/lib/storage/verifiedUpload';
-import { parsePrivateFile, signPrivateFile } from '@/lib/storage/privateFiles';
-import { validateUploadSelection, CHAT_UPLOAD_MAX_BYTES, fileExtensionForMime } from '@/lib/storage/uploadPolicy';
 import { PrivateImage } from '@/components/ui/private-image';
+import MediaViewer from '@/features/chat/components/MediaViewer';
+import AudioPlayer from '@/features/chat/components/AudioPlayer';
+import { uploadVerifiedFile } from '@/lib/storage/verifiedUpload';
+import { validateUploadSelection, CHAT_UPLOAD_MAX_BYTES, fileExtensionForMime } from '@/lib/storage/uploadPolicy';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState, useEffect, useRef, Fragment, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Send, ArrowLeft, Paperclip, X, FileText, Download, Mic, Square, Play, Pause, Loader2, User as UserIcon, PlayCircle } from 'lucide-react'; // Adicionado PlayCircle
+import { Send, ArrowLeft, Paperclip, X, FileText, Mic, Square, Loader2, User as UserIcon } from 'lucide-react'; // Adicionado PlayCircle
 import { useAuth } from '@/contexts/AuthContext';
 import { useChat } from '@/contexts/ChatContext';
 import { supabase } from '@/lib/customSupabaseClient';
@@ -44,7 +45,7 @@ const formatLastSeen = (lastSeenAt) => {
   if (!lastSeenAt) return null;
   const date = parseISO(lastSeenAt);
   const time = format(date, 'HH:mm');
-  
+
   if (isToday(date)) {
       return `visto hoje às ${time}`;
   } else if (isYesterday(date)) {
@@ -53,139 +54,6 @@ const formatLastSeen = (lastSeenAt) => {
       return `visto em ${format(date, 'dd/MM/yyyy')} às ${time}`;
   }
 };
-
-const getBucketPath = (value) => parsePrivateFile(value, 'chat_media')?.path || null;
-
-const AudioPlayer = ({ src }) => {
-    const audioRef = useRef(null);
-    const [isPlaying, setIsPlaying] = useState(false);
-    const [duration, setDuration] = useState(0);
-    const [currentTime, setCurrentTime] = useState(0);
-
-    const togglePlay = () => {
-        if (!audioRef.current.src) return;
-        if (isPlaying) audioRef.current.pause();
-        else audioRef.current.play();
-        setIsPlaying(!isPlaying);
-    };
-
-    useEffect(() => {
-        const audio = audioRef.current;
-        if(!audio) return;
-        const setAudioData = () => {
-          if(isFinite(audio.duration)) setDuration(audio.duration);
-        };
-        const setAudioTime = () => setCurrentTime(audio.currentTime);
-
-        audio.addEventListener('loadeddata', setAudioData);
-        audio.addEventListener('timeupdate', setAudioTime);
-        const handleEnded = () => setIsPlaying(false);
-        audio.addEventListener('ended', handleEnded);
-
-        return () => {
-            if (audio) {
-                audio.removeEventListener('loadeddata', setAudioData);
-                audio.removeEventListener('timeupdate', setAudioTime);
-                audio.removeEventListener('ended', handleEnded);
-            }
-        };
-    }, []);
-
-    const formatTime = (time) => {
-        if (!time || !isFinite(time)) return '0:00';
-        const minutes = Math.floor(time / 60);
-        const seconds = Math.floor(time % 60).toString().padStart(2, '0');
-        return `${minutes}:${seconds}`;
-    };
-
-    return (
-        <div className="flex items-center gap-2 w-64">
-            <audio ref={audioRef} src={src} preload="metadata"></audio>
-            <Button
-              size="icon"
-              variant="ghost"
-              className="rounded-full"
-              aria-label={isPlaying ? 'Pausar áudio' : 'Reproduzir áudio'}
-              onClick={togglePlay}
-            >
-                {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-            </Button>
-            <div className="w-full h-1 bg-muted rounded-full cursor-pointer" onClick={(e) => {
-                if (!duration) return;
-                const rect = e.currentTarget.getBoundingClientRect();
-                const clickPosition = e.clientX - rect.left;
-                const newTime = (clickPosition / rect.width) * duration;
-                audioRef.current.currentTime = newTime;
-            }}>
-                <div className="h-full bg-primary rounded-full" style={{ width: `${(currentTime / duration) * 100}%` }}></div>
-            </div>
-            <span className="text-xs w-12 text-right">{formatTime(isFinite(duration) ? duration : 0)}</span>
-        </div>
-    );
-};
-
-const MediaViewer = ({ mediaPath, messageText, mediaType, onImageClick }) => {
-    const { user } = useAuth();
-    const actorId = user?.id;
-    const [access, setAccess] = useState(null);
-    useEffect(() => {
-        let cancelled = false;
-        let refreshTimer;
-        const load = async () => {
-            try {
-                const cleanPath = getBucketPath(mediaPath);
-                if (!cleanPath) throw new Error('invalid_private_file_reference');
-                const url = await signPrivateFile(cleanPath, 'chat_media');
-                if (cancelled) return;
-                setAccess({ mediaPath, actorId, url });
-                refreshTimer = setTimeout(load, 240000);
-            } catch {
-                if (!cancelled) setAccess({ mediaPath, actorId, error: true });
-            }
-        };
-        void load();
-        return () => { cancelled = true; clearTimeout(refreshTimer); };
-    }, [mediaPath, actorId]);
-    const currentAccess = access?.mediaPath === mediaPath && access?.actorId === actorId ? access : null;
-    if (!currentAccess) return <div className="h-24 flex items-center justify-center"><Loader2 className="animate-spin" /></div>;
-    if (currentAccess.error) return <p className="text-xs text-destructive">Arquivo indisponível ou acesso não autorizado</p>;
-    const signedUrl = currentAccess.url;
-
-    const fileType = mediaPath.split('.').pop().toLowerCase();
-    
-    if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(fileType)) {
-        return <PrivateImage src={signedUrl} alt={messageText || "Imagem enviada"} className="rounded-lg max-w-[200px] md:max-w-xs h-auto cursor-pointer" onClick={() => onImageClick(signedUrl, 'image')} />;
-    }
-
-    // --- CORREÇÃO DO BUG DE ÁUDIO/VÍDEO ---
-    // .webm foi REMOVIDO daqui
-    if (mediaType === 'video' || (mediaType !== 'audio' && ['mp4', 'mov', 'quicktime'].includes(fileType))) {
-        return (
-          <div className="relative rounded-lg max-w-[200px] md:max-w-xs h-auto cursor-pointer group" onClick={() => onImageClick(signedUrl, 'video')}>
-            <video src={signedUrl} className="rounded-lg w-full h-full" />
-            <div className="absolute inset-0 flex items-center justify-center bg-black/40 group-hover:bg-black/60 transition-all rounded-lg">
-              <PlayCircle className="w-12 h-12 text-white/80" />
-            </div>
-          </div>
-        );
-    }
-    // .webm foi ADICIONADO aqui
-    if (['mp3', 'wav', 'ogg', 'm4a', 'aac', 'webm'].includes(fileType)) {
-        return <AudioPlayer src={signedUrl} />;
-    }
-    // --- FIM DA CORREÇÃO ---
-
-    if (fileType === 'pdf') {
-        return (
-             <a href={signedUrl} download={messageText || 'documento.pdf'} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-2 bg-background/50 rounded-lg hover:bg-background/80 transition-colors">
-                <FileText className="w-8 h-8 text-primary flex-shrink-0" />
-                <div className="flex-grow"><p className="text-sm font-medium text-foreground truncate">{messageText || 'Documento PDF'}</p><p className="text-xs text-muted-foreground">Clique para baixar</p></div>
-                <Download className="w-5 h-5 text-muted-foreground" />
-            </a>
-        );
-    }
-    return <p>Tipo de arquivo não suportado.</p>
-}
 
 const ChatMessage = ({ msg, isSender, onImageClick }) => {
   const mediaPath = msg.message_type !== 'text' ? msg.media_url : null;
@@ -198,7 +66,7 @@ const ChatMessage = ({ msg, isSender, onImageClick }) => {
         {/* Passa o tipo de mídia para o onImageClick */}
         {mediaPath ? <MediaViewer mediaPath={mediaPath} messageText={originalFileName} mediaType={msg.message_type} onImageClick={onImageClick} /> : <p className="text-sm whitespace-pre-wrap">{messageText}</p>}
         {mediaPath && messageText && messageText !== originalFileName && <p className="text-sm mt-2">{messageText}</p>}
-        <p className={`text-xs mt-1 ${isSender ? 'text-primary-foreground/70' : 'text-muted-foreground'} text-right`}>{format(parseISO(msg.created_at), 'HH:mm')}</p>
+        <p className={`text-xs mt-1 ${isSender ? 'text-primary-foreground' : 'text-muted-foreground'} text-right`}>{format(parseISO(msg.created_at), 'HH:mm')}</p>
       </div>
     </motion.div>
   );
@@ -247,7 +115,7 @@ const ChatPage = ({ propRecipientId, isEmbedded = false, initialDraft = '' }) =>
   const isArchived = React.useMemo(() => {
     if (!user || !recipient) return false;
     if (presenceReady && !isRelationshipActive(recipientId)) return true;
-    
+
     // Se o usuário logado está inativo, tudo está "arquivado" para ele
     if (user?.profile?.is_active === false) return true;
 
@@ -265,17 +133,17 @@ const ChatPage = ({ propRecipientId, isEmbedded = false, initialDraft = '' }) =>
 
   const fetchRecipient = useCallback(async (id) => {
     if (!id) {
-      setRecipientLoading(false); 
+      setRecipientLoading(false);
       return;
     }
     const epoch = ++recipientEpoch.current;
     setRecipient(null);
-    setRecipientLoading(true); 
+    setRecipientLoading(true);
 
     const { data, error } = await supabase.rpc('get_chat_recipient_profile', {
       recipient_id: id
     });
-    
+
     if (epoch !== recipientEpoch.current) return;
     const recipientData = data ? data[0] : null;
 
@@ -290,7 +158,7 @@ const ChatPage = ({ propRecipientId, isEmbedded = false, initialDraft = '' }) =>
     } else {
       setRecipient(recipientData);
     }
-    setRecipientLoading(false); 
+    setRecipientLoading(false);
   }, [toast]);
 
   useEffect(() => {
@@ -397,11 +265,11 @@ const ChatPage = ({ propRecipientId, isEmbedded = false, initialDraft = '' }) =>
         const mediaRecorder = new MediaRecorder(stream, { mimeType });
         mediaRecorderRef.current = mediaRecorder;
         audioChunksRef.current = [];
-        
-        mediaRecorder.ondataavailable = (event) => { 
-          if(event.data.size > 0) audioChunksRef.current.push(event.data); 
+
+        mediaRecorder.ondataavailable = (event) => {
+          if(event.data.size > 0) audioChunksRef.current.push(event.data);
         };
-        
+
         mediaRecorder.onstop = () => {
             const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
             const audioFile = new File([audioBlob], `audio_${Date.now()}.webm`, { type: mimeType });
@@ -409,10 +277,10 @@ const ChatPage = ({ propRecipientId, isEmbedded = false, initialDraft = '' }) =>
             setMediaPreview(URL.createObjectURL(audioBlob));
             setMediaType('audio');
             mediaRecorder.stream.getTracks().forEach(track => track.stop());
-            setIsRecording(false); 
+            setIsRecording(false);
         };
-        
-        mediaRecorder.start(); 
+
+        mediaRecorder.start();
         setIsRecording(true);
       } catch (err) {
           logDiagnostic('error', 'pages/shared/ChatPage.jsx:445', "Erro ao gravar áudio:", err);
@@ -420,12 +288,12 @@ const ChatPage = ({ propRecipientId, isEmbedded = false, initialDraft = '' }) =>
       }
   };
 
-  const stopRecording = () => { 
-    if (mediaRecorderRef.current?.state === "recording") { 
-      mediaRecorderRef.current.stop(); 
+  const stopRecording = () => {
+    if (mediaRecorderRef.current?.state === "recording") {
+      mediaRecorderRef.current.stop();
     }
   };
-  
+
   const groupedMessages = messages.filter(msg => (msg.from_id === user?.id && msg.to_id === recipientId) || (msg.to_id === user?.id && msg.from_id === recipientId)).reduce((acc, msg) => {
     const date = format(parseISO(msg.created_at), 'yyyy-MM-dd');
     if (!acc[date]) acc[date] = [];
@@ -433,7 +301,7 @@ const ChatPage = ({ propRecipientId, isEmbedded = false, initialDraft = '' }) =>
   }, {});
 
   if ((messagesLoading && !messages.length) || recipientLoading) return (
-    <div className={`flex flex-col bg-slate-50 ${isEmbedded ? 'h-full' : 'h-screen'}`}>
+    <div className={`flex flex-col bg-slate-50 ${isEmbedded ? 'h-full' : 'h-dvh'}`}>
       <header className="shrink-0 bg-white border-b p-4 flex items-center shadow-md z-30 opacity-50">
         <div className="w-10 h-10 bg-primary/10 rounded-full mr-3" />
         <div className="space-y-2">
@@ -446,7 +314,7 @@ const ChatPage = ({ propRecipientId, isEmbedded = false, initialDraft = '' }) =>
   );
 
   if (!recipient) return (
-    <div className={`flex items-center justify-center p-4 text-center text-muted-foreground ${isEmbedded ? 'h-full' : 'h-screen'}`}>
+    <div className={`flex items-center justify-center p-4 text-center text-muted-foreground ${isEmbedded ? 'h-full' : 'h-dvh'}`}>
       Você não tem um {user?.profile?.user_type === 'patient' ? 'nutricionista' : 'paciente'} associado.
     </div>
   );
@@ -485,15 +353,15 @@ const ChatPage = ({ propRecipientId, isEmbedded = false, initialDraft = '' }) =>
             {isUserOnline(recipientId) ? (
               <div className="flex items-center gap-1.5 leading-none">
                 <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse shrink-0" />
-                <p className="text-xs font-medium text-green-600">Disponível</p>
+                <p className="text-xs font-medium text-green-700">Disponível</p>
                 {isUserTyping(recipientId) && (
-                  <span className="text-[10px] text-primary animate-pulse font-medium ml-1.5">
+                  <span className="text-xs text-primary animate-pulse font-medium ml-1.5">
                     digitando...
                   </span>
                 )}
               </div>
             ) : (
-                <p className="text-[10px] sm:text-xs text-muted-foreground leading-none animate-in fade-in duration-500">
+                <p className="text-xs sm:text-xs text-muted-foreground leading-none animate-in fade-in duration-500">
                     {formatLastSeen(recipient.last_seen_at) || (recipient.user_type === 'nutritionist' ? 'Nutricionista' : 'Paciente')}
                 </p>
             )}
@@ -502,7 +370,7 @@ const ChatPage = ({ propRecipientId, isEmbedded = false, initialDraft = '' }) =>
       </header>
 
       {/* Lista de mensagens - área com rolagem */}
-      <main ref={messagesContainerRef} className="flex-1 overflow-y-auto p-4 space-y-2">
+      <section aria-label="Histórico de mensagens" tabIndex={0} ref={messagesContainerRef} className="flex-1 overflow-y-auto p-4 space-y-2">
         {loadError && <p role="alert" className="text-sm text-destructive">Falha ao atualizar o chat. <Button variant="link" onClick={() => fetchMessages(user.id, recipientId)}>Tentar novamente</Button></p>}
         {hasMoreMessages && <Button variant="outline" disabled={messagesLoading} onClick={loadOlder}>Carregar mensagens anteriores</Button>}
         {Object.entries(groupedMessages).map(([date, msgs]) => (
@@ -517,7 +385,7 @@ const ChatPage = ({ propRecipientId, isEmbedded = false, initialDraft = '' }) =>
                 if (isAppointmentNotice) {
                   return (
                     <div key={msg.id} className="text-center">
-                      <div className="inline-block px-4 py-2 bg-blue-100 text-blue-600 rounded-lg text-sm">
+                      <div className="inline-block px-4 py-2 bg-blue-100 text-blue-800 rounded-lg text-sm">
                         {msg.message}
                       </div>
                       <p className="text-xs text-muted-foreground mt-1">
@@ -541,12 +409,12 @@ const ChatPage = ({ propRecipientId, isEmbedded = false, initialDraft = '' }) =>
         ))}
 
         <div ref={messagesEndRef} />
-      </main>
+      </section>
       {/* Área de entrada - fixa na base do container */}
       <footer className="shrink-0 bg-white p-4 border-t shadow-lg z-20">
         {isArchived ? (
             <div className="flex items-center justify-center p-3 sm:p-4 bg-muted/50 rounded-xl border border-dashed border-border flex-col text-center">
-                <p className="text-secondary-foreground font-medium text-sm sm:text-base">Módulo Arquivado</p>
+                <p className="text-foreground font-medium text-sm sm:text-base">Módulo Arquivado</p>
                 <p className="text-muted-foreground text-xs sm:text-sm mt-1 max-w-sm">Você não pode enviar novas mensagens para este chat, pois o vínculo foi arquivado.</p>
             </div>
         ) : (

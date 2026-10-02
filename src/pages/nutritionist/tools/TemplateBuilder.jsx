@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Helmet } from 'react-helmet-async';
 import { useTemplateBuilder } from '@/hooks/useTemplateBuilder';
 import { useToast } from '@/components/ui/use-toast';
 import {
@@ -32,7 +31,7 @@ export default function TemplateBuilder() {
       toast({ title: 'Nome muito longo', description: 'Máximo de 100 caracteres.', variant: 'destructive' });
       return false;
     }
-    
+
     if (type === 'diet') {
       if (formData.meals.length === 0) {
         toast({ title: 'Adicione pelo menos uma refeição', description: 'Uma dieta precisa ter ao menos 1 refeição.', variant: 'destructive' });
@@ -258,7 +257,7 @@ export default function TemplateBuilder() {
 
   if (isLoadingTemplate) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
+      <div className="flex items-center justify-center min-h-[60dvh]">
         <div className="text-center">
           <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-3" />
           <p className="text-muted-foreground text-sm">Carregando template...</p>
@@ -270,11 +269,8 @@ export default function TemplateBuilder() {
   const foodList = type === 'meal' ? formData.foods : formData.ingredients;
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-background">
+    <div className="min-h-dvh overflow-x-hidden bg-background">
       <main className="mx-auto w-full max-w-5xl min-w-0 px-4 pt-4 pb-8 md:px-8 md:pt-8">
-      <Helmet>
-        <title>{getTitle()} - Nello</title>
-      </Helmet>
 
       {/* Header */}
       <div className="flex flex-col gap-4 mb-6 sm:flex-row sm:items-center sm:justify-between md:mb-8">

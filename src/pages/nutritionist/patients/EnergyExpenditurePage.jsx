@@ -76,7 +76,7 @@ function EnergyProgressNav({ activeTab, onChange, completedSteps }) {
             value={step.id}
             aria-label={`Etapa ${step.number}: ${step.label}`}
             onClick={() => onChange(step.id)}
-            className="min-w-0 flex-col gap-1 rounded-xl px-1 py-2 text-[11px] data-[state=active]:bg-primary data-[state=active]:text-white sm:flex-row sm:gap-2 sm:px-4 sm:py-3 sm:text-sm"
+            className="min-w-0 flex-col gap-1 rounded-xl px-1 py-2 text-xs data-[state=active]:bg-primary data-[state=active]:text-white sm:flex-row sm:gap-2 sm:px-4 sm:py-3 sm:text-sm"
           >
             <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-current/25 bg-current/10 text-xs font-bold">
               {complete ? <CheckCircle2 className="h-4 w-4" /> : step.number}
@@ -433,7 +433,7 @@ function EnergyExpenditureForm({ resolvedPatient }) {
 
   if (!patientId || resolveError) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[50vh] p-4">
+      <div className="flex flex-col items-center justify-center min-h-[50dvh] p-4">
         <Alert variant="destructive" className="max-w-md">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>{resolveError?.message || 'Paciente não encontrado.'}</AlertDescription>
@@ -447,7 +447,7 @@ function EnergyExpenditureForm({ resolvedPatient }) {
   }
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[#f7f7f5]">
+    <div className="min-h-dvh overflow-x-hidden bg-[#f7f7f5]">
       <section aria-label="Resumo clínico do paciente" className="mx-auto w-full max-w-[1440px] min-w-0 px-3 py-4 sm:px-6 md:py-6 lg:px-8">
         <Button variant="ghost" size="sm" onClick={() => navigate(patientHubRoute({ id: patientId, slug: patientSlug || paramValue }, 'nutrition'))} className="-ml-2 mb-3 gap-2 text-muted-foreground">
           <ArrowLeft className="h-4 w-4" />

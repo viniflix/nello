@@ -10,7 +10,6 @@ import { DateInputWithCalendar } from '@/components/ui/date-input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format, addMonths, parseISO } from 'date-fns';
 import { Upload, File, X } from 'lucide-react';
 import { getServices } from '@/lib/supabase/financial-queries';
@@ -43,14 +42,14 @@ const PAYMENT_METHODS = [
     { value: 'other', label: 'Outro' }
 ];
 
-export default function TransactionDialog({ 
-    open, 
-    onOpenChange, 
-    transaction, 
+export default function TransactionDialog({
+    open,
+    onOpenChange,
+    transaction,
     patients = [],
     services = [],
     nutritionistId,
-    onSave 
+    onSave
 }) {
     const { toast } = useToast();
     const [formData, setFormData] = useState({
@@ -84,12 +83,12 @@ export default function TransactionDialog({
                 service_id: 'none',
                 description: transaction.description || '',
                 amount: transaction.amount?.toString() || '',
-                transaction_date: transaction.transaction_date 
+                transaction_date: transaction.transaction_date
                     ? format(new Date(transaction.transaction_date + 'T00:00:00'), 'yyyy-MM-dd')
                     : getTodayIsoDate(),
                 paid_at: transaction.paid_at || getTodayIsoDate(),
                 isPaid: transaction.status === 'paid',
-                due_date: transaction.due_date 
+                due_date: transaction.due_date
                     ? format(new Date(transaction.due_date + 'T00:00:00'), 'yyyy-MM-dd')
                     : '',
                 isInstallment: false,
@@ -212,7 +211,7 @@ export default function TransactionDialog({
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        
+
         if (!formData.description || !formData.amount || !formData.category) {
             return;
         }
@@ -262,7 +261,7 @@ export default function TransactionDialog({
                 return;
             }
             const baseDate = parseISO(formData.transaction_date + 'T00:00:00');
-            
+
             const transactions = [];
             for (let i = 0; i < formData.installments; i++) {
                 const installmentDate = addMonths(baseDate, i);
@@ -302,13 +301,13 @@ export default function TransactionDialog({
     };
 
     const currentCategories = formData.type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
-    const installmentAmount = formData.isInstallment && formData.amount 
+    const installmentAmount = formData.isInstallment && formData.amount
         ? (parseFloat(formData.amount) / formData.installments).toFixed(2)
         : '0.00';
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="w-[calc(100vw-2rem)] max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="w-[calc(100vw-2rem)] max-w-2xl max-h-[90dvh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>
                         {transaction ? 'Editar Transação' : 'Nova Transação'}
@@ -318,16 +317,10 @@ export default function TransactionDialog({
                     {/* Type Selector */}
                     <div>
                         <Label>Tipo de Transação</Label>
-                        <Tabs 
-                            value={formData.type} 
-                            onValueChange={handleTypeChange}
-                            className="mt-2"
-                        >
-                            <TabsList className="grid w-full grid-cols-2">
-                                <TabsTrigger value="income">Receita</TabsTrigger>
-                                <TabsTrigger value="expense">Despesa</TabsTrigger>
-                            </TabsList>
-                        </Tabs>
+                        <div role="group" aria-label="Tipo de transação" className="mt-2 grid w-full grid-cols-2 gap-2">
+                            <Button type="button" variant={formData.type === 'income' ? 'default' : 'outline'} aria-pressed={formData.type === 'income'} onClick={() => handleTypeChange('income')}>Receita</Button>
+                            <Button type="button" variant={formData.type === 'expense' ? 'default' : 'outline'} aria-pressed={formData.type === 'expense'} onClick={() => handleTypeChange('expense')}>Despesa</Button>
+                        </div>
                     </div>
 
                     {/* Service Select (only for income, new transactions) */}
@@ -340,7 +333,7 @@ export default function TransactionDialog({
                                 value={formData.service_id || 'none'}
                                 onValueChange={handleServiceChange}
                             >
-                                <SelectTrigger>
+                                <SelectTrigger id="service_id">
                                     <SelectValue placeholder="Selecione um serviço para preencher automaticamente" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -367,7 +360,7 @@ export default function TransactionDialog({
                             value={formData.category}
                             onValueChange={(value) => setFormData(prev => ({ ...prev, category: value }))}
                         >
-                            <SelectTrigger>
+                            <SelectTrigger id="category">
                                 <SelectValue placeholder="Selecione uma categoria" />
                             </SelectTrigger>
                             <SelectContent>
@@ -390,7 +383,7 @@ export default function TransactionDialog({
                                 value={formData.patient_id || 'none'}
                                 onValueChange={(value) => setFormData(prev => ({ ...prev, patient_id: value === 'none' ? '' : value }))}
                             >
-                                <SelectTrigger>
+                                <SelectTrigger id="patient_id">
                                     <SelectValue placeholder="Selecione um paciente" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -474,7 +467,7 @@ export default function TransactionDialog({
                                     value={formData.installments.toString()}
                                     onValueChange={(value) => setFormData(prev => ({ ...prev, installments: parseInt(value) }))}
                                 >
-                                    <SelectTrigger>
+                                    <SelectTrigger id="installments">
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -500,7 +493,7 @@ export default function TransactionDialog({
                         <div className="space-y-0.5">
                             <Label htmlFor="isPaid">Já foi pago?</Label>
                             <p className="text-sm text-muted-foreground">
-                                {formData.isInstallment 
+                                {formData.isInstallment
                                     ? 'Marque se a primeira parcela já foi paga'
                                     : 'Marque se o pagamento já foi realizado'}
                             </p>
@@ -543,7 +536,7 @@ export default function TransactionDialog({
                             value={formData.payment_method}
                             onValueChange={(value) => setFormData(prev => ({ ...prev, payment_method: value, fee_percentage: (value === 'credit' || value === 'debit') ? prev.fee_percentage : '' }))}
                         >
-                            <SelectTrigger>
+                            <SelectTrigger id="payment_method">
                                 <SelectValue placeholder="Selecione o método de pagamento" />
                             </SelectTrigger>
                             <SelectContent>
@@ -591,7 +584,7 @@ export default function TransactionDialog({
                                         type="button"
                                         variant="ghost"
                                         size="icon"
-                                        onClick={handleRemoveFile}
+                                        aria-label="Remover comprovante" onClick={handleRemoveFile}
                                         className="h-8 w-8"
                                     >
                                         <X className="w-4 h-4" />

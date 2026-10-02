@@ -11,12 +11,12 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 
-const NotificationItem = ({ 
-    title, 
-    description, 
-    type = 'info', 
-    actions = [], 
-    metadata = null 
+const NotificationItem = ({
+    title,
+    description,
+    type = 'info',
+    actions = [],
+    metadata = null
 }) => {
     const typeStyles = {
         info: 'border-l-blue-500 bg-blue-50/30',
@@ -42,16 +42,16 @@ const NotificationItem = ({
             <div className={cn("p-2 rounded-lg bg-white shadow-xs shrink-0", iconStyles[type])}>
                 <Icon className="w-5 h-5" />
             </div>
-            
+
             <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                     <h4 className="text-sm font-bold text-foreground leading-tight">{title}</h4>
-                    {metadata && <span className="text-[10px] font-medium text-muted-foreground bg-white/60 px-1.5 py-0.5 rounded border border-black/5">{metadata}</span>}
+                    {metadata && <span className="text-xs font-medium text-muted-foreground bg-white/60 px-1.5 py-0.5 rounded border border-black/5">{metadata}</span>}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{description}</p>
             </div>
 
-            <div className="flex items-center gap-2 w-full sm:w-auto shrink-0 mt-3 sm:mt-0">
+            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto mt-3 sm:mt-0">
                 {actions.map((action, idx) => (
                     <Button
                         key={idx}
@@ -59,7 +59,7 @@ const NotificationItem = ({
                         variant={action.variant || "outline"}
                         onClick={action.onClick}
                         disabled={action.disabled}
-                        className={cn("h-8 text-xs font-bold gap-1.5", action.className)}
+                        className={cn("min-h-11 h-auto py-2 max-w-full text-xs font-bold gap-1.5", action.className)}
                     >
                         {action.icon && <action.icon className="w-3.5 h-3.5" />}
                         {action.label}
@@ -70,8 +70,8 @@ const NotificationItem = ({
     );
 };
 
-const NotificationCenter = ({ 
-    pendingDrafts = [], 
+const NotificationCenter = ({
+    pendingDrafts = [],
     syncFlags = null,
     onDiscardDraft,
     onDiscardAllDrafts,
@@ -92,7 +92,7 @@ const NotificationCenter = ({
                     type="info"
                     title={pendingDrafts.length === 1 ? "Rascunho em andamento" : `${pendingDrafts.length} rascunhos pendentes`}
                     description={
-                        pendingDrafts.length === 1 
+                        pendingDrafts.length === 1
                             ? `Você tem um plano em criação salvo: "${pendingDrafts[0].name || 'Novo Plano'}".`
                             : `Deseja continuar o rascunho mais recente ("${pendingDrafts[0].name || 'Novo Plano'}") ou gerenciar os outros?`
                     }

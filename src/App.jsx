@@ -1,6 +1,8 @@
+import ViewportController from '@/app/ViewportController';
+import RouteMetadata from '@/app/router/RouteMetadata';
 import React from 'react';
 import { BrowserRouter as Router } from 'react-router-dom';
-import { HelmetProvider, Helmet } from 'react-helmet-async';
+import { HelmetProvider } from 'react-helmet-async';
 import SmartToaster from '@/components/SmartToaster';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
@@ -16,10 +18,9 @@ const App = () => {
       <HelmetProvider>
         <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <AuthProvider>
-            <Helmet>
-              <title>Nello - Consultório Nutricional Inteligente</title>
-              <meta name="description" content="Plataforma moderna para nutricionistas e pacientes com controle alimentar, prescrição de dietas e acompanhamento nutricional baseado na Tabela TACO." />
-            </Helmet>
+            <ViewportController />
+            <RouteMetadata />
+            <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:rounded focus:bg-background focus:p-3 focus:text-foreground">Pular para o conteúdo</a>
             <ClientErrorBoundary>
               <AppRouter />
             </ClientErrorBoundary>

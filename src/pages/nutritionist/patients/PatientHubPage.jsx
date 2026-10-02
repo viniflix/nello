@@ -45,7 +45,7 @@ const normalizeTab = (value) => value === 'feed' ? 'overview' : validTabs.has(va
 
 function HubSkeleton() {
     return (
-        <div className="min-h-screen bg-[#ecebe8]">
+        <div className="min-h-dvh bg-[#ecebe8]">
             <section aria-label="Resumo clínico do paciente" className="mx-auto w-full max-w-[1440px] space-y-4 px-3 py-4 sm:px-6 lg:px-8">
                 <div className="flex justify-between"><Skeleton className="h-9 w-24" /><Skeleton className="h-9 w-36" /></div>
                 <Card className="border-[#d8d5d0] bg-white shadow-card"><CardContent className="p-4 sm:p-5"><div className="flex gap-4"><Skeleton className="h-24 w-24 rounded-2xl" /><div className="flex-1 space-y-3"><Skeleton className="h-7 w-52" /><Skeleton className="h-4 w-72 max-w-full" /><Skeleton className="h-8 w-48" /></div></div><div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">{[1, 2, 3, 4].map((item) => <Skeleton key={item} className="h-16 rounded-xl" />)}</div></CardContent></Card>
@@ -103,7 +103,7 @@ function PatientInvite({ patientData, nutritionistName }) {
                         <div className="grid gap-3 border-t border-sky-200 px-4 py-4 sm:grid-cols-2 sm:px-5">
                             <div className="rounded-lg border border-sky-200 bg-white p-3">
                                 <p className="flex items-center gap-2 text-xs font-semibold text-sky-900"><LinkIcon className="h-4 w-4" /> Link de acesso</p>
-                                <p className="mt-1 break-all text-[11px] leading-4 text-sky-700">{invitationUrl}</p>
+                                <p className="mt-1 break-all text-xs leading-4 text-sky-700">{invitationUrl}</p>
                                 <Button size="sm" onClick={() => copy('link')} className="mt-3 w-full bg-sky-600 text-white hover:bg-sky-700">{copyState === 'link' ? <><Check className="mr-2 h-4 w-4" />Copiado</> : <><Copy className="mr-2 h-4 w-4" />Copiar mensagem</>}</Button>
                             </div>
                             <div className="rounded-lg border border-sky-200 bg-white p-3">
@@ -181,7 +181,7 @@ export default function PatientHubPage() {
     const notFound = (!resolveLoading && !patientId && paramValue) || (patientId && !hubLoading && !patientData);
     if (error || notFound) {
         return (
-            <div className="flex min-h-screen flex-col items-center justify-center bg-[#ecebe8] p-4">
+            <div className="flex min-h-dvh flex-col items-center justify-center bg-[#ecebe8] p-4">
                 <Alert variant="destructive" className="mb-6 max-w-md"><AlertCircle className="h-4 w-4" /><AlertDescription>{error?.message || 'Paciente não encontrado ou você não tem permissão para visualizá-lo.'}</AlertDescription></Alert>
                 <Button asChild variant="outline"><Link to="/nutritionist/patients"><ArrowLeft className="mr-2 h-4 w-4" />Voltar aos pacientes</Link></Button>
             </div>
@@ -189,7 +189,7 @@ export default function PatientHubPage() {
     }
 
     return (
-        <div className="min-h-screen overflow-x-hidden bg-[#ecebe8] pb-8 text-slate-900">
+        <div className="min-h-dvh overflow-x-hidden bg-[#ecebe8] pb-8 text-slate-900">
             <section aria-label="Resumo clínico do paciente" className="mx-auto w-full max-w-[1440px] px-3 py-4 sm:px-6 lg:px-8">
                 <div className="mb-3 flex items-center justify-between gap-2">
                     <Button asChild variant="ghost" size="sm" className="-ml-2 gap-2 text-slate-600"><Link to="/nutritionist/patients"><ArrowLeft className="h-4 w-4" />Pacientes</Link></Button>
@@ -216,7 +216,7 @@ export default function PatientHubPage() {
                 <nav aria-label="Áreas do prontuário" className="sticky top-0 z-20 my-4 rounded-xl border border-[#d8d5d0] bg-white p-1.5 shadow-card">
                     <div className="grid grid-cols-3 gap-1 sm:grid-cols-6">
                         {tabs.map(({ id, label, icon: Icon }) => (
-                            <button key={id} type="button" aria-current={activeTab === id ? 'page' : undefined} onClick={() => changeTab(id)} className={`flex min-w-0 flex-col items-center justify-center gap-1 rounded-lg px-1.5 py-2 text-[11px] font-semibold transition-colors sm:flex-row sm:gap-2 sm:px-2 sm:text-sm ${activeTab === id ? 'bg-[#5f6f52] text-white' : 'text-slate-500 hover:bg-[#eef2eb] hover:text-[#526047]'}`}>
+                            <button key={id} type="button" aria-current={activeTab === id ? 'page' : undefined} onClick={() => changeTab(id)} className={`flex min-w-0 flex-col items-center justify-center gap-1 rounded-lg px-1.5 py-2 text-xs font-semibold transition-colors sm:flex-row sm:gap-2 sm:px-2 sm:text-sm ${activeTab === id ? 'bg-[#5f6f52] text-white' : 'text-slate-500 hover:bg-[#eef2eb] hover:text-[#526047]'}`}>
                                 <Icon className="h-4 w-4 shrink-0" /><span className="truncate">{label}</span>
                             </button>
                         ))}

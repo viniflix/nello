@@ -178,16 +178,16 @@ const PatientsPage = () => {
         const thirtyDaysAgo = new Date(new Date() - 30 * 24 * 60 * 60 * 1000);
         const new30 = activeList.filter(p => new Date(p.created_at) >= thirtyDaysAgo).length;
 
-        return { 
-            activePatients: activeList, 
-            archivedPatients: archivedList, 
-            stats: { 
-                active: activeList.length, 
-                online, 
-                pending: pending + pendingRequests.length, 
+        return {
+            activePatients: activeList,
+            archivedPatients: archivedList,
+            stats: {
+                active: activeList.length,
+                online,
+                pending: pending + pendingRequests.length,
                 new30,
                 requests: pendingRequests.length
-            } 
+            }
         };
     }, [patients, isUserOnline, pendingRequests]);
 
@@ -226,7 +226,7 @@ const PatientsPage = () => {
     const visiblePatients = filteredPatients.slice(currentPage * 50, currentPage * 50 + 50);
     useEffect(() => {setPageIndex(0);}, [searchTerm, filterStatus, sortOrder, activeChip]);
 
-    // ── Contextual empty state message ───────────────────────────────────────  
+    // ── Contextual empty state message ───────────────────────────────────────
     const emptyMessage = useMemo(() => {
         if(listError)return {title:'Lista indisponível',sub:'Não foi possível confirmar os pacientes. Tente novamente.'};
         if (searchTerm) return { title: `Nenhum resultado para "${searchTerm}"`, sub: "Verifique a ortografia do nome ou e-mail." };
@@ -241,7 +241,7 @@ const PatientsPage = () => {
 
     // ── Render ────────────────────────────────────────────────────────────────
     return (
-        <div className="flex flex-col min-h-screen bg-background">
+        <div className="flex flex-col min-h-dvh bg-background">
 {listError&&<section role="alert" className="m-4 rounded-lg border p-4"><p>{listError.message}</p><Button onClick={fetchPatients} variant="outline">Tentar novamente</Button></section>}
             <motion.div
                 initial={{ opacity: 0, y: 16 }}
@@ -317,21 +317,21 @@ const PatientsPage = () => {
                                                     </div>
                                                     <div className="flex-1 min-w-0">
                                                         <p className="font-bold text-foreground truncate text-sm">{req.name}</p>
-                                                        <p className="text-[11px] text-muted-foreground truncate">{req.email}</p>
+                                                        <p className="text-xs text-muted-foreground truncate">{req.email}</p>
                                                     </div>
                                                 </div>
                                                 <div className="flex gap-2">
-                                                    <Button 
-                                                        size="sm" 
+                                                    <Button
+                                                        size="sm"
                                                         className="flex-1 bg-amber-500 hover:bg-amber-600 text-white font-bold h-8 text-xs"
                                                         onClick={() => handleApprove(req.id)}
                                                     >
                                                         Aceitar
                                                     </Button>
-                                                    <Button 
-                                                        size="sm" 
-                                                        variant="ghost" 
-                                                        className="h-8 text-[11px] text-muted-foreground hover:text-destructive font-medium"
+                                                    <Button
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        className="h-8 text-xs text-muted-foreground hover:text-destructive font-medium"
                                                         onClick={() => handleReject(req.id)}
                                                     >
                                                         Recusar
@@ -359,14 +359,14 @@ const PatientsPage = () => {
                                     {!loading && activePatients.length > 0 && (
                                         <div className="flex flex-wrap items-center justify-center sm:justify-end gap-2">
                                             {stats.new30 > 0 && (
-                                                <Badge variant="outline" className={`cursor-pointer text-[11px] gap-1 transition-colors px-2.5 py-1 ${activeChip === 'new30' ? 'bg-orange-500 text-white hover:bg-orange-600 border-transparent shadow-sm' : 'bg-orange-50 text-orange-700 hover:bg-orange-100 border-orange-200/60'}`} onClick={() => handleChipClick('new30')}>
+                                                <button type="button"  className={`cursor-pointer text-xs gap-1 transition-colors px-2.5 py-1 ${activeChip === 'new30' ? 'bg-orange-500 text-white hover:bg-orange-600 border-transparent shadow-sm' : 'bg-orange-50 text-orange-700 hover:bg-orange-100 border-orange-200/60'}`} onClick={() => handleChipClick('new30')}>
                                                     <Flame className={`w-3 h-3 ${activeChip === 'new30' ? 'text-white' : 'text-orange-500'}`} /> Adicionados Recentes ({stats.new30})
-                                                </Badge>
+                                                </button>
                                             )}
                                             {stats.pending > 0 && (
-                                                <Badge variant="outline" className={`cursor-pointer text-[11px] gap-1 transition-colors px-2.5 py-1 ${activeChip === 'pending' ? 'bg-amber-500 text-white hover:bg-amber-600 border-transparent shadow-sm' : 'bg-amber-50 text-amber-700 hover:bg-amber-100 border-amber-200/60'}`} onClick={() => handleChipClick('pending')}>
+                                                <button type="button"  className={`cursor-pointer text-xs gap-1 transition-colors px-2.5 py-1 ${activeChip === 'pending' ? 'bg-amber-500 text-white hover:bg-amber-600 border-transparent shadow-sm' : 'bg-amber-50 text-amber-700 hover:bg-amber-100 border-amber-200/60'}`} onClick={() => handleChipClick('pending')}>
                                                     <Clock className={`w-3 h-3 ${activeChip === 'pending' ? 'text-white' : 'text-amber-500'}`} /> Convites Pendentes ({stats.pending})
-                                                </Badge>
+                                                </button>
                                             )}
                                         </div>
                                     )}
@@ -475,9 +475,9 @@ const PatientsPage = () => {
                                                                     </div>
                                                                 </TableCell>
                                                                 <TableCell className="hidden md:table-cell">
-                                                                    {isArchived ? <Badge variant="outline" className="text-[10px] border-dashed">Arquivado</Badge>
-                                                                        : isPatientAccessPending(patient) ? <Badge variant="outline" className="text-[10px] bg-amber-50 text-amber-700 border-amber-200">Convite Pendente</Badge>
-                                                                        : <Badge variant="outline" className="text-[10px] bg-emerald-50 text-emerald-700 border-emerald-200">Ativo</Badge>}
+                                                                    {isArchived ? <Badge variant="outline" className="text-xs border-dashed">Arquivado</Badge>
+                                                                        : isPatientAccessPending(patient) ? <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-200">Convite Pendente</Badge>
+                                                                        : <Badge variant="outline" className="text-xs bg-emerald-50 text-emerald-700 border-emerald-200">Ativo</Badge>}
                                                                 </TableCell>
                                                                 <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">
                                                                     {patient.phone || <span className="opacity-50">—</span>}

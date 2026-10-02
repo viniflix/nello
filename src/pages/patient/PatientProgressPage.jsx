@@ -86,7 +86,7 @@ import {
 export default function PatientProgressPage() {
 const {activeDetail,setActiveDetail,setDialogOpen,activeTab,loading,loadError,loadProgressData,sortedWeightData,openDetail,weightOnlyData,indicatorCards,clinicalLoadError,timeline,user,setActiveTab,isDiabetic,weightChartData,goalWeight,glycemiaChartData,sortedGlycemiaData,measurementsData,sortedMeasurementsData,photosData,setLightboxPhoto,setDeletePhotoTarget,hasMoreHistory,loadingMoreHistory,loadMoreHistory,dialogOpen,handleAddWeightRecord,recordDate,setRecordDate,newWeight,setNewWeight,handleAddGlycemiaRecord,newGlycemiaCondition,setNewGlycemiaCondition,newGlycemia,setNewGlycemia,handleAddMeasurementRecord,newHeight,setNewHeight,newHeadCircumference,setNewHeadCircumference,selectedPhotoFile,handleAddPhotoRecord,photoNotes,setSelectedPhotoFile,setPhotoNotes,lightboxPhoto,deletePhotoTarget,handleDeletePhoto}=usePatientProgressPageController();
 return (
-    <div className="flex flex-col min-h-screen bg-background [&_h1]:uppercase [&_h2]:uppercase [&_h3]:uppercase [&_h4]:uppercase">
+    <div className="flex flex-col min-h-dvh bg-background [&_h1]:uppercase [&_h2]:uppercase [&_h3]:uppercase [&_h4]:uppercase">
       <div className="patient-page-content">
         <header className="mb-6">
           {activeDetail && (
@@ -278,21 +278,21 @@ return (
         {activeDetail && (
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full [&_h2]:uppercase [&_h3]:uppercase">
           <TabsList className={`grid w-full ${isDiabetic ? 'grid-cols-4' : 'grid-cols-3'} mb-4`}>
-            <TabsTrigger value="peso" className="px-1 text-[11px] uppercase sm:px-3 sm:text-xs">
+            <TabsTrigger value="peso" className="px-1 text-xs uppercase sm:px-3 sm:text-xs">
               <Scale className="mr-1 hidden h-4 w-4 sm:block" />
               Peso
             </TabsTrigger>
             {isDiabetic && (
-              <TabsTrigger value="glicemia" className="px-1 text-[11px] uppercase sm:px-3 sm:text-xs">
+              <TabsTrigger value="glicemia" className="px-1 text-xs uppercase sm:px-3 sm:text-xs">
                 <Droplet className="mr-1 hidden h-4 w-4 sm:block" />
                 Glicemia
               </TabsTrigger>
             )}
-            <TabsTrigger value="medidas" className="px-1 text-[11px] uppercase sm:px-3 sm:text-xs">
+            <TabsTrigger value="medidas" className="px-1 text-xs uppercase sm:px-3 sm:text-xs">
               <Ruler className="mr-1 hidden h-4 w-4 sm:block" />
               Medidas
             </TabsTrigger>
-            <TabsTrigger value="fotos" className="px-1 text-[11px] uppercase sm:px-3 sm:text-xs">
+            <TabsTrigger value="fotos" className="px-1 text-xs uppercase sm:px-3 sm:text-xs">
               <Camera className="mr-1 hidden h-4 w-4 sm:block" />
               Fotos
             </TabsTrigger>
@@ -585,7 +585,7 @@ return (
                         />
                         <div className="bg-muted px-2 py-1.5 text-center">
                           <span className="text-xs font-semibold">Antes</span>
-                          <p className="text-[10px] text-muted-foreground">
+                          <p className="text-xs text-muted-foreground">
                             {formatCivilDate(photosData[photosData.length - 1].photo_date)}
                           </p>
                         </div>
@@ -603,7 +603,7 @@ return (
                         />
                         <div className="bg-muted px-2 py-1.5 text-center">
                           <span className="text-xs font-semibold">Depois</span>
-                          <p className="text-[10px] text-muted-foreground">
+                          <p className="text-xs text-muted-foreground">
                             {formatCivilDate(photosData[0].photo_date)}
                           </p>
                         </div>
@@ -634,7 +634,7 @@ return (
                             <img src={photo.photo_url} alt="" className="h-full w-full object-cover" />
                             <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-3">
                               <span className="block text-xs font-medium text-white">{formatCivilDate(photo.photo_date)}</span>
-                              {photo.notes && <span className="mt-0.5 block truncate text-[10px] text-white/90">{photo.notes}</span>}
+                              {photo.notes && <span className="mt-0.5 block truncate text-xs text-white/90">{photo.notes}</span>}
                             </span>
                           </button>
                           <Button
@@ -885,7 +885,7 @@ return (
               <img
                 src={lightboxPhoto.photo_url}
                 alt={`Foto de progresso de ${formatCivilDate(lightboxPhoto.photo_date)}`}
-                className="w-full max-h-[85vh] object-contain rounded-lg"
+                className="w-full max-h-[85dvh] object-contain rounded-lg"
               />
               <div className="text-center py-2">
                 <p className="font-medium">{formatCivilDate(lightboxPhoto.photo_date)}</p>

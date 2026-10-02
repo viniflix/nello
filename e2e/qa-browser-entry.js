@@ -1,5 +1,25 @@
 export {renderCanonicalDocumentPdf} from '../src/features/documents/pdf/render-canonical-document.js';
 export {uploadVerifiedFile} from '../src/lib/storage/verifiedUpload';
+import React from 'react';
+import ImageModal from '../src/components/ImageModal';
+import { createRoot } from 'react-dom/client';
+export function mountSyntheticMediaModal() {
+  function Probe() {
+    const [open, setOpen] = React.useState(false);
+    return React.createElement('main', null, React.createElement('h1', null, 'Mídia sintética'),
+      React.createElement('button', {type:'button', onClick:()=>setOpen(true)}, 'Ampliar imagem'),
+      React.createElement(ImageModal, { mediaPath: open ? '/nello-logo.png' : null, mediaType:'image', onClose:()=>setOpen(false) }));
+  }
+  createRoot(document.getElementById('root')).render(React.createElement(Probe));
+}
+import AudioPlayer from '../src/features/chat/components/AudioPlayer';
+// Disposable browser fixture: real production controls, synthetic local media.
+export function mountSyntheticAudio(src) {
+  const root = createRoot(document.getElementById('root'));
+  root.render(React.createElement('main', { 'aria-label': 'Áudio de teste' },
+    React.createElement('h1', null, 'Player de áudio'), React.createElement(AudioPlayer, { src })));
+  return () => root.unmount();
+}
 import posthog, { identifyUser, resetUser, track } from '../src/infrastructure/analytics/posthog';
 import { createPosthogOptions } from '../src/app/config/posthog';
 import { bindConsentOwner, storeAnalyticsChoice } from '../src/features/privacy/consent';

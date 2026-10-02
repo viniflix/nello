@@ -1,6 +1,5 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Helmet } from 'react-helmet-async';
 import { useTemplates } from '@/hooks/useTemplates';
 import { useCheckins } from '@/hooks/useCheckins';
 import { useToast } from '@/components/ui/use-toast';
@@ -166,8 +165,8 @@ const CheckinsSection = () => {
 
   const filteredTemplates = useMemo(() => {
     if (!templates) return [];
-    return templates.filter(t => 
-      t.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    return templates.filter(t =>
+      t.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (t.description && t.description.toLowerCase().includes(searchTerm.toLowerCase()))
     );
   }, [templates, searchTerm]);
@@ -227,7 +226,7 @@ const CheckinsSection = () => {
             {searchTerm ? 'Nenhum check-in encontrado' : 'Nenhum check-in criado'}
           </h3>
           <p className="text-sm text-muted-foreground max-w-sm mb-6">
-            {searchTerm 
+            {searchTerm
               ? `Nenhum resultado para "${searchTerm}".`
               : 'Crie formulários automáticos de check-in para acompanhar a adesão dos seus pacientes.'}
           </p>
@@ -310,19 +309,19 @@ export default function TemplatesPage() {
   const activeGroup = searchParams.get('group') || 'nutrition';
   const activeNutritionTab = searchParams.get('ntab') || 'diet';
   const activeFormsTab = searchParams.get('ftab') || 'forms';
-  
+
   const setActiveGroup = (group) => {
     const params = new URLSearchParams(searchParams);
     params.set('group', group);
     setSearchParams(params, { replace: true });
   };
-  
+
   const setActiveNutritionTab = (tab) => {
     const params = new URLSearchParams(searchParams);
     params.set('ntab', tab);
     setSearchParams(params, { replace: true });
   };
-  
+
   const setActiveFormsTab = (tab) => {
     const params = new URLSearchParams(searchParams);
     params.set('ftab', tab);
@@ -349,11 +348,8 @@ export default function TemplatesPage() {
   const currentNutritionTab = NUTRITION_TABS.find(t => t.id === activeNutritionTab);
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-background">
+    <div className="min-h-dvh overflow-x-hidden bg-background">
       <main className="mx-auto w-full max-w-7xl min-w-0 px-4 pt-4 pb-8 md:px-8 md:pt-8">
-      <Helmet>
-        <title>Protocolos - Nello</title>
-      </Helmet>
 
       {/* Header */}
       <div className="mb-6 text-center sm:text-left md:mb-8">

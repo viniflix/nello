@@ -141,7 +141,7 @@ return (
                                         className={errors.peso_usual ? 'border-destructive' : ''}
                                         disabled={loading}
                                     />
-                                    <p className="text-[10px] text-muted-foreground leading-tight">
+                                    <p className="text-xs text-muted-foreground leading-tight">
                                         Peso habitual do paciente antes de qualquer processo intencional de perda ou ganho de peso.
                                     </p>
                                 </div>

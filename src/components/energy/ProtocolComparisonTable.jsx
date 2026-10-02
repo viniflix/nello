@@ -9,10 +9,10 @@ import { calculateEnergyPlan } from '@/lib/utils/energy-planning';
 
 /**
  * ProtocolComparisonTable Component
- * 
+ *
  * Exibe uma tabela comparativa de diferentes protocolos de cálculo de BMR/TMB,
  * permitindo ao usuário visualizar e selecionar o protocolo mais adequado.
- * 
+ *
  * @param {Array} protocols - Array de objetos com informações dos protocolos
  * @param {number} activityFactor - Fator de atividade física (NAF)
  * @param {string} selectedProtocolId - ID do protocolo atualmente selecionado
@@ -38,7 +38,7 @@ export function ProtocolComparisonTable({ protocols, activityFactor, selectedPro
           GET conforme fatores específicos de cada protocolo
         </span>
       </div>
-      
+
       <div className="overflow-x-auto">
         <Table>
           <TableHeader>
@@ -72,12 +72,12 @@ export function ProtocolComparisonTable({ protocols, activityFactor, selectedPro
                       <span className="font-medium flex items-center gap-2">
                         {protocol.name}
                         {protocol.isEer && (
-                          <Badge variant="outline" className="text-[10px] h-5 px-1.5">
+                          <Badge variant="outline" className="text-xs h-5 px-1.5">
                             GET direto
                           </Badge>
                         )}
                         {(protocol.category === 'athlete' || protocol.id === 'cunningham' || protocol.id === 'tinsley') && (
-                          <Badge variant="secondary" className="text-[10px] h-5 px-1.5">
+                          <Badge variant="secondary" className="text-xs h-5 px-1.5">
                             Atleta
                           </Badge>
                         )}
@@ -98,7 +98,7 @@ export function ProtocolComparisonTable({ protocols, activityFactor, selectedPro
                               {Math.round(protocol.bmr)} kcal
                             </div>
                             {diffFromAvg != null && (
-                              <span className={`text-[10px] ${
+                              <span className={`text-xs ${
                                 diffFromAvg > 0 ? 'text-green-600 dark:text-green-400' :
                                 diffFromAvg < 0 ? 'text-red-600 dark:text-red-400' :
                                 'text-muted-foreground'
@@ -125,10 +125,10 @@ export function ProtocolComparisonTable({ protocols, activityFactor, selectedPro
                       {isEer ? 'GET (EER)' : 'Gasto Energético Total'}
                     </span>
                   </TableCell>
-                  
+
                   <TableCell className="text-right">
-                    <Button 
-                      size="sm" 
+                    <Button
+                      size="sm"
                       variant={isSelected ? "default" : "outline"}
                       onClick={() => onSelect && onSelect(protocol)}
                       className="gap-2 transition-all"

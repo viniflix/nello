@@ -10,8 +10,8 @@ import {
     DialogHeader,
     DialogTitle
 } from '@/components/ui/dialog';
-import { 
-    Plus, Copy, Edit, Trash2, RefreshCw, Send, Utensils, FolderOpen, Search 
+import {
+    Plus, Copy, Edit, Trash2, RefreshCw, Send, Utensils, FolderOpen, Search
 } from 'lucide-react';
 
 const MealPlanList = ({
@@ -54,27 +54,27 @@ const MealPlanList = ({
                                 </div>
                                 <h3 className="text-xl font-bold mb-2">Nenhum Plano Ativo</h3>
                                 <p className="text-muted-foreground max-w-md mb-8">
-                                    Este paciente ainda não possui um plano alimentar ativo. 
+                                    Este paciente ainda não possui um plano alimentar ativo.
                                     Crie um novo plano ou utilize um modelo para começar.
                                 </p>
-                                <div className="flex flex-col sm:flex-row gap-4 w-full justify-center px-4">
-                                    <Button 
+                                <div className="flex flex-col sm:flex-row flex-wrap gap-4 w-full justify-center">
+                                    <Button
                                         onClick={() => {
                                             setPendingDraft(null);
                                             setEditingPlan(null);
                                             setShowForm(true);
                                         }}
                                         size="lg"
-                                        className="font-bold h-12 px-8 bg-primary hover:bg-primary/90 text-white w-full sm:w-auto shadow-md"
+                                        className="font-bold min-h-12 h-auto py-3 px-4 bg-primary hover:bg-primary/90 text-white w-full sm:w-auto shadow-md"
                                     >
                                         <Plus className="w-5 h-5 mr-2" />
                                         Criar Primeiro Plano
                                     </Button>
-                                    <Button 
-                                        variant="outline" 
+                                    <Button
+                                        variant="outline"
                                         size="lg"
                                         onClick={() => setTemplateManagerOpen(true)}
-                                        className="font-bold h-12 px-8 border-2 w-full sm:w-auto"
+                                        className="font-bold min-h-12 h-auto py-3 px-4 border-2 w-full sm:w-auto"
                                     >
                                         <Copy className="w-5 h-5 mr-2" />
                                         Usar Modelo
@@ -85,17 +85,17 @@ const MealPlanList = ({
                             <div className="space-y-3">
                                 {pendingDrafts.map((draft) => (
                                     <div key={draft.id} className="p-4 border-2 border-amber-200 bg-amber-50/50 border-dashed rounded-lg transition-colors">
-                                        <div className="flex items-start justify-between">
-                                            <div className="flex-1">
-                                                <div className="flex items-center gap-2">
-                                                    <h3 className="font-semibold text-amber-900">{draft.name || 'Novo Plano Alimentar'}</h3>
-                                                    <Badge className="bg-amber-500 hover:bg-amber-600">Rascunho</Badge>
+                                        <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-start justify-between">
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    <h3 className="font-semibold break-words text-amber-900">{draft.name || 'Novo Plano Alimentar'}</h3>
+                                                    <Badge className="bg-amber-100 text-amber-900 hover:bg-amber-200">Rascunho</Badge>
                                                 </div>
-                                                <div className="text-sm text-amber-700/80 mt-1">
+                                                <div className="text-sm text-amber-800 mt-1">
                                                     {formatRelativeTime(draft.updated_at)} • Pendente
                                                 </div>
                                             </div>
-                                            <div className="flex gap-2">
+                                            <div className="flex flex-wrap max-w-full gap-2">
                                                 <Button variant="outline" size="sm" className="border-amber-300 bg-white text-amber-800 hover:bg-amber-100" onClick={() => handleResumePendingDraft(draft)} title="Retomar edição">
                                                     <Edit className="h-4 w-4 mr-2" />Retomar
                                                 </Button>
@@ -108,10 +108,10 @@ const MealPlanList = ({
                                 ))}
                                 {plans.map((plan) => (
                                     <div key={plan.id} className="p-4 border rounded-lg hover:bg-muted/50 transition-colors">
-                                        <div className="flex items-start justify-between">
-                                            <div className="flex-1">
-                                                <div className="flex items-center gap-2">
-                                                    <h3 className="font-semibold">{plan.name}</h3>
+                                        <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-start justify-between">
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    <h3 className="font-semibold break-words">{plan.name}</h3>
                                                     {plan.is_active && <Badge variant="outline" className="border-green-300 text-green-700">Ativo</Badge>}
                                                     {!plan.is_active && <Badge variant="secondary">Arquivado</Badge>}
                                                 </div>
@@ -122,7 +122,7 @@ const MealPlanList = ({
                                                     {' '}• {plan.daily_calories?.toFixed(0) || 0} kcal/dia
                                                 </div>
                                             </div>
-                                            <div className="flex gap-2">
+                                            <div className="flex flex-wrap max-w-full gap-2">
                                                 {!plan.is_active && (
                                                     <Button variant="default" size="sm" onClick={() => handleSetActive(plan.id)} title="Ativar este plano">
                                                         <RefreshCw className="h-4 w-4" />
@@ -149,9 +149,9 @@ const MealPlanList = ({
 
             {/* Modal "Meus Planos" - quando plano ativo existe */}
             <Dialog open={plansModalOpen} onOpenChange={(open) => { setPlansModalOpen(open); if (!open) setPlansSearchTerm(''); }}>
-                <DialogContent className="max-w-3xl max-h-[80vh]">
+                <DialogContent className="max-w-3xl max-h-[80dvh]">
                     <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2">
+                        <DialogTitle className="flex flex-wrap items-center gap-2">
                             <FolderOpen className="h-5 w-5 text-primary" />
                             Planos Alimentares
                         </DialogTitle>
@@ -164,6 +164,7 @@ const MealPlanList = ({
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
+                            aria-label="Buscar planos alimentares"
                             placeholder="Buscar por nome do plano..."
                             value={plansSearchTerm}
                             onChange={(e) => setPlansSearchTerm(e.target.value)}
@@ -171,23 +172,23 @@ const MealPlanList = ({
                         />
                     </div>
 
-                    <div className="overflow-y-auto max-h-[50vh] space-y-2 pr-1">
+                    <div className="overflow-y-auto max-h-[50dvh] space-y-2 pr-1">
                         {/* Rascunhos */}
                         {pendingDrafts.filter(d => !plansSearchTerm || (d.name || '').toLowerCase().includes(plansSearchTerm.toLowerCase())).map((draft) => (
                             <div key={draft.id} className="p-3 border-2 border-amber-200 bg-amber-50/50 border-dashed rounded-lg">
-                                <div className="flex items-center justify-between gap-2">
+                                <div className="flex flex-wrap items-center justify-between gap-2">
                                     <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex flex-wrap items-center gap-2">
                                             <h4 className="font-semibold text-sm text-amber-900 truncate">{draft.name || 'Novo Plano'}</h4>
-                                            <Badge className="bg-amber-500 hover:bg-amber-600 shrink-0 text-[10px]">Rascunho</Badge>
+                                            <Badge className="bg-amber-100 text-amber-900 hover:bg-amber-200 shrink-0 text-xs">Rascunho</Badge>
                                         </div>
-                                        <p className="text-xs text-amber-700/70 mt-0.5">{formatRelativeTime(draft.updated_at)}</p>
+                                        <p className="text-xs text-amber-800 mt-0.5">{formatRelativeTime(draft.updated_at)}</p>
                                     </div>
-                                    <div className="flex gap-1.5 shrink-0">
+                                    <div className="flex flex-wrap max-w-full gap-1.5">
                                         <Button variant="outline" size="sm" className="h-8 border-amber-300 text-amber-800" onClick={() => { handleResumePendingDraft(draft); setPlansModalOpen(false); }}>
                                             <Edit className="h-3.5 w-3.5 mr-1" />Retomar
                                         </Button>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDraftToDelete(draft)}>
+                                        <Button variant="ghost" size="icon" aria-label="Descartar rascunho" className="h-8 w-8 text-destructive" onClick={() => setDraftToDelete(draft)}>
                                             <Trash2 className="h-3.5 w-3.5" />
                                         </Button>
                                     </div>
@@ -198,12 +199,12 @@ const MealPlanList = ({
                         {/* Planos salvos */}
                         {plans.filter(p => !plansSearchTerm || p.name.toLowerCase().includes(plansSearchTerm.toLowerCase())).map((plan) => (
                             <div key={plan.id} className="p-3 border rounded-lg hover:bg-muted/30 transition-colors">
-                                <div className="flex items-center justify-between gap-2">
+                                <div className="flex flex-wrap items-center justify-between gap-2">
                                     <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex flex-wrap items-center gap-2">
                                             <h4 className="font-semibold text-sm truncate">{plan.name}</h4>
-                                            {plan.is_active && <Badge variant="outline" className="border-green-300 text-green-700 shrink-0 text-[10px]">Ativo</Badge>}
-                                            {!plan.is_active && <Badge variant="secondary" className="shrink-0 text-[10px]">Arquivado</Badge>}
+                                            {plan.is_active && <Badge variant="outline" className="border-green-300 text-green-700 shrink-0 text-xs">Ativo</Badge>}
+                                            {!plan.is_active && <Badge variant="secondary" className="shrink-0 text-xs">Arquivado</Badge>}
                                         </div>
                                         <p className="text-xs text-muted-foreground mt-0.5">
                                             {formatDate(plan.start_date)}
@@ -211,7 +212,7 @@ const MealPlanList = ({
                                             {' '}• {plan.daily_calories?.toFixed(0) || 0} kcal/dia
                                         </p>
                                     </div>
-                                    <div className="flex gap-1.5 shrink-0">
+                                    <div className="flex flex-wrap max-w-full gap-1.5">
                                         {!plan.is_active && (
                                             <Button variant="default" size="icon" className="h-8 w-8" onClick={() => { handleSetActive(plan.id); setPlansModalOpen(false); }} title="Ativar">
                                                 <RefreshCw className="h-3.5 w-3.5" />

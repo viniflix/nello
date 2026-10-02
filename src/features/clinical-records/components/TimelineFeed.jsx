@@ -36,22 +36,22 @@ export default function TimelineFeed({ patientId, viewedEpisodeId, patientSlug }
 
   return (
     <div className="w-full max-w-3xl mx-auto">
-      <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-8 sticky top-4 z-20">
+      <div className="bg-white p-2 sm:p-4 rounded-xl shadow-sm border border-slate-200 mb-8 sticky top-4 z-20">
         <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
           <div className="relative w-full sm:max-w-xs">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" aria-hidden="true" />
             <Input aria-label="Buscar no histórico" placeholder="Buscar no histórico..." value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} className="pl-9 bg-slate-50 border-slate-200 focus-visible:ring-blue-500" />
           </div>
-          <div role="group" className="flex items-center gap-1 w-full sm:w-auto bg-slate-100 p-1 rounded-lg" aria-label="Filtrar linha do tempo">
-            <Button variant={scope === 'all' ? 'default' : 'ghost'} size="sm" onClick={() => setScope('all')} aria-pressed={scope === 'all'}>Linha completa</Button>
-            <Button variant={scope === 'clinical' ? 'default' : 'ghost'} size="sm" onClick={() => setScope('clinical')} aria-pressed={scope === 'clinical'}>Clínico</Button>
-            <Button variant={scope === 'operational' ? 'default' : 'ghost'} size="sm" onClick={() => setScope('operational')} aria-pressed={scope === 'operational'}>Operacional</Button>
+          <div role="group" className="flex flex-wrap items-center gap-1 w-full sm:w-auto bg-slate-100 p-1 rounded-lg" aria-label="Filtrar linha do tempo">
+            <Button className="max-w-full h-auto py-2" variant={scope === 'all' ? 'default' : 'ghost'} size="sm" onClick={() => setScope('all')} aria-pressed={scope === 'all'}>Linha completa</Button>
+            <Button className="max-w-full h-auto py-2" variant={scope === 'clinical' ? 'default' : 'ghost'} size="sm" onClick={() => setScope('clinical')} aria-pressed={scope === 'clinical'}>Clínico</Button>
+            <Button className="max-w-full h-auto py-2" variant={scope === 'operational' ? 'default' : 'ghost'} size="sm" onClick={() => setScope('operational')} aria-pressed={scope === 'operational'}>Operacional</Button>
           </div>
         </div>
       </div>
       <div className="relative">
         {filteredTimeline.length === 0 ? (
-          <div role="status" className="text-center py-16 bg-slate-50 rounded-xl border-2 border-dashed border-slate-200">
+          <div role="status" className="text-center break-words py-16 bg-slate-50 rounded-xl border-2 border-dashed border-slate-200">
             <Filter className="w-8 h-8 text-slate-400 mx-auto mb-3" aria-hidden="true" />
             <h3 className="text-slate-700 font-medium">Nenhum registro encontrado</h3>
             <p className="text-slate-500 text-sm mt-1">{searchTerm ? 'Tente limpar a busca para ver mais resultados.' : 'A linha do tempo deste episódio está vazia.'}</p>

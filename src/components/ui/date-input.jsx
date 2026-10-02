@@ -96,7 +96,7 @@ const DateInputWithCalendar = ({
     const formatDateAsUserTypes = (input) => {
         const digits = input.replace(/\D/g, '');
         if (digits.length === 0) return '';
-        
+
         let d = digits.slice(0, 2);
         let m = digits.slice(2, 4);
         let y = digits.slice(4, 8);
@@ -139,7 +139,7 @@ const DateInputWithCalendar = ({
                 onChange('');
                 return;
             }
-            
+
             // Apply min/max constraints if provided
             if (minDate && parsed < minDate) {
                 onChange('');
@@ -230,7 +230,7 @@ const DateInputWithCalendar = ({
                         type="button"
                         variant="outline"
                         size="icon"
-                        className="h-9 w-9"
+                        aria-label="Abrir calendário" className="h-11 w-11 shrink-0"
                         disabled={disabled}
                     >
                         <CalendarDays className="h-4 w-4" />
@@ -243,7 +243,7 @@ const DateInputWithCalendar = ({
                             variant="ghost"
                             size="icon"
                             className="h-7 w-7"
-                            onClick={goPrevMonth}
+                            aria-label="Mês anterior" onClick={goPrevMonth}
                         >
                             <ChevronLeft className="h-4 w-4" />
                         </Button>
@@ -251,7 +251,7 @@ const DateInputWithCalendar = ({
                             <span className="capitalize">{format(displayMonth, 'MMMM', { locale: ptBR })}</span>
                             {isEditingYear ? (
                                 <input
-                                    ref={yearInputRef}
+                                    aria-label="Ano do calendário" ref={yearInputRef}
                                     value={yearInput}
                                     onChange={(e) => applyYearInput(e.target.value)}
                                     className="h-7 w-20 rounded border border-input bg-background px-2 text-center text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
@@ -297,7 +297,7 @@ const DateInputWithCalendar = ({
                             variant="ghost"
                             size="icon"
                             className="h-7 w-7"
-                            onClick={goNextMonth}
+                            aria-label="Próximo mês" onClick={goNextMonth}
                         >
                             <ChevronRight className="h-4 w-4" />
                         </Button>
@@ -388,7 +388,7 @@ const MonthInputWithCalendar = ({
                         type="button"
                         variant="outline"
                         size="icon"
-                        className="h-9 w-9"
+                        aria-label="Abrir calendário" className="h-11 w-11 shrink-0"
                         disabled={disabled}
                     >
                         <CalendarDays className="h-4 w-4" />
@@ -411,20 +411,20 @@ const TimeInput = ({ value, onChange, placeholder = 'hh:mm', disabled, id, name,
     const handleInputChange = (event) => {
         let val = event.target.value;
         const isBackspace = event.nativeEvent?.inputType === 'deleteContentBackward';
-        
+
         let digits = val.replace(/\D/g, '');
         if (digits.length === 0) {
             onChange?.('');
             return;
         }
-        
+
         if (digits.length > 4) {
             digits = digits.slice(0, 4);
         }
-        
+
         let hours = digits.slice(0, 2);
         let minutes = digits.slice(2, 4);
-        
+
         if (hours.length === 2) {
             let h = parseInt(hours, 10);
             if (h > 23) hours = '23';
@@ -432,14 +432,14 @@ const TimeInput = ({ value, onChange, placeholder = 'hh:mm', disabled, id, name,
             // Se digitar 3 a 9 no primeiro dígito, já assume 03 a 09
             hours = '0' + hours;
         }
-        
+
         if (minutes.length === 2) {
             let m = parseInt(minutes, 10);
             if (m > 59) minutes = '59';
         } else if (minutes.length === 1 && parseInt(minutes, 10) >= 6) {
             minutes = '0' + minutes;
         }
-        
+
         let formatted = hours;
         if (digits.length >= 3) {
             formatted = `${hours}:${minutes}`;
@@ -448,7 +448,7 @@ const TimeInput = ({ value, onChange, placeholder = 'hh:mm', disabled, id, name,
         } else if (digits.length === 2 && val.endsWith(':')) {
             formatted = `${hours}:`;
         }
-        
+
         onChange?.(formatted);
     };
 

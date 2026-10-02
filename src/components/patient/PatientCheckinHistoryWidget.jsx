@@ -42,15 +42,15 @@ const PatientCheckinHistoryWidget = ({ patientId }) => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {history.map((session) => (
           <Card key={session.id} className="hover:shadow-md transition-shadow relative overflow-hidden group">
-            <div 
+            <div
               className={`absolute top-0 left-0 w-1.5 h-full transition-all ${
                 session.adherence_percentage >= 80 ? 'bg-green-500' :
                 session.adherence_percentage >= 50 ? 'bg-amber-400' : 'bg-red-500'
-              }`} 
+              }`}
             />
             <CardContent className="p-5 flex flex-col justify-between h-full">
               <div className="mb-4">
-                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
                   {new Date(session.completed_at).toLocaleDateString('pt-BR')} às {new Date(session.completed_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                 </span>
                 <h4 className="font-semibold text-foreground mt-1 line-clamp-2">

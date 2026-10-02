@@ -23,7 +23,7 @@ export default function PatientPageResolver({ children, fallback = null }) {
     if (loading && !patientId) {
         if (fallback) return fallback;
         return (
-            <div className="min-h-screen bg-background p-4">
+            <div className="min-h-dvh bg-background p-4">
                 <Skeleton className="h-10 w-48 mb-4" />
                 <Skeleton className="h-64 w-full" />
             </div>
@@ -31,7 +31,7 @@ export default function PatientPageResolver({ children, fallback = null }) {
     }
     if (error || slugNotFound) {
         return (
-            <div className="flex flex-col items-center justify-center min-h-[50vh] p-4">
+            <div className="flex flex-col items-center justify-center min-h-[50dvh] p-4">
                 <Alert variant="destructive" className="max-w-md mb-6">
                     <AlertCircle className="h-4 w-4" />
                     <AlertDescription>

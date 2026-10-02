@@ -165,7 +165,7 @@ export default function LoginPage() {
   // Show loading state while AuthContext is loading (checking session, fetching profile, self-healing)
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4 bg-background">
+      <div className="min-h-dvh flex items-center justify-center p-4 bg-background">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
           <p className="text-sm text-muted-foreground">Carregando...</p>
@@ -176,7 +176,7 @@ export default function LoginPage() {
 
   return (
     <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
-      <div className="min-h-screen flex items-center justify-center p-4 bg-background">
+      <div className="min-h-dvh flex items-center justify-center p-4 bg-background">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}

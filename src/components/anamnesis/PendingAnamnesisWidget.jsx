@@ -76,9 +76,9 @@ export function PendingAnamnesisWidget() {
                             const isUrgent = daysSent >= 3;
 
                             return (
-                                <div
+                                <button type="button"
                                     key={record.id}
-                                    className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100 hover:border-slate-200 hover:bg-white transition-all cursor-pointer group"
+                                    className="w-full text-left flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100 hover:border-slate-200 hover:bg-white transition-all cursor-pointer group"
                                     onClick={() => navigate(`/nutritionist/patients/${record.patient?.slug || record.patient_id}/anamnese/${record.id}/edit`)}
                                 >
                                     <div className={`w-2 h-2 rounded-full shrink-0 ${isUrgent ? 'bg-red-400' : 'bg-amber-400'}`} />
@@ -97,7 +97,7 @@ export function PendingAnamnesisWidget() {
                                     )}
 
                                     <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-slate-500 shrink-0 transition-colors" />
-                                </div>
+                                </button>
                             );
                         })}
                     </div>

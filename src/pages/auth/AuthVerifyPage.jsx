@@ -24,7 +24,7 @@ export default function AuthVerifyPage() {
             const defaultTarget = type === 'recovery' ? '/update-password?mode=recovery'
                 : type === 'invite' ? '/update-password?mode=invite' : '/login';
             const redirectTo = searchParams.get('redirect_to') || defaultTarget;
-            
+
             const targetPath = safeAuthRedirect(redirectTo, window.location.origin, defaultTarget);
 
             if (!token || !type) {
@@ -66,7 +66,7 @@ export default function AuthVerifyPage() {
     }, [searchParams, navigate, toast]);
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="min-h-dvh flex items-center justify-center bg-background">
             <div className="flex flex-col items-center gap-4">
                 <Loader2 className="w-10 h-10 animate-spin text-primary" />
                 <div className="text-center">

@@ -47,7 +47,7 @@ if (resolveLoading || !patientId) {
     }
     if (resolveError) {
         return (
-            <div className="flex flex-col min-h-screen bg-background items-center justify-center p-8">
+            <div className="flex flex-col min-h-dvh bg-background items-center justify-center p-8">
                 <AlertCircle className="w-10 h-10 text-destructive" />
                 <p className="mt-4 text-sm text-foreground">Paciente não encontrado.</p>
                 <Button variant="outline" className="mt-4 gap-2" onClick={() => navigate(-1)}>
@@ -65,7 +65,7 @@ if (resolveLoading || !patientId) {
             <CardSkeleton />
         </div>
     ) : (
-        <div className="flex flex-col min-h-screen bg-background overflow-x-hidden">
+        <div className="flex flex-col min-h-dvh bg-background overflow-x-hidden">
             <div className="max-w-7xl mx-auto w-full px-4 md:px-8 py-4 md:py-8 min-w-0">
                 {/* Header */}
                 <div className="flex flex-col gap-4 mb-6">
@@ -215,7 +215,7 @@ if (resolveLoading || !patientId) {
                                                 <div className="flex flex-col items-end gap-1">
                                                     {getRiskBadge(item.risk_level || 'none')}
                                                     {item.risk_reason ? (
-                                                        <span className="text-[11px] text-muted-foreground">{item.risk_reason}</span>
+                                                        <span className="text-xs text-muted-foreground">{item.risk_reason}</span>
                                                     ) : null}
                                                 </div>
                                             </div>
@@ -385,7 +385,7 @@ if (resolveLoading || !patientId) {
 
             {/* Add/Edit Modal */}
             <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-                <DialogContent className="sm:max-w-[650px] max-h-[90vh] overflow-y-auto">
+                <DialogContent className="sm:max-w-[650px] max-h-[90dvh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
                             <Droplet className="w-5 h-5 text-primary" />
@@ -650,14 +650,14 @@ if (resolveLoading || !patientId) {
 
             {/* PDF Viewer Modal */}
             <Dialog open={pdfViewerOpen} onOpenChange={setPdfViewerOpen}>
-                <DialogContent className="sm:max-w-[90vw] max-h-[90vh] p-0">
+                <DialogContent className="sm:max-w-[90vw] max-h-[90dvh] p-0">
                     <DialogHeader className="p-6 pb-0">
                         <DialogTitle className="flex items-center gap-2">
                             <FileText className="w-5 h-5 text-primary" />
                             Visualizar Exame (PDF)
                         </DialogTitle>
                     </DialogHeader>
-                    <div className="h-[75vh] p-6 pt-4">
+                    <div className="h-[75dvh] p-6 pt-4">
                         {viewingPdfUrl ? (
                             <iframe
                                 src={viewingPdfUrl}

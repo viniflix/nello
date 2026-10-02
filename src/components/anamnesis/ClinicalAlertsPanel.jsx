@@ -75,23 +75,23 @@ export function ClinicalAlertsPanel({ patientId, compact = false, className }) {
             <CardContent className="px-5 pb-4 space-y-3">
                 {allergies.length > 0 && (
                     <div className="space-y-1.5">
-                        <p className="text-[10px] font-black text-red-600 uppercase tracking-wider">Alergias / Intolerâncias</p>
+                        <p className="text-xs font-black text-red-600 uppercase tracking-wider">Alergias / Intolerâncias</p>
                         <div className="flex flex-wrap gap-1.5">{allergies.map(renderFlag)}</div>
                     </div>
                 )}
                 {chronics.length > 0 && (
                     <div className="space-y-1.5">
-                        <p className="text-[10px] font-black text-amber-700 uppercase tracking-wider">Doenças / Comorbidades</p>
+                        <p className="text-xs font-black text-amber-700 uppercase tracking-wider">Doenças / Comorbidades</p>
                         <div className="flex flex-wrap gap-1.5">{chronics.map(renderFlag)}</div>
                     </div>
                 )}
                 {others.length > 0 && (
                     <div className="space-y-1.5">
-                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Outros Alertas</p>
+                        <p className="text-xs font-black text-slate-500 uppercase tracking-wider">Outros Alertas</p>
                         <div className="flex flex-wrap gap-1.5">{others.map(renderFlag)}</div>
                     </div>
                 )}
-                <p className="text-[10px] text-slate-400 pt-1">
+                <p className="text-xs text-slate-400 pt-1">
                     Extraído automaticamente das anamneses respondidas. Passe o mouse para ver detalhes.
                 </p>
             </CardContent>

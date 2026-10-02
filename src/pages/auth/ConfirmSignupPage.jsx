@@ -98,7 +98,7 @@ export default function ConfirmSignupPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+    <div className="min-h-dvh flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md border-border bg-card">
         <CardHeader className="text-center">
           <div className="mx-auto mb-2 rounded-full bg-primary/10 p-3 text-primary"><Mail className="h-6 w-6" /></div>

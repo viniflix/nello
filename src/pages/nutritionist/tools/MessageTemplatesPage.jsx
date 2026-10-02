@@ -256,7 +256,7 @@ const MessageTemplatesPage = () => {
     const channelLabel = (ch)  => TEMPLATE_CHANNELS.find(c => c.value === ch)?.label  || ch;
 
     return (
-        <div className="min-h-screen bg-background overflow-x-hidden">
+        <div className="min-h-dvh bg-background overflow-x-hidden">
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 md:py-8 min-w-0">
                 <div className="flex items-center justify-between gap-4 mb-6 min-w-0">
                     <div className="flex items-center gap-2 md:gap-4 min-w-0">
@@ -481,7 +481,7 @@ const MessageTemplatesPage = () => {
 
             {/* Create / Edit Dialog */}
             <Dialog open={formOpen} onOpenChange={setFormOpen}>
-                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogContent className="max-w-2xl max-h-[90dvh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle>{editTarget ? 'Editar modelo' : 'Novo modelo de mensagem'}</DialogTitle>
                         <DialogDescription>

@@ -110,13 +110,13 @@ const FoodSelector = ({ isOpen, onClose, onSelect, targetGroup, targetCalories, 
     const handleFoodCreated = async (newFood) => {
         // Close quick create dialog
         setQuickCreateOpen(false);
-        
+
         // Add the new food to the list (at the top)
         setFoods([newFood, ...foods]);
-        
+
         // Automatically select it
         setSelectedFood(newFood);
-        
+
         // Optionally refresh search to ensure consistency
         if (searchTerm) setRetryKey(value => value + 1);
     };
@@ -127,7 +127,7 @@ const FoodSelector = ({ isOpen, onClose, onSelect, targetGroup, targetCalories, 
                 <DialogHeader className="shrink-0">
                     <DialogTitle>Buscar Alimento</DialogTitle>
                     <DialogDescription>
-                        {targetCalories 
+                        {targetCalories
                             ? `Buscando substitutos para ~${Math.round(targetCalories)} kcal${targetGroup ? ` do grupo ${targetGroup}` : ''}`
                             : 'Procure alimentos por nome nas bases de dados nutricionais'
                         }
@@ -154,24 +154,24 @@ const FoodSelector = ({ isOpen, onClose, onSelect, targetGroup, targetCalories, 
                     {/* Filtro de fonte */}
                     <div className="shrink-0 flex gap-2 flex-wrap items-center">
                         {sources.map((source) => (
-                            <Badge
+                            <Button type="button" size="sm" aria-pressed={sourceFilter === source.value}
                                 key={source.value || 'all'}
                                 variant={sourceFilter === source.value ? 'default' : 'outline'}
                                 className="cursor-pointer"
                                 onClick={() => setSourceFilter(source.value)}
                             >
                                 {source.label}
-                            </Badge>
+                            </Button>
                         ))}
-                        
+
                         {targetGroup && (
-                            <Badge
+                            <Button type="button" size="sm" aria-pressed={onlySameGroup}
                                 variant={onlySameGroup ? 'default' : 'outline'}
-                                className={`cursor-pointer border-amber-300 ml-2 ${onlySameGroup ? 'bg-amber-500 hover:bg-amber-600' : 'text-amber-700'}`}
+                                className="ml-2"
                                 onClick={() => setOnlySameGroup(!onlySameGroup)}
                             >
                                 {onlySameGroup ? 'Apenas ' : 'Filtrar por '}{targetGroup}
-                            </Badge>
+                            </Button>
                         )}
                     </div>
 
@@ -224,10 +224,10 @@ const FoodSelector = ({ isOpen, onClose, onSelect, targetGroup, targetCalories, 
                                     }, food) : null;
 
                                     return (
-                                        <div
+                                        <button type="button" aria-pressed={selectedFood?.id === food.id}
                                             key={food.id}
                                             className={`
-                                                p-3 border rounded-xl cursor-pointer transition-colors
+                                                w-full text-left p-3 border rounded-xl transition-colors
                                                 ${selectedFood?.id === food.id
                                                     ? 'bg-primary/10 border-primary'
                                                     : 'hover:bg-muted'
@@ -245,16 +245,16 @@ const FoodSelector = ({ isOpen, onClose, onSelect, targetGroup, targetCalories, 
                                                         {analysis && (
                                                             <div className="flex gap-1">
                                                                 {analysis.isRecommended ? (
-                                                                    <Badge className="h-4 text-[9px] bg-green-100 text-green-700 border-green-200">
+                                                                    <Badge className="h-4 text-xs bg-green-100 text-green-700 border-green-200">
                                                                         Equivalente
                                                                     </Badge>
                                                                 ) : (
-                                                                    <Badge variant="outline" className="h-4 text-[9px] bg-amber-50 text-amber-700 border-amber-200">
+                                                                    <Badge variant="outline" className="h-4 text-xs bg-amber-50 text-amber-700 border-amber-200">
                                                                         Variação
                                                                     </Badge>
                                                                 )}
                                                                 {!analysis.groupMatch && (
-                                                                    <Badge variant="outline" className="h-4 text-[9px] border-dashed">
+                                                                    <Badge variant="outline" className="h-4 text-xs border-dashed">
                                                                         <FolderSync className="h-2 w-2 mr-1" />
                                                                         Grupo Dif.
                                                                     </Badge>
@@ -263,17 +263,17 @@ const FoodSelector = ({ isOpen, onClose, onSelect, targetGroup, targetCalories, 
                                                         )}
                                                     </div>
                                                     <div className="flex gap-2 mt-1">
-                                                        <Badge variant="outline" className="text-[10px] h-4">
+                                                        <Badge variant="outline" className="text-xs h-4">
                                                             {food.source || 'N/A'}
                                                         </Badge>
                                                         {food.group && (
-                                                            <span className="text-[10px] text-muted-foreground">
+                                                            <span className="text-xs text-muted-foreground">
                                                                 {food.group}
                                                             </span>
                                                         )}
                                                     </div>
                                                     {analysis && !analysis.isRecommended && (
-                                                        <div className="mt-1.5 text-[10px] text-destructive flex items-center gap-1 font-medium">
+                                                        <div className="mt-1.5 text-xs text-destructive flex items-center gap-1 font-medium">
                                                             <AlertCircle className="h-2.5 w-2.5" />
                                                             {analysis.reason}
                                                         </div>
@@ -283,12 +283,12 @@ const FoodSelector = ({ isOpen, onClose, onSelect, targetGroup, targetCalories, 
                                                     <div className="flex flex-col items-end gap-1">
                                                         <div className="font-bold">{formatNutrient(food.calories)} kcal</div>
                                                     </div>
-                                                    <div className="text-muted-foreground text-[10px] mt-1 tabular-nums">
+                                                    <div className="text-muted-foreground text-xs mt-1 tabular-nums">
                                                         P:{(food.protein || 0).toFixed(1)} C:{(food.carbs || 0).toFixed(1)} G:{(food.fat || 0).toFixed(1)}
                                                     </div>
                                                 </div>
                                             </div>
-                                        </div>
+                                        </button>
                                     );
                                 })}
                             </div>

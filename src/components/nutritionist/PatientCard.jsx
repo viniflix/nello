@@ -90,7 +90,7 @@ const PatientCard = ({ patient, isOnline, onArchive, onUnarchive, onDelete }) =>
                         ? 'opacity-60 border-dashed'
                         : 'hover:shadow-md hover:border-primary/40 cursor-pointer'
                     }`}
-                onClick={() => !isArchived && navigate(patientRoute(patient, 'hub'))}
+
             >
                 {/* Avatar */}
                 <div className="relative flex-shrink-0 mt-0.5">
@@ -105,19 +105,19 @@ const PatientCard = ({ patient, isOnline, onArchive, onUnarchive, onDelete }) =>
                 {/* Info */}
                 <div className="flex-1 min-w-0 flex flex-col h-full">
                     <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-semibold text-sm text-foreground truncate">{patient.name}</h3>
+                        <h3 className="font-semibold text-sm text-foreground truncate"><button type="button" disabled={isArchived} className="text-left" onClick={() => navigate(patientRoute(patient, 'hub'))}>{patient.name}</button></h3>
                         {isArchived && (
-                            <Badge variant="outline" className="h-4 text-[9px] px-1.5 uppercase font-bold tracking-wider text-muted-foreground border-dashed">
+                            <Badge variant="outline" className="h-4 text-xs px-1.5 uppercase font-bold tracking-wider text-muted-foreground border-dashed">
                                 Arquivado
                             </Badge>
                         )}
                         {isPending && !patient.patient_invite_code && (
-                            <Badge variant="outline" className="h-4 text-[9px] px-1.5 bg-amber-100 text-amber-800 border-amber-200 uppercase tracking-wider dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-700">
+                            <Badge variant="outline" className="h-4 text-xs px-1.5 bg-amber-100 text-amber-800 border-amber-200 uppercase tracking-wider dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-700">
                                 Convite Enviado
                             </Badge>
                         )}
                         {patient.patient_invite_code && !isArchived && (
-                            <Badge variant="outline" className="h-4 text-[9px] px-1.5 bg-sky-100 text-sky-800 border-sky-200 uppercase tracking-wider dark:bg-sky-900/30 dark:text-sky-400 dark:border-sky-700">
+                            <Badge variant="outline" className="h-4 text-xs px-1.5 bg-sky-100 text-sky-800 border-sky-200 uppercase tracking-wider dark:bg-sky-900/30 dark:text-sky-400 dark:border-sky-700">
                                 Sem conta
                             </Badge>
                         )}
@@ -134,19 +134,19 @@ const PatientCard = ({ patient, isOnline, onArchive, onUnarchive, onDelete }) =>
                         {!isArchived && (
                             <div className="flex flex-wrap gap-1.5">
                                 {isOnline && (
-                                    <span className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-700 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded-full dark:text-emerald-400">
+                                    <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded-full dark:text-emerald-400">
                                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse inline-block" />
                                         Online
                                     </span>
                                 )}
                                 {memberSince !== null && memberSince <= 30 && (
-                                    <span className="inline-flex items-center text-[10px] font-medium text-violet-700 bg-violet-500/10 border border-violet-500/20 px-1.5 py-0.5 rounded-full dark:text-violet-400">
+                                    <span className="inline-flex items-center text-xs font-medium text-violet-700 bg-violet-500/10 border border-violet-500/20 px-1.5 py-0.5 rounded-full dark:text-violet-400">
                                         Novo paciente
                                     </span>
                                 )}
 
                                 {patient.phone && (
-                                    <span className="inline-flex items-center text-[10px] text-muted-foreground bg-muted/60 border border-border/40 px-1.5 py-0.5 rounded-full truncate max-w-[120px]">
+                                    <span className="inline-flex items-center text-xs text-muted-foreground bg-muted/60 border border-border/40 px-1.5 py-0.5 rounded-full truncate max-w-[120px]">
                                         {patient.phone}
                                     </span>
                                 )}
@@ -156,8 +156,8 @@ const PatientCard = ({ patient, isOnline, onArchive, onUnarchive, onDelete }) =>
                 </div>
 
                 {/* Dropdown — isolated from card click zone (B2) */}
-                <div 
-                    onClick={e => e.stopPropagation()} 
+                <div
+                    onClick={e => e.stopPropagation()}
                     onPointerDown={e => e.stopPropagation()}
                     onPointerUp={e => e.stopPropagation()}
                     className="flex-shrink-0 -mt-1 -mr-1"
