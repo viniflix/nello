@@ -61,6 +61,11 @@ for (const [index, source] of manifest.sources.entries()) {
       contents[0]=contents[0].replace('create function pg_temp.assert_client_rpc_surface()',reviewed+'\ncreate function pg_temp.assert_client_rpc_surface()');
       hashes.push({file:'supabase/fixtures/wave02/wave09-client-rpc-contract.sql',sha256:createHash('sha256').update(reviewed).digest('hex')});
     }
+    if(candidates.some(m=>m.file.includes('feed_active_care_scope'))) {
+      const reviewed=readFileSync('supabase/fixtures/wave02/feed-client-rpc-contract.sql','utf8');
+      contents[0]=contents[0].replace('create function pg_temp.assert_client_rpc_surface()',reviewed+'\ncreate function pg_temp.assert_client_rpc_surface()');
+      hashes.push({file:'supabase/fixtures/wave02/feed-client-rpc-contract.sql',sha256:createHash('sha256').update(reviewed).digest('hex')});
+    }
     // Reviewed candidate bodies come from the checksum-pinned migration, never from
     // the database under test. Unchanged RPCs retain the independently captured digest.
     if(candidates.length){

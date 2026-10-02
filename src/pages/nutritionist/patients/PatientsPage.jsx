@@ -31,7 +31,7 @@ import ArchivedPatientsModal from '@/components/nutritionist/ArchivedPatientsMod
 import PatientCard from '@/components/nutritionist/PatientCard';
 import { usePatientFormStore } from '@/stores/usePatientFormStore';
 import {
-    archivePatient, removeEmptyPatient, getEmptyPatientRemovalStatus,
+    archivePatient, unarchivePatient, removeEmptyPatient, getEmptyPatientRemovalStatus,
     approvePatientLink, rejectPatientLink
 } from '@/lib/supabase/patient-queries';
 import { useOnlinePresence } from '@/hooks/useOnlinePresence';
@@ -105,6 +105,22 @@ const PatientsPage = () => {
         const { success } = await archivePatient(patient.id, user.id);
         if (success) { toast({ title: "Acompanhamento encerrado", description: "O paciente foi avisado e o histórico foi preservado.", variant: "success" }); fetchPatients(); }
         else toast({ title: "Erro ao encerrar acompanhamento", variant: "destructive" });
+    };
+
+    const handleUnarchive = async (patient) => {
+        const { success, error } = await unarchivePatient(patient.id, user.id);
+        if (success) {
+            toast({ title: "Acompanhamento reativado", description: "Um novo período foi iniciado. O histórico anterior permanece preservado.", variant: "success" });
+            await fetchPatients();
+        } else {
+            const description = error?.code === '23505'
+                ? "O paciente já está em acompanhamento com outro profissional. A reativação não foi realizada."
+                : error?.code === '42501'
+                    ? "A reativação direta não está autorizada. Se o paciente encerrou o vínculo, é necessário um novo convite aceito por ele."
+                    : "Não foi possível confirmar a reativação. Confira sua conexão e atualize a lista antes de tentar novamente.";
+            toast({ title: "Acompanhamento não reativado", description, variant: "destructive" });
+        }
+        return success;
     };
 
     const handleDelete = async (patient) => {
@@ -509,7 +525,7 @@ const PatientsPage = () => {
 
         {/* Modals Globais */}
         {showAddPatientModal && <AddPatientModal isOpen={showAddPatientModal} setIsOpen={setShowAddPatientModal} onPatientAdded={fetchPatients} />}
-        {showArchivedModal && <ArchivedPatientsModal isOpen={showArchivedModal} onClose={() => setShowArchivedModal(false)} archivedPatients={archivedPatients} handleDelete={handleDelete} />}
+        {showArchivedModal && <ArchivedPatientsModal isOpen={showArchivedModal} onClose={() => setShowArchivedModal(false)} archivedPatients={archivedPatients} handleDelete={handleDelete} handleUnarchive={handleUnarchive} />}
     </motion.div>
 </div>
 );

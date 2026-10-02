@@ -266,6 +266,11 @@
       "file": "wave12_bounded_queries.sql",
       "kind": "assertion-suite",
       "fixtures": []
+    },
+    {
+      "file": "feed_active_care_scope.sql",
+      "kind": "assertion-suite",
+      "fixtures": []
     }
   ]
 }

@@ -16,6 +16,7 @@ import { ptBR } from 'date-fns/locale';
 import { Utensils, Weight, Loader2, Edit3, Search, X, Filter, Trash2 } from 'lucide-react';
 import { translateMealType } from '@/utils/mealTranslations';
 import { useNavigate } from 'react-router-dom';
+import { subscribeDomain } from '@/infrastructure/realtime/events';
 
 /**
  * Widget que mostra TODOS os registros DOS PACIENTES com filtros e pesquisa
@@ -37,6 +38,7 @@ const PatientUpdatesWidget = () => {
     };
 
     useEffect(() => {
+        const controller = new AbortController();
         const fetchUpdates = async () => {
             if (!user?.id) return;
 
@@ -46,11 +48,9 @@ const PatientUpdatesWidget = () => {
             try {
                 // Buscar pacientes do nutricionista (com slug para URLs legíveis)
                 const { data: patientsData, error: patientsError } = await supabase
-                    .from('user_profiles')
-                    .select('id, name, slug')
-                    .eq('nutritionist_id', user.id)
-                    .eq('user_type', 'patient');
+                    .rpc('get_active_feed_patients').abortSignal(controller.signal);
                 if (patientsError) throw patientsError;
+                if (controller.signal.aborted) return;
 
                 if (!patientsData || patientsData.length === 0) {
                     setAllUpdates([]);
@@ -59,6 +59,7 @@ const PatientUpdatesWidget = () => {
                 }
 
                 const patientIds = patientsData.map(p => p.id);
+                const episodeIds = patientsData.map(p => p.care_episode_id);
                 const patientMap = Object.fromEntries(patientsData.map(p => [p.id, p]));
 
                 const activities = [];
@@ -70,6 +71,7 @@ const PatientUpdatesWidget = () => {
                         .from('meal_audit_log')
                         .select('id, patient_id, action, meal_type, details, created_at')
                         .in('patient_id', patientIds)
+                        .in('care_episode_id', episodeIds).abortSignal(controller.signal)
                         .order('created_at', { ascending: false })
                         .limit(100),
 
@@ -78,6 +80,7 @@ const PatientUpdatesWidget = () => {
                         .from('growth_records')
                         .select('id, patient_id, weight, created_at')
                         .in('patient_id', patientIds)
+                        .in('care_episode_id', episodeIds).abortSignal(controller.signal)
                         .order('created_at', { ascending: false })
                         .limit(100)
                 ]);
@@ -142,18 +145,28 @@ const PatientUpdatesWidget = () => {
 
                 // Ordenar por timestamp
                 activities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-                setAllUpdates(activities);
+                if (!controller.signal.aborted) setAllUpdates(activities);
 
             } catch (error) {
+                if (controller.signal.aborted) return;
                 logDiagnostic('error', 'components/nutritionist/PatientUpdatesWidget.jsx:147', 'Erro ao buscar atualizações:', error?.code || 'unknown');
                 setLoadError(true);
             }
 
-            setLoading(false);
+            if (!controller.signal.aborted) setLoading(false);
         };
 
         fetchUpdates();
+        return () => controller.abort();
     }, [user?.id, retryKey]);
+
+    useEffect(() => {
+        if (!user?.id) return;
+        const refresh = () => setRetryKey(key=>key+1);
+        const unsubscribe = subscribeDomain(user.id, 'access', refresh);
+        window.addEventListener('online',refresh);window.addEventListener('focus',refresh);
+        return () => {unsubscribe();window.removeEventListener('online',refresh);window.removeEventListener('focus',refresh);};
+    }, [user?.id]);
 
     const getIcon = (type) => {
         switch (type) {

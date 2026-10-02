@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "migrations": [
+    {
+      "file": "supabase/migrations/releases/20261002160000_feed_active_care_scope.sql",
+      "sha256": "536d0552861f49a7967f92e676deb4de108b9cdbd989520ed5de63403b349a02"
+    }
+  ]
+}

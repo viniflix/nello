@@ -5,7 +5,8 @@ import { supabase } from '@/lib/customSupabaseClient';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
 
 
-import { isTransientNetworkError, retryNetworkRead } from '@/lib/supabase/readRetry';
+import { retryNetworkRead } from '@/lib/supabase/readRetry';
+import { scopeFeedItems } from './feed-scope';
 
 import {getActivityCtaRoute} from './patient-query-history';
 export const buildFeedTaskIdentity = ({ nutritionistId, sourceType, sourceId }) => {
@@ -35,10 +36,8 @@ export const sessionChangedDuringWrite = async (error, expectedUserId) => {
 
 export const getFeedTaskStates = async (nutritionistId) => {
     try {
-        const { data, error } = await supabase
-            .from('feed_tasks')
-            .select('id, source_type, source_id, patient_id, title, description, status, snooze_until, first_seen_at, last_seen_at, created_at, updated_at, priority_score, priority_reason, metadata')
-            .eq('nutritionist_id', nutritionistId).eq('is_current', true);
+        if (!await ownsCurrentSession(nutritionistId)) return { data: [], error: null, skipped: true };
+        const { data, error } = await supabase.rpc('get_my_feed_task_states');
 
         if (error) throw error;
         return { data: data || [], error: null };
@@ -50,57 +49,32 @@ export const getFeedTaskStates = async (nutritionistId) => {
 
 export const getNutritionistPatientsForFeed = async (nutritionistId) => {
     try {
-        const sessionUnchanged = async () => {
-            const { data, error } = await supabase.auth.getSession();
-            return !error && data?.session?.user?.id === nutritionistId;
-        };
-        const { data, error } = await retryNetworkRead(() => supabase
-            .from('user_profiles')
-            .select('id, name, birth_date, avatar_url, slug')
-            .eq('nutritionist_id', nutritionistId)
-            .eq('is_active', true), sessionUnchanged);
-
-        if (!error) {
-            return { data: data || [], error: null };
-        }
-
-        // A transport failure is not evidence of a legacy schema. Preserve it
-        // rather than querying an unrelated fallback and reporting an empty feed.
-        if (isTransientNetworkError(error)) throw error;
-        if (!['42703', 'PGRST204'].includes(error?.code)) throw error;
-
-        const { data: links, error: linksError } = await retryNetworkRead(() => supabase
-            .from('nutritionist_patients')
-            .select('patient_id')
-            .eq('nutritionist_id', nutritionistId), sessionUnchanged);
-
-        if (linksError) throw linksError;
-
-        const patientIds = (links || []).map((link) => link.patient_id).filter(Boolean);
-        if (!patientIds.length) {
-            return { data: [], error: null };
-        }
-
-        const { data: profiles, error: profileError } = await retryNetworkRead(() => supabase
-            .from('user_profiles')
-            .select('id, name, birth_date, avatar_url, slug')
-            .in('id', patientIds), sessionUnchanged);
-
-        if (profileError) throw profileError;
-
-        const normalized = (profiles || []).map((profile) => ({
-            id: profile.id,
-            name: profile.name || 'Paciente',
-            birth_date: profile.birth_date,
-            avatar_url: profile.avatar_url,
-            slug: profile.slug
-        }));
-
-        return { data: normalized, error: null };
+        if (!await ownsCurrentSession(nutritionistId)) return { data: [], error: null, skipped: true };
+        const { data, error } = await retryNetworkRead(() => supabase.rpc('get_active_feed_patients'),
+            () => ownsCurrentSession(nutritionistId));
+        if (error) throw error;
+        return { data: data || [], error: null };
     } catch (error) {
-        logSupabaseError("erro_ao_buscar_pacientes_do_nutricionista_para_feed", error);
+        logSupabaseError('erro_ao_buscar_pacientes_do_nutricionista_para_feed', error);
         return { data: [], error };
     }
+};
+
+// Retry the failed subset with fresh authorization and revision, never a new episode.
+export const retryFeedTaskSync = async (nutritionistId, failedItems = []) => {
+    const [patients, states] = await Promise.all([
+        getNutritionistPatientsForFeed(nutritionistId), getFeedTaskStates(nutritionistId)
+    ]);
+    if (patients.skipped || states.skipped) return { data: [], error: null, skipped: true };
+    if (patients.error || states.error) {
+        const error = patients.error || states.error;
+        return { data: [], error, failedItems: failedItems.map(item=>({...item, failureCode:error.code || null})) };
+    }
+    const eligible = scopeFeedItems(failedItems, patients.data, { preserveEpisode: true });
+    const result = await syncFeedTasksFromItems(nutritionistId, eligible, states.data);
+    return { ...result, discardedKeys: failedItems.filter(item=>!eligible.some(next=>
+        next.sourceType===item.sourceType && next.sourceId===item.sourceId)).map(item=>
+        item.sourceType+':'+item.sourceId) };
 };
 
 export const upsertFeedTask = async ({
@@ -123,12 +97,15 @@ export const upsertFeedTask = async ({
             p_values: { ...identity, patient_id: patientId, title, description,
                 priority_score: Number(priorityScore || 0), priority_reason: priorityReason,
                 status, snooze_until: snoozeUntil,
-                metadata: { item_type: metadata?.item_type || null, cta_route: metadata?.cta_route || null }
+                metadata: { item_type: metadata?.item_type || null, cta_route: metadata?.cta_route || null,
+                    care_episode_id: metadata?.care_episode_id || null }
             },
             p_expected: existing?.updated_at || null,
             p_action: auditAction
         });
         if (await sessionChangedDuringWrite(result.error, nutritionistId)) return { data: null, error: null, skipped: true };
+        if (result.data?.no_longer_applicable) return { data: null, error: null, obsolete: true };
+        if (result.error) logSupabaseError('erro_ao_salvar_tarefa_do_feed', result.error);
         return result;
     } catch (error) {
         logSupabaseError('erro_ao_salvar_tarefa_do_feed', error);
@@ -157,6 +134,8 @@ export const resolveFeedTasksBatch = async (inputs = []) => {
         const failed = results.filter((result) => result?.error);
         return {
             data: results.map((result) => result?.data).filter(Boolean),
+            obsoleteKeys: results.flatMap((result,index)=>result?.obsolete
+                ? [`${inputs[index].sourceType}:${inputs[index].sourceId}`] : []),
             error: failed.length ? failed[0].error : null,
             failedCount: failed.length
         };
@@ -202,7 +181,9 @@ export const syncFeedTasksFromItems = async (nutritionistId, items = [], existin
             .filter((item) => item?.sourceType && item?.sourceId)
             .map((item) => {
                 const key = `${item.sourceType}:${item.sourceId}`;
-                const existing = stateMap.get(key);
+                const candidate = stateMap.get(key);
+                const existing = item.patientId && item.careEpisodeId
+                    && candidate?.metadata?.care_episode_id !== item.careEpisodeId ? null : candidate;
                 let nextStatus = 'open';
                 let nextSnoozeUntil = null;
 
@@ -229,7 +210,8 @@ export const syncFeedTasksFromItems = async (nutritionistId, items = [], existin
                     snoozeUntil: nextSnoozeUntil,
                     metadata: {
                         item_type: item.type || null,
-                        cta_route: item.ctaRoute || null
+                        cta_route: item.ctaRoute || null,
+                        care_episode_id: item.careEpisodeId || null
                     }
                 };
                 const unchanged = existing
@@ -241,8 +223,9 @@ export const syncFeedTasksFromItems = async (nutritionistId, items = [], existin
                     && existing.status === payload.status
                     && (existing.snooze_until || null) === payload.snoozeUntil
                     && (existing.metadata?.item_type || null) === payload.metadata.item_type
-                    && (existing.metadata?.cta_route || null) === payload.metadata.cta_route;
-                return { payload, existing, unchanged };
+                    && (existing.metadata?.cta_route || null) === payload.metadata.cta_route
+                    && (existing.metadata?.care_episode_id || null) === payload.metadata.care_episode_id;
+                return { payload, existing, unchanged, item };
             });
 
         const result = [];
@@ -255,12 +238,14 @@ export const syncFeedTasksFromItems = async (nutritionistId, items = [], existin
         const outcomes = result.map((entry, index) => ({
             sourceType: syncPayloads[index].payload.sourceType,
             sourceId: syncPayloads[index].payload.sourceId,
-            status: entry?.skipped ? 'skipped' : entry?.error ? 'failed' : 'saved',
+            status: entry?.skipped ? 'skipped' : entry?.obsolete ? 'obsolete' : entry?.error ? 'failed' : 'saved',
             code: entry?.error?.code || null
         }));
         return { data: result.map((entry) => entry?.data).filter(Boolean),
             error: result.find((entry) => entry?.error)?.error || null,
-            outcomes, failedCount: outcomes.filter((entry) => entry.status === 'failed').length };
+            outcomes, failedItems: syncPayloads.flatMap(({item},index)=>outcomes[index].status==='failed'
+                ? [{...item, failureCode: result[index]?.error?.code || null}] : []),
+            failedCount: outcomes.filter((entry) => entry.status === 'failed').length };
     } catch (error) {
         logSupabaseError("erro_ao_sincronizar_snapshot_do_feed", error);
         return { data: [], error };
@@ -296,9 +281,15 @@ export const getFeedTaskAuditTrail = async ({
 
 export const ACTIVITY_FEED_CACHE_TTL_MS = 45000;
 
+let activityFeedCacheEpoch = 0;
+export const clearActivityFeedCache = () => {
+    activityFeedCacheEpoch += 1;
+    activityFeedCache = { key: null, data: null, ts: 0 };
+};
 export let activityFeedCache = { key: null, data: null, ts: 0 };
 
 export const getComprehensiveActivityFeed = async (nutritionistId, limit = 20) => {
+    const epoch = activityFeedCacheEpoch;
     const cacheKey = `${nutritionistId}:${limit}`;
     if (activityFeedCache.key === cacheKey && (Date.now() - activityFeedCache.ts) < ACTIVITY_FEED_CACHE_TTL_MS) {
         return { data: activityFeedCache.data, error: null };
@@ -421,7 +412,7 @@ export const getComprehensiveActivityFeed = async (nutritionistId, limit = 20) =
 
         /* logOperationalEvent removed */
 
-        activityFeedCache = { key: cacheKey, data: activities, ts: Date.now() };
+        if (epoch === activityFeedCacheEpoch) activityFeedCache = { key: cacheKey, data: activities, ts: Date.now() };
         return { data: activities, error: null };
     } catch (error) {
         logSupabaseError("erro_ao_buscar_feed_de_atividades", error);

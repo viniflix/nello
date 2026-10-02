@@ -115,12 +115,16 @@ export function useAnamnesisRunner(patientId) {
     const usePendingRecords = () =>
         useQuery({
             queryKey: ['anamnesis_records', user?.id, 'pending'],
-            queryFn: async () => {
+            queryFn: async ({signal}) => {
                 if (!user?.id) return [];
+                const scope=await supabase.rpc('get_active_feed_patients').abortSignal(signal);
+                if(scope.error)throw scope.error;
+                if(!scope.data?.length)return [];
                 const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
                 const { data, error } = await supabase
                     .from('anamnesis_records')
-                    .select("id,patient_id,template_id,nutritionist_id,version,date,content,notes,status,created_at,updated_at,template_snapshot,public_access_token,token_expires_at,lgpd_consented,lgpd_consented_at,lgpd_ip_address,history_log,attachments,filled_by,appointment_id,care_episode_id, patient:patient_id(name, slug), template:template_id(title)")
+                    .select("id,patient_id,created_at,care_episode_id, patient:patient_id(name, slug), template:template_id(title)")
+                    .in('care_episode_id',scope.data.map(patient=>patient.care_episode_id)).abortSignal(signal)
                     .eq('nutritionist_id', user.id)
                     .eq('status', 'pending_patient')
                     .not('public_access_token', 'is', null)

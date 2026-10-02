@@ -9,7 +9,8 @@ export default function ArchivedPatientsModal({
     isOpen,
     onClose,
     archivedPatients,
-    handleDelete
+    handleDelete,
+    handleUnarchive
 }) {
     const [searchTerm, setSearchTerm] = useState('');
 
@@ -38,7 +39,7 @@ export default function ArchivedPatientsModal({
                         Central de Pacientes Arquivados
                     </DialogTitle>
                     <DialogDescription>
-                        Histórico Read-Only. Os dados clínicos registrados por você durante o tratamento estão preservados para fins legais.
+                        Consulte o histórico preservado ou reative um acompanhamento encerrado por você. Cada reativação inicia um novo período de acompanhamento.
                     </DialogDescription>
 
                     <div className="relative mt-4">
@@ -61,7 +62,7 @@ export default function ArchivedPatientsModal({
                                     patient={patient}
                                     isOnline={false}
                                     onArchive={() => {}}
-                                    onUnarchive={() => {}} // Disabled feature
+                                    onUnarchive={handleUnarchive}
                                     onDelete={handleDelete}
                                 />
                             ))}

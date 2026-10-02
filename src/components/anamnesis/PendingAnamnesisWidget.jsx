@@ -1,4 +1,7 @@
-import React from 'react';
+import React, {useEffect} from 'react';
+import {useAuth} from '@/contexts/AuthContext';
+import {useQueryClient} from '@tanstack/react-query';
+import {subscribeDomain} from '@/infrastructure/realtime/events';
 import { useNavigate } from 'react-router-dom';
 import { ClipboardList, Clock, ArrowRight, AlertCircle } from 'lucide-react';
 import { useAnamnesisRunner } from '@/hooks/useAnamnesisRunner';
@@ -15,6 +18,13 @@ import { Skeleton } from '@/components/ui/skeleton';
  */
 export function PendingAnamnesisWidget() {
     const navigate = useNavigate();
+    const {user}=useAuth();const queryClient=useQueryClient();
+    useEffect(()=>{
+        if(!user?.id)return;
+        return subscribeDomain(user.id,'access',()=>queryClient.resetQueries({
+            queryKey:['anamnesis_records',user.id,'pending'],exact:true
+        }));
+    },[user?.id,queryClient]);
     // usePendingRecords é independente de patientId (busca todos do nutricionista)
     const { usePendingRecords } = useAnamnesisRunner(null);
     const { data: pending = [], isLoading } = usePendingRecords();

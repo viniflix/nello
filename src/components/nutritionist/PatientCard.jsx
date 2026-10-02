@@ -4,7 +4,7 @@ import React, { useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { patientRoute } from '@/lib/utils/patientRoutes';
 import {
-    MoreVertical, Archive, Trash2, Loader2, AlertCircle, FileText, Copy, Check
+    MoreVertical, Archive, ArchiveRestore, Trash2, Loader2, AlertCircle, FileText, Copy, Check
 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -35,9 +35,12 @@ export const GradientAvatar = ({ name = '', avatarUrl, size = 44 }) => {
 };
 
 // ── PatientCard ───────────────────────────────────────────────────────────────
-const PatientCard = ({ patient, isOnline, onArchive, onDelete }) => {
+const PatientCard = ({ patient, isOnline, onArchive, onUnarchive, onDelete }) => {
     const navigate = useNavigate();
     const [showArchiveModal, setShowArchiveModal] = useState(false);
+    const [showUnarchiveModal, setShowUnarchiveModal] = useState(false);
+    const [isReactivating, setIsReactivating] = useState(false);
+    const reactivationRef = useRef(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [isCheckingData, setIsCheckingData] = useState(false);
 
@@ -123,6 +126,11 @@ const PatientCard = ({ patient, isOnline, onArchive, onDelete }) => {
 
                     {/* Quick info pills (anchored to bottom) */}
                     <div className="mt-auto pt-3">
+                        {isArchived && onUnarchive && <Button
+                            variant="outline" size="sm" disabled={isReactivating}
+                            aria-label={`Reativar acompanhamento de ${patient.name}`}
+                            onClick={event => { event.stopPropagation(); setShowUnarchiveModal(true); }}
+                        ><ArchiveRestore className="mr-2 h-4 w-4" />Reativar acompanhamento</Button>}
                         {!isArchived && (
                             <div className="flex flex-wrap gap-1.5">
                                 {isOnline && (
@@ -156,7 +164,7 @@ const PatientCard = ({ patient, isOnline, onArchive, onDelete }) => {
                 >
                     <DropdownMenu onOpenChange={handleDropdownOpen} modal={false}>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground">
+                            <Button aria-label={`Ações de ${patient.name}`} variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground">
                                 {isCheckingData
                                     ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
                                     : <MoreVertical className="h-4 w-4" />
@@ -165,6 +173,7 @@ const PatientCard = ({ patient, isOnline, onArchive, onDelete }) => {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-48">
                             {isArchived ? (
+                                <>
                                 <DropdownMenuItem
                                     onClick={() => navigate(patientRoute(patient, 'hub'))}
                                     className="cursor-pointer"
@@ -172,6 +181,7 @@ const PatientCard = ({ patient, isOnline, onArchive, onDelete }) => {
                                     <FileText className="mr-2 h-4 w-4" />
                                     Ver Histórico (Read-Only)
                                 </DropdownMenuItem>
+                                </>
                             ) : (
                                 <>
                                     <DropdownMenuItem onClick={() => navigate(patientRoute(patient, 'hub'))} className="cursor-pointer">
@@ -208,7 +218,7 @@ const PatientCard = ({ patient, isOnline, onArchive, onDelete }) => {
                             <br /><br />
                             O vínculo será encerrado. Seus dados clínicos registrados por você ficam salvos como read-only para fins legais (LGPD / CFN). O paciente ficará livre para ser vinculado a outro nutricionista via novo convite.
                             <br /><br />
-                            <strong>Essa ação não pode ser desfeita diretamente — um novo convite será necessário para reestabelecer o vínculo.</strong>
+                            Você poderá iniciar um novo período pela central de arquivados, caso o paciente não esteja vinculado a outro profissional. O histórico deste período continuará preservado.
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
@@ -216,6 +226,34 @@ const PatientCard = ({ patient, isOnline, onArchive, onDelete }) => {
                         <Button variant="destructive" onClick={() => { setShowArchiveModal(false); onArchive(patient); }}>
                             Confirmar encerramento
                         </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={showUnarchiveModal} onOpenChange={open => { if (!reactivationRef.current) setShowUnarchiveModal(open); }}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Reativar acompanhamento</DialogTitle>
+                        <DialogDescription>
+                            Iniciar um novo período de acompanhamento de <strong>{patient.name}</strong>?
+                            O histórico anterior será preservado e as prioridades serão calculadas para o novo período.
+                            Se o paciente encerrou o vínculo, será necessário um novo convite aceito por ele.
+                            A reativação não substitui um vínculo ativo com outro profissional.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="outline" disabled={isReactivating} onClick={() => setShowUnarchiveModal(false)}>Cancelar</Button>
+                        <Button disabled={isReactivating} onClick={async () => {
+                            if (reactivationRef.current) return;
+                            reactivationRef.current = true;
+                            setIsReactivating(true);
+                            try {
+                                if (await onUnarchive(patient)) setShowUnarchiveModal(false);
+                            } finally {
+                                reactivationRef.current = false;
+                                setIsReactivating(false);
+                            }
+                        }}>{isReactivating ? 'Reativando…' : 'Confirmar reativação'}</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

@@ -1,3 +1,6 @@
+import { subscribeDomain } from '@/infrastructure/realtime/events';
+import { scopeFeedItems, scopeFeedStates, feedItemKey, canRetryFeedFailure } from '@/lib/supabase/feed-scope';
+import { retryFeedTaskSync, clearActivityFeedCache } from '@/lib/supabase/patient-query-feed';
 import { civilDateToDate, getTodayIsoDate } from '@/lib/utils/date';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useMemo, useEffect, useState, useCallback, useRef } from 'react';
@@ -153,7 +156,7 @@ const NutritionistActivityFeed = () => {
     const [loading, setLoading] = useState(true);
     const [feedItems, setFeedItems] = useState([]);
     const [loadError, setLoadError] = useState(false);
-    const [syncFailures, setSyncFailures] = useState(0);
+    const [failedSyncItems, setFailedSyncItems] = useState([]);
     const loadGeneration = useRef(0);
     const [actionLoadingId, setActionLoadingId] = useState(null);
     const [feedFilter, setFeedFilter] = useState('all');
@@ -181,7 +184,7 @@ const NutritionistActivityFeed = () => {
                     getPatientsPendingData(user.id),
                     supabase
                         .from('appointments')
-                        .select('id, start_time, patient_id, patient:appointments_patient_id_fkey(id, name, avatar_url)')
+                        .select('id, start_time, patient_id, care_episode_id, patient:appointments_patient_id_fkey(id, name, avatar_url)')
                         .eq('nutritionist_id', user.id)
                         .gte('start_time', today.toISOString())
                         .order('start_time', { ascending: true })
@@ -208,6 +211,7 @@ const NutritionistActivityFeed = () => {
                 const [highRiskRes, paymentsRes] = await Promise.all([
                     patientIds.length ? getPatientsHighRiskLabAlerts({
                         nutritionistId: user.id,
+                        careEpisodeIds: patients.map(patient=>patient.care_episode_id),
                         patientIds,
                         daysWindow: 120
                     }) : Promise.resolve({ data: [], error: null }),
@@ -278,7 +282,9 @@ const NutritionistActivityFeed = () => {
                 };
                 });
 
-                const appointmentItems = (appointmentsRes.data || []).map(appointment => ({
+                const episodeByPatient = new Map(patients.map(patient=>[patient.id, patient.care_episode_id]));
+                const appointmentItems = (appointmentsRes.data || []).filter(appointment=>!appointment.care_episode_id
+                    || appointment.care_episode_id===episodeByPatient.get(appointment.patient_id)).map(appointment => ({
                     id: `appt-${appointment.id}`,
                     type: 'appointment_upcoming',
                     patientId: appointment.patient_id,
@@ -341,18 +347,21 @@ const NutritionistActivityFeed = () => {
                 });
 
                 const allItemsRaw = [...birthdayItems, ...pendingItems, ...paymentItems, ...appointmentItems, ...lowAdherenceItems, ...labRiskItems, ...activityItems];
-                const allItems = attachFeedPriorityMeta(allItemsRaw, priorityRules);
+                const allItems = attachFeedPriorityMeta(scopeFeedItems(allItemsRaw, patients), priorityRules);
+                if (generation !== loadGeneration.current) return;
 
-                const syncRes = await syncFeedTasksFromItems(user.id, allItems, feedStateRes?.data || []);
+                const scopedStates = scopeFeedStates(feedStateRes?.data || [], patients);
+                const syncRes = await syncFeedTasksFromItems(user.id, allItems, scopedStates);
                 if (generation !== loadGeneration.current || syncRes.skipped) return;
-                setSyncFailures(syncRes.failedCount || (syncRes.error ? 1 : 0));
+                setFailedSyncItems(syncRes.failedItems || (syncRes.error ? allItems : []));
                 if (syncRes.error) logDiagnostic('warn', 'components/nutritionist/NutritionistActivityFeed.jsx:342', '[Feed] Erro sync:', syncRes.error);
 
                 const mergedStateMap = new Map(
-                    [...(feedStateRes?.data || []), ...(syncRes?.data || [])].map((s) => [`${s.source_type}:${s.source_id}`, s])
+                    [...scopedStates, ...(syncRes?.data || [])].map((s) => [`${s.source_type}:${s.source_id}`, s])
                 );
 
-                const hydratedItems = allItems.map((item) => {
+                const obsoleteKeys = new Set((syncRes.outcomes || []).filter(outcome=>outcome.status==='obsolete').map(feedItemKey));
+                const hydratedItems = allItems.filter(item=>!obsoleteKeys.has(feedItemKey(item))).map((item) => {
                     const key = `${item.sourceType}:${item.sourceId}`;
                     const state = mergedStateMap.get(key);
                     return {
@@ -387,6 +396,7 @@ const NutritionistActivityFeed = () => {
                 });
 
                 setFeedItems(sorted);
+                setSelectedItemIds([]);setExpandedAuditItemId(null);setAuditTrailByKey({});
                 track(Events.DATA_LOAD_TIMING, { operation: 'dashboard_feed', duration_ms: Math.round(performance.now() - started), result_count: sorted.length });
             } catch (error) {
                 if (generation !== loadGeneration.current) return;
@@ -400,9 +410,48 @@ const NutritionistActivityFeed = () => {
     }, [user]);
 
     useEffect(() => {
+        setFailedSyncItems([]);setFeedItems([]);setSelectedItemIds([]);setAuditTrailByKey({});
         if (user?.id) fetchFeed();
         return () => {loadGeneration.current += 1;};
     }, [user?.id, fetchFeed]);
+
+    useEffect(() => {
+        if (!user?.id) return;
+        const refreshScope = () => {
+            clearActivityFeedCache();
+            fetchFeed();
+        };
+        const unsubscribe = subscribeDomain(user.id, 'access', refreshScope);
+        window.addEventListener('online', refreshScope);
+        window.addEventListener('focus', refreshScope);
+        return () => {
+            unsubscribe();
+            window.removeEventListener('online', refreshScope);
+            window.removeEventListener('focus', refreshScope);
+        };
+    }, [user?.id, fetchFeed]);
+
+    const handleRetrySync = async () => {
+        if (!user?.id || refreshing) return;
+        const generation = ++loadGeneration.current;
+        setRefreshing(true);
+        try {
+            const retryable = failedSyncItems.filter(item=>canRetryFeedFailure(item.failureCode));
+            const blocked = failedSyncItems.filter(item=>!canRetryFeedFailure(item.failureCode));
+            const result = await retryFeedTaskSync(user.id, retryable);
+            if (generation !== loadGeneration.current || result.skipped) return;
+            setFailedSyncItems([...blocked, ...(result.failedItems || (result.error ? retryable : []))]);
+            const discarded = new Set([...(result.discardedKeys || []), ...(result.outcomes || [])
+                .filter(outcome=>outcome.status==='obsolete').map(feedItemKey)]);
+            const saved = new Map((result.data || []).map(row=>[row.source_type+':'+row.source_id,row]));
+            setFeedItems(previous=>previous.filter(item=>!discarded.has(feedItemKey(item))).map(item=>({
+                ...item, persistedTask: saved.get(feedItemKey(item)) || item.persistedTask
+            })).filter(item=>item.persistedTask?.status!=='resolved' && !(item.persistedTask?.status==='snoozed'
+                && new Date(item.persistedTask.snooze_until).getTime()>Date.now())));
+        } finally {
+            if (generation===loadGeneration.current) setRefreshing(false);
+        }
+    };
 
     const handleRefresh = () => {
         setRefreshing(true);
@@ -477,7 +526,7 @@ const NutritionistActivityFeed = () => {
         description: item?.description || null,
         priorityScore: Number(item?.priorityScore || 0),
         priorityReason: item?.priorityReason || null,
-        metadata: { item_type: item?.type || null, cta_route: item?.ctaRoute || null },
+        metadata: { item_type: item?.type || null, cta_route: item?.ctaRoute || null, care_episode_id: item?.careEpisodeId || null },
         existingTask: item?.persistedTask || null
     });
 
@@ -500,12 +549,13 @@ const NutritionistActivityFeed = () => {
             const result = await resolveFeedTasksBatch(payload);
             if (result.error && result.failedCount === payload.length) throw result.error;
             const saved = new Set((result.data || []).map(row => `${row.source_type}:${row.source_id}`));
-            const confirmedIds = selectedItems.filter(item=>saved.has(`${item.sourceType}:${item.sourceId}`)).map(item=>item.id);
+            const obsolete = new Set(result.obsoleteKeys || []);
+            const confirmedIds = selectedItems.filter(item=>saved.has(feedItemKey(item)) || obsolete.has(feedItemKey(item))).map(item=>item.id);
             const pendingIds = selectedItemIds.filter(id=>!confirmedIds.includes(id));
             setFeedItems(prev=>prev.filter(item=>!confirmedIds.includes(item.id)));
             setSelectedItemIds(pendingIds);setSelectMode(pendingIds.length>0);
-            toast({ title: pendingIds.length ? 'Parte dos itens continua pendente' : 'Marcado como resolvido',
-                description:`${confirmedIds.length} itens resolvidos. ${pendingIds.length ? 'Tente novamente os itens restantes.' : ''}`,
+            toast({ title: pendingIds.length ? 'Parte dos itens continua pendente' : 'Feed atualizado',
+                description:`${saved.size} itens resolvidos.${obsolete.size ? ` ${obsolete.size} itens saíram porque o atendimento mudou.` : ''} ${pendingIds.length ? 'Tente novamente os itens restantes.' : ''}`,
                 ...(pendingIds.length ? {variant:'destructive'} : {}) });
         } catch (error) {
             toast({ title: 'Erro ao marcar como resolvido', description: 'Tente novamente.', variant: 'destructive' });
@@ -518,7 +568,7 @@ const NutritionistActivityFeed = () => {
         if (!user?.id) return;
         setActionLoadingId(item.id);
         try {
-            const { data, error, skipped } = await resolveFeedTask(buildTaskInputFromItem(item));
+            const { data, error, skipped, obsolete } = await resolveFeedTask(buildTaskInputFromItem(item));
             if (skipped) return;
             if (error || !data) throw error || new Error('unconfirmed_save');
             setFeedItems((prev) => prev.filter((i) => i.id !== item.id));
@@ -592,9 +642,12 @@ const NutritionistActivityFeed = () => {
 
     return (
         <Card className="bg-card shadow-card-dark rounded-xl overflow-hidden">
-            {syncFailures > 0 && <div role="alert" className="mx-6 mt-4 rounded-lg border border-orange-200 bg-orange-50 p-3 text-sm text-stone-800">
-                {syncFailures} tarefa(s) sem confirmação de salvamento. As demais foram sincronizadas.
-                <Button variant="link" onClick={handleRefresh} disabled={refreshing}>Tentar novamente as pendentes</Button>
+            {failedSyncItems.length > 0 && <div role="alert" className="mx-6 mt-4 rounded-lg border border-orange-200 bg-orange-50 p-3 text-sm text-stone-800">
+                {failedSyncItems.length} alterações do feed não foram salvas. Isso não indica perda de dados clínicos.
+                {failedSyncItems.some(item=>!canRetryFeedFailure(item.failureCode)) && <p className="mt-2">Algumas alterações foram recusadas pelo servidor. Atualize o feed; se o aviso continuar, contate o suporte.</p>}
+                {failedSyncItems.some(item=>canRetryFeedFailure(item.failureCode)) && <Button variant="link" onClick={handleRetrySync} disabled={refreshing}>
+                    {refreshing ? 'Salvando alterações…' : 'Tentar salvar novamente'}
+                </Button>}
             </div>}
             <CardHeader className="pb-3">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">

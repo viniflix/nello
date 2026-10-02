@@ -95,11 +95,12 @@ export const getPatientsPendingData = async (nutritionistId) => {
 export const getPatientsHighRiskLabAlerts = async ({
     nutritionistId,
     patientIds = [],
+    careEpisodeIds = [],
     daysWindow = 120
 }) => {
     try {
         const scopedPatientIds = (patientIds || []).filter(Boolean);
-        if (!nutritionistId || !scopedPatientIds.length) {
+        if (!nutritionistId || !scopedPatientIds.length || !careEpisodeIds.length) {
             return { data: [], error: null };
         }
 
@@ -113,6 +114,7 @@ export const getPatientsHighRiskLabAlerts = async ({
                 .from('lab_results')
                 .select('id, patient_id, test_name, test_value, test_unit, reference_min, reference_max, test_date, created_at')
                 .in('patient_id', scopedPatientIds)
+                .in('care_episode_id', careEpisodeIds)
                 .gte('test_date', cutoff)
                 .order('test_date', { ascending: false })
                 .limit(500)

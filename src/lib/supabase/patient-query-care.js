@@ -1,3 +1,4 @@
+import { invalidateDomain } from '@/infrastructure/realtime/events';
 
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import { supabase } from '@/lib/customSupabaseClient';
@@ -185,6 +186,7 @@ export const endMyCareRelationship = async (patientId, reason = 'ended_by_patien
 export const unarchivePatient = async (patientId, nutritionistId) => {
     try {
         const { data, error } = await supabase.rpc('start_care_episode', { p_patient_id: patientId, p_start_reason: 'restarted_by_nutritionist' });
+        if (!error && data?.success) invalidateDomain(nutritionistId, 'access');
         return { success: !error && data?.success === true, error, data };
     } catch (error) {
         logSupabaseError("erro_ao_reativar_paciente", error);

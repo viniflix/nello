@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { failurePresentation, classifyFailure, settleResources } from '@/lib/utils/failure';
 import { captureOperationalError } from '@/infrastructure/observability/telemetry';
 import { supabase } from '@/lib/customSupabaseClient';
+import { subscribeDomain } from '@/infrastructure/realtime/events';
 import { format } from 'date-fns';
 
 import { Events, track } from '@/infrastructure/analytics/posthog';
@@ -96,17 +97,21 @@ export function useDashboardController({ user }) {
     const started = performance.now();
     setStatsLoading(true);
     try {
-      const patientData = await supabase
+      const scope = await supabase.rpc('get_active_feed_patients').abortSignal(controller.signal);
+      if(scope.error)throw scope.error;
+      if(!current())return;
+      const scopedPatients=scope.data || [];
+      const patientData = scopedPatients.length ? await supabase
         .from('user_profiles')
         .select('id, name, created_at')
           .abortSignal(controller.signal)
-        .eq('nutritionist_id', user.id)
+        .in('id', scopedPatients.map(patient=>patient.id))
         .eq('is_active', true)
         .order('name', { ascending: true })
         .then(({ data, error }) => {
           if (error) throw error;
           return data || [];
-        });
+        }) : [];
 
       if(!current())return;
       setPatients(patientData);
@@ -119,6 +124,7 @@ export function useDashboardController({ user }) {
           .select('patient_id, created_at')
           .abortSignal(controller.signal)
           .in('patient_id', patientIds)
+          .in('care_episode_id', scopedPatients.map(patient=>patient.care_episode_id))
           .gte('created_at', since24hIso)
           .then(({ data, error }) => {
             if (error) throw error;
@@ -307,6 +313,13 @@ export function useDashboardController({ user }) {
   useEffect(()=>{if(user?.id)fetchStats();},[user?.id,fetchStats]);
   useEffect(()=>{if(user?.id)fetchAppointments();},[user?.id,fetchAppointments]);
   useEffect(()=>{if(user?.id)fetchNoShowStats();},[user?.id,fetchNoShowStats]);
+  useEffect(()=>{
+    if(!user?.id)return;
+    const refresh=()=>fetchStats();
+    const unsubscribe=subscribeDomain(user.id,'access',refresh);
+    window.addEventListener('online',refresh);window.addEventListener('focus',refresh);
+    return()=>{unsubscribe();window.removeEventListener('online',refresh);window.removeEventListener('focus',refresh);};
+  },[user?.id,fetchStats]);
   const retry=()=>{fetchStats();fetchAppointments();fetchNoShowStats();};
 
   return {

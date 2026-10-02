@@ -1,17 +1,24 @@
 import {it,expect,vi,beforeEach,afterEach} from 'vitest';
 import {renderHook,waitFor,act} from '@testing-library/react';
 import {useDashboardController} from './useDashboardController';
-const mocks=vi.hoisted(()=>({from:vi.fn(),capture:vi.fn(()=> '00000000-0000-4000-8000-000000000000'),track:vi.fn()}));
-vi.mock('@/lib/customSupabaseClient',()=>({supabase:{from:mocks.from}}));
+const mocks=vi.hoisted(()=>({from:vi.fn(),rpc:vi.fn(),capture:vi.fn(()=> '00000000-0000-4000-8000-000000000000'),track:vi.fn()}));
+vi.mock('@/lib/customSupabaseClient',()=>({supabase:{from:mocks.from,rpc:mocks.rpc}}));
 vi.mock('@/infrastructure/observability/telemetry',()=>({captureOperationalError:mocks.capture}));
 vi.mock('@/infrastructure/analytics/posthog',()=>({Events:{DATA_LOAD_TIMING:'timing'},track:mocks.track}));
 let resolveQuery;
+let resolveScope;
 afterEach(()=>vi.useRealTimers());
 beforeEach(()=>{
  vi.clearAllMocks();resolveQuery=({table})=>({data:table==='user_profiles'?[{id:'p',created_at:new Date().toISOString()}]:[],count:3,error:null});
- mocks.from.mockImplementation(table=>{
+ resolveScope=()=>({data:[{id:'p',care_episode_id:'episode'}],error:null});
+ const request=table=>{
    const spec={table};const chain={then:(resolve,reject)=>Promise.resolve().then(()=>resolveQuery(spec)).then(resolve,reject)};
    for(const method of ['select','eq','gte','lt','lte','in','order','limit','abortSignal'])chain[method]=(...args)=>{spec[method]=args;return chain;};
+   return chain;
+ };
+ mocks.from.mockImplementation(request);
+ mocks.rpc.mockImplementation(()=>{
+   const chain={abortSignal:()=>chain,then:(resolve,reject)=>Promise.resolve().then(resolveScope).then(resolve,reject)};
    return chain;
  });
 });
@@ -44,4 +51,18 @@ it('ends a stalled read with a recoverable timeout and cancels its actual reques
  vi.useFakeTimers();resolveQuery=spec=>new Promise((resolve,reject)=>spec.abortSignal[0].addEventListener('abort',()=>reject(spec.abortSignal[0].reason),{once:true}));
  const {result}=renderHook(()=>useDashboardController({user:{id:'a'}}));await act(async()=>{await vi.advanceTimersByTimeAsync(15001);});
  expect(result.current.statsLoading).toBe(false);expect(result.current.failures.stats.kind).toBe('timeout');expect(result.current.failures.appointments.kind).toBe('timeout');
+});
+it('an archived-only scope produces zero current patients without falling back to legacy owner fields',async()=>{
+ resolveScope=()=>({data:[],error:null});
+ const {result}=renderHook(()=>useDashboardController({user:{id:'a'}}));
+ await waitFor(()=>expect(result.current.statsLoading).toBe(false));
+ expect(result.current.patients).toEqual([]);expect(result.current.adherencePercent24h).toBe('0%');
+ expect(mocks.from.mock.calls.some(([table])=>table==='user_profiles'||table==='meals')).toBe(false);
+});
+it('limits patient metrics and interactions to the current authorized care episode',async()=>{
+ const queries=[];resolveQuery=spec=>{queries.push(spec);return {data:spec.table==='user_profiles'?[{id:'p'}]:[],count:0,error:null};};
+ const {result}=renderHook(()=>useDashboardController({user:{id:'a'}}));
+ await waitFor(()=>expect(result.current.statsLoading).toBe(false));
+ expect(queries.find(spec=>spec.table==='user_profiles').in).toEqual(['id',['p']]);
+ expect(queries.find(spec=>spec.table==='meals').in).toEqual(['care_episode_id',['episode']]);
 });

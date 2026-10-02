@@ -15,8 +15,9 @@ try {
   sql('postgres',`CREATE DATABASE ${database} TEMPLATE nello_qa_wave02_template OWNER supabase_admin;`);
   created=true;
   const migrations=candidateMigrations();
-  for(const migration of migrations.filter(m=>!m.file.includes('wave09_data_integrity')))log+=sql(database,migration.content);
-  const migration=migrations.find(m=>m.file.includes('wave09_data_integrity'));
+  const targetIndex=migrations.findIndex(m=>m.file.includes('wave09_data_integrity'));
+  for(const migration of migrations.slice(0,targetIndex))log+=sql(database,migration.content);
+  const migration=migrations[targetIndex];
   if(!migration)throw Error('Missing integrity migration');
   const fixture=`
     INSERT INTO auth.users(id,aud,role,email,raw_user_meta_data) VALUES('${actor}','authenticated','authenticated','w9-forward@example.invalid','{"name":"Synthetic","user_type":"nutritionist"}');
@@ -41,6 +42,9 @@ try {
     END $check$;
   `;
   log+=sql(database,fixture+ migration.content+assertions);
+  // Later releases may depend on columns introduced by this forward repair.
+  // Preserve the chronological prerequisite order around its legacy fixture.
+  for(const later of migrations.slice(targetIndex+1))log+=sql(database,later.content);
   log+=sql(database,readFileSync('supabase/tests/wave09_data_integrity.sql','utf8'));
   const nonce='50000000-0000-0000-0000-000000000909';
   const call=`SELECT set_config('request.jwt.claim.sub','${actor}',false);SET ROLE authenticated;
