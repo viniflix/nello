@@ -1,3 +1,4 @@
+import { getTodayIsoDate } from '@/lib/utils/date';
 import { useState } from 'react';
 import { Download, Loader2, PackageCheck, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -30,7 +31,7 @@ export default function DataPortabilitySection() {
       const nextSummary = summarizePortabilitySnapshot(data);
       setSummary(nextSummary);
       const blob = await buildPortabilityZip(data, getDataExportAttachmentUrl);
-      const stamp = new Date().toISOString().slice(0, 10);
+      const stamp = getTodayIsoDate();
       downloadBlob(blob, `nello-meus-dados-${safeFilename(data.subject?.name, 'paciente')}-${stamp}.zip`);
       setState('done');
       toast({ title: 'Cópia dos seus dados pronta', description: 'O pacote ZIP foi baixado neste dispositivo.' });

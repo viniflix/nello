@@ -1,3 +1,4 @@
+import { getTodayIsoDate } from '@/lib/utils/date';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import { useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -46,7 +47,8 @@ export default function AddMealPage() {
   // Estado da refeição
   const [mealType, setMealType] = useState(initialMealType);
   const [mealDateTime, setMealDateTime] = useState(format(new Date(), 'HH:mm')); // Sempre hora atual
-  const [mealDate, setMealDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [mealDate, setMealDate] = useState(getTodayIsoDate());
+    const [mealRevision, setMealRevision] = useState(null);
   const [notes, setNotes] = useState('');
   const [addedFoods, setAddedFoods] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -78,6 +80,7 @@ export default function AddMealPage() {
         .single();
 
       if (mealError) throw mealError;
+                    setMealRevision(mealData.updated_at);
 
       // Buscar itens da refeição
       const { data: itemsData, error: itemsError } = await supabase
@@ -259,6 +262,7 @@ export default function AddMealPage() {
     try {
       await savePatientDiaryMeal({
         mealId: editMode ? mealId : null,
+        expectedRevision: mealRevision,
         mealDate,
         mealTime: mealDateTime,
         mealType,

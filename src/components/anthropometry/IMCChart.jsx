@@ -1,3 +1,4 @@
+import { civilDateToDate } from '@/lib/utils/date';
 import React from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -39,8 +40,8 @@ const IMCChart = ({ data = [], patientAge = null, patientSex = null, patientEthn
     const chartData = data
         .filter(record => record.bmi || record.calculatedBmi) // Só registros com IMC
         .map(record => ({
-            date: format(new Date(record.record_date), 'dd/MM/yy'),
-            fullDate: format(new Date(record.record_date), "dd 'de' MMM", { locale: ptBR }),
+            date: format(civilDateToDate(record.record_date), 'dd/MM/yy'),
+            fullDate: format(civilDateToDate(record.record_date), "dd 'de' MMM", { locale: ptBR }),
             bmi: parseFloat((record.bmi || record.calculatedBmi).toFixed(1)),
             originalDate: record.record_date,
             weight: record.weight,

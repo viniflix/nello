@@ -35,8 +35,8 @@ export function assertAtomicPair(label, results) {
   const winners = results.filter(result => result.code === 0);
   const losers = results.filter(result => result.code !== 0);
   if (results.length !== 2 || winners.length !== 1 || losers.length !== 1
-    || !/40001/.test(losers[0].output) || !/amendment_chain_conflict/.test(losers[0].output)) {
-    throw Error(`${label}: expected one winner and one 40001 amendment_chain_conflict.\n${JSON.stringify(results)}`);
+    || !/PT409/.test(losers[0].output) || !/amendment_chain_conflict/.test(losers[0].output)) {
+    throw Error(`${label}: expected one winner and one PT409 amendment_chain_conflict.\n${JSON.stringify(results)}`);
   }
 }
 

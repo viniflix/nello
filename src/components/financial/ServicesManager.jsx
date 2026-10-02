@@ -93,6 +93,7 @@ export default function ServicesManager({ open, onOpenChange, nutritionistId }) 
         try {
             await saveService({
                 id: editingService?.id,
+                updated_at: editingService?.updated_at,
                 nutritionist_id: nutritionistId,
                 name: formData.name,
                 description: formData.description,

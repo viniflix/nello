@@ -59,8 +59,9 @@ export default function PatientAnamnesisForm() {
         storageKey: user?.id && record?.id ? `nello_anamnesis:${user.id}:${record.id}` : null,
         enabled: Boolean(record?.id && record.status === 'draft'),
         serverValue: record?.content || {},
-        save: async (snapshot) => {
-            await updateRecord.mutateAsync({ recordId: record.id, content: snapshot, status: 'draft', silent: true });
+        serverRevision: record?.updated_at,
+        save: async (snapshot, expected) => {
+            return updateRecord.mutateAsync({ recordId: record.id, expected, content: snapshot, status: 'draft', silent: true });
         }
     });
 
@@ -147,7 +148,7 @@ export default function PatientAnamnesisForm() {
         if (isSubmit) setIsSubmitting(true);
         else if (!isAutoSave) setIsSaving(true);
         try {
-            await updateRecord.mutateAsync({ recordId: record.id, content, status });
+            await updateRecord.mutateAsync({ recordId: record.id, expected: autosave.getRevision(), content, status });
             autosave.discard();
             if (isSubmit) navigate(patientAnamnesisListRoute({ id: patientId, slug: paramValue }));
         } catch (err) {

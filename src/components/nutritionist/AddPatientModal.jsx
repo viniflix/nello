@@ -1,3 +1,4 @@
+import { getTodayIsoDate } from '@/lib/utils/date';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState, useEffect, useRef } from 'react';
 import { usePatientFormStore } from '@/stores/usePatientFormStore'; 
@@ -376,7 +377,7 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded }) => {
                                     value={formData.birth_date}
                                     onChange={(date) => updateField('birth_date', date)}
                                     required={!isOffline}
-                                    max={new Date().toISOString().split('T')[0]}
+                                    max={getTodayIsoDate()}
                                 />
                             </div>
 

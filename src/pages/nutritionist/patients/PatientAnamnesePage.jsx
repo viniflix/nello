@@ -1,3 +1,4 @@
+import { civilAge } from '@/lib/utils/date';
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -33,10 +34,7 @@ export default function PatientAnamnesePage() {
     
     let age = null;
     if (patientData.birth_date) {
-      const birth = new Date(patientData.birth_date);
-      if (!isNaN(birth.getTime())) {
-         age = new Date().getFullYear() - birth.getFullYear();
-      }
+      age = civilAge(patientData.birth_date);
     }
     const rawGender = (patientData?.gender || patientData?.sex || patientData?.biological_sex || 'unknown').toLowerCase();
     

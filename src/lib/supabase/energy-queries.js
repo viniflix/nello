@@ -1,3 +1,5 @@
+import { civilAge } from '@/lib/utils/date';
+import { insertIdempotently } from '@/lib/supabase/idempotent-mutations';
 import { normalizeEnergyInput, readAnthropometryEnergyValues } from '@/lib/utils/energy-inputs';
 import { supabase } from '@/lib/customSupabaseClient';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
@@ -129,12 +131,8 @@ export const getInitialBiometryForEnergy = async (patientId) => {
     if (loadError) logSupabaseError('Biometria carregada parcialmente', loadError);
 
     if (profile?.birth_date) {
-      const birth = new Date(profile.birth_date);
-      const today = new Date();
-      let age = today.getFullYear() - birth.getFullYear();
-      const monthDiff = today.getMonth() - birth.getMonth();
-      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) age--;
-      if (Number.isFinite(age) && age >= 0) out.age = age;
+      const age = civilAge(profile.birth_date);
+if (age !== null) out.age = age;
     }
     if (profile?.gender) {
       out.gender = normalizeEnergyInput('gender', profile.gender);
@@ -145,14 +143,8 @@ export const getInitialBiometryForEnergy = async (patientId) => {
     if (anamnesisRes.data?.content && typeof anamnesisRes.data.content === 'object') {
       extractBiometryFromContent(anamnesisRes.data.content, fromAnamnesis);
       if (fromAnamnesis.birth_date && out.age == null) {
-        const birth = new Date(fromAnamnesis.birth_date);
-        const today = new Date();
-        if (!Number.isNaN(birth.getTime())) {
-          let age = today.getFullYear() - birth.getFullYear();
-          const monthDiff = today.getMonth() - birth.getMonth();
-          if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) age--;
-          out.age = age;
-        }
+        const age = civilAge(fromAnamnesis.birth_date);
+if (age !== null) out.age = age;
       }
       if (fromAnamnesis.weight != null && out.weight == null) out.weight = fromAnamnesis.weight;
       if (fromAnamnesis.height != null && out.height == null) out.height = fromAnamnesis.height;
@@ -349,11 +341,7 @@ export const saveEnergyCalculation = async (data) => {
       confirmed_at: data.nutritionist_id ? new Date().toISOString() : null
     };
 
-    const { data: inserted, error } = await supabase
-      .from('energy_expenditure_calculations')
-      .insert(row)
-      .select()
-      .single();
+    const { data: inserted, error } = await insertIdempotently('energy_expenditure_calculations', row);
     if (error) throw error;
     return { data: inserted, error: null };
   } catch (error) {

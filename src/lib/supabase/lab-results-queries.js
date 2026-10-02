@@ -1,3 +1,4 @@
+import { clinicalRpc } from '@/lib/supabase/idempotent-mutations';
 import { uploadVerifiedFile } from '@/lib/storage/verifiedUpload';
 import { parsePrivateFile, signPrivateFile } from '@/lib/storage/privateFiles';
 /**
@@ -108,7 +109,7 @@ export async function createLabResult(labResult) {
             );
         }
 
-        const { data, error } = await supabase.rpc('create_lab_result_record', {
+        const { data, error } = await clinicalRpc('lab_result', {
             p_payload: { ...labResult, status }
         });
 

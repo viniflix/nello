@@ -1,3 +1,4 @@
+import { civilDateToDate } from '@/lib/utils/date';
 import React from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -34,8 +35,8 @@ const WeightChart = ({ data = [], goalWeight = null }) => {
 
     // Preparar dados para o gráfico
     const chartData = data.map(record => ({
-        date: format(new Date(record.record_date), 'dd/MM/yy'),
-        fullDate: format(new Date(record.record_date), "dd 'de' MMM", { locale: ptBR }),
+        date: format(civilDateToDate(record.record_date), 'dd/MM/yy'),
+        fullDate: format(civilDateToDate(record.record_date), "dd 'de' MMM", { locale: ptBR }),
         weight: parseFloat(record.weight),
         originalDate: record.record_date
     }));

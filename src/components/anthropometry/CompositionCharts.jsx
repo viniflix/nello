@@ -1,3 +1,4 @@
+import { civilDateToDate } from '@/lib/utils/date';
 import { useMemo } from 'react';
 import {
   LineChart,
@@ -32,7 +33,7 @@ export default function CompositionCharts({ data = [] }) {
     return data
       .filter(record => isCurrentMeasurement(record) && record.weight && record.record_date)
       .map(record => {
-        const date = new Date(record.record_date);
+        const date = civilDateToDate(record.record_date);
         const weight = parseFloat(record.weight) || 0;
         
         // Extrair resultados calculados (se existirem)
@@ -94,7 +95,7 @@ export default function CompositionCharts({ data = [] }) {
       .filter(record => record.results?.somatotype && typeof record.results.somatotype === 'object')
       .map(record => {
         const somatotype = record.results.somatotype;
-        const date = new Date(record.record_date);
+        const date = civilDateToDate(record.record_date);
         
         // Coordenadas para o gráfico triangular
         // X = Ectomorphy - Endomorphy

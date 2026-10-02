@@ -51,7 +51,7 @@ with transitioned as(select public.update_data_subject_request((select request_i
 update c8_ids set revision=(select(payload->>'revision')::bigint from transitioned);
 do $$begin
  begin perform public.update_data_subject_request((select request_id from c8_ids),1,'in_progress','Revisão concorrente indevida',null,null,true);raise exception 'stale_revision_accepted';
- exception when serialization_failure then null;end;
+ exception when sqlstate 'PT409' then null;end;
 end$$;
 with transitioned as(select public.update_data_subject_request((select request_id from c8_ids),(select revision from c8_ids),'in_progress','Análise dos dados e bases legais','retain_legal_obligation','Obrigação legal de guarda do prontuário',true) payload)
 update c8_ids set revision=(select(payload->>'revision')::bigint from transitioned);

@@ -1,3 +1,5 @@
+import { clearMutationIntents } from '@/lib/supabase/idempotent-mutations';
+import { webcrypto } from 'node:crypto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getMyCareRelationship, getPatientActivities, syncFeedTasksFromItems, upsertFeedTask } from '@/lib/supabase/patient-queries';
 import { processPatientReminders } from '@/lib/supabase/food-diary-queries';
@@ -26,7 +28,7 @@ vi.mock('@/lib/supabase/lab-results-queries', () => ({
 }));
 
 describe('session-safe background queries', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => { vi.clearAllMocks();clearMutationIntents();vi.stubGlobal('crypto', webcrypto); });
 
   it('does not persist a nutritionist feed after the authenticated account changes', async () => {
     mocks.getSession.mockResolvedValue({
@@ -73,13 +75,7 @@ describe('session-safe background queries', () => {
 
   it('updates a changed snapshot without a per-item read and guards concurrent edits', async () => {
     mocks.getSession.mockResolvedValue({ data: { session: { user: { id: 'nutritionist-session' } } }, error: null });
-    const maybeSingle = vi.fn().mockResolvedValue({ data: null, error: null });
-    const updateQuery = { eq: vi.fn(), select: vi.fn() };
-    updateQuery.eq.mockReturnValue(updateQuery);
-    updateQuery.select.mockReturnValue({ maybeSingle });
-    const update = vi.fn().mockReturnValue(updateQuery);
-    mocks.from.mockReturnValue({ update });
-
+    mocks.rpc.mockResolvedValue({ data: null, error: {code:'PT409',message:'task_changed'} });
     const result = await syncFeedTasksFromItems('nutritionist-session', [{
       sourceType: 'pending', sourceId: 'pending-1', title: 'Nova pendência',
     }], [{
@@ -87,10 +83,12 @@ describe('session-safe background queries', () => {
       title: 'Pendência', status: 'resolved', updated_at: '2026-09-24T00:00:00Z', metadata: {},
     }]);
 
-    expect(mocks.from).toHaveBeenCalledTimes(1);
-    expect(update).toHaveBeenCalledWith(expect.objectContaining({ status: 'resolved' }));
-    expect(updateQuery.eq).toHaveBeenCalledWith('updated_at', '2026-09-24T00:00:00Z');
-    expect(result).toMatchObject({ data: [], error: null });
+    expect(mocks.from).not.toHaveBeenCalled();
+    expect(mocks.rpc).toHaveBeenCalledWith('save_feed_task',expect.objectContaining({
+      p_expected:'2026-09-24T00:00:00Z',p_values:expect.objectContaining({status:'resolved'}),p_actor:'nutritionist-session'
+    }));
+    expect(result).toMatchObject({ data: [], error: {code:'PT409'},failedCount:1,
+      outcomes:[{sourceType:'pending',sourceId:'pending-1',status:'failed',code:'PT409'}] });
   });
 
   it('starts every independent patient activity source before waiting for responses', async () => {
@@ -117,31 +115,16 @@ describe('session-safe background queries', () => {
 
   it('does not report a no-row write when logout wins the feed persistence race', async () => {
     mocks.getSession
+      .mockResolvedValue({data:{session:null},error:null})
       .mockResolvedValueOnce({
         data: { session: { user: { id: 'nutritionist-session' } } },
         error: null,
       })
       .mockResolvedValueOnce({ data: { session: null }, error: null });
 
-    mocks.from
-      .mockReturnValueOnce({
-        select: vi.fn(() => ({
-          match: vi.fn(() => ({
-            limit: vi.fn().mockResolvedValue({ data: [], error: null }),
-          })),
-        })),
-      })
-      .mockReturnValueOnce({
-        insert: vi.fn(() => ({
-          select: vi.fn(() => ({
-            single: vi.fn().mockResolvedValue({
-              data: null,
-              error: { code: 'PGRST116', message: 'JSON object requested, multiple (or no) rows returned' },
-            }),
-          })),
-        })),
-      });
-
+    const query={select:vi.fn(),match:vi.fn(),eq:vi.fn(),maybeSingle:vi.fn().mockResolvedValue({data:null,error:null})};
+    for(const method of ['select','match','eq'])query[method].mockReturnValue(query);
+    mocks.from.mockReturnValue(query);
     const result = await upsertFeedTask({
       nutritionistId: 'nutritionist-session',
       sourceType: 'pending',
@@ -150,7 +133,7 @@ describe('session-safe background queries', () => {
     });
 
     expect(result).toMatchObject({ data: null, error: null, skipped: true });
-    expect(mocks.getSession).toHaveBeenCalledTimes(2);
+    expect(mocks.rpc).not.toHaveBeenCalled();
     expect(mocks.logSupabaseError).not.toHaveBeenCalled();
   });
 

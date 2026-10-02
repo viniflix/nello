@@ -1,3 +1,6 @@
+import { getTodayIsoDate } from '@/lib/utils/date';
+import { insertIdempotently, updateIdempotently, idempotentRpc } from '@/lib/supabase/idempotent-mutations';
+import { toCents, fromCents, decimalMoney } from '@/lib/utils/money';
 import { supabase } from '@/lib/customSupabaseClient';
 import { format, startOfMonth, endOfMonth, addDays, parseISO, startOfDay } from 'date-fns';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
@@ -30,7 +33,7 @@ export async function getFinancialSummary(monthDate, nutritionistId) {
     const rows = await getFinancialMonthRows(nutritionistId, monthDate);
     return summarizeFinancialTransactions(
         rows, format(startOfMonth(monthDate), 'yyyy-MM-dd'),
-        format(endOfMonth(monthDate), 'yyyy-MM-dd'), format(new Date(), 'yyyy-MM-dd')
+        format(endOfMonth(monthDate), 'yyyy-MM-dd'), getTodayIsoDate()
     );
 }
 
@@ -57,8 +60,9 @@ export async function getTransactions(nutritionistId, filters = {}, pagination =
  * @returns {Promise<Object>}
  */
 export async function saveTransaction(transactionData) {
-    const { id, ...data } = transactionData;
+    const { id, updated_at, created_at, ...data } = transactionData;
 
+    data.amount = decimalMoney(data.amount);
     // Ensure status is set correctly
     if (!data.status) {
         data.status = data.isPaid ? 'paid' : 'pending';
@@ -75,25 +79,9 @@ export async function saveTransaction(transactionData) {
     // Ensure payment_method, fee_percentage, and attachment_url are included
     // (net_amount is calculated by DB trigger based on amount and fee_percentage)
 
-    let query;
-    if (id) {
-        // Update existing transaction
-        query = supabase
-            .from('financial_transactions')
-            .update(data)
-            .eq('id', id)
-            .select()
-            .single();
-    } else {
-        // Create new transaction
-        query = supabase
-            .from('financial_transactions')
-            .insert(data)
-            .select()
-            .single();
-    }
-
-    const { data: result, error } = await query;
+    const { data: result, error } = id
+        ? await updateIdempotently('financial_transactions', id, data, updated_at)
+        : await insertIdempotently('financial_transactions', data);
 
     if (error) {
         logSupabaseError('Error saving transaction', error);
@@ -168,8 +156,8 @@ export async function getProjectedCashFlow(nutritionistId, startDate) {
     // Calculate current balance (income - expenses)
     let currentBalance = 0;
     (paidTransactions || []).forEach(transaction => {
-        const value = parseFloat(transaction.type === 'income' ? transaction.net_amount ?? transaction.amount : transaction.amount || 0);
-        const refund = transaction.status === 'refunded' ? parseFloat(transaction.amount || 0) : 0;
+        const value = toCents(transaction.type === 'income' ? transaction.net_amount ?? transaction.amount : transaction.amount || 0);
+        const refund = transaction.status === 'refunded' ? toCents(transaction.amount || 0) : 0;
         if (transaction.type === 'income') {
             currentBalance += value - refund;
         } else {
@@ -211,7 +199,7 @@ export async function getProjectedCashFlow(nutritionistId, startDate) {
             transactionsByDate[date] = { income: 0, expenses: 0 };
         }
         
-        const value = parseFloat(transaction.type === 'income' ? transaction.net_amount ?? transaction.amount : transaction.amount || 0);
+        const value = toCents(transaction.type === 'income' ? transaction.net_amount ?? transaction.amount : transaction.amount || 0);
         if (transaction.type === 'income') {
             transactionsByDate[date].income += value;
         } else {
@@ -235,7 +223,7 @@ export async function getProjectedCashFlow(nutritionistId, startDate) {
 
         projection.push({
             date: dateKey,
-            balance: Math.round(runningBalance * 100) / 100 // Round to 2 decimals
+            balance: fromCents(runningBalance)
         });
     }
 
@@ -303,23 +291,10 @@ export async function saveService(serviceData) {
     if (duration_minutes != null) data.duration_minutes = duration_minutes;
     if (rest.active != null) data.active = rest.active;
 
-    let query;
-    if (id) {
-        query = supabase
-            .from('services')
-            .update(data)
-            .eq('id', id)
-            .select()
-            .single();
-    } else {
-        query = supabase
-            .from('services')
-            .insert(data)
-            .select()
-            .single();
-    }
-
-    const { data: result, error } = await query;
+    data.price = decimalMoney(price);
+    const { data: result, error } = id
+        ? await updateIdempotently('services', id, data, serviceData.updated_at || null)
+        : await insertIdempotently('services', data);
 
     if (error) {
         logSupabaseError('Error saving service', error);
@@ -353,10 +328,9 @@ export async function deleteService(serviceId) {
  * @returns {Promise<Array>}
  */
 export async function saveMultipleTransactions(transactions) {
-    const { data, error } = await supabase
-        .from('financial_transactions')
-        .insert(transactions)
-        .select();
+    const { data, error } = await idempotentRpc('save_financial_installments', {
+        p_values: transactions.map(row => ({ ...row, amount: decimalMoney(row.amount) }))
+    });
 
     if (error) {
         logSupabaseError('Error saving multiple transactions', error);
@@ -404,7 +378,7 @@ export async function updateTransactionStatus(transactionId, status) {
     if (status !== 'paid') throw new Error('Use o formulário para editar um lançamento.');
     const { data, error } = await supabase
         .from('financial_transactions')
-        .update({ status, paid_at: format(new Date(), 'yyyy-MM-dd') })
+        .update({ status, paid_at: getTodayIsoDate() })
         .eq('id', transactionId)
         .in('status', ['pending', 'overdue'])
         .select()
@@ -418,7 +392,7 @@ export async function updateTransactionStatus(transactionId, status) {
     return data;
 }
 
-export async function refundTransaction(transactionId, refundDate = format(new Date(), 'yyyy-MM-dd')) {
+export async function refundTransaction(transactionId, refundDate = getTodayIsoDate()) {
     const { error } = await supabase.rpc('refund_financial_transaction', {
         p_id: transactionId, p_refunded_at: refundDate,
     });

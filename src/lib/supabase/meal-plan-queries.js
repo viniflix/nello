@@ -1,3 +1,4 @@
+import { clinicalRpc, insertIdempotently, updateIdempotently, idempotentRpc } from '@/lib/supabase/idempotent-mutations';
 import { supabase } from '@/lib/customSupabaseClient';
 import { calculateCaloriesFromMacros } from '@/lib/utils/nutrition-calculations';
 import { getTodayIsoDate } from '@/lib/utils/date';
@@ -183,7 +184,7 @@ export const simulateMealPlanPortionAdjustment = (meals = [], scaleFactor = 1, o
  */
 export const createMealPlan = async (planData) => {
     try {
-        const { data: planId, error: createError } = await supabase.rpc('create_meal_plan_atomic', {
+        const { data: planId, error: createError } = await clinicalRpc('meal_plan', {
             p_plan_data: {
                 patient_id: planData.patient_id,
                 nutritionist_id: planData.nutritionist_id,
@@ -585,6 +586,21 @@ export const addMealToPlan = async (mealData) => {
         return { data, error: null };
     } catch (error) {
         logSupabaseError("erro_ao_adicionar_refeicao_ao_plano", error);
+        return { data: null, error };
+    }
+};
+
+export const saveDraftMeal = async (planId, mealId, mealData, expectedRevision) => {
+    try {
+        const result = await idempotentRpc('save_draft_meal', {
+            p_plan_id: planId, p_meal_id: mealId,
+            p_meal: { ...mealData, meal_time: normalizeMealTime(mealData.meal_time) },
+            p_expected: expectedRevision,
+        });
+        if (result.error) throw result.error;
+        return result;
+    } catch (error) {
+        logSupabaseError('save_draft_meal', error);
         return { data: null, error };
     }
 };
@@ -1608,9 +1624,7 @@ export const createDraftMealPlan = async (patientId, nutritionistId) => {
             throw new Error('ID de nutricionista inválido para criação de rascunho.');
         }
 
-        const { data, error } = await supabase
-            .from('meal_plans')
-            .insert([{
+        const { data, error } = await insertIdempotently('meal_plans', {
                 patient_id: patientId,
                 nutritionist_id: nutritionistId,
                 name: 'Rascunho',
@@ -1619,10 +1633,7 @@ export const createDraftMealPlan = async (patientId, nutritionistId) => {
                 is_draft: true,
                 is_template: false,
                 active_days: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
-            }])
-            .select()
-            .single();
-
+            });
         if (error) throw error;
         return { data, error: null };
     } catch (error) {
@@ -1687,24 +1698,16 @@ export const getDraftMealPlans = async (patientId, nutritionistId) => {
  * @param {object} planData
  * @returns {Promise<{data: object, error: object}>}
  */
-export const updateDraftMealPlan = async (draftId, planData) => {
+export const updateDraftMealPlan = async (draftId, planData, expectedRevision) => {
     try {
-        const { data, error } = await supabase
-            .from('meal_plans')
-            .update({
+        const { data, error } = await updateIdempotently('meal_plans', draftId, {
                 name: planData.name || 'Rascunho',
                 description: planData.description || null,
                 start_date: planData.start_date || getTodayIsoDate(),
                 end_date: planData.end_date || null,
                 active_days: planData.active_days || ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
-                plan_mode: planData.plan_mode || 'hybrid',
-                updated_at: new Date().toISOString()
-            })
-            .eq('id', draftId)
-            .eq('is_draft', true)
-            .select()
-            .single();
-
+                plan_mode: planData.plan_mode || 'hybrid'
+            }, expectedRevision);
         if (error) throw error;
         return { data, error: null };
     } catch (error) {

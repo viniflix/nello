@@ -679,7 +679,7 @@ begin
       'professional_private', v_revision
     );
     raise exception 'stale_revision_should_fail';
-  exception when sqlstate '40001' then
+  exception when sqlstate 'PT409' then
     if sqlerrm not like '%draft_revision_conflict%' then raise; end if;
   end;
 

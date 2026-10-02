@@ -1,3 +1,4 @@
+import { getTodayIsoDate } from '@/lib/utils/date';
 import React, { useState, useEffect, useMemo } from 'react';
 import { Save, X, Calculator, Ruler, Scissors, Image as ImageIcon, AlertCircle, Bone } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -41,7 +42,7 @@ const AnthropometryForm = ({
         weight: '',
         height: '',
         peso_usual: '',
-        record_date: new Date().toISOString().split('T')[0],
+        record_date: getTodayIsoDate(),
         notes: '',
         // Circunferências
         circumferences: {
@@ -168,7 +169,7 @@ const AnthropometryForm = ({
             setFormData({
                 weight: initialData.weight || '',
                 height: initialData.height || '',
-                record_date: initialData.record_date || new Date().toISOString().split('T')[0],
+                record_date: initialData.record_date || getTodayIsoDate(),
                 notes: initialData.notes || '',
                 circumferences: initialData.circumferences || formData.circumferences,
                 skinfolds: initialData.skinfolds || formData.skinfolds,
@@ -409,7 +410,7 @@ const AnthropometryForm = ({
             weight: '',
             height: '',
             peso_usual: '',
-            record_date: new Date().toISOString().split('T')[0],
+            record_date: getTodayIsoDate(),
             notes: '',
             circumferences: {
                 ombro: '', peito: '', cintura: '', abdomen: '', quadril: '',

@@ -1,3 +1,5 @@
+import { mapFatSecretToOFF, normalizeExternalProduct } from '@/lib/utils/externalFood';
+import { idempotentRpc } from '@/lib/supabase/idempotent-mutations';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState, useEffect, useMemo, forwardRef, useImperativeHandle } from 'react';
 import { Plus, X, Calculator, Barcode, Loader2, Info, ChevronRight, ChevronLeft, Search, CheckCircle2 } from 'lucide-react';
@@ -94,6 +96,24 @@ const SmartFoodForm = forwardRef(function SmartFoodForm({
     const [searchLoading, setSearchLoading] = useState(false);
     const [searchResults, setSearchResults] = useState([]);
     const [showResultsDialog, setShowResultsDialog] = useState(false);
+    const [externalProvenance, setExternalProvenance] = useState(null);
+    const [reviewedFingerprint, setReviewedFingerprint] = useState(null);
+    const [foodRevision, setFoodRevision] = useState(null);
+    const reviewFingerprint = JSON.stringify([name,brand,inputMode,labelPortionSize,protein,carbs,fat,calories,
+        fiber,sugar,saturatedFat,transFat,monounsaturatedFat,polyunsaturatedFat,cholesterol,sodium,
+        calcium,iron,magnesium,phosphorus,potassium,zinc,vitaminA,vitaminC,vitaminD,vitaminE,vitaminB12,folate,householdMeasures]);
+    const externalReviewed = reviewedFingerprint === reviewFingerprint;
+    useEffect(() => {
+        if (!initialData?.id || !['custom','CUSTOM'].includes(initialData.source)) return;
+        let cancelled = false;
+        void supabase.from('nutritionist_foods').select('revision, external_provenance')
+            .eq('id',initialData.id).maybeSingle().then(({data,error}) => {
+                if (cancelled) return;
+                if (!error && data) { setFoodRevision(data.revision);setExternalProvenance(data.external_provenance); }
+            });
+        return () => { cancelled = true; };
+    },[initialData?.id,initialData?.source]);
+
 
     // Pre-fill from initialData
     useEffect(() => {
@@ -326,7 +346,15 @@ const SmartFoodForm = forwardRef(function SmartFoodForm({
     // Fill form with OpenFoodFacts data
     // IMPORTANTE: O Nello sempre trabalha com base 100g no banco de dados
     // Se o OpenFoodFacts tiver dados de porção, normalizamos para 100g primeiro
-    const fillFormWithProduct = (product) => {
+    const fillFormWithProduct = (inputProduct) => {
+        const product = normalizeExternalProduct(inputProduct);
+        // Missing values must stay unknown, never inherit another product's nutrients.
+        [setProtein,setCarbs,setFat,setCalories,setFiber,setSugar,setSaturatedFat,setTransFat,
+         setMonounsaturatedFat,setPolyunsaturatedFat,setCholesterol,setSodium,setCalcium,setIron,
+         setMagnesium,setPhosphorus,setPotassium,setZinc,setVitaminA,setVitaminC,setVitaminD,
+         setVitaminE,setVitaminB12,setFolate].forEach(set => set(''));
+        setBrand('');setHouseholdMeasures([]);setAutoCalcCalories(false);setReviewedFingerprint(null);
+
         const nutriments = product.nutriments || {};
 
         if (product.product_name) setName(product.product_name);
@@ -589,7 +617,7 @@ const SmartFoodForm = forwardRef(function SmartFoodForm({
                 if (error || !data || !data.data) {
                     toast({
                         title: error?.context?.status === 429 ? 'Muitas buscas em pouco tempo' : 'Produto não encontrado',
-                        description: error?.context?.status === 429 ? 'Aguarde até um minuto e tente novamente.' : 'Não foi possível encontrar este produto na base de dados.',
+                        description: error?.context?.status === 429 ? 'Aguarde até um minuto e tente novamente.' : 'Busca externa indisponível ou sem resultado. Use o catálogo local ou preencha manualmente a partir do rótulo.',
                         variant: error?.context?.status === 429 ? 'destructive' : 'default'
                     });
                     return;
@@ -599,6 +627,8 @@ const SmartFoodForm = forwardRef(function SmartFoodForm({
                     ? mapFatSecretToOFF(data.data) 
                     : data.data; // OFF data matches internal structure mostly
 
+                setExternalProvenance({ source: data.source, product_id: String(data.product_id || query),
+                    fetched_at: data.fetched_at || new Date().toISOString(), source_updated_at: data.source_updated_at || null, basis: '100g' });
                 fillFormWithProduct(mappedProduct);
                 setSearchQuery('');
 
@@ -610,7 +640,7 @@ const SmartFoodForm = forwardRef(function SmartFoodForm({
                 logDiagnostic('error', 'components/nutrition/SmartFoodForm.jsx:609', 'Erro ao buscar produto:', error);
                 toast({
                     title: 'Erro',
-                    description: 'Não foi possível buscar o produto. Verifique sua conexão.',
+                    description: error?.message?.startsWith('A fonte não informa') ? error.message : 'Não foi possível consultar a fonte externa. Use o catálogo interno ou preencha os dados do rótulo.',
                     variant: 'destructive'
                 });
             } finally {
@@ -676,45 +706,6 @@ const SmartFoodForm = forwardRef(function SmartFoodForm({
     };
 
     // Auxiliar para mapear FatSecret para o formato interno do SmartFoodForm
-    const mapFatSecretToOFF = (fsFood) => {
-        if (!fsFood || !fsFood.servings) return fsFood;
-
-        const servings = fsFood.servings?.serving;
-        const servingsArr = Array.isArray(servings) ? servings : [servings];
-        
-        // Tentar achar o de 100g ou 100ml
-        let serving = servingsArr.find(s => 
-            (s.metric_serving_amount === "100.000") && 
-            (s.metric_serving_unit === "g" || s.metric_serving_unit === "ml")
-        );
-        
-        // Se não achar, pegar o primeiro e calcular fator de 100g
-        if (!serving) serving = servingsArr[0];
-
-        const amount = parseFloat(serving.metric_serving_amount) || 100;
-        const factor = 100 / amount;
-
-        return {
-            product_name: fsFood.food_name,
-            brands: fsFood.brand_name || "",
-            nutriments: {
-                proteins_100g: parseFloat(serving.protein || 0) * factor,
-                carbohydrates_100g: parseFloat(serving.carbohydrate || 0) * factor,
-                fat_100g: parseFloat(serving.fat || 0) * factor,
-                energy_kcal_100g: parseFloat(serving.calories || 0) * factor,
-                fiber_100g: parseFloat(serving.fiber || 0) * factor,
-                sodium_100g: (parseFloat(serving.sodium || 0) / 1000) * factor,
-                sugars_100g: parseFloat(serving.sugar || 0) * factor,
-                saturated_fat_100g: parseFloat(serving.saturated_fat || 0) * factor,
-                trans_fat_100g: parseFloat(serving.trans_fat || 0) * factor,
-                cholesterol_100g: (parseFloat(serving.cholesterol || 0) / 1000) * factor,
-                calcium_100g: (parseFloat(serving.calcium || 0) / 100) * factor,
-                iron_100g: (parseFloat(serving.iron || 0) / 100) * factor,
-                potassium_100g: (parseFloat(serving.potassium || 0) / 1000) * factor,
-            }
-        };
-    };
-
     // Handle product selection from results
     const handleSelectProduct = async (productCode) => {
         setSearchLoading(true);
@@ -726,7 +717,7 @@ const SmartFoodForm = forwardRef(function SmartFoodForm({
             if (error || !data || !data.data) {
                 toast({
                     title: error?.context?.status === 429 ? 'Muitas buscas em pouco tempo' : 'Erro',
-                    description: error?.context?.status === 429 ? 'Aguarde até um minuto e tente novamente.' : 'Não foi possível carregar os dados do produto selecionado.',
+                    description: error?.context?.status === 429 ? 'Aguarde até um minuto e tente novamente.' : 'Busca externa indisponível ou sem resultado. Use o catálogo local ou preencha manualmente a partir do rótulo.',
                     variant: 'destructive'
                 });
                 return;
@@ -736,6 +727,8 @@ const SmartFoodForm = forwardRef(function SmartFoodForm({
                 ? mapFatSecretToOFF(data.data) 
                 : data.data;
 
+            setExternalProvenance({ source: data.source, product_id: String(data.product_id || productCode),
+                fetched_at: data.fetched_at || new Date().toISOString(), source_updated_at: data.source_updated_at || null, basis: '100g' });
             fillFormWithProduct(mappedProduct);
             setSearchQuery('');
             setShowResultsDialog(false);
@@ -749,7 +742,7 @@ const SmartFoodForm = forwardRef(function SmartFoodForm({
             logDiagnostic('error', 'components/nutrition/SmartFoodForm.jsx:748', 'Erro ao carregar produto:', error);
             toast({
                 title: 'Erro',
-                description: 'Não foi possível carregar o produto. Verifique sua conexão.',
+                description: error?.message?.startsWith('A fonte não informa') ? error.message : 'Não foi possível consultar a fonte externa. Use o catálogo interno ou preencha os dados do rótulo.',
                 variant: 'destructive'
             });
         } finally {
@@ -758,6 +751,13 @@ const SmartFoodForm = forwardRef(function SmartFoodForm({
     };
 
     const handleSubmit = async () => {
+        if (loading) return;
+        if (initialData && foodRevision === null) {
+            toast({ title:'Aguarde', description:'A versão do alimento ainda não foi confirmada. Reabra o formulário se a conexão falhou.',variant:'destructive' });return;
+        }
+        if (externalProvenance && !externalReviewed) {
+            toast({title:'Revisão necessária',description:'Confira os valores por 100 g e confirme a revisão antes de incorporar o alimento externo.',variant:'destructive'});return;
+        }
         if (!validateStep(2)) {
             toast({
                 title: 'Erro',
@@ -851,7 +851,8 @@ const SmartFoodForm = forwardRef(function SmartFoodForm({
                     }
                 }
             }
-            const { data, error } = await supabase.rpc('save_custom_food_with_measures', {
+            const { data, error } = await idempotentRpc('save_reviewed_custom_food', {
+                p_provenance: externalProvenance, p_reviewed: externalReviewed, p_expected: foodRevision,
                 p_food_id: initialData?.id || null,
                 p_food: foodPayload,
                 p_measures: householdMeasures.map(measure => ({
@@ -862,6 +863,7 @@ const SmartFoodForm = forwardRef(function SmartFoodForm({
             });
             if (error) throw error;
             if (!data?.id) throw new Error('O alimento não foi confirmado pelo servidor');
+            setFoodRevision(data.revision);
             const createdFood = { ...foodData, id: data.id, source: 'custom' };
 
             toast({
@@ -902,6 +904,14 @@ const SmartFoodForm = forwardRef(function SmartFoodForm({
 
     return (
         <div className={isCompact ? "space-y-3" : "space-y-6"}>
+            {externalProvenance && <div className="rounded-xl border border-orange-200 bg-orange-50 p-4 text-sm text-stone-800">
+                <p>Fonte: {externalProvenance.source === 'fatsecret' ? 'FatSecret' : 'Open Food Facts'} · Consulta: {new Date(externalProvenance.fetched_at).toLocaleString('pt-BR')} · Valores por 100 g.</p>
+                <p className="mt-1">Campos ausentes continuam desconhecidos. Confira o rótulo, unidades e valores antes de salvar. Alterações exigem uma nova confirmação.</p>
+                <label className="mt-3 flex items-start gap-2">
+                    <input type="checkbox" checked={externalReviewed} onChange={event => setReviewedFingerprint(event.target.checked ? reviewFingerprint : null)} className="mt-1 accent-primary" />
+                    Revisei os dados nutricionais e confirmo sua incorporação ao meu catálogo.
+                </label>
+            </div>}
             {/* Progress Bar - Always show in full mode */}
             {mode !== 'compact' && (
                 <Card>

@@ -1,3 +1,4 @@
+import { updateIdempotently } from '@/lib/supabase/idempotent-mutations';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
@@ -180,19 +181,11 @@ export function useAnamnesisRunner(patientId) {
 
     // ── 6. Atualizar record (rascunho ou conclusão) ──────────────
     const updateRecord = useMutation({
-        mutationFn: async ({ recordId, content, status = 'draft', historyLog = [] }) => {
-            const updatePayload = { content, status, filled_by: 'nutritionist' };
+        mutationFn: async ({ recordId, expected, content, status = 'draft', historyLog = [] }) => {
+            const updatePayload = { patient_id: patientId, nutritionist_id: user.id, content, status, filled_by: 'nutritionist' };
             if (historyLog.length > 0) updatePayload.history_log = historyLog;
 
-            const { data, error } = await supabase
-                .from('anamnesis_records')
-                .update(updatePayload)
-                .eq('id', recordId)
-                .eq('patient_id', patientId)
-                .eq('nutritionist_id', user.id)
-                .in('status', ['draft', 'pending_patient'])
-                .select()
-                .single();
+            const { data, error } = await updateIdempotently('anamnesis_records', recordId, updatePayload, expected);
             if (error) throw error;
             return data;
         },

@@ -3,11 +3,11 @@ import { AlertCircle, Cloud, CloudOff, Loader2, Monitor, RefreshCw } from 'lucid
 
 const labels = {
   loading: 'Verificando rascunho',
-  local: 'Salvo neste dispositivo; enviando...',
+  local: 'Rascunho nesta aba; aguardando envio',
   recoverable: 'Rascunho disponível para recuperação',
-  saving: 'Salvando...',
-  saved: 'Rascunho salvo',
-  error: 'Erro ao salvar; tente novamente',
+  saving: 'Sincronizando com o servidor...',
+  saved: 'Salvo no servidor',
+  error: 'Sem confirmação do servidor; tente novamente',
   conflict: 'Conflito entre versões; revise antes de continuar',
 };
 
@@ -26,7 +26,7 @@ export function ShadowSaveStatus({ status, onRetry }) {
 export function ShadowRecovery({ recovery, onRestore, onDiscard }) {
   if (!recovery) return null;
   return <div role="alert" className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
-    <span className="flex-1">Há um rascunho {recovery.source === 'device' ? 'neste dispositivo' : 'salvo na nuvem'}. {recovery.conflict ? 'Ele diverge da versão na nuvem; revise antes de substituir.' : 'Deseja retomar o trabalho?'}</span>
+    <span className="flex-1">Há um rascunho {recovery.source === 'device' ? 'somente na memória desta aba' : 'salvo na nuvem'}. {recovery.conflict ? 'Ele diverge da versão na nuvem; revise antes de substituir.' : 'Deseja retomar o trabalho?'}</span>
     <button type="button" className="rounded bg-primary px-3 py-1.5 text-primary-foreground" onClick={onRestore}>{recovery.conflict ? 'Usar meu rascunho' : 'Retomar'}</button>
     <button type="button" className="rounded border px-3 py-1.5" onClick={onDiscard}>{recovery.conflict ? 'Ver versão na nuvem' : 'Descartar rascunho'}</button>
   </div>;

@@ -1,3 +1,4 @@
+import { getTodayIsoDate } from '@/lib/utils/date';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
@@ -38,7 +39,8 @@ const AddFoodPage = () => {
     const { toast } = useToast();
     const navigate = useNavigate();
     const { mealId } = useParams();
-    const [mealDate, setMealDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+    const [mealDate, setMealDate] = useState(getTodayIsoDate());
+    const [mealRevision, setMealRevision] = useState(null);
     const [foods, setFoods] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [showResults, setShowResults] = useState(false);
@@ -68,6 +70,7 @@ const AddFoodPage = () => {
                     navigate('/patient/diario');
                 } else {
                     setMealDate(data.meal_date);
+                    setMealRevision(data.updated_at);
                     setMealDetails({ time: data.meal_time, type: data.meal_type, notes: data.notes || '' });
                     const items = data.meal_items.map(item => ({
                         ...item,
@@ -211,6 +214,7 @@ const AddFoodPage = () => {
         try {
             await savePatientDiaryMeal({
                 mealId: mealId || null,
+                expectedRevision: mealRevision,
                 mealDate,
                 mealTime: mealDetails.time,
                 mealType: mealDetails.type,

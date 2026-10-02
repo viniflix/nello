@@ -170,7 +170,7 @@ begin
       (select id from c6_asset_ids where kind='race_b'),repeat('c',64),2048,'image/webp'
     );
     raise exception 'c6_asset_stale_parallel_intent_accepted';
-  exception when serialization_failure then null;
+  exception when sqlstate 'PT409' then null;
   end;
 end;
 $$;

@@ -6,6 +6,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // ─── Mock do Supabase client ─────────────────────────────────────────────────
 const mockRpc = vi.fn();
+vi.mock('@/lib/supabase/idempotent-mutations', () => ({
+    clinicalRpc: (operation, args, expected = null) => mockRpc('perform_clinical_operation', {
+        p_operation: operation, p_arguments: args, p_expected: expected,
+    }),
+    idempotentRpc: (operation, args) => mockRpc(operation, args),
+    insertIdempotently: vi.fn(), updateIdempotently: vi.fn(),
+}));
 const mockSingle = vi.fn();
 const mockMaybeSingle = vi.fn();
 const mockSelect = vi.fn();
@@ -105,8 +112,9 @@ describe('D6-D8 — plano clínico atômico e auditável', () => {
         mockSingle.mockResolvedValue({ data: { id: 77, is_active: false }, error: null });
         const result = await createMealPlan({ patient_id: 'patient', nutritionist_id: 'nutritionist', name: 'Novo plano', is_active: false });
         expect(result.data.id).toBe(77);
-        expect(mockRpc).toHaveBeenCalledWith('create_meal_plan_atomic', {
-            p_plan_data: expect.objectContaining({ name: 'Novo plano', is_active: false }),
+        expect(mockRpc).toHaveBeenCalledWith('perform_clinical_operation', {
+            p_operation: 'meal_plan', p_expected: null,
+            p_arguments: { p_plan_data: expect.objectContaining({ name: 'Novo plano', is_active: false }) },
         });
         expect(mockUpdate).not.toHaveBeenCalled();
         expect(mockInsert).not.toHaveBeenCalled();

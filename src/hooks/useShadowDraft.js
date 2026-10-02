@@ -1,23 +1,11 @@
+import { readMemoryDraft, writeMemoryDraft, removeMemoryDraft } from '@/lib/utils/memoryDrafts';
+import { useDraftGuard } from './useDraftGuard';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/customSupabaseClient';
 
 const WAIT_MS = 450;
-const LOCAL_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
-
 const localKeyFor = (ownerId, draftKey) => `nello_shadow:${ownerId}:${draftKey}`;
-
-function readLocal(key) {
-  try {
-    const value = JSON.parse(sessionStorage.getItem(key) || 'null');
-    if (!value || Date.now() - value.savedAt > LOCAL_MAX_AGE_MS) {
-      sessionStorage.removeItem(key);
-      return null;
-    }
-    return value;
-  } catch {
-    return null;
-  }
-}
+const readLocal = readMemoryDraft;
 
 /** A private, versioned working copy. The caller decides when to publish it. */
 export function useShadowDraft({ ownerId, draftKey, enabled = true }) {
@@ -25,6 +13,7 @@ export function useShadowDraft({ ownerId, draftKey, enabled = true }) {
   const [recovery, setRecovery] = useState(null);
   const [lastSavedAt, setLastSavedAt] = useState(null);
   const [ready, setReady] = useState(false);
+  useDraftGuard(['local','saving','error','conflict'].includes(status));
   const revisionRef = useRef(null);
   const remoteRef = useRef(null);
   const latestRef = useRef(null);
@@ -38,6 +27,7 @@ export function useShadowDraft({ ownerId, draftKey, enabled = true }) {
 
   useEffect(() => {
     const generation = ++generationRef.current;
+    inFlightRef.current = null;
     clearTimeout(timerRef.current);
     latestRef.current = null;
     revisionRef.current = null;
@@ -89,7 +79,7 @@ export function useShadowDraft({ ownerId, draftKey, enabled = true }) {
           setStatus('recoverable');
         } else if (data?.payload) {
           if (localKey) {
-            try { sessionStorage.removeItem(localKey); } catch { /* Cloud copy is current. */ }
+            try { removeMemoryDraft(localKey); } catch { /* Cloud copy is current. */ }
           }
           blockedRef.current = true;
           setRecovery({ payload: data.payload, source: 'cloud' });
@@ -112,6 +102,7 @@ export function useShadowDraft({ ownerId, draftKey, enabled = true }) {
   const flush = useCallback(async () => {
     if (!enabled || !ownerId || !draftKey || !latestRef.current) return false;
     if (blockedRef.current) return false;
+    const generation = generationRef.current;
     if (!loadedRef.current) {
       let data;
       let error;
@@ -121,6 +112,7 @@ export function useShadowDraft({ ownerId, draftKey, enabled = true }) {
       } catch (caught) {
         error = caught;
       }
+      if (generationRef.current !== generation) return false;
       if (error) { setStatus('error'); return false; }
       const local = readLocal(localKey);
       if (local?.revision !== (data?.revision ?? null)) {
@@ -136,7 +128,6 @@ export function useShadowDraft({ ownerId, draftKey, enabled = true }) {
       loadedRef.current = true;
     }
     if (inFlightRef.current) return inFlightRef.current;
-    const generation = generationRef.current;
     const run = async () => {
       while (latestRef.current && generationRef.current === generation) {
         const snapshot = latestRef.current;
@@ -161,18 +152,20 @@ export function useShadowDraft({ ownerId, draftKey, enabled = true }) {
         if (generationRef.current !== generation) return false;
         if (error || !data) {
           latestRef.current = latestRef.current || snapshot;
-          const conflict = error?.code === '23505' || !data;
+          const conflict = error?.code === '23505' || (!error && !data);
           blockedRef.current = conflict;
           if (conflict) {
             try {
               const { data: remote } = await supabase.from('editor_shadow_drafts')
                 .select('payload, revision, updated_at')
                 .eq('owner_id', ownerId).eq('draft_key', draftKey).maybeSingle();
+              if (generationRef.current !== generation) return false;
               if (remote) {
                 remoteRef.current = remote;
                 revisionRef.current = remote.revision;
               }
             } catch { /* Local working copy remains recoverable. */ }
+            if (generationRef.current !== generation) return false;
             setRecovery({ payload: latestRef.current, source: 'device', conflict: true });
           }
           setStatus(conflict ? 'conflict' : 'error');
@@ -183,10 +176,10 @@ export function useShadowDraft({ ownerId, draftKey, enabled = true }) {
         setLastSavedAt(data.updated_at);
         if (latestRef.current) {
           try {
-            sessionStorage.setItem(localKey, JSON.stringify({ payload: latestRef.current, savedAt: Date.now(), revision: data.revision }));
+            writeMemoryDraft(localKey, { payload: latestRef.current, savedAt: Date.now(), revision: data.revision });
           } catch { /* Cloud is the authoritative copy. */ }
         } else {
-          try { sessionStorage.removeItem(localKey); } catch { /* Cloud save succeeded. */ }
+          try { removeMemoryDraft(localKey); } catch { /* Cloud save succeeded. */ }
           setStatus('saved');
         }
       }
@@ -194,6 +187,7 @@ export function useShadowDraft({ ownerId, draftKey, enabled = true }) {
     };
     const promise = run();
     promise.then((succeeded) => {
+      if (generationRef.current !== generation) return;
       inFlightRef.current = null;
       if (succeeded && latestRef.current && !blockedRef.current && generationRef.current === generation) {
         timerRef.current = setTimeout(() => { void flushRef.current?.(); }, WAIT_MS);
@@ -209,7 +203,7 @@ export function useShadowDraft({ ownerId, draftKey, enabled = true }) {
     latestRef.current = payload;
     let stored = false;
     try {
-      sessionStorage.setItem(localKey, JSON.stringify({ payload, savedAt: Date.now(), revision: revisionRef.current }));
+      writeMemoryDraft(localKey, { payload, savedAt: Date.now(), revision: revisionRef.current });
       stored = true;
     } catch { /* The status remains unsaved until the cloud confirms. */ }
     setStatus(blockedRef.current ? 'conflict' : stored ? 'local' : 'error');
@@ -239,7 +233,7 @@ export function useShadowDraft({ ownerId, draftKey, enabled = true }) {
     }
     latestRef.current = null;
     if (localKey) {
-      try { sessionStorage.removeItem(localKey); } catch { /* Server copy was removed. */ }
+      try { removeMemoryDraft(localKey); } catch { /* Server copy was removed. */ }
     }
     revisionRef.current = null;
     remoteRef.current = null;
@@ -262,7 +256,7 @@ export function useShadowDraft({ ownerId, draftKey, enabled = true }) {
     if (recovery?.source === 'device') {
       clearTimeout(timerRef.current);
       latestRef.current = null;
-      try { if (localKey) sessionStorage.removeItem(localKey); } catch { /* Ignore storage errors. */ }
+      try { if (localKey) removeMemoryDraft(localKey); } catch { /* Ignore storage errors. */ }
       if (remoteRef.current) {
         revisionRef.current = remoteRef.current.revision;
         setRecovery({ payload: remoteRef.current.payload, source: 'cloud' });

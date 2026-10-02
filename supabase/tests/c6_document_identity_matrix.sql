@@ -142,7 +142,7 @@ begin
   begin
     perform public.save_my_document_identity('{}'::jsonb, 1, 'versão obsoleta');
     raise exception 'c6_identity_stale_revision_accepted';
-  exception when serialization_failure then null;
+  exception when sqlstate 'PT409' then null;
   end;
 
   begin

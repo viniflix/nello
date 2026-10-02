@@ -1,3 +1,5 @@
+import { insertIdempotently } from '@/lib/supabase/idempotent-mutations';
+import { formatDateToIsoDate } from '@/lib/utils/date';
 import { uploadVerifiedFile } from '@/lib/storage/verifiedUpload';
 import { fileExtensionForMime } from '@/lib/storage/uploadPolicy';
 import { parsePrivateFile } from '@/lib/storage/privateFiles';
@@ -100,9 +102,7 @@ export async function addProgressPhoto({
 }) {
     try {
         if (!storagePath || !careEpisodeId) throw new Error('Foto sem vínculo clínico válido.');
-        const { data, error } = await supabase
-            .from('progress_photos')
-            .insert({
+        const { data, error } = await insertIdempotently('progress_photos', {
                 patient_id: patientId,
                 photo_url: storagePath,
                 storage_path: storagePath,
@@ -110,9 +110,7 @@ export async function addProgressPhoto({
                 photo_date: photoDate,
                 uploaded_by: uploadedBy || null,
                 notes: notes || null
-            })
-            .select()
-            .single();
+            });
         if (error) throw error;
         return { data, error: null };
     } catch (e) {
@@ -205,7 +203,7 @@ export async function getWeightClosestToDate({ patientId, date }) {
     if (!patientId || !date) return { data: null, error: null };
     try {
         const d = new Date(date);
-        const dateStr = d.toISOString().slice(0, 10);
+        const dateStr = formatDateToIsoDate(d);
         const { data, error } = await supabase
             .from('growth_records')
             .select('weight, record_date')

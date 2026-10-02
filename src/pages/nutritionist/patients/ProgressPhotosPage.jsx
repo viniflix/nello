@@ -1,3 +1,4 @@
+import { civilDateToDate } from '@/lib/utils/date';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -307,7 +308,7 @@ export default function ProgressPhotosPage() {
                                                 className="inline-flex items-center gap-1 rounded-full bg-muted px-3 py-1 text-sm"
                                             >
                                                 <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
-                                                {format(new Date(w.record_date), 'dd/MM/yy', { locale: ptBR })}: {Number(w.weight).toFixed(1)} kg
+                                                {format(civilDateToDate(w.record_date), 'dd/MM/yy', { locale: ptBR })}: {Number(w.weight).toFixed(1)} kg
                                             </span>
                                         ))}
                                     </div>

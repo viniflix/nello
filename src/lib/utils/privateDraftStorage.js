@@ -1,3 +1,4 @@
+import { clearMemoryDrafts } from './memoryDraftState';
 const PRIVATE_DRAFT_PREFIXES = ['nello_shadow:', 'nello_anamnesis:', 'nello_public_anamnesis:'];
 const PRIVATE_LOCAL_PREFIXES = ['anamnesis_step_'];
 const PRIVATE_LOCAL_KEYS = new Set(['nello_offline_queue']);
@@ -7,6 +8,7 @@ export function clearPrivateDraftStorage(
   storage = typeof window === 'undefined' ? null : window.sessionStorage,
   persistentStorage = typeof window === 'undefined' ? null : window.localStorage
 ) {
+  clearMemoryDrafts();
   if (storage) {
     for (let index = storage.length - 1; index >= 0; index -= 1) {
       const key = storage.key(index);

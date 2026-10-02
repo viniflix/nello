@@ -1,3 +1,4 @@
+import { formatDateToIsoDate, getTodayIsoDate } from '@/lib/utils/date';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -95,7 +96,7 @@ const FoodDiaryPage = () => {
                     .maybeSingle();
                 if (planError) throw planError;
 
-                const today = new Date().toISOString().split('T')[0];
+                const today = getTodayIsoDate();
                 const planStartDate = activePlan?.start_date || today;
 
                 if (isMounted) {
@@ -132,7 +133,7 @@ const FoodDiaryPage = () => {
                 // Calcular resumo nutricional (últimos 7 dias)
                 const sevenDaysAgo = new Date();
                 sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-                const sevenDaysStr = sevenDaysAgo.toISOString().split('T')[0];
+                const sevenDaysStr = formatDateToIsoDate(sevenDaysAgo);
 
                 const { data: summary, error: summaryError } = await getNutritionalSummary(patientId, sevenDaysStr, today);
                 if (summaryError) throw summaryError;

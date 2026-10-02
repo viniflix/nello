@@ -1,3 +1,4 @@
+import { clinicalRpc } from '@/lib/supabase/idempotent-mutations';
 import { supabase } from '@/lib/customSupabaseClient';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
 import { syncAppointmentNotificationSchedule } from './appointment-notifications-queries';
@@ -75,7 +76,7 @@ const buildAppointmentPayload = (appointmentData = {}) => {
  */
 export async function createAppointmentWithFinance(appointmentData, financialData) {
     const appointmentPayload = buildAppointmentPayload(appointmentData);
-    const { data, error } = await supabase.rpc('save_appointment_with_finance', {
+    const { data, error } = await clinicalRpc('appointment', {
         p_appointment: appointmentPayload,
         p_financial: financialData || {},
         p_appointment_id: null
@@ -102,11 +103,11 @@ export async function createAppointmentWithFinance(appointmentData, financialDat
  */
 export async function updateAppointment(appointmentId, appointmentData, financialData = {}) {
     const payload = buildAppointmentPayload(appointmentData);
-    const { data, error } = await supabase.rpc('save_appointment_with_finance', {
+    const { data, error } = await clinicalRpc('appointment', {
         p_appointment: payload,
         p_financial: financialData,
         p_appointment_id: appointmentId
-    });
+    }, appointmentData.updated_at || null);
     if (error) {
         logSupabaseError('Error updating appointment with finance', error);
         throw error;

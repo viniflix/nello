@@ -88,21 +88,22 @@ export default function PatientFacingUi() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errorCode, setErrorCode] = useState(null);
     const [isCompleted, setIsCompleted] = useState(false);
+    const [completionNonce] = useState(() => crypto.randomUUID());
     const autosave = useFormAutosave({
         storageKey: record?.id ? `nello_public_anamnesis:${record.id}:${token}` : null,
         enabled: Boolean(record?.id && !isCompleted),
         serverValue: { content: record?.content || {}, lgpdConsented: record?.lgpd_consented || false },
-        save: async (snapshot) => {
-            const { error } = await supabase.rpc('submit_anamnesis_by_token', {
+        serverRevision: record?.updated_at,
+        save: async (snapshot, expected) => {
+            const { data, error } = await supabase.rpc('save_anamnesis_draft_revision', {
                 p_token: token,
                 p_content: snapshot.content,
-                p_status: 'draft',
+                p_expected: expected,
                 p_lgpd_consented: snapshot.lgpdConsented,
-                p_ip: null,
-                p_clinical_flags: null
             });
             if (error) throw error;
-            setRecord(prev => ({ ...prev, content: snapshot.content, lgpd_consented: snapshot.lgpdConsented }));
+            setRecord(prev => ({ ...prev, content: snapshot.content, lgpd_consented: snapshot.lgpdConsented, updated_at: data.updated_at }));
+            return data;
         }
     });
 
@@ -122,7 +123,7 @@ export default function PatientFacingUi() {
             }
 
             try {
-                const { data, error: rpcError } = await supabase.rpc('get_anamnesis_by_token', {
+                const { data, error: rpcError } = await supabase.rpc('get_anamnesis_draft_revision', {
                     p_token: token,
                 });
                 if (rpcError) throw rpcError;
@@ -130,12 +131,7 @@ export default function PatientFacingUi() {
 
                 // RPC retorna objeto de erro tipado
                 if (data.error) {
-                    let completedHere = false;
-                    try {
-                        completedHere = data.error === 'TOKEN_NOT_FOUND'
-                            && window.sessionStorage.getItem(`nello_public_anamnesis:submitted:${token}`) === '1';
-                    } catch { /* A tela de link inválido continua disponível sem sessionStorage. */ }
-                    setErrorCode(completedHere ? 'ALREADY_COMPLETED' : data.error);
+                    setErrorCode(data.error);
                     return;
                 }
 
@@ -230,38 +226,9 @@ export default function PatientFacingUi() {
         else if (!isAutoSave) setIsSaving(true);
 
         try {
-            // Sprint J/I: Automação das Flags Clínicas (Mobile)
-            let p_clinical_flags = null;
-            if (status === 'submitted' && record?.template?.sections) {
-                const flagUpdates = {};
-                record.template.sections.forEach(section => {
-                    section.fields?.forEach(field => {
-                        if (field.clinical_flag_key && field.id) {
-                            const answer = content?.[field.id];
-                            if (answer !== undefined && answer !== null && answer !== '') {
-                                flagUpdates[field.clinical_flag_key] = {
-                                    value: answer,
-                                    label: field.label || field.clinical_flag_key,
-                                    captured_at: new Date().toISOString(),
-                                    source: 'patient',
-                                    record_id: record.id,
-                                };
-                            }
-                        }
-                    });
-                });
-                if (Object.keys(flagUpdates).length > 0) {
-                    p_clinical_flags = flagUpdates;
-                }
-            }
-
-            const { data, error: rpcError } = await supabase.rpc('submit_anamnesis_by_token', {
-                p_token: token,
-                p_content: content,
-                p_status: status,
-                p_lgpd_consented: lgpdConsented,
-                p_ip: null,
-                p_clinical_flags: p_clinical_flags
+            const { data, error: rpcError } = await supabase.rpc('complete_anamnesis_revision', {
+                p_token: token, p_content: content, p_lgpd_consented: lgpdConsented,
+                p_expected: autosave.getRevision(), p_nonce: completionNonce
             });
 
             if (rpcError) throw rpcError;
@@ -271,8 +238,7 @@ export default function PatientFacingUi() {
 
             if (status === 'submitted') {
                 autosave.discard();
-                try { window.sessionStorage.setItem(`nello_public_anamnesis:submitted:${token}`, '1'); }
-                catch { /* O envio foi confirmado pelo servidor; storage local é opcional. */ }
+
                 setIsCompleted(true);
                 toast({
                     title: 'Questionário enviado!',

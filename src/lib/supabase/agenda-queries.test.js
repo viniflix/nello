@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const { rpc, from, sync, logError } = vi.hoisted(() => ({
     rpc: vi.fn(), from: vi.fn(), sync: vi.fn(), logError: vi.fn()
 }));
+vi.mock('@/lib/supabase/idempotent-mutations',()=>({clinicalRpc: (operation,args,expected)=>rpc('perform_clinical_operation',{p_operation:operation,p_arguments:args,p_expected:expected ?? null})}));
 vi.mock('@/lib/customSupabaseClient', () => ({ supabase: { rpc, from } }));
 vi.mock('@/lib/supabase/appointment-notifications-queries', () => ({
     syncAppointmentNotificationSchedule: sync
@@ -30,8 +31,8 @@ describe('gravação atômica de agenda e cobrança', () => {
         rpc.mockResolvedValue({ data: null, error });
 
         await expect(createAppointmentWithFinance(appointment, { custom_price: '50' })).rejects.toBe(error);
-        expect(rpc).toHaveBeenCalledWith('save_appointment_with_finance', expect.objectContaining({
-            p_appointment_id: null, p_financial: { custom_price: '50' }
+        expect(rpc).toHaveBeenCalledWith('perform_clinical_operation', expect.objectContaining({
+            p_operation: 'appointment',p_arguments: expect.objectContaining({p_appointment_id: null, p_financial: { custom_price: '50' }})
         }));
         expect(from).not.toHaveBeenCalled();
         expect(sync).not.toHaveBeenCalled();

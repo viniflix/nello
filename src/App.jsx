@@ -6,7 +6,9 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import AppRouter from '@/app/router';
 import ClientErrorBoundary from '@/components/ClientErrorBoundary';
-import PrivacyPreferences from '@/features/privacy/components/PrivacyPreferences';
+import { lazyWithReload } from '@/lib/utils/lazyWithReload';
+import { ConnectivityNotice } from '@/components/ui/connectivity-notice';
+const PrivacyPreferences = lazyWithReload(() => import('@/features/privacy/components/PrivacyPreferences'), 'privacy:preferences');
 
 const App = () => {
   return (
@@ -22,7 +24,8 @@ const App = () => {
               <AppRouter />
             </ClientErrorBoundary>
             <SmartToaster />
-            <PrivacyPreferences />
+            <React.Suspense fallback={null}><PrivacyPreferences /></React.Suspense>
+            <ConnectivityNotice />
           </AuthProvider>
         </Router>
       </HelmetProvider>

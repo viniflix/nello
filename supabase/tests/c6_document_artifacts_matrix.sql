@@ -44,7 +44,7 @@ set local role authenticated;select set_config('request.jwt.claim.sub','94000000
 with x as(select public.create_document_artifact_from_clinical_record('94000000-0000-0000-0000-000000000020','shared_with_patient') p)
 insert into c6_artifact_id(id)select(p->>'artifact_id')::uuid from x;
 select public.update_document_artifact_draft((select id from c6_artifact_id),'{"title":"EVOLUÇÃO CLÍNICA","content":{"summary":"Evolução confirmada e revisada"}}',1);
-do $$begin begin perform public.update_document_artifact_draft((select id from c6_artifact_id),'{}',1);raise exception 'stale accepted';exception when serialization_failure then null;end;end$$;
+do $$begin begin perform public.update_document_artifact_draft((select id from c6_artifact_id),'{}',1);raise exception 'stale accepted';exception when sqlstate 'PT409' then null;end;end$$;
 select public.finalize_document_artifact((select id from c6_artifact_id),2);
 reset role;update c6_artifact_id set hash=(select canonical_sha256 from public.document_artifacts where id=c6_artifact_id.id);
 do $$begin begin update public.document_artifacts set canonical_payload='{}' where id=(select id from c6_artifact_id);raise exception 'frozen accepted';exception when raise_exception then if sqlerrm<>'document_artifact_canonical_fields_are_frozen'then raise;end if;end;end$$;

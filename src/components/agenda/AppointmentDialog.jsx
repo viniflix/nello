@@ -1,3 +1,4 @@
+import { getTodayIsoDate, civilDateInZone, localTimeInZone, localDateTimeToInstant } from '@/lib/utils/date';
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -25,7 +26,7 @@ export default function AppointmentDialog({
     const [formData, setFormData] = useState({
         patient_id: '',
         unregistered_patient_name: '',
-        appointment_time_date: preSelectedDate ? format(preSelectedDate, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
+        appointment_time_date: preSelectedDate ? format(preSelectedDate, 'yyyy-MM-dd') : getTodayIsoDate(),
         appointment_time_hour: '',
         duration: 60,
         appointment_type: 'first_appointment',
@@ -76,10 +77,10 @@ export default function AppointmentDialog({
                 patient_id: appointment.patient_id || '',
                 unregistered_patient_name: appointment.unregistered_patient_name || '',
                 appointment_time_date: appointmentStart
-                    ? format(new Date(appointmentStart), 'yyyy-MM-dd')
-                    : format(new Date(), 'yyyy-MM-dd'),
+                    ? civilDateInZone(appointmentStart)
+                    : getTodayIsoDate(),
                 appointment_time_hour: appointmentStart
-                    ? format(new Date(appointmentStart), 'HH:mm')
+                    ? localTimeInZone(appointmentStart)
                     : '',
                 duration: appointment.duration || 60,
                 appointment_type: appointment.appointment_type || 'first_appointment',
@@ -106,7 +107,7 @@ export default function AppointmentDialog({
             setFormData({
                 patient_id: initialPatient?.id || '',
                 unregistered_patient_name: '',
-                appointment_time_date: preSelectedDate ? format(preSelectedDate, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
+                appointment_time_date: preSelectedDate ? format(preSelectedDate, 'yyyy-MM-dd') : getTodayIsoDate(),
                 appointment_time_hour: '',
                 duration: 60,
                 appointment_type: 'first_appointment',
@@ -160,15 +161,13 @@ export default function AppointmentDialog({
             return;
         }
 
-        const [year, month, day] = formData.appointment_time_date.split('-').map(Number);
-        const [hours, minutes] = formData.appointment_time_hour.split(':').map(Number);
-        const appointment_time = new Date(year, month - 1, day, hours, minutes);
+        const appointment_time = localDateTimeToInstant(`${formData.appointment_time_date}T${formData.appointment_time_hour}`);
 
         const appointmentData = {
             ...appointment,
             patient_id: formData.patient_id,
             unregistered_patient_name: formData.patient_id ? null : patientSearchTerm.trim(),
-            appointment_time: appointment_time.toISOString(),
+            appointment_time,
             notes: formData.notes,
             duration: formData.duration,
             appointment_type: formData.appointment_type,

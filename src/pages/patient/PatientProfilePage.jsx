@@ -1,3 +1,4 @@
+import { civilDateToDate } from '@/lib/utils/date';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
@@ -213,7 +214,7 @@ export default function PatientProfilePage() {
                     <p className="text-xs text-muted-foreground mb-1">Data de Nascimento</p>
                     <p className="text-sm font-medium text-foreground">
                       {user?.profile?.birth_date
-                        ? format(new Date(user?.profile?.birth_date), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
+                        ? format(civilDateToDate(user?.profile?.birth_date), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
                         : 'Não informado'
                       }
                     </p>

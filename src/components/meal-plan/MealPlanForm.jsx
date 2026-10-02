@@ -1,3 +1,4 @@
+import { getTodayIsoDate } from '@/lib/utils/date';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { 
@@ -34,27 +35,7 @@ import { useMealPlanDraft } from '@/hooks/useMealPlanDraft';
 import { useShadowDraft } from '@/hooks/useShadowDraft';
 import { ShadowRecovery, ShadowSaveStatus } from '@/components/ui/shadow-save-status';
 
-const SaveStatusIndicator = ({ status }) => {
-    if (status === 'saving') return (
-        <span className="flex items-center gap-1.5 text-xs text-muted-foreground animate-pulse">
-            <Loader2 className="h-3 w-3 animate-spin" />
-            Salvando rascunho...
-        </span>
-    );
-    if (status === 'saved') return (
-        <span className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400">
-            <Cloud className="h-3 w-3" />
-            Rascunho salvo
-        </span>
-    );
-    if (status === 'error') return (
-        <span className="flex items-center gap-1.5 text-xs text-destructive">
-            <CloudOff className="h-3 w-3" />
-            Erro ao salvar
-        </span>
-    );
-    return null;
-};
+const SaveStatusIndicator = ({ status }) => <ShadowSaveStatus status={status} />;
 
 const MealPlanForm = ({
     patientId,
@@ -74,7 +55,7 @@ const MealPlanForm = ({
         name: '',
         description: '',
         plan_mode: 'hybrid',
-        start_date: new Date().toISOString().split('T')[0],
+        start_date: getTodayIsoDate(),
         end_date: '',
         active_days: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
     });
@@ -154,7 +135,7 @@ const MealPlanForm = ({
                 name: initialData.name || '',
                 description: initialData.description || '',
                 plan_mode: initialData.plan_mode || 'hybrid',
-                start_date: initialData.start_date || new Date().toISOString().split('T')[0],
+                start_date: initialData.start_date || getTodayIsoDate(),
                 end_date: initialData.end_date || '',
                 active_days: initialData.active_days || []
             });
@@ -195,7 +176,7 @@ const MealPlanForm = ({
             if (pendingDraft) {
                 // Draft já está completo (vindo da página mãe) — sem nova query ao banco
                 fullPlan = pendingDraft;
-                draft.setActiveDraftId(pendingDraft.id);
+                draft.setActiveDraftId(pendingDraft.id, pendingDraft);
             } else {
                 fullPlan = await draft.resumeExistingDraft();
             }
@@ -205,7 +186,7 @@ const MealPlanForm = ({
                     name: fullPlan.name || '',
                     description: fullPlan.description || '',
                     plan_mode: fullPlan.plan_mode || 'hybrid',
-                    start_date: fullPlan.start_date || new Date().toISOString().split('T')[0],
+                    start_date: fullPlan.start_date || getTodayIsoDate(),
                     end_date: fullPlan.end_date || '',
                     active_days: fullPlan.active_days?.length ? fullPlan.active_days : ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
                 });
@@ -245,7 +226,7 @@ const MealPlanForm = ({
             name: '',
             description: '',
             plan_mode: 'hybrid',
-            start_date: new Date().toISOString().split('T')[0],
+            start_date: getTodayIsoDate(),
             end_date: '',
             active_days: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
         });
@@ -537,7 +518,7 @@ const MealPlanForm = ({
                         <div className="flex items-center justify-between">
                             <CardTitle className="text-lg">Informações do Plano</CardTitle>
                             <div className="flex flex-wrap items-center gap-2">
-                                {!isEditing && ['saving', 'error'].includes(draft.saveStatus) && <SaveStatusIndicator status={draft.saveStatus} />}
+                                {!isEditing && ['local','saving','saved','error','conflict'].includes(draft.saveStatus) && <SaveStatusIndicator status={draft.saveStatus} />}
                                 <ShadowSaveStatus status={shadow.status} onRetry={shadow.flush} />
                             </div>
                         </div>

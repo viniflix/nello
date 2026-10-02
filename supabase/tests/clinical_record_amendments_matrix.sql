@@ -471,7 +471,7 @@ begin
       jsonb_build_object('impact_hash',v_impact->>'impact_hash','confirmed',true)
     );
     raise exception 'second_open_correction_should_fail';
-  exception when serialization_failure then
+  exception when sqlstate 'PT409' then
     null;
   end;
   reset role;

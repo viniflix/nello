@@ -21,7 +21,7 @@ begin
   where n.nspname = 'public'
     and p.prosecdef
     and has_function_privilege('anon', p.oid, 'execute');
-  if v_names is distinct from array['attach_anamnesis_file','claim_storage_upload','detach_anamnesis_file','get_anamnesis_by_token','reserve_storage_upload','submit_anamnesis_by_token','verify_document_authenticity']::text[] then
+  if v_names is distinct from array['attach_anamnesis_file','claim_storage_upload','complete_anamnesis_revision','detach_anamnesis_file','get_anamnesis_by_token','get_anamnesis_draft_revision','reserve_storage_upload','save_anamnesis_draft_revision','submit_anamnesis_by_token','verify_document_authenticity']::text[] then
     raise exception 'c6_anon_security_definer_allowlist_drift:%', v_names;
   end if;
 
@@ -80,10 +80,16 @@ begin
         or has_function_privilege('authenticated', p.oid, 'execute')
       )
       and pg_get_functiondef(p.oid) !~ 'auth\.uid\(\)'
-      and p.oid::regprocedure::text <> all(array['admin_brand_migration_status()','admin_list_people(text,text,integer)','admin_security_overview()','admin_workflow_overview()','check_is_admin()','clone_diet_template_to_patient(uuid,uuid,uuid,text)','end_care_episode(uuid,text)','get_admin_dashboard_stats()','get_anamnesis_by_token(uuid)','get_empty_patient_removal_status(uuid)','get_nutritionist_detail(uuid)','get_nutritionists_list()','get_system_live_logs(integer)','get_tcc_study_metrics()','import_diet_template_meals_to_plan(uuid,bigint,uuid[])','is_admin()','list_data_subject_requests(text)','list_professional_verifications(text,text)','request_student_supervision_by_email(text)','submit_anamnesis_by_token(uuid,jsonb,text,boolean,text,jsonb)','upsert_full_meal_plan(bigint,jsonb,jsonb)','verify_document_authenticity(uuid)']::text[])
+      and p.oid::regprocedure::text <> all(array['admin_brand_migration_status()','admin_list_people(text,text,integer)','admin_security_overview()','admin_workflow_overview()','check_is_admin()','clone_diet_template_to_patient(uuid,uuid,uuid,text)','end_care_episode(uuid,text)','get_admin_dashboard_stats()','get_anamnesis_by_token(uuid)','get_anamnesis_draft_revision(uuid)','save_anamnesis_draft_revision(uuid,jsonb,boolean,timestamp with time zone)','complete_anamnesis_revision(uuid,jsonb,boolean,timestamp with time zone,uuid)','get_empty_patient_removal_status(uuid)','get_nutritionist_detail(uuid)','get_nutritionists_list()','get_system_live_logs(integer)','get_tcc_study_metrics()','import_diet_template_meals_to_plan(uuid,bigint,uuid[])','is_admin()','list_data_subject_requests(text)','list_professional_verifications(text,text)','request_student_supervision_by_email(text)','submit_anamnesis_by_token(uuid,jsonb,text,boolean,text,jsonb)','upsert_full_meal_plan(bigint,jsonb,jsonb)','verify_document_authenticity(uuid)']::text[])
   ) then
     raise exception 'c6_unreviewed_indirect_guard_added';
   end if;
+
+  foreach v_definition in array array['get_anamnesis_draft_revision(uuid)','save_anamnesis_draft_revision(uuid,jsonb,boolean,timestamp with time zone)','complete_anamnesis_revision(uuid,jsonb,boolean,timestamp with time zone,uuid)'] loop
+    if pg_get_functiondef(('public.'||v_definition)::regprocedure) !~ 'public\.get_anamnesis_by_token\(p_token\)' then
+      raise exception 'c6_anamnesis_capability_wrapper_guard_drift:%',v_definition;
+    end if;
+  end loop;
 
   select pg_get_functiondef('public.end_care_episode(uuid,text)'::regprocedure)
   into v_definition;

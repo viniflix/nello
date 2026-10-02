@@ -1,318 +1,67 @@
-/**
- * Testes unitários para useMealPlanDraft hook.
- * Foca em: guards de segurança, ordem de operações no updateMeal,
- * e confirmação de status apenas após persistência real.
- */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-
-// ─── Mocks ───────────────────────────────────────────────────────────────────
-
-const mockCreateDraft = vi.fn();
-const mockGetDraft = vi.fn();
-const mockUpdateDraft = vi.fn();
-const mockDeleteDraft = vi.fn();
-const mockAddMeal = vi.fn();
-const mockDeleteMeal = vi.fn();
-const mockAddFoodsToMeal = vi.fn();
-const mockGetMealPlanById = vi.fn();
-
-vi.mock('@/lib/supabase/meal-plan-queries', () => ({
-    createDraftMealPlan: mockCreateDraft,
-    getDraftMealPlan: mockGetDraft,
-    updateDraftMealPlan: mockUpdateDraft,
-    deleteDraftMealPlan: mockDeleteDraft,
-    addMealToPlan: mockAddMeal,
-    deleteMealFromPlan: mockDeleteMeal,
-    addFoodToMeal: vi.fn(),
-    addFoodsToMeal: mockAddFoodsToMeal,
-    getMealPlanById: mockGetMealPlanById,
-    recalculateMealNutrition: vi.fn().mockResolvedValue({ data: null, error: null }),
-}));
-
-const { useMealPlanDraft } = await import('@/hooks/useMealPlanDraft');
-const { recalculateMealNutrition: mockRecalculateMeal } = await import('@/lib/supabase/meal-plan-queries');
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-const defaultParams = {
-    patientId: 'patient-001',
-    nutritionistId: 'nutritionist-001',
-    enabled: true,
-};
-
-// ─── Testes ──────────────────────────────────────────────────────────────────
-
-describe('useMealPlanDraft — inicialização', () => {
-    beforeEach(() => {
-        vi.clearAllMocks();
-    });
-
-    it('deve iniciar com draftId null quando enabled = false', () => {
-        mockGetDraft.mockResolvedValue({ data: null, error: null });
-
-        const { result } = renderHook(() =>
-            useMealPlanDraft({ ...defaultParams, enabled: false })
-        );
-
-        expect(result.current.draftId).toBeNull();
-        expect(mockGetDraft).not.toHaveBeenCalled();
-    });
-
-    it('startNewDraft deve criar rascunho e definir draftId', async () => {
-        mockGetDraft.mockResolvedValue({ data: null, error: null });
-        mockCreateDraft.mockResolvedValue({ data: { id: 55 }, error: null });
-
-        const { result } = renderHook(() =>
-            useMealPlanDraft({ ...defaultParams, enabled: false })
-        );
-
-        await act(async () => {
-            await result.current.startNewDraft();
-        });
-
-        expect(mockCreateDraft).toHaveBeenCalledWith('patient-001', 'nutritionist-001');
-        expect(result.current.draftId).toBe(55);
-    });
-
-    it('deve detectar rascunho existente no banco ao montar com enabled=true', async () => {
-        const existingDraft = { id: 77, name: 'Rascunho', meals: [] };
-        mockGetDraft.mockResolvedValue({ data: existingDraft, error: null });
-
-        const { result } = renderHook(() =>
-            useMealPlanDraft({ ...defaultParams, enabled: true })
-        );
-
-        // Aguarda a inicialização async
-        await act(async () => {
-            await new Promise((r) => setTimeout(r, 50));
-        });
-
-        expect(result.current.existingDraft).toEqual(existingDraft);
-        expect(result.current.draftId).toBeNull(); // Não define draftId até o usuário escolher "Retomar"
-    });
+import { useMealPlanDraft } from '@/hooks/useMealPlanDraft';
+const mocks = vi.hoisted(() => Object.fromEntries(['createDraftMealPlan','getDraftMealPlan','updateDraftMealPlan','deleteDraftMealPlan','saveDraftMeal','deleteMealFromPlan','getMealPlanById'].map(name => [name,vi.fn()])));
+vi.mock('@/lib/supabase/meal-plan-queries', () => mocks);
+const base = { id:55,name:'Rascunho',updated_at:'2026-10-01T10:00:00Z' };
+const params = {patientId:'synthetic-patient',nutritionistId:'synthetic-professional',enabled:false};
+beforeEach(() => {
+ vi.resetAllMocks();
+ mocks.getDraftMealPlan.mockResolvedValue({data:null,error:null});
+ mocks.createDraftMealPlan.mockResolvedValue({data:base,error:null});
+ mocks.updateDraftMealPlan.mockImplementation(async (_id,data) => ({data:{...base,...data,updated_at:'2026-10-01T11:00:00Z'},error:null}));
+ mocks.getMealPlanById.mockResolvedValue({data:{...base,updated_at:'2026-10-01T12:00:00Z'},error:null});
+ mocks.saveDraftMeal.mockResolvedValue({data:{id:201,plan_revision:'2026-10-01T12:00:00Z'},error:null});
+ mocks.deleteDraftMealPlan.mockResolvedValue({error:null});
+ mocks.deleteMealFromPlan.mockResolvedValue({error:null});
+});
+async function started() {
+ const hook = renderHook(() => useMealPlanDraft(params));
+ await act(async () => { await hook.result.current.startNewDraft(); });
+ return hook;
+}
+describe('draft revisions and atomic meals', () => {
+ it('does not fetch while disabled', () => { const h=renderHook(()=>useMealPlanDraft(params));expect(h.result.current.draftId).toBeNull();expect(mocks.getDraftMealPlan).not.toHaveBeenCalled(); });
+ it('creates a draft for the exact pair', async () => {const h=await started();expect(h.result.current.draftId).toBe(55);expect(mocks.createDraftMealPlan).toHaveBeenCalledWith(params.patientId,params.nutritionistId);});
+ it('keeps initialization failure visible', async () => {mocks.createDraftMealPlan.mockResolvedValue({data:null,error:{code:'OFFLINE'}});const h=await started();expect(h.result.current.draftId).toBeNull();expect(h.result.current.saveStatus).toBe('error');});
+ it('explicitly flushes the pending header with its confirmed revision', async () => {const h=await started();act(()=>h.result.current.savePlanInfo({name:'New header'}));await act(async()=>{await h.result.current.flushPlanInfo();});expect(mocks.updateDraftMealPlan).toHaveBeenCalledWith(55,{name:'New header'},base.updated_at);});
+ it('serializes headers and advances CAS only after confirmation', async () => {
+  let finish; mocks.updateDraftMealPlan.mockImplementationOnce(()=>new Promise(resolve=>{finish=resolve;}));const h=await started();
+  act(()=>h.result.current.savePlanInfo({name:'First'}));let first;act(()=>{first=h.result.current.flushPlanInfo();});
+  await vi.waitFor(()=>expect(finish).toBeTypeOf('function'));
+  act(()=>h.result.current.savePlanInfo({name:'Last'}));let last;act(()=>{last=h.result.current.flushPlanInfo();});
+  expect(mocks.updateDraftMealPlan).toHaveBeenCalledTimes(1);
+  await act(async()=>{finish({data:{...base,name:'First',updated_at:'2026-10-01T11:00:00Z'},error:null});await Promise.all([first,last]);});
+  expect(mocks.updateDraftMealPlan).toHaveBeenNthCalledWith(2,55,{name:'Last'},'2026-10-01T11:00:00Z');expect(h.result.current.saveStatus).toBe('saved');
+ });
+ it('sends a meal and all foods as one server operation', async () => {const h=await started();const meal={name:'Lunch',meal_type:'lunch',foods:[{food_id:5,quantity:100,unit:'g'}]};let id;await act(async()=>{id=await h.result.current.saveMeal(meal);});expect(id).toBe(201);expect(mocks.saveDraftMeal).toHaveBeenCalledWith(55,null,meal,base.updated_at);expect(h.result.current.saveStatus).toBe('saved');});
+ it('retains the existing meal if the atomic replacement fails', async () => {mocks.saveDraftMeal.mockResolvedValue({data:null,error:{code:'NETWORK_FAILURE'}});const h=await started();let id;await act(async()=>{id=await h.result.current.updateMeal(99,{name:'Edited',foods:[]},0);});expect(id).toBeNull();expect(h.result.current.saveStatus).toBe('error');expect(mocks.deleteMealFromPlan).not.toHaveBeenCalled();});
+ it('passes the old identity to the atomic replacement instead of deleting it', async () => {const h=await started();await act(async()=>{await h.result.current.updateMeal(99,{name:'Edited',foods:[]},2);});expect(mocks.saveDraftMeal).toHaveBeenCalledWith(55,99,{name:'Edited',foods:[],order_index:2},base.updated_at);expect(mocks.deleteMealFromPlan).not.toHaveBeenCalled();});
+ it('does not mark a stale overwrite saved', async () => {mocks.saveDraftMeal.mockResolvedValue({data:null,error:{code:'PT409'}});const h=await started();await act(async()=>{await h.result.current.saveMeal({name:'Lunch',foods:[]});});expect(h.result.current.saveStatus).toBe('conflict');});
+ it('does not send a meal if the pending header conflicts', async () => {mocks.updateDraftMealPlan.mockResolvedValue({data:null,error:{code:'PT409'}});const h=await started();act(()=>h.result.current.savePlanInfo({name:'Changed'}));await act(async()=>{await h.result.current.saveMeal({name:'Lunch',foods:[]});});expect(mocks.saveDraftMeal).not.toHaveBeenCalled();expect(h.result.current.saveStatus).toBe('conflict');});
+ it('keeps the draft identity when deletion fails', async () => {mocks.deleteDraftMealPlan.mockResolvedValue({error:{code:'OFFLINE'}});const h=await started();await act(async()=>{await h.result.current.discardDraft();});expect(h.result.current.draftId).toBe(55);expect(h.result.current.saveStatus).toBe('error');});
+ it('advances the header CAS after its own meal write', async () => {const h=await started();await act(async()=>{await h.result.current.saveMeal({name:'Lunch',foods:[]});});act(()=>h.result.current.savePlanInfo({name:'Next'}));await act(async()=>{await h.result.current.flushPlanInfo();});expect(mocks.updateDraftMealPlan).toHaveBeenCalledWith(55,{name:'Next'},'2026-10-01T12:00:00Z');});
+ it('deletes only through the confirmed parent revision and retains a conflict', async()=>{const h=await started();mocks.saveDraftMeal.mockResolvedValue({data:null,error:{code:'PT409'}});await act(async()=>expect(await h.result.current.removeMeal(201)).toBe(false));expect(mocks.saveDraftMeal).toHaveBeenCalledWith(55,201,{delete:true},base.updated_at);expect(h.result.current.saveStatus).toBe('conflict');});
 });
 
-describe('useMealPlanDraft — dados básicos pendentes', () => {
-    beforeEach(() => {
-        vi.clearAllMocks();
-        mockGetDraft.mockResolvedValue({ data: null, error: null });
-        mockUpdateDraft.mockResolvedValue({ data: {}, error: null });
-    });
-
-    it('grava a última edição ao desmontar antes do debounce', async () => {
-        const { result, unmount } = renderHook(() => useMealPlanDraft({ ...defaultParams, enabled: false }));
-        act(() => {
-            result.current.setActiveDraftId(55);
-            result.current.savePlanInfo({ name: 'Plano recente' });
-        });
-        unmount();
-        await vi.waitFor(() => expect(mockUpdateDraft).toHaveBeenCalledWith(55, { name: 'Plano recente' }));
-    });
-
-    it('serializa edições e confirma apenas após a última gravação', async () => {
-        let finishFirst;
-        mockUpdateDraft.mockImplementationOnce(() => new Promise((resolve) => { finishFirst = resolve; }));
-        const { result } = renderHook(() => useMealPlanDraft({ ...defaultParams, enabled: false }));
-        act(() => {
-            result.current.setActiveDraftId(55);
-            result.current.savePlanInfo({ name: 'Primeiro' });
-        });
-        const first = result.current.flushPlanInfo();
-        await vi.waitFor(() => expect(mockUpdateDraft).toHaveBeenCalledTimes(1));
-        act(() => result.current.savePlanInfo({ name: 'Último' }));
-        const last = result.current.flushPlanInfo();
-        expect(mockUpdateDraft).toHaveBeenCalledTimes(1);
-        await act(async () => {
-            finishFirst({ data: {}, error: null });
-            await Promise.all([first, last]);
-        });
-        expect(mockUpdateDraft).toHaveBeenNthCalledWith(2, 55, { name: 'Último' });
-        expect(result.current.saveStatus).toBe('saved');
-    });
+it('never flushes a pending clinical header when unmounting', async()=>{
+ const h=await started();act(()=>h.result.current.savePlanInfo({name:'Pending'}));h.unmount();
+ await act(async()=>{});expect(mocks.updateDraftMealPlan).not.toHaveBeenCalled();
+});
+it('cancels the old patient debounce on identity change', async()=>{
+ const h=renderHook(props=>useMealPlanDraft(props),{initialProps:params});
+ await act(async()=>{await h.result.current.startNewDraft();});act(()=>h.result.current.savePlanInfo({name:'Old patient'}));
+ h.rerender({...params,patientId:'different-patient'});
+ await act(async()=>{await h.result.current.flushPlanInfo();});
+ expect(mocks.updateDraftMealPlan).not.toHaveBeenCalled();expect(h.result.current.draftId).toBeNull();
 });
 
-describe('useMealPlanDraft — saveMeal', () => {
-    beforeEach(() => {
-        vi.clearAllMocks();
-        mockGetDraft.mockResolvedValue({ data: null, error: null });
-        mockRecalculateMeal.mockResolvedValue({ data: null, error: null });
-    });
-
-    it('deve retornar null e logar warning se draftId for null', async () => {
-        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
-        const { result } = renderHook(() =>
-            useMealPlanDraft({ ...defaultParams, enabled: false })
-        );
-
-        let returnValue;
-        await act(async () => {
-            returnValue = await result.current.saveMeal({
-                name: 'Almoço',
-                meal_type: 'lunch',
-                foods: [],
-            });
-        });
-
-        expect(returnValue).toBeNull();
-        expect(mockAddMeal).not.toHaveBeenCalled();
-        expect(warnSpy).toHaveBeenCalledWith(
-            '[Nello] Technical diagnostic',
-            { operation: 'hooks/useMealPlanDraft.js:158' }
-        );
-
-        warnSpy.mockRestore();
-    });
-
-    it('deve salvar refeição e retornar ID após banco confirmar', async () => {
-        mockCreateDraft.mockResolvedValue({ data: { id: 10 }, error: null });
-        mockAddMeal.mockResolvedValue({ data: { id: 201 }, error: null });
-        mockAddFoodsToMeal.mockResolvedValue({ data: [], error: null });
-
-        const { result } = renderHook(() =>
-            useMealPlanDraft({ ...defaultParams, enabled: false })
-        );
-
-        // Primeiro inicia o draft
-        await act(async () => {
-            await result.current.startNewDraft();
-        });
-
-        let mealId;
-        await act(async () => {
-            mealId = await result.current.saveMeal({
-                name: 'Almoço',
-                meal_type: 'lunch',
-                foods: [{ food_id: 5, quantity: 100 }],
-            });
-        });
-
-        expect(mealId).toBe(201);
-        expect(result.current.saveStatus).toBe('saved');
-    });
-
-    it('deve definir status "error" se addFoodsToMeal falhar — não "saved"', async () => {
-        mockCreateDraft.mockResolvedValue({ data: { id: 10 }, error: null });
-        mockAddMeal.mockResolvedValue({ data: { id: 201 }, error: null });
-        mockAddFoodsToMeal.mockResolvedValue({ error: new Error('batch failed') });
-        mockDeleteMeal.mockResolvedValue({ error: null });
-
-        const { result } = renderHook(() =>
-            useMealPlanDraft({ ...defaultParams, enabled: false })
-        );
-
-        await act(async () => { await result.current.startNewDraft(); });
-
-        await act(async () => {
-            await result.current.saveMeal({
-                name: 'Jantar',
-                meal_type: 'dinner',
-                foods: [{ food_id: 7, quantity: 200 }],
-            });
-        });
-
-        // CRÍTICO: status deve ser 'error', não 'saved'
-        expect(result.current.saveStatus).toBe('error');
-    });
-
-    it('não confirma rascunho se o recálculo nutricional falhar', async () => {
-        mockCreateDraft.mockResolvedValue({ data: { id: 10 }, error: null });
-        mockAddMeal.mockResolvedValue({ data: { id: 201 }, error: null });
-        mockAddFoodsToMeal.mockResolvedValue({ data: [], error: null });
-        mockRecalculateMeal.mockResolvedValue({ data: null, error: new Error('totais indisponíveis') });
-        mockDeleteMeal.mockResolvedValue({ error: null });
-        const { result } = renderHook(() => useMealPlanDraft({ ...defaultParams, enabled: false }));
-        await act(async () => { await result.current.startNewDraft(); });
-        let savedId;
-        await act(async () => {
-            savedId = await result.current.saveMeal({ name: 'Almoço', meal_type: 'lunch', foods: [{ food_id: 5, quantity: 100 }] });
-        });
-        expect(savedId).toBeNull();
-        expect(mockDeleteMeal).toHaveBeenCalledWith(201);
-        expect(result.current.saveStatus).toBe('error');
-    });
-});
-
-describe('useMealPlanDraft — updateMeal (create-before-delete)', () => {
-    beforeEach(() => {
-        vi.clearAllMocks();
-        mockGetDraft.mockResolvedValue({ data: null, error: null });
-        mockCreateDraft.mockResolvedValue({ data: { id: 10 }, error: null });
-    });
-
-    it('deve criar nova refeição ANTES de deletar a antiga', async () => {
-        const callOrder = [];
-        mockAddMeal.mockImplementation(async () => {
-            callOrder.push('ADD');
-            return { data: { id: 301 }, error: null };
-        });
-        mockAddFoodsToMeal.mockResolvedValue({ data: [], error: null });
-        mockDeleteMeal.mockImplementation(async () => {
-            callOrder.push('DELETE');
-            return { error: null };
-        });
-
-        const { result } = renderHook(() =>
-            useMealPlanDraft({ ...defaultParams, enabled: false })
-        );
-
-        await act(async () => { await result.current.startNewDraft(); });
-
-        await act(async () => {
-            await result.current.updateMeal(99, {
-                name: 'Almoço Editado',
-                meal_type: 'lunch',
-                foods: [],
-            }, 0);
-        });
-
-        // ADD deve vir ANTES de DELETE — esta é a garantia central contra perda de dados
-        expect(callOrder.indexOf('ADD')).toBeLessThan(callOrder.indexOf('DELETE'));
-        expect(callOrder).toEqual(['ADD', 'DELETE']);
-    });
-
-    it('se addMealToPlan falhar, a refeição antiga deve permanecer intacta', async () => {
-        mockAddMeal.mockResolvedValue({ data: null, error: new Error('create failed') });
-
-        const { result } = renderHook(() =>
-            useMealPlanDraft({ ...defaultParams, enabled: false })
-        );
-
-        await act(async () => { await result.current.startNewDraft(); });
-
-        let returnValue;
-        await act(async () => {
-            returnValue = await result.current.updateMeal(99, {
-                name: 'Tentativa',
-                meal_type: 'lunch',
-                foods: [],
-            }, 0);
-        });
-
-        expect(returnValue).toBeNull();
-        // DELETE não deve ter sido chamado — antiga está segura
-        expect(mockDeleteMeal).not.toHaveBeenCalled();
-        expect(result.current.saveStatus).toBe('error');
-    });
-});
-
-describe('useMealPlanDraft — setActiveDraftId', () => {
-    beforeEach(() => {
-        vi.clearAllMocks();
-        mockGetDraft.mockResolvedValue({ data: null, error: null });
-    });
-
-    it('deve definir draftId e status saved diretamente', async () => {
-        const { result } = renderHook(() =>
-            useMealPlanDraft({ ...defaultParams, enabled: false })
-        );
-
-        await act(async () => {
-            result.current.setActiveDraftId(999);
-        });
-
-        expect(result.current.draftId).toBe(999);
-        expect(result.current.saveStatus).toBe('saved');
-    });
+it('ignores a delete response from the previously displayed patient', async()=>{
+ let finish;mocks.deleteDraftMealPlan.mockImplementationOnce(()=>new Promise(resolve=>{finish=resolve;}));
+ const h=renderHook(props=>useMealPlanDraft(props),{initialProps:params});
+ await act(async()=>{await h.result.current.startNewDraft();});let pending;
+ act(()=>{pending=h.result.current.discardDraft();});await vi.waitFor(()=>expect(finish).toBeTypeOf('function'));
+ h.rerender({...params,patientId:'different-patient'});
+ await act(async()=>{await h.result.current.startNewDraft();});
+ await act(async()=>{finish({error:null});await pending;});expect(h.result.current.draftId).toBe(55);
 });

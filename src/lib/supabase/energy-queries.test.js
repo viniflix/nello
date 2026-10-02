@@ -2,6 +2,7 @@ import { getInitialBiometryForEnergy, saveEnergyCalculation } from './energy-que
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({ insert: vi.fn(), from: vi.fn() }));
 vi.mock('@/lib/customSupabaseClient', () => ({ supabase: { from: mocks.from } }));
+vi.mock('@/lib/supabase/idempotent-mutations',()=>({insertIdempotently: async (table,row)=>{ expect(table).toBe('energy_expenditure_calculations');return mocks.insert(row); }}));
 vi.mock('@/lib/supabase/query-helpers', () => ({ logSupabaseError: vi.fn() }));
 
 const payload = { patient_id: 'patient', nutritionist_id: 'professional', weight: 70, height: 175, age: 30,
@@ -12,7 +13,7 @@ const payload = { patient_id: 'patient', nutritionist_id: 'professional', weight
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.from.mockReturnValue({ insert: mocks.insert });
-  mocks.insert.mockImplementation(row => ({ select: () => ({ single: async () => ({ data: row, error: null }) }) }));
+  mocks.insert.mockImplementation(async row => ({ data: row, error: null }));
 });
 describe('energy persistence', () => {
   it('treats an absent optional profile as empty while retaining biometry', async () => {

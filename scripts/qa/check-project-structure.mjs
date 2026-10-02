@@ -52,8 +52,9 @@ export function checkProjectStructure(rootDir, trackedFiles, sourceFiles = []) {
 
 function runCli() {
   const rootDir = process.cwd();
-  const output = execFileSync('git', ['ls-files'], { cwd: rootDir, encoding: 'utf8' });
-  const trackedFiles = output.split(/\r?\n/).filter(Boolean);
+  const output = execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard'], { cwd: rootDir, encoding: 'utf8' });
+  const trackedFiles = [...new Set(output.split(/\r?\n/).filter(Boolean))]
+    .filter(file => existsSync(resolve(rootDir, file)));
   const sourceFiles = trackedFiles
     .filter((file) => /^src\/.+\.(?:js|jsx|ts|tsx)$/.test(file))
     .map((file) => ({

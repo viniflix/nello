@@ -1,3 +1,4 @@
+import { insertIdempotently } from '@/lib/supabase/idempotent-mutations';
 import { supabase } from '@/lib/customSupabaseClient';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
 import { logActivityEvent } from '@/lib/supabase/patient-queries';
@@ -165,11 +166,7 @@ export const createAnthropometryRecord = async (recordData) => {
             insertData.care_episode_id = episode.id;
         }
 
-        const { data, error } = await supabase
-            .from('growth_records')
-            .insert([insertData])
-            .select()
-            .single();
+        const { data, error } = await insertIdempotently('growth_records', insertData);
 
         if (error) throw error;
 

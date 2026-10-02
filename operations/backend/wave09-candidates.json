@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "migrations": [
+    {
+      "file": "supabase/migrations/releases/20261002020000_wave09_data_integrity.sql",
+      "sha256": "c91423246da6c9559bc15eeacff344b67c44bbe45457a05973e36ce1b7ad8925"
+    }
+  ]
+}

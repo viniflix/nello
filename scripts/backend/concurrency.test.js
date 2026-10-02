@@ -3,7 +3,7 @@ import { assertAtomicPair, assertRemoteDatabase, runRace } from './concurrency.m
 
 const environment = { CI: 'true', GITHUB_ACTIONS: 'true' };
 const winner = { code: 0, output: 'COMMIT' };
-const conflict = { code: 3, output: 'ERROR: 40001: amendment_chain_conflict' };
+const conflict = { code: 3, output: 'ERROR: PT409: amendment_chain_conflict' };
 function harness({ waiting = '2', barrier = '1', outcomes = [winner, conflict] } = {}) {
   const sessions = [];
   const session = vi.fn(() => {
@@ -57,7 +57,7 @@ describe('isolated clinical amendment races', () => {
   });
   it.each([
     [winner, winner], [conflict, conflict], [winner, { code: 3, output: 'permission denied 42501' }],
-    [winner, { code: 3, output: '40001 unrelated conflict' }], [winner],
+    [winner, { code: 3, output: 'PT409 unrelated conflict' }], [winner],
   ])('rejects outcomes that do not prove a unique atomic winner: %j', (...results) => {
     expect(() => assertAtomicPair('race', results)).toThrow('expected one winner');
   });

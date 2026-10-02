@@ -1,3 +1,4 @@
+import { idempotentRpc } from '@/lib/supabase/idempotent-mutations';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import { supabase } from '@/lib/customSupabaseClient';
 import { translateMealType } from '@/utils/mealTranslations';
@@ -938,24 +939,13 @@ const ownsCurrentSession = async (expectedUserId) => {
 };
 
 const sessionChangedDuringWrite = async (error, expectedUserId) => {
-    if (error?.code !== 'PGRST116') return false;
+    if (error?.code === 'SESSION_CHANGED') return true;
+    if (!['PGRST116','42501'].includes(error?.code)) return false;
     try {
         return !await ownsCurrentSession(expectedUserId);
     } catch {
         return false;
     }
-};
-
-const pushFeedTaskAuditEntry = (metadata, entry) => {
-    const safeMetadata = metadata && typeof metadata === 'object' ? metadata : {};
-    const previous = Array.isArray(safeMetadata.audit_history) ? safeMetadata.audit_history : [];
-    const nextHistory = [entry, ...previous].slice(0, 10);
-    return {
-        ...safeMetadata,
-        audit_history: nextHistory,
-        last_action: entry.action,
-        last_action_at: entry.at
-    };
 };
 
 /**
@@ -968,7 +958,7 @@ export const getFeedTaskStates = async (nutritionistId) => {
         const { data, error } = await supabase
             .from('feed_tasks')
             .select('id, source_type, source_id, patient_id, title, description, status, snooze_until, first_seen_at, last_seen_at, created_at, updated_at, priority_score, priority_reason, metadata')
-            .eq('nutritionist_id', nutritionistId);
+            .eq('nutritionist_id', nutritionistId).eq('is_current', true);
 
         if (error) throw error;
         return { data: data || [], error: null };
@@ -1041,108 +1031,34 @@ export const getNutritionistPatientsForFeed = async (nutritionistId) => {
  * Salva/atualiza uma tarefa do feed de forma idempotente por fonte
  */
 export const upsertFeedTask = async ({
-    nutritionistId,
-    patientId = null,
-    sourceType,
-    sourceId,
-    title,
-    description = null,
-    priorityScore = 0,
-    priorityReason = null,
-    status = 'open',
-    snoozeUntil = null,
-    metadata = {},
-    auditAction = null,
+    nutritionistId, patientId = null, sourceType, sourceId, title,
+    description = null, priorityScore = 0, priorityReason = null,
+    status = 'open', snoozeUntil = null, metadata = {}, auditAction = null,
     existingTask = undefined
 }) => {
     try {
-        if (!await ownsCurrentSession(nutritionistId)) {
-            return { data: null, error: null, skipped: true };
-        }
-
+        if (!await ownsCurrentSession(nutritionistId)) return { data: null, error: null, skipped: true };
         const identity = buildFeedTaskIdentity({ nutritionistId, sourceType, sourceId });
         let existing = existingTask;
-        if (existingTask === undefined) {
-            const { data: existingRows, error: existingError } = await supabase
-                .from('feed_tasks')
-                .select('id, metadata')
-                .match(identity)
-                .limit(1);
-            if (existingError) throw existingError;
-            existing = existingRows?.[0];
-        }
-
-        const nowIso = new Date().toISOString();
-        const baseMetadata = {
-            ...(existing?.metadata && typeof existing.metadata === 'object' ? existing.metadata : {}),
-            ...(metadata && typeof metadata === 'object' ? metadata : {})
-        };
-        const metadataWithAudit = auditAction
-            ? pushFeedTaskAuditEntry(baseMetadata, {
-                action: auditAction,
-                at: nowIso,
-                nutritionist_id: nutritionistId || null,
-                patient_id: patientId || null,
-                source_type: sourceType || null,
-                source_id: sourceId || null,
-                status: status || 'open',
-                snooze_until: snoozeUntil || null
-            })
-            : baseMetadata;
-
-        const baseData = {
-            ...identity,
-            patient_id: patientId,
-            title,
-            description,
-            priority_score: Number(priorityScore || 0),
-            priority_reason: priorityReason,
-            status,
-            snooze_until: snoozeUntil,
-            metadata: metadataWithAudit,
-            last_seen_at: nowIso
-        };
-
-        if (status === 'resolved') {
-            baseData.resolved_at = new Date().toISOString();
-        } else {
-            baseData.resolved_at = null;
-        }
-
-        if (existing?.id) {
-            let updateQuery = supabase
-                .from('feed_tasks')
-                .update(baseData)
-                .eq('id', existing.id);
-            if (existingTask !== undefined && existing.updated_at) {
-                updateQuery = updateQuery.eq('updated_at', existing.updated_at);
-            }
-            const { data, error } = await updateQuery.select().maybeSingle();
-            if (await sessionChangedDuringWrite(error, nutritionistId)) {
-                return { data: null, error: null, skipped: true };
-            }
+        if (existing === undefined) {
+            const { data, error } = await supabase.from('feed_tasks').select('id, updated_at')
+                .match(identity).eq('is_current', true).maybeSingle();
             if (error) throw error;
-            if (!data) return { data: null, error: null, skipped: true };
-            return { data, error: null };
+            existing = data;
         }
-
-        const insertData = {
-            ...baseData,
-            first_seen_at: new Date().toISOString()
-        };
-        const { data, error } = await supabase
-            .from('feed_tasks')
-            .insert(insertData)
-            .select()
-            .single();
-
-        if (await sessionChangedDuringWrite(error, nutritionistId)) {
-            return { data: null, error: null, skipped: true };
-        }
-        if (error) throw error;
-        return { data, error: null };
+        const result = await idempotentRpc('save_feed_task', {
+            p_values: { ...identity, patient_id: patientId, title, description,
+                priority_score: Number(priorityScore || 0), priority_reason: priorityReason,
+                status, snooze_until: snoozeUntil,
+                metadata: { item_type: metadata?.item_type || null, cta_route: metadata?.cta_route || null }
+            },
+            p_expected: existing?.updated_at || null,
+            p_action: auditAction
+        });
+        if (await sessionChangedDuringWrite(result.error, nutritionistId)) return { data: null, error: null, skipped: true };
+        return result;
     } catch (error) {
-        logSupabaseError("erro_ao_salvar_tarefa_do_feed", error);
+        logSupabaseError('erro_ao_salvar_tarefa_do_feed', error);
         return { data: null, error };
     }
 };
@@ -1271,8 +1187,15 @@ export const syncFeedTasksFromItems = async (nutritionistId, items = [], existin
                 unchanged ? Promise.resolve({ data: existing, error: null }) : upsertFeedTask({ ...payload, existingTask: existing || null })
             )));
         }
-        const firstError = result.find((entry) => entry?.error)?.error || null;
-        return { data: result.map((entry) => entry?.data).filter(Boolean), error: firstError };
+        const outcomes = result.map((entry, index) => ({
+            sourceType: syncPayloads[index].payload.sourceType,
+            sourceId: syncPayloads[index].payload.sourceId,
+            status: entry?.skipped ? 'skipped' : entry?.error ? 'failed' : 'saved',
+            code: entry?.error?.code || null
+        }));
+        return { data: result.map((entry) => entry?.data).filter(Boolean),
+            error: result.find((entry) => entry?.error)?.error || null,
+            outcomes, failedCount: outcomes.filter((entry) => entry.status === 'failed').length };
     } catch (error) {
         logSupabaseError("erro_ao_sincronizar_snapshot_do_feed", error);
         return { data: [], error };
@@ -1294,7 +1217,7 @@ export const getFeedTaskAuditTrail = async ({
             .from('feed_tasks')
             .select('id, status, snooze_until, updated_at, metadata')
             .match(identity)
-            .limit(1);
+            .order('updated_at', { ascending: false });
             
         const data = existingRows?.[0];
 

@@ -24,20 +24,8 @@ export function AnamnesisWizard({
     const sections = template?.sections || [];
     const totalSteps = sections.length + 1; // +1 para a tela final (LGPD e Envio)
 
-    // Recuperar passo anterior do localStorage, se houver
-    const storageKey = `anamnesis_step_${recordId}`;
-    const [currentStep, setCurrentStep] = useState(() => {
-        const saved = localStorage.getItem(storageKey);
-        if (saved) {
-            const parsed = parseInt(saved, 10);
-            if (parsed >= 0 && parsed < totalSteps) return parsed;
-        }
-        return 0;
-    });
-
-    useEffect(() => {
-        localStorage.setItem(storageKey, currentStep.toString());
-    }, [currentStep, storageKey]);
+    const [currentStep, setCurrentStep] = useState(0);
+    useEffect(() => { setCurrentStep(0); }, [recordId]);
 
     const validateCurrentSection = () => {
         if (currentStep >= sections.length) return true; // Tela final não tem campos (exceto LGPD, checado no submit)

@@ -1,3 +1,4 @@
+import { formatDateToIsoDate } from '@/lib/utils/date';
 import React, { useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -27,7 +28,7 @@ export default function VerificationReviewDialog({ verification, open, onOpenCha
     setError('');
     const date = new Date();
     date.setMonth(date.getMonth() + (verification.professional_role === 'student' ? 6 : 12));
-    setValidUntil(date.toISOString().slice(0, 10));
+    setValidUntil(formatDateToIsoDate(date));
   }, [open, verification]);
 
   if (!verification) return null;

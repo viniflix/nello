@@ -1,5 +1,6 @@
+import { civilDateToDate, getTodayIsoDate } from '@/lib/utils/date';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
-import React, { useMemo, useEffect, useState, useCallback } from 'react';
+import React, { useMemo, useEffect, useState, useCallback, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -152,6 +153,8 @@ const NutritionistActivityFeed = () => {
     const [loading, setLoading] = useState(true);
     const [feedItems, setFeedItems] = useState([]);
     const [loadError, setLoadError] = useState(false);
+    const [syncFailures, setSyncFailures] = useState(0);
+    const loadGeneration = useRef(0);
     const [actionLoadingId, setActionLoadingId] = useState(null);
     const [feedFilter, setFeedFilter] = useState('all');
     const [patientSearch, setPatientSearch] = useState('');
@@ -165,6 +168,7 @@ const NutritionistActivityFeed = () => {
 
     const fetchFeed = useCallback(async () => {
             if (!user?.id) return;
+            const generation = ++loadGeneration.current;
             const started = performance.now();
             setLoading(true);
             setLoadError(false);
@@ -193,7 +197,7 @@ const NutritionistActivityFeed = () => {
                 if (appointmentsRes.error) logDiagnostic('warn', 'components/nutritionist/NutritionistActivityFeed.jsx:192', '[Feed] Erro consultas:', appointmentsRes.error?.code || 'unknown');
                 if (patientsRes.error) throw patientsRes.error;
                 if (priorityRulesRes?.error) logDiagnostic('warn', 'components/nutritionist/NutritionistActivityFeed.jsx:194', '[Feed] Erro regras:', priorityRulesRes.error?.code || 'unknown');
-                if (feedStateRes?.error) logDiagnostic('warn', 'components/nutritionist/NutritionistActivityFeed.jsx:195', '[Feed] Erro estados:', feedStateRes.error?.code || 'unknown');
+                if (feedStateRes?.error) throw feedStateRes.error;
 
                 const patients = patientsRes.data || [];
                 const patientIds = patients.map((p) => p.id).filter(Boolean);
@@ -340,6 +344,8 @@ const NutritionistActivityFeed = () => {
                 const allItems = attachFeedPriorityMeta(allItemsRaw, priorityRules);
 
                 const syncRes = await syncFeedTasksFromItems(user.id, allItems, feedStateRes?.data || []);
+                if (generation !== loadGeneration.current || syncRes.skipped) return;
+                setSyncFailures(syncRes.failedCount || (syncRes.error ? 1 : 0));
                 if (syncRes.error) logDiagnostic('warn', 'components/nutritionist/NutritionistActivityFeed.jsx:342', '[Feed] Erro sync:', syncRes.error);
 
                 const mergedStateMap = new Map(
@@ -352,6 +358,7 @@ const NutritionistActivityFeed = () => {
                     return {
                         ...item,
                         persistedStatus: state?.status || 'open',
+                        persistedTask: state || null,
                         firstSeenAt: state?.first_seen_at || state?.created_at || item.timestamp || null,
                         snoozeUntil: state?.snooze_until || null
                     };
@@ -382,9 +389,11 @@ const NutritionistActivityFeed = () => {
                 setFeedItems(sorted);
                 track(Events.DATA_LOAD_TIMING, { operation: 'dashboard_feed', duration_ms: Math.round(performance.now() - started), result_count: sorted.length });
             } catch (error) {
+                if (generation !== loadGeneration.current) return;
                 logDiagnostic('error', 'components/nutritionist/NutritionistActivityFeed.jsx:384', 'Erro ao carregar feed:', error?.code || 'unknown');
                 setLoadError(true);
             } finally {
+                if (generation !== loadGeneration.current) return;
                 setLoading(false);
                 setRefreshing(false);
             }
@@ -392,6 +401,7 @@ const NutritionistActivityFeed = () => {
 
     useEffect(() => {
         if (user?.id) fetchFeed();
+        return () => {loadGeneration.current += 1;};
     }, [user?.id, fetchFeed]);
 
     const handleRefresh = () => {
@@ -467,7 +477,8 @@ const NutritionistActivityFeed = () => {
         description: item?.description || null,
         priorityScore: Number(item?.priorityScore || 0),
         priorityReason: item?.priorityReason || null,
-        metadata: { item_type: item?.type || null, cta_route: item?.ctaRoute || null }
+        metadata: { item_type: item?.type || null, cta_route: item?.ctaRoute || null },
+        existingTask: item?.persistedTask || null
     });
 
     const toggleItemSelection = (itemId) => {
@@ -488,10 +499,14 @@ const NutritionistActivityFeed = () => {
             const payload = selectedItems.map((i) => buildTaskInputFromItem(i));
             const result = await resolveFeedTasksBatch(payload);
             if (result.error && result.failedCount === payload.length) throw result.error;
-            setFeedItems((prev) => prev.filter((i) => !selectedItemIds.includes(i.id)));
-            setSelectedItemIds([]);
-            setSelectMode(false);
-            toast({ title: 'Marcado como resolvido', description: `${payload.length - (result.failedCount || 0)} itens resolvidos.` });
+            const saved = new Set((result.data || []).map(row => `${row.source_type}:${row.source_id}`));
+            const confirmedIds = selectedItems.filter(item=>saved.has(`${item.sourceType}:${item.sourceId}`)).map(item=>item.id);
+            const pendingIds = selectedItemIds.filter(id=>!confirmedIds.includes(id));
+            setFeedItems(prev=>prev.filter(item=>!confirmedIds.includes(item.id)));
+            setSelectedItemIds(pendingIds);setSelectMode(pendingIds.length>0);
+            toast({ title: pendingIds.length ? 'Parte dos itens continua pendente' : 'Marcado como resolvido',
+                description:`${confirmedIds.length} itens resolvidos. ${pendingIds.length ? 'Tente novamente os itens restantes.' : ''}`,
+                ...(pendingIds.length ? {variant:'destructive'} : {}) });
         } catch (error) {
             toast({ title: 'Erro ao marcar como resolvido', description: 'Tente novamente.', variant: 'destructive' });
         } finally {
@@ -503,8 +518,9 @@ const NutritionistActivityFeed = () => {
         if (!user?.id) return;
         setActionLoadingId(item.id);
         try {
-            const { error } = await resolveFeedTask(buildTaskInputFromItem(item));
-            if (error) throw error;
+            const { data, error, skipped } = await resolveFeedTask(buildTaskInputFromItem(item));
+            if (skipped) return;
+            if (error || !data) throw error || new Error('unconfirmed_save');
             setFeedItems((prev) => prev.filter((i) => i.id !== item.id));
             toast({ title: 'Marcado como resolvido', description: 'O item saiu do feed.' });
         } catch (error) {
@@ -576,6 +592,10 @@ const NutritionistActivityFeed = () => {
 
     return (
         <Card className="bg-card shadow-card-dark rounded-xl overflow-hidden">
+            {syncFailures > 0 && <div role="alert" className="mx-6 mt-4 rounded-lg border border-orange-200 bg-orange-50 p-3 text-sm text-stone-800">
+                {syncFailures} tarefa(s) sem confirmação de salvamento. As demais foram sincronizadas.
+                <Button variant="link" onClick={handleRefresh} disabled={refreshing}>Tentar novamente as pendentes</Button>
+            </div>}
             <CardHeader className="pb-3">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div>
@@ -867,13 +887,13 @@ const getCtaForActivity = (activity) => {
 };
 
 const getBirthdayItems = (patients) => {
-    const today = new Date();
+    const today = civilDateToDate(getTodayIsoDate());
     const items = [];
     patients.forEach((patient) => {
         if (!patient.birth_date) return;
-        const birthDate = new Date(patient.birth_date);
+        const birthDate = civilDateToDate(patient.birth_date);
         birthDate.setFullYear(today.getFullYear());
-        const diffDays = Math.ceil((birthDate - today) / (1000 * 60 * 60 * 24));
+        const diffDays = Math.round((Date.UTC(birthDate.getFullYear(), birthDate.getMonth(), birthDate.getDate()) - Date.UTC(today.getFullYear(), today.getMonth(), today.getDate())) / 86400000);
         if (diffDays === 0 || (diffDays > 0 && diffDays <= 7)) {
             const patientSegment = patient.slug || patient.id;
             items.push({
@@ -883,7 +903,7 @@ const getBirthdayItems = (patients) => {
                 patientName: patient.name,
                 patientAvatar: patient.avatar_url || null,
                 title: diffDays === 0 ? 'Aniversário hoje' : `Aniversário em ${diffDays} dia${diffDays > 1 ? 's' : ''}`,
-                description: `Nascimento: ${format(new Date(patient.birth_date), 'dd/MM')}`,
+                description: `Nascimento: ${format(civilDateToDate(patient.birth_date), 'dd/MM')}`,
                 timestamp: null,
                 ctaLabel: 'Ver perfil',
                 ctaRoute: `/nutritionist/patients/${patientSegment}/hub`,

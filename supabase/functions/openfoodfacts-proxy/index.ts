@@ -99,12 +99,14 @@ Deno.serve(edgeBoundary(async (req: Request) => {
     if (payload.action === 'search') {
       const fsToken = await getFatSecretToken();
       let fsResults: unknown[] = [];
+      let upstreamSucceeded = false;
       if (fsToken) {
         try {
           const data = await externalJson(`https://platform.fatsecret.com/rest/server.api?method=foods.search.v3&search_expression=${encodeURIComponent(payload.query)}&format=json`, {
             headers: { Authorization: `Bearer ${fsToken}` },
           });
           const raw = data.foods_search?.results?.food;
+          upstreamSucceeded = true;
           fsResults = (Array.isArray(raw) ? raw : raw ? [raw] : []).slice(0, 24).map((food: Record<string, string>) => ({
             source: 'fatsecret', id: `fs_${food.food_id}`, name: food.food_name,
             brand: food.brand_name || 'Desconhecida', image: null,
@@ -120,6 +122,7 @@ Deno.serve(edgeBoundary(async (req: Request) => {
       for (const url of endpoints) {
         try {
           const data = await externalJson(url, { headers: offHeaders });
+          upstreamSucceeded = true;
           offResults = (Array.isArray(data.products) ? data.products : []).slice(0, 24).map((product: Record<string, string>) => ({
             source: 'openfoodfacts', id: product.code,
             name: product.product_name_pt || product.product_name || product.product_name_en || 'Produto sem nome',
@@ -128,6 +131,7 @@ Deno.serve(edgeBoundary(async (req: Request) => {
           if (offResults.length) break;
         } catch { /* Try the fallback endpoint. */ }
       }
+      if (!upstreamSucceeded) return json(503, { error: 'upstream_unavailable', fallback: 'local_catalog_or_manual_entry' });
       const result = { results: [...fsResults, ...offResults], total: fsResults.length + offResults.length,
         timestamp: new Date().toISOString() };
       remember(key, result);
@@ -142,10 +146,12 @@ Deno.serve(edgeBoundary(async (req: Request) => {
       const data = await externalJson(`https://platform.fatsecret.com/rest/server.api?method=food.get.v4&food_id=${encodeURIComponent(code.slice(3))}&format=json`, {
         headers: { Authorization: `Bearer ${fsToken}` },
       });
-      result = { source: 'fatsecret', data: data.food || null };
+      result = { source: 'fatsecret', data: data.food || null, product_id: code, fetched_at: new Date().toISOString(), source_updated_at: null };
     } else {
       const data = await externalJson(`https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(code)}.json`, { headers: offHeaders });
-      result = { source: 'openfoodfacts', data: data.product || null };
+      const modified = Number(data.product?.last_modified_t);
+      result = { source: 'openfoodfacts', data: data.product || null, product_id: code, fetched_at: new Date().toISOString(),
+        source_updated_at: Number.isFinite(modified) && modified > 0 ? new Date(modified * 1000).toISOString() : null };
     }
     remember(key, result);
     return json(200, result);

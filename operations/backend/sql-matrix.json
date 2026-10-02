@@ -251,6 +251,11 @@
       "file": "wave08_private_realtime.sql",
       "kind": "assertion-suite",
       "fixtures": []
+    },
+    {
+      "file": "wave09_data_integrity.sql",
+      "kind": "assertion-suite",
+      "fixtures": []
     }
   ]
 }

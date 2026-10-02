@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   from: vi.fn(),
   insert: vi.fn(),
   update: vi.fn(),
+  safeUpdate: vi.fn(),
   recordEq: vi.fn(),
   recordIn: vi.fn(),
   invalidateQueries: vi.fn(),
@@ -21,6 +22,7 @@ vi.mock('@tanstack/react-query', () => ({
   useMutation: mocks.useMutation,
   useQueryClient: () => ({ invalidateQueries: mocks.invalidateQueries }),
 }));
+vi.mock('@/lib/supabase/idempotent-mutations',()=>({updateIdempotently:mocks.safeUpdate}));
 vi.mock('@/lib/customSupabaseClient', () => ({ supabase: { from: mocks.from, rpc: vi.fn() } }));
 vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ user: { id: 'nutritionist-1' } }) }));
 vi.mock('@/components/ui/use-toast', () => ({ useToast: () => ({ toast: vi.fn() }) }));
@@ -29,6 +31,7 @@ describe('useAnamnesisRunner creation episode contract', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.mutationOptions.length = 0;
+    mocks.safeUpdate.mockResolvedValue({data:{id:'record-1',status:'validated'},error:null});
     const templateBuilder = {
       select: vi.fn().mockReturnThis(),
       eq: vi.fn().mockReturnThis(),
@@ -63,11 +66,10 @@ describe('useAnamnesisRunner creation episode contract', () => {
 
   it('updates only an open record owned by the selected patient and nutritionist', async () => {
     renderHook(() => useAnamnesisRunner('patient-1'));
-    await mocks.mutationOptions[1].mutationFn({ recordId: 'record-1', content: { field: 'value' }, status: 'validated' });
+    await mocks.mutationOptions[1].mutationFn({ recordId: 'record-1', expected:'2026-10-01T10:00:00Z', content: { field: 'value' }, status: 'validated' });
 
-    expect(mocks.recordEq).toHaveBeenCalledWith('id', 'record-1');
-    expect(mocks.recordEq).toHaveBeenCalledWith('patient_id', 'patient-1');
-    expect(mocks.recordEq).toHaveBeenCalledWith('nutritionist_id', 'nutritionist-1');
-    expect(mocks.recordIn).toHaveBeenCalledWith('status', ['draft', 'pending_patient']);
+    expect(mocks.safeUpdate).toHaveBeenCalledWith('anamnesis_records','record-1',
+      expect.objectContaining({patient_id:'patient-1',nutritionist_id:'nutritionist-1',content:{field:'value'},status:'validated'}),'2026-10-01T10:00:00Z');
+    expect(mocks.update).not.toHaveBeenCalled();
   });
 });

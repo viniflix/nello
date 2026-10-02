@@ -56,6 +56,9 @@ jobs:
       - name: Execute every Wave 02 SQL source and real concurrency scenario
         if: ${{ !cancelled() && steps.rebuild.outcome == 'success' }}
         run: node scripts/backend/sql-matrix.mjs
+      - name: Verify integrity reconciliation and concurrent operation receipts
+        if: ${{ !cancelled() && steps.rebuild.outcome == 'success' }}
+        run: node scripts/backend/wave09-integrity.mjs
       - name: Prove the catalog gate blocks a controlled RLS and grant failure
         if: ${{ !cancelled() && steps.rebuild.outcome == 'success' }}
         run: node scripts/backend/gate-injections.mjs
@@ -94,6 +97,7 @@ jobs:
             .backend-ci/auth-onboarding-results/
             .backend-ci/auth-captcha-results/
             .backend-ci/sql-results/
+            .backend-ci/wave09-results/
             .backend-ci/browser-results/
             .backend-ci/fault-results/
             e2e/critical-journeys.spec.js-snapshots/

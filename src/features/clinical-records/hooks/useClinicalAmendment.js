@@ -12,7 +12,7 @@ import { normalizeImpact } from '../model/amendmentSchema';
 const CONFLICT_MESSAGES = ['amendment_chain_conflict', 'amendment_impact_changed'];
 
 const isAmendmentConflict = (error) => (
-  error?.code === '40001'
+  ['40001', 'PT409'].includes(error?.code)
   || CONFLICT_MESSAGES.some((message) => error?.message?.includes(message))
 );
 

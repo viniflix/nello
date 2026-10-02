@@ -1,3 +1,4 @@
+import { toCents, fromCents } from './money';
 import { format, parseISO, startOfWeek } from 'date-fns';
 
 const brazilianDecimal = new Intl.NumberFormat('pt-BR', { useGrouping: false, minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -13,15 +14,15 @@ export function splitInstallmentAmounts(total, count) {
       !Number.isInteger(count) || count < 2 || count > 120) {
     throw new Error('Valor ou número de parcelas inválido.');
   }
-  const totalCents = Math.round(value * 100);
+  const totalCents = toCents(total);
   if (totalCents < count) throw new Error('Cada parcela precisa ter ao menos R$ 0,01.');
   const base = Math.floor(totalCents / count);
   const remainder = totalCents % count;
   return Array.from({ length: count }, (_, index) => (base + (index < remainder ? 1 : 0)) / 100);
 }
 
-const cents = (value) => Math.round(Number(value || 0) * 100);
-const money = (value) => Math.round(value) / 100;
+const cents = (value) => toCents(value);
+const money = (value) => fromCents(value);
 const inMonth = (date, start, end) => Boolean(date && date >= start && date <= end);
 
 /** Caixa usa paid_at/refunded_at; competência usa transaction_date. */

@@ -1,3 +1,4 @@
+import { useDraftGuard } from './useDraftGuard';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import {
@@ -5,11 +6,8 @@ import {
     getDraftMealPlan,
     updateDraftMealPlan,
     deleteDraftMealPlan,
-    addMealToPlan,
-    deleteMealFromPlan,
-    addFoodsToMeal,
-    getMealPlanById,
-    recalculateMealNutrition
+    saveDraftMeal,
+    getMealPlanById
 } from '@/lib/supabase/meal-plan-queries';
 
 /**
@@ -29,11 +27,14 @@ export function useMealPlanDraft({ patientId, nutritionistId, enabled = false })
     const [existingDraft, setExistingDraft] = useState(null); // rascunho pré-existente (recuperação)
     const [saveStatus, setSaveStatus] = useState('idle'); // 'idle' | 'saving' | 'saved' | 'error'
     const [isInitializing, setIsInitializing] = useState(false);
+    useDraftGuard(['local','saving','error','conflict'].includes(saveStatus));
 
     const debounceTimerRef = useRef(null);
     const latestDraftIdRef = useRef(null);
     const pendingPlanInfoRef = useRef(null);
     const writeChainRef = useRef(Promise.resolve(true));
+    const revisionRef = useRef(null);
+    const scopeRef = useRef(0);
 
     const flushPlanInfo = useCallback(() => {
         if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
@@ -41,16 +42,24 @@ export function useMealPlanDraft({ patientId, nutritionistId, enabled = false })
         const pending = pendingPlanInfoRef.current;
         if (!pending) return writeChainRef.current;
         pendingPlanInfoRef.current = null;
+        const scope = scopeRef.current;
         writeChainRef.current = writeChainRef.current.catch(() => false).then(async () => {
             try {
-                const { error } = await updateDraftMealPlan(pending.draftId, pending.data);
-                if (error) {
-                    setSaveStatus('error');
+                if (scope !== scopeRef.current) return false;
+                setSaveStatus('saving');
+                const { data, error } = await updateDraftMealPlan(pending.draftId, pending.data, revisionRef.current);
+                if (scope !== scopeRef.current) return false;
+                if (error || !data) {
+                    pendingPlanInfoRef.current = pendingPlanInfoRef.current || pending;
+                    setSaveStatus(error?.code === 'PT409' ? 'conflict' : 'error');
                     return false;
                 }
+                revisionRef.current = data.updated_at;
                 if (!pendingPlanInfoRef.current) setSaveStatus('saved');
                 return true;
             } catch {
+                if (scope !== scopeRef.current) return false;
+                pendingPlanInfoRef.current = pendingPlanInfoRef.current || pending;
                 setSaveStatus('error');
                 return false;
             }
@@ -63,22 +72,30 @@ export function useMealPlanDraft({ patientId, nutritionistId, enabled = false })
         latestDraftIdRef.current = draftId;
     }, [draftId]);
 
-    // Na montagem, verifica se existe rascunho pendente
+    // A screen/identity transition cancels pending writes; never flush on unmount.
     useEffect(() => {
-        if (!enabled || !patientId || !nutritionistId) return;
-
-        const checkExistingDraft = async () => {
+        const scope = ++scopeRef.current;
+        if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+        pendingPlanInfoRef.current = null;
+        latestDraftIdRef.current = null;
+        revisionRef.current = null;
+        writeChainRef.current = Promise.resolve(true);
+        setDraftId(null);setExistingDraft(null);setSaveStatus('idle');setIsInitializing(false);
+        if (enabled && patientId && nutritionistId) {
             setIsInitializing(true);
-            const { data, error } = await getDraftMealPlan(patientId, nutritionistId);
-            if (error) setSaveStatus('error');
-            if (data) {
-                setExistingDraft(data);
-                // Não define draftId ainda — aguarda nutricionista escolher "Retomar" ou "Descartar"
-            }
-            setIsInitializing(false);
+            void getDraftMealPlan(patientId, nutritionistId).then(({data,error}) => {
+                if (scope !== scopeRef.current) return;
+                if (error) setSaveStatus('error');
+                if (data) setExistingDraft(data);
+                setIsInitializing(false);
+            });
+        }
+        return () => {
+            ++scopeRef.current;
+            if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+            pendingPlanInfoRef.current = null;
+            latestDraftIdRef.current = null;
         };
-
-        checkExistingDraft();
     }, [enabled, patientId, nutritionistId]);
 
     /**
@@ -86,12 +103,15 @@ export function useMealPlanDraft({ patientId, nutritionistId, enabled = false })
      * Cria o registro no banco e retorna o id.
      */
     const startNewDraft = useCallback(async () => {
+        const scope = scopeRef.current;
         setSaveStatus('saving');
         const { data, error } = await createDraftMealPlan(patientId, nutritionistId);
+        if (scope !== scopeRef.current) return null;
         if (error || !data) {
             setSaveStatus('error');
             return null;
         }
+        revisionRef.current = data.updated_at;
         setDraftId(data.id);
         latestDraftIdRef.current = data.id;
         setSaveStatus('idle'); // Status volta a idle após criar rascunho base (vazio)
@@ -104,7 +124,11 @@ export function useMealPlanDraft({ patientId, nutritionistId, enabled = false })
      */
     const resumeExistingDraft = useCallback(async () => {
         if (!existingDraft) return null;
-        const { data } = await getMealPlanById(existingDraft.id);
+        const scope = scopeRef.current;
+        const { data, error } = await getMealPlanById(existingDraft.id);
+        if (scope !== scopeRef.current) return null;
+        if (error || !data) { setSaveStatus('error'); return null; }
+        revisionRef.current = data?.updated_at;
         setDraftId(existingDraft.id);
         latestDraftIdRef.current = existingDraft.id;
         setExistingDraft(null);
@@ -117,8 +141,11 @@ export function useMealPlanDraft({ patientId, nutritionistId, enabled = false })
      * NOTA: prefira clearExistingDraft() para criarção lazy.
      */
     const discardExistingAndStartNew = useCallback(async () => {
+        const scope = scopeRef.current;
         if (existingDraft) {
-            await deleteDraftMealPlan(existingDraft.id);
+            const { error } = await deleteDraftMealPlan(existingDraft.id);
+            if (scope !== scopeRef.current) return null;
+            if (error) { setSaveStatus('error'); return null; }
             setExistingDraft(null);
         }
         return startNewDraft();
@@ -140,157 +167,70 @@ export function useMealPlanDraft({ patientId, nutritionistId, enabled = false })
         const currentDraftId = latestDraftIdRef.current;
         if (!currentDraftId) return;
 
-        setSaveStatus('saving');
+        setSaveStatus('local');
 
         if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
         pendingPlanInfoRef.current = { draftId: currentDraftId, data: planData };
         debounceTimerRef.current = setTimeout(() => { void flushPlanInfo(); }, 800);
     }, [flushPlanInfo]);
 
-    /**
-     * Adiciona uma refeição ao rascunho no banco e retorna o ID gerado.
-     * Status só vai para 'saved' após banco confirmar tudo (refeição + alimentos).
-     * @param {object} mealData - dados da refeição do MealPlanMealForm
-     * @returns {Promise<number|null>} ID da refeição criada no banco
-     */
-    const saveMeal = useCallback(async (mealData) => {
-        const currentDraftId = latestDraftIdRef.current;
-        if (!currentDraftId) {
-            logDiagnostic('warn', 'hooks/useMealPlanDraft.js:158', '[useMealPlanDraft] saveMeal chamado antes do draftId estar pronto.');
-            return null;
-        }
-
-        setSaveStatus('saving');
-
-        const { data: newMeal, error: mealError } = await addMealToPlan({
-            meal_plan_id: currentDraftId,
-            name: mealData.name,
-            meal_type: mealData.meal_type,
-            meal_time: mealData.meal_time || null,
-            notes: mealData.notes || null,
-            order_index: mealData.order_index ?? 0
-        });
-
-        if (mealError || !newMeal) {
-            setSaveStatus('error');
-            return null;
-        }
-
-        // Salva alimentos em lote — status só vira 'saved' após essa confirmação
-        if (mealData.foods && mealData.foods.length > 0) {
-            const { error: batchError } = await addFoodsToMeal(newMeal.id, mealData.foods);
-            if (batchError) {
-                logDiagnostic('error', 'hooks/useMealPlanDraft.js:182', '[useMealPlanDraft] Erro ao salvar alimentos no rascunho:', batchError);
-                const { error: cleanupError } = await deleteMealFromPlan(newMeal.id);
-                if (cleanupError) logDiagnostic('error', 'hooks/useMealPlanDraft.js:184', '[useMealPlanDraft] Falha ao limpar refeição incompleta:', cleanupError);
-                setSaveStatus('error');
-                return null;
-            }
-            // Recalcular totais da refeição e do plano após salvar alimentos
-            const { error: totalsError } = await recalculateMealNutrition(newMeal.id);
-            if (totalsError) {
-                await deleteMealFromPlan(newMeal.id);
-                setSaveStatus('error');
-                return null;
-            }
-        }
-
-        setSaveStatus('saved'); // confirmação real: refeição + alimentos persistidos
-        return newMeal.id;
-    }, []);
-
-    /**
-     * Remove uma refeição do rascunho no banco.
-     * @param {number} mealId - ID da refeição no banco (meal_plan_meals.id)
-     */
-    const removeMeal = useCallback(async (mealId) => {
-        if (!mealId) return false;
-        setSaveStatus('saving');
-        const { error } = await deleteMealFromPlan(mealId);
-        setSaveStatus(error ? 'error' : 'saved');
-        return !error;
-    }, []);
-
-    /**
-     * Atualiza uma refeição existente no rascunho.
-     * SEGURO: cria a nova versão ANTES de deletar a antiga, evitando perda de dados
-     * se a operação de criação falhar no meio.
-     * @param {number} oldDbId - ID da refeição antiga no banco
-     * @param {object} mealData - dados atualizados (incluindo foods)
-     * @param {number} orderIndex - posição da refeição no plano
-     * @returns {Promise<number|null>} novo ID da refeição no banco
-     */
-    const updateMeal = useCallback(async (oldDbId, mealData, orderIndex) => {
+    // Serialize header and meal writes against the same confirmed plan revision.
+    const persistMeal = useCallback(async (mealId, mealData) => {
         const currentDraftId = latestDraftIdRef.current;
         if (!currentDraftId) return null;
-
+        const scope = scopeRef.current;
+        const headersSaved = await flushPlanInfo();
+        if (scope !== scopeRef.current || !headersSaved) return null;
         setSaveStatus('saving');
-
-        try {
-            // PASSO 1: Cria a nova refeição PRIMEIRO (antiga ainda existe — sem risco de perda)
-            const { data: newMeal, error: mealError } = await addMealToPlan({
-                meal_plan_id: currentDraftId,
-                name: mealData.name,
-                meal_type: mealData.meal_type,
-                meal_time: mealData.meal_time || null,
-                notes: mealData.notes || null,
-                order_index: orderIndex ?? 0
-            });
-
-            if (mealError || !newMeal) {
-                setSaveStatus('error');
-                return null; // antiga intacta — sem perda de dados
-            }
-
-            // PASSO 2: Salva alimentos da nova refeição
-            if (mealData.foods && mealData.foods.length > 0) {
-                const { error: batchError } = await addFoodsToMeal(newMeal.id, mealData.foods);
-                if (batchError) {
-                    logDiagnostic('error', 'hooks/useMealPlanDraft.js:248', '[useMealPlanDraft] Erro ao salvar alimentos ao atualizar refeição:', batchError);
-                    const { error: cleanupError } = await deleteMealFromPlan(newMeal.id);
-                    if (cleanupError) logDiagnostic('error', 'hooks/useMealPlanDraft.js:250', '[useMealPlanDraft] Falha ao limpar refeição incompleta:', cleanupError);
-                    setSaveStatus('error');
-                    return null; // a refeição antiga permanece intacta
-                }
-                // Recalcular totais da refeição e do plano após salvar alimentos
-                const { error: totalsError } = await recalculateMealNutrition(newMeal.id);
-                if (totalsError) {
-                    await deleteMealFromPlan(newMeal.id);
-                    setSaveStatus('error');
-                    return null;
-                }
-            }
-
-            // PASSO 3: AGORA deleta a antiga (nova está garantida)
-            if (oldDbId) {
-                const { error: deleteError } = await deleteMealFromPlan(oldDbId);
-                if (deleteError) {
-                    logDiagnostic('error', 'hooks/useMealPlanDraft.js:267', '[useMealPlanDraft] Falha ao substituir refeição antiga:', deleteError);
-                    setSaveStatus('error');
-                    return null;
-                }
-            }
-
-            setSaveStatus('saved');
-            return newMeal.id;
-        } catch (error) {
-            logDiagnostic('error', 'hooks/useMealPlanDraft.js:276', '[useMealPlanDraft] Erro ao atualizar refeição no rascunho:', error);
-            setSaveStatus('error');
+        const { data, error } = await saveDraftMeal(currentDraftId, mealId, mealData, revisionRef.current);
+        if (scope !== scopeRef.current) return null;
+        if (error || !data) {
+            setSaveStatus(error?.code === 'PT409' ? 'conflict' : 'error');
             return null;
         }
-    }, []);
+        revisionRef.current = data.plan_revision;
+        setSaveStatus(pendingPlanInfoRef.current ? 'local' : 'saved');
+        return data.id;
+    }, [flushPlanInfo]);
+
+    const saveMeal = useCallback(async mealData => {
+        if (!latestDraftIdRef.current) {
+            logDiagnostic('warn', 'hooks/useMealPlanDraft.js:158', 'Draft not initialized');
+            return null;
+        }
+        return persistMeal(null, mealData);
+    }, [persistMeal]);
+
+    const updateMeal = useCallback((oldDbId, mealData, orderIndex) =>
+        persistMeal(oldDbId, { ...mealData, order_index: orderIndex ?? 0 }), [persistMeal]);
+
+    const removeMeal = useCallback(async mealId => {
+        if (!mealId) return false;
+        const scope = scopeRef.current;
+        if (!await flushPlanInfo() || scope !== scopeRef.current) return false;
+        setSaveStatus('saving');
+        const { data, error } = await saveDraftMeal(latestDraftIdRef.current, mealId, {delete:true}, revisionRef.current);
+        if (scope !== scopeRef.current) return false;
+        if (!error && data) revisionRef.current = data.plan_revision;
+        setSaveStatus(error?.code === 'PT409' ? 'conflict' : error || !data ? 'error' : 'saved');
+        return !error && !!data;
+    }, [flushPlanInfo]);
 
     /**
      * Deleta o rascunho atual do banco (ao apertar "Cancelar").
      */
     const discardDraft = useCallback(async () => {
+        const scope = scopeRef.current;
+        const currentDraftId = latestDraftIdRef.current;
         if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
         debounceTimerRef.current = null;
         pendingPlanInfoRef.current = null;
         await writeChainRef.current.catch(() => false);
-        const currentDraftId = latestDraftIdRef.current;
+        if (scope !== scopeRef.current) return false;
         if (currentDraftId) {
-            await deleteDraftMealPlan(currentDraftId);
+            const { error } = await deleteDraftMealPlan(currentDraftId);
+            if (scope !== scopeRef.current) return false;
+            if (error) { setSaveStatus('error'); return false; }
         }
         setDraftId(null);
         latestDraftIdRef.current = null;
@@ -301,19 +241,13 @@ export function useMealPlanDraft({ patientId, nutritionistId, enabled = false })
      * Define o draftId diretamente (usado quando o form recebe um draft completo via props).
      * @param {number} id
      */
-    const setActiveDraftId = useCallback((id) => {
+    const setActiveDraftId = useCallback((id, serverPlan) => {
+        revisionRef.current = serverPlan?.updated_at;
         setDraftId(id);
         latestDraftIdRef.current = id;
         setSaveStatus('saved');
     }, []);
 
-
-    // Cleanup do debounce ao desmontar
-    useEffect(() => {
-        return () => {
-            void flushPlanInfo();
-        };
-    }, [flushPlanInfo]);
 
     return {
         draftId,

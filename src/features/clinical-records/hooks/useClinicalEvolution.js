@@ -12,7 +12,7 @@ const draftsMatch = (contentA, visibilityA, contentB, visibilityB) => (
 );
 
 const isRevisionConflict = (error) => (
-  error?.code === '40001' || error?.message?.includes('draft_revision_conflict')
+  ['40001', 'PT409'].includes(error?.code) || error?.message?.includes('draft_revision_conflict')
 );
 
 export const useClinicalEvolution = (initialRecord = null) => {

@@ -1,3 +1,4 @@
+import { clearMemoryDrafts, readMemoryDraft } from '@/lib/utils/memoryDrafts';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { supabase } from '@/lib/customSupabaseClient';
@@ -21,7 +22,8 @@ function query() {
       } else if (this.mode === 'delete') {
         if (!row || row.revision !== this.filters.revision) return { data: null, error: null };
         const deleted = row;
-        row = null;
+        clearMemoryDrafts();
+    row = null;
         return { data: deleted, error: null };
       }
       return { data: row ? { ...row } : null, error: null };
@@ -39,17 +41,19 @@ function query() {
 
 describe('useShadowDraft', () => {
   beforeEach(() => {
+    clearMemoryDrafts();
     row = null;
     sessionStorage.clear();
     supabase.from.mockReset().mockImplementation(() => query());
   });
 
-  it('saves a private working copy and offers it after a reload', async () => {
+  it('recovers a server-confirmed working copy after a reload', async () => {
     const args = { ownerId: 'nutritionist-1', draftKey: 'meal-plan:patient-1:new' };
     const first = renderHook(() => useShadowDraft(args));
     await waitFor(() => expect(first.result.current.ready).toBe(true));
     act(() => first.result.current.queue({ name: 'Plano quase pronto' }));
-    expect(sessionStorage.getItem('nello_shadow:nutritionist-1:meal-plan:patient-1:new')).not.toBeNull();
+    expect(readMemoryDraft('nello_shadow:nutritionist-1:meal-plan:patient-1:new')).not.toBeNull();
+    expect(sessionStorage.length).toBe(0);
     await act(async () => { expect(await first.result.current.flush()).toBe(true); });
     expect(first.result.current.status).toBe('saved');
     expect(row.payload.name).toBe('Plano quase pronto');
@@ -89,6 +93,16 @@ describe('useShadowDraft', () => {
     row = { ...row, revision: 2, payload: { name: 'Updated in another tab' } };
     await act(async () => { expect(await hook.result.current.discard()).toBe(false); });
     expect(row.payload.name).toBe('Updated in another tab');
+    hook.unmount();
+  });
+  it('reports network loss as unconfirmed and retains the working copy without declaring a conflict', async () => {
+    const hook=renderHook(()=>useShadowDraft({ownerId:'nutritionist-1',draftKey:'network-loss'}));
+    await waitFor(()=>expect(hook.result.current.ready).toBe(true));
+    supabase.from.mockImplementation(()=>({insert:()=>({select:()=>({single:async()=>({data:null,error:{code:'NETWORK_FAILURE'}})})})}));
+    act(()=>hook.result.current.queue({name:'Synthetic unsaved'}));
+    await act(async()=>expect(await hook.result.current.flush()).toBe(false));
+    expect(hook.result.current.status).toBe('error');
+    expect(readMemoryDraft('nello_shadow:nutritionist-1:network-loss').payload).toEqual({name:'Synthetic unsaved'});
     hook.unmount();
   });
 });

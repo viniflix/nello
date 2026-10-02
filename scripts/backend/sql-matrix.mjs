@@ -29,11 +29,13 @@ for (const [index, source] of manifest.sources.entries()) {
   const database = `nello_qa_wave02_${index}`;
   const started = Date.now();
   let passed = false;
+  let created = false;
   let log = '';
   let concurrency;
   let hashes = [];
   try {
     sql('postgres', `CREATE DATABASE ${database} TEMPLATE ${source.kind === 'storage-fixture' ? 'template0' : template} OWNER supabase_admin;`);
+    created = true;
     const candidates=source.kind==='storage-fixture'?[]:candidateMigrations();
     for(const migration of candidates)sql(database,migration.content);
     const inputs = [...(source.kind==='storage-fixture'?[]:['supabase/fixtures/wave02/client-rpc-contract.sql']), ...(source.fixtures || []), path.join('supabase/tests', source.file)];
@@ -53,6 +55,11 @@ for (const [index, source] of manifest.sources.entries()) {
       const reviewed=readFileSync('supabase/fixtures/wave02/wave08-client-rpc-contract.sql','utf8');
       contents[0]=contents[0].replace('create function pg_temp.assert_client_rpc_surface()',reviewed+'\ncreate function pg_temp.assert_client_rpc_surface()');
       hashes.push({file:'supabase/fixtures/wave02/wave08-client-rpc-contract.sql',sha256:createHash('sha256').update(reviewed).digest('hex')});
+    }
+    if(candidates.some(m=>m.file.includes('wave09_data_integrity'))) {
+      const reviewed=readFileSync('supabase/fixtures/wave02/wave09-client-rpc-contract.sql','utf8');
+      contents[0]=contents[0].replace('create function pg_temp.assert_client_rpc_surface()',reviewed+'\ncreate function pg_temp.assert_client_rpc_surface()');
+      hashes.push({file:'supabase/fixtures/wave02/wave09-client-rpc-contract.sql',sha256:createHash('sha256').update(reviewed).digest('hex')});
     }
     // Reviewed candidate bodies come from the checksum-pinned migration, never from
     // the database under test. Unchanged RPCs retain the independently captured digest.
@@ -74,7 +81,7 @@ for (const [index, source] of manifest.sources.entries()) {
     log += `\n${error.stdout?.toString() || ''}\n${error.stderr?.toString() || error.message}`;
   } finally {
     try {
-      sql('postgres', `DROP DATABASE IF EXISTS ${database};`);
+      if (created) sql('postgres', `DROP DATABASE IF EXISTS ${database};`);
     } catch (error) {
       passed = false;
       log += `\nDatabase cleanup failed: ${error.stderr?.toString() || error.message}`;

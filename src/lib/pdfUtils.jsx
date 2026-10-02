@@ -1,3 +1,4 @@
+import { getTodayIsoDate } from '@/lib/utils/date';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -203,7 +204,7 @@ export const exportAnamneseToPdf = (anamneseData, patientName, nutritionistName)
     }
 
     // Salvar o arquivo
-    const fileName = `anamnese_${patientName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+    const fileName = `anamnese_${patientName.replace(/\s+/g, '_')}_${getTodayIsoDate()}.pdf`;
     doc.save(fileName);
 };
 
@@ -217,7 +218,7 @@ export const exportAnamneseToPdf = (anamneseData, patientName, nutritionistName)
 export const exportAgendaToPdf = async (appointments, periodType, periodLabel, nutritionistName) => {
     await withEdgePdfFallback({
         title: 'Agenda de Consultas',
-        fileName: `agenda_${periodType}_${new Date().toISOString().split('T')[0]}.pdf`,
+        fileName: `agenda_${periodType}_${getTodayIsoDate()}.pdf`,
         lines: [
             `Período: ${periodLabel}`,
             `Nutricionista: ${nutritionistName || 'Não informado'}`,
@@ -375,7 +376,7 @@ export const exportAgendaToPdf = async (appointments, periodType, periodLabel, n
     }
 
     // Salvar o arquivo
-    const fileName = `agenda_${periodType}_${new Date().toISOString().split('T')[0]}.pdf`;
+    const fileName = `agenda_${periodType}_${getTodayIsoDate()}.pdf`;
     doc.save(fileName);
     });
 };
@@ -392,7 +393,7 @@ export const exportAgendaToPdf = async (appointments, periodType, periodLabel, n
 export const exportMealPlanToPdf = async (mealPlan, patientName, nutritionistName, includeNutrients, translateMealType, formatQuantityWithUnit) => {
     await withEdgePdfFallback({
         title: 'Plano Alimentar',
-        fileName: `plano-alimentar-${includeNutrients ? 'completo' : 'simples'}-${patientName?.replace(/\s+/g, '-').toLowerCase() || 'paciente'}-${new Date().toISOString().split('T')[0]}.pdf`,
+        fileName: `plano-alimentar-${includeNutrients ? 'completo' : 'simples'}-${patientName?.replace(/\s+/g, '-').toLowerCase() || 'paciente'}-${getTodayIsoDate()}.pdf`,
         lines: [
             `Paciente: ${patientName || 'Não informado'}`,
             `Nutricionista: ${nutritionistName || 'Não informado'}`,
@@ -479,7 +480,7 @@ export const exportMealPlanToPdf = async (mealPlan, patientName, nutritionistNam
     
     // Fazer download do arquivo
     const nutrientsLabel = includeNutrients ? 'completo' : 'simples';
-    const fileName = `plano-alimentar-${nutrientsLabel}-${patientName?.replace(/\s+/g, '-').toLowerCase() || 'paciente'}-${new Date().toISOString().split('T')[0]}.pdf`;
+    const fileName = `plano-alimentar-${nutrientsLabel}-${patientName?.replace(/\s+/g, '-').toLowerCase() || 'paciente'}-${getTodayIsoDate()}.pdf`;
     
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');

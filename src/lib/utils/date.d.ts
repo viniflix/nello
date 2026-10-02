@@ -1,0 +1,13 @@
+export type CivilDate = string & { readonly __civilDate: unique symbol };
+export type LocalDateTime = string & { readonly __localDateTime: unique symbol };
+export type UtcInstant = string & { readonly __utcInstant: unique symbol };
+export function asCivilDate(value: string): CivilDate;
+export function civilDateInZone(instant?: Date | UtcInstant, timeZone?: string): CivilDate;
+export function getTodayIsoDate(): CivilDate;
+export function civilDateToDate(value: string): Date;
+export function civilAge(birthDate: string, today?: string): number | null;
+export function localTimeInZone(instant?: string | Date, timeZone?: string): string;
+export function formatDateToIsoDate(value: Date | CivilDate): CivilDate;
+export function asUtcInstant(value: Date | string): UtcInstant;
+export function asLocalDateTime(value: string): LocalDateTime;
+export function localDateTimeToInstant(value: LocalDateTime, timeZone?: string): UtcInstant;

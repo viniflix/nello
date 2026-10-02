@@ -1,3 +1,4 @@
+import { clinicalRpc } from '@/lib/supabase/idempotent-mutations';
 import { supabase } from '@/lib/customSupabaseClient';
 import { format, subDays } from 'date-fns';
 import { isExpectedRequestCancellation, logSupabaseError } from '@/lib/supabase/query-helpers';
@@ -17,7 +18,7 @@ export const mealItemFoodIds = (foodId, source) => {
 };
 
 /** One database transaction owns the meal, its items, computed totals and audit log. */
-export async function savePatientDiaryMeal({ mealId = null, mealDate, mealTime, mealType, notes = '', foods }) {
+export async function savePatientDiaryMeal({ mealId = null, expectedRevision = null, mealDate, mealTime, mealType, notes = '', foods }) {
     if (!Array.isArray(foods) || foods.length === 0) throw new Error('Adicione pelo menos um alimento.');
     const numericMealId = mealId == null ? null : Number(mealId);
     if (numericMealId !== null && (!Number.isSafeInteger(numericMealId) || numericMealId <= 0)) {
@@ -36,11 +37,11 @@ export async function savePatientDiaryMeal({ mealId = null, mealDate, mealTime, 
         }
         return item;
     });
-    const { data, error } = await supabase.rpc('save_patient_diary_meal', {
+    const { data, error } = await clinicalRpc('diary_meal', {
         p_meal_id: numericMealId,
         p_payload: { meal_date: mealDate, meal_time: mealTime, meal_type: mealType, notes },
         p_items: items,
-    });
+    }, expectedRevision);
     if (error) throw error;
     return data;
 }

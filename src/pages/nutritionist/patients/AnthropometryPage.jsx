@@ -1,3 +1,4 @@
+import { civilAge } from '@/lib/utils/date';
 import React, { useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useResolvedPatientId } from '@/hooks/useResolvedPatientId';
@@ -286,7 +287,7 @@ const AnthropometryPage = () => {
                     <WeightChart data={chartData} />
                     <IMCChart
                         data={chartData}
-                        patientAge={patientProfile?.birth_date ? Math.floor((Date.now() - new Date(patientProfile.birth_date).getTime()) / (1000 * 60 * 60 * 24 * 365.25)) : null}
+                        patientAge={patientProfile?.birth_date ? civilAge(patientProfile.birth_date) : null}
                         patientSex={patientProfile?.gender}
                         patientEthnicity={patientProfile?.ethnicity}
                     />

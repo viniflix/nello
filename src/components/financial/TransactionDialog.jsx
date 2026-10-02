@@ -1,6 +1,8 @@
+import { netAfterFee, decimalMoney } from '@/lib/utils/money';
+import { getTodayIsoDate } from '@/lib/utils/date';
 import { uploadVerifiedFile } from '@/lib/storage/verifiedUpload';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -58,8 +60,8 @@ export default function TransactionDialog({
         service_id: 'none',
         description: '',
         amount: '',
-        transaction_date: format(new Date(), 'yyyy-MM-dd'),
-        paid_at: format(new Date(), 'yyyy-MM-dd'),
+        transaction_date: getTodayIsoDate(),
+        paid_at: getTodayIsoDate(),
         isPaid: true,
         due_date: '',
         isInstallment: false,
@@ -70,6 +72,8 @@ export default function TransactionDialog({
         attachment_url: null
     });
     const [uploading, setUploading] = useState(false);
+    const attachmentIntent = useRef(null);
+    useEffect(() => { attachmentIntent.current = null; }, [open, nutritionistId]);
 
     useEffect(() => {
         if (transaction) {
@@ -82,8 +86,8 @@ export default function TransactionDialog({
                 amount: transaction.amount?.toString() || '',
                 transaction_date: transaction.transaction_date 
                     ? format(new Date(transaction.transaction_date + 'T00:00:00'), 'yyyy-MM-dd')
-                    : format(new Date(), 'yyyy-MM-dd'),
-                paid_at: transaction.paid_at || format(new Date(), 'yyyy-MM-dd'),
+                    : getTodayIsoDate(),
+                paid_at: transaction.paid_at || getTodayIsoDate(),
                 isPaid: transaction.status === 'paid',
                 due_date: transaction.due_date 
                     ? format(new Date(transaction.due_date + 'T00:00:00'), 'yyyy-MM-dd')
@@ -104,8 +108,8 @@ export default function TransactionDialog({
                 service_id: 'none',
                 description: '',
                 amount: '',
-                transaction_date: format(new Date(), 'yyyy-MM-dd'),
-                paid_at: format(new Date(), 'yyyy-MM-dd'),
+                transaction_date: getTodayIsoDate(),
+                paid_at: getTodayIsoDate(),
                 isPaid: true,
                 due_date: '',
                 isInstallment: false,
@@ -118,20 +122,10 @@ export default function TransactionDialog({
         }
     }, [transaction, open]);
 
-    // Calculate estimated net amount
     const estimatedNetAmount = useMemo(() => {
-        const amount = parseFloat(formData.amount) || 0;
-        const feePercent = parseFloat(formData.fee_percentage) || 0;
-        
-        if (amount === 0) return 0;
-        
-        // Only apply fee for credit or debit
-        if ((formData.payment_method === 'credit' || formData.payment_method === 'debit') && feePercent > 0) {
-            const feeAmount = (amount * feePercent) / 100;
-            return amount - feeAmount;
-        }
-        
-        return amount;
+        try { return netAfterFee(formData.amount || 0,
+            ['credit','debit'].includes(formData.payment_method) ? formData.fee_percentage || 0 : 0); }
+        catch { return 0; }
     }, [formData.amount, formData.fee_percentage, formData.payment_method]);
 
     const handleFileChange = (e) => {
@@ -165,7 +159,10 @@ export default function TransactionDialog({
         try {
             validateUploadSelection('financial-docs', formData.attachment_file);
             const fileExt = fileExtensionForMime(formData.attachment_file.type);
-            const fileName = `${nutritionistId}/${crypto.randomUUID()}.${fileExt}`;
+            if (attachmentIntent.current?.file !== formData.attachment_file) {
+                attachmentIntent.current = { file: formData.attachment_file, path: `${nutritionistId}/${crypto.randomUUID()}.${fileExt}` };
+            }
+            const fileName = attachmentIntent.current.path;
 
             // Upload to Supabase Storage (bucket: financial-docs)
             await uploadVerifiedFile('financial-docs', fileName, formData.attachment_file);
@@ -236,11 +233,12 @@ export default function TransactionDialog({
         if (transaction?.id) {
             const payload = {
                 id: transaction.id,
+                updated_at: transaction.updated_at,
                 type: formData.type,
                 category: formData.category,
                 patient_id: formData.type === 'income' && formData.patient_id && formData.patient_id !== 'none' && formData.patient_id !== '' ? formData.patient_id : null,
                 description: formData.description,
-                amount: parseFloat(formData.amount),
+                amount: decimalMoney(formData.amount),
                 transaction_date: formData.transaction_date,
                 status: formData.isPaid ? 'paid' : 'pending',
                 paid_at: formData.isPaid ? formData.paid_at : null,
@@ -290,7 +288,7 @@ export default function TransactionDialog({
                 category: formData.category,
                 patient_id: formData.type === 'income' && formData.patient_id && formData.patient_id !== 'none' && formData.patient_id !== '' ? formData.patient_id : null,
                 description: formData.description,
-                amount: parseFloat(formData.amount),
+                amount: decimalMoney(formData.amount),
                 transaction_date: formData.transaction_date,
                 status: formData.isPaid ? 'paid' : 'pending',
                 paid_at: formData.isPaid ? formData.paid_at : null,

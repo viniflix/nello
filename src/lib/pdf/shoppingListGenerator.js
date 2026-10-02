@@ -1,3 +1,4 @@
+import { getTodayIsoDate } from '@/lib/utils/date';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -176,10 +177,10 @@ export const generateShoppingList = async (planData, patientName = 'Paciente') =
     doc.text('Gerado por Nello', pageWidth / 2, footerY, { align: 'center' });
 
     // Salvar PDF
-    const fileName = `lista_compras_${patientName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+    const fileName = `lista_compras_${patientName.replace(/\s+/g, '_')}_${getTodayIsoDate()}.pdf`;
     doc.save(fileName);
     } catch (error) {
-    const fileName = `lista_compras_${patientName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+    const fileName = `lista_compras_${patientName.replace(/\s+/g, '_')}_${getTodayIsoDate()}.pdf`;
     const lines = Object.entries(categorizedItems).flatMap(([category, items]) => [
       category,
       ...items.map((item) => `  - ${item.name}: ${item.totalQuantity}`),
