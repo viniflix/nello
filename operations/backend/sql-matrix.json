@@ -246,6 +246,11 @@
       "file": "wave07_private_storage.sql",
       "kind": "assertion-suite",
       "fixtures": []
+    },
+    {
+      "file": "wave08_private_realtime.sql",
+      "kind": "assertion-suite",
+      "fixtures": []
     }
   ]
 }

@@ -71,30 +71,7 @@ export function AuthProvider({ children }) {
   }, [user?.id, profile?.user_type]);
 
   // Sincronização em tempo real (Realtime)
-  useEffect(() => {
-    if (!user?.id) return;
 
-    const channel = supabase
-      .channel(`profile-updates-${user.id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'user_profiles',
-          filter: `id=eq.${user.id}`
-        },
-        () => {
-          if (import.meta.env.DEV) logDiagnostic('log', 'contexts/AuthContext.jsx:84', '[AuthContext] Realtime invalidate query: profile');
-          queryClient.invalidateQueries({ queryKey: ['profile', user.id] });
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [user?.id, queryClient]);
 
   // Monitora conectividade global
   useEffect(() => {

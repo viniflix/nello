@@ -1,13 +1,13 @@
 import { PrivateImage } from '@/components/ui/private-image';
 import { markOwnNotificationsRead, deleteOwnNotifications } from '@/lib/supabase/notification-mutations';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { LogOut, Bell, Check, Trash2, Shield, ArrowLeft, Menu, LayoutDashboard, Settings, Users, Bug, Activity, BadgeCheck, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { supabase } from '@/lib/customSupabaseClient';
+import { useNotificationsData } from '@/hooks/useNotificationsData';
 import { useAuth } from '@/contexts/AuthContext';
 
 const NAV_ITEMS = [
@@ -31,34 +31,13 @@ const NAV_ITEMS = [
 export default function AdminHeader() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
-  const [notifications, setNotifications] = useState([]);
-  const [loadingNotifications, setLoadingNotifications] = useState(false);
+  const { notifications, loading: loadingNotifications, unreadCount, error: notificationsError } = useNotificationsData();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const backPath = user?.profile?.user_type === 'nutritionist' ? '/nutritionist' : '/patient';
   const backLabel = user?.profile?.user_type === 'nutritionist' ? 'Área do Nutricionista' : 'Área do Paciente';
 
-  const fetchNotifications = useCallback(async () => {
-    if (!user?.id) return;
-    setLoadingNotifications(true);
-    try {
-      const { data } = await supabase
-        .from('notifications')
-        .select('id, type, content, is_read, created_at')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(20);
-      setNotifications(data || []);
-    } catch (err) {
-      logDiagnostic('error', 'components/admin/AdminHeader.jsx:50', 'Error fetching notifications:', err);
-    }
-    setLoadingNotifications(false);
-  }, [user?.id]);
-
-  useEffect(() => { fetchNotifications(); }, [fetchNotifications]);
-
   const initials = (user?.profile?.name || 'A').substring(0, 2).toUpperCase();
-  const unreadCount = notifications.filter((n) => !n.is_read).length;
 
   const handleMarkAllAsRead = async () => {
     const unreadIds = notifications.filter((n) => !n.is_read).map((n) => n.id);
@@ -66,7 +45,7 @@ export default function AdminHeader() {
     try {
       const { error } = await markOwnNotificationsRead(user?.id, unreadIds);
       if (error) throw error;
-      setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+
     } catch (err) {
       logDiagnostic('error', 'components/admin/AdminHeader.jsx:67', 'Error marking as read:', err);
     }
@@ -78,7 +57,7 @@ export default function AdminHeader() {
     try {
       const { error } = await deleteOwnNotifications(user?.id, readIds);
       if (error) throw error;
-      setNotifications((prev) => prev.filter((n) => !n.is_read));
+
     } catch (err) {
       logDiagnostic('error', 'components/admin/AdminHeader.jsx:78', 'Error clearing notifications:', err);
     }
@@ -197,7 +176,7 @@ export default function AdminHeader() {
                 </div>
               </div>
               <div className="max-h-60 overflow-y-auto p-2">
-                {loadingNotifications ? (
+                {notificationsError ? (<p role="alert" className="text-sm text-destructive">Falha ao atualizar. Tente novamente.</p>) : loadingNotifications ? (
                   <p className="text-center text-sm text-muted-foreground py-4">Carregando...</p>
                 ) : notifications.length === 0 ? (
                   <p className="text-center text-sm text-muted-foreground py-6">Nenhuma notificação.</p>

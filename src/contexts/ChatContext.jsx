@@ -1,199 +1,135 @@
-import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useToast } from '@/components/ui/use-toast';
+import { invalidateDomain, subscribeDomain } from '@/infrastructure/realtime/events';
+import { mergeChatMessages, reconcileChatPage } from '@/infrastructure/realtime/chatMessages';
 
 const ChatContext = createContext();
-
 export function useChat() {
   const context = useContext(ChatContext);
-  if (!context) {
-    throw new Error('useChat deve ser usado dentro de um ChatProvider');
-  }
+  if (!context) throw new Error('useChat deve ser usado dentro de um ChatProvider');
   return context;
 }
-
 export function ChatProvider({ children }) {
   const { user } = useAuth();
+  const userId = user?.id;
+  const identity = useRef(userId); identity.current = userId;
   const { toast } = useToast();
-  const [messages, setMessages] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [currentRecipientId, setCurrentRecipientId] = useState(null);
-  const [unreadSenders, setUnreadSenders] = useState(new Set());
-  const [conversations, setConversations] = useState([]);
-  const channelRef = useRef(null);
-  const unreadSendersCacheRef = useRef({ key: null, data: null, ts: 0 });
-
+  const [view, setView] = useState({ owner: null, recipient: null, messages: [], hasMore: false, loading: false });
+  const [conversationState, setConversationState] = useState({ owner: null, data: [] });
+  const [loadError, setLoadError] = useState(false);
+  const recipientRef = useRef(null);
+  const viewRef = useRef(view); viewRef.current = view;
+  const requestEpoch = useRef(0);
+  const conversationEpoch = useRef(0);
+  const readThrough = useRef(null);
+  const sending = useRef(false);
+  const conversationRequest = useRef(null);
   const fetchConversations = useCallback(async () => {
-    if (!user) return;
-    const { data, error } = await supabase.rpc('get_nutritionist_conversations', { p_nutritionist_id: user.id });
-    if (!error && data) {
-      setConversations(data);
-    } else if (error) {
-      logDiagnostic('error', 'contexts/ChatContext.jsx:33', 'Erro ao buscar conversas:', error);
-    }
-  }, [user]);
-
-  const markChatAsRead = useCallback(async (senderId) => {
-      if (!user || !senderId) return;
-
-      const { error } = await supabase.rpc('mark_chat_notifications_as_read', { p_user_id: user.id, p_sender_id: senderId });
-      if (error) {
-        logDiagnostic('error', 'contexts/ChatContext.jsx:42', "Falha ao marcar chat como lido:", error);
-        return;
-      }
-
-      await supabase
-        .from('notifications')
-        .delete()
-        .eq('user_id', user.id)
-        .eq('type', 'new_message')
-        .filter('content->>from_id', 'eq', String(senderId));
-
-      unreadSendersCacheRef.current = { key: null, data: null, ts: 0 };
-      setUnreadSenders(prev => {
-          const newSet = new Set(prev);
-          newSet.delete(senderId);
-          return newSet;
+    if (!userId) return;
+    if (conversationRequest.current?.owner === userId) { conversationRequest.current.dirty = true; return conversationRequest.current.promise; }
+    const epoch = ++conversationEpoch.current;
+    const promise = (async () => {
+      try {
+        const { data, error } = await supabase.rpc('get_nutritionist_conversations', { p_nutritionist_id: userId });
+        if (identity.current !== userId || epoch !== conversationEpoch.current) return;
+        if (!error) setConversationState({ owner: userId, data: data || [] });
+      } catch { /* Keep the last confirmed counter until reconciliation succeeds. */ }
+      finally { if (conversationRequest.current?.promise === promise) { const dirty = conversationRequest.current.dirty; conversationRequest.current = null; if (dirty && identity.current === userId) void fetchConversations(); } }
+    })();
+    conversationRequest.current = { owner: userId, promise };
+    return promise;
+  }, [userId]);
+  const fetchMessages = useCallback(async (fromId, toId, { older = false, refresh = false } = {}) => {
+    if (!userId || fromId !== userId || !toId) return;
+    const epoch = ++requestEpoch.current;
+    const previous = viewRef.current;
+    const first = older ? previous.messages[0] : null;
+    recipientRef.current = toId;
+    setView(current => ({ owner: userId, recipient: toId, messages: (older || refresh) && current.recipient === toId ? current.messages : [], hasMore: false, loading: true }));
+    setLoadError(false);
+    try {
+      const { data, error } = await supabase.rpc('list_chat_messages', {
+        p_recipient: toId, p_before_time: first?.created_at || null,
+        p_before_id: first ? String(first.id) : null, p_limit: 50, p_actor: userId,
       });
-      // Atualiza conversas para atualizar contagem de não lidos
-      fetchConversations();
-  }, [user, fetchConversations]);
-
-  const fetchMessages = useCallback(async (fromId, toId) => {
-    if (!fromId || !toId) return;
-    setLoading(true);
-    setCurrentRecipientId(toId);
-
-    const { data, error } = await supabase
-      .from('chats')
-      .select('*')
-      .or(`and(from_id.eq.${fromId},to_id.eq.${toId}),and(from_id.eq.${toId},to_id.eq.${fromId})`)
-      .order('created_at', { ascending: true });
-
-    if (error) {
-      logDiagnostic('error', 'contexts/ChatContext.jsx:75', 'Erro ao buscar mensagens:', error);
-      setMessages([]);
-    } else {
-      setMessages(data);
-    }
-    setLoading(false);
-    
-    markChatAsRead(toId);
-
-  }, [markChatAsRead]);
-
-  const sendMessage = async (newMessageData) => {
-    const { error } = await supabase.from('chats').insert([newMessageData]);
-
-    if (error) {
-      logDiagnostic('error', 'contexts/ChatContext.jsx:90', 'Erro ao enviar mensagem:', error);
-      toast({ title: "Erro", description: "Não foi possível enviar a mensagem.", variant: "destructive" });
-      return null;
-    }
-    // Atualiza conversas para mover o destinatário ao topo
-    fetchConversations();
-    return true;
-  };
-
-  const UNREAD_SENDERS_CACHE_TTL_MS = 30000;
-
-  useEffect(() => {
-    if (!user) {
-        setConversations([]);
-        if (channelRef.current) {
-            supabase.removeChannel(channelRef.current);
-            channelRef.current = null;
-        }
-        return;
-    }
-
-    fetchConversations();
-
-    const fetchUnread = async () => {
-        const cacheKey = user.id;
-        const cache = unreadSendersCacheRef.current;
-        if (cache.key === cacheKey && (Date.now() - cache.ts) < UNREAD_SENDERS_CACHE_TTL_MS) {
-            setUnreadSenders(new Set(cache.data || []));
-            return;
-        }
-        const { data } = await supabase.rpc('get_unread_senders', { p_user_id: user.id });
-        if (data) {
-            const ids = data.map(item => item.from_id);
-            unreadSendersCacheRef.current = { key: cacheKey, data: ids, ts: Date.now() };
-            setUnreadSenders(new Set(ids));
-        }
-    };
-    fetchUnread();
-    
-    if (channelRef.current) {
-        supabase.removeChannel(channelRef.current);
-    }
-
-    const channel = supabase.channel(`realtime:chat:${user.id}`);
-    
-    channel.on('postgres_changes', { 
-        event: 'INSERT', 
-        schema: 'public', 
-        table: 'chats'
-      }, (payload) => {
-        const newMessage = payload.new;
-        
-        const isForMe = newMessage.to_id === user.id;
-        const isFromMe = newMessage.from_id === user.id;
-        
-        if (isForMe || isFromMe) {
-            fetchConversations(); // Reordena a lista e atualiza os trechos
-        }
-
-        if (isForMe) {
-            if (newMessage.from_id === currentRecipientId) {
-                setMessages(currentMessages => [...currentMessages, newMessage]);
-                markChatAsRead(newMessage.from_id);
-            } else {
-                setUnreadSenders(prev => new Set(prev).add(newMessage.from_id));
-                 toast({
-                    title: "Nova Mensagem",
-                    description: `Você recebeu uma nova mensagem.`,
-                });
-            }
-        } else if (isFromMe) {
-             if(newMessage.to_id === currentRecipientId) {
-                setMessages(currentMessages => [...currentMessages, newMessage]);
-             }
-        }
-    }).subscribe((status, err) => {
-        if (status === 'CHANNEL_ERROR') {
-          logDiagnostic('error', 'contexts/ChatContext.jsx:167', `Erro no canal:`, err);
-        }
-    });
-
-    channelRef.current = channel;
-
-    return () => {
-      if (channelRef.current) {
-        supabase.removeChannel(channelRef.current);
-        channelRef.current = null;
+      if (identity.current !== userId || epoch !== requestEpoch.current) return;
+      if (error) throw error;
+      const reconciled = refresh ? reconcileChatPage(previous, data) : { messages: mergeChatMessages(older ? previous.messages : [], data?.messages || []), hasMore: data?.has_more === true };
+      setView({ owner: userId, recipient: toId, ...reconciled, loading: false });
+    } catch {
+      if (identity.current === userId && epoch === requestEpoch.current) {
+        setView({ owner: userId, recipient: toId, messages: older || refresh ? previous.messages : [], hasMore: (older || refresh) && previous.hasMore, loading: false });
+        setLoadError(true);
       }
+    }
+  }, [userId]);
+  const loadOlderMessages = useCallback(() => {
+    const current = viewRef.current;
+    if (current.owner === userId && current.hasMore && !current.loading) return fetchMessages(userId, current.recipient, { older: true });
+  }, [userId, fetchMessages]);
+  const closeConversation = useCallback(() => {
+    recipientRef.current = null; requestEpoch.current += 1; readThrough.current = null;
+    setView({ owner: userId, recipient: null, messages: [], hasMore: false, loading: false });
+  }, [userId]);
+  const markChatAsRead = useCallback(async senderId => {
+    const current = viewRef.current;
+    if (identity.current !== userId || current.owner !== userId || current.recipient !== senderId || document.visibilityState === 'hidden') return;
+    const latest = current.messages.at(-1);
+    if (!latest) return;
+    const key = `${userId}:${senderId}:${latest.id}`;
+    if (readThrough.current === key) return;
+    readThrough.current = key;
+    let error;
+    try { ({ error } = await supabase.rpc('mark_chat_read', { p_recipient: senderId, p_through_id: String(latest.id), p_actor: userId })); } catch { error = true; }
+    if (identity.current !== userId) return;
+    if (error) { if (readThrough.current === key) readThrough.current = null; return; }
+    invalidateDomain(userId, 'notifications');
+    void fetchConversations();
+  }, [userId, fetchConversations]);
+  const sendMessage = useCallback(async input => {
+    if (!userId || sending.current || !input?.client_message_id) return null;
+    sending.current = true;
+    try {
+      const { data, error } = await supabase.rpc('send_chat_message', {
+        p_recipient: input.to_id, p_message: input.message, p_type: input.message_type || 'text',
+        p_media: input.media_url || null, p_client_id: input.client_message_id, p_actor: userId,
+      });
+      if (error) throw error;
+      if (identity.current !== userId) return null;
+      if (recipientRef.current === input.to_id) setView(current => ({ ...current, messages: mergeChatMessages(current.messages, [data]) }));
+      invalidateDomain(userId, 'chat');
+      return true;
+    } catch {
+      if (identity.current === userId) toast({ title: 'Mensagem não enviada', description: 'O rascunho foi mantido. Confira a conexão e tente novamente.', variant: 'destructive' });
+      return null;
+    } finally { sending.current = false; }
+  }, [userId, toast]);
+  useEffect(() => {
+    if (!userId) return;
+    void fetchConversations();
+    const refresh = () => {
+      void fetchConversations();
+      if (recipientRef.current) void fetchMessages(userId, recipientRef.current, { refresh: true });
     };
-  }, [user, currentRecipientId, toast, markChatAsRead, fetchConversations]);
-
-  const value = {
-    messages,
-    sendMessage,
-    fetchMessages,
-    loading,
-    unreadSenders,
-    markChatAsRead,
-    conversations,
-    fetchConversations,
-    totalUnreadMessages: conversations.reduce((acc, c) => acc + Number(c.unread_count || 0), 0)
-  };
-
-  return (
-    <ChatContext.Provider value={value}>
-      {children}
-    </ChatContext.Provider>
-  );
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => { if (session?.user?.id !== userId) { identity.current = null; requestEpoch.current += 1; conversationEpoch.current += 1; } });
+    const unsubChat = subscribeDomain(userId, 'chat', refresh);
+    const unsubNotifications = subscribeDomain(userId, 'notifications', () => { void fetchConversations(); });
+    const unsubAccess = subscribeDomain(userId, 'access', () => {
+      readThrough.current = null;
+      setConversationState({ owner: userId, data: [] });
+      setView({ owner: userId, recipient: recipientRef.current, messages: [], hasMore: false, loading: false });
+      void fetchConversations();
+      if (recipientRef.current) void fetchMessages(userId, recipientRef.current);
+    });
+    return () => { authListener.subscription.unsubscribe(); unsubChat(); unsubNotifications(); unsubAccess(); recipientRef.current = null; readThrough.current = null; requestEpoch.current += 1; conversationEpoch.current += 1; };
+  }, [userId, fetchConversations, fetchMessages]);
+  const conversations = conversationState.owner === userId ? conversationState.data : [];
+  const messages = view.owner === userId ? view.messages : [];
+  return <ChatContext.Provider value={{ messages, sendMessage, fetchMessages, loading: view.owner === userId && view.loading,
+    loadError, hasMoreMessages: view.owner === userId && view.hasMore, loadOlderMessages, closeConversation,
+    unreadSenders: new Set(conversations.filter(c => Number(c.unread_count) > 0).map(c => c.recipient_id)),
+    markChatAsRead, conversations, fetchConversations,
+    totalUnreadMessages: conversations.reduce((sum, c) => sum + Number(c.unread_count || 0), 0) }}>{children}</ChatContext.Provider>;
 }

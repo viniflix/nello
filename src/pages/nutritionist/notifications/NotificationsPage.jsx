@@ -1,8 +1,7 @@
-import { markOwnNotificationsRead } from '@/lib/supabase/notification-mutations';
-import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
+import { useNotificationsData } from '@/hooks/useNotificationsData';
+import { markOwnNotificationsRead, markAllNotificationsRead } from '@/lib/supabase/notification-mutations';
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/lib/customSupabaseClient';
+import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -132,59 +131,18 @@ const NotificationCard = ({ notification, onMarkAsRead, user }) => {
 
 const NotificationsPage = () => {
     const { user } = useAuth();
-    const [notifications, setNotifications] = useState([]);
-    const [loading, setLoading] = useState(true);
-
-    const fetchNotifications = useCallback(async () => {
-        if (!user) return;
-        setLoading(true);
-        const { data, error } = await supabase
-            .from('notifications')
-            .select('*')
-            .eq('user_id', user.id)
-            .order('created_at', { ascending: false })
-            .limit(200); // OTIMIZADO: Últimas 200 notificações
-
-        if (error) {
-            logDiagnostic('error', 'pages/nutritionist/notifications/NotificationsPage.jsx:147', error);
-        } else {
-            setNotifications(data);
-        }
-        setLoading(false);
-    }, [user]);
-
-    useEffect(() => {
-        fetchNotifications();
-    }, [fetchNotifications]);
-    
-    useEffect(() => {
-        if (!user) return;
-        const channel = supabase.channel(`notifications:${user.id}`)
-            .on('postgres_changes', {
-                event: 'INSERT',
-                schema: 'public',
-                table: 'notifications',
-                filter: `user_id=eq.${user.id}`
-            }, () => {
-                fetchNotifications();
-            })
-            .subscribe();
-        
-        return () => {
-            supabase.removeChannel(channel);
-        }
-    }, [user, fetchNotifications]);
+    const { notifications, loading, error: notificationsError } = useNotificationsData();
 
   const handleMarkAsRead = async (id) => {
         const { error } = await markOwnNotificationsRead(user?.id, [id]);
         if (error) { return false; }
-        setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
+
     };
 
     const handleMarkAllAsRead = async () => {
-        const { error } = await markOwnNotificationsRead(user?.id, notifications.filter(n => !n.is_read).map(n => n.id));
+        const { error } = await markAllNotificationsRead(user?.id);
         if (error) { return; }
-        setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+
     };
 
     return (
@@ -207,7 +165,7 @@ const NotificationsPage = () => {
                         </div>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        {loading ? (
+                        {notificationsError ? (<p role="alert" className="text-sm text-destructive">Falha ao atualizar. Tente novamente.</p>) : loading ? (
                             <p>Carregando...</p>
                         ) : notifications.length > 0 ? (
                             notifications.map(n => (

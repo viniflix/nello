@@ -44,45 +44,28 @@ test('HTTP RPCs bind recipient, feed and adherence queries to the authenticated 
   expect(denied.error?.code).toBe('42501');
 });
 
-test('Realtime delivers an actual chat only to its participant and denies forged sender via REST', async () => {
-  const owner = await actor('nutritionist-a');
-  const outsider = await actor('nutritionist-b');
-  const patient = await actor('patient-a');
-  const ownerId = fixture.personas['nutritionist-a'].id;
-  const patientId = fixture.personas['patient-a'].id;
+test('private Realtime signals participants and denies forged sender and unrelated recipients', async () => {
+  const owner = await actor('nutritionist-a'), outsider = await actor('nutritionist-b'), patient = await actor('patient-a');
+  const ownerId = fixture.personas['nutritionist-a'].id, patientId = fixture.personas['patient-a'].id;
   const marker = 'QA chat ' + randomUUID();
-  const outsiderEvents = [];
-  let receive;
-  const received = new Promise(resolve => { receive = resolve; });
-  const channels = [];
-  const subscribe = async (connection, onEvent) => {
-    const channel = connection.channel('wave05-' + randomUUID()).on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chats' }, onEvent);
+  const outsiderEvents = [], ownerEvents = [], channels = [];
+  const subscribe = async (connection, id, events) => {
+    const inbox = await connection.rpc('get_realtime_inbox', { p_actor: id }); expect(inbox.error).toBeNull();
+    const channel = connection.channel(inbox.data, { config: { private: true, presence: { enabled: false } } }).on('broadcast', { event: 'changed' }, ({ payload }) => events.push(payload));
     channels.push([connection, channel]);
-    await new Promise((resolve, reject) => {
-      let joined = false; let postgresReady = false;
-      const timer = setTimeout(() => reject(new Error('Realtime PostgreSQL subscription timeout')), 20000);
-      const ready = () => { if (joined && postgresReady) { clearTimeout(timer); resolve(); } };
-      channel.on('system', {}, payload => {
-        if (payload.status === 'ok' && payload.extension === 'postgres_changes') { postgresReady = true; ready(); }
-        else if (payload.status === 'error') { clearTimeout(timer); reject(new Error('Realtime PostgreSQL subscription error')); }
-      });
-      channel.subscribe(status => { if (status === 'SUBSCRIBED') { joined = true; ready(); } else if (status === 'CHANNEL_ERROR') { clearTimeout(timer); reject(new Error('Realtime channel error')); } });
-    });
+    await new Promise((resolve,reject) => { const timer=setTimeout(()=>reject(Error('Private inbox timeout')),15000); channel.subscribe(status=>{if(status==='SUBSCRIBED'){clearTimeout(timer);resolve();}else if(status==='CHANNEL_ERROR'){clearTimeout(timer);reject(Error('Private inbox denied'));}}); });
   };
   try {
-    await subscribe(owner, event => { if (event.new.message === marker) receive(event.new); });
-    await subscribe(outsider, event => { if (event.new.message === marker) outsiderEvents.push(event.new); });
-    const forged = await patient.from('chats').insert({ from_id: ownerId, to_id: patientId, message: marker });
-    expect(forged.error?.code).toBe('42501');
-    const legitimate = await patient.from('chats').insert({ from_id: patientId, to_id: ownerId, message: marker });
-    expect(legitimate.error).toBeNull();
-    let timer;
-    const payload = await Promise.race([received, new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('Authorized Realtime delivery missing')), 12000); })]).finally(() => clearTimeout(timer));
-    expect(payload.from_id).toBe(patientId);
-    await new Promise(resolve => setTimeout(resolve, 500));
-    expect(outsiderEvents).toEqual([]);
+    await subscribe(owner, ownerId, ownerEvents);
+    await subscribe(outsider, fixture.personas['nutritionist-b'].id, outsiderEvents);
+    expect((await patient.from('chats').insert({ from_id: ownerId, to_id: patientId, message: marker })).error?.code).toBe('42501');
+    const legitimate = await patient.rpc('send_chat_message', { p_actor: patientId, p_recipient: ownerId, p_message: marker, p_client_id: randomUUID() });
+    expect(legitimate.error).toBeNull(); expect(legitimate.data.from_id).toBe(patientId);
+    await expect.poll(()=>ownerEvents.some(event=>event.kind==='chat')).toBe(true);
+    const history=await owner.rpc('list_chat_messages',{p_actor:ownerId,p_recipient:patientId});expect(history.data.messages.some(row=>row.message===marker)).toBe(true);
+    expect(outsiderEvents).toEqual([]);expect(ownerEvents.every(event=>!('message' in event)&&!('from_id' in event))).toBe(true);
   } finally {
-    for (const [connection, channel] of channels) await connection.removeChannel(channel);
-    execFileSync('docker', ['exec','-i','-e','PGPASSWORD=postgres','supabase_db_nello-reconstruction','psql','-X','-h','127.0.0.1','-U','supabase_admin','-d','postgres','-v','ON_ERROR_STOP=1'], { input: `delete from public.notifications where type='new_message' and content->>'message'='${marker}';delete from public.chats where message='${marker}';`, stdio: ['pipe','ignore','pipe'] });
+    for(const[connection,channel]of channels)await connection.removeChannel(channel);
+    execFileSync('docker',['exec','-i','-e','PGPASSWORD=postgres','supabase_db_nello-reconstruction','psql','-X','-h','127.0.0.1','-U','supabase_admin','-d','postgres','-v','ON_ERROR_STOP=1'],{input:`delete from public.notifications where type='new_message' and content->>'message'='${marker}';delete from public.chats where message='${marker}';`,stdio:['pipe','ignore','pipe']});
   }
 });

@@ -1,23 +1,20 @@
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
+import { invalidateDomain } from '@/infrastructure/realtime/events';
 
-async function mutateQuery(userId, ids, remove) {
-  if (!userId || !Array.isArray(ids) || ids.length === 0) {
-    return { data: [], error: { code: 'invalid_notification_selection' } };
-  }
-  const uniqueIds = [...new Set(ids)];
-  let query = supabase.from('notifications');
-  query = remove ? query.delete() : query.update({ is_read: true });
-  const result = await query.eq('user_id', userId).in('id', uniqueIds).select('id');
-  if (result.error) return result;
-  if (result.data?.length !== uniqueIds.length) {
-    return { data: result.data || [], error: { code: 'notification_not_available' } };
-  }
+async function mutate(userId, rpc, args) {
+  let result;
+  try { result = await supabase.rpc(rpc, { ...args, p_actor: userId }); }
+  catch { result = { error: { code: 'notification_transport_failed' } }; }
+  if (result.error) toast({ title: 'Falha ao atualizar notificações.', description: 'Tente novamente. Sua seleção foi mantida.', variant: 'destructive' });
+  else invalidateDomain(userId, 'notifications');
   return result;
 }
-
-export async function mutateOwnNotifications(userId, ids, remove) {
-  const result = await mutateQuery(userId, ids, remove);
-  if (result.error) toast({ title: 'Falha ao atualizar notificações.', description: 'Atualize a página e tente novamente.', variant: 'destructive' });
-  return result;
+export function mutateOwnNotifications(userId, ids, remove) {
+  if (!userId || !Array.isArray(ids) || !ids.length || ids.length > 500) return Promise.resolve({ error: { code: 'invalid_notification_selection' } });
+  return mutate(userId, 'mutate_own_notifications', { p_ids: [...new Set(ids)], p_remove: Boolean(remove) });
+}
+export function markAllNotificationsRead(userId) {
+  if (!userId) return Promise.resolve({ error: { code: 'authentication_required' } });
+  return mutate(userId, 'mark_all_notifications_read', {});
 }

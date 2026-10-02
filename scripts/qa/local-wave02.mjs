@@ -24,6 +24,7 @@ writeFileSync('.backend-ci/local-results/reconstructed.types.ts',types);
 node(['scripts/backend/compare-types.mjs','src/lib/database.types.ts','.backend-ci/local-results/reconstructed.types.ts']);
 node(['scripts/backend/snapshot-restore.mjs']);node(['scripts/backend/edge-boot-smoke.mjs']);node(['scripts/backend/forward-contracts.mjs']);
 node(['scripts/backend/sql-matrix.mjs']);node(['scripts/backend/gate-injections.mjs']);node(['scripts/qa/browser-fixture.mjs']);
+node(['scripts/qa/realtime-boundaries.mjs']);
 node(['scripts/qa/auth-onboarding.mjs']);
 node(['scripts/qa/edge-boundaries.mjs']);
 node(['scripts/qa/edge-expiry.mjs']);

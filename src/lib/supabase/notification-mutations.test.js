@@ -1,20 +1,23 @@
 import { beforeEach, expect, it, vi } from 'vitest';
-import { markOwnNotificationsRead, deleteOwnNotifications } from './notification-mutations';
-const api = vi.hoisted(() => ({ from: vi.fn(), update: vi.fn(), delete: vi.fn(), eq: vi.fn(), in: vi.fn(), select: vi.fn() }));
+import { markOwnNotificationsRead, deleteOwnNotifications, markAllNotificationsRead } from './notification-mutations';
+const api = vi.hoisted(() => ({ rpc: vi.fn() }));
 vi.mock('@/lib/customSupabaseClient', () => ({ supabase: api }));
-beforeEach(() => { vi.clearAllMocks(); for (const name of ['from','update','delete','eq','in']) api[name].mockReturnValue(api); });
-it('constrains both write paths to the recipient and verifies actual affected IDs', async () => {
-  api.select.mockResolvedValue({ data: [{ id: 'one' }], error: null });
+vi.mock('@/components/ui/use-toast', () => ({ toast: vi.fn() }));
+beforeEach(() => { vi.clearAllMocks(); });
+it('binds mutations to the initiating account, deduplicates and treats an already removed ID as idempotent', async () => {
+  api.rpc.mockResolvedValue({ data: ['one'], error: null });
   expect((await markOwnNotificationsRead('owner',['one','one'])).error).toBeNull();
-  expect(api.eq).toHaveBeenCalledWith('user_id','owner');
-  expect(api.in).toHaveBeenCalledWith('id',['one']);
+  expect(api.rpc).toHaveBeenCalledWith('mutate_own_notifications',{p_actor:'owner',p_ids:['one'],p_remove:false});
   expect((await deleteOwnNotifications('owner',['one'])).error).toBeNull();
-  expect(api.delete).toHaveBeenCalled();
+  expect(api.rpc).toHaveBeenLastCalledWith('mutate_own_notifications',{p_actor:'owner',p_ids:['one'],p_remove:true});
+  await markAllNotificationsRead('owner');
+  expect(api.rpc).toHaveBeenLastCalledWith('mark_all_notifications_read',{p_actor:'owner'});
 });
-it('does not report false success for RLS-hidden or stale IDs, errors, or an absent user', async () => {
-  api.select.mockResolvedValue({ data: [], error: null });
-  expect((await markOwnNotificationsRead('owner',['foreign'])).error.code).toBe('notification_not_available');
-  const error = { code: '42501' }; api.select.mockResolvedValue({ data: null, error });
-  expect((await deleteOwnNotifications('owner',['one'])).error).toBe(error);
-  api.from.mockClear(); expect((await deleteOwnNotifications(null,['one'])).error).toBeTruthy();expect(api.from).not.toHaveBeenCalled();
+it('surfaces atomic permission errors and does not write with an absent actor or oversized selection', async () => {
+  const error={code:'42501'};api.rpc.mockResolvedValue({data:null,error});
+  expect((await deleteOwnNotifications('owner',['foreign','own'])).error).toBe(error);
+  api.rpc.mockClear();
+  expect((await deleteOwnNotifications(null,['one'])).error).toBeTruthy();
+  expect((await markOwnNotificationsRead('owner',Array(501).fill('one'))).error).toBeTruthy();
+  expect(api.rpc).not.toHaveBeenCalled();
 });

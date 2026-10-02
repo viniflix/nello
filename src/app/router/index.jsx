@@ -7,7 +7,8 @@ import { authRoutes } from './authRoutes';
 import { nutritionistRoutes } from './nutritionistRoutes';
 import { patientRoutes } from './patientRoutes';
 import { adminRoutes } from './adminRoutes';
-import PresenceGlobal from '@/components/PresenceGlobal';
+import { RealtimeProvider } from '@/contexts/RealtimeContext';
+import { NotificationsCacheOwner } from '@/hooks/useNotificationsData';
 import { getHomePath } from './homePath';
 import { lazyWithReload } from '@/lib/utils/lazyWithReload';
 import StatusPage from '@/pages/public/StatusPage';
@@ -32,8 +33,7 @@ const AppRouter = () => {
   }
 
   return (
-    <ChatProvider>
-        <PresenceGlobal />
+    <RealtimeProvider><NotificationsCacheOwner><ChatProvider>
         <div className="min-h-screen bg-background">
           <Suspense fallback={<PageLoadingFallback />}>
             <Routes>
@@ -52,7 +52,7 @@ const AppRouter = () => {
             </Routes>
           </Suspense>
         </div>
-    </ChatProvider>
+    </ChatProvider></NotificationsCacheOwner></RealtimeProvider>
   );
 };
 

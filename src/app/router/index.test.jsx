@@ -17,7 +17,8 @@ vi.mock('@/contexts/AuthContext', () => ({
 vi.mock('@/contexts/ChatContext', () => ({
   ChatProvider: ({ children }) => children,
 }));
-vi.mock('@/components/PresenceGlobal', () => ({ default: () => null }));
+vi.mock('@/contexts/RealtimeContext', () => ({ RealtimeProvider: ({ children }) => children }));
+vi.mock('@/hooks/useNotificationsData', () => ({ NotificationsCacheOwner: ({ children }) => children }));
 vi.mock('./authRoutes', () => ({ authRoutes: null }));
 vi.mock('./nutritionistRoutes', () => ({ nutritionistRoutes: null }));
 vi.mock('./patientRoutes', () => ({ patientRoutes: null }));

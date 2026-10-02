@@ -1,6 +1,7 @@
+import { useNotificationsData } from '@/hooks/useNotificationsData';
 import { PrivateImage } from '@/components/ui/private-image';
 import { markOwnNotificationsRead, deleteOwnNotifications } from '@/lib/supabase/notification-mutations';
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { LogOut, User, Menu, Bell, Check, Trash2, Shield, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -20,8 +21,6 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet';
-import { supabase } from '@/lib/customSupabaseClient';
-import { useToast } from '@/components/ui/use-toast';
 import { useChat } from '@/contexts/ChatContext';
 import { safeInternalPath } from '@/lib/utils/navigation';
 
@@ -201,97 +200,27 @@ const getNotificationMeta = (notification) => {
 // --- Componente Principal do Header (Nova Versão CLEAN) ---
 const DashboardHeader = ({ user, logout }) => {
   const navigate = useNavigate();
-  const { toast } = useToast();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [notifications, setNotifications] = useState([]);
-  const [senderProfiles, setSenderProfiles] = useState({});
-  const [loadingNotifications, setLoadingNotifications] = useState(false);
-
-  if (!user) return null;
-
-  const initials = (user?.profile?.name || 'U').substring(0, 2).toUpperCase();
+  const { notifications, senderProfiles, loading: loadingNotifications, unreadCount, error: notificationsError } = useNotificationsData();
   const { totalUnreadMessages } = useChat();
-
+  if (!user) return null;
+  const initials = (user?.profile?.name || 'U').substring(0, 2).toUpperCase();
   const navigationLinks = user?.profile?.user_type === 'nutritionist' ? getNutritionistLinks() : [];
   const isAdmin = user?.profile?.is_admin === true;
   const shouldShowNotifications = user?.profile?.user_type === 'nutritionist';
-  const unreadCount = notifications.filter((item) => !item.is_read).length;
-
-  const fetchNotifications = useCallback(async () => {
-    if (!shouldShowNotifications || !user?.id) return;
-    setLoadingNotifications(true);
-    const { data, error } = await supabase
-      .from('notifications')
-      .select('id, type, content, is_read, created_at')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(30);
-
-    if (error) {
-      toast({ title: 'Erro', description: 'Não foi possível carregar notificações.', variant: 'destructive' });
-    } else {
-      const items = data || [];
-      setNotifications(items);
-
-      const senderIds = Array.from(new Set(
-        items
-          .map((notification) => getMessageSenderId(notification))
-          .filter(Boolean)
-      ));
-
-      if (senderIds.length > 0) {
-        const { data: profiles, error: profilesError } = await supabase
-          .from('user_profiles')
-          .select('id, name, avatar_url')
-          .in('id', senderIds);
-
-        if (!profilesError) {
-          const profileMap = profiles.reduce((acc, profile) => {
-            acc[String(profile.id)] = profile;
-            return acc;
-          }, {});
-          setSenderProfiles(profileMap);
-        }
-      } else {
-        setSenderProfiles({});
-      }
-    }
-    setLoadingNotifications(false);
-  }, [shouldShowNotifications, user?.id, toast]);
-
-  useEffect(() => {
-    fetchNotifications();
-  }, [fetchNotifications]);
-
-  useEffect(() => {
-    if (!shouldShowNotifications || !user?.id) return undefined;
-    const channel = supabase
-      .channel(`nutritionist-notifications:${user.id}`)
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'notifications',
-        filter: `user_id=eq.${user.id}`
-      }, fetchNotifications)
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [shouldShowNotifications, user?.id, fetchNotifications]);
 
   const handleMarkAsRead = async (notificationId) => {
     const { error } = await markOwnNotificationsRead(user?.id, [notificationId]);
     if (error) {
       return;
     }
-    setNotifications((prev) => prev.map((n) => (n.id === notificationId ? { ...n, is_read: true } : n)));
+
   };
 
   const deleteNotification = async (notificationId) => {
     const { error } = await deleteOwnNotifications(user?.id, [notificationId]);
     if (!error) {
-      setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
+
     }
   };
 
@@ -299,9 +228,6 @@ const DashboardHeader = ({ user, logout }) => {
     const meta = getNotificationMeta(notification);
 
     if (notification.type === 'new_message') {
-      if (meta.senderId) {
-        await supabase.rpc('mark_chat_notifications_as_read', { p_user_id: user.id, p_sender_id: meta.senderId });
-      }
       await deleteNotification(notification.id);
     } else if (!notification.is_read) {
       await handleMarkAsRead(notification.id);
@@ -318,7 +244,7 @@ const DashboardHeader = ({ user, logout }) => {
     if (error) {
       return;
     }
-    setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+
   };
 
   const handleClearRead = async () => {
@@ -329,7 +255,7 @@ const DashboardHeader = ({ user, logout }) => {
     if (error) {
       return;
     }
-    setNotifications((prev) => prev.filter((n) => !n.is_read));
+
   };
 
   // Handler para logout que previne comportamentos inesperados
@@ -501,7 +427,7 @@ const DashboardHeader = ({ user, logout }) => {
                   </div>
 
                   <div className="max-h-80 overflow-y-auto p-2">
-                    {loadingNotifications ? (
+                    {notificationsError ? (<p role="alert" className="text-sm text-destructive">Falha ao atualizar. Tente novamente.</p>) : loadingNotifications ? (
                       <p className="px-2 py-6 text-center text-sm text-muted-foreground">Carregando...</p>
                     ) : notifications.length > 0 ? (
                       notifications.map((notification) => {

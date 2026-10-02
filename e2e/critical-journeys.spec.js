@@ -3,6 +3,7 @@ import { totp } from '../scripts/qa/totp.mjs';
 import { relevantDiagnostic } from '../scripts/qa/diagnostic-policy.mjs';
 import AxeBuilder from '@axe-core/playwright';
 import { readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 const fixture=JSON.parse(readFileSync('.backend-ci/browser-runtime/fixture.json'));
 async function login(page,key){await page.goto(key.startsWith('admin-')?'/admin/dashboard':'/login');await page.locator('#email').fill(fixture.personas[key].email);await page.locator('#password').fill(fixture.password);await page.getByRole('button',{name:'Entrar',exact:true}).click();}
 async function audit(page){await page.evaluate(async()=>{await Promise.all(document.getAnimations().filter(a=>a.effect?.getComputedTiming().iterations!==Infinity).map(a=>a.finished.catch(()=>{})));});const {violations}=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze();expect(violations.map(v=>({id:v.id,nodes:v.nodes.map(n=>({target:n.target,html:n.html,summary:n.failureSummary}))}))).toEqual([]);expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);}
@@ -16,6 +17,9 @@ test('disabled account is refused by actual Auth',async({page})=>{await login(pa
 test('admin without MFA cannot enter privileged panel',async({page})=>{await login(page,'admin-aal1');await expect(page.getByText('Acesso administrativo protegido',{exact:true})).toBeVisible();});
 for(const viewport of [{width:390,height:844},{width:768,height:1024},{width:1440,height:1000}]){
  test(`clinical screens accessibility and layout ${viewport.width}`,async({page})=>{
+  // Pin the synthetic peer to offline for stable visual baselines; protocol
+  // presence/TTL and two-tab behavior are verified separately over real sockets.
+  execFileSync('docker',['exec','-i','-e','PGPASSWORD=postgres','supabase_db_nello-reconstruction','psql','-X','-h','127.0.0.1','-U','supabase_admin','-d','postgres','-v','ON_ERROR_STOP=1'],{input:`delete from private.chat_presence_leases where actor_id='${fixture.personas['patient-a'].id}';`,stdio:['pipe','ignore','pipe']});
   const errors=[];page.on('pageerror',error=>errors.push(error.message));page.on('console',message=>{if(relevantDiagnostic(message.text()))errors.push(message.text());});
   await page.setViewportSize(viewport);await login(page,'nutritionist-a');await expect(page).toHaveURL(/\/nutritionist/);
   for(const module of ['hub','energy-expenditure','meal-plan','anamnese']){await page.goto(`/nutritionist/patients/${fixture.personas['patient-a'].id}/${module}`);await expect(page.locator('main')).toBeVisible();if(['hub','energy-expenditure'].includes(module))await expect(page.getByText('QA patient-a',{exact:false}).first()).toBeVisible();else await expect(page.getByRole('heading',{name:module==='meal-plan'?'Planos Alimentares':'Prontuário & Histórico'}).first()).toBeVisible();await audit(page);await expect(page).toHaveScreenshot(`${module}-${viewport.width}.png`,{fullPage:true,animations:'disabled',maxDiffPixelRatio:0.002});}

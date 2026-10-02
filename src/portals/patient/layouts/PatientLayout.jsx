@@ -3,7 +3,7 @@ import { LogOut, Shield } from 'lucide-react';
 import { useChat } from '@/contexts/ChatContext';
 import { Button } from '@/components/ui/button';
 import NotificationsPanel from '@/components/NotificationsPanel';
-import { supabase } from '@/lib/customSupabaseClient';
+import { useNotificationsData } from '@/hooks/useNotificationsData';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOnlinePresence } from '@/hooks/useOnlinePresence';
@@ -21,7 +21,7 @@ export default function PatientLayout() {
   const { unreadSenders } = useChat();
   const location = useLocation();
   const unreadCount = unreadSenders?.size || 0;
-  const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const { unreadCount: unreadNotifications } = useNotificationsData();
   const [showNotifications, setShowNotifications] = useState(false);
 
   // Register patient presence on Supabase Realtime so the nutritionist
@@ -33,36 +33,7 @@ export default function PatientLayout() {
   const isChatPage = location.pathname.includes('/chat');
 
   // Buscar notificações não lidas
-  useEffect(() => {
-    const fetchUnread = async () => {
-      if (!user) return;
-      const { count } = await supabase
-        .from('notifications')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-        .eq('is_read', false);
-      setUnreadNotifications(count || 0);
-    };
 
-    fetchUnread();
-
-    // Realtime subscription
-    const channel = supabase
-      .channel(`notifications-count:${user?.id}`)
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'notifications',
-        filter: `user_id=eq.${user?.id}`
-      }, () => {
-        fetchUnread();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [user]);
 
   // Exportar para uso nas páginas via context ou props
   // Por enquanto, vamos passar via window global temporariamente
@@ -71,6 +42,7 @@ export default function PatientLayout() {
       unreadCount: unreadNotifications,
       showPanel: () => setShowNotifications(true)
     };
+    return () => { delete window.patientNotifications; };
   }, [unreadNotifications]);
 
   const navItems = PATIENT_NAV_ITEMS.map((item) => ({

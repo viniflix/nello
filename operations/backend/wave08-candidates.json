@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "migrations": [
+    {
+      "file": "supabase/migrations/releases/20261002000000_wave08_private_realtime.sql",
+      "sha256": "e134b070c451f4aa29b87543292e9c8e78ca0d3552b85be4d7686dc9844286d9"
+    }
+  ]
+}

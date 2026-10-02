@@ -1,15 +1,13 @@
+import { useNotificationsData } from '@/hooks/useNotificationsData';
 import { PrivateImage } from '@/components/ui/private-image';
 import { markOwnNotificationsRead, deleteOwnNotifications } from '@/lib/supabase/notification-mutations';
-import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
-import React, { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/lib/customSupabaseClient';
+import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Bell, Check, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { useToast } from './ui/use-toast';
 import { useChat } from '@/contexts/ChatContext';
 import { safeInternalPath } from '@/lib/utils/navigation';
 
@@ -124,75 +122,19 @@ const NotificationsPanel = ({ isOpen, setIsOpen }) => {
   const { user } = useAuth();
   const { markChatAsRead } = useChat();
   const navigate = useNavigate();
-  const [notifications, setNotifications] = useState([]);
-  const [senderProfiles, setSenderProfiles] = useState({});
-  const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
+  const { notifications, senderProfiles, loading, error: notificationsError } = useNotificationsData();
   const userType = user?.profile?.user_type;
-
-  const fetchNotifications = useCallback(async () => {
-    if (!user) return;
-    setLoading(true);
-    const { data, error } = await supabase
-      .from('notifications')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(50);
-
-    if (error) {
-      logDiagnostic('error', 'components/NotificationsPanel.jsx:141', error);
-      setLoading(false);
-      return;
-    }
-
-    const items = data || [];
-    setNotifications(items);
-
-    const senderIds = Array.from(new Set(items.map(getMessageSenderId).filter(Boolean)));
-    if (senderIds.length) {
-      const { data: profiles } = await supabase
-        .from('user_profiles')
-        .select('id, name, avatar_url')
-        .in('id', senderIds);
-
-      const profileMap = (profiles || []).reduce((acc, profile) => {
-        acc[String(profile.id)] = profile;
-        return acc;
-      }, {});
-      setSenderProfiles(profileMap);
-    } else {
-      setSenderProfiles({});
-    }
-
-    setLoading(false);
-  }, [user]);
-
-  useEffect(() => {
-    if (isOpen) fetchNotifications();
-  }, [isOpen, fetchNotifications]);
-
-  useEffect(() => {
-    if (!user) return undefined;
-    const channel = supabase.channel(`notifications:${user.id}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` }, () => {
-        fetchNotifications();
-      })
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
-  }, [user, fetchNotifications]);
 
   const handleMarkAsRead = async (id) => {
     const { error } = await markOwnNotificationsRead(user?.id, [id]);
     if (error) { return false; }
-    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, is_read: true } : n)));
+
   };
 
   const deleteNotification = async (id) => {
     const { error } = await deleteOwnNotifications(user?.id, [id]);
     if (error) { return false; }
-    setNotifications((prev) => prev.filter((n) => n.id !== id));
+
   };
 
   const handleAction = async (notification) => {
@@ -216,7 +158,6 @@ const NotificationsPanel = ({ isOpen, setIsOpen }) => {
     if (error) {
       return;
     }
-    fetchNotifications();
   };
 
   const handleClearRead = async () => {
@@ -226,7 +167,6 @@ const NotificationsPanel = ({ isOpen, setIsOpen }) => {
     if (error) {
       return;
     }
-    fetchNotifications();
   };
 
   const hasUnread = notifications.some((n) => !n.is_read);
@@ -259,7 +199,7 @@ const NotificationsPanel = ({ isOpen, setIsOpen }) => {
           )}
         </CardHeader>
         <CardContent className="max-h-[60vh] space-y-3 overflow-y-auto">
-          {loading ? (
+          {notificationsError ? (<p role="alert" className="text-sm text-destructive">Falha ao atualizar. Tente novamente.</p>) : loading ? (
             <p>Carregando...</p>
           ) : notifications.length > 0 ? (
             notifications.map((notification) => {

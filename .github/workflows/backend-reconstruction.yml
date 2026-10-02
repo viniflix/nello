@@ -63,6 +63,7 @@ jobs:
         if: ${{ !cancelled() && steps.rebuild.outcome == 'success' }}
         run: |
           node scripts/qa/browser-fixture.mjs
+          node scripts/qa/realtime-boundaries.mjs
           node scripts/qa/auth-onboarding.mjs
           node scripts/qa/edge-boundaries.mjs
           node scripts/qa/edge-expiry.mjs
@@ -88,6 +89,7 @@ jobs:
             .backend-ci/edge-results/
             .backend-ci/edge-boundary-results/
             .backend-ci/storage-results/
+            .backend-ci/realtime-results/
             .backend-ci/forward-results/
             .backend-ci/auth-onboarding-results/
             .backend-ci/auth-captcha-results/

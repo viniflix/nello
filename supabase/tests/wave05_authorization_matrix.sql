@@ -23,7 +23,7 @@ do $test$ declare c integer;k text;begin
  begin update public.user_profiles set clinical_flags='{"forged":true}' where id=auth.uid();raise exception 'self_clinical_flags_allowed';exception when insufficient_privilege then null;end;
  update public.user_profiles set name='QA P1 updated',weight=65,height=170 where id=auth.uid();
  if exists(select 1 from public.growth_records where patient_id=auth.uid()) then raise exception 'implicit_unvalidated_assessment';end if;
- insert into public.chats(from_id,to_id,message) values(auth.uid(),'10000000-0000-0000-0000-000000000501','synthetic valid');
+ perform public.send_chat_message('10000000-0000-0000-0000-000000000501','synthetic valid','text',null,'30000000-0000-0000-0000-000000000501',auth.uid());
  begin insert into public.chats(from_id,to_id,message) values('10000000-0000-0000-0000-000000000501',auth.uid(),'forged sender');raise exception 'forged_chat_sender_allowed';exception when insufficient_privilege then null;end;
  begin insert into public.chats(from_id,to_id,message) values(auth.uid(),'10000000-0000-0000-0000-000000000502','cross clinic');raise exception 'cross_clinic_chat_allowed';exception when insufficient_privilege then null;end;
  begin perform public.get_chat_recipient_profile('20000000-0000-0000-0000-000000000502');raise exception 'foreign_recipient_profile_leaked';exception when insufficient_privilege then null;end;

@@ -206,8 +206,7 @@ const ChatMessage = ({ msg, isSender, onImageClick }) => {
 
 const ChatPage = ({ propRecipientId, isEmbedded = false, initialDraft = '' }) => {
   const { user } = useAuth();
-  const { messages, sendMessage, fetchMessages, loading: messagesLoading, markChatAsRead } = useChat();
-  const { isUserOnline } = useOnlinePresence();
+  const { messages, sendMessage, fetchMessages, loading: messagesLoading, markChatAsRead, hasMoreMessages, loadOlderMessages, loadError, closeConversation } = useChat();
   const { patientId: urlPatientId } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -222,7 +221,10 @@ const ChatPage = ({ propRecipientId, isEmbedded = false, initialDraft = '' }) =>
   const fileInputRef = useRef(null);
   const initialDraftAppliedRef = useRef(false);
   const [isSending, setIsSending] = useState(false);
-  const { setTyping, isUserTyping } = useOnlinePresence();
+  const { setTyping, isUserTyping, isUserOnline, presenceReady, isRelationshipActive } = useOnlinePresence();
+  const sendIntent = useRef(null);
+  const recipientEpoch = useRef(0);
+  const scrollRecipient = useRef(null);
   const typingTimeoutRef = useRef(null);
   // --- MUDANÇA NO ESTADO DO MODAL ---
   const [modalMedia, setModalMedia] = useState({ path: null, type: null });
@@ -244,6 +246,7 @@ const ChatPage = ({ propRecipientId, isEmbedded = false, initialDraft = '' }) =>
 
   const isArchived = React.useMemo(() => {
     if (!user || !recipient) return false;
+    if (presenceReady && !isRelationshipActive(recipientId)) return true;
     
     // Se o usuário logado está inativo, tudo está "arquivado" para ele
     if (user?.profile?.is_active === false) return true;
@@ -258,19 +261,22 @@ const ChatPage = ({ propRecipientId, isEmbedded = false, initialDraft = '' }) =>
         // Um chat é considerado "arquivado" apenas se o paciente estiver explicitamente inativo.
         return recipient.is_active === false;
     }
-  }, [user, recipient]);
+  }, [user, recipient, recipientId, presenceReady, isRelationshipActive]);
 
   const fetchRecipient = useCallback(async (id) => {
     if (!id) {
       setRecipientLoading(false); 
       return;
     }
+    const epoch = ++recipientEpoch.current;
+    setRecipient(null);
     setRecipientLoading(true); 
 
     const { data, error } = await supabase.rpc('get_chat_recipient_profile', {
       recipient_id: id
     });
     
+    if (epoch !== recipientEpoch.current) return;
     const recipientData = data ? data[0] : null;
 
     if (error) {
@@ -289,33 +295,38 @@ const ChatPage = ({ propRecipientId, isEmbedded = false, initialDraft = '' }) =>
 
   useEffect(() => {
     fetchRecipient(recipientId);
+    return () => { recipientEpoch.current += 1; };
   }, [recipientId, fetchRecipient]);
 
-  useEffect(() => { if (user && recipientId) fetchMessages(user.id, recipientId); }, [user, recipientId, fetchMessages]);
-  
-  // Rolar automaticamente para o final quando as mensagens mudam ou ao montar
+  const userId = user?.id;
   useEffect(() => {
-    if (messagesContainerRef.current && messages.length > 0) {
-      // Usa setTimeout para garantir que o DOM foi atualizado
-      setTimeout(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-      }, 100);
-    }
-  }, [messages]);
+    sendIntent.current = null;
+    setNewMessage(initialDraft || ''); setMediaFile(null); setMediaPreview(null); setMediaType(null);
+    if (userId && recipientId) void fetchMessages(userId, recipientId);
+    return () => { clearTimeout(typingTimeoutRef.current); setTyping(false); closeConversation(); };
+  }, [userId, recipientId, fetchMessages, closeConversation, setTyping, initialDraft]);
 
-  // Rolar para o fim na carga inicial
+  const latestId = messages.at(-1)?.id;
   useEffect(() => {
-    if (messagesContainerRef.current && !messagesLoading && messages.length > 0) {
-      setTimeout(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
-      }, 200);
+    const area = messagesContainerRef.current;
+    if (!area || !latestId) return;
+    if (scrollRecipient.current !== recipientId || area.scrollHeight - area.scrollTop - area.clientHeight < 250) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+      scrollRecipient.current = recipientId;
     }
-  }, [messagesLoading, messages.length]);
+  }, [latestId, recipientId, messagesLoading]);
+  const loadOlder = async () => {
+    const area = messagesContainerRef.current;
+    if (!area) return;
+    const height = area.scrollHeight, top = area.scrollTop;
+    await loadOlderMessages();
+    requestAnimationFrame(() => { if (messagesContainerRef.current === area) area.scrollTop = top + area.scrollHeight - height; });
+  };
 
   useEffect(() => { if(recipientId) markChatAsRead(recipientId); }, [recipientId, markChatAsRead, messages]);
 
   const handleTyping = () => {
-    setTyping(true);
+    setTyping(true, recipientId);
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     typingTimeoutRef.current = setTimeout(() => {
       setTyping(false);
@@ -349,38 +360,32 @@ const ChatPage = ({ propRecipientId, isEmbedded = false, initialDraft = '' }) =>
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
-    if ((newMessage.trim() === '' && !mediaFile) || !recipientId || isSending) return;
+    if ((!newMessage.trim() && !mediaFile) || !recipientId || !user?.id || isSending) return;
+    const actor = user.id, destination = recipientId, text = newMessage.trim();
+    const previous = sendIntent.current;
+    const intent = previous?.actor === actor && previous.recipient === destination && previous.text === text && previous.file === mediaFile
+      ? previous : { actor, recipient: destination, text, file: mediaFile, type: mediaFile ? mediaType : 'text', id: crypto.randomUUID(), path: null };
+    sendIntent.current = intent;
     setIsSending(true);
-
-    let mediaPath = null;
-    let messageType = 'text';
-    let messageText = newMessage.trim();
-
-    if (mediaFile) {
-      messageType = mediaType;
-      messageText = (mediaType === 'audio') ? 'Mensagem de áudio' : mediaFile.name;
-      
-      try { validateUploadSelection('chat_media', mediaFile); } catch {
-        toast({ title: 'Arquivo inválido', description: 'Revise o formato e o limite de 20 MB.', variant: 'destructive' });
-        setIsSending(false); return;
+    try {
+      if (intent.file && !intent.path) {
+        validateUploadSelection('chat_media', intent.file);
+        intent.path = `${actor}/${crypto.randomUUID()}.${fileExtensionForMime(intent.file.type)}`;
+        try { await uploadVerifiedFile('chat_media', intent.path, intent.file, { chatRecipientId: destination }); }
+        catch (error) { intent.path = null; throw error; }
       }
-      const fileExtension = fileExtensionForMime(mediaFile.type);
-      const filePath = `${user.id}/${crypto.randomUUID()}.${fileExtension}`;
-      try {
-        await uploadVerifiedFile('chat_media', filePath, mediaFile, { chatRecipientId: recipientId });
-      } catch (error) { toast({ title: "Erro no upload", description: toPortugueseError(error, 'Não foi possível enviar o arquivo.'), variant: "destructive" }); setIsSending(false); return; }
-      mediaPath = filePath;
-      
-      if (mediaType === 'audio') {
-        messageText = '';
+      const sent = await sendMessage({ to_id: destination, message: intent.file ? (intent.type === 'audio' ? '' : intent.file.name) : text,
+        message_type: intent.type, media_url: intent.path, client_message_id: intent.id });
+      if (sent && sendIntent.current === intent) {
+        sendIntent.current = null;
+        setNewMessage(''); setMediaFile(null); setMediaPreview(null); setMediaType(null); setTyping(false);
+        if (fileInputRef.current) fileInputRef.current.value = '';
       }
-    }
-
-    await sendMessage({ from_id: user.id, to_id: recipientId, message: messageText, message_type: messageType, media_url: mediaPath });
-    setNewMessage(''); setMediaFile(null); setMediaPreview(null); setMediaType(null);
-    if(fileInputRef.current) fileInputRef.current.value = ""; setIsSending(false);
+    } catch (error) {
+      toast({ title: 'Falha no envio', description: toPortugueseError(error, 'O rascunho foi mantido. Tente novamente.'), variant: 'destructive' });
+    } finally { setIsSending(false); }
   };
-  
+
   const startRecording = async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -421,13 +426,13 @@ const ChatPage = ({ propRecipientId, isEmbedded = false, initialDraft = '' }) =>
     }
   };
   
-  const groupedMessages = messages.reduce((acc, msg) => {
+  const groupedMessages = messages.filter(msg => (msg.from_id === user?.id && msg.to_id === recipientId) || (msg.to_id === user?.id && msg.from_id === recipientId)).reduce((acc, msg) => {
     const date = format(parseISO(msg.created_at), 'yyyy-MM-dd');
     if (!acc[date]) acc[date] = [];
     acc[date].push(msg); return acc;
   }, {});
 
-  if (messagesLoading || recipientLoading) return (
+  if ((messagesLoading && !messages.length) || recipientLoading) return (
     <div className={`flex flex-col bg-slate-50 ${isEmbedded ? 'h-full' : 'h-screen'}`}>
       <header className="shrink-0 bg-white border-b p-4 flex items-center shadow-md z-30 opacity-50">
         <div className="w-10 h-10 bg-primary/10 rounded-full mr-3" />
@@ -498,6 +503,8 @@ const ChatPage = ({ propRecipientId, isEmbedded = false, initialDraft = '' }) =>
 
       {/* Lista de mensagens - área com rolagem */}
       <main ref={messagesContainerRef} className="flex-1 overflow-y-auto p-4 space-y-2">
+        {loadError && <p role="alert" className="text-sm text-destructive">Falha ao atualizar o chat. <Button variant="link" onClick={() => fetchMessages(user.id, recipientId)}>Tentar novamente</Button></p>}
+        {hasMoreMessages && <Button variant="outline" disabled={messagesLoading} onClick={loadOlder}>Carregar mensagens anteriores</Button>}
         {Object.entries(groupedMessages).map(([date, msgs]) => (
           <Fragment key={date}>
             <DateSeparator date={date} />
