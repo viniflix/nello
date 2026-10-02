@@ -27,9 +27,9 @@ describe('draft revisions and atomic meals', () => {
  it('explicitly flushes the pending header with its confirmed revision', async () => {const h=await started();act(()=>h.result.current.savePlanInfo({name:'New header'}));await act(async()=>{await h.result.current.flushPlanInfo();});expect(mocks.updateDraftMealPlan).toHaveBeenCalledWith(55,{name:'New header'},base.updated_at);});
  it('serializes headers and advances CAS only after confirmation', async () => {
   let finish; mocks.updateDraftMealPlan.mockImplementationOnce(()=>new Promise(resolve=>{finish=resolve;}));const h=await started();
-  act(()=>h.result.current.savePlanInfo({name:'First'}));let first;act(()=>{first=h.result.current.flushPlanInfo();});
-  await vi.waitFor(()=>expect(finish).toBeTypeOf('function'));
-  act(()=>h.result.current.savePlanInfo({name:'Last'}));let last;act(()=>{last=h.result.current.flushPlanInfo();});
+  act(()=>h.result.current.savePlanInfo({name:'First'}));let first;await act(async()=>{first=h.result.current.flushPlanInfo();await Promise.resolve();});
+  expect(finish).toBeTypeOf('function');
+  act(()=>h.result.current.savePlanInfo({name:'Last'}));let last;await act(async()=>{last=h.result.current.flushPlanInfo();await Promise.resolve();});
   expect(mocks.updateDraftMealPlan).toHaveBeenCalledTimes(1);
   await act(async()=>{finish({data:{...base,name:'First',updated_at:'2026-10-01T11:00:00Z'},error:null});await Promise.all([first,last]);});
   expect(mocks.updateDraftMealPlan).toHaveBeenNthCalledWith(2,55,{name:'Last'},'2026-10-01T11:00:00Z');expect(h.result.current.saveStatus).toBe('saved');
