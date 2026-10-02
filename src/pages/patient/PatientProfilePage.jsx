@@ -69,7 +69,7 @@ export default function PatientProfilePage() {
 
     const { data, error } = await supabase
       .from('user_achievements')
-      .select('*, achievements(name, description, icon_name)')
+      .select("id,user_id,achievement_id,achieved_at, achievements(name, description, icon_name)")
       .eq('user_id', user.id);
 
     if (error) {

@@ -69,7 +69,7 @@ export default function AvatarUpload({ size = 'large', showChangeButton = true }
         .from('user_profiles')
         .update({ avatar_url: avatarReference })
         .eq('id', user.id)
-        .select()
+        .select("id,name,user_type,crn,birth_date,gender,height,weight,goal,nutritionist_id,created_at,patient_category,fiscal_data,preferences,avatar_url,phone,address,specialties,education,bio,is_active,cpf,occupation,civil_status,email,observations,is_admin,clinic_settings,slug,invite_code,patient_invite_code,needs_password_reset,ethnicity,last_seen_at,clinical_flags,is_simulation,simulation_owner_id")
         .single();
 
       if (updateError) {

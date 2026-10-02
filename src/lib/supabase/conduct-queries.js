@@ -100,7 +100,7 @@ export const getConductSuggestions = async ({ nutritionistId, patientId = null, 
     try {
         let query = supabase
             .from('conduct_suggestions')
-            .select('*')
+            .select('id,nutritionist_id,patient_id,suggestion_key,title,rationale,suggested_conduct,lab_context,goal_context,status,created_at')
             .eq('nutritionist_id', nutritionistId)
             .order('created_at', { ascending: false })
             .limit(limit);

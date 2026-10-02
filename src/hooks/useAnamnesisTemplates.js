@@ -16,7 +16,7 @@ export function useAnamnesisTemplates() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('anamnesis_templates')
-        .select('*')
+        .select("id,nutritionist_id,title,description,sections,is_system_default,is_active,created_at,updated_at,version")
         .or(`nutritionist_id.eq.${user?.id},is_system_default.eq.true`)
         .eq('is_active', true)
         .order('is_system_default', { ascending: false }) // Globais primeiro
@@ -31,7 +31,7 @@ export function useAnamnesisTemplates() {
   const getTemplate = useCallback(async (templateId) => {
     const { data, error } = await supabase
       .from('anamnesis_templates')
-      .select('*')
+      .select("id,nutritionist_id,title,description,sections,is_system_default,is_active,created_at,updated_at,version")
       .eq('id', templateId)
       .or(`nutritionist_id.eq.${user.id},is_system_default.eq.true`)
       .eq('is_active', true)
@@ -53,7 +53,7 @@ export function useAnamnesisTemplates() {
           version: 1,
           is_system_default: false
         })
-        .select()
+        .select("id,nutritionist_id,title,description,sections,is_system_default,is_active,created_at,updated_at,version")
         .single();
         
       if (error) throw error;
@@ -84,7 +84,7 @@ export function useAnamnesisTemplates() {
         })
         .eq('id', id)
         .eq('nutritionist_id', user.id) // Security check
-        .select()
+        .select("id,nutritionist_id,title,description,sections,is_system_default,is_active,created_at,updated_at,version")
         .single();
         
       if (error) throw error;
@@ -147,7 +147,7 @@ export function useAnamnesisTemplates() {
           is_system_default: false,
         }));
       if (copies.length === 0) return [];
-      const { data, error } = await supabase.from('anamnesis_templates').insert(copies).select();
+      const { data, error } = await supabase.from('anamnesis_templates').insert(copies).select("id,nutritionist_id,title,description,sections,is_system_default,is_active,created_at,updated_at,version");
       if (error) throw error;
       return data;
     },

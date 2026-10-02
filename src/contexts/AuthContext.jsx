@@ -247,8 +247,10 @@ export function AuthProvider({ children }) {
 
     initAuth();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    let authEventEpoch = 0;
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!mounted) return;
+      const ticket = ++authEventEpoch;
 
       if (event === 'SIGNED_OUT') {
         clearPrivateClientState();
@@ -257,7 +259,10 @@ export function AuthProvider({ children }) {
         setLoading(false);
         return;
       }
-
+      // Auth notifications run under the SDK's session lock. Never await a
+      // profile RPC inside that callback: the RPC needs the same lock.
+      setTimeout(async () => {
+      if (!mounted || ticket !== authEventEpoch) return;
       // NOVO: Refresh silencioso - atualiza o token sem disparar o loader ou re-buscar o perfil
       if (event === 'TOKEN_REFRESHED') {
         if (session?.user) {
@@ -296,6 +301,7 @@ export function AuthProvider({ children }) {
       } catch (err) {
         if (import.meta.env.DEV) logDiagnostic('error', 'contexts/AuthContext.jsx:316', '[AuthContext] Erro no handler onAuthStateChange:', err);
       }
+      }, 0);
     });
 
     return () => {

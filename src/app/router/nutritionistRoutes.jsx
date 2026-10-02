@@ -2,8 +2,8 @@ import React from 'react';
 import { Route, Navigate } from 'react-router-dom';
 import { ProtectedRoute } from './routeGuards';
 import AdminAccessGate from '@/portals/admin/components/AdminAccessGate.jsx';
-import NutritionistLayout from '@/portals/nutritionist/layouts/NutritionistLayout.jsx';
 import { lazyWithReload } from '@/lib/utils/lazyWithReload';
+const NutritionistLayout = lazyWithReload(() => import('@/portals/nutritionist/layouts/NutritionistLayout.jsx'), 'nutritionist:layout');
 
 // Lazy load das páginas do nutricionista
 const route = (key, importer) => lazyWithReload(importer, `nutritionist:${key}`);

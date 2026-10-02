@@ -55,7 +55,7 @@ export const getAppointmentNotifications = async ({
     try {
         let query = supabase
             .from('appointment_notifications')
-            .select('*')
+            .select('id,appointment_id,nutritionist_id,patient_id,scheduled_for,delivery_status')
             .order('scheduled_for', { ascending: true })
             .limit(limit);
 

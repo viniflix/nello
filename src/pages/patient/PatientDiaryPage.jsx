@@ -118,12 +118,7 @@ export default function PatientDiaryPage() {
     // Filtrar apenas refeições NÃO deletadas (deleted_at IS NULL)
     const { data: mealsData, error } = await supabase
       .from('meals')
-      .select(`
-        *,
-        meal_items (
-          *
-        )
-      `)
+      .select("id,patient_id,meal_date,meal_time,meal_type,notes,total_calories,total_protein,total_fat,total_carbs,created_at,updated_at,is_edited,meal_plan_meal_id,adherence_score,meal_plan_id,deleted_at,photo_url,care_episode_id,\n        meal_items(id,meal_id,name,quantity,calories,protein,fat,carbs,unit,reference_food_id,nutritionist_food_id,grams,measure_id)\n      ")
       .eq('patient_id', user.id)
       .eq('meal_date', dateStr)
       .is('deleted_at', null)

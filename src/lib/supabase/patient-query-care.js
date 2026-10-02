@@ -3,6 +3,7 @@ import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import { supabase } from '@/lib/customSupabaseClient';
 
 import { isExpectedRequestCancellation, logSupabaseError } from '@/lib/supabase/query-helpers';
+import {collectBoundedPages} from './bounded-pages';
 
 
 
@@ -101,27 +102,26 @@ export const getActiveGoalForEnergy = async (patientId) => {
 
 export const fetchAllNutritionistPatients = async (nutritionistId, {signal} = {}) => {
     try {
-        const [{ data: carePatients, error: careError }, { data: pendingLinks, error: pendingError }] = await Promise.all([
-            supabase.rpc('list_nutritionist_care_patients').abortSignal(signal),
-            supabase
+        const [carePatients, pendingLinks] = await Promise.all([
+            collectBoundedPages((offset, size) => supabase.rpc('list_nutritionist_care_patients').range(offset, offset + size - 1).abortSignal(signal), {signal}),
+            collectBoundedPages((offset, size) => supabase
                 .from('nutritionist_patients')
                 .select('patient_id, status')
                 .eq('nutritionist_id', nutritionistId)
-                .eq('status', 'pending').abortSignal(signal)
+                .eq('status', 'pending').order('patient_id').range(offset, offset + size - 1).abortSignal(signal), {signal})
         ]);
-
-        if (careError) throw careError;
-        if (pendingError) throw pendingError;
 
         const pendingIds = (pendingLinks || []).map(link => link.patient_id);
         let pending = [];
         if (pendingIds.length > 0) {
+            for (let offset = 0; offset < pendingIds.length; offset += 200) {
             const { data: pendingProfiles, error: profileError } = await supabase
                 .from('user_profiles')
-                .select('*')
-                .in('id', pendingIds).abortSignal(signal);
+                .select('id,name,email,cpf,phone,avatar_url,created_at,birth_date,gender,is_active,patient_category')
+                .in('id', pendingIds.slice(offset, offset + 200)).abortSignal(signal);
             if (profileError) throw profileError;
-            pending = (pendingProfiles || []).map(profile => ({ ...profile, link_status: 'pending' }));
+            pending.push(...(pendingProfiles || []).map(profile => ({ ...profile, link_status: 'pending' })));
+            }
         }
 
         const normalized = carePatients || [];

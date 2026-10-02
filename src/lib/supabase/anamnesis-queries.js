@@ -22,7 +22,7 @@ export const getAnamnesisTemplates = async (nutritionistId) => {
     try {
         const { data, error } = await supabase
             .from('anamnesis_templates')
-            .select('*')
+            .select("id,nutritionist_id,title,description,sections,is_system_default,is_active,created_at,updated_at,version")
             .or(`is_system_default.eq.true,nutritionist_id.eq.${nutritionistId}`)
             .eq('is_active', true)
             .order('is_system_default', { ascending: false })
@@ -43,7 +43,7 @@ export const getTemplateById = async (templateId) => {
     try {
         const { data, error } = await supabase
             .from('anamnesis_templates')
-            .select('*')
+            .select("id,nutritionist_id,title,description,sections,is_system_default,is_active,created_at,updated_at,version")
             .eq('id', templateId)
             .single();
 
@@ -70,7 +70,7 @@ export const createCustomTemplate = async (templateData) => {
                 is_system_default: false,
                 is_active: true
             }])
-            .select()
+            .select("id,nutritionist_id,title,description,sections,is_system_default,is_active,created_at,updated_at,version")
             .single();
 
         if (error) throw error;
@@ -149,7 +149,7 @@ export const getAnamnesisById = async (anamnesisId) => {
         // Buscar anamnese
         const { data: anamnesisData, error: anamnesisError } = await supabase
             .from('anamnesis_records')
-            .select('*')
+            .select("id,patient_id,template_id,nutritionist_id,version,date,content,notes,status,created_at,updated_at,template_snapshot,public_access_token,token_expires_at,lgpd_consented,lgpd_consented_at,lgpd_ip_address,history_log,attachments,filled_by,appointment_id,care_episode_id")
             .eq('id', anamnesisId)
             .single();
 
@@ -217,7 +217,7 @@ export const createAnamnesis = async (anamnesisData) => {
                 status: anamnesisData.status || 'draft',
                 version: 1
             }])
-            .select()
+            .select("id,patient_id,template_id,nutritionist_id,version,date,content,notes,status,created_at,updated_at,template_snapshot,public_access_token,token_expires_at,lgpd_consented,lgpd_consented_at,lgpd_ip_address,history_log,attachments,filled_by,appointment_id,care_episode_id")
             .single();
 
         if (error) throw error;
@@ -254,7 +254,7 @@ export const updateAnamnesis = async (anamnesisId, updatedData) => {
                 updated_at: new Date().toISOString()
             })
             .eq('id', anamnesisId)
-            .select()
+            .select("id,patient_id,template_id,nutritionist_id,version,date,content,notes,status,created_at,updated_at,template_snapshot,public_access_token,token_expires_at,lgpd_consented,lgpd_consented_at,lgpd_ip_address,history_log,attachments,filled_by,appointment_id,care_episode_id")
             .single();
 
         if (error) throw error;

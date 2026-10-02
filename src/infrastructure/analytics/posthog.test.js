@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { sanitizeAnalyticsProperties, sanitizePosthogEvent } from './posthog';
-vi.mock('posthog-js', () => ({ default: { capture: vi.fn(), get_session_id: () => '018d3b7f-81d8-7abc-8f12-aabbccddeeff' } }));
+vi.mock('./lazyPosthog', () => ({ default: { capture: vi.fn(), get_session_id: () => '018d3b7f-81d8-7abc-8f12-aabbccddeeff' } }));
 
 describe('sanitizeAnalyticsProperties', () => {
   it('minimizes root-level SDK person updates including initial URLs and arbitrary clinical fields', () => {

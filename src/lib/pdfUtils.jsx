@@ -1,12 +1,13 @@
 import { downloadSavedClinicalPdf } from './pdf/savedClinicalPdf';
 import { getTodayIsoDate } from '@/lib/utils/date';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
-import html2canvas from 'html2canvas';
 import { loadLogo } from './pdf/pdfAssets';
 import { generatePdfViaEdge } from './pdf/edgePdfFallback';
 import { formatFinancialDecimal } from './utils/financial-math';
+const loadPdfTools = async () => {
+  const [{default: jsPDF}, {default: autoTable}] = await Promise.all([import('jspdf'), import('jspdf-autotable')]);
+  return {jsPDF, autoTable};
+};
 
 const withEdgePdfFallback = async (options, generateClientPdf) => {
   try {
@@ -24,6 +25,8 @@ export const exportToPdf = async (elementId, fileName, title) => {
     return;
   }
 
+  const {jsPDF} = await loadPdfTools();
+  const {default: html2canvas} = await import('html2canvas');
   const pdf = new jsPDF('p', 'mm', 'a4');
   
   pdf.setFontSize(18);
@@ -71,6 +74,7 @@ export const exportFinancialsToPdf = async (transactions, summary, period) => {
             ...transactions.map((t) => `${t.transaction_date || ''} | ${t.paid_at || '-'} | ${t.refunded_at || '-'} | ${t.status || ''} | ${t.type || ''} | ${t.description || ''} | R$ ${formatFinancialDecimal(t.amount)}`),
         ],
     }, async () => {
+    const {jsPDF,autoTable} = await loadPdfTools();
     const doc = new jsPDF();
     const user = "Nutricionista"; // Placeholder
     
@@ -131,7 +135,8 @@ export const exportFinancialsToPdf = async (transactions, summary, period) => {
  * @param {string} patientName - Nome do paciente
  * @param {string} nutritionistName - Nome do nutricionista
  */
-export const exportAnamneseToPdf = (anamneseData, patientName, nutritionistName) => {
+export const exportAnamneseToPdf = async (anamneseData, patientName, nutritionistName) => {
+    const {jsPDF,autoTable} = await loadPdfTools();
     const doc = new jsPDF();
 
     // Título
@@ -229,6 +234,7 @@ export const exportAgendaToPdf = async (appointments, periodType, periodLabel, n
             }),
         ],
     }, async () => {
+    const {jsPDF,autoTable} = await loadPdfTools();
     const doc = new jsPDF();
 
     // Cores do projeto Nello (convertidas de HSL para RGB)

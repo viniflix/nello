@@ -49,7 +49,7 @@ export async function getProgressPhotos({ patientId, limit = 100 }) {
     try {
         const { data, error } = await supabase
             .from('progress_photos')
-            .select('*')
+            .select("id,patient_id,photo_url,photo_date,uploaded_by,notes,created_at,care_episode_id,storage_path,status,invalidated_at,invalidated_by,invalidation_reason")
             .eq('patient_id', patientId)
             .eq('status', 'active')
             .order('photo_date', { ascending: true })
@@ -133,7 +133,7 @@ export async function updateProgressPhoto({ photoId, photoDate, notes }) {
             .from('progress_photos')
             .update(patch)
             .eq('id', photoId)
-            .select()
+            .select("id,patient_id,photo_url,photo_date,uploaded_by,notes,created_at,care_episode_id,storage_path,status,invalidated_at,invalidated_by,invalidation_reason")
             .single();
         if (error) throw error;
         return { data, error: null };

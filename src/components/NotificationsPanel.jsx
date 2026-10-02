@@ -122,7 +122,9 @@ const NotificationsPanel = ({ isOpen, setIsOpen }) => {
   const { user } = useAuth();
   const { markChatAsRead } = useChat();
   const navigate = useNavigate();
-  const { notifications, senderProfiles, loading, error: notificationsError } = useNotificationsData();
+  const [cursors,setCursors]=React.useState([null]);
+  React.useEffect(()=>{setCursors([null]);},[user?.id]);
+  const { notifications, senderProfiles, loading, hasMore, error: notificationsError } = useNotificationsData({cursor:cursors.at(-1)});
   const userType = user?.profile?.user_type;
 
   const handleMarkAsRead = async (id) => {
@@ -266,6 +268,10 @@ const NotificationsPanel = ({ isOpen, setIsOpen }) => {
           ) : (
             <p className="py-8 text-center text-muted-foreground">Nenhuma notificação encontrada.</p>
           )}
+          {(hasMore||cursors.length>1)&&<nav aria-label="Páginas de notificações" className="flex items-center justify-between gap-3 py-3">
+            <Button variant="outline" disabled={loading||cursors.length===1} onClick={()=>setCursors(current=>current.slice(0,-1))}>Notificações mais recentes</Button>
+            <Button variant="outline" disabled={loading||!hasMore||notifications.length===0} onClick={()=>{const last=notifications.at(-1);setCursors(current=>[...current,{time:last.created_at,id:String(last.id)}]);}}>Notificações mais antigas</Button>
+          </nav>}
         </CardContent>
       </DialogContent>
     </Dialog>

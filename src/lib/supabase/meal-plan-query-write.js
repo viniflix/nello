@@ -98,7 +98,7 @@ export const createMealPlan = async (planData) => {
             },
         });
         if (createError) throw createError;
-        const { data, error } = await supabase.from('meal_plans').select('*').eq('id', planId).single();
+        const { data, error } = await supabase.from('meal_plans').select("id,patient_id,nutritionist_id,name,description,active_days,start_date,end_date,is_active,daily_calories,daily_protein,daily_carbs,daily_fat,created_at,updated_at,is_template,template_tags,is_draft,care_episode_id,plan_mode,prescription_status,source_snapshot,confirmed_by,confirmed_at,archived_at,archived_by,archive_reason").eq('id', planId).single();
         if (error) throw error;
         return { data, error: null };
     } catch (error) {
@@ -113,7 +113,7 @@ export const updateMealPlan = async (planId, updates) => {
             .from('meal_plans')
             .update(updates)
             .eq('id', planId)
-            .select()
+            .select("id,patient_id,nutritionist_id,name,description,active_days,start_date,end_date,is_active,daily_calories,daily_protein,daily_carbs,daily_fat,created_at,updated_at,is_template,template_tags,is_draft,care_episode_id,plan_mode,prescription_status,source_snapshot,confirmed_by,confirmed_at,archived_at,archived_by,archive_reason")
             .single();
 
         if (error) throw error;
@@ -146,7 +146,7 @@ export const setActiveMealPlan = async (planId) => {
         // Busca o plano atualizado para retornar ao caller
         const { data, error: fetchError } = await supabase
             .from('meal_plans')
-            .select('*')
+            .select("id,patient_id,nutritionist_id,name,description,active_days,start_date,end_date,is_active,daily_calories,daily_protein,daily_carbs,daily_fat,created_at,updated_at,is_template,template_tags,is_draft,care_episode_id,plan_mode,prescription_status,source_snapshot,confirmed_by,confirmed_at,archived_at,archived_by,archive_reason")
             .eq('id', planId)
             .single();
 
@@ -236,7 +236,7 @@ export const createMealPlanVersionSnapshot = async ({
                 metadata: metadata && typeof metadata === 'object' ? metadata : {},
                 created_by: createdBy || null
             }])
-            .select()
+            .select("id,meal_plan_id,nutritionist_id,patient_id,version_number,change_reason,snapshot,is_rollback,metadata,created_by,created_at,care_episode_id")
             .single();
 
         if (error) throw error;
@@ -315,7 +315,7 @@ export const restoreMealPlanVersion = async (versionId) => {
     try {
         const { data: version, error: versionError } = await supabase
             .from('meal_plan_versions')
-            .select('*')
+            .select("id,meal_plan_id,nutritionist_id,patient_id,version_number,change_reason,snapshot,is_rollback,metadata,created_by,created_at,care_episode_id")
             .eq('id', versionId)
             .single();
 
@@ -380,7 +380,7 @@ export const promoteDraftToActive = async (draftId, patientId) => {
         // Busca o plano promovido para retornar ao caller
         const { data, error: fetchError } = await supabase
             .from('meal_plans')
-            .select('*')
+            .select("id,patient_id,nutritionist_id,name,description,active_days,start_date,end_date,is_active,daily_calories,daily_protein,daily_carbs,daily_fat,created_at,updated_at,is_template,template_tags,is_draft,care_episode_id,plan_mode,prescription_status,source_snapshot,confirmed_by,confirmed_at,archived_at,archived_by,archive_reason")
             .eq('id', draftId)
             .single();
 
@@ -402,7 +402,7 @@ export const saveDraftAsPlan = async (draftId) => {
                 updated_at: new Date().toISOString()
             })
             .eq('id', draftId)
-            .select()
+            .select("id,patient_id,nutritionist_id,name,description,active_days,start_date,end_date,is_active,daily_calories,daily_protein,daily_carbs,daily_fat,created_at,updated_at,is_template,template_tags,is_draft,care_episode_id,plan_mode,prescription_status,source_snapshot,confirmed_by,confirmed_at,archived_at,archived_by,archive_reason")
             .single();
 
         if (error) throw error;
@@ -435,7 +435,7 @@ export const saveFoodSubstitutions = async (mealPlanFoodId, substitutes = []) =>
         const { data, error } = await supabase
             .from('meal_plan_food_substitutions')
             .insert(inserts)
-            .select();
+            .select("id,meal_plan_food_id,substitute_food_id,notes,created_at,quantity,unit,food_snapshot,equivalence_basis");
 
         if (error) throw error;
         return { data, error: null };

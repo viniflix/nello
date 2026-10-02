@@ -1,8 +1,8 @@
 import React from 'react';
 import { Route } from 'react-router-dom';
 import { ProtectedRoute } from './routeGuards';
-import PatientLayout from '@/portals/patient/layouts/PatientLayout.jsx';
 import { lazyWithReload } from '@/lib/utils/lazyWithReload';
+const PatientLayout = lazyWithReload(() => import('@/portals/patient/layouts/PatientLayout.jsx'), 'patient:layout');
 
 // Lazy load das páginas do paciente
 const route = (key, importer) => lazyWithReload(importer, `patient:${key}`);

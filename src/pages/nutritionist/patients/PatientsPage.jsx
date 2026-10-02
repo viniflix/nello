@@ -81,6 +81,7 @@ const PatientsPage = () => {
     const [viewMode,            setViewMode]            = useState(persisted.viewMode      || 'grid');
 
     const [activeChip,          setActiveChip]          = useState(null); // 'new30' | 'pending'
+    const [pageIndex, setPageIndex] = useState(0);
     const [showAddPatientModal, setShowAddPatientModal] = useState(false);
     const [showArchivedModal,   setShowArchivedModal]   = useState(false);
     const [copiedInvite,        setCopiedInvite]        = useState(false);
@@ -204,6 +205,10 @@ const PatientsPage = () => {
             return 0;
         });
     }, [patients, activePatients, searchTerm, filterStatus, sortOrder, activeChip, isUserOnline]);
+    const pageCount = Math.max(1, Math.ceil(filteredPatients.length / 50));
+    const currentPage = Math.min(pageIndex, pageCount - 1);
+    const visiblePatients = filteredPatients.slice(currentPage * 50, currentPage * 50 + 50);
+    useEffect(() => {setPageIndex(0);}, [searchTerm, filterStatus, sortOrder, activeChip]);
 
     // ── Contextual empty state message ───────────────────────────────────────  
     const emptyMessage = useMemo(() => {
@@ -401,7 +406,7 @@ const PatientsPage = () => {
                                 {viewMode === 'grid' ? (
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 auto-rows-fr">
                                         <AnimatePresence mode="popLayout">
-                                            {filteredPatients.map((patient) => (
+                                            {visiblePatients.map((patient) => (
                                                 <motion.div
                                                     key={`grid-${patient.id}`}
                                                     initial={{ opacity: 0, scale: 0.98 }}
@@ -429,7 +434,7 @@ const PatientsPage = () => {
                                             </TableHeader>
                                             <TableBody className="overflow-hidden">
                                                 <AnimatePresence mode="popLayout">
-                                                    {filteredPatients.map(patient => {
+                                                    {visiblePatients.map(patient => {
                                                         const isArchived = patient.is_active === false || patient.arquivadoHistorico;
                                                         return (
                                                             <motion.tr
@@ -492,6 +497,11 @@ const PatientsPage = () => {
                         )}
                     </div>
                 </CardContent>
+                {pageCount > 1 && <nav aria-label="Páginas de pacientes" className="flex items-center justify-center gap-3 p-4">
+                    <Button variant="outline" disabled={currentPage === 0} onClick={() => setPageIndex(currentPage - 1)}>Anterior</Button>
+                    <span className="text-sm">Página {currentPage + 1} de {pageCount} · {filteredPatients.length} pacientes</span>
+                    <Button variant="outline" disabled={currentPage + 1 >= pageCount} onClick={() => setPageIndex(currentPage + 1)}>Próxima</Button>
+                </nav>}
             </Card>
 
 

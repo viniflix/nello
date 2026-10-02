@@ -64,13 +64,7 @@ const CheckinResponsePage = () => {
       try {
         const { data: sessionData, error: sessionError } = await supabase
           .from('checkin_sessions')
-          .select(`
-            *,
-            checkin_templates (
-              name,
-              description
-            )
-          `)
+          .select("id,schedule_id,patient_id,nutritionist_id,template_id,token,responses,score_total,score_max,adherence_percentage,status,sent_at,completed_at,expires_at,created_at,care_episode_id,scheduled_for,fields_snapshot,\n            checkin_templates (\n              name,\n              description\n            )\n          ")
           .eq('id', sessionId)
           .single();
 
@@ -93,7 +87,7 @@ const CheckinResponsePage = () => {
         if (!fieldsData.length) {
           const { data, error: fieldsError } = await supabase
             .from('checkin_fields')
-            .select('*')
+            .select("id,template_id,label,field_type,options,score_weight,unit,is_required,order_index,created_at")
             .eq('template_id', sessionData.template_id)
             .order('order_index', { ascending: true });
           if (fieldsError) throw fieldsError;

@@ -37,7 +37,7 @@ export const getCustomMeasures = async () => {
   try {
     const { data, error } = await supabase
       .from('nutritionist_custom_measures')
-      .select('*')
+      .select("id,nutritionist_id,name,code,grams_equivalent,description,category,is_active,order_index,created_at,updated_at")
       .eq('is_active', true)
       .order('order_index', { ascending: true })
       .order('created_at', { ascending: true });
@@ -59,7 +59,7 @@ export const getAllCustomMeasures = async () => {
   try {
     const { data, error } = await supabase
       .from('nutritionist_custom_measures')
-      .select('*')
+      .select("id,nutritionist_id,name,code,grams_equivalent,description,category,is_active,order_index,created_at,updated_at")
       .order('order_index', { ascending: true })
       .order('created_at', { ascending: true });
 
@@ -129,7 +129,7 @@ export const createCustomMeasure = async (payload) => {
         description: description?.trim() || null,
         order_index: count,
       }])
-      .select()
+      .select("id,nutritionist_id,name,code,grams_equivalent,description,category,is_active,order_index,created_at,updated_at")
       .single();
 
     if (error) throw error;
@@ -170,7 +170,7 @@ export const updateCustomMeasure = async (id, payload) => {
       .from('nutritionist_custom_measures')
       .update(updateData)
       .eq('id', id)
-      .select()
+      .select("id,nutritionist_id,name,code,grams_equivalent,description,category,is_active,order_index,created_at,updated_at")
       .single();
 
     if (error) throw error;

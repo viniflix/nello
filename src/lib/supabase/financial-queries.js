@@ -5,13 +5,14 @@ import { supabase } from '@/lib/customSupabaseClient';
 import { format, startOfMonth, endOfMonth, addDays, parseISO, startOfDay } from 'date-fns';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
 import { summarizeFinancialTransactions, buildFinancialCashFlow, buildFinancialExpenseDistribution } from '@/lib/utils/financial-math';
+import {MAX_DATA_ROWS} from './bounded-pages';
 
 /** Fetch every row touching the month by competence, payment or refund date. */
 export async function getFinancialMonthRows(nutritionistId, monthDate) {
     if (!nutritionistId) throw new Error('nutritionistId is required');
     const start = format(startOfMonth(monthDate), 'yyyy-MM-dd');
     const end = format(endOfMonth(monthDate), 'yyyy-MM-dd');
-    const select = '*, patient:user_profiles!financial_transactions_patient_id_fkey(id,name,cpf)';
+    const select = "id,nutritionist_id,patient_id,type,description,amount,transaction_date,created_at,category,income_source,status,due_date,paid_at,refunded_at,payment_method,fee_percentage,net_amount,attachment_url,appointment_id,patient:user_profiles!financial_transactions_patient_id_fkey(id,name,cpf)";
     const fetchColumn = async (column) => {
         const rows = [];
         for (let offset = 0; ; offset += 1000) {
@@ -20,6 +21,7 @@ export async function getFinancialMonthRows(nutritionistId, monthDate) {
                 .gte(column, start).lte(column, end)
                 .order('id', { ascending: true }).range(offset, offset + 999);
             if (error) throw error;
+            if (rows.length+(data?.length||0)>MAX_DATA_ROWS)throw new Error('REPORT_ROW_LIMIT_REACHED');
             rows.push(...(data || []));
             if (!data || data.length < 1000) break;
         }
@@ -260,7 +262,7 @@ export async function getServices(nutritionistId) {
     // This handles cases where the column name might be different
     const { data, error } = await supabase
         .from('services')
-        .select('*')
+        .select("id,nutritionist_id,name,price,duration_minutes,active,created_at")
         .eq('nutritionist_id', nutritionistId)
         .order('name', { ascending: true });
 
@@ -348,13 +350,7 @@ export async function saveMultipleTransactions(transactions) {
 export async function getPendingPayments(nutritionistId) {
     const { data, error } = await supabase
         .from('financial_transactions')
-        .select(`
-            *,
-            patient:user_profiles!financial_transactions_patient_id_fkey(
-                id,
-                name
-            )
-        `)
+        .select("id,nutritionist_id,patient_id,type,description,amount,transaction_date,created_at,category,income_source,status,due_date,paid_at,refunded_at,payment_method,fee_percentage,net_amount,attachment_url,appointment_id,\n            patient:user_profiles!financial_transactions_patient_id_fkey(\n                id,\n                name\n            )\n        ")
         .eq('nutritionist_id', nutritionistId)
         .eq('type', 'income')
         .in('status', ['pending', 'overdue'])
@@ -381,7 +377,7 @@ export async function updateTransactionStatus(transactionId, status) {
         .update({ status, paid_at: getTodayIsoDate() })
         .eq('id', transactionId)
         .in('status', ['pending', 'overdue'])
-        .select()
+        .select("id,nutritionist_id,patient_id,type,description,amount,transaction_date,created_at,category,income_source,status,due_date,paid_at,refunded_at,payment_method,fee_percentage,net_amount,attachment_url,appointment_id")
         .single();
 
     if (error) {
@@ -411,7 +407,7 @@ export async function rescheduleTransaction(transactionId, newDate) {
         .update({ due_date: newDate, status: 'pending' })
         .eq('id', transactionId)
         .in('status', ['pending', 'overdue'])
-        .select()
+        .select("id,nutritionist_id,patient_id,type,description,amount,transaction_date,created_at,category,income_source,status,due_date,paid_at,refunded_at,payment_method,fee_percentage,net_amount,attachment_url,appointment_id")
         .single();
 
     if (error) {

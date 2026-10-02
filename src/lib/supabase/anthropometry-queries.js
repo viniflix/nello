@@ -1,6 +1,7 @@
 import { insertIdempotently } from '@/lib/supabase/idempotent-mutations';
 import { supabase } from '@/lib/customSupabaseClient';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
+import {collectBoundedPages,pageBounds} from './bounded-pages';
 import { logActivityEvent } from '@/lib/supabase/patient-queries';
 
 const isMissingColumnError = (error) => {
@@ -32,15 +33,17 @@ export const getAnthropometryRecords = async (patientId, options = {}) => {
         ascending = false,
         latestOnly = false
     } = options;
+    const bounds = pageBounds(limit, offset);
 
     try {
         const buildQuery = () => supabase
             .from('growth_records')
-            .select('*')
+            .select("id,patient_id,record_date,weight,height,head_circumference,created_at,notes,circumferences,skinfolds,bone_diameters,bioimpedance,photos,supersedes_record_id,revision_group_id,revision_number,is_latest_revision,change_reason,created_by_user_id,results,updated_at,peso_usual,care_episode_id,protocol_code,protocol_version,source_snapshot,confirmed_by,confirmed_at,status,invalidated_at,invalidated_by,invalidation_reason")
             .eq('patient_id', patientId)
             .eq('status', 'active')
             .order(orderBy, { ascending })
-            .range(offset, offset + limit - 1);
+            .order('id', {ascending})
+            .range(bounds.start, bounds.end);
 
         if (latestOnly) {
             const { data, error } = await buildQuery().eq('is_latest_revision', true);
@@ -70,17 +73,15 @@ export const getAnthropometryChartData = async (patientId) => {
             .select('id, weight, height, record_date')
             .eq('patient_id', patientId)
             .eq('status', 'active')
-            .order('record_date', { ascending: true });
+            .order('record_date', { ascending: true }).order('id', {ascending:true});
 
         let data;
-        let error;
-        ({ data, error } = await buildQuery().eq('is_latest_revision', true));
-        if (error && !isMissingColumnError(error)) throw error;
-        if (error && isMissingColumnError(error)) {
-            ({ data, error } = await buildQuery());
+        try {
+            data = await collectBoundedPages((offset,size) => buildQuery().eq('is_latest_revision', true).range(offset,offset+size-1));
+        } catch (error) {
+            if (!isMissingColumnError(error)) throw error;
+            data = await collectBoundedPages((offset,size) => buildQuery().range(offset,offset+size-1));
         }
-
-        if (error) throw error;
 
         // Calcular IMC para cada registro
         const processedData = (data || []).map(record => {
@@ -403,7 +404,7 @@ export const getPatientModuleSyncFlags = async (patientId) => {
     try {
         const { data, error } = await supabase
             .from('patient_module_sync_flags')
-            .select('*')
+            .select("patient_id,anthropometry_updated_at,needs_energy_recalc,needs_meal_plan_review,updated_at")
             .eq('patient_id', patientId)
             .maybeSingle();
 
@@ -444,7 +445,7 @@ export const clearPatientModuleSyncFlags = async (patientId, options = {}) => {
                 .from('patient_module_sync_flags')
                 .update(patch)
                 .eq('patient_id', patientId)
-                .select()
+                .select("patient_id,anthropometry_updated_at,needs_energy_recalc,needs_meal_plan_review,updated_at")
                 .maybeSingle();
             if (error) throw error;
             return { data, error: null };
@@ -461,7 +462,7 @@ export const clearPatientModuleSyncFlags = async (patientId, options = {}) => {
         const { data, error } = await supabase
             .from('patient_module_sync_flags')
             .insert(insertData)
-            .select()
+            .select("patient_id,anthropometry_updated_at,needs_energy_recalc,needs_meal_plan_review,updated_at")
             .maybeSingle();
         if (error) throw error;
         return { data, error: null };

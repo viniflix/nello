@@ -74,7 +74,7 @@ export default function AddMealPage() {
       // Buscar dados da refeição (apenas se não foi deletada)
       const { data: mealData, error: mealError } = await supabase
         .from('meals')
-        .select('*')
+        .select("id,patient_id,meal_date,meal_time,meal_type,notes,total_calories,total_protein,total_fat,total_carbs,created_at,updated_at,is_edited,meal_plan_meal_id,adherence_score,meal_plan_id,deleted_at,photo_url,care_episode_id")
         .eq('id', mealId)
         .is('deleted_at', null)
         .single();
@@ -85,7 +85,7 @@ export default function AddMealPage() {
       // Buscar itens da refeição
       const { data: itemsData, error: itemsError } = await supabase
         .from('meal_items')
-        .select('*')
+        .select("id,meal_id,name,quantity,calories,protein,fat,carbs,unit,reference_food_id,nutritionist_food_id,grams,measure_id")
         .eq('meal_id', mealId);
 
       if (itemsError) throw itemsError;
@@ -103,7 +103,7 @@ export default function AddMealPage() {
           const foodSource = item.nutritionist_food_id ? 'custom' : 'reference';
           const { data: foodData, error: foodError } = await supabase
             .from('foods')
-            .select('*')
+            .select("id,name,source,source_id,group,group_norm,description,preparation,portion_size,base_unit,calories,protein,carbs,fat,fiber,sodium,saturated_fat,trans_fat,cholesterol,sugar,calcium,iron,magnesium,phosphorus,potassium,zinc,vitamin_a,vitamin_c,vitamin_d,vitamin_e,vitamin_b12,folate,is_active,created_at,nutritionist_id")
             .eq('id', foodId)
             .single();
 

@@ -45,6 +45,8 @@ const PatientAddFoodDialog = ({
     mode = 'add' // 'add' ou 'edit'
 }) => {
     const [selectedFood, setSelectedFood] = useState(null);
+    const searchRequest = useRef(null);
+    const searchSequence = useRef(0);
     const [quantity, setQuantity] = useState('');
     const [selectedUnit, setSelectedUnit] = useState('g'); // 'g' for grams or measure object
     const [selectedMeasure, setSelectedMeasure] = useState(null); // Store the measure object if selected
@@ -96,6 +98,11 @@ const PatientAddFoodDialog = ({
 
     // Buscar alimentos com paginação
     const handleSearchFoods = useCallback(async (targetPage = 0, append = false) => {
+        searchRequest.current?.abort();
+        const ticket = ++searchSequence.current;
+        const controller = new AbortController();
+        searchRequest.current = controller;
+        const current = () => ticket === searchSequence.current && !controller.signal.aborted;
         if (!debouncedSearchTerm.trim() || debouncedSearchTerm.length < 2) {
             setSearchResults([]);
             setHasMore(false);
@@ -111,7 +118,8 @@ const PatientAddFoodDialog = ({
         }
 
         try {
-            const result = await searchFoodsPaginated(debouncedSearchTerm, targetPage);
+            const result = await searchFoodsPaginated(debouncedSearchTerm, targetPage, null, {signal:controller.signal});
+            if (!current()) return;
             
             if (append) {
                 setSearchResults(prev => [...prev, ...result.data]);
@@ -121,14 +129,14 @@ const PatientAddFoodDialog = ({
             
             setHasMore(result.hasMore);
         } catch (error) {
+            if (!current()) return;
             logDiagnostic('error', 'components/patient/PatientAddFoodDialog.jsx:123', 'Erro ao buscar alimentos:', error);
             if (!append) {
                 setSearchResults([]);
             }
             setHasMore(false);
         } finally {
-            setSearching(false);
-            setLoadingMore(false);
+            if (current()) { setSearching(false); setLoadingMore(false); }
         }
     }, [debouncedSearchTerm]);
 
@@ -139,9 +147,12 @@ const PatientAddFoodDialog = ({
         if (debouncedSearchTerm.trim().length >= 2) {
             handleSearchFoods(0, false);
         } else {
+            searchRequest.current?.abort();searchSequence.current++;
+            setSearching(false);setLoadingMore(false);
             setSearchResults([]);
             setHasMore(false);
         }
+        return () => {searchRequest.current?.abort();searchSequence.current++;};
     }, [debouncedSearchTerm]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Load more function

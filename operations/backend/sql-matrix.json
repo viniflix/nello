@@ -261,6 +261,11 @@
       "file": "wave10_clinical_calculation_contract.sql",
       "kind": "assertion-suite",
       "fixtures": []
+    },
+    {
+      "file": "wave12_bounded_queries.sql",
+      "kind": "assertion-suite",
+      "fixtures": []
     }
   ]
 }

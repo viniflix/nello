@@ -83,7 +83,7 @@ export default function PatientHomePage() {
     // 2. Buscar próxima consulta
     const { data: apptData } = await supabase
       .from('appointments')
-      .select('*')
+      .select("id,nutritionist_id,patient_id,appointment_time,notes,status,reminder_sent_at,created_at,duration,appointment_type,start_time,unregistered_patient_name,care_episode_id")
       .eq('patient_id', user.id)
       .gte('start_time', today.toISOString())
       .order('start_time', { ascending: true })
@@ -95,7 +95,7 @@ export default function PatientHomePage() {
     // 3. Buscar refeições registradas hoje (não deletadas)
     const { data: mealsData, count } = await supabase
       .from('meals')
-      .select('*', { count: 'exact' })
+      .select("id,patient_id,meal_date,meal_time,meal_type,notes,total_calories,total_protein,total_fat,total_carbs,created_at,updated_at,is_edited,meal_plan_meal_id,adherence_score,meal_plan_id,deleted_at,photo_url,care_episode_id", { count: 'exact' })
       .eq('patient_id', user.id)
       .eq('meal_date', todayStr)
       .is('deleted_at', null);

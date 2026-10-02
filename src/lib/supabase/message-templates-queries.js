@@ -56,7 +56,7 @@ export const getMessageTemplates = async ({
     try {
         let query = supabase
             .from('message_templates')
-            .select('*')
+            .select("id,nutritionist_id,template_key,name,context,channel,title_template,body_template,variables,is_active,use_count,last_used_at,metadata,created_at,updated_at")
             .or(`nutritionist_id.eq.${nutritionistId},nutritionist_id.is.null`)
             .order('created_at', { ascending: false })
             .limit(limit);
@@ -97,7 +97,7 @@ export const copyDefaultTemplate = async ({ defaultTemplateId, nutritionistId })
     try {
         const { data: defaultTpl, error: fetchErr } = await supabase
             .from('message_templates')
-            .select('*')
+            .select("id,nutritionist_id,template_key,name,context,channel,title_template,body_template,variables,is_active,use_count,last_used_at,metadata,created_at,updated_at")
             .eq('id', defaultTemplateId)
             .is('nutritionist_id', null)
             .single();
@@ -116,7 +116,7 @@ export const copyDefaultTemplate = async ({ defaultTemplateId, nutritionistId })
         if (existing) {
             const { data: full } = await supabase
                 .from('message_templates')
-                .select('*')
+                .select("id,nutritionist_id,template_key,name,context,channel,title_template,body_template,variables,is_active,use_count,last_used_at,metadata,created_at,updated_at")
                 .eq('id', existing.id)
                 .single();
             return { data: full, error: null };
@@ -164,7 +164,7 @@ export const createMessageTemplate = async ({
                 variables:       Array.isArray(variables) ? variables : [],
                 metadata:        metadata && typeof metadata === 'object' ? metadata : {}
             }])
-            .select()
+            .select("id,nutritionist_id,template_key,name,context,channel,title_template,body_template,variables,is_active,use_count,last_used_at,metadata,created_at,updated_at")
             .single();
 
         if (error) throw error;
@@ -195,7 +195,7 @@ export const updateMessageTemplate = async ({
             .update(safe)
             .eq('id', templateId)
             .eq('nutritionist_id', nutritionistId)
-            .select()
+            .select("id,nutritionist_id,template_key,name,context,channel,title_template,body_template,variables,is_active,use_count,last_used_at,metadata,created_at,updated_at")
             .single();
 
         if (error) throw error;

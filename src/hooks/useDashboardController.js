@@ -223,13 +223,13 @@ export function useDashboardController({ user }) {
       const counts=await settleResources({total:()=>
         supabase
           .from('appointments')
-          .select('*', { count: 'exact', head: true })
+          .select('id', { count: 'exact', head: true })
           .abortSignal(controller.signal)
           .eq('nutritionist_id', user.id)
           .gte('start_time', today).then(result=>({...result,data:result.count})),
         today:()=>supabase
           .from('appointments')
-          .select('*', { count: 'exact', head: true })
+          .select('id', { count: 'exact', head: true })
           .abortSignal(controller.signal)
           .eq('nutritionist_id', user.id)
           .gte('start_time', localDayStart.toISOString())

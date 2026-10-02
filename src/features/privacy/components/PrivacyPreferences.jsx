@@ -12,7 +12,11 @@ function applyChoice(allowed, user, persist = true) {
   const stored = persist ? storeAnalyticsChoice(allowed) : hasAnalyticsChoice();
   if (allowed && stored && hasAnalyticsConsent() && import.meta.env.VITE_PUBLIC_POSTHOG_KEY
     && !posthog.__loaded && !posthog.initialized) {
-    posthog.init(import.meta.env.VITE_PUBLIC_POSTHOG_KEY, posthogOptions);
+    void Promise.resolve(posthog.init(import.meta.env.VITE_PUBLIC_POSTHOG_KEY, posthogOptions)).then(() => {
+      if (!hasAnalyticsConsent(user?.id)) return;
+      posthog.opt_in_capturing?.({ captureEventName: false, enable_persistence: false });
+      identifyUser(user);
+    }).catch(() => { /* Optional analytics cannot prevent platform access. */ });
   }
   if (!posthog.__loaded && !posthog.initialized) return;
   if (allowed && stored && hasAnalyticsConsent()) {

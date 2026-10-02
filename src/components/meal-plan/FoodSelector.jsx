@@ -54,6 +54,7 @@ const FoodSelector = ({ isOpen, onClose, onSelect, targetGroup, targetCalories, 
         }
         setLoading(true);
         setSearchError(null);
+        const controller = new AbortController();
         const timer = setTimeout(async () => {
           const started = performance.now();
           try {
@@ -73,7 +74,7 @@ const FoodSelector = ({ isOpen, onClose, onSelect, targetGroup, targetCalories, 
                 query = query.eq('group', targetGroup);
             }
 
-            const { data, error } = await query;
+            const { data, error } = await query.abortSignal(controller.signal);
             if (error) throw error;
             if (requestId.current === currentRequest) setFoods(data || []);
           } catch (error) {
@@ -88,7 +89,7 @@ const FoodSelector = ({ isOpen, onClose, onSelect, targetGroup, targetCalories, 
             }
           }
         }, 300);
-        return () => { clearTimeout(timer); requestId.current += 1; };
+        return () => { clearTimeout(timer); requestId.current += 1; controller.abort(); };
     }, [isOpen, searchTerm, sourceFilter, onlySameGroup, targetGroup, retryKey]);
 
     const handleSelect = () => {

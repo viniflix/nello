@@ -84,7 +84,7 @@ export default function FoodMeasureManager({ food, isOpen, onClose }) {
           label: newMeasureLabel.trim(),
           weight_in_grams: parseFloat(newMeasureGrams)
         })
-        .select()
+        .select("id,reference_food_id,nutritionist_food_id,label,weight_in_grams,created_at,version,source_snapshot")
         .single();
 
       if (error) throw error;

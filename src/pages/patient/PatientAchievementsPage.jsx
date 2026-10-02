@@ -70,7 +70,7 @@ export default function PatientAchievementsPage() {
       // Query 1: Buscar todas as conquistas
       const { data: achievementsData, error: achievementsError } = await supabase
         .from('achievements')
-        .select('*')
+        .select("id,name,description,icon_name,criteria")
         .order('id', { ascending: true });
 
       if (achievementsError) {

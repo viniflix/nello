@@ -68,15 +68,11 @@ export const getPatientMeals = async (patientId, filters = {}, limit = 50, offse
     try {
         let query = supabase
             .from('meals')
-            .select(`
-                *,
-                meal_items (
-                    *
-                )
-            `)
+            .select("id,patient_id,meal_date,meal_time,meal_type,notes,total_calories,total_protein,total_fat,total_carbs,created_at,updated_at,is_edited,meal_plan_meal_id,adherence_score,meal_plan_id,deleted_at,photo_url,care_episode_id,\n                meal_items(id,meal_id,name,quantity,calories,protein,fat,carbs,unit,reference_food_id,nutritionist_food_id,grams,measure_id)\n            ")
             .eq('patient_id', patientId)
             .order('meal_date', { ascending: false })
             .order('meal_time', { ascending: false })
+            .order('id', { ascending: false })
             .range(offset, offset + limit - 1);
 
         // Aplicar filtros
@@ -121,7 +117,7 @@ export const getMealAuditHistory = async (mealId) => {
     try {
         const { data, error } = await supabase
             .from('meal_audit_log')
-            .select('*')
+            .select("id,patient_id,meal_id,action,meal_type,meal_date,meal_time,details,created_at,care_episode_id")
             .eq('meal_id', mealId)
             .order('created_at', { ascending: false });
 
@@ -144,7 +140,7 @@ export const getPatientAuditHistory = async (patientId, filters = {}, limit = 10
     try {
         let query = supabase
             .from('meal_audit_log')
-            .select('*')
+            .select("id,patient_id,meal_id,action,meal_type,meal_date,meal_time,details,created_at,care_episode_id")
             .eq('patient_id', patientId)
             .order('created_at', { ascending: false })
             .limit(limit);
@@ -240,16 +236,7 @@ export const getNutritionalSummary = async (patientId, startDate, endDate) => {
     try {
         const { data: meals, error } = await supabase
             .from('meals')
-            .select(`
-                *,
-                meal_items (
-                    quantity,
-                    calories,
-                    protein,
-                    carbs,
-                    fat
-                )
-            `)
+            .select("id,patient_id,meal_date,meal_time,meal_type,notes,total_calories,total_protein,total_fat,total_carbs,created_at,updated_at,is_edited,meal_plan_meal_id,adherence_score,meal_plan_id,deleted_at,photo_url,care_episode_id,\n                meal_items (\n                    quantity,\n                    calories,\n                    protein,\n                    carbs,\n                    fat\n                )\n            ")
             .eq('patient_id', patientId)
             .gte('meal_date', startDate)
             .lte('meal_date', endDate);
@@ -305,7 +292,7 @@ export const getRecentDiaryActivity = async (patientId, limit = 5) => {
     try {
         const { data, error } = await supabase
             .from('meal_audit_log')
-            .select('*')
+            .select("id,patient_id,meal_id,action,meal_type,meal_date,meal_time,details,created_at,care_episode_id")
             .eq('patient_id', patientId)
             .order('created_at', { ascending: false })
             .limit(limit);
@@ -363,7 +350,7 @@ export const getPatientReminderPreferences = async (patientId) => {
     try {
         const { data, error } = await supabase
             .from('patient_reminder_preferences')
-            .select('*')
+            .select("id,patient_id,daily_log_enabled,measurement_enabled,daily_log_time,measurement_time,channel_in_app,timezone,quiet_hours_start,quiet_hours_end,created_at,updated_at")
             .eq('patient_id', patientId)
             .maybeSingle();
 
@@ -392,7 +379,7 @@ export const upsertPatientReminderPreferences = async (patientId, preferences = 
         const { data, error } = await supabase
             .from('patient_reminder_preferences')
             .upsert(payload, { onConflict: 'patient_id' })
-            .select('*')
+            .select("id,patient_id,daily_log_enabled,measurement_enabled,daily_log_time,measurement_time,channel_in_app,timezone,quiet_hours_start,quiet_hours_end,created_at,updated_at")
             .single();
 
         if (error) throw error;

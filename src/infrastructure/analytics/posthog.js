@@ -1,7 +1,9 @@
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
-import posthog from 'posthog-js';
+import posthog from './lazyPosthog';
+import { createTimingSampler } from './timingSample';
 import { technicalIdentity } from '@/infrastructure/observability/technicalIdentity';
 import { bindConsentOwner, clearAnalyticsChoice, hasAnalyticsConsent } from '@/features/privacy/consent';
+const sampleTiming = createTimingSampler();
 
 export const POSTHOG_KEY = import.meta.env.VITE_PUBLIC_POSTHOG_KEY;
 export const POSTHOG_HOST = import.meta.env.VITE_PUBLIC_POSTHOG_HOST || 'https://us.i.posthog.com';
@@ -67,7 +69,7 @@ export function sanitizePosthogEvent(captureResult) {
     '$lib', '$lib_version', '$is_identified', '$process_person_profile', '$set', '$set_once',
     'user_type', 'is_admin', 'correlation_id', 'session_id', 'operation', 'module', 'source',
     'error_code', 'failure_reason', 'http_status', 'route', 'duration_ms', 'result_count',
-    'pages', 'page', 'flow', 'outcome', 'platform', 'app_release', 'environment', 'pixel_ratio']);
+    'pages', 'page', 'flow', 'outcome', 'platform', 'app_release', 'environment', 'pixel_ratio', 'sample_rate', 'sample_type', 'audience']);
   const original = captureResult.properties || {};
   const properties = sanitizeAnalyticsProperties(Object.fromEntries(Object.entries(original).filter(([key]) => allowed.has(key))));
   // The SDK needs its configured public project key to route the event.
@@ -129,9 +131,15 @@ export function resetUser() {
 export function track(event, properties = {}) {
   try {
     if (!POSTHOG_KEY || !hasAnalyticsConsent()) return;
+    const sessionId = getObservabilitySessionId();
+    if (event === 'data_load_timing') {
+      const sampling = sampleTiming({ session: sessionId, operation: properties.operation, duration: properties.duration_ms });
+      if (!sampling) return;
+      properties = { ...properties, ...sampling, audience: typeof window !== 'undefined' && /^\/(?:nutritionist|patient|admin)(?:\/|$)/.test(window.location.pathname) ? 'authenticated' : 'public' };
+    }
     posthog.capture(event, sanitizePosthogEvent({ event, properties: {
       ...properties,
-      session_id: getObservabilitySessionId(),
+      session_id: sessionId,
       pixel_ratio: typeof window !== 'undefined' ? window.devicePixelRatio : undefined,
       platform: 'nello',
       app_release: import.meta.env.VITE_APP_RELEASE || 'development',

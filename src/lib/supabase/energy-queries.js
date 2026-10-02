@@ -10,7 +10,7 @@ import { INJURY_CATALOG_VERSION, CLINICAL_FACTOR_REFERENCE } from '@/lib/constan
 const fetchLatestEnergyCalculation = async (patientId) => {
   return supabase
     .from('energy_expenditure_calculations')
-    .select('*')
+    .select("id,patient_id,weight,height,age,gender,protocol,activity_level,tmb,get,created_at,updated_at,get_with_activities,activities,target_weight,venta_adjusted,body_fat_percentage,tmb_protocol,tmb_result,injury_factor,mets_activities,get_result,venta_target_weight,venta_timeframe_days,venta_adjustment_kcal,final_planned_kcal,activity_factor,nutritionist_id,care_episode_id,protocol_code,protocol_version,source_snapshot,input_snapshot,output_snapshot,confirmed_by,confirmed_at")
     .eq('patient_id', patientId)
     .order('created_at', { ascending: false })
     .limit(1)

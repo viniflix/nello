@@ -29,7 +29,7 @@ export const addMealToPlan = async (mealData) => {
                 notes: notes || null,
                 order_index: order_index || 0
             }])
-            .select()
+            .select("id,meal_plan_id,name,meal_type,meal_time,order_index,notes,total_calories,total_protein,total_carbs,total_fat,created_at,updated_at")
             .single();
 
         if (error) throw error;
@@ -64,7 +64,7 @@ export const updateMealInPlan = async (mealId, updates) => {
             .from('meal_plan_meals')
             .update(normalizedUpdates)
             .eq('id', mealId)
-            .select()
+            .select("id,meal_plan_id,name,meal_type,meal_time,order_index,notes,total_calories,total_protein,total_carbs,total_fat,created_at,updated_at")
             .single();
 
         if (error) throw error;
@@ -81,7 +81,7 @@ export const deleteMealFromPlan = async (mealId) => {
             .from('meal_plan_meals')
             .delete()
             .eq('id', mealId)
-            .select()
+            .select("id,meal_plan_id,name,meal_type,meal_time,order_index,notes,total_calories,total_protein,total_carbs,total_fat,created_at,updated_at")
             .single();
 
         if (error) throw error;
@@ -113,7 +113,7 @@ export const addFoodsToMeal = async (mealId, foods = []) => {
         const { data: dbFoods, error } = await supabase
             .from('meal_plan_foods')
             .insert(inserts)
-            .select();
+            .select("id,meal_plan_meal_id,food_id,quantity,unit,calories,protein,carbs,fat,notes,order_index,created_at,patient_description,food_snapshot,measure_snapshot,equivalent_group");
 
         if (error) throw error;
 
@@ -178,7 +178,7 @@ export const addFoodToMeal = async (foodData) => {
                 patient_description: patient_description || null,
                 order_index: order_index || 0
             }])
-            .select()
+            .select("id,meal_plan_meal_id,food_id,quantity,unit,calories,protein,carbs,fat,notes,order_index,created_at,patient_description,food_snapshot,measure_snapshot,equivalent_group")
             .single();
 
         if (error) throw error;
@@ -214,7 +214,7 @@ export const updateFoodInMeal = async (foodId, updates) => {
             .from('meal_plan_foods')
             .update(otherUpdates)
             .eq('id', foodId)
-            .select('*')
+            .select("id,meal_plan_meal_id,food_id,quantity,unit,calories,protein,carbs,fat,notes,order_index,created_at,patient_description,food_snapshot,measure_snapshot,equivalent_group")
             .single();
 
         if (error) throw error;
@@ -257,7 +257,7 @@ export const removeFoodFromMeal = async (foodId) => {
             .from('meal_plan_foods')
             .delete()
             .eq('id', foodId)
-            .select()
+            .select("id,meal_plan_meal_id,food_id,quantity,unit,calories,protein,carbs,fat,notes,order_index,created_at,patient_description,food_snapshot,measure_snapshot,equivalent_group")
             .single();
 
         if (error) throw error;
@@ -344,7 +344,7 @@ export const recalculatePlanNutrition = async (planId) => {
             .from('meal_plans')
             .update(totals)
             .eq('id', planId)
-            .select()
+            .select("id,patient_id,nutritionist_id,name,description,active_days,start_date,end_date,is_active,daily_calories,daily_protein,daily_carbs,daily_fat,created_at,updated_at,is_template,template_tags,is_draft,care_episode_id,plan_mode,prescription_status,source_snapshot,confirmed_by,confirmed_at,archived_at,archived_by,archive_reason")
             .single();
 
         if (updateError) throw updateError;

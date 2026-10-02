@@ -9,8 +9,8 @@ export const getPermissionsByRole = async (role) => {
     try {
         const { data, error } = await supabase
             .from('permissions')
-            .select('*')
-            .eq('role', role);
+            .select('role,module,can_view,can_edit,can_delete')
+            .eq('role', role).order('module').limit(100);
 
         if (error) throw error;
         return { data: data || [], error: null };

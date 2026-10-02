@@ -64,7 +64,7 @@ const AddFoodPage = () => {
     useEffect(() => {
         if (mealId) {
             const fetchMeal = async () => {
-                const { data, error } = await supabase.from('meals').select('*, meal_items(*)').eq('id', mealId).single();
+                const { data, error } = await supabase.from('meals').select("id,patient_id,meal_date,meal_time,meal_type,notes,total_calories,total_protein,total_fat,total_carbs,created_at,updated_at,is_edited,meal_plan_meal_id,adherence_score,meal_plan_id,deleted_at,photo_url,care_episode_id, meal_items(id,meal_id,name,quantity,calories,protein,fat,carbs,unit,reference_food_id,nutritionist_food_id,grams,measure_id)").eq('id', mealId).single();
                 if (error || !data) {
                     toast({ title: "Erro", description: "Refeição não encontrada.", variant: "destructive" });
                     navigate('/patient/diario');
@@ -89,6 +89,7 @@ const AddFoodPage = () => {
 
     useEffect(() => {
         const generation = ++searchGeneration.current;
+        const controller = new AbortController();
         setFoods([]);
         setFoodPage(0);
         setHasMoreFoods(false);
@@ -100,7 +101,7 @@ const AddFoodPage = () => {
         setSearching(true);
         const timer = setTimeout(async () => {
             try {
-                const result = await searchFoodsPaginated(searchTerm, 0);
+                const result = await searchFoodsPaginated(searchTerm, 0, null, {signal:controller.signal});
                 if (generation !== searchGeneration.current) return;
                 setFoods(result.data);
                 setHasMoreFoods(result.hasMore);
@@ -110,7 +111,7 @@ const AddFoodPage = () => {
                 if (generation === searchGeneration.current) setSearching(false);
             }
         }, 250);
-        return () => clearTimeout(timer);
+        return () => { clearTimeout(timer); searchGeneration.current++; controller.abort(); };
     }, [searchTerm, showResults]);
 
     const loadMoreFoods = async () => {

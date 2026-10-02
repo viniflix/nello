@@ -1,9 +1,9 @@
 import React, { Suspense } from 'react';
 import { Route, Navigate } from 'react-router-dom';
 import { ProtectedRoute } from './routeGuards';
-import AdminLayout from '@/portals/admin/layouts/AdminLayout.jsx';
 import AdminAccessGate from '@/portals/admin/components/AdminAccessGate.jsx';
 import { lazyWithReload } from '@/lib/utils/lazyWithReload';
+const AdminLayout = lazyWithReload(() => import('@/portals/admin/layouts/AdminLayout.jsx'), 'admin:layout');
 
 const route = (key, importer) => lazyWithReload(importer, `admin:${key}`);
 const AdminDashboard = route('dashboard', () => import('@/pages/admin/AdminDashboard.jsx'));

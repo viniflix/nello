@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/customSupabaseClient';
-import { logSupabaseError } from '@/lib/supabase/query-helpers';
+import { logSupabaseError, isExpectedRequestCancellation } from '@/lib/supabase/query-helpers';
 import { Events, track } from '@/infrastructure/analytics/posthog';
 
 /**
@@ -46,7 +46,7 @@ export async function getFoodMeasures(foodId) {
  * @param {string} source - Optional source filter
  * @returns {Promise<{data: Array, hasMore: boolean, total: null}>}
  */
-export async function searchFoodsPaginated(searchTerm, page = 0, source = null) {
+export async function searchFoodsPaginated(searchTerm, page = 0, source = null, {signal} = {}) {
   if (!searchTerm || searchTerm.trim().length < 2) {
     return { data: [], hasMore: false, total: 0 };
   }
@@ -73,6 +73,7 @@ export async function searchFoodsPaginated(searchTerm, page = 0, source = null) 
       query = query.eq('source', source);
     }
 
+    if (signal) query = query.abortSignal(signal);
     const { data, error } = await query;
 
     if (error) {
@@ -86,7 +87,7 @@ export async function searchFoodsPaginated(searchTerm, page = 0, source = null) 
       total: null
     };
   } catch (error) {
-    logSupabaseError('Error searching foods', error);
+    if (!isExpectedRequestCancellation(error, signal)) logSupabaseError('Error searching foods', error);
     throw error;
   }
 }

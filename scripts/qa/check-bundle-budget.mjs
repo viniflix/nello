@@ -24,8 +24,9 @@ try {
   const html = await readFile(path.join(distDirectory, 'index.html'), 'utf8');
   const entryScripts = [...html.matchAll(/<script\b[^>]*\bsrc="(\/assets\/[^"?]+\.js)"/g)]
     .map((match) => `dist${match[1]}`);
+  const initialScripts = [...new Set([...entryScripts, ...[...html.matchAll(/<link\b[^>]*\brel="modulepreload"[^>]*\bhref="(\/assets\/[^"?]+\.js)"/g)].map(match=>`dist${match[1]}`)])];
   if (entryScripts.length === 0) throw new Error('No entry JavaScript found in index.html');
-  const violations = evaluateBundle(await listFiles(distDirectory), entryScripts);
+  const violations = evaluateBundle(await listFiles(distDirectory), initialScripts);
   if (violations.length) {
     console.error(violations.join('\n'));
     process.exitCode = 1;

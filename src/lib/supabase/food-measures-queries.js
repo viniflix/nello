@@ -18,7 +18,7 @@ export const getAllHouseholdMeasures = async () => {
   try {
     const { data, error } = await supabase
       .from('household_measures')
-      .select('*')
+      .select("id,name,code,ml_equivalent,grams_equivalent,description,category,is_active,order_index,created_at,version,source_code,source_version,updated_at")
       .eq('is_active', true)
       .order('order_index', { ascending: true });
 
@@ -78,10 +78,7 @@ export const getFoodMeasureById = async (id) => {
   try {
     const { data, error } = await supabase
       .from('food_household_measures')
-      .select(`
-        *,
-        measure:household_measures(*)
-      `)
+      .select("id,measure_id,quantity,grams,food_id,\n        measure:household_measures(id,name,code,ml_equivalent,grams_equivalent,description,category,is_active,order_index,created_at,version,source_code,source_version,updated_at)\n      ")
       .eq('id', id)
       .single();
 
@@ -123,10 +120,7 @@ export const createFoodMeasure = async (payload) => {
     const { data, error } = await supabase
       .from('food_household_measures')
       .insert([insertData])
-      .select(`
-        *,
-        measure:household_measures(*)
-      `)
+      .select("id,measure_id,quantity,grams,food_id,\n        measure:household_measures(id,name,code,ml_equivalent,grams_equivalent,description,category,is_active,order_index,created_at,version,source_code,source_version,updated_at)\n      ")
       .single();
 
     if (error) throw error;
@@ -160,10 +154,7 @@ export const updateFoodMeasure = async (id, payload) => {
       .from('food_household_measures')
       .update(updateData)
       .eq('id', id)
-      .select(`
-        *,
-        measure:household_measures(*)
-      `)
+      .select("id,measure_id,quantity,grams,food_id,\n        measure:household_measures(id,name,code,ml_equivalent,grams_equivalent,description,category,is_active,order_index,created_at,version,source_code,source_version,updated_at)\n      ")
       .single();
 
     if (error) throw error;

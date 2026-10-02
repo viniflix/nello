@@ -1,4 +1,4 @@
-import { updateIdempotently } from '@/lib/supabase/idempotent-mutations';
+import { insertIdempotently, updateIdempotently } from '@/lib/supabase/idempotent-mutations';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
@@ -44,7 +44,7 @@ export function useAnamnesisRunner(patientId) {
                 if (!patientId) return [];
                 const { data, error } = await supabase
                     .from('anamnesis_records')
-                    .select('*, template:template_id(title)')
+                    .select("id,patient_id,template_id,nutritionist_id,version,date,content,notes,status,created_at,updated_at,template_snapshot,public_access_token,token_expires_at,lgpd_consented,lgpd_consented_at,lgpd_ip_address,history_log,attachments,filled_by,appointment_id,care_episode_id, template:template_id(title)")
                     .eq('patient_id', patientId)
                     .order('created_at', { ascending: false })
                     .limit(50);
@@ -78,7 +78,7 @@ export function useAnamnesisRunner(patientId) {
 
                 const { data, error } = await supabase
                     .from('anamnesis_records')
-                    .select('*, template:template_id(*)')
+                    .select("id,patient_id,template_id,nutritionist_id,version,date,content,notes,status,created_at,updated_at,template_snapshot,public_access_token,token_expires_at,lgpd_consented,lgpd_consented_at,lgpd_ip_address,history_log,attachments,filled_by,appointment_id,care_episode_id, template:template_id(id,nutritionist_id,title,description,sections,is_system_default,is_active,created_at,updated_at,version)")
                     .eq('id', actualId)
                     .eq('patient_id', patientId)
                     .single();
@@ -120,7 +120,7 @@ export function useAnamnesisRunner(patientId) {
                 const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
                 const { data, error } = await supabase
                     .from('anamnesis_records')
-                    .select('*, patient:patient_id(name, slug), template:template_id(title)')
+                    .select("id,patient_id,template_id,nutritionist_id,version,date,content,notes,status,created_at,updated_at,template_snapshot,public_access_token,token_expires_at,lgpd_consented,lgpd_consented_at,lgpd_ip_address,history_log,attachments,filled_by,appointment_id,care_episode_id, patient:patient_id(name, slug), template:template_id(title)")
                     .eq('nutritionist_id', user.id)
                     .eq('status', 'pending_patient')
                     .not('public_access_token', 'is', null)
@@ -139,7 +139,7 @@ export function useAnamnesisRunner(patientId) {
             // Buscar template completo para snapshot imutável
             const { data: templateData, error: tErr } = await supabase
                 .from('anamnesis_templates')
-                .select('*')
+                .select("id,nutritionist_id,title,description,sections,is_system_default,is_active,created_at,updated_at,version")
                 .eq('id', templateId)
                 .or(`nutritionist_id.eq.${user.id},is_system_default.eq.true`)
                 .eq('is_active', true)
@@ -149,9 +149,7 @@ export function useAnamnesisRunner(patientId) {
                 throw new Error('O modelo selecionado está vazio. Escolha um formulário com perguntas.');
             }
 
-            const { data, error } = await supabase
-                .from('anamnesis_records')
-                .insert({
+            const { data, error } = await insertIdempotently('anamnesis_records', {
                     patient_id: patientId,
                     care_episode_id: episodeId || null,
                     nutritionist_id: user.id,
@@ -166,9 +164,7 @@ export function useAnamnesisRunner(patientId) {
                         description: templateData?.description || '',
                         sections: templateData?.sections?.length > 0 ? templateData.sections : getFallbackSections(),
                     },
-                })
-                .select()
-                .single();
+                });
             if (error) throw error;
             return data;
         },

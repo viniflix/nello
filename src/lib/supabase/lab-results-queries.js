@@ -23,7 +23,7 @@ export async function getPatientLabResults(patientId, limit = 50) {
     try {
         const { data, error } = await supabase
             .from('lab_results')
-            .select('*')
+            .select("id,patient_id,test_name,test_value,test_unit,reference_min,reference_max,status,test_date,notes,created_at,updated_at,pdf_url,pdf_filename,care_episode_id,reference_source,reference_snapshot,interpretation_status,confirmed_by,confirmed_at,root_result_id,supersedes_result_id,revision_number,is_latest_revision,record_status,invalidated_at,invalidated_by,invalidation_reason")
             .eq('patient_id', patientId)
             .eq('is_latest_revision', true)
             .eq('record_status', 'active')
@@ -50,7 +50,7 @@ export async function getRecentLabResults(patientId) {
 
         const { data, error } = await supabase
             .from('lab_results')
-            .select('*')
+            .select("id,patient_id,test_name,test_value,test_unit,reference_min,reference_max,status,test_date,notes,created_at,updated_at,pdf_url,pdf_filename,care_episode_id,reference_source,reference_snapshot,interpretation_status,confirmed_by,confirmed_at,root_result_id,supersedes_result_id,revision_number,is_latest_revision,record_status,invalidated_at,invalidated_by,invalidation_reason")
             .eq('patient_id', patientId)
             .eq('is_latest_revision', true)
             .eq('record_status', 'active')
@@ -73,7 +73,7 @@ export async function getLabResultById(labResultId) {
     try {
         const { data, error } = await supabase
             .from('lab_results')
-            .select('*')
+            .select("id,patient_id,test_name,test_value,test_unit,reference_min,reference_max,status,test_date,notes,created_at,updated_at,pdf_url,pdf_filename,care_episode_id,reference_source,reference_snapshot,interpretation_status,confirmed_by,confirmed_at,root_result_id,supersedes_result_id,revision_number,is_latest_revision,record_status,invalidated_at,invalidated_by,invalidation_reason")
             .eq('id', labResultId)
             .single();
 
@@ -204,7 +204,7 @@ export async function getLabResultsByTestName(patientId, testName) {
     try {
         const { data, error } = await supabase
             .from('lab_results')
-            .select('*')
+            .select("id,patient_id,test_name,test_value,test_unit,reference_min,reference_max,status,test_date,notes,created_at,updated_at,pdf_url,pdf_filename,care_episode_id,reference_source,reference_snapshot,interpretation_status,confirmed_by,confirmed_at,root_result_id,supersedes_result_id,revision_number,is_latest_revision,record_status,invalidated_at,invalidated_by,invalidation_reason")
             .eq('patient_id', patientId)
             .eq('is_latest_revision', true)
             .eq('record_status', 'active')
@@ -227,7 +227,7 @@ export async function getAbnormalLabResults(patientId) {
     try {
         const { data, error } = await supabase
             .from('lab_results')
-            .select('*')
+            .select("id,patient_id,test_name,test_value,test_unit,reference_min,reference_max,status,test_date,notes,created_at,updated_at,pdf_url,pdf_filename,care_episode_id,reference_source,reference_snapshot,interpretation_status,confirmed_by,confirmed_at,root_result_id,supersedes_result_id,revision_number,is_latest_revision,record_status,invalidated_at,invalidated_by,invalidation_reason")
             .eq('patient_id', patientId)
             .eq('is_latest_revision', true)
             .eq('record_status', 'active')
@@ -288,7 +288,7 @@ export async function getLabRiskRules(nutritionistId = null) {
     try {
         let query = supabase
             .from('lab_risk_rules')
-            .select('*')
+            .select("id,nutritionist_id,marker_key,marker_label,unit,low_threshold,high_threshold,risk_low,risk_high,is_active,config,created_at,updated_at")
             .eq('is_active', true);
 
         if (nutritionistId) {

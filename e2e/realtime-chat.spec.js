@@ -26,5 +26,13 @@ test('patient badge and notification panel share an exact count beyond the 200-r
   await expect.poll(()=>page.evaluate(()=>window.patientNotifications?.unreadCount)).toBe(before+205);
   await page.evaluate(()=>window.patientNotifications.showPanel());const panel=page.getByRole('dialog',{name:'Notificações'});await expect(panel).toBeVisible();
   await panel.getByRole('button',{name:'Marcar exibidas',exact:true}).click();await expect.poll(()=>page.evaluate(()=>window.patientNotifications?.unreadCount)).toBe(before+5);
- } finally {sql(`delete from public.notifications where user_id='${user}' and content->>'message'='Synthetic Wave8 count';`);}
+  await panel.getByRole('button',{name:'Notificações mais antigas',exact:true}).click();
+  await expect(panel.getByText('Synthetic Wave8 count',{exact:true})).toHaveCount(5);
+  sql(`insert into public.notifications(user_id,type,content) values('${user}','info','{"message":"Synthetic Wave12 newer"}'::jsonb);`);
+  await expect.poll(()=>page.evaluate(()=>window.patientNotifications?.unreadCount)).toBe(before+6);
+  await expect(panel.getByText('Synthetic Wave8 count',{exact:true})).toHaveCount(5);
+  await expect(panel.getByText('Synthetic Wave12 newer',{exact:true})).toHaveCount(0);
+  await panel.getByRole('button',{name:'Notificações mais recentes',exact:true}).click();
+  await expect(panel.getByText('Synthetic Wave12 newer',{exact:true})).toBeVisible();
+ } finally {sql(`delete from public.notifications where user_id='${user}' and content->>'message' in ('Synthetic Wave8 count','Synthetic Wave12 newer');`);}
 });

@@ -17,7 +17,7 @@ export const getCommunicationAutomations = async (nutritionistId) => {
   try {
     const { data, error } = await supabase
       .from('communication_automations')
-      .select('*')
+      .select("id,nutritionist_id,automation_key,name,description,trigger_event,channel,template_title,template_body,is_active,cooldown_hours,config,created_at,updated_at")
       .eq('nutritionist_id', nutritionistId)
       .order('created_at', { ascending: false });
 
@@ -45,7 +45,7 @@ export const upsertCommunicationAutomation = async ({
     const { data, error } = await supabase
       .from('communication_automations')
       .upsert(row, { onConflict: 'nutritionist_id,automation_key' })
-      .select('*')
+      .select("id,nutritionist_id,automation_key,name,description,trigger_event,channel,template_title,template_body,is_active,cooldown_hours,config,created_at,updated_at")
       .single();
 
     if (error) throw error;

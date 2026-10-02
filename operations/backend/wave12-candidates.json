@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "migrations": [
+    {
+      "file": "supabase/migrations/releases/20261002140000_wave12_bounded_queries.sql",
+      "sha256": "08bfc06b0cabea57c87ba20d2010d51e1b81d43e652de4fff06df78fb38f01cf"
+    }
+  ]
+}

@@ -17,10 +17,7 @@ export function useCheckins() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('checkin_templates')
-        .select(`
-          *,
-          checkin_fields (*)
-        `)
+        .select("id,nutritionist_id,name,description,frequency,send_time,send_days,is_active,metadata,created_at,updated_at,channel,\n          checkin_fields(id,template_id,label,field_type,options,score_weight,unit,is_required,order_index,created_at)\n        ")
         .eq('nutritionist_id', user?.id)
         .order('created_at', { ascending: false });
       
@@ -55,10 +52,7 @@ export function useCheckins() {
   const getTemplate = useCallback(async (templateId) => {
     const { data, error } = await supabase
       .from('checkin_templates')
-      .select(`
-        *,
-        checkin_fields (*)
-      `)
+      .select("id,nutritionist_id,name,description,frequency,send_time,send_days,is_active,metadata,created_at,updated_at,channel,\n        checkin_fields(id,template_id,label,field_type,options,score_weight,unit,is_required,order_index,created_at)\n      ")
       .eq('id', templateId)
       .eq('nutritionist_id', user?.id)
       .single();
@@ -98,10 +92,7 @@ export function useCheckins() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('checkin_schedules')
-        .select(`
-          *,
-          checkin_templates (name, frequency, send_time)
-        `)
+        .select("id,template_id,patient_id,nutritionist_id,is_active,next_send_at,last_sent_at,channel,created_at,care_episode_id,time_zone,\n          checkin_templates (name, frequency, send_time)\n        ")
         .eq('patient_id', patientId)
         .eq('nutritionist_id', user?.id);
       
@@ -153,10 +144,7 @@ export function useCheckins() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('checkin_sessions')
-        .select(`
-          *,
-          checkin_templates (name, description, checkin_fields(*))
-        `)
+        .select("id,schedule_id,patient_id,nutritionist_id,template_id,token,responses,score_total,score_max,adherence_percentage,status,sent_at,completed_at,expires_at,created_at,care_episode_id,scheduled_for,fields_snapshot,\n          checkin_templates (name, description, checkin_fields(id,template_id,label,field_type,options,score_weight,unit,is_required,order_index,created_at))\n        ")
         .eq('patient_id', user?.id)
         .eq('status', 'pending')
         .gt('expires_at', new Date().toISOString())

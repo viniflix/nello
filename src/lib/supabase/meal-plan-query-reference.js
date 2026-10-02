@@ -45,7 +45,7 @@ export const saveReferenceValues = async (planId, values) => {
                     updated_at: new Date().toISOString()
                 })
                 .eq('id', existing.id)
-                .select()
+                .select("id,meal_plan_id,weight_kg,weight_type,total_energy_kcal,energy_source,macro_mode,protein_percentage,carbs_percentage,fat_percentage,protein_g_per_kg,carbs_g_per_kg,fat_g_per_kg,target_protein_g,target_carbs_g,target_fat_g,created_at,updated_at")
                 .single();
 
             if (error) throw error;
@@ -67,7 +67,7 @@ export const saveReferenceValues = async (planId, values) => {
                     carbs_g_per_kg: macro_mode === 'g_per_kg' ? carbs_g_per_kg : null,
                     fat_g_per_kg: macro_mode === 'g_per_kg' ? fat_g_per_kg : null
                 }])
-                .select()
+                .select("id,meal_plan_id,weight_kg,weight_type,total_energy_kcal,energy_source,macro_mode,protein_percentage,carbs_percentage,fat_percentage,protein_g_per_kg,carbs_g_per_kg,fat_g_per_kg,target_protein_g,target_carbs_g,target_fat_g,created_at,updated_at")
                 .single();
 
             if (error) throw error;
@@ -83,7 +83,7 @@ export const getReferenceValues = async (planId) => {
     try {
         const { data, error } = await supabase
             .from('meal_plan_reference_values')
-            .select('*')
+            .select("id,meal_plan_id,weight_kg,weight_type,total_energy_kcal,energy_source,macro_mode,protein_percentage,carbs_percentage,fat_percentage,protein_g_per_kg,carbs_g_per_kg,fat_g_per_kg,target_protein_g,target_carbs_g,target_fat_g,created_at,updated_at")
             .eq('meal_plan_id', planId)
             .maybeSingle();
 
@@ -101,7 +101,7 @@ export const deleteReferenceValues = async (planId) => {
             .from('meal_plan_reference_values')
             .delete()
             .eq('meal_plan_id', planId)
-            .select()
+            .select("id,meal_plan_id,weight_kg,weight_type,total_energy_kcal,energy_source,macro_mode,protein_percentage,carbs_percentage,fat_percentage,protein_g_per_kg,carbs_g_per_kg,fat_g_per_kg,target_protein_g,target_carbs_g,target_fat_g,created_at,updated_at")
             .single();
 
         if (error) throw error;
@@ -153,7 +153,7 @@ export const getTemplates = async (nutritionistId) => {
     try {
         const { data, error } = await supabase
             .from('meal_plans')
-            .select('*')
+            .select("id,patient_id,nutritionist_id,name,description,active_days,start_date,end_date,is_active,daily_calories,daily_protein,daily_carbs,daily_fat,created_at,updated_at,is_template,template_tags,is_draft,care_episode_id,plan_mode,prescription_status,source_snapshot,confirmed_by,confirmed_at,archived_at,archived_by,archive_reason")
             .eq('nutritionist_id', nutritionistId)
             .eq('is_template', true)
             .order('created_at', { ascending: false });

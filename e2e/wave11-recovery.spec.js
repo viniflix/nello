@@ -5,7 +5,7 @@ async function login(page){await page.goto('/login');await page.locator('#email'
 test('patient list recovers from query failure and remains stable across empty lists/viewports/views',async({page})=>{
  const errors=[];page.on('pageerror',error=>errors.push(error.message));await login(page);
  let fail=true,empty=false,calls=0;
- await page.route('**/rest/v1/rpc/list_nutritionist_care_patients',route=>{calls++;return fail?route.abort('failed'):empty?route.fulfill({status:200,contentType:'application/json',body:'[]'}):route.continue();});
+ await page.route('**/rest/v1/rpc/list_nutritionist_care_patients**',route=>{calls++;return fail?route.abort('failed'):empty?route.fulfill({status:200,contentType:'application/json',body:'[]'}):route.continue();});
  await page.goto('/nutritionist/patients');await expect(page.getByRole('button',{name:'Tentar novamente',exact:true})).toBeVisible();
  const before=calls;await page.getByPlaceholder('Procurar paciente (Nome, Email, CPF...)').fill('no matching patient');expect(calls).toBe(before);
  fail=false;await page.getByRole('button',{name:'Tentar novamente',exact:true}).click();await page.getByPlaceholder('Procurar paciente (Nome, Email, CPF...)').fill('');await expect(page.getByText('QA patient-a',{exact:false}).first()).toBeVisible();

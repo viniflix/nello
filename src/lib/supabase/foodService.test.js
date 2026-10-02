@@ -27,4 +27,12 @@ describe('busca paginada de alimentos', () => {
     expect(result.data).toHaveLength(20);
     expect(result.hasMore).toBe(true);
   });
+  it('passes cancellation to the actual transport and keeps aborted searches out of result pages',async()=>{
+    const controller=new AbortController();
+    const query={select:vi.fn(),eq:vi.fn(),ilike:vi.fn(),order:vi.fn(),range:vi.fn(),abortSignal:vi.fn(),then:(resolve,reject)=>Promise.resolve({error:{name:'AbortError',message:'operation was aborted'}}).then(resolve,reject)};
+    for(const method of ['select','eq','ilike','order','range','abortSignal'])query[method].mockReturnValue(query);
+    mockFrom.mockReturnValue(query);
+    await expect(searchFoodsPaginated('arroz',0,null,{signal:controller.signal})).rejects.toMatchObject({name:'AbortError'});
+    expect(query.abortSignal).toHaveBeenCalledWith(controller.signal);
+  });
 });

@@ -1,7 +1,7 @@
 import {
   browserTracingIntegration,
   init,
-  replayIntegration,
+  addIntegration,
 } from '@sentry/react';
 import { technicalIdentity } from '@/infrastructure/observability/technicalIdentity';
 
@@ -89,10 +89,6 @@ export function createSentryOptions(env) {
   const replayEnabled = env.VITE_SENTRY_REPLAY_ENABLED === 'true';
   const integrations = [browserTracingIntegration()];
 
-  if (replayEnabled) {
-    integrations.push(replayIntegration({ maskAllText: true, blockAllMedia: true }));
-  }
-
   return {
     dsn: env.VITE_SENTRY_DSN,
     environment: env.MODE || 'production',
@@ -115,5 +111,11 @@ export function initializeObservability(env) {
   if (!options) return false;
 
   init(options);
+  if (env.VITE_SENTRY_REPLAY_ENABLED === 'true') {
+    // Optional replay must not add its recorder to every login download.
+    void import('./replay').then(({ createPrivateReplay }) => {
+      addIntegration(createPrivateReplay());
+    }).catch(() => { /* Error reporting remains available without replay. */ });
+  }
   return true;
 }

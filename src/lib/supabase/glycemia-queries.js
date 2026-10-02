@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/customSupabaseClient';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
 import { parseGlycemiaMgDl } from '@/lib/utils/glycemia';
+import {collectBoundedPages,pageBounds} from './bounded-pages';
 
 /**
  * Busca o histórico de glicemia do paciente
@@ -12,20 +13,20 @@ export const getGlycemiaRecords = async (patientId, options = {}) => {
     try {
         let query = supabase
             .from('glycemia_records')
-            .select('*')
+            .select("id,patient_id,nutritionist_id,date,value,condition,notes,created_at,care_episode_id")
             .eq('patient_id', patientId)
-            .order('date', { ascending: false });
+            .order('date', { ascending: false }).order('id', {ascending:false});
 
-        if (options.limit) {
-            query = query.limit(options.limit);
-        }
-        
         if (options.startDate) {
             query = query.gte('date', options.startDate);
         }
 
-        const { data, error } = await query;
-        if (error) throw error;
+        let data;
+        if (options.limit) {
+            const result = await query.limit(pageBounds(options.limit).size);
+            if (result.error) throw result.error;
+            data = result.data;
+        } else data = await collectBoundedPages((offset,size) => query.range(offset,offset+size-1));
         
         return { data, error: null };
     } catch (error) {
@@ -52,7 +53,7 @@ export const insertGlycemiaRecord = async (recordData) => {
                 notes: recordData.notes || null,
                 date: recordData.date || recordData.record_date || new Date().toISOString()
             })
-            .select()
+            .select("id,patient_id,nutritionist_id,date,value,condition,notes,created_at,care_episode_id")
             .single();
 
         if (error) throw error;

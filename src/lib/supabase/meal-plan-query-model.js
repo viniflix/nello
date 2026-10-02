@@ -3,6 +3,7 @@ import { supabase } from '@/lib/customSupabaseClient';
 
 
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
+import { collectBoundedPages } from './bounded-pages';
 
 
 export const FOOD_FIELDS = `
@@ -37,13 +38,7 @@ export const FOOD_FIELDS = `
 `;
 
 export const fetchAllRows = async (buildQuery, pageSize = 500) => {
-    const rows = [];
-    for (let offset = 0; ; offset += pageSize) {
-        const { data, error } = await buildQuery(offset, pageSize);
-        if (error) throw error;
-        rows.push(...(data || []));
-        if (!data || data.length < pageSize) return rows;
-    }
+    return collectBoundedPages(buildQuery, {pageSize});
 };
 
 export const fetchByIdsInPages = async (ids, buildQuery) => {

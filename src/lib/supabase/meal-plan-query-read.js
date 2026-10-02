@@ -8,7 +8,7 @@ import {fetchAllRows,fetchByIdsInPages,getFoodsMapByIds,FOOD_FIELDS} from './mea
 export const getMealPlans = async (patientId, onlyActive = false) => {
     try {
         const data = await fetchAllRows((offset, pageSize) => {
-            let query = supabase.from('meal_plans').select('*')
+            let query = supabase.from('meal_plans').select("id,patient_id,nutritionist_id,name,description,active_days,start_date,end_date,is_active,daily_calories,daily_protein,daily_carbs,daily_fat,created_at,updated_at,is_template,template_tags,is_draft,care_episode_id,plan_mode,prescription_status,source_snapshot,confirmed_by,confirmed_at,archived_at,archived_by,archive_reason")
                 .eq('patient_id', patientId)
                 .eq('is_draft', false)
                 .eq('is_template', false)
@@ -32,7 +32,7 @@ export const getMealPlansByIds = async (planIds, existingPlans = null) => {
         if (!plans) {
             plans = [];
             for (let offset = 0; offset < planIds.length; offset += 400) {
-                const { data, error } = await supabase.from('meal_plans').select('*').in('id', planIds.slice(offset, offset + 400));
+                const { data, error } = await supabase.from('meal_plans').select("id,patient_id,nutritionist_id,name,description,active_days,start_date,end_date,is_active,daily_calories,daily_protein,daily_carbs,daily_fat,created_at,updated_at,is_template,template_tags,is_draft,care_episode_id,plan_mode,prescription_status,source_snapshot,confirmed_by,confirmed_at,archived_at,archived_by,archive_reason").in('id', planIds.slice(offset, offset + 400));
                 if (error) throw error;
                 plans.push(...(data || []));
             }
@@ -41,7 +41,7 @@ export const getMealPlansByIds = async (planIds, existingPlans = null) => {
 
         // Buscar refeições do plano
         const meals = await fetchByIdsInPages(planIds, (ids, offset, pageSize) => supabase
-            .from('meal_plan_meals').select('*').in('meal_plan_id', ids)
+            .from('meal_plan_meals').select("id,meal_plan_id,name,meal_type,meal_time,order_index,notes,total_calories,total_protein,total_carbs,total_fat,created_at,updated_at").in('meal_plan_id', ids)
             .order('order_index', { ascending: true }).order('id', { ascending: true })
             .range(offset, offset + pageSize - 1));
 
@@ -56,7 +56,7 @@ export const getMealPlansByIds = async (planIds, existingPlans = null) => {
 
         // 1. Batch Fetch: Todos os alimentos de todas as refeições do plano
         const allFoods = await fetchByIdsInPages(mealIds, (ids, offset, pageSize) => supabase
-            .from('meal_plan_foods').select('*').in('meal_plan_meal_id', ids)
+            .from('meal_plan_foods').select("id,meal_plan_meal_id,food_id,quantity,unit,calories,protein,carbs,fat,notes,order_index,created_at,patient_description,food_snapshot,measure_snapshot,equivalent_group").in('meal_plan_meal_id', ids)
             .order('order_index', { ascending: true }).order('id', { ascending: true })
             .range(offset, offset + pageSize - 1));
 
@@ -216,7 +216,7 @@ export const getActiveMealPlan = async (patientId) => {
 
         const { data, error } = await supabase
             .from('meal_plans')
-            .select('*')
+            .select("id,patient_id,nutritionist_id,name,description,active_days,start_date,end_date,is_active,daily_calories,daily_protein,daily_carbs,daily_fat,created_at,updated_at,is_template,template_tags,is_draft,care_episode_id,plan_mode,prescription_status,source_snapshot,confirmed_by,confirmed_at,archived_at,archived_by,archive_reason")
             .eq('patient_id', patientId)
             .eq('is_active', true)
             .lte('start_date', today)
@@ -244,7 +244,7 @@ export const getMealsInPlan = async (planId) => {
     try {
         const { data, error } = await supabase
             .from('meal_plan_meals')
-            .select('*')
+            .select("id,meal_plan_id,name,meal_type,meal_time,order_index,notes,total_calories,total_protein,total_carbs,total_fat,created_at,updated_at")
             .eq('meal_plan_id', planId)
             .order('order_index', { ascending: true });
 
@@ -260,7 +260,7 @@ export const getFoodsInMeal = async (mealId) => {
     try {
         const { data, error } = await supabase
             .from('meal_plan_foods')
-            .select('*')
+            .select("id,meal_plan_meal_id,food_id,quantity,unit,calories,protein,carbs,fat,notes,order_index,created_at,patient_description,food_snapshot,measure_snapshot,equivalent_group")
             .eq('meal_plan_meal_id', mealId)
             .order('order_index', { ascending: true });
 
@@ -363,7 +363,7 @@ export const getMealPlanVersions = async (planId, limit = 20) => {
     try {
         const { data, error } = await supabase
             .from('meal_plan_versions')
-            .select('*')
+            .select("id,meal_plan_id,nutritionist_id,patient_id,version_number,change_reason,snapshot,is_rollback,metadata,created_by,created_at,care_episode_id")
             .eq('meal_plan_id', planId)
             .order('version_number', { ascending: false })
             .limit(limit);
@@ -391,7 +391,7 @@ export const getDraftMealPlan = async (patientId, nutritionistId) => {
 export const getDraftMealPlans = async (patientId, nutritionistId) => {
     try {
         const draftMetas = await fetchAllRows((offset, pageSize) => supabase
-            .from('meal_plans').select('*')
+            .from('meal_plans').select("id,patient_id,nutritionist_id,name,description,active_days,start_date,end_date,is_active,daily_calories,daily_protein,daily_carbs,daily_fat,created_at,updated_at,is_template,template_tags,is_draft,care_episode_id,plan_mode,prescription_status,source_snapshot,confirmed_by,confirmed_at,archived_at,archived_by,archive_reason")
             .eq('patient_id', patientId)
             .eq('nutritionist_id', nutritionistId)
             .eq('is_draft', true)
