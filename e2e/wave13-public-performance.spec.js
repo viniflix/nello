@@ -15,6 +15,12 @@ for (const mobile of [false, true]) test(`public landing bounds work after new a
   });
   await page.goto('/');
   await expect(page.getByRole('heading', { level: 1 })).toContainText('Mais clareza para cuidar.');
+  // Text can exist before its first paint. Keyboard input ends LCP collection,
+  // so wait for the observer's first delivered entry before exercising focus.
+  await expect.poll(() => page.evaluate(() => window.__wave13.lcp), {
+    timeout: mobile ? 10000 : 6000,
+    message: 'LCP observer must report a paint before the first keyboard input',
+  }).toBeGreaterThan(0);
   await page.getByRole('link', { name: 'Criar minha conta', exact: true }).focus();
   await page.keyboard.press('Tab');
   await expect(page.getByRole('link', { name: 'Já tenho acesso', exact: true })).toBeFocused();
