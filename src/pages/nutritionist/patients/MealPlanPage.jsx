@@ -254,7 +254,7 @@ const MealPlanPage = () => {
 
     if (loading || !session.ready || sessionOpening || (isMealPlanSession(session.recovery?.payload) && !plansError && !automaticSessionRef.current && !sessionError && !session.recovery.conflict)) {
         return (
-            <div className="container mx-auto px-4 py-8 max-w-6xl space-y-6">
+            <div className="container mx-auto px-4 py-6 max-w-[1440px] space-y-6">
                 <div className="flex flex-wrap gap-3 items-center justify-between">
                     <Skeleton className="h-8 w-24" />
                     <Skeleton className="h-10 w-32" />
@@ -284,7 +284,8 @@ const MealPlanPage = () => {
     if (showForm) {
         return (
             <div className="container mx-auto px-4 py-8 max-w-6xl">
-                <div className="mb-6">
+                <div className="mb-4 flex flex-wrap items-center gap-3">
+                    <div className="mr-auto"><h1 className="text-2xl font-semibold">Montar plano alimentar</h1><p className="text-sm text-muted-foreground">Organize as refeições, confira as porções e salve o plano ao concluir.</p></div>
                     <Button
                         variant="ghost"
                         size="sm"
@@ -296,16 +297,18 @@ const MealPlanPage = () => {
                     </Button>
                 </div>
 
-                <details className="mb-4 rounded border p-3 text-sm"><summary className="cursor-pointer font-medium">Outras edições salvas</summary>
+                <details className="mb-4 rounded border p-3 text-sm"><summary className="cursor-pointer font-medium">Rascunhos e recuperação · últimas edições salvas</summary>
                     {(session.snapshots || []).map((saved, index) => <Button key={index} type="button" variant="outline" size="sm" className="m-1" onClick={() => { void beforeCloseRef.current?.().then(closed => { if (closed !== false) return restoreSavedSession(saved); }).catch(() => setSessionError(true)); }}>Recuperar estado {index + 1}{saved.savedAt ? ` · ${formatDate(saved.savedAt)}` : ''}</Button>)}
                     <WorkingDraftRecovery ownerId={nutritionistId} patientId={patientId} onResume={resumeWorkingDraft} maxDrafts={Math.max(0, 3 - (session.snapshots?.length || 0))} />
-                </details>
-                {sessionError && <p role="alert" className="mb-3 text-sm text-destructive">Não foi possível abrir a sessão. O rascunho foi preservado; tente novamente.</p>}
-                {session.recovery?.conflict && <ShadowRecovery recovery={session.recovery} onRestore={() => { void restoreSavedSession(session.recovery.payload).catch(() => setSessionError(true)); }} onDiscard={() => { void session.discardRecovery(); }} />}
+                    <p className="mt-3 text-xs text-muted-foreground">O rascunho atual é retomado automaticamente. Use os estados abaixo apenas para recuperar outra edição.</p>
                 <Button type="button" variant="ghost" size="sm" className="mb-3" onClick={async () => {
                     if (!window.confirm('Descartar esta sessão de edição? O plano já aplicado será preservado.')) return;
                     if (await session.discard()) { setShowForm(false); setEditingPlan(null); setPendingDraft(null); }
                 }}>Descartar sessão de edição</Button>
+                </details>
+                {sessionError && <p role="alert" className="mb-3 text-sm text-destructive">Não foi possível abrir a sessão. O rascunho foi preservado; tente novamente.</p>}
+                {session.recovery?.conflict && <ShadowRecovery recovery={session.recovery} onRestore={() => { void restoreSavedSession(session.recovery.payload).catch(() => setSessionError(true)); }} onDiscard={() => { void session.discardRecovery(); }} />}
+
                 <MealPlanForm
                     key={`meal-plan-editor-${sessionRestoreNumber}`}
                     patientId={patientId}

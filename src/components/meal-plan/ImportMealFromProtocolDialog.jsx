@@ -98,14 +98,14 @@ export default function ImportMealFromProtocolDialog({ open, onOpenChange, nutri
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="flex h-[min(90dvh,700px)] max-h-[calc(100dvh-1rem)] max-w-3xl flex-col overflow-hidden">
+            <DialogContent className="flex h-[min(90dvh,700px)] max-h-[calc(100dvh-1rem)] w-[96vw] max-w-6xl flex-col overflow-hidden">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <FileText className="w-5 h-5 text-emerald-600" />
                         Importar Refeições de um Protocolo
                     </DialogTitle>
                     <DialogDescription>
-                        Selecione um protocolo e marque as refeições que deseja adicionar ao plano atual.
+                        Selecione um protocolo e as refeições que deseja importar. Para trazer a dieta inteira, marque todas. As refeições atuais serão mantidas.
                     </DialogDescription>
                 </DialogHeader>
 

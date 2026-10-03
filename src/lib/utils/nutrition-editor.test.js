@@ -2,21 +2,37 @@ import { describe, it, expect } from 'vitest';
 import { changePortionMeasure, portionGrams } from './foodPortions';
 import { calculateNutrition, foodPer100Grams } from './nutrition-calculations';
 import { calculateEquivalentGrams } from './nutritionCalculations';
-import { duplicateMeal, reorderMeals } from './mealEditing';
+import { duplicateMeal, reorderMeals, ensureMealFoodIds } from './mealEditing';
 import { summarizeMicronutrients } from './micronutrientCoverage';
 import { prescriptionQuantity } from '../../../supabase/functions/_shared/clinical-document.js';
 
 const bread = { source: 'TUCUNDUVA', calories: 285.6, protein: 9.42, carbs: 56.8, fat: 2.55 };
 const measures = [{ id: 'bread-unit', name: 'Unidade média', weight_in_grams: 50 }];
 describe('prescribed portions and meal editing', () => {
+  it('assigns distinct editable identities to imported foods without changing existing identities', () => {
+    let next = 0;
+    const input = [{ food_id: 'bread' }, { food_id: 'cheese' }, { tempId: 'existing', food_id: 'fruit' }];
+    const foods = ensureMealFoodIds(input, () => `import-${++next}`);
+    expect(foods.map(food => food.tempId)).toEqual(['import-1', 'import-2', 'existing']);
+    expect(foods.filter(food => food.tempId !== foods[0].tempId).map(food => food.food_id)).toEqual(['cheese', 'fruit']);
+    expect(input[0].tempId).toBeUndefined();
+  });
   it('preserves 100 g when choosing a 50 g bread unit, then restores grams', () => {
-    const units = changePortionMeasure({ quantity: 100, measureCode: 'gram' }, 'bread-unit', measures);
+    const units = changePortionMeasure({ quantity: 100, measureCode: 'gram' }, 'bread-unit', measures, { preserveMass: true });
     expect(units.quantity).toBe(2);
     expect(portionGrams(units.quantity, units.measureId, measures)).toBe(100);
-    expect(changePortionMeasure(units, 'gram', measures).quantity).toBe(100);
+    expect(changePortionMeasure(units, 'gram', measures, { preserveMass: true }).quantity).toBe(100);
     expect(calculateNutrition(bread, 100).calories).toBe(285.6);
     expect(calculateNutrition(bread, 50).calories).toBe(142.8);
     expect(calculateNutrition(bread, 100).carbs).toBe(56.8);
+  });
+  it('keeps the entered count when selecting a measure, including empty and zero values', () => {
+    for (const quantity of ['1.5', '', 0, 100]) {
+      const units = changePortionMeasure({ quantity, measureCode: 'gram' }, 'bread-unit', measures);
+      expect(units.quantity).toBe(quantity);
+      expect(units.measure.grams_equivalent).toBe(50);
+    }
+    expect(portionGrams(changePortionMeasure({ quantity: 1, measureCode: 'gram' }, 'bread-unit', measures).quantity, 'bread-unit', measures)).toBe(50);
   });
   it('accepts zero portions but never interprets an unresolved UUID as grams', () => {
     expect(portionGrams(0, 'bread-unit', measures)).toBe(0);

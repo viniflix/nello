@@ -20,7 +20,7 @@ const COMPACT_DRI = {
 
 const calculateMicros = (plan) => summarizeMicronutrients(plan, Object.keys(COMPACT_DRI));
 
-const MacrosChart = ({ protein, carbs, fat, calories, patientId, patientSlugOrId, planId, readOnly = false, plan = null, activePlanId = null, onReferenceUpdate }) => {
+const MacrosChart = ({ protein, carbs, fat, calories, patientId, patientSlugOrId, planId, readOnly = false, compact = false, plan = null, activePlanId = null, onReferenceUpdate }) => {
     const navigate = useNavigate();
     const patientSegment = patientSlugOrId ?? patientId;
     const [showReferenceModal, setShowReferenceModal] = useState(false);
@@ -73,7 +73,7 @@ const MacrosChart = ({ protein, carbs, fat, calories, patientId, patientSlugOrId
         ];
 
         return (
-            <div className="flex justify-center mb-6 relative">
+            <div className="flex justify-center mb-3 relative">
                 <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
                     {/* Background track */}
                     <circle cx={centerX} cy={centerY} r={radius} fill="transparent" stroke="#f1f5f9" strokeWidth={strokeWidth} />
@@ -182,19 +182,19 @@ const MacrosChart = ({ protein, carbs, fat, calories, patientId, patientSlugOrId
     };
 
     return (
-        <Card className="h-full flex flex-col bg-background border-border shadow-sm">
+        <Card className="flex flex-col bg-background border-border shadow-sm">
             <CardHeader className="pb-3 pt-5">
                 <CardTitle className="text-base font-semibold flex items-center justify-center w-full">
                     <div className="flex items-center gap-2 text-foreground">
                         <Flame className="w-4 h-4 text-[#c4661f]" />
-                        Análise&nbsp;&nbsp;&nbsp;Nutricional
+                        Análise nutricional
                     </div>
                 </CardTitle>
 
                 {/* Tabs */}
                 <div className="flex gap-2 mt-4">
                     <button
-                        onClick={() => setActiveTab('macros')}
+                        type="button" onClick={() => setActiveTab('macros')}
                         className={`flex-1 flex items-center justify-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-md border transition-colors ${
                             activeTab === 'macros'
                                 ? 'bg-primary text-primary-foreground border-primary shadow-sm'
@@ -205,7 +205,7 @@ const MacrosChart = ({ protein, carbs, fat, calories, patientId, patientSlugOrId
                         Macronutrientes
                     </button>
                     <button
-                        onClick={() => setActiveTab('micros')}
+                        type="button" onClick={() => setActiveTab('micros')}
                         className={`flex-1 flex items-center justify-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-md border transition-colors ${
                             activeTab === 'micros'
                                 ? 'bg-primary text-primary-foreground border-primary shadow-sm'
@@ -219,7 +219,7 @@ const MacrosChart = ({ protein, carbs, fat, calories, patientId, patientSlugOrId
             </CardHeader>
 
             <CardContent className="flex-1 flex flex-col pt-2 pb-5">
-                <div className="h-[350px]">
+                <div className={compact ? "min-h-[285px]" : "min-h-[350px]"}>
                     {activeTab === 'macros' ? MacrosView() : MicrosView()}
                 </div>
 

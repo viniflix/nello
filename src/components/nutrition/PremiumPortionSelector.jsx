@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect, useState } from 'react';
+import React, { useMemo, useEffect, useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import CustomMeasureFormDialog from '@/components/nutritionist/CustomMeasureFormDialog';
 import { useCreateCustomMeasure } from '@/hooks/useCustomMeasures';
@@ -37,9 +37,14 @@ export function PremiumPortionSelector({
   onChange,
   showNutrition = true,
   onNutritionChange = null,
+  focusQuantityOnSelect = false,
 }) {
   const { customMeasures = [], isLoading: loadingCustom, refetch } = useAllMeasures();
   const [creatingMeasure, setCreatingMeasure] = useState(false);
+  const [conversion, setConversion] = useState(null);
+  const quantityRef = useRef(null);
+  useEffect(() => { setConversion(null); }, [food?.id]);
+  useEffect(() => { if (food?.id && focusQuantityOnSelect) quantityRef.current?.focus(); }, [food?.id, focusQuantityOnSelect]);
   const createMeasure = useCreateCustomMeasure();
   const { data: foodMeasures = [], isLoading: loadingFood } = useFoodMeasures(food?.id);
   const isLoading = loadingCustom || loadingFood;
@@ -88,12 +93,17 @@ export function PremiumPortionSelector({
     return grouped;
   }, [customMeasures, foodMeasures]);
 
-  const handleValueChange = code => onChange(changePortionMeasure(value, code, measures));
+  const handleValueChange = code => {
+    setConversion(value.quantity !== '' && totalGrams !== null ? { original: value, code, measures } : null);
+    onChange(changePortionMeasure(value, code, measures));
+  };
   const handleCreateMeasure = async payload => {
     try {
       const result = await createMeasure.mutateAsync(payload);
       const measure = { ...result.data, source: 'custom' };
-      onChange(changePortionMeasure(value, measure.code, [...measures, measure]));
+      const nextMeasures = [...measures, measure];
+      setConversion(value.quantity !== '' && totalGrams !== null ? { original: value, code: measure.code, measures: nextMeasures } : null);
+      onChange(changePortionMeasure(value, measure.code, nextMeasures));
       await refetch();
       setCreatingMeasure(false);
     } catch { /* Mutation displays the error and keeps the form open. */ }
@@ -110,9 +120,9 @@ export function PremiumPortionSelector({
   };
 
   return (
-    <div className="space-y-3 bg-slate-50/50 p-4 rounded-2xl border border-slate-200">
+    <div className="space-y-3 rounded-lg border bg-background p-4">
       <div className="flex items-center justify-between mb-1">
-        <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Configurar Porção</Label>
+        <span className="text-sm font-semibold">Quantidade e medida</span>
         {totalGrams > 0 && (
           <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold">
             Total: {totalGrams.toFixed(0)}g
@@ -123,26 +133,28 @@ export function PremiumPortionSelector({
       <div className="flex flex-col sm:flex-row gap-3">
         {/* Quantidade */}
         <div className="flex-1 sm:flex-none sm:w-32">
+          <Label htmlFor="prescription-quantity" className="mb-1.5 block text-sm">Quantidade</Label>
           <div className="relative">
             <Input
+              id="prescription-quantity"
+              ref={quantityRef}
               type="number"
               value={value.quantity}
-              onChange={(e) => onChange({ ...value, quantity: e.target.value })}
-              className="h-12 text-lg font-bold pl-4 pr-10 rounded-xl border-slate-200 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
+              onChange={(e) => { setConversion(null); onChange({ ...value, quantity: e.target.value }); }}
+              className="h-10 text-base"
               placeholder="0"
               min={0}
               step={0.5}
+              disabled={!food}
             />
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none font-medium">
-              #
-            </div>
           </div>
         </div>
 
         {/* Medida */}
         <div className="flex-[2]">
+          <Label htmlFor="prescription-measure" className="mb-1.5 block text-sm">Medida</Label>
           <Select value={selectedCode} onValueChange={handleValueChange} disabled={!food || isLoading}>
-            <SelectTrigger className="h-12 rounded-xl border-slate-200 bg-white hover:border-emerald-200 transition-all focus:ring-emerald-500">
+            <SelectTrigger id="prescription-measure" className="h-10 bg-background">
               <div className="flex items-center gap-2 truncate">
                 {selectedCode === 'gram' ? <Scale className="w-4 h-4 text-slate-400" /> :
                  selectedCode.startsWith('custom_') ? <User className="w-4 h-4 text-emerald-500" /> :
@@ -220,6 +232,8 @@ export function PremiumPortionSelector({
           </Select>
         </div>
       </div>
+      <p className="text-xs text-muted-foreground">{value.quantity === '' ? 'Informe a quantidade para calcular a porção.' : `${value.quantity} × ${getMeasureLabel(selectedCode)}${totalGrams === null ? '' : ` = ${Number(totalGrams.toFixed(2))} g`}`}</p>
+      {conversion && <Button type="button" variant="outline" size="sm" className="h-auto whitespace-normal text-left text-xs" onClick={() => { onChange(changePortionMeasure(conversion.original, conversion.code, conversion.measures, { preserveMass: true })); setConversion(null); }}>Converter para manter os {Number(portionGrams(conversion.original.quantity, conversion.original.measureId ?? conversion.original.measureCode, conversion.measures, conversion.original.measure).toFixed(2))} g anteriores</Button>}
 
       <Button type="button" variant="outline" size="sm" onClick={() => setCreatingMeasure(true)}>+ Criar medida personalizada</Button>
       <CustomMeasureFormDialog open={creatingMeasure} onOpenChange={setCreatingMeasure} onSave={handleCreateMeasure} isSaving={createMeasure.isPending} />

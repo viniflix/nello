@@ -182,14 +182,14 @@ export default function TemplateManagerDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="flex h-[min(90dvh,700px)] max-h-[calc(100dvh-1rem)] max-w-4xl flex-col overflow-hidden">
+            <DialogContent className="flex h-[min(90dvh,700px)] max-h-[calc(100dvh-1rem)] w-[96vw] max-w-6xl flex-col overflow-hidden">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <FileText className="w-5 h-5 text-emerald-600" />
                         Importar Protocolo de Dieta
                     </DialogTitle>
                     <DialogDescription>
-                        Selecione um protocolo e confira o resumo antes de aplicar ao paciente.
+                        Selecione uma dieta modelo e confira as refeições. Uma cópia será aberta para revisão antes de liberar ao paciente.
                     </DialogDescription>
                 </DialogHeader>
 

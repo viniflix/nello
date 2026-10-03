@@ -1,5 +1,6 @@
 import { getTodayIsoDate } from '@/lib/utils/date';
-import { reorderMeals, duplicateMeal } from '@/lib/utils/mealEditing';
+import { reorderMeals, duplicateMeal, ensureMealFoodIds } from '@/lib/utils/mealEditing';
+import { formatQuantityWithUnit } from '@/lib/utils/measureTranslations';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
@@ -71,6 +72,7 @@ const MealPlanForm = ({
     const [draggingMealIndex, setDraggingMealIndex] = useState(null);
     const [showMealForm, setShowMealForm] = useState(false);
     const [editingMeal, setEditingMeal] = useState(null);
+    const [mealFoodTarget, setMealFoodTarget] = useState(null);
     const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
     const [showImportMealDialog, setShowImportMealDialog] = useState(false);
     const [errors, setErrors] = useState({});
@@ -122,7 +124,7 @@ const MealPlanForm = ({
         if (!recovered) return;
         shadowTouchedRef.current = true;
         if (recovered.formData) setFormData(recovered.formData);
-        if (Array.isArray(recovered.meals)) setMeals(recovered.meals);
+        if (Array.isArray(recovered.meals)) setMeals(recovered.meals.map(meal => ({ ...meal, foods: ensureMealFoodIds(meal.foods) })));
     };
 
     useEffect(() => {
@@ -201,10 +203,11 @@ const MealPlanForm = ({
         sessionRestoredRef.current = true;
         sessionTouchedRef.current = true;
         setFormData(restoredSession.formData);
-        setMeals(restoredSession.meals);
+        const recoveredMeals = restoredSession.meals.map(meal => ({ ...meal, foods: ensureMealFoodIds(meal.foods) }));
+        setMeals(recoveredMeals);
         setMealEditorState(restoredSession.editor?.state || null);
         const mealId = restoredSession.editor?.mealId;
-        setEditingMeal(mealId ? restoredSession.meals.find(meal => String(meal.dbId || meal.id || meal.tempId) === String(mealId)) || null : null);
+        setEditingMeal(mealId ? recoveredMeals.find(meal => String(meal.dbId || meal.id || meal.tempId) === String(mealId)) || null : null);
         setShowMealForm(Boolean(restoredSession.editor?.open));
     }, [restoredSession]);
 
@@ -343,8 +346,9 @@ const MealPlanForm = ({
         return true;
     };
 
-    const handleEditMeal = (meal) => {
+    const handleEditMeal = (meal, foodTarget = null) => {
         setEditingMeal(meal);
+        setMealFoodTarget(foodTarget);
         setShowMealForm(true);
     };
 
@@ -614,7 +618,7 @@ const MealPlanForm = ({
                 {!restoredSession && <ShadowRecovery recovery={shadow.recovery} onRestore={restoreShadow} onDiscard={() => { void shadow.discardRecovery(); }} />}
                 <Card>
                     <CardHeader>
-                        <div className="flex items-center justify-between">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
                             <CardTitle className="text-lg">Informações do Plano</CardTitle>
                             <div className="flex flex-wrap items-center gap-2">
                                 {!session && !isEditing && ['local','saving','saved','error','conflict'].includes(draft.saveStatus) && <SaveStatusIndicator status={draft.saveStatus} />}
@@ -642,6 +646,9 @@ const MealPlanForm = ({
                             )}
                         </div>
 
+                        <details className="rounded-lg border p-3" open={Boolean(errors.start_date || errors.end_date || errors.active_days) || undefined}>
+                            <summary className="cursor-pointer text-sm font-medium">Configurações do plano · descrição, estratégia, datas e dias</summary>
+                            <div className="mt-4 space-y-4">
                         {/* Descrição */}
                         <div className="space-y-2">
                             <Label htmlFor="description">Descrição (opcional)</Label>
@@ -747,14 +754,18 @@ const MealPlanForm = ({
                             </div>
                             {errors.active_days && <p className="text-xs text-destructive">{errors.active_days}</p>}
                         </div>
+                            </div>
+                        </details>
                     </CardContent>
                 </Card>
 
                 {/* Simulador de Ajuste de Porções */}
                 {meals.length > 0 && portionSimulation ? (
-                    <Card>
+                    <details className="rounded-lg border bg-card p-4">
+                        <summary className="cursor-pointer text-sm font-medium">Ajustar porções em conjunto · simular antes de aplicar</summary>
+                    <Card className="mt-3 border-0 shadow-none">
                         <CardHeader>
-                            <CardTitle className="text-lg">Simulador de Ajuste de Porções</CardTitle>
+                            <CardTitle className="text-lg">Ajustar porções do plano</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -857,15 +868,16 @@ const MealPlanForm = ({
                             </div>
                         </CardContent>
                     </Card>
+                    </details>
                 ) : null}
 
                 {/* Refeições + Gráfico */}
                 {meals.length > 0 && (
-                    <div className="grid grid-cols-1 lg:grid-cols-10 gap-6">
-                        <div className="lg:col-span-6">
+                    <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_340px] gap-5">
+                        <div className="min-w-0">
                             <Card>
                                 <CardHeader>
-                                    <div className="flex items-center justify-between">
+                                    <div className="flex flex-wrap items-center justify-between gap-3">
                                         <CardTitle className="text-lg">Refeições</CardTitle>
                                         <div className="flex gap-2">
                                             <Button
@@ -876,7 +888,7 @@ const MealPlanForm = ({
                                                 title="Importar refeição de um protocolo salvo"
                                             >
                                                 <Download className="h-4 w-4 mr-2" />
-                                                Do Protocolo
+                                                Importar refeições
                                             </Button>
                                             <Button
                                             type="button"
@@ -920,15 +932,21 @@ const MealPlanForm = ({
                                                         <Button type="button" variant="ghost" size="sm" disabled={index===0} aria-label={`Mover ${meal.name} para cima`} onClick={() => moveMeal(index,index-1)}><ArrowUp className="h-4 w-4" /></Button>
                                                         <Button type="button" variant="ghost" size="sm" disabled={index===meals.length-1} aria-label={`Mover ${meal.name} para baixo`} onClick={() => moveMeal(index,index+1)}><ArrowDown className="h-4 w-4" /></Button>
                                                         <Button type="button" variant="ghost" size="sm" aria-label={`Duplicar ${meal.name}`} onClick={() => copyMeal(index)}><Copy className="h-4 w-4" /></Button>
-                                                        <Button type="button" variant="ghost" size="sm" onClick={() => handleEditMeal(meal)}>
-                                                            <Edit className="h-4 w-4" />
+                                                        <Button type="button" variant="ghost" size="sm" aria-label={`Editar refeição ${meal.name}`} onClick={() => handleEditMeal(meal)}>
+                                                            <Edit className="mr-1 h-4 w-4" />Editar
                                                         </Button>
-                                                        <Button type="button" variant="ghost" size="sm" onClick={() => handleDeleteMeal(meal)}>
+                                                        <Button type="button" variant="ghost" size="sm" aria-label={`Remover refeição ${meal.name}`} onClick={() => handleDeleteMeal(meal)}>
                                                             <Trash2 className="h-4 w-4 text-destructive" />
                                                         </Button>
                                                     </div>
                                                 </div>
-                                                <label className="mt-3 flex items-center gap-2 text-sm"><Checkbox checked={meal.include_in_totals !== false} onCheckedChange={checked => toggleMealTotals(index,checked===true)} />Contabilizar esta refeição na análise nutricional</label>
+                                                <div className="mt-3 divide-y rounded-lg border bg-background">
+                                                    {(meal.foods || []).map(food => <button key={food.tempId ?? food.id} type="button" className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left hover:bg-muted/50" aria-label={`Editar alimento ${food.food?.name || food.patient_description || 'sem nome'}`} onClick={() => handleEditMeal(meal,{ food })}><span className="min-w-0"><span className="block text-sm font-medium">{food.patient_description || food.food?.name || 'Alimento'}</span><span className="text-xs text-muted-foreground">{formatQuantityWithUnit(food.quantity,food.unit,food.measure)}{food.substitutes?.length ? ` · ${food.substitutes.length} substituições` : ''}</span></span><span className="shrink-0 text-xs text-muted-foreground">{Math.round(food.calories || 0)} kcal <Edit className="ml-1 inline h-3.5 w-3.5" /></span></button>)}
+                                                </div>
+                                                <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                                                    <label className="flex items-center gap-2 text-xs text-muted-foreground"><Checkbox checked={meal.include_in_totals !== false} onCheckedChange={checked => toggleMealTotals(index,checked===true)} />Contabilizar esta refeição na análise nutricional</label>
+                                                    <Button type="button" size="sm" variant="outline" aria-label={`Adicionar alimento em ${meal.name}`} onClick={() => handleEditMeal(meal,{ newFood: true })}><Plus className="mr-1 h-4 w-4" />Adicionar alimento</Button>
+                                                </div>
                                             </div>
                                         ))}
                                     </div>
@@ -936,7 +954,7 @@ const MealPlanForm = ({
                             </Card>
                         </div>
 
-                        <div className="lg:col-span-4">
+                        <div className="min-w-0 xl:sticky xl:top-4 xl:self-start">
                             <MacrosChart
                                 protein={dailyTotals.daily_protein}
                                 carbs={dailyTotals.daily_carbs}
@@ -946,6 +964,7 @@ const MealPlanForm = ({
                                 patientSlugOrId={patientSlugOrId}
                                 planId={initialData?.id || draft.draftId}
                                 referenceValues={referenceValues}
+                                compact
                                 onReferenceUpdate={loadReferenceValues}
                                 plan={{ meals }}
                             />
@@ -957,7 +976,7 @@ const MealPlanForm = ({
                 {meals.length === 0 && (
                     <Card>
                         <CardHeader>
-                            <div className="flex items-center justify-between">
+                            <div className="flex flex-wrap items-center justify-between gap-3">
                                 <CardTitle className="text-lg">Refeições</CardTitle>
                                 <div className="flex gap-2">
                                     <Button
@@ -967,7 +986,7 @@ const MealPlanForm = ({
                                         onClick={() => setShowImportMealDialog(true)}
                                     >
                                         <Download className="h-4 w-4 mr-2" />
-                                        Do Protocolo
+                                        Importar refeições
                                     </Button>
                                     <Button
                                         type="button"
@@ -991,7 +1010,7 @@ const MealPlanForm = ({
                 )}
 
                 {/* Botões de ação — 3 opções */}
-                <div className="flex flex-col sm:flex-row gap-3 justify-end pt-2">
+                <div className="sticky bottom-0 z-10 flex flex-col sm:flex-row gap-2 justify-end rounded-lg border bg-background/95 p-3 shadow-sm backdrop-blur">
                     {/* Cancelar */}
                     <Button
                         type="button"
@@ -1037,6 +1056,7 @@ const MealPlanForm = ({
 
             {/* Dialog de Refeição */}
             <MealPlanMealForm
+                foodTarget={mealFoodTarget}
                 isOpen={showMealForm}
                 ownerId={nutritionistId}
                 shadowKey={nestedRecovery ? nestedRecovery.draft_key.split(':food:')[0] : patientId ? `meal-plan-meal:${patientId}:${initialData?.id || 'new'}:${editingMeal?.dbId || editingMeal?.id || editingMeal?.tempId || 'new'}` : null}
@@ -1045,7 +1065,7 @@ const MealPlanForm = ({
                 session={session}
                 onWorkingState={receiveMealEditor}
                 draftContext={{ planId: initialData?.id || draft.draftId || null, mealId: editingMeal?.dbId || editingMeal?.id || null }}
-                onClose={() => { setShowMealForm(false); setEditingMeal(null); setNestedRecovery(null); }}
+                onClose={() => { setShowMealForm(false); setEditingMeal(null); setMealFoodTarget(null); setNestedRecovery(null); }}
                 onSave={editingMeal ? handleUpdateMeal : handleAddMeal}
                 initialData={editingMeal}
             />
@@ -1078,7 +1098,7 @@ const MealPlanForm = ({
                             meal_time: meal.meal_time,
                             notes: meal.notes,
                             order_index: prev.length + index,
-                            foods: meal.foods || [],
+                            foods: ensureMealFoodIds(meal.foods),
                             calories: meal.calories,
                             protein: meal.protein,
                             carbs: meal.carbs,

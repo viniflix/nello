@@ -21,8 +21,13 @@ import { formatNutrient } from '@/lib/utils';
 import { toPortugueseError } from '@/lib/utils/errorMessages';
 import { captureOperationalError } from '@/infrastructure/observability/telemetry';
 import { Events, track } from '@/infrastructure/analytics/posthog';
+import { foodPer100Grams } from '@/lib/utils/nutrition-calculations';
 
-const FoodSelector = ({ isOpen, onClose, onSelect, targetGroup, targetCalories, originalFood }) => {
+const SelectorSurface = ({ embedded, isOpen, onClose, children }) => embedded
+    ? <section aria-label="Busca de alimentos" className="flex h-full min-h-[300px] flex-col gap-3">{children}</section>
+    : <Dialog open={isOpen} onOpenChange={onClose}><DialogContent className="flex h-[94dvh] max-h-[calc(100dvh-1rem)] w-[96vw] max-w-[1440px] flex-col overflow-hidden">{children}</DialogContent></Dialog>;
+
+const FoodSelector = ({ isOpen, onClose, onSelect, targetGroup, targetCalories, originalFood, embedded = false, searchInputRef, selectedFoodId = null }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [foods, setFoods] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -105,15 +110,16 @@ const FoodSelector = ({ isOpen, onClose, onSelect, targetGroup, targetCalories, 
 
         // Automatically select it
         setSelectedFood(newFood);
+        if (embedded) onSelect(newFood);
 
         // Optionally refresh search to ensure consistency
         if (searchTerm) setRetryKey(value => value + 1);
     };
 
     return (
-        <Dialog open={isOpen} onOpenChange={handleClose}>
-            <DialogContent className="flex h-[94dvh] max-h-[calc(100dvh-1rem)] w-[96vw] max-w-[1440px] flex-col overflow-hidden">
-                <DialogHeader className="shrink-0">
+        <>
+            <SelectorSurface embedded={embedded} isOpen={isOpen} onClose={handleClose}>
+                {!embedded && <DialogHeader className="shrink-0">
                     <DialogTitle>Buscar Alimento</DialogTitle>
                     <DialogDescription>
                         {targetCalories
@@ -121,7 +127,7 @@ const FoodSelector = ({ isOpen, onClose, onSelect, targetGroup, targetCalories, 
                             : 'Procure alimentos por nome nas bases de dados nutricionais'
                         }
                     </DialogDescription>
-                </DialogHeader>
+                </DialogHeader>}
 
                 <div className="flex-1 min-h-0 flex flex-col space-y-4 overflow-hidden">
                     {/* Barra de busca */}
@@ -130,6 +136,7 @@ const FoodSelector = ({ isOpen, onClose, onSelect, targetGroup, targetCalories, 
                         <div className="relative">
                             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input
+                                ref={searchInputRef}
                                 id="search"
                                 placeholder="Digite pelo menos 2 caracteres..."
                                 value={searchTerm}
@@ -165,7 +172,7 @@ const FoodSelector = ({ isOpen, onClose, onSelect, targetGroup, targetCalories, 
                     </div>
 
                     {/* Lista de resultados */}
-                    <div className="flex-1 min-h-0 border rounded-md p-4 overflow-y-auto">
+                    <div className="flex-1 min-h-0 rounded-lg border bg-background p-2 overflow-y-auto" aria-live="polite" aria-busy={loading}>
                         {loading && (
                             <div className="text-center py-8 text-muted-foreground">
                                 Buscando...
@@ -204,31 +211,27 @@ const FoodSelector = ({ isOpen, onClose, onSelect, targetGroup, targetCalories, 
                         {!loading && !searchError && foods.length > 0 && (
                             <div className="space-y-2">
                                 {foods.map((food) => {
-                                    const analysis = originalFood ? getSubstitutionAnalysis({
-                                        calories: (originalFood.calories / originalFood.quantity) * 100,
-                                        protein: (originalFood.protein / originalFood.quantity) * 100,
-                                        carbs: (originalFood.carbs / originalFood.quantity) * 100,
-                                        fat: (originalFood.fat / originalFood.quantity) * 100,
-                                        group: originalFood.food?.group
-                                    }, food) : null;
+                                    const originalBasis = foodPer100Grams(originalFood?.food);
+                                    const candidateBasis = foodPer100Grams(food);
+                                    const analysis = originalBasis && candidateBasis ? getSubstitutionAnalysis(originalBasis, candidateBasis) : null;
 
                                     return (
-                                        <button type="button" aria-pressed={selectedFood?.id === food.id}
+                                        <button type="button" aria-pressed={(embedded ? selectedFoodId : selectedFood?.id) === food.id}
                                             key={food.id}
                                             className={`
                                                 w-full text-left p-3 border rounded-xl transition-colors
-                                                ${selectedFood?.id === food.id
+                                                ${(embedded ? selectedFoodId : selectedFood?.id) === food.id
                                                     ? 'bg-primary/10 border-primary'
                                                     : 'hover:bg-muted'
                                                 }
                                             `}
-                                            onClick={() => setSelectedFood(food)}
+                                            onClick={() => { setSelectedFood(food); if (embedded) onSelect(food); }}
                                         >
                                             <div className="flex items-start justify-between">
                                                 <div className="flex-1">
                                                     <div className="flex items-center gap-2">
                                                         <h4 className="font-semibold">{food.name}</h4>
-                                                        {selectedFood?.id === food.id && (
+                                                        {(embedded ? selectedFoodId : selectedFood?.id) === food.id && (
                                                             <Check className="h-4 w-4 text-primary" />
                                                         )}
                                                         {analysis && (
@@ -270,7 +273,8 @@ const FoodSelector = ({ isOpen, onClose, onSelect, targetGroup, targetCalories, 
                                                 </div>
                                                 <div className="ml-4 text-right text-sm">
                                                     <div className="flex flex-col items-end gap-1">
-                                                        <div className="font-bold">{formatNutrient(food.calories)} kcal</div>
+                                                        <div className="font-bold">{food.calories == null ? 'Não informado' : `${formatNutrient(food.calories)} kcal`}</div>
+                                                        <span className="text-xs text-muted-foreground">por {food.source?.toLowerCase() === 'custom' && Number(food.portion_size) > 0 ? food.portion_size : 100} g</span>
                                                     </div>
                                                     <div className="text-muted-foreground text-xs mt-1 tabular-nums">
                                                         P:{(food.protein || 0).toFixed(1)} C:{(food.carbs || 0).toFixed(1)} G:{(food.fat || 0).toFixed(1)}
@@ -285,7 +289,7 @@ const FoodSelector = ({ isOpen, onClose, onSelect, targetGroup, targetCalories, 
                     </div>
                 </div>
 
-                <DialogFooter className="shrink-0 mt-4">
+                {embedded ? <Button type="button" variant="outline" className="shrink-0 justify-start gap-2" onClick={() => setQuickCreateOpen(true)}><Plus className="h-4 w-4" />Cadastrar alimento personalizado</Button> : <DialogFooter className="shrink-0 mt-4">
                     <Button variant="outline" onClick={handleClose}>
                         <X className="h-4 w-4 mr-2" />
                         Cancelar
@@ -294,8 +298,8 @@ const FoodSelector = ({ isOpen, onClose, onSelect, targetGroup, targetCalories, 
                         <Check className="h-4 w-4 mr-2" />
                         Selecionar
                     </Button>
-                </DialogFooter>
-            </DialogContent>
+                </DialogFooter>}
+            </SelectorSurface>
 
             {/* Quick Create Dialog */}
             <QuickFoodCreateDialog
@@ -304,7 +308,7 @@ const FoodSelector = ({ isOpen, onClose, onSelect, targetGroup, targetCalories, 
                 initialName={searchTerm}
                 onFoodCreated={handleFoodCreated}
             />
-        </Dialog>
+        </>
     );
 };
 

@@ -5,7 +5,7 @@ import MealPlanMealForm from './MealPlanMealForm';
 const state = vi.hoisted(() => ({ recovery: null, status: 'recoverable', flush: vi.fn(), restore: vi.fn(), queue: vi.fn() }));
 vi.mock('@/hooks/useShadowDraft', () => ({ useShadowDraft: () => ({ ready: true, status: state.status, recovery: state.recovery, restore: state.restore, flush: state.flush, queue: state.queue }) }));
 vi.mock('./SubstitutionDialog', () => ({ default: () => null }));
-vi.mock('./AddFoodToMealDialog', () => ({ default: props => props.isOpen ? <div data-testid="food-editor">{props.shadowKey} {props.autoRestore ? 'auto restore' : ''}</div> : null }));
+vi.mock('./AddFoodToMealDialog', () => ({ default: props => props.isOpen ? <div data-testid="food-editor">{props.shadowKey} {props.autoRestore ? 'auto restore' : ''}<button onClick={props.onClose}>Voltar à refeição</button></div> : null }));
 beforeEach(() => { state.status = 'recoverable'; state.queue.mockReset(); state.restore.mockReset(); state.flush.mockReset().mockResolvedValue(true); state.recovery = { source: 'cloud', payload: { formData: { name: 'Recovered lunch', meal_type: 'other', meal_time: '12:00', notes: 'Confirmed saved note' }, foods: [] } }; state.restore.mockImplementation(() => { const payload = state.recovery.payload; state.recovery = null; return payload; }); });
 it('reopens the explicitly selected legacy meal with the confirmed saved fields', async () => {
     render(<MealPlanMealForm isOpen ownerId="owner" shadowKey="legacy-key" recoveryDraft={{ id: 'legacy', draft_key: 'meal-plan-meal:patient:55:old' }} onClose={vi.fn()} onSave={vi.fn()} />);
@@ -14,8 +14,11 @@ it('reopens the explicitly selected legacy meal with the confirmed saved fields'
 });
 it('opens the exact saved food editor and preserves its parent meal snapshot', async () => {
     render(<MealPlanMealForm isOpen ownerId="owner" shadowKey="current-key" recoveryDraft={{ id: 'food', draft_key: 'meal-plan-meal:patient:55:old:food:old', payload: { context: { mealSnapshot: state.recovery.payload } } }} onClose={vi.fn()} onSave={vi.fn()} />);
-    await screen.findByDisplayValue('Recovered lunch');
-    expect(screen.getByTestId('food-editor')).toHaveTextContent('meal-plan-meal:patient:55:old:food:old auto restore');
+    expect(await screen.findByTestId('food-editor')).toHaveTextContent('meal-plan-meal:patient:55:old:food:old auto restore');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Voltar à refeição' }));
+    expect(await screen.findByDisplayValue('Recovered lunch')).toBeVisible();
+    expect(screen.getByDisplayValue('Confirmed saved note')).toBeVisible();
 });
 it('waits for pending changes before closing and does not close on a failed flush', async () => {
     state.recovery = null; state.status = 'local'; state.flush.mockResolvedValue(false); const close = vi.fn();

@@ -15,13 +15,13 @@ export function portionGrams(quantity, unit, measures = [], snapshot = null) {
   return amount * measure.grams_equivalent;
 }
 
-export function changePortionMeasure(value, unit, measures = []) {
+export function changePortionMeasure(value, unit, measures = [], { preserveMass = false } = {}) {
   const previousUnit = value.measureId ?? value.measureCode ?? value.unit;
   const grams = portionGrams(value.quantity, previousUnit, measures, value.measure);
   const measure = portionMeasure(unit, measures);
   if (!measure) throw new Error('Medida sem equivalência em gramas.');
   return {
-    ...value, quantity: grams === null ? 1 : Number((grams / measure.grams_equivalent).toFixed(6)),
+    ...value, quantity: preserveMass && grams !== null ? Number((grams / measure.grams_equivalent).toFixed(6)) : value.quantity,
     measureId: isGramUnit(unit) ? 'gram' : String(unit), measureCode: isGramUnit(unit) ? 'gram' : String(unit),
     measure: isGramUnit(unit) ? null : measure,
   };

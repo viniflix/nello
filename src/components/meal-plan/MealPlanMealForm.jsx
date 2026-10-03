@@ -28,9 +28,10 @@ import { formatQuantityWithUnit } from '@/lib/utils/measureTranslations';
 import SubstitutionDialog from './SubstitutionDialog';
 import { isValidMealTime, normalizeMealTime } from '@/lib/utils/mealTime';
 import { useShadowDraft } from '@/hooks/useShadowDraft';
+import { ensureMealFoodIds } from '@/lib/utils/mealEditing';
 import { ShadowRecovery, ShadowSaveStatus } from '@/components/ui/shadow-save-status';
 
-const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null, ownerId, shadowKey, recoveryDraft = null, draftContext = null, resumeState = null, onWorkingState, session = null }) => {
+const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null, ownerId, shadowKey, recoveryDraft = null, draftContext = null, resumeState = null, onWorkingState, session = null, foodTarget = null }) => {
     const [formData, setFormData] = useState({
         name: '',
         meal_type: '',
@@ -48,6 +49,7 @@ const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null, ownerId
     const touchedRef = useRef(false);
     const recoveryOpenedRef = useRef(null);
     const sessionRestoredRef = useRef(false);
+    const foodTargetRef = useRef(null);
     const [foodEditorState, setFoodEditorState] = useState(null);
     const shadow = useShadowDraft({ ownerId, draftKey: shadowKey, enabled: isOpen && Boolean(ownerId && shadowKey) });
     const contextJson = JSON.stringify(draftContext);
@@ -61,10 +63,11 @@ const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null, ownerId
         if (recoveryDraft.draft_key.includes(':food:')) {
             recoveryOpenedRef.current = recoveryDraft.id;
             const meal = recoveryDraft.payload?.context?.mealSnapshot;
-            if (meal) { setFormData(meal.formData); setFoods(meal.foods || []); }
+            const recoveredFoods = ensureMealFoodIds(meal?.foods || initialData?.foods);
+            if (meal) { setFormData(meal.formData); setFoods(recoveredFoods); }
             if (shadow.recovery) shadow.restore();
             const foodId = recoveryDraft.payload?.context?.foodId;
-            setEditingFood(foodId ? (meal?.foods || initialData?.foods || []).find(food => String(food.id) === String(foodId)) || null : null);
+            setEditingFood(foodId ? recoveredFoods.find(food => String(food.id) === String(foodId)) || null : null);
             setShowAddFood(true);
         } else if (shadow.ready && shadow.recovery) {
             recoveryOpenedRef.current = recoveryDraft.id;
@@ -94,26 +97,34 @@ const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null, ownerId
                 meal_time: initialData.meal_time || '',
                 notes: initialData.notes || ''
             });
-            setFoods(initialData.foods || []);
+            setFoods(ensureMealFoodIds(initialData.foods));
         }
     }, [initialData]);
+    useEffect(() => {
+        if (!isOpen) { foodTargetRef.current = null; return; }
+        if (!foodTarget || foodTargetRef.current === foodTarget) return;
+        foodTargetRef.current = foodTarget;
+        setEditingFood(foodTarget.food || null);
+        setShowAddFood(true);
+    }, [isOpen, foodTarget]);
 
     const restoreShadow = () => {
         const value = shadow.restore();
         if (!value) return;
         touchedRef.current = true;
         if (value.formData) setFormData(value.formData);
-        if (Array.isArray(value.foods)) setFoods(value.foods);
+        if (Array.isArray(value.foods)) setFoods(ensureMealFoodIds(value.foods));
     };
     useEffect(() => {
         if (!isOpen || !resumeState || sessionRestoredRef.current) return;
         sessionRestoredRef.current = true;
         if (resumeState.formData) setFormData(resumeState.formData);
-        if (Array.isArray(resumeState.foods)) setFoods(resumeState.foods);
+        const recoveredFoods = ensureMealFoodIds(resumeState.foods);
+        if (Array.isArray(resumeState.foods)) setFoods(recoveredFoods);
         setFoodEditorState(resumeState.foodEditor?.state || null);
         setShowAddFood(Boolean(resumeState.foodEditor?.open));
         const foodId = resumeState.foodEditor?.foodId;
-        setEditingFood(foodId ? (resumeState.foods || []).find(food => String(food.id || food.tempId) === String(foodId)) || null : null);
+        setEditingFood(foodId ? recoveredFoods.find(food => String(food.id || food.tempId) === String(foodId)) || null : null);
     }, [isOpen, resumeState]);
     const editorJson = JSON.stringify({ formData, foods, foodEditor: { open: showAddFood, foodId: editingFood?.id || editingFood?.tempId || null, state: foodEditorState } });
     useEffect(() => { if (isOpen) onWorkingState?.(JSON.parse(editorJson)); }, [isOpen, onWorkingState, editorJson]);
@@ -138,7 +149,7 @@ const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null, ownerId
 
     const handleAddFood = (foodData) => {
         touchedRef.current = true;
-        setFoods(prev => [...prev, { ...foodData, tempId: Date.now() }]);
+        setFoods(prev => [...prev, { ...foodData, tempId: crypto.randomUUID() }]);
     };
 
     const handleEditFood = (food) => {
@@ -150,7 +161,7 @@ const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null, ownerId
         touchedRef.current = true;
         setFoods(prev => prev.map(f =>
             f.tempId === editingFood.tempId
-                ? { ...updatedFoodData, id: f.id, tempId: f.tempId }
+                ? { ...f, ...updatedFoodData, id: f.id, tempId: f.tempId }
                 : f
         ));
         setEditingFood(null);
@@ -277,8 +288,8 @@ const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null, ownerId
 
     return (
         <>
-            <Dialog open={isOpen} onOpenChange={handleClose}>
-                <DialogContent className="max-w-4xl max-h-[90dvh] overflow-y-auto">
+            <Dialog open={isOpen && !showAddFood && !showSubstitutions} onOpenChange={handleClose}>
+                <DialogContent className="flex h-[90dvh] max-h-[calc(100dvh-1rem)] w-[96vw] max-w-[1200px] flex-col overflow-hidden">
                     <DialogHeader>
                         <DialogTitle>
                             {initialData ? 'Editar Refeição' : 'Nova Refeição'}
@@ -296,14 +307,14 @@ const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null, ownerId
                         <ShadowSaveStatus status={session?.status || shadow.status} onRetry={session?.flush || shadow.flush} />
                     </div>
 
-                    <div className="space-y-6">
+                    <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pr-1">
                         {/* Informações da Refeição */}
                         <Card>
                             <CardHeader>
                                 <CardTitle className="text-lg">Informações da Refeição</CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-4">
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                     {/* Tipo */}
                                     <div className="space-y-2">
                                         <Label htmlFor="meal_type">
@@ -382,7 +393,7 @@ const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null, ownerId
                             <CardHeader>
                                 <div className="flex items-center justify-between">
                                     <CardTitle className="text-lg">Alimentos</CardTitle>
-                                    <Button size="sm" onClick={() => setShowAddFood(true)}>
+                                    <Button type="button" size="sm" onClick={() => setShowAddFood(true)}>
                                         <Plus className="h-4 w-4 mr-2" />
                                         Adicionar Alimento
                                     </Button>
@@ -494,7 +505,8 @@ const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null, ownerId
                         </Card>
                     </div>
 
-                    <DialogFooter>
+                    <DialogFooter className="shrink-0 border-t pt-3">
+                        <p className="mr-auto text-xs text-muted-foreground">Confirme esta refeição e salve o plano ao concluir.</p>
                         {errors.save && (
                             <p className="mr-auto text-sm text-destructive" role="alert">{errors.save}</p>
                         )}

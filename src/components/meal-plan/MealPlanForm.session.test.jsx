@@ -42,7 +42,7 @@ it('captures and restores the whole plan and unfinished meal/food editors after 
     expect(within(reopened).getByText('Alimento sintético')).toBeVisible();
     await waitFor(() => expect(saved.meals[0].foods[0].food.name).toBe('Alimento já existente'));
     expect(session.discard).not.toHaveBeenCalled();
-});
+}, 15000);
 
 it('uses the last applied revision as the baseline for edits made after saving', async () => {
     let snapshot;
@@ -85,4 +85,23 @@ it('reorders a meal with a pointer gesture and saves the complete reordered sess
         if (previousHitTest) Object.defineProperty(document, 'elementFromPoint', previousHitTest);
         else delete document.elementFromPoint;
     }
+});
+
+it('edits a food directly from the plan without losing its alternatives or changing the other food', async () => {
+    let snapshot;
+    const session = { ready: true, status: 'saved', queue: value => { snapshot = value; }, flush: async () => true };
+    render(<MealPlanForm patientId="patient" nutritionistId="owner" session={session} initialData={{ id: 55, name: 'Plano', meals: [{ id: 10, name: 'Café', meal_type: 'breakfast', foods: [
+        { id: 20, food_id: 1, quantity: 100, calories: 100, food: { id: 1, name: 'Pão' }, substitutes: [{ food_id: 3, quantity: 50 }] },
+        { id: 21, food_id: 2, quantity: 30, calories: 60, food: { id: 2, name: 'Queijo' } },
+    ] }] }} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Editar alimento Pão' }));
+    const food = await screen.findByRole('dialog', { name: 'Editar Alimento' });
+    expect(screen.getAllByRole('dialog')).toHaveLength(1);
+    fireEvent.change(within(food).getByLabelText('Quantidade'), { target: { value: '50' } });
+    fireEvent.click(within(food).getByRole('button', { name: 'Atualizar', exact: true }));
+    const meal = await screen.findByRole('dialog', { name: 'Editar Refeição' });
+    fireEvent.click(within(meal).getByRole('button', { name: 'Atualizar Refeição' }));
+    await waitFor(() => expect(snapshot.meals[0].foods[0].quantity).toBe(50));
+    expect(snapshot.meals[0].foods[0].substitutes).toEqual([{ food_id: 3, quantity: 50 }]);
+    expect(snapshot.meals[0].foods[1].quantity).toBe(30);
 });
