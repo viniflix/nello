@@ -55,3 +55,34 @@ it('uses the last applied revision as the baseline for edits made after saving',
     fireEvent.change(screen.getByLabelText(/Descrição \(opcional\)/), { target: { value: 'Nova edição depois de aplicar' } });
     await waitFor(() => expect(snapshot.baselineAppliedAt).toBe(applied.updated_at));
 });
+
+it('reorders a meal with a pointer gesture and saves the complete reordered session', async () => {
+    const previousPointerEvent = window.PointerEvent;
+    const previousHitTest = Object.getOwnPropertyDescriptor(document, 'elementFromPoint');
+    vi.stubGlobal('PointerEvent', MouseEvent);
+    let snapshot;
+    const session = { ready: true, queue: value => { snapshot = value; } };
+    try {
+        render(<MealPlanForm patientId="synthetic-patient" nutritionistId="synthetic-owner" session={session} initialData={{ id: 55, name: 'Plano', meals: [
+            { id: 10, name: 'Café', foods: [{ id: 20, food_id: 1, quantity: 100, calories: 100, food: { name: 'Pão' } }] },
+            { id: 11, name: 'Opção 2', include_in_totals: false, foods: [{ id: 21, food_id: 2, quantity: 30, calories: 60, food: { name: 'Queijo' } }] }
+        ] }} />);
+        const handle = screen.getByRole('button', { name: 'Arrastar Opção 2' });
+        const target = screen.getByRole('button', { name: 'Arrastar Café' }).closest('[data-meal-sort-index]');
+        Object.defineProperty(document, 'elementFromPoint', { configurable: true, value: () => target });
+        fireEvent.pointerDown(handle, { button: 0, clientX: 10, clientY: 100 });
+        fireEvent.pointerUp(handle, { clientX: 10, clientY: 102 });
+        expect(screen.getAllByRole('button', { name: /^Arrastar/ })[0]).toHaveAccessibleName('Arrastar Café');
+        fireEvent.pointerDown(handle, { button: 0, clientX: 10, clientY: 100 });
+        fireEvent.pointerUp(handle, { clientX: 10, clientY: 20 });
+        expect(screen.getAllByRole('button', { name: /^Arrastar/ })[0]).toHaveAccessibleName('Arrastar Opção 2');
+        await waitFor(() => expect(snapshot.meals[0].name).toBe('Opção 2'));
+        expect(snapshot.meals[0].include_in_totals).toBe(false);
+        expect(snapshot.meals[0].foods[0].food.name).toBe('Queijo');
+        expect(snapshot.meals.map(meal => meal.order_index)).toEqual([0, 1]);
+    } finally {
+        vi.stubGlobal('PointerEvent', previousPointerEvent);
+        if (previousHitTest) Object.defineProperty(document, 'elementFromPoint', previousHitTest);
+        else delete document.elementFromPoint;
+    }
+});

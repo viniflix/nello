@@ -68,6 +68,7 @@ const MealPlanForm = ({
 
     const [meals, setMeals] = useState([]);
     const draggedMealRef = useRef(null);
+    const [draggingMealIndex, setDraggingMealIndex] = useState(null);
     const [showMealForm, setShowMealForm] = useState(false);
     const [editingMeal, setEditingMeal] = useState(null);
     const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
@@ -380,6 +381,21 @@ const MealPlanForm = ({
         shadowTouchedRef.current = true;
         sessionTouchedRef.current = true;
         setMeals(previous => reorderMeals(previous, from, to));
+    };
+    const beginMealDrag = (event, index) => {
+        if (event.button !== 0) return;
+        event.preventDefault();
+        draggedMealRef.current = { index, x: event.clientX, y: event.clientY, pointerId: event.pointerId };
+        event.currentTarget.setPointerCapture?.(event.pointerId);
+        setDraggingMealIndex(index);
+    };
+    const finishMealDrag = event => {
+        const gesture = draggedMealRef.current;
+        draggedMealRef.current = null;
+        setDraggingMealIndex(null);
+        if (!gesture || gesture.pointerId !== event.pointerId || Math.hypot(event.clientX - gesture.x, event.clientY - gesture.y) < 8) return;
+        const target = event.currentTarget.ownerDocument.elementFromPoint(event.clientX, event.clientY)?.closest('[data-meal-sort-index]');
+        if (target && event.currentTarget.closest('form')?.contains(target)) moveMeal(gesture.index, Number(target.dataset.mealSortIndex));
     };
     const copyMeal = index => {
         shadowTouchedRef.current = true;
@@ -878,11 +894,11 @@ const MealPlanForm = ({
                                 <CardContent>
                                     <div className="space-y-3">
                                         {meals.map((meal, index) => (
-                                            <div key={meal.tempId} onDragOver={event => event.preventDefault()} onDrop={event => { event.preventDefault(); if (draggedMealRef.current !== null) moveMeal(draggedMealRef.current,index); draggedMealRef.current=null; }} className="p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                                            <div key={meal.tempId} data-meal-sort-index={index} className={`p-4 border rounded-lg hover:bg-muted/50 transition-colors ${draggingMealIndex === index ? 'opacity-60 border-primary' : ''}`}>
                                                 <div className="flex items-start justify-between">
                                                     <div className="flex-1 min-w-0">
                                                         <div className="flex items-center gap-2">
-                                                            <button type="button" draggable aria-label={`Arrastar ${meal.name}`} onDragStart={event => { draggedMealRef.current=index; event.dataTransfer.effectAllowed='move'; event.dataTransfer.setData('text/plain',String(index)); }} onDragEnd={() => { draggedMealRef.current=null; }} className="cursor-grab p-1"><GripVertical className="h-4 w-4" /></button>
+                                                            <button type="button" aria-label={`Arrastar ${meal.name}`} onPointerDown={event => beginMealDrag(event,index)} onPointerUp={finishMealDrag} onPointerCancel={() => { draggedMealRef.current=null; setDraggingMealIndex(null); }} className="cursor-grab active:cursor-grabbing touch-none select-none p-1"><GripVertical className="h-4 w-4" /></button>
                                                             <span className="text-sm text-muted-foreground">#{index + 1}</span>
                                                             <h4 className="font-semibold">{meal.name}</h4>
                                                             {meal.meal_time && (
