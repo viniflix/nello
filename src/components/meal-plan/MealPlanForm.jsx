@@ -409,9 +409,10 @@ const MealPlanForm = ({
 
     // Button: "Cancelar" — discards draft and closes form
     const handleCancel = async () => {
-        if (['local', 'saving', 'error', 'conflict'].includes(shadow.status) && !(await shadow.flush())) return;
-        if (!isEditing && draft.draftId && !(await draft.flushPlanInfo())) return;
+        if (['local', 'saving', 'error', 'conflict'].includes(shadow.status) && !(await shadow.flush())) return false;
+        if (!isEditing && draft.draftId && !(await draft.flushPlanInfo())) return false;
         onCancel();
+        return true;
     };
     if (beforeCloseRef) beforeCloseRef.current = handleCancel;
 

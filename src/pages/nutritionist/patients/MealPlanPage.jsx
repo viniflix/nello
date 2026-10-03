@@ -122,6 +122,25 @@ const MealPlanPage = () => {
         user
     });
 
+    const resumeWorkingDraft = async row => {
+        const planId = row.payload?.context?.planId || row.draft_key.split(':')[2];
+        let plan = null;
+        if (planId !== 'new') {
+            const result = await getMealPlanById(planId);
+            if (result.error || !result.data || result.data.patient_id !== patientId) throw new Error('Plan unavailable');
+            plan = result.data;
+        }
+        // Preserve any current edit before switching to another confirmed copy.
+        if (showForm && beforeCloseRef.current) {
+            const closed = await beforeCloseRef.current();
+            if (closed === false) throw new Error('Current edit unconfirmed');
+        }
+        setPendingDraft(plan?.is_draft ? plan : null);
+        setEditingPlan(plan?.is_draft ? null : plan);
+        setWorkingDraft(row);
+        setShowForm(true);
+    };
+
     // Obter ID do nutricionista
     useEffect(() => { if (!showForm) setWorkingDraft(null); }, [showForm]);
 
@@ -213,7 +232,9 @@ const MealPlanPage = () => {
                     </Button>
                 </div>
 
+                <WorkingDraftRecovery ownerId={nutritionistId} patientId={patientId} onResume={resumeWorkingDraft} />
                 <MealPlanForm
+                    key={workingDraft?.id || editingPlan?.id || 'new'}
                     patientId={patientId}
                     patientSlugOrId={paramValue}
                     nutritionistId={nutritionistId}
@@ -288,19 +309,7 @@ const MealPlanPage = () => {
             </div>
 
             <div className="flex flex-col gap-[3px]">
-                <WorkingDraftRecovery ownerId={nutritionistId} patientId={patientId} onResume={async row => {
-                    const planId = row.payload?.context?.planId || row.draft_key.split(':')[2];
-                    let plan = null;
-                    if (planId !== 'new') {
-                        const result = await getMealPlanById(planId);
-                        if (result.error || !result.data || result.data.patient_id !== patientId) throw new Error('Plan unavailable');
-                        plan = result.data;
-                    }
-                    setPendingDraft(plan?.is_draft ? plan : null);
-                    setEditingPlan(plan?.is_draft ? null : plan);
-                    setWorkingDraft(row);
-                    setShowForm(true);
-                }} />
+                <WorkingDraftRecovery ownerId={nutritionistId} patientId={patientId} onResume={resumeWorkingDraft} />
                 {/* Centro de Notificações Inteligentes */}
                 {!showForm && (
                     <NotificationCenter
