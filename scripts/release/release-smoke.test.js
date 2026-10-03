@@ -1,5 +1,6 @@
 // @vitest-environment node
 import { createServer } from 'node:http';
+import { readFileSync } from 'node:fs';
 import { afterEach, expect, it } from 'vitest';
 import { createReleaseSmoke } from './release-smoke.mjs';
 
@@ -19,7 +20,8 @@ async function fixture({ brokenHealth = false, false404 = false } = {}) {
       return response.end(JSON.stringify({ schemaVersion: 1, status: 'operational', checkedAt: new Date().toISOString(),
         checks: { auth: 'operational', database: 'operational', storage: 'operational' }, incidents: [] }));
     }
-    if (request.url === '/robots.txt') { response.setHeader('content-type', 'text/plain'); return response.end('User-agent: *\nDisallow: /'); }
+    if (request.url === '/robots.txt') { response.setHeader('content-type', 'text/plain'); return response.end(readFileSync('public/robots.txt', 'utf8')); }
+    if (request.url === '/sitemap.xml') { response.setHeader('content-type', 'application/xml'); return response.end(readFileSync('public/sitemap.xml', 'utf8')); }
     response.statusCode = false404 ? 200 : 404; response.end();
   });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
