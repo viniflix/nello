@@ -81,7 +81,7 @@ return (
                     </CardTitle>
                     <CardDescription>
                         {currentStep === 1 && 'Dados essenciais do alimento'}
-                        {currentStep === 2 && 'Valores nutricionais principais (obrigatórios)'}
+                        {currentStep === 2 && 'Valores nutricionais principais (opcionais)'}
                         {currentStep === 3 && 'Informações adicionais sobre gorduras e outros componentes'}
                         {currentStep === 4 && 'Vitaminas e minerais do alimento'}
                         {currentStep === 5 && 'Medidas caseiras para facilitar o uso'}
@@ -118,6 +118,7 @@ return (
                     {/* STEP 2: Macronutrients */}
                     {currentStep === 2 && (
                         <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">Deixe em branco os nutrientes desconhecidos. Eles não serão contabilizados; isso não significa que o alimento não contém esses nutrientes.</p>
                 <Tabs value={inputMode} onValueChange={setInputMode} className="w-full">
                     <TabsList className="grid w-full grid-cols-2">
                         <TabsTrigger value="100g">Dados por 100g</TabsTrigger>

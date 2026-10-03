@@ -41,7 +41,7 @@ export const getMealPlansByIds = async (planIds, existingPlans = null) => {
 
         // Buscar refeições do plano
         const meals = await fetchByIdsInPages(planIds, (ids, offset, pageSize) => supabase
-            .from('meal_plan_meals').select("id,meal_plan_id,name,meal_type,meal_time,order_index,notes,total_calories,total_protein,total_carbs,total_fat,created_at,updated_at").in('meal_plan_id', ids)
+            .from('meal_plan_meals').select("id,meal_plan_id,name,meal_type,meal_time,order_index,notes,total_calories,total_protein,total_carbs,total_fat,include_in_totals,created_at,updated_at").in('meal_plan_id', ids)
             .order('order_index', { ascending: true }).order('id', { ascending: true })
             .range(offset, offset + pageSize - 1));
 
@@ -67,8 +67,31 @@ export const getMealPlansByIds = async (planIds, existingPlans = null) => {
             return acc;
         }, {});
 
+        // 3. Batch Fetch: Buscar todas as substituições para todos os alimentos
+        const allMealPlanFoodIds = (allFoods || []).map(f => f.id);
+        let substitutionsMap = {};
+        let subFoodIds = [];
+
+        if (allMealPlanFoodIds.length > 0) {
+            const subs = await fetchByIdsInPages(allMealPlanFoodIds, (ids, offset, pageSize) => supabase
+                .from('meal_plan_food_substitutions')
+                .select('id, meal_plan_food_id, substitute_food_id, quantity, unit, food_snapshot, measure_snapshot')
+                .in('meal_plan_food_id', ids)
+                .order('id', { ascending: true })
+                .range(offset, offset + pageSize - 1));
+
+            if (subs && subs.length > 0) {
+                subFoodIds = subs.map(s => s.substitute_food_id);
+                substitutionsMap = subs.reduce((acc, s) => {
+                    if (!acc[s.meal_plan_food_id]) acc[s.meal_plan_food_id] = [];
+                    acc[s.meal_plan_food_id].push(s);
+                    return acc;
+                }, {});
+            }
+        }
+
         // 2. Batch Fetch: Resolver todas as unidades/medidas de uma vez
-        const allUnits = [...new Set((allFoods || []).map(f => f.unit).filter(Boolean))];
+        const allUnits = [...new Set([...(allFoods || []), ...Object.values(substitutionsMap).flat()].map(f => f.unit).filter(Boolean))];
         let measuresMap = {};
 
         const numericIds = allUnits.filter(u => /^\d+$/.test(String(u))).map(u => Number(u));
@@ -126,29 +149,6 @@ export const getMealPlansByIds = async (planIds, existingPlans = null) => {
             return measuresMap[unit] || null;
         };
 
-        // 3. Batch Fetch: Buscar todas as substituições para todos os alimentos
-        const allMealPlanFoodIds = (allFoods || []).map(f => f.id);
-        let substitutionsMap = {};
-        let subFoodIds = [];
-
-        if (allMealPlanFoodIds.length > 0) {
-            const subs = await fetchByIdsInPages(allMealPlanFoodIds, (ids, offset, pageSize) => supabase
-                .from('meal_plan_food_substitutions')
-                .select('id, meal_plan_food_id, substitute_food_id, quantity, unit')
-                .in('meal_plan_food_id', ids)
-                .order('id', { ascending: true })
-                .range(offset, offset + pageSize - 1));
-            
-            if (subs && subs.length > 0) {
-                subFoodIds = subs.map(s => s.substitute_food_id);
-                substitutionsMap = subs.reduce((acc, s) => {
-                    if (!acc[s.meal_plan_food_id]) acc[s.meal_plan_food_id] = [];
-                    acc[s.meal_plan_food_id].push(s);
-                    return acc;
-                }, {});
-            }
-        }
-
         // 4. Batch Fetch: Buscar os dados originais da tabela `foods`
         const primaryFoodIds = (allFoods || []).map(f => f.food_id);
         const allFoodIdsToFetch = [...new Set([...primaryFoodIds, ...subFoodIds])];
@@ -161,13 +161,13 @@ export const getMealPlansByIds = async (planIds, existingPlans = null) => {
             const transformedFoods = mealFoods.map(f => {
                 const subsForThisFood = substitutionsMap[f.id] || [];
                 const populatedSubs = subsForThisFood.map(s => {
-                    const subFood = globalFoodsMap[String(s.substitute_food_id)];
+                    const subFood = s.food_snapshot || globalFoodsMap[String(s.substitute_food_id)];
                     if (subFood) {
                         return {
                             ...subFood,
                             quantity: s.quantity,
                             unit: s.unit,
-                            measure: resolveMeasure(s.unit)
+                            measure: s.measure_snapshot || resolveMeasure(s.unit)
                         };
                     }
                     return null;
@@ -177,7 +177,7 @@ export const getMealPlansByIds = async (planIds, existingPlans = null) => {
                     ...f,
                     food: globalFoodsMap[String(f.food_id)] || null,
                     foods: globalFoodsMap[String(f.food_id)] || null, // legacy compat
-                    measure: resolveMeasure(f.unit),
+                    measure: f.measure_snapshot?.weight_in_grams || f.measure_snapshot?.grams_equivalent ? f.measure_snapshot : resolveMeasure(f.unit),
                     substitutes: populatedSubs
                 };
             });
@@ -244,7 +244,7 @@ export const getMealsInPlan = async (planId) => {
     try {
         const { data, error } = await supabase
             .from('meal_plan_meals')
-            .select("id,meal_plan_id,name,meal_type,meal_time,order_index,notes,total_calories,total_protein,total_carbs,total_fat,created_at,updated_at")
+            .select("id,meal_plan_id,name,meal_type,meal_time,order_index,notes,total_calories,total_protein,total_carbs,total_fat,include_in_totals,created_at,updated_at")
             .eq('meal_plan_id', planId)
             .order('order_index', { ascending: true });
 
@@ -380,7 +380,7 @@ export const getDraftMealPlan = async (patientId, nutritionistId) => {
     try {
         const { data: drafts, error } = await getDraftMealPlans(patientId, nutritionistId);
         if (error) throw error;
-        
+
         return { data: drafts && drafts.length > 0 ? drafts[0] : null, error: null };
     } catch (error) {
         logSupabaseError("erro_ao_buscar_rascunho_singular_do_plano_alimentar", error);
@@ -416,7 +416,7 @@ export const getFoodSubstitutions = async (mealPlanFoodId) => {
     try {
         const { data: subs, error: subsError } = await supabase
             .from('meal_plan_food_substitutions')
-            .select('substitute_food_id, quantity, unit')
+            .select('substitute_food_id, quantity, unit, measure_snapshot')
             .eq('meal_plan_food_id', mealPlanFoodId);
 
         if (subsError) throw subsError;
@@ -430,13 +430,14 @@ export const getFoodSubstitutions = async (mealPlanFoodId) => {
             .in('id', foodIds);
 
         if (foodsError) throw foodsError;
-        
+
         // Mapear quantidades e unidades para o resultado
         const result = (foods || []).map(food => {
             const subData = subs.find(s => s.substitute_food_id === food.id);
             return {
                 ...food,
-                quantity: subData?.quantity || null,
+                quantity: subData?.quantity ?? null,
+                measure: subData?.measure_snapshot || null,
                 unit: subData?.unit || null
             };
         });

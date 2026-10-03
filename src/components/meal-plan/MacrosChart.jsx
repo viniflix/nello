@@ -100,7 +100,7 @@ const MacrosChart = ({ protein, carbs, fat, calories, patientId, patientSlugOrId
                         />
                     )}
                     {/* Center Text */}
-                    <text x={centerX} y={centerY + 4} textAnchor="middle" className="text-3xl font-bold fill-foreground">{formatNutrient(calories)}</text>
+                    <text x={centerX} y={centerY + 4} textAnchor="middle" className="text-3xl font-bold fill-foreground">{formatNutrient(Math.round(calories))}</text>
                     <text x={centerX} y={centerY + 20} textAnchor="middle" className="text-xs font-semibold fill-muted-foreground uppercase tracking-widest">Kcal</text>
                 </svg>
             </div>
@@ -121,7 +121,7 @@ const MacrosChart = ({ protein, carbs, fat, calories, patientId, patientSlugOrId
                             <span className="text-xs font-medium text-white/90 leading-none">{m.label}</span>
                         </div>
                         <div className="flex items-baseline gap-0.5">
-                            <span className="text-sm font-bold text-white">{formatNutrient(m.value)}</span>
+                            <span className="text-sm font-bold text-white">{formatNutrient(Math.round(m.value))}</span>
                             <span className="text-xs font-medium text-white/70">g</span>
                         </div>
                     </div>
@@ -164,8 +164,8 @@ const MacrosChart = ({ protein, carbs, fat, calories, patientId, patientSlugOrId
                                     <span>{dri.name}</span>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    <span className="font-bold text-foreground">{coverage.known ? `${coverage.unknown ? '≥ ' : ''}${formatNutrient(value)} ${dri.unit}${coverage.unknown ? ' (parcial)' : ''}` : 'Não informado'}</span>
-                                    {complete && <span className="text-xs text-muted-foreground">/ {formatNutrient(dri.value)}{dri.unit}</span>}
+                                    <span className="font-bold text-foreground">{coverage.known ? `${coverage.unknown ? '≥ ' : ''}${formatNutrient(Math.round(value))} ${dri.unit}${coverage.unknown ? ' (parcial)' : ''}` : 'Não informado'}</span>
+                                    {complete && <span className="text-xs text-muted-foreground">/ {formatNutrient(Math.round(dri.value))}{dri.unit}</span>}
                                 </div>
                             </div>
                             <div className="h-1.5 bg-muted rounded-full overflow-hidden">
@@ -226,7 +226,7 @@ const MacrosChart = ({ protein, carbs, fat, calories, patientId, patientSlugOrId
                 {/* Footer Buttons */}
                 {!readOnly && (
                     <div className="pt-4 mt-auto border-t space-y-2">
-                        <Button type="button" variant="outline" size="sm" onClick={() => setShowReferenceModal(true)} className="w-full gap-2">
+                        <Button type="button" variant="outline" size="sm" disabled={!planId} title={!planId ? 'Adicione uma refeição para configurar as metas do plano' : undefined} onClick={() => setShowReferenceModal(true)} className="w-full gap-2">
                             <Target className="w-4 h-4" />
                             Definir Metas
                         </Button>

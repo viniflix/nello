@@ -9,6 +9,7 @@ import { Events, track } from '@/infrastructure/analytics/posthog';
  */
 
 const ITEMS_PER_PAGE = 20;
+const optionalNutrient = value => value == null || value === '' ? null : Number(value);
 
 /**
  * Busca medidas caseiras de um alimento (lazy load)
@@ -54,24 +55,11 @@ export async function searchFoodsPaginated(searchTerm, page = 0, source = null, 
   const offset = Math.max(0, Math.floor(Number(page) || 0)) * ITEMS_PER_PAGE;
   const limit = ITEMS_PER_PAGE;
   // PostgreSQL LIKE wildcards must be literal when typed by a user.
-  const literalTerm = searchTerm.trim().slice(0, 120).replace(/[\\%_]/g, '\\$&');
   // view foods não tem relação direta com food_measures; use getFoodMeasures(id) quando precisar
-  const selectFields = 'id, name, group, description, source, calories, protein, carbs, fat, fiber, sodium, portion_size';
   const started = performance.now();
 
   try {
-    let query = supabase
-      .from('foods')
-      .select(selectFields)
-      .eq('is_active', true)
-      .ilike('name', `%${literalTerm}%`)
-      .order('name', { ascending: true })
-      .order('id', { ascending: true })
-      .range(offset, offset + limit);
-
-    if (source) {
-      query = query.eq('source', source);
-    }
+    let query = supabase.rpc('search_foods_ranked', { p_query: searchTerm.trim().slice(0,120), p_source: source, p_limit: limit+1, p_offset: offset });
 
     if (signal) query = query.abortSignal(signal);
     const { data, error } = await query;
@@ -123,10 +111,10 @@ export async function createFood(foodData) {
       barcode: foodData.barcode || null,
       base_qty: parseFloat(foodData.portion_size) || 100,
       base_unit: foodData.base_unit || 'g',
-      energy_kcal: parseFloat(foodData.calories) || 0,
-      protein_g: parseFloat(foodData.protein) || 0,
-      carbohydrate_g: parseFloat(foodData.carbs) || 0,
-      lipid_g: parseFloat(foodData.fat) || 0,
+      energy_kcal: optionalNutrient(foodData.calories),
+      protein_g: optionalNutrient(foodData.protein),
+      carbohydrate_g: optionalNutrient(foodData.carbs),
+      lipid_g: optionalNutrient(foodData.fat),
       fiber_g: parseFloat(foodData.fiber) || 0,
       sodium_mg: parseFloat(foodData.sodium) || null,
       saturated_fat_g: parseFloat(foodData.saturated_fat) || 0,

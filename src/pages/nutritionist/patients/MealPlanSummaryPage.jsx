@@ -150,7 +150,7 @@ const MealPlanSummaryPage = () => {
     const prepareChartData = () => {
         if (!plan || !plan.meals) return [];
 
-        return plan.meals.map(meal => ({
+        return plan.meals.filter(meal => meal.include_in_totals !== false).map(meal => ({
             name: meal.name,
             value: meal.total_calories || 0
         })).filter(item => item.value > 0);
@@ -301,17 +301,17 @@ const MealPlanSummaryPage = () => {
                             </div>
                             <div className="p-4 border rounded-lg">
                                 <div className="text-sm text-muted-foreground">Proteínas</div>
-                                <div className="text-3xl font-bold">{plan.daily_protein?.toFixed(1) || 0}</div>
+                                <div className="text-3xl font-bold">{plan.daily_protein?.toFixed(0) || 0}</div>
                                 <div className="text-xs text-muted-foreground">g</div>
                             </div>
                             <div className="p-4 border rounded-lg">
                                 <div className="text-sm text-muted-foreground">Carboidratos</div>
-                                <div className="text-3xl font-bold">{plan.daily_carbs?.toFixed(1) || 0}</div>
+                                <div className="text-3xl font-bold">{plan.daily_carbs?.toFixed(0) || 0}</div>
                                 <div className="text-xs text-muted-foreground">g</div>
                             </div>
                             <div className="p-4 border rounded-lg">
                                 <div className="text-sm text-muted-foreground">Gorduras</div>
-                                <div className="text-3xl font-bold">{plan.daily_fat?.toFixed(1) || 0}</div>
+                                <div className="text-3xl font-bold">{plan.daily_fat?.toFixed(0) || 0}</div>
                                 <div className="text-xs text-muted-foreground">g</div>
                             </div>
                         </div>
@@ -354,7 +354,7 @@ const MealPlanSummaryPage = () => {
                                     <TableCell className="text-right">{plan.daily_calories?.toFixed(0) || 0}</TableCell>
                                     <TableCell className="text-right">{referenceValues.total_energy_kcal}</TableCell>
                                     <TableCell className="text-right">
-                                        {((plan.daily_calories / referenceValues.total_energy_kcal) * 100).toFixed(1)}%
+                                        {((plan.daily_calories / referenceValues.total_energy_kcal) * 100).toFixed(0)}%
                                     </TableCell>
                                     <TableCell>
                                         <span className={`px-2 py-1 rounded text-xs font-semibold ${
@@ -369,10 +369,10 @@ const MealPlanSummaryPage = () => {
                                 {/* Proteínas */}
                                 <TableRow>
                                     <TableCell className="font-medium">Proteínas (g)</TableCell>
-                                    <TableCell className="text-right">{plan.daily_protein?.toFixed(1) || 0}</TableCell>
-                                    <TableCell className="text-right">{targets.protein.toFixed(1)}</TableCell>
+                                    <TableCell className="text-right">{plan.daily_protein?.toFixed(0) || 0}</TableCell>
+                                    <TableCell className="text-right">{targets.protein.toFixed(0)}</TableCell>
                                     <TableCell className="text-right">
-                                        {((plan.daily_protein / targets.protein) * 100).toFixed(1)}%
+                                        {((plan.daily_protein / targets.protein) * 100).toFixed(0)}%
                                     </TableCell>
                                     <TableCell>
                                         <span className={`px-2 py-1 rounded text-xs font-semibold ${
@@ -387,10 +387,10 @@ const MealPlanSummaryPage = () => {
                                 {/* Carboidratos */}
                                 <TableRow>
                                     <TableCell className="font-medium">Carboidratos (g)</TableCell>
-                                    <TableCell className="text-right">{plan.daily_carbs?.toFixed(1) || 0}</TableCell>
-                                    <TableCell className="text-right">{targets.carbs.toFixed(1)}</TableCell>
+                                    <TableCell className="text-right">{plan.daily_carbs?.toFixed(0) || 0}</TableCell>
+                                    <TableCell className="text-right">{targets.carbs.toFixed(0)}</TableCell>
                                     <TableCell className="text-right">
-                                        {((plan.daily_carbs / targets.carbs) * 100).toFixed(1)}%
+                                        {((plan.daily_carbs / targets.carbs) * 100).toFixed(0)}%
                                     </TableCell>
                                     <TableCell>
                                         <span className={`px-2 py-1 rounded text-xs font-semibold ${
@@ -405,10 +405,10 @@ const MealPlanSummaryPage = () => {
                                 {/* Gorduras */}
                                 <TableRow>
                                     <TableCell className="font-medium">Gorduras (g)</TableCell>
-                                    <TableCell className="text-right">{plan.daily_fat?.toFixed(1) || 0}</TableCell>
-                                    <TableCell className="text-right">{targets.fat.toFixed(1)}</TableCell>
+                                    <TableCell className="text-right">{plan.daily_fat?.toFixed(0) || 0}</TableCell>
+                                    <TableCell className="text-right">{targets.fat.toFixed(0)}</TableCell>
                                     <TableCell className="text-right">
-                                        {((plan.daily_fat / targets.fat) * 100).toFixed(1)}%
+                                        {((plan.daily_fat / targets.fat) * 100).toFixed(0)}%
                                     </TableCell>
                                     <TableCell>
                                         <span className={`px-2 py-1 rounded text-xs font-semibold ${
@@ -445,20 +445,20 @@ const MealPlanSummaryPage = () => {
                         <TableBody>
                             {plan.meals && plan.meals.map((meal) => (
                                 <TableRow key={meal.id}>
-                                    <TableCell className="font-medium">{meal.name}</TableCell>
+                                    <TableCell className="font-medium">{meal.name}{meal.include_in_totals === false && <span className="block text-xs text-muted-foreground">Alternativa · fora dos totais</span>}</TableCell>
                                     <TableCell>{meal.meal_time || '-'}</TableCell>
                                     <TableCell className="text-right">{meal.total_calories?.toFixed(0) || 0}</TableCell>
-                                    <TableCell className="text-right">{meal.total_protein?.toFixed(1) || 0}</TableCell>
-                                    <TableCell className="text-right">{meal.total_carbs?.toFixed(1) || 0}</TableCell>
-                                    <TableCell className="text-right">{meal.total_fat?.toFixed(1) || 0}</TableCell>
+                                    <TableCell className="text-right">{meal.total_protein?.toFixed(0) || 0}</TableCell>
+                                    <TableCell className="text-right">{meal.total_carbs?.toFixed(0) || 0}</TableCell>
+                                    <TableCell className="text-right">{meal.total_fat?.toFixed(0) || 0}</TableCell>
                                 </TableRow>
                             ))}
                             <TableRow className="font-bold bg-muted/50">
                                 <TableCell colSpan={2}>TOTAL</TableCell>
                                 <TableCell className="text-right">{plan.daily_calories?.toFixed(0) || 0}</TableCell>
-                                <TableCell className="text-right">{plan.daily_protein?.toFixed(1) || 0}</TableCell>
-                                <TableCell className="text-right">{plan.daily_carbs?.toFixed(1) || 0}</TableCell>
-                                <TableCell className="text-right">{plan.daily_fat?.toFixed(1) || 0}</TableCell>
+                                <TableCell className="text-right">{plan.daily_protein?.toFixed(0) || 0}</TableCell>
+                                <TableCell className="text-right">{plan.daily_carbs?.toFixed(0) || 0}</TableCell>
+                                <TableCell className="text-right">{plan.daily_fat?.toFixed(0) || 0}</TableCell>
                             </TableRow>
                         </TableBody>
                     </Table>

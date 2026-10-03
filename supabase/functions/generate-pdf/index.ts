@@ -1,5 +1,5 @@
 import { edgeBoundary, RequestError, timedFetch } from '../_shared/http.ts';
-import { energyDocument, canonicalDocument, storedClinicalDocument } from '../_shared/clinical-document.js';
+import { energyDocument, canonicalDocument, storedClinicalDocument, renderMealPlanPdf } from '../_shared/clinical-document.js';
 import { activeActor } from '../_shared/actor.ts';
 import { consumeQuota } from '../_shared/quota.ts';
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
@@ -48,6 +48,8 @@ serve(edgeBoundary(async (req) => {
   await consumeQuota(actor.id, 'pdf');
   try {
     let body = await req.json();
+    let mealPdfRecord: any = null;
+    let mealPdfIdentity: any = null;
     const clinicalKind=['mealPlanId','anamnesisRecordId','anthropometryRecordId'].find(kind=>body?.[kind]!=null);
     if(clinicalKind) {
       const id=body[clinicalKind], numeric=clinicalKind!=='anamnesisRecordId';
@@ -56,7 +58,7 @@ serve(edgeBoundary(async (req) => {
       if(!valid || body.format!=='binary' || (body.includeNutrients!=null && typeof body.includeNutrients!=='boolean') || Object.keys(body).some(key=>![clinicalKind,'format',...(clinicalKind==='mealPlanId'?['includeNutrients']:[]),...(clinicalKind==='anthropometryRecordId'?['compareRecordId']:[])].includes(key))
         || (clinicalKind==='anthropometryRecordId' && !(typeof compare==='number'&&Number.isSafeInteger(compare)&&compare>0))) throw new RequestError(400,'invalid_pdf_request');
       const table=clinicalKind==='mealPlanId'?'meal_plans':clinicalKind==='anamnesisRecordId'?'anamnesis_records':'growth_records';
-      const select=clinicalKind==='mealPlanId'?'id,patient_id,created_at,name,description,meal_plan_meals(*,meal_plan_foods(*,meal_plan_food_substitutions(*)))':clinicalKind==='anamnesisRecordId'?'id,patient_id,date,content,notes':'id,patient_id,record_date,weight,height,results,circumferences,skinfolds,notes';
+      const select=clinicalKind==='mealPlanId'?'id,patient_id,created_at,name,description,daily_calories,daily_protein,daily_carbs,daily_fat,meal_plan_meals(*,meal_plan_foods(*,meal_plan_food_substitutions(*)))':clinicalKind==='anamnesisRecordId'?'id,patient_id,date,content,notes':'id,patient_id,record_date,weight,height,results,circumferences,skinfolds,notes';
       const url=Deno.env.get('SUPABASE_URL'),key=Deno.env.get('SUPABASE_ANON_KEY');
       if(!url||!key)throw new RequestError(503,'service_unavailable');
       const filter=clinicalKind==='anthropometryRecordId'?`id=in.(${id},${compare})`:`id=eq.${id}`;
@@ -73,7 +75,18 @@ serve(edgeBoundary(async (req) => {
           if(!response.ok)throw new RequestError(422,'document_unavailable');
           for(const food of await response.json())names[food.id]=food.name;
         }
-        for(const food of foods){food.food={name:food.food_snapshot?.name || names[food.food_id] || `Alimento (${food.food_id})`};food.substitutes=(food.meal_plan_food_substitutions||[]).map((item:{food_snapshot?:{name:string};substitute_food_id:string;quantity:number;unit:string})=>({name:item.food_snapshot?.name||names[item.substitute_food_id]||item.substitute_food_id,quantity:item.quantity,unit:item.unit}));}
+        const measureIds=[...new Set(foods.flatMap((food:any)=>[food.unit,...(food.meal_plan_food_substitutions||[]).map((sub:any)=>sub.unit)]))].filter((id:any)=>typeof id==='string' && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(id));
+        const measures:Record<string,unknown>={};
+        for(let index=0;index<measureIds.length;index+=200){
+          const response=await timedFetch(`${url}/rest/v1/food_measures?id=in.(${measureIds.slice(index,index+200).map(encodeURIComponent).join(',')})&select=id,label,weight_in_grams&limit=200`,{headers:{authorization:req.headers.get('authorization')!,apikey:key}});
+          if(!response.ok)throw new RequestError(422,'document_unavailable');
+          for(const measure of await response.json())measures[measure.id]=measure;
+        }
+        for(const food of foods){
+          food.food={name:food.food_snapshot?.name || names[food.food_id] || 'Alimento'};
+          if(!food.measure_snapshot?.weight_in_grams && !food.measure_snapshot?.grams_equivalent && measures[food.unit])food.measure_snapshot=measures[food.unit];
+          food.substitutes=(food.meal_plan_food_substitutions||[]).map((item:any)=>({name:item.food_snapshot?.name || names[item.substitute_food_id] || 'Alternativa',quantity:item.quantity,unit:item.unit,measure_snapshot:item.measure_snapshot || measures[item.unit]}));
+        }
       }
       if(clinicalKind==='anthropometryRecordId')records.sort((a:{id:number},b:{id:number})=>a.id===id?-1:b.id===id?1:0);
       const patientId=records[0].patient_id;
@@ -82,6 +95,7 @@ serve(edgeBoundary(async (req) => {
         const profile=await timedFetch(`${url}/rest/v1/user_profiles?id=eq.${patientId}&select=name&limit=1`,{headers:{authorization:req.headers.get('authorization')!,apikey:key}});
         if(profile.ok)patientName=(await profile.json())?.[0]?.name || '';
       }
+      if(clinicalKind==='mealPlanId'){mealPdfRecord=records[0];mealPdfIdentity={patientName,includeNutrients:body.includeNutrients};}
       body={...storedClinicalDocument(clinicalKind,records,{patientName,includeNutrients:body.includeNutrients}),format:'binary'};
       body.lines=body.lines.flatMap((line:string)=>line.match(/.{1,900}/g)||['']);
     }
@@ -123,6 +137,11 @@ serve(edgeBoundary(async (req) => {
     const lines = inputLines.map(sanitize).filter(Boolean).slice(0, 1200);
     const fileName = sanitize(body?.fileName || `documento-${Date.now()}.pdf`);
 
+    if(mealPdfRecord){
+      const bytes=await renderMealPlanPdf({PDFDocument,StandardFonts,rgb},mealPdfRecord,mealPdfIdentity);
+      if(bytes.length>2*1024*1024)throw new RequestError(413,'pdf_too_large');
+      return new Response(bytes,{status:200,headers:{'Content-Type':'application/octet-stream','Content-Disposition':`attachment; filename*=UTF-8''${encodeURIComponent(fileName)}`}});
+    }
     const pdfDoc = await PDFDocument.create();
     const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
     const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);

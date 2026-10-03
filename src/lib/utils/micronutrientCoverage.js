@@ -3,7 +3,7 @@
 const UNREPORTED_TACO_NUTRIENTS = new Set(['vitamin_b12', 'vitamin_d', 'vitamin_e', 'folate']);
 
 const gramsForItem = (item) => {
-  if (!item.unit || item.unit === 'gram' || item.unit === 'grams') return Number(item.quantity) || 0;
+  if (!item.unit || ['g','gram','grams','gramas'].includes(item.unit)) return Number(item.quantity) || 0;
   if (item.measure) {
     const grams = Number(item.measure.grams_equivalent ?? item.measure.weight_in_grams ?? item.measure.quantity_grams ?? item.measure.grams);
     return Number.isFinite(grams) && grams > 0 ? Number(item.quantity) * grams : null;
@@ -15,11 +15,13 @@ export const summarizeMicronutrients = (plan, nutrients) => {
   const result = Object.fromEntries(nutrients.map(nutrient => [nutrient, { value: 0, known: 0, unknown: 0 }]));
 
   for (const meal of plan?.meals || []) {
+    if (meal.include_in_totals === false) continue;
     for (const item of meal.foods || []) {
       if (!Number.isFinite(Number(item.quantity)) || Number(item.quantity) <= 0) continue;
       const grams = gramsForItem(item);
-      const multiplier = grams == null ? null : grams / 100;
       const food = item.food ?? item.foods;
+      const basis = food?.source === 'custom' ? Number(food.portion_size) : 100;
+      const multiplier = grams == null || !Number.isFinite(basis) || basis <= 0 ? null : grams / basis;
 
       for (const nutrient of nutrients) {
         const entry = result[nutrient];

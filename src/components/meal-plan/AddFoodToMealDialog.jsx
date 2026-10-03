@@ -14,6 +14,7 @@ import {
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import FoodSelector from './FoodSelector';
 import { PremiumPortionSelector } from '@/components/nutrition';
+import { isGramUnit } from '@/lib/utils/foodPortions';
 import { formatNutrient } from '@/lib/utils';
 import { useShadowDraft } from '@/hooks/useShadowDraft';
 import { ShadowRecovery, ShadowSaveStatus } from '@/components/ui/shadow-save-status';
@@ -61,11 +62,11 @@ const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName, initialData = n
         if (initialData) {
             setSelectedFood(initialData.food);
             // Suporta legado (unit numérico) e novo formato (unit = code string)
-            const unitCode = initialData.unit === 'gram' || !initialData.unit
+            const unitCode = isGramUnit(initialData.unit)
                 ? 'gram'
                 : initialData.unit;
             setPortion({
-                quantity: initialData.quantity || 100,
+                quantity: initialData.quantity ?? 100,
                 measureId: unitCode,
                 measureCode: unitCode,
                 measure: initialData.measure || null
@@ -115,8 +116,11 @@ const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName, initialData = n
             newErrors.food = 'Selecione um alimento';
         }
 
-        if (!portion.quantity || portion.quantity <= 0) {
-            newErrors.portion = 'Quantidade deve ser maior que zero';
+        if (portion.quantity === '' || !Number.isFinite(Number(portion.quantity)) || Number(portion.quantity) < 0) {
+            newErrors.portion = 'Informe uma quantidade maior ou igual a zero';
+        }
+        if (!calculatedNutrition) {
+            newErrors.portion = 'Aguarde a medida carregar ou selecione uma medida válida';
         }
 
         setErrors(newErrors);
@@ -134,6 +138,7 @@ const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName, initialData = n
             quantity: portion.quantity,
             unit: unitCode,
             measure: portion.measure || null,
+            grams: calculatedNutrition?.grams,
             calories: calculatedNutrition?.calories || 0,
             protein: calculatedNutrition?.protein || 0,
             carbs: calculatedNutrition?.carbs || 0,

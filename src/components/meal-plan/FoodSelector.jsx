@@ -39,7 +39,7 @@ const FoodSelector = ({ isOpen, onClose, onSelect, targetGroup, targetCalories, 
         { value: 'TACO', label: 'TACO' },
         { value: 'IBGE', label: 'IBGE' },
         { value: 'USDA', label: 'USDA' },
-        { value: 'Tucunduva', label: 'Tucunduva' },
+        { value: 'TUCUNDUVA', label: 'Tucunduva' },
         { value: 'TBCA', label: 'TBCA' },
         { value: 'custom', label: 'Personalizados' }
     ];
@@ -58,21 +58,10 @@ const FoodSelector = ({ isOpen, onClose, onSelect, targetGroup, targetCalories, 
         const timer = setTimeout(async () => {
           const started = performance.now();
           try {
-            let query = supabase
-                .from('foods')
-                .select('id, name, group, description, source, calories, protein, carbs, fat, fiber, sodium')
-                .eq('is_active', true)
-                .ilike('name', `%${searchTerm.trim().replace(/[%_\\]/g, '')}%`)
-                .order('name', { ascending: true })
-                .limit(50);
-
-            if (sourceFilter) {
-                query = query.eq('source', sourceFilter);
-            }
-
-            if (onlySameGroup && targetGroup) {
-                query = query.eq('group', targetGroup);
-            }
+            const query = supabase.rpc('search_foods_ranked', {
+                p_query: searchTerm.trim().slice(0,120), p_source: sourceFilter,
+                p_group: onlySameGroup && targetGroup ? targetGroup : null, p_limit: 50, p_offset: 0,
+            });
 
             const { data, error } = await query.abortSignal(controller.signal);
             if (error) throw error;
@@ -123,7 +112,7 @@ const FoodSelector = ({ isOpen, onClose, onSelect, targetGroup, targetCalories, 
 
     return (
         <Dialog open={isOpen} onOpenChange={handleClose}>
-            <DialogContent className="flex h-[min(90dvh,700px)] max-h-[calc(100dvh-1rem)] max-w-3xl flex-col overflow-hidden">
+            <DialogContent className="flex h-[94dvh] max-h-[calc(100dvh-1rem)] w-[96vw] max-w-[1440px] flex-col overflow-hidden">
                 <DialogHeader className="shrink-0">
                     <DialogTitle>Buscar Alimento</DialogTitle>
                     <DialogDescription>

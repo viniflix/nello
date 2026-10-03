@@ -1,8 +1,9 @@
 import { getTodayIsoDate } from '@/lib/utils/date';
+import { reorderMeals, duplicateMeal } from '@/lib/utils/mealEditing';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
-    Save, X, Plus, Trash2, Edit, Calendar, CloudOff, Cloud,
+    Save, X, Plus, Trash2, Edit, Calendar, CloudOff, Cloud, Copy, GripVertical, ArrowUp, ArrowDown,
     Loader2, AlertTriangle, CheckCircle2, History, FolderOpen, RefreshCw, Download
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -66,6 +67,7 @@ const MealPlanForm = ({
     });
 
     const [meals, setMeals] = useState([]);
+    const draggedMealRef = useRef(null);
     const [showMealForm, setShowMealForm] = useState(false);
     const [editingMeal, setEditingMeal] = useState(null);
     const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
@@ -83,6 +85,7 @@ const MealPlanForm = ({
     const [nestedRecovery, setNestedRecovery] = useState(null);
     const [mealEditorState, setMealEditorState] = useState(null);
     const sessionTouchedRef = useRef(false);
+    const applyingRef = useRef(false);
     const sessionRestoredRef = useRef(false);
     const sessionBaselineRef = useRef(restoredSession?.baselineAppliedAt ?? baselineAppliedAt);
     const receiveMealEditor = useCallback(value => { sessionTouchedRef.current = true; setMealEditorState(value); }, []);
@@ -101,7 +104,7 @@ const MealPlanForm = ({
         enabled: !isEditing && !pendingDraft
     });
     useEffect(() => {
-        if (!queueSession || !session?.ready || (!sessionTouchedRef.current && !shadowTouchedRef.current && !showMealForm)) return;
+        if (applyingRef.current || !queueSession || !session?.ready || (!sessionTouchedRef.current && !shadowTouchedRef.current && !showMealForm)) return;
         sessionTouchedRef.current = true;
         queueSession({ formData, meals, baselineAppliedAt: sessionBaselineRef.current, planId: initialData?.id || draft.draftId || null, baseRevision: initialData?.updated_at || pendingDraft?.updated_at || null,
             editor: { open: showMealForm, mealId: editingMeal?.dbId || editingMeal?.id || editingMeal?.tempId || null, state: mealEditorState } });
@@ -158,11 +161,12 @@ const MealPlanForm = ({
 
     // Load reference values when editing
     const loadReferenceValues = useCallback(async () => {
-        if (initialData?.id) {
-            const { data } = await getReferenceValues(initialData.id);
+        const referencePlanId = initialData?.id || draft.draftId;
+        if (referencePlanId) {
+            const { data } = await getReferenceValues(referencePlanId);
             setReferenceValues(data);
         }
-    }, [initialData?.id]);
+    }, [initialData?.id, draft.draftId]);
     useEffect(() => { void loadReferenceValues(); }, [loadReferenceValues]);
 
     // Populate form when editing existing plan
@@ -356,7 +360,7 @@ const MealPlanForm = ({
 
         setMeals(prev => prev.map(m =>
             m.tempId === editingMeal.tempId
-                ? { ...updatedMeal, tempId: m.tempId, dbId: newDbId ?? m.dbId }
+                ? { ...m, ...updatedMeal, tempId: m.tempId, dbId: newDbId ?? m.dbId }
                 : m
         ));
         setEditingMeal(null);
@@ -372,7 +376,26 @@ const MealPlanForm = ({
         setMeals(prev => prev.filter(m => m.tempId !== meal.tempId));
     };
 
-    const calculateDailyTotals = () => meals.reduce(
+    const moveMeal = (from, to) => {
+        shadowTouchedRef.current = true;
+        sessionTouchedRef.current = true;
+        setMeals(previous => reorderMeals(previous, from, to));
+    };
+    const copyMeal = index => {
+        shadowTouchedRef.current = true;
+        sessionTouchedRef.current = true;
+        setMeals(previous => {
+            const next = [...previous];
+            next.splice(index+1,0,duplicateMeal(previous[index]));
+            return next.map((meal,index) => ({...meal,order_index:index}));
+        });
+    };
+    const toggleMealTotals = (index, include) => {
+        shadowTouchedRef.current = true;
+        sessionTouchedRef.current = true;
+        setMeals(previous => previous.map((meal,i) => i===index ? {...meal,include_in_totals:include} : meal));
+    };
+    const calculateDailyTotals = () => meals.filter(meal => meal.include_in_totals !== false).reduce(
         (acc, meal) => ({
             daily_calories: acc.daily_calories + (meal.calories || 0),
             daily_protein: acc.daily_protein + (meal.protein || 0),
@@ -408,8 +431,16 @@ const MealPlanForm = ({
             draftId: draft.draftId || null
         };
 
-        const saved = await onSubmit(planData, initialData?.id);
-        if (saved) { await shadow.discard(); await session?.discard(); }
+        applyingRef.current = true;
+        try {
+            const saved = await onSubmit(planData, initialData?.id);
+            if (saved) {
+                sessionTouchedRef.current = false;
+                shadowTouchedRef.current = false;
+                sessionBaselineRef.current = saved.updated_at || saved.confirmed_at || baselineAppliedAt;
+                await shadow.discard(); await session?.discard();
+            }
+        } finally { applyingRef.current = false; }
     };
 
     // Button: "Salvar como Rascunho" — saves plan without activating
@@ -847,10 +878,11 @@ const MealPlanForm = ({
                                 <CardContent>
                                     <div className="space-y-3">
                                         {meals.map((meal, index) => (
-                                            <div key={meal.tempId} className="p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                                            <div key={meal.tempId} onDragOver={event => event.preventDefault()} onDrop={event => { event.preventDefault(); if (draggedMealRef.current !== null) moveMeal(draggedMealRef.current,index); draggedMealRef.current=null; }} className="p-4 border rounded-lg hover:bg-muted/50 transition-colors">
                                                 <div className="flex items-start justify-between">
-                                                    <div className="flex-1">
+                                                    <div className="flex-1 min-w-0">
                                                         <div className="flex items-center gap-2">
+                                                            <button type="button" draggable aria-label={`Arrastar ${meal.name}`} onDragStart={event => { draggedMealRef.current=index; event.dataTransfer.effectAllowed='move'; event.dataTransfer.setData('text/plain',String(index)); }} onDragEnd={() => { draggedMealRef.current=null; }} className="cursor-grab p-1"><GripVertical className="h-4 w-4" /></button>
                                                             <span className="text-sm text-muted-foreground">#{index + 1}</span>
                                                             <h4 className="font-semibold">{meal.name}</h4>
                                                             {meal.meal_time && (
@@ -868,7 +900,10 @@ const MealPlanForm = ({
                                                             G: {meal.fat?.toFixed(1) || 0}g
                                                         </div>
                                                     </div>
-                                                    <div className="flex gap-2">
+                                                    <div className="flex flex-wrap gap-1">
+                                                        <Button type="button" variant="ghost" size="sm" disabled={index===0} aria-label={`Mover ${meal.name} para cima`} onClick={() => moveMeal(index,index-1)}><ArrowUp className="h-4 w-4" /></Button>
+                                                        <Button type="button" variant="ghost" size="sm" disabled={index===meals.length-1} aria-label={`Mover ${meal.name} para baixo`} onClick={() => moveMeal(index,index+1)}><ArrowDown className="h-4 w-4" /></Button>
+                                                        <Button type="button" variant="ghost" size="sm" aria-label={`Duplicar ${meal.name}`} onClick={() => copyMeal(index)}><Copy className="h-4 w-4" /></Button>
                                                         <Button type="button" variant="ghost" size="sm" onClick={() => handleEditMeal(meal)}>
                                                             <Edit className="h-4 w-4" />
                                                         </Button>
@@ -877,6 +912,7 @@ const MealPlanForm = ({
                                                         </Button>
                                                     </div>
                                                 </div>
+                                                <label className="mt-3 flex items-center gap-2 text-sm"><Checkbox checked={meal.include_in_totals !== false} onCheckedChange={checked => toggleMealTotals(index,checked===true)} />Contabilizar esta refeição na análise nutricional</label>
                                             </div>
                                         ))}
                                     </div>
@@ -892,7 +928,7 @@ const MealPlanForm = ({
                                 calories={dailyTotals.daily_calories}
                                 patientId={patientId}
                                 patientSlugOrId={patientSlugOrId}
-                                planId={initialData?.id}
+                                planId={initialData?.id || draft.draftId}
                                 referenceValues={referenceValues}
                                 onReferenceUpdate={loadReferenceValues}
                                 plan={{ meals }}

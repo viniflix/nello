@@ -81,13 +81,86 @@ export function storedClinicalDocument(kind, records, identity={}) {
       for(const meal of [...(record.meal_plan_meals || [])].sort((a,b)=>(a.order_index??0)-(b.order_index??0))) {
         lines.push(`${meal.name || meal.meal_type || 'Refeição'} ${meal.meal_time || ''}`,meal.notes || '');
         for(const food of [...(meal.meal_plan_foods || [])].sort((a,b)=>(a.order_index??0)-(b.order_index??0))) {
-          lines.push(`${food.patient_description || food.food?.name || 'Alimento'}: ${food.quantity} ${food.unit || ''}`,
+          lines.push(`${food.patient_description || food.food?.name || 'Alimento'}: ${prescriptionQuantity(food)}`,
             identity.includeNutrients!==false ? `Energia salva: ${food.calories} kcal; proteína: ${food.protein} g; carboidratos: ${food.carbs} g; gordura: ${food.fat} g` : '',
-            food.notes || '',food.substitutes?.length ? `Substituições: ${describe(food.substitutes)}` : '');
+            food.notes || '',food.substitutes?.length ? `Substituições: ${food.substitutes.map(sub => `${sub.name || 'Alternativa'}${sub.quantity != null ? `: ${prescriptionQuantity(sub)}` : ''}`).join('; ')}` : '');
         }
       }
     } else if(kind==='anamnesisRecordId') lines.push(describe(record.content),record.notes || '');
     else lines.push(`Peso: ${record.weight} kg; altura: ${record.height} cm`,describe(record.results),describe(record.circumferences),describe(record.skinfolds),record.notes || '');
   }
   return {title:labels[kind],fileName:`nello-${kind}-${row.id}.pdf`,lines:lines.filter(Boolean).flatMap(line=>String(line).split('\n'))};
+}
+
+export function prescriptionQuantity(food) {
+  const unit=String(food.unit || 'g');
+  const snapshot=food.measure_snapshot || food.measure;
+  const names={g:'g',gram:'g',grams:'g',ml:'ml',unit:'unidade',slice:'fatia',tablespoon:'colher de sopa',teaspoon:'colher de chá',portion:'porção',cup:'xícara'};
+  const rawLabel=snapshot?.name || snapshot?.label || snapshot?.measure_label || names[unit] || unit;
+  const technical=/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(rawLabel) || /^\d+$/.test(rawLabel) || rawLabel.startsWith('custom_');
+  const label=technical ? 'porção (medida não registrada)' : rawLabel;
+  const quantity=Number(food.quantity);
+  return `${Number.isFinite(quantity) ? quantity.toLocaleString('pt-BR',{maximumFractionDigits:3}) : '—'} ${label}`;
+}
+
+/** Layout consumes only the stored record fetched with the caller's JWT. */
+export async function renderMealPlanPdf({PDFDocument,StandardFonts,rgb}, record, identity={}) {
+  const pdf=await PDFDocument.create();
+  const regular=await pdf.embedFont(StandardFonts.Helvetica);
+  const bold=await pdf.embedFont(StandardFonts.HelveticaBold);
+  const safe=value=>text(value).replace(/[^\x20-\x7E\xA0-\xFF]/g,' ').replace(/\s+/g,' ').trim();
+  const green=rgb(.25,.39,.2), ink=rgb(.16,.18,.16), muted=rgb(.4,.43,.4);
+  let page, y;
+  const width=499, left=48;
+  const newPage=()=>{
+    if(pdf.getPageCount()>=50)throw Error('pdf_too_large');
+    page=pdf.addPage([595.28,841.89]); y=793;
+    for(const line of wrap(record.name || 'Plano alimentar',width,17,bold).slice(0,3)) {
+      page.drawText(line,{x:left,y,size:17,font:bold,color:green});y-=22;
+    }
+    for(const line of wrap(`Paciente: ${identity.patientName || 'Não informado'}`,width,10).slice(0,3)) {
+      page.drawText(line,{x:left,y,size:10,font:regular,color:muted});y-=15;
+    }
+    y-=13;
+  };
+  const ensure=height=>{if(y-height<60)newPage();};
+  const wrap=(value,maxWidth,size=10,font=regular)=>{
+    const result=[];let line='';
+    for(const word of safe(value).split(' ')) {
+      const next=line ? `${line} ${word}` : word;
+      if(font.widthOfTextAtSize(next,size)<=maxWidth)line=next;
+      else {if(line)result.push(line);line='';for(const char of word){if(font.widthOfTextAtSize(line+char,size)>maxWidth){result.push(line);line='';}line+=char;}}
+    }
+    if(line)result.push(line);return result;
+  };
+  const paragraph=(value,{size=10,color=ink,font=regular,indent=0}={})=>{
+    for(const line of wrap(value,width-indent,size,font)){ensure(size+5);page.drawText(line,{x:left+indent,y,size,font,color});y-=size+5;}
+  };
+  newPage();
+  if(identity.professionalName)paragraph(`Nutricionista: ${identity.professionalName}`,{color:muted});
+  if(record.description){paragraph(record.description);y-=8;}
+  for(const meal of [...(record.meal_plan_meals || [])].sort((a,b)=>(a.order_index??0)-(b.order_index??0))) {
+    const mealTitle=`${meal.meal_time ? String(meal.meal_time).slice(0,5)+' · ' : ''}${meal.name || 'Refeição'}`;
+    const headings=wrap(mealTitle,width-20,12,bold);
+    const headingHeight=Math.max(28,headings.length*16+12);
+    ensure(Math.max(90,headingHeight+35));
+    page.drawRectangle({x:left,y:y-headingHeight+12,width,height:headingHeight,color:rgb(.94,.96,.92)});
+    for(const heading of headings){page.drawText(heading,{x:left+10,y,size:12,font:bold,color:green});y-=16;}y-=12;
+    if(meal.include_in_totals===false)paragraph('Refeição alternativa - não contabilizada nos totais',{color:muted,size:9});
+    for(const food of [...(meal.meal_plan_foods || [])].sort((a,b)=>(a.order_index??0)-(b.order_index??0))) {
+      ensure(65);
+      paragraph(food.patient_description || food.food_snapshot?.name || food.food?.name || 'Alimento',{font:bold});
+      paragraph(prescriptionQuantity(food),{indent:10});
+      if(identity.includeNutrients!==false)paragraph(`${Math.round(Number(food.calories || 0))} kcal  |  P ${Math.round(Number(food.protein || 0))} g  |  C ${Math.round(Number(food.carbs || 0))} g  |  G ${Math.round(Number(food.fat || 0))} g`,{indent:10,color:muted,size:9});
+      if(food.notes)paragraph(food.notes,{indent:10,size:9});
+      for(const sub of food.substitutes || [])paragraph(`ou ${sub.name || 'Alternativa'}${sub.quantity!=null ? ': '+prescriptionQuantity(sub) : ''}`,{indent:10,size:9});
+      y-=7;
+    }
+    if(meal.notes)paragraph(`Observações: ${meal.notes}`,{size:9});
+    y-=12;
+  }
+  if(identity.includeNutrients!==false){ensure(75);paragraph('Totais do plano',{font:bold,color:green});paragraph(`${Math.round(Number(record.daily_calories || 0))} kcal  |  Proteínas ${Math.round(Number(record.daily_protein || 0))} g  |  Carboidratos ${Math.round(Number(record.daily_carbs || 0))} g  |  Gorduras ${Math.round(Number(record.daily_fat || 0))} g`);}
+  const pages=pdf.getPages();
+  pages.forEach((page,index)=>{page.drawLine({start:{x:left,y:43},end:{x:547,y:43},thickness:.5,color:rgb(.8,.83,.8)});page.drawText(`Nello · Plano alimentar · ${index+1}/${pages.length}`,{x:left,y:29,size:8,font:regular,color:muted});});
+  return pdf.save();
 }

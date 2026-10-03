@@ -1,4 +1,4 @@
-import { foodPer100Grams, foodEnergyPer100Grams } from './nutrition-calculations';
+import { foodPer100Grams, calculateNutrition } from './nutrition-calculations';
 /**
  * src/lib/utils/nutritionCalculations.js
  * Utilitários para cálculos nutricionais avançados, conversões e equivalências.
@@ -13,7 +13,7 @@ import { foodPer100Grams, foodEnergyPer100Grams } from './nutrition-calculations
 export function calculateEquivalentGrams(originalKcal, substituteFood) {
     const food = foodPer100Grams(substituteFood);
     const original = Number(originalKcal);
-    const energy = foodEnergyPer100Grams(food);
+    const energy = calculateNutrition(food, 100).calories;
     if (!food || !Number.isFinite(original) || original <= 0 || !Number.isFinite(energy) || energy <= 0) return 0;
     return original * 100 / energy;
 
@@ -123,7 +123,7 @@ export function checkMacroDeviations(originalKcal, originalProtein, originalCarb
     if (!food) return {hasDeviation:true,messages:['Porção base inválida.']};
     const ratio = substituteGrams / 100;
 
-    const subKcal = foodEnergyPer100Grams(food) * ratio;
+    const subKcal = calculateNutrition(food, substituteGrams).calories;
     const subProtein = food.protein * ratio;
     const subCarbs = food.carbs * ratio;
     const subFat = food.fat * ratio;

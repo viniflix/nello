@@ -75,7 +75,7 @@ export const toNumber = (value) => {
 export const round2 = (value) => Math.round(toNumber(value) * 100) / 100;
 
 export const calculateTotalsFromMeals = (meals = []) => {
-    return (meals || []).reduce((acc, meal) => ({
+    return (meals || []).filter(meal => meal.include_in_totals !== false).reduce((acc, meal) => ({
         calories: acc.calories + toNumber(meal?.calories),
         protein: acc.protein + toNumber(meal?.protein),
         carbs: acc.carbs + toNumber(meal?.carbs),
@@ -95,6 +95,7 @@ export const normalizeMealPlanVersionSnapshot = (plan) => {
         meal_time: meal.meal_time || null,
         notes: meal.notes || null,
         order_index: meal.order_index ?? 0,
+        include_in_totals: meal.include_in_totals !== false,
         total_calories: meal.total_calories ?? meal.calories ?? 0,
         total_protein: meal.total_protein ?? meal.protein ?? 0,
         total_carbs: meal.total_carbs ?? meal.carbs ?? 0,

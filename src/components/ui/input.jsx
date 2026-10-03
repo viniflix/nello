@@ -1,7 +1,18 @@
 import { cn } from '@/lib/utils';
 import React from 'react';
 
-const Input = React.forwardRef(({ className, type, ...props }, ref) => {
+const Input = React.forwardRef(({ className, type, value, onChange, onFocus, onBlur, ...props }, ref) => {
+  // Numeric consumers often coerce an empty value to zero. Keep the text being
+  // edited until blur so deleting a digit or replacing a number stays possible.
+  const [editingValue, setEditingValue] = React.useState(null);
+  const ownChange = React.useRef(false);
+  const previousValue = React.useRef(value);
+  const numeric = type === 'number' && value !== undefined;
+  React.useLayoutEffect(() => {
+    if (!ownChange.current && previousValue.current !== value && editingValue !== null) setEditingValue(String(value ?? ''));
+    ownChange.current = false;
+    previousValue.current = value;
+  });
   return (
     <input
       type={type}
@@ -11,6 +22,10 @@ const Input = React.forwardRef(({ className, type, ...props }, ref) => {
       )}
       ref={ref}
       {...props}
+      value={numeric && editingValue !== null ? editingValue : value}
+      onFocus={(event) => { if (numeric) setEditingValue(event.target.value); onFocus?.(event); }}
+      onChange={(event) => { if (numeric) { ownChange.current = true; setEditingValue(event.target.value); } onChange?.(event); }}
+      onBlur={(event) => { setEditingValue(null); onBlur?.(event); }}
     />
   );
 });

@@ -239,7 +239,7 @@ export function useSmartFoodFormController({
             
     // Helper function to normalize a value
     const normalizeValue = (value) => {
-        if (!value) return null;
+        if (value === '' || value == null) return null;
             if (inputMode === 'portion' && labelPortionSize > 0) {
                 const factor = 100 / labelPortionSize;
             return parseFloat(value) * factor;
@@ -253,7 +253,7 @@ export function useSmartFoodFormController({
             case 1: // Básico
                 return name.trim().length > 0;
             case 2: // Macronutrientes
-                return name.trim().length > 0 && protein && carbs && fat && calories;
+                return name.trim().length > 0 && [protein,carbs,fat,calories].every(value => value === '' || (Number.isFinite(Number(value)) && Number(value) >= 0));
             case 3: // Gorduras Detalhadas (opcional)
             case 4: // Micronutrientes (opcional)
             case 5: // Medidas (opcional)
@@ -744,7 +744,7 @@ export function useSmartFoodFormController({
         if (!validateStep(2)) {
             toast({
                 title: 'Erro',
-                description: 'Preencha todos os campos obrigatórios (Nome, Proteína, Carboidratos, Gorduras, Calorias).',
+                description: 'Informe o nome e valores nutricionais válidos. Os nutrientes podem ficar em branco.',
                 variant: 'destructive'
             });
             return;
@@ -761,15 +761,16 @@ export function useSmartFoodFormController({
 
         setLoading(true);
         try {
-            const normalize = (val) => val ? normalizeValue(val) : null;
+            const normalize = normalizeValue;
+            const macro = value => { const normalized = normalize(value); return normalized == null ? null : Math.round(normalized * 100) / 100; };
             
             const foodData = {
                 name: name.trim(),
                 description: brand.trim() ? `Marca: ${brand.trim()}` : null,
-                calories: Math.round(normalize(calories) * 100) / 100,
-                protein: Math.round(normalize(protein) * 100) / 100,
-                carbs: Math.round(normalize(carbs) * 100) / 100,
-                fat: Math.round(normalize(fat) * 100) / 100,
+                calories: macro(calories),
+                protein: macro(protein),
+                carbs: macro(carbs),
+                fat: macro(fat),
                 fiber: normalize(fiber),
                 sodium: normalize(sodium),
                 sugar: normalize(sugar),

@@ -1543,7 +1543,7 @@
           "file": "index.ts",
           "sha256": "f0015be07e3d70272d3cae068e28708aa46954eacb621c848f2e45bc6e7bfea5",
           "matchedLocal": false,
-          "repositorySha256": "ddb8696fb25d3dc2661ea64423400b2a99da83b4190fe6d34321ea3bc725ccf1"
+          "repositorySha256": "d249ef9f13c467c79f53bcc034e329ada9f2c63e7dfafbfa386f937fcd71dfbd"
         }
       ],
       "sourcePolicy": "Wave10: authorized stored clinical records, shared engine, bounded binary PDF; original published sha256 preserved."
@@ -1656,7 +1656,7 @@
     },
     {
       "file": "clinical-document.js",
-      "repositorySha256": "84df126c318f362055ae730afbcb284c0538bedca79e73898cbc74977fcec935"
+      "repositorySha256": "5045243f87c372c8d5225d6f0db6e0d9716d79e863eef061739f8a26f0c3521b"
     },
     {
       "file": "clinical-energy-plan.js",

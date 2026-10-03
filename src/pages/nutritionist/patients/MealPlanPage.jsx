@@ -150,6 +150,7 @@ const MealPlanPage = () => {
         setEditingPlan(plan?.is_draft ? null : plan);
         setWorkingDraft(row);
         setRestoredSession(null);
+        setSessionRestoreNumber(value => value + 1);
         setShowForm(true);
     };
 
@@ -306,7 +307,7 @@ const MealPlanPage = () => {
                     if (await session.discard()) { setShowForm(false); setEditingPlan(null); setPendingDraft(null); }
                 }}>Descartar sessão de edição</Button>
                 <MealPlanForm
-                    key={workingDraft?.id || (restoredSession ? `restored-session-${sessionRestoreNumber}` : editingPlan?.id || 'new')}
+                    key={`meal-plan-editor-${sessionRestoreNumber}`}
                     patientId={patientId}
                     patientSlugOrId={paramValue}
                     nutritionistId={nutritionistId}
@@ -317,7 +318,14 @@ const MealPlanPage = () => {
                     session={{ ...session, reopen: () => restoreSavedSession(session.recovery.payload).catch(() => setSessionError(true)) }}
                     beforeCloseRef={beforeCloseRef}
                     pendingDraft={!editingPlan ? pendingDraft : null}
-                    onSubmit={handleSubmit}
+                    onSubmit={async (...args) => {
+                        const saved = await handleSubmit(...args);
+                        if (saved) {
+                            setRestoredSession(null);
+                            setWorkingDraft(null);
+                        }
+                        return saved;
+                    }}
                     onSaveDraft={handleSaveDraft}
                     onCancel={() => {
                         setShowForm(false);

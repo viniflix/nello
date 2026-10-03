@@ -65,12 +65,12 @@ const ReferenceValuesModal = ({ isOpen, onClose, planId }) => {
                     total_energy_kcal: data.total_energy_kcal || '',
                     macro_mode: data.macro_mode || 'percentage',
                     // Converter de decimal (0.20) para percentual (20)
-                    protein_pct: data.protein_percentage ? data.protein_percentage * 100 : 33.3,
-                    carbs_pct: data.carbs_percentage ? data.carbs_percentage * 100 : 33.3,
-                    fat_pct: data.fat_percentage ? data.fat_percentage * 100 : 33.3,
-                    protein_g_per_kg: data.protein_g_per_kg || '',
-                    carbs_g_per_kg: data.carbs_g_per_kg || '',
-                    fat_g_per_kg: data.fat_g_per_kg || ''
+                    protein_pct: data.protein_percentage != null ? data.protein_percentage * 100 : 33.3,
+                    carbs_pct: data.carbs_percentage != null ? data.carbs_percentage * 100 : 33.3,
+                    fat_pct: data.fat_percentage != null ? data.fat_percentage * 100 : 33.3,
+                    protein_g_per_kg: data.protein_g_per_kg ?? '',
+                    carbs_g_per_kg: data.carbs_g_per_kg ?? '',
+                    fat_g_per_kg: data.fat_g_per_kg ?? ''
                 });
                 setInitialValues(data);
             }
@@ -88,89 +88,10 @@ const ReferenceValuesModal = ({ isOpen, onClose, planId }) => {
         }
     };
 
-    // Ajustar proteínas e gorduras quando carboidratos mudam
-    const handleCarbsChange = (value) => {
-        const carbsPct = value[0];
-        const remaining = 100 - carbsPct;
-
-        // Manter proporção entre proteínas e gorduras
-        const currentProtein = formData.protein_pct;
-        const currentFat = formData.fat_pct;
-        const currentTotal = currentProtein + currentFat;
-
-        let newProtein, newFat;
-
-        if (currentTotal > 0) {
-            // Distribuir o restante mantendo a proporção
-            newProtein = (currentProtein / currentTotal) * remaining;
-            newFat = (currentFat / currentTotal) * remaining;
-        } else {
-            // Se não há proporção, dividir igualmente
-            newProtein = remaining / 2;
-            newFat = remaining / 2;
-        }
-
-        setFormData(prev => ({
-            ...prev,
-            carbs_pct: carbsPct,
-            protein_pct: Math.round(newProtein * 10) / 10,
-            fat_pct: Math.round(newFat * 10) / 10
-        }));
-    };
-
-    // Ajustar carboidratos e gorduras quando proteínas mudam
-    const handleProteinChange = (value) => {
-        const proteinPct = value[0];
-        const remaining = 100 - proteinPct;
-
-        const currentCarbs = formData.carbs_pct;
-        const currentFat = formData.fat_pct;
-        const currentTotal = currentCarbs + currentFat;
-
-        let newCarbs, newFat;
-
-        if (currentTotal > 0) {
-            newCarbs = (currentCarbs / currentTotal) * remaining;
-            newFat = (currentFat / currentTotal) * remaining;
-        } else {
-            newCarbs = remaining / 2;
-            newFat = remaining / 2;
-        }
-
-        setFormData(prev => ({
-            ...prev,
-            protein_pct: proteinPct,
-            carbs_pct: Math.round(newCarbs * 10) / 10,
-            fat_pct: Math.round(newFat * 10) / 10
-        }));
-    };
-
-    // Ajustar proteínas e carboidratos quando gorduras mudam
-    const handleFatChange = (value) => {
-        const fatPct = value[0];
-        const remaining = 100 - fatPct;
-
-        const currentProtein = formData.protein_pct;
-        const currentCarbs = formData.carbs_pct;
-        const currentTotal = currentProtein + currentCarbs;
-
-        let newProtein, newCarbs;
-
-        if (currentTotal > 0) {
-            newProtein = (currentProtein / currentTotal) * remaining;
-            newCarbs = (currentCarbs / currentTotal) * remaining;
-        } else {
-            newProtein = remaining / 2;
-            newCarbs = remaining / 2;
-        }
-
-        setFormData(prev => ({
-            ...prev,
-            fat_pct: fatPct,
-            protein_pct: Math.round(newProtein * 10) / 10,
-            carbs_pct: Math.round(newCarbs * 10) / 10
-        }));
-    };
+    // Each target belongs to the professional; editing one never rewrites another.
+    const handleCarbsChange = ([value]) => handleChange('carbs_pct', value);
+    const handleProteinChange = ([value]) => handleChange('protein_pct', value);
+    const handleFatChange = ([value]) => handleChange('fat_pct', value);
 
     const calculateTargets = () => {
         const weight = parseFloat(formData.weight_kg);
@@ -198,9 +119,9 @@ const ReferenceValuesModal = ({ isOpen, onClose, planId }) => {
         }
 
         return {
-            protein: proteinG.toFixed(1),
-            carbs: carbsG.toFixed(1),
-            fat: fatG.toFixed(1),
+            protein: proteinG.toFixed(0),
+            carbs: carbsG.toFixed(0),
+            fat: fatG.toFixed(0),
             proteinCal: (proteinG * 4).toFixed(0),
             carbsCal: (carbsG * 4).toFixed(0),
             fatCal: (fatG * 9).toFixed(0),
@@ -226,9 +147,9 @@ const ReferenceValuesModal = ({ isOpen, onClose, planId }) => {
                 newErrors.macro_sum = `Soma dos percentuais deve ser 100% (atual: ${total.toFixed(1)}%)`;
             }
         } else {
-            if (!formData.protein_g_per_kg) newErrors.protein_g_per_kg = 'Obrigatório';
-            if (!formData.carbs_g_per_kg) newErrors.carbs_g_per_kg = 'Obrigatório';
-            if (!formData.fat_g_per_kg) newErrors.fat_g_per_kg = 'Obrigatório';
+            for (const field of ['protein_g_per_kg','carbs_g_per_kg','fat_g_per_kg']) {
+                if (formData[field] === '' || !Number.isFinite(Number(formData[field])) || Number(formData[field]) < 0) newErrors[field] = 'Informe um valor maior ou igual a zero';
+            }
         }
 
         setErrors(newErrors);
@@ -472,6 +393,7 @@ const ReferenceValuesModal = ({ isOpen, onClose, planId }) => {
                                                     min="5"
                                                     max="50"
                                                     step="0.1"
+                                                    aria-label="Proteínas (%)"
                                                     value={formData.protein_pct}
                                                     onChange={(e) => {
                                                         const value = parseFloat(e.target.value) || 0;
@@ -491,7 +413,7 @@ const ReferenceValuesModal = ({ isOpen, onClose, planId }) => {
                                             className="w-full"
                                         />
                                         <p className="text-xs text-muted-foreground">
-                                            Arraste ou digite o valor. Os outros macros ajustam automaticamente.
+                                            Arraste ou digite o valor. As outras metas permanecem como você definiu.
                                         </p>
                                     </div>
 
@@ -505,6 +427,7 @@ const ReferenceValuesModal = ({ isOpen, onClose, planId }) => {
                                                     min="5"
                                                     max="75"
                                                     step="0.1"
+                                                    aria-label="Carboidratos (%)"
                                                     value={formData.carbs_pct}
                                                     onChange={(e) => {
                                                         const value = parseFloat(e.target.value) || 0;
@@ -524,7 +447,7 @@ const ReferenceValuesModal = ({ isOpen, onClose, planId }) => {
                                             className="w-full"
                                         />
                                         <p className="text-xs text-muted-foreground">
-                                            Arraste ou digite o valor. Os outros macros ajustam automaticamente.
+                                            Arraste ou digite o valor. As outras metas permanecem como você definiu.
                                         </p>
                                     </div>
 
@@ -538,6 +461,7 @@ const ReferenceValuesModal = ({ isOpen, onClose, planId }) => {
                                                     min="5"
                                                     max="50"
                                                     step="0.1"
+                                                    aria-label="Gorduras (%)"
                                                     value={formData.fat_pct}
                                                     onChange={(e) => {
                                                         const value = parseFloat(e.target.value) || 0;
@@ -557,7 +481,7 @@ const ReferenceValuesModal = ({ isOpen, onClose, planId }) => {
                                             className="w-full"
                                         />
                                         <p className="text-xs text-muted-foreground">
-                                            Arraste ou digite o valor. Os outros macros ajustam automaticamente.
+                                            Arraste ou digite o valor. As outras metas permanecem como você definiu.
                                         </p>
                                     </div>
 

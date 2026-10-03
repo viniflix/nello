@@ -1,4 +1,9 @@
-import React, { useMemo, useEffect } from 'react';
+import React, { useMemo, useEffect, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import CustomMeasureFormDialog from '@/components/nutritionist/CustomMeasureFormDialog';
+import { useCreateCustomMeasure } from '@/hooks/useCustomMeasures';
+import { calculateNutrition, foodPer100Grams } from '@/lib/utils/nutrition-calculations';
+import { isGramUnit, portionGrams, changePortionMeasure } from '@/lib/utils/foodPortions';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import {
@@ -33,56 +38,32 @@ export function PremiumPortionSelector({
   showNutrition = true,
   onNutritionChange = null,
 }) {
-  const { customMeasures = [], isLoading: loadingCustom } = useAllMeasures();
+  const { customMeasures = [], isLoading: loadingCustom, refetch } = useAllMeasures();
+  const [creatingMeasure, setCreatingMeasure] = useState(false);
+  const createMeasure = useCreateCustomMeasure();
   const { data: foodMeasures = [], isLoading: loadingFood } = useFoodMeasures(food?.id);
   const isLoading = loadingCustom || loadingFood;
 
   // Determinar o code selecionado atualmente
   const selectedCode = useMemo(() => {
     const mid = value.measureId ?? value.measureCode;
-    if (!mid || mid === 'gram') return 'gram';
+    if (isGramUnit(mid)) return 'gram';
     return String(mid);
   }, [value.measureId, value.measureCode]);
 
   // Cálculo de gramas totais
-  const totalGrams = useMemo(() => {
-    if (!food || !value.quantity) return 0;
-    const qty = parseFloat(value.quantity) || 0;
-    if (qty <= 0) return 0;
-
-    if (selectedCode === 'gram') return qty;
-
-    // Custom
-    if (String(selectedCode).startsWith('custom_')) {
-      const c = customMeasures.find(m => m.code === selectedCode);
-      return c ? qty * (c.grams_equivalent || 0) : 0;
-    }
-
-    // Specific food measure (from new food_measures table)
-    const specific = foodMeasures.find(fm => String(fm.id) === selectedCode);
-    if (specific) {
-      const g = specific.weight_in_grams || specific.quantity_grams || specific.grams || 0;
-      return qty * g;
-    }
-
-    return qty;
-  }, [selectedCode, value.quantity, food, foodMeasures, customMeasures]);
+  const measures = useMemo(() => [...customMeasures, ...foodMeasures.map(m => ({ ...m, name: m.label || m.measure_label, source: 'specific' }))], [customMeasures, foodMeasures]);
+  const totalGrams = useMemo(() => portionGrams(value.quantity, selectedCode, measures, value.measure), [selectedCode, value.quantity, value.measure, measures]);
 
   // Cálculo Nutricional
   const nutrition = useMemo(() => {
-    if (!food || totalGrams <= 0) return null;
-    const m = totalGrams / 100;
-    return {
-      grams: totalGrams,
-      calories: (food.calories || 0) * m,
-      protein: (food.protein || 0) * m,
-      carbs: (food.carbs || 0) * m,
-      fat: (food.fat || 0) * m,
-    };
+    if (!food || totalGrams === null) return null;
+    const normalized = foodPer100Grams(food);
+    return normalized ? calculateNutrition(normalized, totalGrams) : null;
   }, [food, totalGrams]);
 
   useEffect(() => {
-    if (onNutritionChange && nutrition) onNutritionChange(nutrition);
+    if (onNutritionChange) onNutritionChange(nutrition);
   }, [nutrition, onNutritionChange]);
 
   // Agrupamento
@@ -107,40 +88,25 @@ export function PremiumPortionSelector({
     return grouped;
   }, [customMeasures, foodMeasures]);
 
-  const handleValueChange = (code) => {
-    let measureObj = null;
-    if (code !== 'gram') {
-      if (String(code).startsWith('custom_')) {
-        measureObj = customMeasures.find(m => m.code === code);
-      } else {
-        // Encontrar a medida específica do alimento para injetar o nome completo
-        const fm = foodMeasures.find(m => String(m.id) === code);
-        if (fm) {
-          measureObj = {
-            id: fm.id,
-            name: fm.label || fm.measure_label,
-            grams_equivalent: fm.weight_in_grams || fm.quantity_grams || fm.grams
-          };
-        }
-      }
-    }
-
-    onChange({
-      ...value,
-      measureId: code,
-      measureCode: code,
-      measure: measureObj ? { ...measureObj, source: code.startsWith('custom_') ? 'custom' : 'specific' } : null
-    });
+  const handleValueChange = code => onChange(changePortionMeasure(value, code, measures));
+  const handleCreateMeasure = async payload => {
+    try {
+      const result = await createMeasure.mutateAsync(payload);
+      const measure = { ...result.data, source: 'custom' };
+      onChange(changePortionMeasure(value, measure.code, [...measures, measure]));
+      await refetch();
+      setCreatingMeasure(false);
+    } catch { /* Mutation displays the error and keeps the form open. */ }
   };
 
   const getMeasureLabel = (code) => {
     if (code === 'gram') return 'g (gramas)';
     if (String(code).startsWith('custom_')) {
       const m = customMeasures.find(c => c.code === code);
-      return m ? `${m.name} (Minha Medida)` : code;
+      return m ? `${m.name} (Minha Medida)` : (value.measure?.name || 'Medida indisponível');
     }
     const m = foodMeasures.find(s => String(s.id) === code);
-    return m ? (m.label || m.measure_label) : code;
+    return m ? (m.label || m.measure_label) : (value.measure?.name || 'Medida indisponível');
   };
 
   return (
@@ -161,7 +127,7 @@ export function PremiumPortionSelector({
             <Input
               type="number"
               value={value.quantity}
-              onChange={(e) => onChange({ ...value, quantity: parseFloat(e.target.value) || 0 })}
+              onChange={(e) => onChange({ ...value, quantity: e.target.value })}
               className="h-12 text-lg font-bold pl-4 pr-10 rounded-xl border-slate-200 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
               placeholder="0"
               min={0}
@@ -255,6 +221,9 @@ export function PremiumPortionSelector({
         </div>
       </div>
 
+      <Button type="button" variant="outline" size="sm" onClick={() => setCreatingMeasure(true)}>+ Criar medida personalizada</Button>
+      <CustomMeasureFormDialog open={creatingMeasure} onOpenChange={setCreatingMeasure} onSave={handleCreateMeasure} isSaving={createMeasure.isPending} />
+      {totalGrams === null && <p role="alert" className="text-sm text-destructive">Selecione uma medida com equivalência em gramas para calcular a porção.</p>}
       {/* Info de Conversão Visual */}
       {selectedCode !== 'gram' && totalGrams > 0 && (
         <div className="flex items-center gap-2 mt-2 px-3 py-2 bg-emerald-50 rounded-lg border border-emerald-100/50">

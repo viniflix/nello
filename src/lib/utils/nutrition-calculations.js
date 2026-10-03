@@ -12,7 +12,7 @@ const multiply = (a,b) => fractionNumber(exactOperation('multiply',[decimalFract
 export const NUTRITION_REFERENCE = 'https://www.fao.org/4/y5022e/y5022e04.htm';
 export const foodEnergyPer100Grams = food => {
   const published = Number(food?.calories);
-  return ['TACO','TBCA','USDA','OFF','OPENFOODFACTS'].includes(String(food?.source || '').toUpperCase()) && food?.calories != null && Number.isFinite(published) && published >= 0
+  return ['TACO','TBCA','IBGE','TUCUNDUVA','USDA','OFF','OPENFOODFACTS'].includes(String(food?.source || '').toUpperCase()) && food?.calories != null && Number.isFinite(published) && published >= 0
     ? published : calculateCaloriesFromMacros(food?.protein || 0,food?.carbs || 0,food?.fat || 0);
 };
 

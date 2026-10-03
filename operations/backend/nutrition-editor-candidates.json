@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "migrations": [
+    {
+      "file": "supabase/migrations/releases/20261003010000_nutrition_editor_recovery.sql",
+      "sha256": "1ad6eb82b93e32660fc68830757c692593c56636bd743e31f2a0c35e4e5d85bf"
+    }
+  ]
+}

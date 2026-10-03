@@ -271,6 +271,13 @@
       "file": "feed_active_care_scope.sql",
       "kind": "assertion-suite",
       "fixtures": []
+    },
+    {
+      "file": "nutrition_editor.sql",
+      "kind": "assertion-suite",
+      "fixtures": [
+        "supabase/fixtures/wave02/clinical-attachments.sql"
+      ]
     }
   ]
 }

@@ -261,6 +261,7 @@ export function useMealPlanController({
         try {
             const resolvedName = resolveUniquePlanName(planData.name, plans, planId);
             const finalPlanData = { ...planData, name: resolvedName };
+            let savedPlanId = planId || finalPlanData.draftId;
 
             if (planId) {
                 const existingPlan = plans.find((plan) => plan.id === planId);
@@ -292,6 +293,7 @@ export function useMealPlanController({
                 });
                 if (result.error) throw result.error;
 
+                savedPlanId = result.data.id;
                 const updateResult = await updateFullMealPlan(result.data.id, {
                     ...finalPlanData,
                     is_active: false
@@ -314,11 +316,12 @@ export function useMealPlanController({
                 setSyncFlags((prev) => ({ ...(prev || {}), needs_meal_plan_review: false }));
             }
 
-            setShowForm(false);
-            setEditingPlan(null);
+            const {data: savedPlan, error: reloadError} = await getMealPlanById(savedPlanId);
+            if (reloadError) throw reloadError;
+            setEditingPlan(savedPlan);
             setPendingDraft(null);
             await loadPlans();
-            return true;
+            return savedPlan;
         } catch (error) {
             track(Events.UI_ACTION_OUTCOME, { operation: 'meal_plan_apply', outcome: 'failed', duration_ms: Math.round(performance.now() - started) });
             logDiagnostic('error', 'hooks/useMealPlanController.js:323', 'Erro ao salvar plano:', error);

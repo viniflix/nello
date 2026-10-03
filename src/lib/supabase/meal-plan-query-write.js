@@ -273,6 +273,7 @@ export const updateFullMealPlan = async (planId, planData) => {
                 meal_time: normalizeMealTime(meal.meal_time),
                 notes: meal.notes || null,
                 order_index: meal.order_index ?? idx,
+                include_in_totals: meal.include_in_totals !== false,
                 total_calories: meal.calories || meal.total_calories || 0,
                 total_protein: meal.protein || meal.total_protein || 0,
                 total_carbs: meal.carbs || meal.total_carbs || 0,
@@ -290,6 +291,8 @@ export const updateFullMealPlan = async (planId, planData) => {
                     order_index: food.order_index ?? fIdx,
                     substitutes: (food.substitutes || []).map(sub => ({
                         id: sub.id || sub.food_id,
+                        quantity: sub.quantity ?? null,
+                        unit: sub.unit || 'gram',
                         notes: sub.notes || null
                     }))
                 }))
@@ -341,6 +344,7 @@ export const restoreMealPlanVersion = async (versionId) => {
                 meal_time: meal.meal_time || null,
                 notes: meal.notes || null,
                 order_index: meal.order_index ?? mealIndex,
+                include_in_totals: meal.include_in_totals !== false,
                 foods: (meal.foods || []).map((food, foodIndex) => ({
                     food_id: food.food_id,
                     quantity: food.quantity ?? 0,
@@ -352,7 +356,13 @@ export const restoreMealPlanVersion = async (versionId) => {
                     notes: food.notes || null,
                     patient_description: food.patient_description || null,
                     order_index: food.order_index ?? foodIndex,
-                    substitutes: food.substitutes || []
+                    substitutes: (food.substitutes || food.substitutions || []).map(sub => ({
+                        ...sub,
+                        id: sub.substitute_food_id || sub.food_id || sub.id,
+                        quantity: sub.quantity ?? 0,
+                        unit: sub.unit || 'gram',
+                        measure: sub.measure_snapshot || sub.measure || null
+                    }))
                 }))
             })),
             change_reason: `rollback_versao_${version.version_number}`,
@@ -428,7 +438,7 @@ export const saveFoodSubstitutions = async (mealPlanFoodId, substitutes = []) =>
         const inserts = substitutes.map(sub => ({
             meal_plan_food_id: mealPlanFoodId,
             substitute_food_id: sub.id || sub.food_id,
-            quantity: sub.quantity || null,
+            quantity: sub.quantity ?? null,
             unit: sub.unit || null
         }));
 

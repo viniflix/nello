@@ -1,494 +1,108 @@
-import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
-import React, { useState, useEffect } from 'react';
-import { Search, X, Trash2, Plus, AlertCircle } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Plus, Trash2, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle,
-    DialogFooter
-} from '@/components/ui/dialog';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import FoodSelector from './FoodSelector';
-import { getSuggestedSubstitutes } from '@/lib/supabase/meal-plan-queries';
-import { Loader2, ChevronDown, ChevronUp, Scale, Info } from 'lucide-react';
-import { getSubstitutionAnalysis, formatDiff, calculateEquivalentPortion, getMacroProportions } from '@/lib/utils/foodSubstitution';
-import { calculateEquivalentGrams, checkMacroDeviations, convertGramsToMeasure } from '@/lib/utils/nutritionCalculations';
 import { PremiumPortionSelector } from '@/components/nutrition';
-import { Progress } from '@/components/ui/progress';
+import { calculateEquivalentGrams } from '@/lib/utils/nutritionCalculations';
+import { calculateNutrition, foodPer100Grams } from '@/lib/utils/nutrition-calculations';
+import { portionGrams, isGramUnit } from '@/lib/utils/foodPortions';
+import { formatQuantityWithUnit } from '@/lib/utils/measureTranslations';
 
+export function substitutionNutrition(substitute) {
+  const grams = portionGrams(substitute.quantity ?? 100, substitute.unit, [], substitute.measure || substitute.measure_snapshot);
+  const food = foodPer100Grams(substitute);
+  return grams !== null && food ? calculateNutrition(food, grams) : null;
+}
+const nutrientFields = [['calories','Energia','kcal'], ['protein','Proteínas','g'], ['carbs','Carboidratos','g'], ['fat','Gorduras','g']];
 
 const SubstitutionDialog = ({ isOpen, onClose, originalFood, initialSubstitutes = [], onSave }) => {
-    const [substitutes, setSubstitutes] = useState([]);
-    const [showFoodSelector, setShowFoodSelector] = useState(false);
-    const [suggestions, setSuggestions] = useState([]);
-    const [loadingSuggestions, setLoadingSuggestions] = useState(false);
-    const [allSuggestionsPool, setAllSuggestionsPool] = useState([]); // Buffer para devolver à lista
-    const [expandedId, setExpandedId] = useState(null);
+  const [substitutes, setSubstitutes] = useState([]);
+  const [selectedId, setSelectedId] = useState(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+  useEffect(() => {
+    if (isOpen) {
+      setSubstitutes(initialSubstitutes || []);
+      setSelectedId(initialSubstitutes?.[0]?.id ?? null);
+    }
+    // Opening starts one working copy; parent renders must not reset it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, originalFood?.id, originalFood?.tempId]);
+  const selected = substitutes.find(sub => sub.id === selectedId);
+  const nutrition = selected ? substitutionNutrition(selected) : null;
+  const addSubstitute = food => {
+    if (!substitutes.some(sub => sub.id === food.id)) {
+      setSubstitutes(previous => [...previous, {
+        ...food, quantity: Number(calculateEquivalentGrams(Number(originalFood?.calories || 0), food).toFixed(2)), unit: 'gram', measure: null,
+      }]);
+    }
+    setSelectedId(food.id);
+    setSearchOpen(false);
+  };
+  const remove = id => {
+    const remaining = substitutes.filter(sub => sub.id !== id);
+    setSubstitutes(remaining);
+    if (selectedId === id) setSelectedId(remaining[0]?.id ?? null);
+  };
+  const save = () => { onSave(substitutes); onClose(); };
 
-    // Efeito para carregar o estado inicial quando o diálogo abrir para um alimento específico
-    useEffect(() => {
-        if (isOpen && originalFood) {
-            setSubstitutes(initialSubstitutes || []);
-            loadSuggestions();
-        } else if (!isOpen) {
-            // Limpar estados ao fechar para evitar vazamento de memória ou flashes de dados antigos
-            setSuggestions([]);
-            setLoadingSuggestions(false);
-        }
-    }, [isOpen, originalFood?.id, originalFood?.tempId]);
-
-    const loadSuggestions = async () => {
-        if (!originalFood?.food?.group || loadingSuggestions) return;
-
-        setLoadingSuggestions(true);
-        try {
-            const baseKcal = (originalFood.calories / originalFood.quantity) * 100;
-            const { data } = await getSuggestedSubstitutes(originalFood.food.group, baseKcal);
-            const pool = data || [];
-            setAllSuggestionsPool(pool);
-
-            // Filtrar itens que já estão na lista de substitutos iniciais
-            const filtered = pool.filter(item =>
-                !initialSubstitutes.some(s => String(s.id) === String(item.id))
-            );
-            setSuggestions(filtered);
-        } catch (error) {
-            logDiagnostic('error', 'components/meal-plan/SubstitutionDialog.jsx:61', 'Erro ao carregar sugestões:', error);
-        } finally {
-            setLoadingSuggestions(false);
-        }
-    };
-
-    const handleAddSubstitute = async (food) => {
-        if (!food) return;
-        // Evitar duplicatas (usando String para maior segurança no match de IDs)
-        if (substitutes.some(s => String(s.id) === String(food.id))) {
-            setShowFoodSelector(false);
-            return;
-        }
-
-        const originalKcal = originalFood?.calories || 0;
-        const equivGrams = calculateEquivalentGrams(originalKcal, food);
-
-        let bestMeasure = { quantity: Math.round(equivGrams) || 100, measureId: 'grams', isApproximate: false };
-
-        try {
-            // Importar supabase client lazy ou global se já estiver
-            const { supabase } = await import('@/lib/customSupabaseClient');
-            const [foodMeasuresRes, allMeasuresRes] = await Promise.all([
-                supabase.from('food_household_measures').select("id,measure_id,quantity,grams,food_id").eq('food_id', food.id),
-                supabase.from('household_measures').select("id,name,code,ml_equivalent,grams_equivalent,description,category,is_active,order_index,created_at,version,source_code,source_version,updated_at")
-            ]);
-
-            if (foodMeasuresRes.data && allMeasuresRes.data) {
-                const match = convertGramsToMeasure(equivGrams, foodMeasuresRes.data, allMeasuresRes.data);
-                if (match) bestMeasure = match;
-            }
-        } catch (error) {
-            logDiagnostic('error', 'components/meal-plan/SubstitutionDialog.jsx:93', "Erro na conversão inteligente:", error);
-        }
-
-        const newSub = {
-            ...food,
-            quantity: bestMeasure.quantity,
-            unit: bestMeasure.measureId,
-            isApproximate: bestMeasure.isApproximate
-        };
-
-        setSubstitutes(prev => [...prev, newSub]);
-        // Se estava nas sugestões, remove de lá para não confundir
-        setSuggestions(prev => prev.filter(s => String(s.id) !== String(food.id)));
-        setShowFoodSelector(false);
-    };
-
-    const handleRemoveSubstitute = (foodId) => {
-        const removed = substitutes.find(s => s.id === foodId);
-        setSubstitutes(prev => prev.filter(s => s.id !== foodId));
-
-        // Se este item estava no pool original de sugestões, devolve ele
-        if (removed && allSuggestionsPool.some(s => String(s.id) === String(removed.id))) {
-            setSuggestions(prev => [...prev, removed].sort((a, b) => a.calories - b.calories));
-        }
-    };
-
-    const renderDelta = (val, limit = 2) => {
-        const numeric = Math.abs(val);
-        if (numeric < 0.1) return <span className="text-xs text-green-600 font-bold uppercase tracking-tighter">OK</span>;
-        const isOver = numeric > limit;
-        return (
-            <span className={`text-xs px-1.5 py-0.5 rounded-md flex items-center gap-0.5 font-mono leading-none border transition-all ${
-                isOver
-                ? 'bg-destructive/10 text-destructive font-bold border-destructive/20 shadow-sm'
-                : 'bg-muted/50 text-muted-foreground border-transparent'
-            }`}>
-                {val > 0 ? '+' : '-'}{numeric.toFixed(1)}
-                {isOver && <AlertCircle className="h-2 w-2 ml-0.5 animate-pulse" />}
-            </span>
-        );
-    };
-
-    const handleSave = () => {
-        onSave(substitutes);
-        onClose();
-    };
-
-    const renderSubstitutionDetail = (subFood, analysis) => {
-        const originalBase = {
-            kcal: originalFood.calories || 0,
-            p: originalFood.protein || 0,
-            c: originalFood.carbs || 0,
-            g: originalFood.fat || 0,
-            fiber: originalFood.fiber || 0
-        };
-
-        const subRatio = (subFood.quantity || 100) / (subFood.portion_size || 100);
-        const subKcal = subFood.calories * subRatio;
-        const subP = subFood.protein * subRatio;
-        const subC = subFood.carbs * subRatio;
-        const subG = subFood.fat * subRatio;
-        const subFiber = (subFood.fiber || 0) * subRatio;
-
-        const origProps = getMacroProportions(originalBase.p, originalBase.c, originalBase.g);
-        const subProps = getMacroProportions(subP, subC, subG);
-
-        const macros = [
-            { label: 'Prot', orig: originalBase.p, sub: subP, color: 'bg-blue-500', icon: 'P' },
-            { label: 'Carb', orig: originalBase.c, sub: subC, color: 'bg-amber-500', icon: 'C' },
-            { label: 'Gord', orig: originalBase.g, sub: subG, color: 'bg-rose-500', icon: 'G' }
-        ];
-
-        const deviations = checkMacroDeviations(originalBase.kcal, originalBase.p, originalBase.c, originalBase.g, subFood, subFood.quantity || 100);
-
-        return (
-            <div className="mt-4 p-5 bg-background/60 backdrop-blur-md rounded-2xl border-2 border-primary/10 shadow-sm animate-in fade-in zoom-in duration-300">
-                <div className="mb-6 bg-card p-4 rounded-xl border border-primary/10 shadow-sm">
-                    <Label className="text-sm font-bold text-primary mb-3 block">1. Ajustar Porção da Substituição</Label>
-                    <PremiumPortionSelector
-                        food={subFood}
-                        value={{ quantity: subFood.quantity || 100, measureId: subFood.unit && subFood.unit !== 'grams' ? subFood.unit : null, measureCode: subFood.unit === 'grams' ? 'gram' : (subFood.unit || 'gram') }}
-                        onChange={(val) => {
-                            const unitCode = val.measureCode || val.measureId || 'gram';
-                            setSubstitutes(prev => prev.map(s => s.id === subFood.id ? { ...s, quantity: val.quantity, unit: unitCode } : s));
-                        }}
-                        showNutrition={false}
-                    />
-                </div>
-
-                <div className="flex items-center justify-between mb-5">
-                    <div className="flex items-center gap-2 text-xs font-bold text-primary uppercase tracking-widest">
-                        <Scale className="h-4 w-4" />
-                        2. ANÁLISE COMPARATIVA
-                    </div>
-                    {deviations.hasDeviation && (
-                        <div className="flex flex-col gap-1 items-end">
-                            {deviations.messages.map((msg, i) => (
-                                <Badge key={i} variant="destructive" className="text-xs py-0">{msg}</Badge>
-                            ))}
-                        </div>
-                    )}
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    {/* Visualização de Macros Empilhada (Stacked) */}
-                    <div className="space-y-6">
-                        <div className="space-y-2">
-                            <div className="flex justify-between text-xs uppercase font-bold text-muted-foreground">
-                                <span>Distribuição Calórica % (P/C/G)</span>
-                            </div>
-                            {/* Stacked Bar Original */}
-                            <div className="relative h-4 w-full bg-muted rounded-lg overflow-hidden flex shadow-inner">
-                                <div className="h-full bg-blue-500" style={{ width: `${origProps.p}%` }} title={`Original P: ${origProps.p.toFixed(0)}%`} />
-                                <div className="h-full bg-amber-500" style={{ width: `${origProps.c}%` }} title={`Original C: ${origProps.c.toFixed(0)}%`} />
-                                <div className="h-full bg-rose-500" style={{ width: `${origProps.f}%` }} title={`Original G: ${origProps.f.toFixed(0)}%`} />
-                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                    <span className="text-xs font-bold text-white drop-shadow-md">ORIGINAL</span>
-                                </div>
-                            </div>
-                            {/* Stacked Bar Substituto */}
-                            <div className="relative h-4 w-full bg-muted rounded-lg overflow-hidden flex shadow-inner">
-                                <div className="h-full bg-blue-500" style={{ width: `${subProps.p}%` }} title={`Substituto P: ${subProps.p.toFixed(0)}%`} />
-                                <div className="h-full bg-amber-500" style={{ width: `${subProps.c}%` }} title={`Substituto C: ${subProps.c.toFixed(0)}%`} />
-                                <div className="h-full bg-rose-500" style={{ width: `${subProps.f}%` }} title={`Substituto G: ${subProps.f.toFixed(0)}%`} />
-                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                    <span className="text-xs font-bold text-white drop-shadow-md uppercase">{subFood.name}</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="space-y-3">
-                            {macros.map(m => {
-                                const max = Math.max(m.orig, m.sub, 1);
-                                const isDiff = Math.abs(m.sub - m.orig) > 2;
-                                return (
-                                    <div key={m.label} className="space-y-1">
-                                        <div className="flex justify-between text-xs font-bold">
-                                            <span className="flex items-center gap-1">
-                                                <span className={`w-2 h-2 rounded-full ${m.color}`} />
-                                                {m.label}
-                                            </span>
-                                            <span className={isDiff ? 'text-destructive font-black' : 'text-green-600'}>
-                                                {m.sub.toFixed(1)}g <span className="text-muted-foreground/50 font-normal">vs {m.orig.toFixed(1)}g</span>
-                                            </span>
-                                        </div>
-                                        <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
-                                            <div
-                                                className={`h-full transition-all duration-700 ease-out ${m.color}`}
-                                                style={{ width: `${(m.sub / max) * 100}%` }}
-                                            />
-                                        </div>
-                                    </div>
-                                )
-                            })}
-                        </div>
-                    </div>
-
-                    {/* Vantagens / Inteligência Clínica */}
-                    <div className="flex flex-col justify-between">
-                        <div className="bg-white/40 backdrop-blur-sm p-4 rounded-xl border border-primary/10 shadow-inner space-y-3 h-full">
-                            <div className="flex items-start gap-3">
-                                <div className="p-2 bg-primary/10 rounded-lg shrink-0 border border-primary/5">
-                                    <Scale className="h-4 w-4 text-primary" />
-                                </div>
-                                <div>
-                                    <div className="flex flex-wrap items-center gap-2">
-                                        <p className="font-bold text-sm text-primary leading-none">Análise Clínica</p>
-                                        {analysis.similarityScore < 10 && (
-                                            <Badge variant="outline" className="h-4 text-xs bg-green-700 text-white border-none animate-pulse">MATCH PERFEITO</Badge>
-                                        )}
-                                    </div>
-                                    <p className="text-muted-foreground text-xs leading-relaxed mt-1.5 font-medium">
-                                        {analysis.isRecommended
-                                            ? "Substituição clinicamente segura. Preserva a densidade energética e macro-calórica do plano original."
-                                            : `Impacto identificado: ${analysis.reason}. A viabilidade depende do ajuste na gramagem sugerido.`}
-                                    </p>
-                                </div>
-                            </div>
-
-                            <div className="pt-2 border-t border-primary/5 space-y-2">
-                                <p className="text-xs font-bold text-muted-foreground uppercase">Insights Extras:</p>
-                                <div className="flex flex-wrap gap-2">
-                                    {subFiber > originalBase.fiber && (
-                                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-xs py-0">
-                                            + Fibras ({formatDiff(subFiber - originalBase.fiber, 'g')})
-                                        </Badge>
-                                    )}
-                                    {subFood.sodium < (originalFood.sodium || 999) && (
-                                        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs py-0">
-                                            Menos Sódio
-                                        </Badge>
-                                    )}
-                                    {analysis.groupMatch && (
-                                        <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200 text-xs py-0">
-                                            Mesmo Grupo
-                                        </Badge>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+  return <>
+    <Dialog open={isOpen} onOpenChange={open => { if (!open) onClose(); }}>
+      <DialogContent className="flex h-[94dvh] w-[96vw] max-w-[1440px] flex-col overflow-hidden">
+        <DialogHeader className="shrink-0">
+          <DialogTitle>Substituições de alimento</DialogTitle>
+          <DialogDescription>Escolha alternativas e ajuste cada porção. A comparação usa a quantidade prescrita, convertida em gramas.</DialogDescription>
+        </DialogHeader>
+        <div className="shrink-0 rounded-lg border bg-muted/40 p-3">
+          <div className="font-semibold">{originalFood?.patient_description || originalFood?.food?.name}</div>
+          <div className="text-sm text-muted-foreground">Porção original: {formatQuantityWithUnit(originalFood?.quantity ?? 0, originalFood?.unit, originalFood?.measure || originalFood?.measure_snapshot)}</div>
+          <div className="mt-2 flex flex-wrap gap-x-6 gap-y-1 text-sm">
+            {nutrientFields.map(([field,label,unit]) => <span key={field}>{label}: <strong>{Math.round(Number(originalFood?.[field] || 0))} {unit}</strong></span>)}
+          </div>
+        </div>
+        <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-y-auto md:grid-cols-[minmax(280px,0.8fr)_minmax(0,1.2fr)] md:overflow-hidden">
+          <section className="flex min-h-0 flex-col gap-3">
+            <Button type="button" onClick={() => setSearchOpen(true)}><Search className="mr-2 h-4 w-4" /> Buscar e adicionar alternativa</Button>
+            <div className="min-h-0 space-y-2 overflow-y-auto">
+              {!substitutes.length && <p className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">Adicione alimentos para montar a lista de substituições.</p>}
+              {substitutes.map(sub => {
+                const totals = substitutionNutrition(sub);
+                return <div key={sub.id} className={`flex items-start gap-2 rounded-lg border p-3 ${selectedId===sub.id ? 'border-primary bg-primary/5' : ''}`}>
+                  <button type="button" className="min-w-0 flex-1 text-left" aria-pressed={selectedId===sub.id} onClick={() => setSelectedId(sub.id)}>
+                    <span className="block font-medium">{sub.name}</span>
+                    <span className="block text-sm text-muted-foreground">{formatQuantityWithUnit(sub.quantity ?? 100, sub.unit, sub.measure || sub.measure_snapshot)}{totals ? ` · ${Math.round(totals.calories)} kcal` : ' · Selecione a medida'}</span>
+                  </button>
+                  <Button type="button" variant="ghost" size="icon" aria-label={`Remover substituto ${sub.name}`} onClick={() => remove(sub.id)}><Trash2 className="h-4 w-4" /></Button>
+                </div>;
+              })}
             </div>
-        );
-    };
-
-    return (
-        <>
-            <Dialog open={isOpen} onOpenChange={onClose}>
-                <DialogContent className="max-w-3xl">
-                    <DialogHeader>
-                        <DialogTitle>Substituições de Alimento</DialogTitle>
-                        <DialogDescription>
-                            Diferença tolerada de ±30 kcal e ±2g de macros para ser considerado ideal.
-                        </DialogDescription>
-                    </DialogHeader>
-
-                    <div className="space-y-6">
-                        {/* Alimento Original */}
-                        {originalFood && (
-                            <div className="p-4 bg-muted rounded-lg border">
-                                <Label className="text-xs uppercase text-muted-foreground font-bold">Alimento Referência (Base 100g)</Label>
-                                <div className="mt-1 flex justify-between items-center">
-                                    <div>
-                                        <div className="font-semibold">{originalFood.patient_description || originalFood.food?.name}</div>
-                                        <div className="text-sm text-muted-foreground italic">Valores proporcionais para comparação</div>
-                                    </div>
-                                    <div className="flex gap-4 text-xs font-mono">
-                                        <div className="text-center p-1 px-2 bg-background rounded">
-                                            <div className="text-muted-foreground text-xs">Kcal</div>
-                                            <div className="font-bold">{Math.round((originalFood.calories / originalFood.quantity) * 100)}</div>
-                                        </div>
-                                        <div className="text-center p-1 px-2 bg-background rounded">
-                                            <div className="text-muted-foreground text-xs">P</div>
-                                            <div className="font-bold">{((originalFood.protein / originalFood.quantity) * 100).toFixed(1)}</div>
-                                        </div>
-                                        <div className="text-center p-1 px-2 bg-background rounded">
-                                            <div className="text-muted-foreground text-xs">C</div>
-                                            <div className="font-bold">{((originalFood.carbs / originalFood.quantity) * 100).toFixed(1)}</div>
-                                        </div>
-                                        <div className="text-center p-1 px-2 bg-background rounded">
-                                            <div className="text-muted-foreground text-xs">G</div>
-                                            <div className="font-bold">{((originalFood.fat / originalFood.quantity) * 100).toFixed(1)}</div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* SUGESTÕES AUTOMÁTICAS */}
-                        {loadingSuggestions ? (
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground animate-pulse">
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                                Buscando sugestões de mesmo grupo...
-                            </div>
-                        ) : suggestions.length > 0 && (
-                            <div className="space-y-3">
-                                <div className="flex items-center justify-between">
-                                    <Label className="text-xs uppercase text-muted-foreground font-bold">Alimentos Sugeridos ({originalFood?.food?.group})</Label>
-                                </div>
-                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                                    {suggestions.map(s => (
-                                        <button
-                                            key={s.id}
-                                            onClick={() => handleAddSubstitute(s)}
-                                            className="text-left p-2 border rounded-lg bg-card hover:bg-green-50 hover:border-green-200 transition-all group"
-                                        >
-                                            <div className="text-xs font-semibold truncate leading-tight group-hover:text-green-700">{s.name}</div>
-                                            <div className="flex items-center justify-between mt-1">
-                                                <span className="text-xs text-muted-foreground">{Math.round(s.calories)} kcal</span>
-                                                <Plus className="h-3 w-3 text-muted-foreground group-hover:text-green-600" />
-                                            </div>
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        <div className="space-y-4">
-                            <div className="flex justify-between items-center">
-                                <Label className="text-base font-semibold">Lista de Substitutos:</Label>
-                                <Button size="sm" onClick={() => setShowFoodSelector(true)}>
-                                    <Search className="h-4 w-4 mr-2" />
-                                    Buscar Alimento
-                                </Button>
-                            </div>
-
-                            {substitutes.length === 0 ? (
-                                <div className="text-center py-12 border-2 border-dashed rounded-xl text-muted-foreground bg-muted/20">
-                                    Nenhum substituto selecionado. Busque alimentos para comparar.
-                                </div>
-                            ) : (
-                                <div className="grid grid-cols-1 gap-3 max-h-[450px] overflow-y-auto pr-2">
-                                    {substitutes.map(sub => {
-                                        const subRatio = (sub.quantity || 100) / (sub.portion_size || 100);
-                                        const dynKcal = sub.calories * subRatio;
-                                        const dynP = sub.protein * subRatio;
-                                        const dynC = sub.carbs * subRatio;
-                                        const dynG = sub.fat * subRatio;
-
-                                        const analysis = getSubstitutionAnalysis({
-                                            calories: originalFood.calories,
-                                            protein: originalFood.protein,
-                                            carbs: originalFood.carbs,
-                                            fat: originalFood.fat,
-                                            fiber: originalFood.fiber || 0,
-                                            group: originalFood.food?.group
-                                        }, { ...sub, calories: dynKcal, protein: dynP, carbs: dynC, fat: dynG });
-
-                                        const isExpanded = expandedId === sub.id;
-
-                                        return (
-                                            <div key={sub.id} className={`flex flex-col p-3 border rounded-xl transition-all ${analysis.isRecommended ? 'bg-green-50/20 border-green-100' : 'bg-card'}`}>
-                                                <div className="flex items-center justify-between">
-                                                    <button type="button" aria-expanded={isExpanded} aria-label={`Detalhes de ${sub.name}`} className="flex-1 min-w-0 text-left" onClick={() => setExpandedId(isExpanded ? null : sub.id)}>
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="font-semibold">{sub.name}</span>
-                                                            <Badge variant="outline" className="h-5 text-xs bg-muted/50 border-muted font-bold text-primary">
-                                                                {sub.quantity || 100} {sub.unit === 'grams' || !sub.unit ? 'g' : 'medida(s)'}
-                                                            </Badge>
-                                                            {analysis.isRecommended ? (
-                                                                <Badge className="h-5 text-xs bg-green-100 text-green-700 border-green-200 hover:bg-green-100">
-                                                                    Equivalente
-                                                                </Badge>
-                                                            ) : (
-                                                                <Badge variant="outline" className="h-5 text-xs bg-amber-50 text-amber-700 border-amber-200">
-                                                                    Atenção (Macros)
-                                                                </Badge>
-                                                            )}
-                                                            {isExpanded ? <ChevronUp className="h-3 w-3 text-muted-foreground" /> : <ChevronDown className="h-3 w-3 text-muted-foreground" />}
-                                                        </div>
-                                                        <div className="text-xs text-muted-foreground mt-1 flex flex-wrap gap-4 items-center">
-                                                            <div className="flex items-center gap-1.5 p-0.5 rounded">
-                                                                <span className="font-bold text-foreground">{Math.round(dynKcal)} kcal</span>
-                                                                {renderDelta(dynKcal - originalFood.calories, 30)}
-                                                            </div>
-                                                            <div className="flex items-center gap-1.5 p-0.5 rounded">
-                                                                <span>P: {dynP.toFixed(1)}g</span>
-                                                                {renderDelta(dynP - originalFood.protein, 2)}
-                                                            </div>
-                                                            <div className="flex items-center gap-1.5 p-0.5 rounded">
-                                                                <span>C: {dynC.toFixed(1)}g</span>
-                                                                {renderDelta(dynC - originalFood.carbs, 2)}
-                                                            </div>
-                                                            <div className="flex items-center gap-1.5 p-0.5 rounded">
-                                                                <span>G: {dynG.toFixed(1)}g</span>
-                                                                {renderDelta(dynG - originalFood.fat, 2)}
-                                                            </div>
-                                                        </div>
-                                                    </button>
-                                                    <div className="flex flex-wrap items-center gap-1">
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            aria-label={`Detalhes de ${sub.name}`} aria-expanded={isExpanded}
-                                                            onClick={() => setExpandedId(isExpanded ? null : sub.id)}
-                                                            className="h-8 w-8 p-0"
-                                                        >
-                                                            <Info className="h-4 w-4 text-muted-foreground" />
-                                                        </Button>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            aria-label={`Remover substituto ${sub.name}`} onClick={() => handleRemoveSubstitute(sub.id)}
-                                                            className="text-muted-foreground hover:text-destructive h-8 w-8 p-0"
-                                                        >
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </Button>
-                                                    </div>
-                                                </div>
-
-                                                {isExpanded && renderSubstitutionDetail(sub, analysis)}
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-
-                    <DialogFooter>
-                        <Button variant="outline" onClick={onClose}>Cancelar</Button>
-                        <Button onClick={handleSave}>Salvar Substituições</Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-
-            <FoodSelector
-                isOpen={showFoodSelector}
-                onClose={() => setShowFoodSelector(false)}
-                onSelect={handleAddSubstitute}
-                targetGroup={originalFood?.food?.group}
-                targetCalories={(originalFood?.calories / originalFood?.quantity) * 100}
-                originalFood={originalFood}
-            />
-        </>
-    );
+          </section>
+          <section className="min-h-0 space-y-4 overflow-y-auto rounded-lg border p-4">
+            {selected ? <>
+              <h3 className="text-lg font-semibold">{selected.name}</h3>
+              <PremiumPortionSelector food={selected} value={{quantity: selected.quantity ?? 100, measureId: isGramUnit(selected.unit) ? 'gram' : selected.unit, measure: selected.measure || selected.measure_snapshot}}
+                onChange={value => setSubstitutes(previous => previous.map(sub => sub.id===selected.id ? {...sub,quantity:value.quantity,unit:value.measureCode,measure:value.measure} : sub))} />
+              <h4 className="font-medium">Comparação das porções</h4>
+              <div className="overflow-x-auto"><table className="w-full text-left text-sm">
+                <thead><tr className="border-b"><th className="py-2">Nutriente</th><th>Original</th><th>Alternativa</th><th>Diferença</th></tr></thead>
+                <tbody>{nutrientFields.map(([field,label,unit]) => {
+                  const base = Number(originalFood?.[field] || 0);
+                  const alternative = nutrition?.[field];
+                  const diff = alternative == null ? null : alternative-base;
+                  return <tr key={field} className="border-b"><td className="py-3">{label}</td><td>{Math.round(base)} {unit}</td><td>{alternative == null ? '—' : `${Math.round(alternative)} ${unit}`}</td><td>{diff===null ? '—' : `${diff>0 ? '+' : ''}${Math.round(diff)} ${unit}`}</td></tr>;
+                })}</tbody>
+              </table></div>
+              <p className="text-sm text-muted-foreground">A quantidade inicial aproxima a energia da porção original. Confira também os macronutrientes antes de salvar.</p>
+            </> : <div className="flex h-full min-h-40 flex-col items-center justify-center gap-3 text-muted-foreground"><Plus className="h-8 w-8" /><p>Adicione ou selecione uma alternativa para editar.</p></div>}
+          </section>
+        </div>
+        <DialogFooter className="shrink-0 border-t pt-3">
+          <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>
+          <Button type="button" onClick={save} disabled={substitutes.some(sub => !substitutionNutrition(sub))}>Salvar substituições</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    <FoodSelector isOpen={searchOpen} onClose={() => setSearchOpen(false)} onSelect={addSubstitute} targetGroup={originalFood?.food?.group} targetCalories={originalFood?.calories} originalFood={originalFood} />
+  </>;
 };
-
 export default SubstitutionDialog;

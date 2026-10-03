@@ -43,3 +43,15 @@ it('captures and restores the whole plan and unfinished meal/food editors after 
     await waitFor(() => expect(saved.meals[0].foods[0].food.name).toBe('Alimento já existente'));
     expect(session.discard).not.toHaveBeenCalled();
 });
+
+it('uses the last applied revision as the baseline for edits made after saving', async () => {
+    let snapshot;
+    const applied = { id: 55, confirmed_at: '2026-10-02T18:00:00Z', updated_at: '2026-10-03T03:00:00Z' };
+    const session = { ready: true, queue: value => { snapshot = value; }, discard: vi.fn().mockResolvedValue(true), flush: async () => true };
+    const initialData = { ...applied, updated_at: '2026-10-02T20:00:00Z', name: 'Plano sintético', start_date: '2026-10-02', active_days: ['monday'], meals: [{ id: 10, name: 'Café', meal_type: 'breakfast', foods: [{ id: 20, food_id: 1, quantity: 100, calories: 100, food: { name: 'Alimento' } }] }] };
+    render(<MealPlanForm patientId="synthetic-patient" nutritionistId="synthetic-owner" initialData={initialData} session={session} onSubmit={async () => applied} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }));
+    await waitFor(() => expect(session.discard).toHaveBeenCalled());
+    fireEvent.change(screen.getByLabelText(/Descrição \(opcional\)/), { target: { value: 'Nova edição depois de aplicar' } });
+    await waitFor(() => expect(snapshot.baselineAppliedAt).toBe(applied.updated_at));
+});

@@ -26,6 +26,8 @@ export const measureTranslations = {
 
     // Peso e Volume direto
     'gram': 'g',
+    'grams': 'g',
+    'g': 'g',
     'ml': 'ml'
 };
 
@@ -37,14 +39,14 @@ export const measureTranslations = {
  */
 export const translateMeasure = (code, measure = null) => {
     // Se tiver o objeto measure com name, usar ele
-    if (measure && measure.name) {
-        return measure.name;
+    if (measure && (measure.name || measure.label || measure.measure_label)) {
+        return measure.name || measure.label || measure.measure_label;
     }
 
     const strCode = String(code || '').trim();
 
     // Se o código for apenas números (um ID que não foi carregado), não exibi-lo como texto
-    if (!measureTranslations[strCode] && /^\d+$/.test(strCode)) {
+    if (!measureTranslations[strCode] && (/^\d+$/.test(strCode) || /^[\da-f]{8}-[\da-f-]{27}$/i.test(strCode) || strCode.startsWith('custom_'))) {
         return '';
     }
 
