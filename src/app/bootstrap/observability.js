@@ -74,6 +74,16 @@ export function scrubSentryEvent(event) {
   if(result.contexts){
     result.contexts=select(result.contexts,['operation','trace','browser','os','runtime','device']);
     for(const [key,value]of Object.entries(result.contexts))result.contexts[key]=select(value,key==='operation'?['correlation_id','session_id','operation','module','source','error_code','failure_reason','failure_kind','cause_reason','http_status','route']:['name','version','trace_id','span_id','parent_span_id','op','status','origin','architecture']);
+    // Generic sensitive-key filtering drops all "name" fields, including
+    // browser/OS names needed to diagnose mobile-only regressions.
+    const technicalNames = {
+      browser: ['Chrome','Chrome Mobile','Chrome Mobile iOS','Firefox','Firefox Mobile','Firefox iOS','Safari','Mobile Safari','Edge','Opera','Opera Mobile','Samsung Internet','Android Browser','IE'],
+      os: ['Windows','Mac OS X','macOS','iOS','Android','Linux','Ubuntu','Chrome OS','Chromium OS'],
+      runtime: ['browser','node','Node.js'],
+    };
+    for (const [key, names] of Object.entries(technicalNames)) {
+      if (result.contexts[key] && names.includes(event.contexts?.[key]?.name)) result.contexts[key].name = event.contexts[key].name;
+    }
   }
   if(result.data)result.data=select(result.data,['http.request.method','http.response.status_code','server.address','url.scheme']);
   if(result.spans)result.spans=result.spans.map(scrubSentryEvent);

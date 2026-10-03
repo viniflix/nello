@@ -80,6 +80,8 @@ export function useMealPlanController({
     // =============== Effects ===============
 
     useEffect(() => {
+        let active = true;
+        setPatientName('');
         const loadPatientName = async () => {
             if (!patientId) return;
             try {
@@ -88,27 +90,35 @@ export function useMealPlanController({
                     .select('name')
                     .eq('id', patientId)
                     .single();
-                if (!error && data) setPatientName(data.name);
+                if (active && !error && data) setPatientName(data.name);
             } catch (error) {
                 logDiagnostic('error', 'hooks/useMealPlanController.js:91', 'Erro ao carregar nome do paciente:', error);
             }
         };
         loadPatientName();
-    }, [patientId]);
+        return () => { active = false; };
+    }, [patientId, user?.id]);
 
     useEffect(() => {
+        let active = true;
+        setReferenceValues(null);
         const loadReferenceValues = async () => {
             if (activePlan?.id) {
-                const { data } = await getReferenceValues(activePlan.id);
-                setReferenceValues(data);
+                try {
+                    const { data } = await getReferenceValues(activePlan.id);
+                    if (active) setReferenceValues(data);
+                } catch { /* Leave reference values empty when the request fails. */ }
             } else {
                 setReferenceValues(null);
             }
         };
         loadReferenceValues();
-    }, [activePlan?.id]);
+        return () => { active = false; };
+    }, [activePlan?.id, patientId, user?.id]);
 
     useEffect(() => {
+        let active = true;
+        setMealPlanVersions([]); setSelectedVersionId(''); setVersionsLoading(false);
         const loadVersions = async () => {
             if (!activePlan?.id) {
                 setMealPlanVersions([]);
@@ -118,44 +128,55 @@ export function useMealPlanController({
             setVersionsLoading(true);
             try {
                 const { data, error } = await getMealPlanVersions(activePlan.id, 20);
+                if (!active) return;
                 if (error) throw error;
                 const versions = data || [];
                 setMealPlanVersions(versions);
                 const preferred = versions.length > 1 ? versions[1] : versions[0];
                 setSelectedVersionId(preferred ? String(preferred.id) : '');
             } catch (error) {
+                if (!active) return;
                 logDiagnostic('error', 'hooks/useMealPlanController.js:125', 'Erro ao carregar versões do plano:', error);
                 setMealPlanVersions([]);
                 setSelectedVersionId('');
             } finally {
-                setVersionsLoading(false);
+                if (active) setVersionsLoading(false);
             }
         };
         loadVersions();
-    }, [activePlan?.id]);
+        return () => { active = false; };
+    }, [activePlan?.id, patientId, user?.id]);
 
     useEffect(() => {
+        let active = true;
+        setEnergyCalculation(null);
         const loadEnergyCalculation = async () => {
             if (!patientId) return;
             try {
                 const { data, error } = await getLatestEnergyCalculation(patientId);
                 if (error) throw error;
-                setEnergyCalculation(data);
+                if (active) setEnergyCalculation(data);
             } catch (error) {
                 logDiagnostic('error', 'hooks/useMealPlanController.js:143', 'Erro ao carregar cálculo de energia:', error);
             }
         };
         loadEnergyCalculation();
-    }, [patientId]);
+        return () => { active = false; };
+    }, [patientId, user?.id]);
 
     useEffect(() => {
+        let active = true;
+        setSyncFlags(null);
         const loadSyncFlags = async () => {
             if (!patientId) return;
-            const { data } = await getPatientModuleSyncFlags(patientId);
-            setSyncFlags(data || null);
+            try {
+                const { data } = await getPatientModuleSyncFlags(patientId);
+                if (active) setSyncFlags(data || null);
+            } catch { /* Keep the new patient's flags empty when unavailable. */ }
         };
         loadSyncFlags();
-    }, [patientId]);
+        return () => { active = false; };
+    }, [patientId, user?.id]);
 
     // =============== Handlers ===============
 

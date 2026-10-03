@@ -40,6 +40,21 @@ function query() {
 }
 
 describe('useShadowDraft', () => {
+  it('does not clear a new patient recovery when an earlier deletion finishes late', async () => {
+    row = { revision: 1, payload: { name: 'Old patient' }, updated_at: '2026-10-03T01:00:00Z' };
+    const hook = renderHook(args => useShadowDraft(args), { initialProps: { ownerId: 'owner', draftKey: 'old-patient' } });
+    await waitFor(() => expect(hook.result.current.recovery).not.toBeNull());
+    let finish;
+    supabase.from.mockImplementation(() => { const q = query(); const read = q.maybeSingle; q.maybeSingle = function () { return this.mode === 'delete' ? new Promise(resolve => { finish = resolve; }) : read.call(this); }; return q; });
+    let deletion; act(() => { deletion = hook.result.current.discard(); });
+    row = { revision: 8, payload: { name: 'New patient' }, updated_at: '2026-10-03T02:00:00Z' };
+    hook.rerender({ ownerId: 'another-owner', draftKey: 'new-patient' });
+    await waitFor(() => expect(hook.result.current.recovery?.payload.name).toBe('New patient'));
+    await act(async () => { finish({ data: { id: 'old' }, error: null }); expect(await deletion).toBe(false); });
+    expect(hook.result.current.recovery.payload.name).toBe('New patient');
+    expect(hook.result.current.status).toBe('recoverable');
+    hook.unmount();
+  });
   beforeEach(() => {
     clearMemoryDrafts();
     row = null;

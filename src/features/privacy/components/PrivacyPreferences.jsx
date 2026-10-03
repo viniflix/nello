@@ -19,14 +19,15 @@ function applyChoice(allowed, user, persist = true) {
       identifyUser(user);
     }).catch(() => { if (hasAnalyticsConsent(user?.id)) reportAnalyticsFailure('sdk_failure'); });
   }
-  if (!posthog.__loaded && !posthog.initialized) return;
-  if (allowed && stored && hasAnalyticsConsent()) {
-    posthog.opt_in_capturing?.({ captureEventName: false, enable_persistence: false });
-    identifyUser(user);
-  } else {
+  if (!allowed || !stored || !hasAnalyticsConsent()) {
+    // Invalidate queued events even while the optional SDK is still downloading.
     posthog.opt_out_capturing?.();
     posthog.reset?.();
+    return;
   }
+  if (!posthog.__loaded && !posthog.initialized) return;
+  posthog.opt_in_capturing?.({ captureEventName: false, enable_persistence: false });
+  identifyUser(user);
 }
 
 export default function PrivacyPreferences() {

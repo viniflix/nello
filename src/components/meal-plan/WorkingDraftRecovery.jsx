@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/customSupabaseClient';
 import { Button } from '@/components/ui/button';
 import { removeMemoryDraft } from '@/lib/utils/memoryDrafts';
@@ -21,8 +21,11 @@ export default function WorkingDraftRecovery({ ownerId, patientId, onResume, max
     const [error, setError] = useState(false);
     const [busy, setBusy] = useState(null);
     const [expanded, setExpanded] = useState(false);
+    const context = useRef({ ownerId, patientId });
+    if (context.current.ownerId !== ownerId || context.current.patientId !== patientId) context.current = { ownerId, patientId };
+    useEffect(() => { context.current = { ownerId, patientId }; return () => { context.current = {}; }; }, [ownerId, patientId]);
     useEffect(() => {
-        setDrafts([]); setError(false); setExpanded(false);
+        setDrafts([]); setError(false); setExpanded(false); setBusy(null);
         if (!ownerId || !patientId) return undefined;
         let active = true;
         const load = async () => {
@@ -43,13 +46,15 @@ export default function WorkingDraftRecovery({ ownerId, patientId, onResume, max
         return () => { active = false; window.removeEventListener('focus', refresh); };
     }, [ownerId, patientId, maxDrafts]);
     const resume = async (draft) => {
+        const startedContext = context.current;
         setBusy(draft.id); setError(false);
         try {
             const { data, error: failure } = await supabase.from('editor_shadow_drafts')
                 .select('id,draft_key,payload,updated_at').eq('owner_id', ownerId).eq('id', draft.id).single();
+            if (context.current !== startedContext) return;
             if (failure || !data || ![`meal-plan:${patientId}:`, `meal-plan-meal:${patientId}:`].some(prefix => data.draft_key.startsWith(prefix))) throw new Error('Draft unavailable');
             await onResume(data);
-        } catch { setError(true); } finally { setBusy(null); }
+        } catch { if (context.current === startedContext) setError(true); } finally { if (context.current === startedContext) setBusy(null); }
     };
     if (!drafts.length && !error) return null;
     return <section aria-label="Edições salvas para retomar" className="mb-5 rounded-lg border border-amber-300 bg-amber-50 p-4 text-amber-950">

@@ -215,8 +215,10 @@ export function useShadowDraft({ ownerId, draftKey, enabled = true, preparePaylo
   }, [enabled, ownerId, draftKey, localKey, flush]);
 
   const discard = useCallback(async () => {
+    const generation = generationRef.current;
     clearTimeout(timerRef.current);
     if (inFlightRef.current) await inFlightRef.current;
+    if (generationRef.current !== generation) return false;
     if (!ownerId || !draftKey) return false;
     if (revisionRef.current !== null) {
       let data;
@@ -228,6 +230,7 @@ export function useShadowDraft({ ownerId, draftKey, enabled = true, preparePaylo
       } catch (caught) {
         error = caught;
       }
+      if (generationRef.current !== generation) return false;
       if (error) { setStatus('error'); return false; }
       if (!data) {
         setStatus('conflict');

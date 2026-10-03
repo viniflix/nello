@@ -35,6 +35,13 @@ describe('createSentryOptions', () => {
 });
 
 describe('scrubSentryEvent', () => {
+  it('preserves only reviewed browser and OS names for device-specific diagnosis', () => {
+    const safe = scrubSentryEvent({ contexts: { browser: { name: 'Mobile Safari', version: '18.0' }, os: { name: 'iOS', version: '18.0' }, device: { name: 'PRIVATE_SENTINEL' } } });
+    expect(safe.contexts.browser.name).toBe('Mobile Safari');
+    expect(safe.contexts.os.name).toBe('iOS');
+    expect(JSON.stringify(safe)).not.toContain('PRIVATE_SENTINEL');
+    expect(scrubSentryEvent({ contexts: { browser: { name: 'PRIVATE_SENTINEL' } } }).contexts.browser).not.toHaveProperty('name');
+  });
   it('keeps the reviewed technical session in connectivity grouping without preserving arbitrary UUID fingerprints',()=>{
     const id='019bd130-48ba-7fab-a6b7-809ad87b48e1';
     expect(scrubSentryEvent({fingerprint:['connectivity-incident',id,'12345']}).fingerprint[1]).toBe(id);

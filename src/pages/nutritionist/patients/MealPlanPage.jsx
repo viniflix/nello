@@ -140,16 +140,19 @@ const MealPlanPage = () => {
     });
 
     const resumeWorkingDraft = async row => {
+        const scope = sessionScopeRef.current;
         const planId = row.payload?.context?.planId || row.draft_key.split(':')[2];
         let plan = null;
         if (planId !== 'new') {
             const result = await getMealPlanById(planId);
+            if (sessionScopeRef.current !== scope) return;
             if (result.error || !result.data || result.data.patient_id !== patientId) throw new Error('Plan unavailable');
             plan = result.data;
         }
         // Preserve any current edit before switching to another confirmed copy.
         if (showForm && beforeCloseRef.current) {
             const closed = await beforeCloseRef.current();
+            if (sessionScopeRef.current !== scope) return;
             if (closed === false) throw new Error('Current edit unconfirmed');
         }
         setPendingDraft(plan?.is_draft ? plan : null);
