@@ -8,6 +8,18 @@ function provider(count = 1, invalid = 0) {
   return vi.fn(async url => new Response(JSON.stringify(String(url).endsWith('release.json') ? metadata : String(url).endsWith('query/') ? { results: [[count, invalid]] } : { status: 1 }), { status: 200 }));
 }
 describe('independent analytics monitoring', () => {
+  it('does not let a previously healthy cached aggregate hide a stopped pipeline', async () => {
+    const fetcher = vi.fn(async (url, request) => {
+      if (String(url).endsWith('query/')) {
+        const fresh = JSON.parse(request.body).refresh === 'force_blocking';
+        return new Response(JSON.stringify({ results: [[fresh ? 0 : 9, 0]] }));
+      }
+      return new Response(JSON.stringify(String(url).endsWith('release.json') ? metadata : { status: 1 }));
+    });
+    let previous = {};
+    for (let check = 0; check < 3; check++) previous = await assessPipeline({ ...options, now: options.now + check * 300000, fetcher, previous });
+    expect(previous).toMatchObject({ state: 'attention', probeCount: 0, signals: ['ingestion_silent'] });
+  });
   it('checks a fictitious ingestion probe rather than treating no user activity as an outage', async () => {
     const fetcher = provider();
     expect(await assessPipeline({ ...options, fetcher })).toMatchObject({ state: 'ingestion_verified', signals: [], probeCount: 1 });
