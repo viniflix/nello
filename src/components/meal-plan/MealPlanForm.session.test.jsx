@@ -44,16 +44,22 @@ it('captures and restores the whole plan and unfinished meal/food editors after 
     expect(session.discard).not.toHaveBeenCalled();
 }, 15000);
 
-it('uses the last applied revision as the baseline for edits made after saving', async () => {
+it('finishes only after successful persistence and draft cleanup, then returns to the list', async () => {
     let snapshot;
     const applied = { id: 55, confirmed_at: '2026-10-02T18:00:00Z', updated_at: '2026-10-03T03:00:00Z' };
     const session = { ready: true, queue: value => { snapshot = value; }, discard: vi.fn().mockResolvedValue(true), flush: async () => true };
     const initialData = { ...applied, updated_at: '2026-10-02T20:00:00Z', name: 'Plano sintético', start_date: '2026-10-02', active_days: ['monday'], meals: [{ id: 10, name: 'Café', meal_type: 'breakfast', foods: [{ id: 20, food_id: 1, quantity: 100, calories: 100, food: { name: 'Alimento' } }] }] };
-    render(<MealPlanForm patientId="synthetic-patient" nutritionistId="synthetic-owner" initialData={initialData} session={session} onSubmit={async () => applied} />);
+    function Page() {
+        const [editing, setEditing] = React.useState(true);
+        return editing ? <MealPlanForm patientId="synthetic-patient" nutritionistId="synthetic-owner" initialData={initialData} session={session} onSubmit={async () => applied} onSaved={() => { expect(session.discard).toHaveBeenCalled(); setEditing(false); }} /> : <p>Listagem de planos</p>;
+    }
+    render(<Page />);
+    fireEvent.change(screen.getByLabelText(/Nome do Plano/), { target: { value: 'Nome atualizado' } });
     fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }));
     await waitFor(() => expect(session.discard).toHaveBeenCalled());
-    fireEvent.change(screen.getByLabelText(/Descrição \(opcional\)/), { target: { value: 'Nova edição depois de aplicar' } });
-    await waitFor(() => expect(snapshot.baselineAppliedAt).toBe(applied.updated_at));
+    await screen.findByText('Listagem de planos');
+    expect(screen.queryByRole('button', { name: 'Salvar alterações' })).toBeNull();
+    expect(snapshot.formData.name).toBe('Nome atualizado');
 });
 
 it('reorders a meal with a pointer gesture and saves the complete reordered session', async () => {
@@ -85,6 +91,18 @@ it('reorders a meal with a pointer gesture and saves the complete reordered sess
         if (previousHitTest) Object.defineProperty(document, 'elementFromPoint', previousHitTest);
         else delete document.elementFromPoint;
     }
+});
+
+it('keeps the editor and recoverable data when applying the plan fails', async () => {
+    const onSaved = vi.fn();
+    const discard = vi.fn();
+    const onSubmit = vi.fn().mockResolvedValue(false);
+    render(<MealPlanForm patientId="patient" nutritionistId="owner" initialData={{ id: 55, name: 'Plano', start_date: '2026-10-03', active_days: ['monday'], meals: [{ id: 10, name: 'Café', foods: [] }] }} session={{ ready: true, queue: vi.fn(), discard }} onSubmit={onSubmit} onSaved={onSaved} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }));
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    expect(onSaved).not.toHaveBeenCalled();
+    expect(discard).not.toHaveBeenCalled();
+    expect(screen.getByLabelText(/Nome do Plano/)).toHaveValue('Plano');
 });
 
 it('edits a food directly from the plan without losing its alternatives or changing the other food', async () => {

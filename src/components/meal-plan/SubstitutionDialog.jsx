@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, Trash2, Search } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import FoodSelector from './FoodSelector';
@@ -19,7 +19,6 @@ const nutrientFields = [['calories','Energia','kcal'], ['protein','Proteínas','
 const SubstitutionDialog = ({ isOpen, onClose, originalFood, initialSubstitutes = [], onSave }) => {
   const [substitutes, setSubstitutes] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
-  const [searchOpen, setSearchOpen] = useState(false);
   useEffect(() => {
     if (isOpen) {
       setSubstitutes(initialSubstitutes || []);
@@ -37,7 +36,6 @@ const SubstitutionDialog = ({ isOpen, onClose, originalFood, initialSubstitutes 
       }]);
     }
     setSelectedId(food.id);
-    setSearchOpen(false);
   };
   const remove = id => {
     const remaining = substitutes.filter(sub => sub.id !== id);
@@ -53,17 +51,20 @@ const SubstitutionDialog = ({ isOpen, onClose, originalFood, initialSubstitutes 
           <DialogTitle>Substituições de alimento</DialogTitle>
           <DialogDescription>Escolha alternativas e ajuste cada porção. A comparação usa a quantidade prescrita, convertida em gramas.</DialogDescription>
         </DialogHeader>
-        <div className="shrink-0 rounded-lg border bg-muted/40 p-3">
+        <div className="shrink-0 rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-950">
           <div className="font-semibold">{originalFood?.patient_description || originalFood?.food?.name}</div>
           <div className="text-sm text-muted-foreground">Porção original: {formatQuantityWithUnit(originalFood?.quantity ?? 0, originalFood?.unit, originalFood?.measure || originalFood?.measure_snapshot)}</div>
           <div className="mt-2 flex flex-wrap gap-x-6 gap-y-1 text-sm">
             {nutrientFields.map(([field,label,unit]) => <span key={field}>{label}: <strong>{Math.round(Number(originalFood?.[field] || 0))} {unit}</strong></span>)}
           </div>
         </div>
-        <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-y-auto md:grid-cols-[minmax(280px,0.8fr)_minmax(0,1.2fr)] md:overflow-hidden">
-          <section className="flex min-h-0 flex-col gap-3">
-            <Button type="button" onClick={() => setSearchOpen(true)}><Search className="mr-2 h-4 w-4" /> Buscar e adicionar alternativa</Button>
-            <div className="min-h-0 space-y-2 overflow-y-auto">
+        <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-y-auto lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:overflow-hidden">
+          <section className="min-h-[360px] min-w-0 lg:min-h-0">
+            <FoodSelector embedded isOpen={isOpen} onClose={() => {}} onSelect={addSubstitute} targetGroup={originalFood?.food?.group} targetCalories={originalFood?.calories} originalFood={originalFood} selectedFoodId={selectedId} />
+          </section>
+          <section className="min-h-0 space-y-4 overflow-y-auto rounded-xl border border-primary/20 bg-white p-4">
+            <h3 className="text-sm font-semibold text-primary">2 · Sua lista de alternativas ({substitutes.length})</h3>
+            <div className="space-y-2">
               {!substitutes.length && <p className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">Adicione alimentos para montar a lista de substituições.</p>}
               {substitutes.map(sub => {
                 const totals = substitutionNutrition(sub);
@@ -76,8 +77,6 @@ const SubstitutionDialog = ({ isOpen, onClose, originalFood, initialSubstitutes 
                 </div>;
               })}
             </div>
-          </section>
-          <section className="min-h-0 space-y-4 overflow-y-auto rounded-lg border p-4">
             {selected ? <>
               <h3 className="text-lg font-semibold">{selected.name}</h3>
               <PremiumPortionSelector food={selected} value={{quantity: selected.quantity ?? 100, measureId: isGramUnit(selected.unit) ? 'gram' : selected.unit, measure: selected.measure || selected.measure_snapshot}}
@@ -102,7 +101,6 @@ const SubstitutionDialog = ({ isOpen, onClose, originalFood, initialSubstitutes 
         </DialogFooter>
       </DialogContent>
     </Dialog>
-    <FoodSelector isOpen={searchOpen} onClose={() => setSearchOpen(false)} onSelect={addSubstitute} targetGroup={originalFood?.food?.group} targetCalories={originalFood?.calories} originalFood={originalFood} />
   </>;
 };
 export default SubstitutionDialog;

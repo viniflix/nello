@@ -535,6 +535,7 @@ const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null, ownerId
                 onAdd={editingFood ? handleUpdateFood : handleAddFood}
                 initialData={editingFood}
                 mealName={formData.meal_type === 'other' ? formData.name : mealTypes.find(t => t.value === formData.meal_type)?.label}
+                mealType={formData.meal_type}
             />
 
             {/* Dialog para substituições */}

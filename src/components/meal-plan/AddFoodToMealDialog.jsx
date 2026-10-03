@@ -19,7 +19,7 @@ import { formatNutrient } from '@/lib/utils';
 import { useShadowDraft } from '@/hooks/useShadowDraft';
 import { ShadowRecovery, ShadowSaveStatus } from '@/components/ui/shadow-save-status';
 
-const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName, initialData = null, ownerId, shadowKey, autoRestore = false, draftContext = null, resumeState = null, onWorkingState, session = null }) => {
+const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName, mealType, initialData = null, ownerId, shadowKey, autoRestore = false, draftContext = null, resumeState = null, onWorkingState, session = null }) => {
     const [selectedFood, setSelectedFood] = useState(null);
     const [portion, setPortion] = useState({ quantity: '', measureId: null, measureCode: 'gram' });
     const [notes, setNotes] = useState('');
@@ -184,7 +184,7 @@ const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName, initialData = n
     return (
         <Dialog open={isOpen} onOpenChange={handleClose}>
             <DialogContent className="flex h-[92dvh] max-h-[calc(100dvh-1rem)] w-[96vw] max-w-[1440px] flex-col gap-4 overflow-hidden">
-                <DialogHeader className="shrink-0">
+                <DialogHeader className="shrink-0 border-b border-primary/15 pb-3">
                     <DialogTitle>{initialData ? 'Editar Alimento' : 'Adicionar Alimento'}</DialogTitle>
                     <DialogDescription>{mealName ? 'Refeição: ' + mealName + '. ' : ''}Busque o alimento, informe a quantidade e escolha a medida.</DialogDescription>
                 </DialogHeader>
@@ -195,24 +195,24 @@ const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName, initialData = n
                 </div>}
                 <div className="grid min-h-0 flex-1 gap-5 overflow-y-auto lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] lg:overflow-hidden">
                     <div className="min-h-[360px] min-w-0 lg:min-h-0">
-                        <FoodSelector embedded isOpen={isOpen} onClose={() => {}} onSelect={handleFoodSelect} searchInputRef={searchInputRef} selectedFoodId={selectedFood?.id} />
+                        <FoodSelector embedded mealType={mealType} isOpen={isOpen} onClose={() => {}} onSelect={handleFoodSelect} searchInputRef={searchInputRef} selectedFoodId={selectedFood?.id} />
                     </div>
-                    <div className="min-w-0 space-y-4 rounded-xl border bg-muted/20 p-4 lg:overflow-y-auto">
+                    <div className="min-w-0 space-y-4 rounded-xl border border-primary/20 bg-white p-4 lg:overflow-y-auto">
                         <div className="space-y-2">
-                            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Alimento selecionado</span>
+                            <span className="text-xs font-semibold uppercase tracking-wide text-primary">2 · Defina a porção</span>
                             {selectedFood ? <div className="space-y-1"><h3 className="text-lg font-semibold leading-snug">{selectedFood.name}</h3><p className="text-xs text-muted-foreground">{selectedFood.source}{selectedFood.group ? ' · ' + selectedFood.group : ''}</p><Button type="button" variant="ghost" size="sm" className="px-0" onClick={() => searchInputRef.current?.focus()}>Trocar alimento na busca</Button></div> : <div className="rounded-lg border border-dashed p-4"><p className="text-sm text-muted-foreground">Selecione um resultado da busca para definir a porção.</p><Button type="button" variant="outline" size="sm" className="mt-3" onClick={() => searchInputRef.current?.focus()}>Buscar Alimento</Button></div>}
                             {errors.food && <p role="alert" className="text-xs text-destructive">{errors.food}</p>}
                         </div>
                         <PremiumPortionSelector focusQuantityOnSelect food={selectedFood} value={portion} onChange={value => { touchedRef.current = true; setPortion(value); }} onNutritionChange={handleNutritionChange} showNutrition={false} />
                         {errors.portion && <p role="alert" className="text-xs text-destructive">{errors.portion}</p>}
-                        {calculatedNutrition && portion.quantity !== '' && <Alert className="bg-background"><AlertDescription><p className="mb-2 font-semibold">Nesta porção</p><div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">{[['Calorias',calculatedNutrition.calories,'kcal'],['Proteínas',calculatedNutrition.protein,'g'],['Carboidratos',calculatedNutrition.carbs,'g'],['Gorduras',calculatedNutrition.fat,'g']].map(([label,value,unit]) => <div key={label}><p className="text-xs text-muted-foreground">{label}</p><p className="font-semibold">{formatNutrient(Math.round(value || 0))} {unit}</p></div>)}</div></AlertDescription></Alert>}
+                        {calculatedNutrition && portion.quantity !== '' && <Alert className="border-blue-100 bg-blue-50/50"><AlertDescription><p className="mb-2 font-semibold text-blue-950">Nesta porção</p><div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">{[['Calorias',calculatedNutrition.calories,'kcal','text-emerald-800'],['Proteínas',calculatedNutrition.protein,'g','text-violet-800'],['Carboidratos',calculatedNutrition.carbs,'g','text-blue-800'],['Gorduras',calculatedNutrition.fat,'g','text-orange-800']].map(([label,value,unit,color]) => <div key={label} className={color}><p className="text-xs text-muted-foreground">{label}</p><p className="font-semibold tabular-nums">{formatNutrient(Math.round(value || 0))} {unit}</p></div>)}</div></AlertDescription></Alert>}
                         <div className="space-y-2"><Label htmlFor="patientDescription">Descrição para o paciente</Label><Textarea id="patientDescription" rows={2} placeholder={selectedFood?.name || 'Nome que será exibido no plano (opcional)'} value={patientDescription} onChange={e => { touchedRef.current = true; setPatientDescription(e.target.value); }} /><p className="text-xs text-muted-foreground">Deixe vazio para usar o nome do alimento.</p></div>
                         <div className="space-y-2"><Label htmlFor="food-notes">Observações (opcional)</Label><Textarea id="food-notes" rows={2} placeholder="Preparo, temperos ou orientação para este alimento" value={notes} onChange={e => { touchedRef.current = true; setNotes(e.target.value); }} /></div>
                     </div>
                 </div>
                 <DialogFooter className="shrink-0 flex-wrap items-center border-t pt-3">
                     {errors.save && <p role="alert" className="w-full text-xs text-destructive">{errors.save}</p>}
-                    <p className="mr-auto text-xs text-muted-foreground">O alimento entra nesta refeição. Salve o plano ao concluir.</p>
+                    <p className="mr-auto text-xs text-muted-foreground">3 · Adicione à refeição. Salve o plano ao concluir.</p>
                     <Button type="button" variant="outline" onClick={handleClose} disabled={isApplying}><X className="mr-2 h-4 w-4" />Cancelar</Button>
                     {!initialData && <Button type="button" variant="outline" onClick={() => handleAdd(true)} disabled={isApplying || !selectedFood || portion.quantity === ''}>Adicionar e continuar</Button>}
                     <Button type="button" onClick={() => handleAdd()} disabled={isApplying || !selectedFood || portion.quantity === ''}><Plus className="mr-2 h-4 w-4" />{initialData ? 'Atualizar' : 'Adicionar'}</Button>

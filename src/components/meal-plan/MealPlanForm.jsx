@@ -51,6 +51,7 @@ const MealPlanForm = ({
     session = null,
     baselineAppliedAt = null,
     onSubmit,
+    onSaved,
     onSaveDraft,
     onCancel,
     onDraftDiscarded,       // callback após descartar rascunho interno
@@ -459,6 +460,7 @@ const MealPlanForm = ({
                 shadowTouchedRef.current = false;
                 sessionBaselineRef.current = saved.updated_at || saved.confirmed_at || baselineAppliedAt;
                 await shadow.discard(); await session?.discard();
+                onSaved?.();
             }
         } finally { applyingRef.current = false; }
     };
@@ -573,6 +575,11 @@ const MealPlanForm = ({
     return (
         <>
             <form onSubmit={handleApplyPlan} className="space-y-6">
+                <div className="grid gap-3 rounded-xl border border-primary/15 bg-white p-4 text-sm sm:grid-cols-3" aria-label="Etapas da montagem do plano">
+                    <div><p className="font-semibold text-primary">1 · Organize as refeições</p><p className="mt-1 text-xs text-muted-foreground">Crie, importe, duplique ou arraste para ordenar.</p></div>
+                    <div><p className="font-semibold text-blue-800">2 · Monte cada porção</p><p className="mt-1 text-xs text-muted-foreground">Adicione alimentos, medidas e substituições.</p></div>
+                    <div><p className="font-semibold text-orange-800">3 · Revise e salve</p><p className="mt-1 text-xs text-muted-foreground">Confira a análise. Ao salvar, você volta aos planos.</p></div>
+                </div>
 
                 {/* Draft Recovery Banner */}
                 {/* Recovery Banner */}
@@ -616,7 +623,7 @@ const MealPlanForm = ({
 
                 {/* Informações Básicas */}
                 {!restoredSession && <ShadowRecovery recovery={shadow.recovery} onRestore={restoreShadow} onDiscard={() => { void shadow.discardRecovery(); }} />}
-                <Card>
+                <Card className="border-t-4 border-t-primary">
                     <CardHeader>
                         <div className="flex flex-wrap items-center justify-between gap-3">
                             <CardTitle className="text-lg">Informações do Plano</CardTitle>
@@ -878,7 +885,7 @@ const MealPlanForm = ({
                             <Card>
                                 <CardHeader>
                                     <div className="flex flex-wrap items-center justify-between gap-3">
-                                        <CardTitle className="text-lg">Refeições</CardTitle>
+                                        <CardTitle className="text-lg text-primary">Refeições</CardTitle>
                                         <div className="flex gap-2">
                                             <Button
                                                 type="button"
@@ -906,7 +913,7 @@ const MealPlanForm = ({
                                 <CardContent>
                                     <div className="space-y-3">
                                         {meals.map((meal, index) => (
-                                            <div key={meal.tempId} data-meal-sort-index={index} className={`p-4 border rounded-lg hover:bg-muted/50 transition-colors ${draggingMealIndex === index ? 'opacity-60 border-primary' : ''}`}>
+                                            <div key={meal.tempId} data-meal-sort-index={index} className={`p-4 border border-l-4 border-l-primary/60 rounded-xl bg-white hover:bg-primary/5 transition-colors ${draggingMealIndex === index ? 'opacity-60 border-primary' : ''}`}>
                                                 <div className="flex items-start justify-between">
                                                     <div className="flex-1 min-w-0">
                                                         <div className="flex items-center gap-2">
@@ -977,7 +984,7 @@ const MealPlanForm = ({
                     <Card>
                         <CardHeader>
                             <div className="flex flex-wrap items-center justify-between gap-3">
-                                <CardTitle className="text-lg">Refeições</CardTitle>
+                                <CardTitle className="text-lg text-primary">Refeições</CardTitle>
                                 <div className="flex gap-2">
                                     <Button
                                         type="button"

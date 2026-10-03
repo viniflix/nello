@@ -43,6 +43,7 @@ import { MealPlanAlertsBar } from '@/components/anamnesis/MealPlanAlertsBar';
 import { patientHubRoute } from '@/lib/utils/patientRoutes';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useMealPlanSession, isMealPlanSession, latestAppliedAt, sessionWasSuperseded } from '@/hooks/useMealPlanSession';
+import { sessionMatchesAppliedPlan } from '@/lib/utils/appliedMealPlanSession';
 import { ShadowRecovery } from '@/components/ui/shadow-save-status';
 
 
@@ -63,6 +64,7 @@ const MealPlanPage = () => {
     const [sessionError, setSessionError] = useState(false);
     const [sessionOpening, setSessionOpening] = useState(false);
     const [supersededSession, setSupersededSession] = useState(null);
+    const [completedSession, setCompletedSession] = useState(false);
     const [sessionRestoreNumber, setSessionRestoreNumber] = useState(0);
     const session = useMealPlanSession({ ownerId: nutritionistId, patientId });
     const sessionScopeRef = useRef('');
@@ -154,8 +156,8 @@ const MealPlanPage = () => {
         setShowForm(true);
     };
 
-    useEffect(() => { automaticSessionRef.current = false; setRestoredSession(null); setSessionError(false); setSessionOpening(false); setSupersededSession(null); }, [nutritionistId, patientId]);
-    const restoreSavedSession = async (saved, cancelled = () => false, automatic = false) => {
+    useEffect(() => { automaticSessionRef.current = false; setRestoredSession(null); setSessionError(false); setSessionOpening(false); setSupersededSession(null); setCompletedSession(false); }, [nutritionistId, patientId]);
+    const restoreSavedSession = async (saved, cancelled = () => false, automatic = false, onAccepted = () => {}) => {
         const scope = sessionScopeRef.current;
         let plan = null;
         if (saved.planId) {
@@ -164,14 +166,19 @@ const MealPlanPage = () => {
             plan = result.data;
         }
         if (cancelled() || sessionScopeRef.current !== scope) return false;
-        if (automatic && sessionWasSuperseded(saved, plans, session.lastSavedAt, plan)) {
+        // Consuming recovery changes the effect dependency. Mark acceptance before
+        // that render so its cleanup cannot leave the page in the opening state.
+        if (automatic) { onAccepted(); setSessionOpening(false); }
+        if (automatic && (sessionWasSuperseded(saved, plans, session.lastSavedAt, plan) || sessionMatchesAppliedPlan(saved, plan))) {
             // Preserve the copy for explicit recovery; the newer applied plan wins.
             setSupersededSession(saved);
+            setCompletedSession(sessionMatchesAppliedPlan(saved, plan));
             session.restore();
             return true;
         }
         session.restore();
         setSupersededSession(null);
+        setCompletedSession(false);
         setPendingDraft(plan?.is_draft ? plan : null);
         setEditingPlan(plan?.is_draft ? null : plan);
         setWorkingDraft(null);
@@ -190,7 +197,7 @@ const MealPlanPage = () => {
         let completed = false;
         const resume = async () => {
             try {
-                completed = await restoreSavedSession(saved, () => cancelled, true);
+                completed = await restoreSavedSession(saved, () => cancelled, true, () => { completed = true; });
             } catch { if (!cancelled) { completed = true; setSessionError(true); } }
             finally { if (!cancelled) setSessionOpening(false); }
         };
@@ -236,8 +243,8 @@ const MealPlanPage = () => {
                 await handleResumePendingDraft(recentDraft);
                 return;
             }
-            if (activePlan?.id) {
-                await handleEdit(activePlan.id);
+            if (plans.some(plan => !plan.is_draft && !plan.is_template)) {
+                setShowForm(false);
                 return;
             }
             setPendingDraft(null);
@@ -330,6 +337,14 @@ const MealPlanPage = () => {
                         return saved;
                     }}
                     onSaveDraft={handleSaveDraft}
+                    onSaved={() => {
+                        automaticSessionRef.current = true;
+                        setShowForm(false);
+                        setEditingPlan(null);
+                        setPendingDraft(null);
+                        setRestoredSession(null);
+                        setWorkingDraft(null);
+                    }}
                     onCancel={() => {
                         setShowForm(false);
                         setEditingPlan(null);
@@ -346,7 +361,7 @@ const MealPlanPage = () => {
         <div className={`container mx-auto px-4 py-6 sm:py-8 max-w-6xl transition-opacity duration-200 ${isFetching ? 'opacity-70 pointer-events-none' : 'opacity-100'}`}>
             {/* Sprint D: Barra de alertas clínicos da anamnese */}
             <MealPlanAlertsBar patientId={patientId} />
-            {supersededSession && <p role="status" className="mb-3 text-sm text-muted-foreground">Há um plano aplicado mais recente. A edição anterior não foi reaberta automaticamente.</p>}
+            {supersededSession && <p role="status" className="mb-3 text-sm text-muted-foreground">{completedSession ? 'Esta edição já corresponde ao plano salvo. Mantivemos a listagem dos planos.' : 'Há um plano aplicado mais recente. A edição anterior não foi reaberta automaticamente.'}</p>}
             {Boolean(session.snapshots?.length) && <details className="mb-4 rounded border p-3 text-sm"><summary className="cursor-pointer font-medium">Últimos estados salvos (até 3)</summary>
                 {session.snapshots.map((saved, index) => <Button key={index} type="button" variant="outline" size="sm" className="m-1" onClick={() => { void restoreSavedSession(saved).catch(() => setSessionError(true)); }}>Recuperar estado {index + 1}{saved.savedAt ? ` · ${formatDate(saved.savedAt)}` : ''}</Button>)}
             </details>}
