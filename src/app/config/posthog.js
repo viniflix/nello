@@ -1,5 +1,6 @@
 import { sanitizePosthogEvent } from '@/infrastructure/analytics/posthog';
 import { hasAnalyticsConsent } from '@/features/privacy/consent';
+import { reportAnalyticsFailure } from '@/infrastructure/analytics/pipelineHealth';
 
 export const captureWithConsent = event => hasAnalyticsConsent() ? sanitizePosthogEvent(event) : null;
 
@@ -34,6 +35,7 @@ export function createPosthogOptions(env) {
       recordBody: false,
     },
     before_send: captureWithConsent,
+    on_request_error: () => { if(hasAnalyticsConsent())reportAnalyticsFailure('sdk_failure'); },
   };
 }
 

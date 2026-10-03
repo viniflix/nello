@@ -30,6 +30,7 @@ const securePosthogDefaults = {
     recordBody: false,
   },
   before_send: captureWithConsent,
+  on_request_error: expect.any(Function),
 };
 
 describe('application runtime configuration', () => {

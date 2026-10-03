@@ -23,6 +23,13 @@ export function mountSyntheticAudio(src) {
 import posthog, { identifyUser, resetUser, track } from '../src/infrastructure/analytics/posthog';
 import { createPosthogOptions } from '../src/app/config/posthog';
 import { bindConsentOwner, storeAnalyticsChoice } from '../src/features/privacy/consent';
+import { initializeObservability } from '../src/app/bootstrap/observability';
+import { captureOperationalError, setObservabilityUser } from '../src/infrastructure/observability/telemetry';
+export function syntheticSentryTransport() {
+  initializeObservability({ VITE_SENTRY_DSN: `http://synthetic@localhost:4173/1`, MODE: 'production', VITE_APP_RELEASE: 'a'.repeat(40) });
+  setObservabilityUser({ id: '1ba45c9b-d0d4-490d-96a0-6addd7826833', profile: { user_type: 'nutritionist' } });
+  return captureOperationalError({ name: 'TypeError', code: 'NETWORK_FAILURE', status: 503, message: 'PRIVATE_SYNTHETIC_SENTINEL', cause: { status: 503, message: 'Failed to fetch PRIVATE_SYNTHETIC_SENTINEL' } }, { operation: 'qa.transport_failure', module: 'qa', source: 'controlled_probe' });
+}
 export async function syntheticAnalyticsTransport() {
   const first = '9ba45c9b-d0d4-490d-96a0-6addd7826833';
   const second = '1ba45c9b-d0d4-490d-96a0-6addd7826833';
@@ -36,6 +43,9 @@ export async function syntheticAnalyticsTransport() {
   posthog.opt_in_capturing({ captureEventName: false, enable_persistence: false });
   identifyUser({ id: first, profile: { user_type: 'patient' } });
   track('operation_failed', { correlation_id: first, operation: 'qa.transport', payload: 'PRIVATE_SYNTHETIC_SENTINEL' });
+  for (const operation of ['anthropometry_save', 'energy_save', 'meal_plan_apply']) {
+    for (const outcome of ['started', 'failed', 'succeeded']) track('ui_action_outcome', { operation, outcome });
+  }
   resetUser();
   bindConsentOwner(second); storeAnalyticsChoice(true);
   posthog.opt_in_capturing({ captureEventName: false, enable_persistence: false });
@@ -46,7 +56,7 @@ export async function syntheticAnalyticsTransport() {
 
 export async function syntheticAnalyticsPrivacyBoundary() {
   bindConsentOwner('wave04-privacy-probe'); storeAnalyticsChoice(false);
-  posthog.capture('qa_default_denied');
+  posthog.capture('ui_action_outcome',{operation:'qa_default_denied',outcome:'succeeded'});
   storeAnalyticsChoice(true);
   await posthog.init(import.meta.env.VITE_PUBLIC_POSTHOG_KEY, {
     ...createPosthogOptions(import.meta.env), api_host: window.location.origin,
@@ -54,8 +64,9 @@ export async function syntheticAnalyticsPrivacyBoundary() {
     opt_out_useragent_filter: true,
   });
   posthog.opt_in_capturing({ captureEventName: false, enable_persistence: false });
-  posthog.capture('qa_explicit_grant', { payload: 'PRIVATE_SYNTHETIC_SENTINEL' });
+  posthog.capture('ui_action_outcome', { operation:'qa_explicit_grant',outcome:'succeeded',payload: 'PRIVATE_SYNTHETIC_SENTINEL' });
+  posthog.capture('qa_unknown_event',{payload:'PRIVATE_SYNTHETIC_SENTINEL'});
   storeAnalyticsChoice(false); posthog.opt_out_capturing();
-  posthog.capture('qa_revoked_denied');
+  posthog.capture('ui_action_outcome',{operation:'qa_revoked_denied',outcome:'succeeded'});
   return { optedOut: posthog.has_opted_out_capturing() };
 }

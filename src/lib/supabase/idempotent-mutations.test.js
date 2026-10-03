@@ -2,8 +2,21 @@ import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { webcrypto } from 'node:crypto';
 import { supabase } from '@/lib/customSupabaseClient';
 import { clearMutationIntents, idempotentRpc } from './idempotent-mutations';
+import { track } from '@/infrastructure/analytics/posthog';
+vi.mock('@/infrastructure/analytics/posthog',()=>({track:vi.fn(),Events:{ANAMNESIS_COMPLETED:'anamnesis_completed'}}));
 vi.mock('@/lib/customSupabaseClient',()=>({supabase:{auth:{getSession:vi.fn(),onAuthStateChange:vi.fn()},rpc:vi.fn()}}));
 describe('same-account manual retry contract',()=>{
+  it('records completion only once after the server confirms a concurrent anamnesis save', async()=>{
+    track.mockClear();
+    const args={p_table:'anamnesis_records',p_values:{status:'completed'}};
+    supabase.rpc.mockRejectedValueOnce(Error('PRIVATE_NETWORK_PAYLOAD'));
+    await idempotentRpc('mutate_record_idempotently',args);
+    expect(track).not.toHaveBeenCalled();
+    supabase.rpc.mockResolvedValue({data:{id:'synthetic'},error:null});
+    await Promise.all([idempotentRpc('mutate_record_idempotently',args),idempotentRpc('mutate_record_idempotently',args)]);
+    expect(track).toHaveBeenCalledTimes(1);
+    expect(track).toHaveBeenCalledWith('anamnesis_completed',{operation:'anamnesis_complete',outcome:'succeeded'});
+  });
   beforeEach(()=>{clearMutationIntents();vi.stubGlobal('crypto',webcrypto);supabase.auth.getSession.mockResolvedValue({data:{session:{user:{id:'actor1'}}}});supabase.rpc.mockReset();});
   afterEach(()=>{vi.useRealTimers();vi.unstubAllGlobals();});
   it('deduplicates concurrent requests and retries the original revision after timeout',async()=>{

@@ -1,4 +1,5 @@
 import { getTodayIsoDate } from '@/lib/utils/date';
+import { track, Events } from '@/infrastructure/analytics/posthog';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState, useEffect, useRef } from 'react';
 import { usePatientFormStore } from '@/stores/usePatientFormStore';
@@ -297,6 +298,7 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded }) => {
                 toast({ title: "Sucesso!", description: `Paciente ${formData.name} adicionado.`, variant: "success" });
             }
 
+            track(Events.PATIENT_CREATED,{operation:'patient_create',outcome:'succeeded'});
             creationRequestId.current = crypto.randomUUID();
             resetForm();
             onPatientAdded(); // Atualiza a lista na página

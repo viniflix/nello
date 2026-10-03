@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/customSupabaseClient';
+import { track, Events } from '@/infrastructure/analytics/posthog';
 const intents = new Map();
 const preparing = new Map();
 let generation = 0;
@@ -45,6 +46,7 @@ export async function idempotentRpc(operation, args) {
         return {data:null,error:{code:'SESSION_CHANGED',message:'A conta mudou durante o salvamento.'}};
       const result=await supabase.rpc(operation,{...entry.args,p_nonce:entry.nonce,p_actor:actor});
       if (intents.get(key) !== entry) return { data:null,error:{code:'SESSION_CHANGED',message:'A conta mudou durante o salvamento. Recarregue os dados da conta atual.'} };
+      if(!result.error && args.p_table === 'anamnesis_records' && args.p_values?.status === 'completed')track(Events.ANAMNESIS_COMPLETED,{operation:'anamnesis_complete',outcome:'succeeded'});
       if(!result.error || result.error.code === 'PT409')intents.delete(key);
       return result;
     }catch{return{data:null,error:{code:'NETWORK_FAILURE',message:'Sem confirmação do servidor. Tente novamente para conferir a mesma operação.'}};}

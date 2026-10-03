@@ -1,7 +1,6 @@
 import {
   browserTracingIntegration,
   init,
-  addIntegration,
 } from '@sentry/react';
 import { technicalIdentity } from '@/infrastructure/observability/technicalIdentity';
 
@@ -47,7 +46,7 @@ function scrubString(value) {
     .replace(/(\/verificar-documento\/)[^/?#\s]+/gi, '$1:code')
     .replace(/\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b/g, '[CPF]')
     .replace(/\b[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/gi, '[UUID]')
-    .replace(/(https?:\/\/[^\s?#]+)[?#][^\s]*/gi, '$1?[REDACTED]');
+    .replace(/(\/?[^\s?#]+)[?#][^\s]*/gi, '$1?[REDACTED]');
 }
 
 function scrubValue(value, path = '') {
@@ -64,10 +63,26 @@ function scrubValue(value, path = '') {
 }
 
 export function scrubSentryEvent(event) {
-  const result = scrubValue(event);
+  const select = (value, keys) => Object.fromEntries(Object.entries(value || {}).filter(([key])=>keys.includes(key)));
+  const result = select(scrubValue(event), ['event_id','timestamp','type','level','platform','release','environment','sdk','user','request','tags','contexts','exception','extra','breadcrumbs','fingerprint','transaction','start_timestamp','spans','op','status','span_id','trace_id','parent_span_id','data']);
+  if (event.fingerprint?.length === 3 && event.fingerprint[0] === 'connectivity-incident' && technicalIdentity(event.fingerprint[1]) && /^\d{1,10}$/.test(event.fingerprint[2])) {
+    result.fingerprint = [...event.fingerprint];
+  }
+  if(result.user)result.user=select(result.user,['id']);
+  if(result.request)result.request=select(result.request,['url','method','document_url']);
+  if(result.tags)result.tags=select(result.tags,['correlation.id','session.id','user.type','user.is_admin','error.source','error.module','error.code','error.reason','http.status_code']);
+  if(result.contexts){
+    result.contexts=select(result.contexts,['operation','trace','browser','os','runtime','device']);
+    for(const [key,value]of Object.entries(result.contexts))result.contexts[key]=select(value,key==='operation'?['correlation_id','session_id','operation','module','source','error_code','failure_reason','failure_kind','cause_reason','http_status','route']:['name','version','trace_id','span_id','parent_span_id','op','status','origin','architecture']);
+  }
+  if(result.data)result.data=select(result.data,['http.request.method','http.response.status_code','server.address','url.scheme']);
+  if(result.spans)result.spans=result.spans.map(scrubSentryEvent);
   // Arbitrary extras may contain clinical free text without recognizable identifiers.
   if (result.extra) result.extra = {};
+  if (result.exception) result.exception = { values: (result.exception.values || []).map(error => select(error, ['type', 'value', 'mechanism', 'stacktrace'])) };
   for (const error of result?.exception?.values || []) {
+    if(error.mechanism)error.mechanism=select(error.mechanism,['type','handled']);
+    if(error.stacktrace)error.stacktrace={frames:(error.stacktrace.frames || []).map(frame=>select(frame,['filename','abs_path','function','module','lineno','colno','in_app']))};
     if (typeof error.value === 'string' && !/^(?:\[[A-Z0-9_]+\] )?[a-z0-9_.:-]+ failed \([a-z_]+\)$/i.test(error.value)) {
       error.value = 'Unhandled application error (content removed)';
     }
@@ -77,8 +92,7 @@ export function scrubSentryEvent(event) {
 
 export function scrubBreadcrumb(breadcrumb) {
   if (!['navigation', 'http', 'fetch', 'xhr'].includes(breadcrumb?.category)) return null;
-  const safe = scrubSentryEvent(breadcrumb);
-  delete safe.message;
+  const safe = {category:breadcrumb.category,type:breadcrumb.type,timestamp:breadcrumb.timestamp,data:scrubValue(breadcrumb.data || {})};
   safe.data = Object.fromEntries(Object.entries(safe.data || {}).filter(([key]) => ['from', 'to', 'url', 'method', 'status_code'].includes(key)));
   return safe;
 }
@@ -86,7 +100,6 @@ export function scrubBreadcrumb(breadcrumb) {
 export function createSentryOptions(env) {
   if (!env.VITE_SENTRY_DSN) return null;
 
-  const replayEnabled = env.VITE_SENTRY_REPLAY_ENABLED === 'true';
   const integrations = [browserTracingIntegration()];
 
   return {
@@ -98,7 +111,8 @@ export function createSentryOptions(env) {
     tracesSampleRate: 0.1,
     tracePropagationTargets: [],
     replaysSessionSampleRate: 0,
-    replaysOnErrorSampleRate: replayEnabled ? 1 : 0,
+    // No reviewed legal/capture allowlist exists yet: an environment flag cannot authorize recording.
+    replaysOnErrorSampleRate: 0,
     beforeSend: scrubSentryEvent,
     beforeSendTransaction: scrubSentryEvent,
     beforeSendSpan: scrubSentryEvent,
@@ -111,11 +125,5 @@ export function initializeObservability(env) {
   if (!options) return false;
 
   init(options);
-  if (env.VITE_SENTRY_REPLAY_ENABLED === 'true') {
-    // Optional replay must not add its recorder to every login download.
-    void import('./replay').then(({ createPrivateReplay }) => {
-      addIntegration(createPrivateReplay());
-    }).catch(() => { /* Error reporting remains available without replay. */ });
-  }
   return true;
 }

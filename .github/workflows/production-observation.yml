@@ -12,7 +12,7 @@ concurrency:
 jobs:
   observe:
     runs-on: ubuntu-24.04
-    timeout-minutes: 3
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
         with:
@@ -40,10 +40,18 @@ jobs:
         env:
           SENTRY_MONITOR_READ_TOKEN: ${{ secrets.SENTRY_MONITOR_READ_TOKEN }}
           SENTRY_DSN: ${{ secrets.PRODUCTION_MONITOR_SENTRY_DSN }}
+      - name: Verify analytics ingestion and release metadata independently of user traffic
+        run: node scripts/observability/pipeline-monitor.mjs
+        env:
+          POSTHOG_MONITOR_READ_TOKEN: ${{ secrets.POSTHOG_MONITOR_READ_TOKEN }}
+          POSTHOG_MONITOR_CAPTURE_KEY: ${{ secrets.POSTHOG_MONITOR_CAPTURE_KEY }}
+          SENTRY_DSN: ${{ secrets.PRODUCTION_MONITOR_SENTRY_DSN }}
       - uses: actions/upload-artifact@v4
         with:
           name: production-budget-state
-          path: production-budget.json
+          path: |
+            production-budget.json
+            production-analytics.json
           retention-days: 7
           if-no-files-found: error
       - name: Check live health, assets, headers, status and real 404 contracts

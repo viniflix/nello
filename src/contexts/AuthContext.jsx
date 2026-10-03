@@ -103,6 +103,7 @@ export function AuthProvider({ children }) {
   }, [profile, user?.id, isProfileError, isOffline]);
 
   const signOut = useCallback(async () => {
+    track(Events.AUTH_LOGOUT,{operation:'auth_session_end',outcome:'succeeded'});
     clearPrivateClientState();
     identityRef.current = null;
     setUser(null);

@@ -1,4 +1,5 @@
 import { clinicalRpc } from '@/lib/supabase/idempotent-mutations';
+import { track, Events } from '@/infrastructure/analytics/posthog';
 import { supabase } from '@/lib/customSupabaseClient';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
 import { syncAppointmentNotificationSchedule } from './appointment-notifications-queries';
@@ -86,6 +87,7 @@ export async function createAppointmentWithFinance(appointmentData, financialDat
         throw error;
     }
     const { appointment, transaction } = data;
+    track(Events.APPOINTMENT_SCHEDULED, { operation: 'appointment_create', outcome: 'succeeded' });
 
     const syncResult = await syncAppointmentNotificationSchedule(appointment.id, true);
     if (syncResult.error) {

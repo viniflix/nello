@@ -3,6 +3,14 @@ const mocks = vi.hoisted(() => ({ consent: false, sdk: { init: vi.fn(), capture:
 vi.mock('@/features/privacy/consent', () => ({hasAnalyticsConsent: () => mocks.consent}));
 vi.mock('posthog-js', () => ({default: mocks.sdk}));
 describe('optional analytics loading', () => {
+  it('orders identity before queued outcomes and drops a previous account during load',async()=>{
+    vi.resetModules();mocks.consent=true;vi.clearAllMocks();const {default:client}=await import('./lazyPosthog');
+    client.identify('old',{});client.capture('old-outcome');const old=client.init('synthetic',{});client.reset();await old;
+    expect(mocks.sdk.identify).not.toHaveBeenCalled();expect(mocks.sdk.capture).not.toHaveBeenCalled();
+    client.identify('new',{});client.capture('new-outcome');await client.init('synthetic',{});
+    expect(mocks.sdk.identify).toHaveBeenCalledWith('new',{});expect(mocks.sdk.capture).toHaveBeenCalledWith('new-outcome');
+    expect(mocks.sdk.identify.mock.invocationCallOrder[0]).toBeLessThan(mocks.sdk.capture.mock.invocationCallOrder[0]);
+  });
   beforeEach(() => {vi.resetModules();vi.clearAllMocks();mocks.consent=false;});
   it('does not initialize or capture without consent', async () => {
     const {default: client}=await import('./lazyPosthog');

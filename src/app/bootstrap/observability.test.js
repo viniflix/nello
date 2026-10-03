@@ -23,18 +23,27 @@ describe('createSentryOptions', () => {
     });
   });
 
-  it('captures every error replay only when explicitly enabled', () => {
+  it('does not let a deployment flag bypass the legal and capture review', () => {
     const options = createSentryOptions({
       VITE_SENTRY_DSN: 'https://public@example.invalid/1',
       VITE_SENTRY_REPLAY_ENABLED: 'true',
     });
 
     expect(options.replaysSessionSampleRate).toBe(0);
-    expect(options.replaysOnErrorSampleRate).toBe(1);
+    expect(options.replaysOnErrorSampleRate).toBe(0);
   });
 });
 
 describe('scrubSentryEvent', () => {
+  it('keeps the reviewed technical session in connectivity grouping without preserving arbitrary UUID fingerprints',()=>{
+    const id='019bd130-48ba-7fab-a6b7-809ad87b48e1';
+    expect(scrubSentryEvent({fingerprint:['connectivity-incident',id,'12345']}).fingerprint[1]).toBe(id);
+    expect(scrubSentryEvent({fingerprint:['unreviewed',id]}).fingerprint[1]).toBe('[UUID]');
+  });
+  it('drops unclassified root, context, tag and span data fields',()=>{
+    const safe=scrubSentryEvent({unknown:'PRIVATE_SENTINEL',tags:{clinical_label:'PRIVATE_SENTINEL'},contexts:{unreviewed:{answer:'PRIVATE_SENTINEL'},operation:{unknown:'PRIVATE_SENTINEL',operation:'meal_plan_apply'}},spans:[{op:'http',data:{unreviewed:'PRIVATE_SENTINEL','http.response.status_code':500}}]});
+    expect(JSON.stringify(safe)).not.toContain('PRIVATE_SENTINEL');expect(safe.spans[0].data['http.response.status_code']).toBe(500);
+  });
   it('drops unclassified extras and masks UUIDv7 outside technical identity fields', () => {
     const id = '019bd130-48ba-7fab-a6b7-809ad87b48e1';
     const result = scrubSentryEvent({ user: { id }, extra: { arbitrary: 'clinical free text', measurement: 180 }, request: { url: `https://example.invalid/resource/${id}` } });

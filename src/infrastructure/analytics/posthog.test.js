@@ -3,6 +3,28 @@ import { sanitizeAnalyticsProperties, sanitizePosthogEvent } from './posthog';
 vi.mock('./lazyPosthog', () => ({ default: { capture: vi.fn(), get_session_id: () => '018d3b7f-81d8-7abc-8f12-aabbccddeeff' } }));
 
 describe('sanitizeAnalyticsProperties', () => {
+  it('drops nontechnical identities and nested payloads disguised as SDK metadata',()=>{
+    const result=sanitizePosthogEvent({event:'$pageview',properties:{distinct_id:'PRIVATE_SENTINEL', $browser:{unexpected:'PRIVATE_SENTINEL'},$current_url:{unexpected:'PRIVATE_SENTINEL'}}});
+    expect(JSON.stringify(result)).not.toContain('PRIVATE_SENTINEL');
+  });
+  it('rejects arbitrary person trait values even under an allowed key', () => {
+    const result = sanitizePosthogEvent({ event: '$identify', properties: { $set: { user_type: 'PRIVATE_SENTINEL', is_admin: 'PRIVATE_SENTINEL' } } });
+    expect(result.properties.$set).toEqual({});
+  });
+  it('emits canonical clinical outcomes only after a confirmed successful action', async () => {
+    vi.resetModules(); vi.stubEnv('VITE_PUBLIC_POSTHOG_KEY', 'test-key');
+    const { default: sdk, track } = await import('./posthog');
+    const { bindConsentOwner, storeAnalyticsChoice } = await import('@/features/privacy/consent');
+    bindConsentOwner(null); storeAnalyticsChoice(true); sdk.capture.mockClear();
+    for (const outcome of ['started', 'failed', 'succeeded']) track('ui_action_outcome', { operation: 'meal_plan_apply', outcome });
+    expect(sdk.capture.mock.calls.filter(([event]) => event === 'meal_plan_published')).toHaveLength(1);
+    expect(sdk.capture.mock.calls.at(-1)[1]).toMatchObject({ outcome: 'succeeded', event_schema_version: 1, audience: 'qa' });
+  });
+  it('rejects unregistered names and unknown root envelope fields',()=>{
+    expect(sanitizePosthogEvent({event:'private clinical text',properties:{}})).toBeNull();
+    const safe=sanitizePosthogEvent({event:'operation_failed',properties:{},unknown:'PRIVATE_SENTINEL'});
+    expect(JSON.stringify(safe)).not.toContain('PRIVATE_SENTINEL');
+  });
   it('minimizes root-level SDK person updates including initial URLs and arbitrary clinical fields', () => {
     const safe = sanitizePosthogEvent({ event: '$identify', properties: {}, $set: { user_type: 'patient', email: 'private@example.invalid', arbitrary: 'clinical secret' }, $set_once: { '$initial_current_url': 'https://example.invalid/f/secret-token', is_admin: false } });
     expect(safe.$set).toEqual({ user_type: 'patient' });
@@ -78,9 +100,13 @@ describe('sanitizeAnalyticsProperties', () => {
       event: '$pageview',
       properties: {
         $current_url: 'https://www.nello.com.br/nutritionist/patients/:patient/meal-plan',
+        $geoip_disable: true,
         route: '/nutritionist/patients/:patient/anthropometry',
         app_release: '0.0.0',
         environment: 'test',
+        event_schema_version: 1,
+        audience: 'qa',
+        user_type: 'anonymous',
       },
     });
   });

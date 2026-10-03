@@ -1,6 +1,7 @@
 /* global BigInt */
 import { supabase } from '@/lib/customSupabaseClient';
 import { isUuid } from '@/lib/utils/patientRoutes';
+import { track, Events } from '@/infrastructure/analytics/posthog';
 
 export async function renderSavedClinicalPdf(kind, id, options={}) {
   const validId = ['energyCalculationId','mealPlanId','anthropometryRecordId'].includes(kind)
@@ -14,6 +15,7 @@ export async function renderSavedClinicalPdf(kind, id, options={}) {
   if(!(data instanceof Blob) || data.size === 0 || data.size > 2*1024*1024) throw new Error('invalid_pdf_response');
   const signature = new Uint8Array(await data.slice(0,5).arrayBuffer());
   if(String.fromCharCode(...signature) !== '%PDF-') throw new Error('invalid_pdf_response');
+  track(Events.DOCUMENT_GENERATED,{operation:'clinical_pdf_generate',outcome:'succeeded'});
   return new Blob([data],{type:'application/pdf'});
 }
 export async function downloadSavedClinicalPdf(kind,id,options) {

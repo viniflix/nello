@@ -37,8 +37,8 @@ function normalizeError(error, operation = 'operation') {
 }
 
 function safeStatus(error) {
-  const value = Number(error?.status || error?.statusCode);
-  return Number.isFinite(value) ? value : null;
+  const value = Number(error?.status || error?.statusCode || error?.cause?.status || error?.cause?.statusCode);
+  return Number.isInteger(value) && value >= 100 && value <= 599 ? value : null;
 }
 
 function correlationId() {
@@ -87,6 +87,7 @@ export function captureOperationalError(error, context = {}) {
   const source = String(context.source || 'application').slice(0, 40);
   const errorCode = /^[A-Z0-9_]{1,40}$/.test(String(error?.code || '')) ? String(error.code) : 'unknown';
   const failureReason = safeFailureReason(error);
+  const failureKind = ['validation','conflict','forbidden','missing','unauthenticated','rate_limit'].includes(classifyFailure(error)) || failureReason === 'business_rule_rejected' ? 'expected' : 'technical';
   const status = safeStatus(error);
   const route = typeof window !== 'undefined' ? window.location.pathname : 'server';
   const id = correlationId();
@@ -102,6 +103,8 @@ export function captureOperationalError(error, context = {}) {
     source,
     error_code: errorCode,
     failure_reason: failureReason,
+    failure_kind: failureKind,
+    cause_reason: error?.cause ? safeFailureReason(error.cause) : failureReason,
     http_status: status,
     route,
   };
@@ -110,7 +113,7 @@ export function captureOperationalError(error, context = {}) {
     scope.setFingerprint(failureReason === 'network_failure'
       ? ['connectivity-incident', properties.session_id || 'anonymous', String(Math.floor(Date.now() / 60000))]
       : ['operational-error', source, module, operation, errorCode, failureReason]);
-    scope.setLevel(status === 403 || errorCode === '42501' ? 'warning' : 'error');
+    scope.setLevel(failureKind === 'expected' ? 'warning' : 'error');
     scope.setTags({
       'correlation.id': id,
       'session.id': properties.session_id || 'unavailable',

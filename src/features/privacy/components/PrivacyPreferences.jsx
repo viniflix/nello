@@ -4,6 +4,7 @@ import posthog, { identifyUser } from '@/infrastructure/analytics/posthog';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/customSupabaseClient';
 import { posthogOptions } from '@/app/config/posthog';
+import { reportAnalyticsFailure } from '@/infrastructure/analytics/pipelineHealth';
 import { bindConsentOwner, hasAnalyticsConsent, hasAnalyticsChoice, suspendAnalyticsConsent, hasPendingAnalyticsRevocation, markPendingAnalyticsRevocation, LEGAL_VERSION, storeAnalyticsChoice } from '../consent';
 
 function applyChoice(allowed, user, persist = true) {
@@ -16,7 +17,7 @@ function applyChoice(allowed, user, persist = true) {
       if (!hasAnalyticsConsent(user?.id)) return;
       posthog.opt_in_capturing?.({ captureEventName: false, enable_persistence: false });
       identifyUser(user);
-    }).catch(() => { /* Optional analytics cannot prevent platform access. */ });
+    }).catch(() => { if (hasAnalyticsConsent(user?.id)) reportAnalyticsFailure('sdk_failure'); });
   }
   if (!posthog.__loaded && !posthog.initialized) return;
   if (allowed && stored && hasAnalyticsConsent()) {

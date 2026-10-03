@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/customSupabaseClient';
+import { track, Events } from '@/infrastructure/analytics/posthog';
 import { getTodayIsoDate } from '@/lib/utils/date';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
 import { isUuid } from '@/lib/utils/patientRoutes';
@@ -221,6 +222,7 @@ export const createAnamnesis = async (anamnesisData) => {
             .single();
 
         if (error) throw error;
+        if (anamnesisData.status === 'completed')track(Events.ANAMNESIS_COMPLETED,{operation:'anamnesis_complete',outcome:'succeeded'});
         return { data, error: null };
     } catch (error) {
         logSupabaseError("erro_ao_criar_anamnese", error);
@@ -258,6 +260,7 @@ export const updateAnamnesis = async (anamnesisId, updatedData) => {
             .single();
 
         if (error) throw error;
+        if (updatedData.status === 'completed')track(Events.ANAMNESIS_COMPLETED,{operation:'anamnesis_complete',outcome:'succeeded'});
         return { data, error: null };
     } catch (error) {
         logSupabaseError("erro_ao_atualizar_anamnese", error);
