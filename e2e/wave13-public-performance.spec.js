@@ -21,9 +21,12 @@ for (const mobile of [false, true]) test(`public landing bounds work after new a
     timeout: mobile ? 10000 : 6000,
     message: 'LCP observer must report a paint before the first keyboard input',
   }).toBeGreaterThan(0);
-  await page.getByRole('link', { name: 'Criar minha conta', exact: true }).focus();
+  const introduction = page.getByRole('region', { name: 'Mais clareza para cuidar. Mais tempo para acompanhar.', exact: true });
+  await introduction.getByRole('link', { name: 'Criar minha conta', exact: true }).focus();
   await page.keyboard.press('Tab');
-  await expect(page.getByRole('link', { name: 'Já tenho acesso', exact: true })).toBeFocused();
+  const nextAction = introduction.getByRole('link', { name: 'Conhecer os recursos', exact: true });
+  await expect(nextAction).toBeFocused();
+  await expect(nextAction).toHaveAttribute('href', '/recursos');
   await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   const metrics = await page.evaluate(() => ({ ...window.__wave13, heap: performance.memory?.usedJSHeapSize || 0 }));
   expect(metrics.lcp).toBeGreaterThan(0);

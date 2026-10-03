@@ -32,7 +32,8 @@ for (const width of [390, 1440]) {
     for (const [path, title] of [['/termos','Termos de Uso do Nello'],['/privacidade','Aviso de Privacidade'],['/ajuda','Ajuda para acessar o Nello'],['/seguranca','Relatar uma falha de segurança']]) {
       await page.goto(path);
       await expect(page.getByRole('heading', { name: title, exact: true })).toBeVisible();
-      await expect(page.getByRole('link', { name: 'suporte@nellonutri.com.br', exact:true })).toBeVisible();
+      await expect(page.getByRole('main').getByRole('link', { name: 'suporte@nellonutri.com.br', exact:true })).toBeVisible();
+      await expect(page.getByRole('contentinfo').getByRole('link', { name: 'suporte@nellonutri.com.br', exact:true })).toBeVisible();
       const { violations } = await new AxeBuilder({ page }).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze();
       expect(violations.map(v=>({id:v.id,targets:v.nodes.map(n=>n.target)}))).toEqual([]);
       expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
