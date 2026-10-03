@@ -76,6 +76,14 @@ it('shows the list on quick entry when an active plan is already saved and no se
     await screen.findByText('Planos Alimentares');
     expect(screen.queryByTestId('restored-plan')).toBeNull();
 });
+it('closes the previous patient editor when a different patient route reuses the page', async () => {
+    const view = render(<MemoryRouter><MealPlanPage /></MemoryRouter>);
+    await screen.findByTestId('restored-plan');
+    test.noRecovery = true; test.patientId = 'another-patient';
+    view.rerender(<MemoryRouter><MealPlanPage /></MemoryRouter>);
+    expect(screen.queryByTestId('restored-plan')).toBeNull();
+    expect(screen.getByText('Planos Alimentares')).toBeInTheDocument();
+});
 
 it('keeps an identical applied copy from the old version in the list instead of reopening the editor', async () => {
     test.appliedCopy = true;

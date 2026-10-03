@@ -1,0 +1,35 @@
+import { act, renderHook, waitFor } from '@testing-library/react';
+import { beforeEach, expect, it, vi } from 'vitest';
+import { useResolvedPatientId } from './useResolvedPatientId';
+const state = vi.hoisted(() => ({ slug: 'first', owner: 'owner', pending: [] }));
+vi.mock('react-router-dom', () => ({ useParams: () => ({ patientId: state.slug }) }));
+vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ user: state.owner ? { id: state.owner } : null }) }));
+vi.mock('@/lib/supabase/patient-queries', () => ({ resolvePatientId: (slug, owner) => new Promise((resolve, reject) => { state.pending.push({ slug, owner, resolve, reject }); }) }));
+beforeEach(() => { state.slug = 'first'; state.owner = 'owner'; state.pending = []; });
+it('never exposes the previous patient while resolving a new slug or another account', async () => {
+  const hook = renderHook(() => useResolvedPatientId());
+  await act(async () => { state.pending[0].resolve({ patientId: 'old-id', error: null }); });
+  expect(hook.result.current.patientId).toBe('old-id');
+  state.slug = 'second'; hook.rerender();
+  expect(hook.result.current).toMatchObject({ patientId: null, loading: true, error: null });
+  const oldAccount = state.pending[1];
+  state.slug = 'first'; hook.rerender();
+  expect(hook.result.current).toMatchObject({ patientId: null, loading: true });
+  state.slug = 'second'; hook.rerender();
+  state.owner = 'another-owner'; hook.rerender();
+  await act(async () => { oldAccount.resolve({ patientId: 'wrong-account-id', error: null }); });
+  expect(hook.result.current.patientId).toBeNull();
+  await act(async () => { state.pending.at(-1).resolve({ patientId: 'new-id', error: null }); });
+  expect(hook.result.current.patientId).toBe('new-id');
+});
+it('clears a previous resolution on failure and handles rejected requests without an unhandled rejection', async () => {
+  const hook = renderHook(() => useResolvedPatientId());
+  await act(async () => { state.pending[0].resolve({ patientId: 'old-id', error: null }); });
+  state.slug = 'missing'; hook.rerender();
+  await act(async () => { state.pending[1].reject(Error('SYNTHETIC_FAILURE')); });
+  await waitFor(() => expect(hook.result.current.loading).toBe(false));
+  expect(hook.result.current.patientId).toBeNull();
+  expect(hook.result.current.error.message).not.toContain('SYNTHETIC_FAILURE');
+  state.slug = '20000000-0000-4000-8000-000000000082'; hook.rerender();
+  expect(hook.result.current).toMatchObject({ patientId: state.slug, error: null, loading: false });
+});

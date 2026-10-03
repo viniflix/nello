@@ -49,7 +49,13 @@ import { ShadowRecovery } from '@/components/ui/shadow-save-status';
 
 
 const MealPlanPage = () => {
-    const { patientId, paramValue } = useResolvedPatientId();
+    const resolvedPatient = useResolvedPatientId();
+    const { user } = useAuth();
+    return <MealPlanPageContent key={`${user?.id || 'anonymous'}:${resolvedPatient.paramValue}`} resolvedPatient={resolvedPatient} />;
+};
+
+const MealPlanPageContent = ({ resolvedPatient }) => {
+    const { patientId, paramValue } = resolvedPatient;
     const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
     const { toast } = useToast();
@@ -73,6 +79,7 @@ const MealPlanPage = () => {
     const session = useMealPlanSession({ ownerId: nutritionistId, patientId });
     const sessionScopeRef = useRef('');
     sessionScopeRef.current = `${nutritionistId}:${patientId}`;
+    useEffect(() => () => { sessionScopeRef.current = ''; }, []);
     const { plans, activePlan, pendingDrafts, loading, isFetching, error: plansError, loadPlans, invalidatePlans } = useMealPlan(patientId, nutritionistId);
 
     const {
