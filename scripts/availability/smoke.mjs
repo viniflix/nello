@@ -1,5 +1,6 @@
 import { probeHealth } from './monitor.mjs';
 import { smokeDeployment } from '../release/smoke.mjs';
+import { publicInformationPaths } from '../../src/features/privacy/publicInformationPaths.js';
 
 export async function smokeAvailability(origin, { fetcher = fetch, requireHeaders = true } = {}) {
   const app = await smokeDeployment(origin, { fetcher, requireHeaders });
@@ -13,7 +14,7 @@ export async function smokeAvailability(origin, { fetcher = fetch, requireHeader
   }
   const sitemap = await fetcher(new URL('/sitemap.xml', origin), { signal: AbortSignal.timeout(10000), redirect: 'error' });
   const sitemapBody = await sitemap.text();
-  const publicPages = ['/', '/ajuda', '/termos', '/privacidade', '/seguranca'];
+  const publicPages = publicInformationPaths;
   const locations = [...sitemapBody.matchAll(/<loc>\s*([^<]+)\s*<\/loc>/g)].map(match => match[1].trim());
   if (sitemap.status !== 200 || !/xml/i.test(sitemap.headers.get('content-type') || '') || !sitemapBody.includes('<urlset')
       || locations.length !== publicPages.length || new Set(locations).size !== publicPages.length

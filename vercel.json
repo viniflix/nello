@@ -276,20 +276,28 @@
       "destination": "/index.html"
     },
     {
-      "source": "/termos",
-      "destination": "/index.html"
+      "source": "/recursos",
+      "destination": "/recursos/index.html"
     },
     {
-      "source": "/privacidade",
-      "destination": "/index.html"
+      "source": "/para-pacientes",
+      "destination": "/para-pacientes/index.html"
     },
     {
       "source": "/ajuda",
-      "destination": "/index.html"
+      "destination": "/ajuda/index.html"
+    },
+    {
+      "source": "/termos",
+      "destination": "/termos/index.html"
+    },
+    {
+      "source": "/privacidade",
+      "destination": "/privacidade/index.html"
     },
     {
       "source": "/seguranca",
-      "destination": "/index.html"
+      "destination": "/seguranca/index.html"
     }
   ],
   "headers": [

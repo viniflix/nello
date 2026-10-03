@@ -331,7 +331,7 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider value={value}>
-      {!['/status', '/termos', '/privacidade', '/ajuda', '/seguranca'].includes(pathname.replace(/\/$/, ''))
+      {!['/', '/status', '/recursos', '/para-pacientes', '/termos', '/privacidade', '/ajuda', '/seguranca'].includes(pathname.replace(/\/+$/, '') || '/')
         && (initializing || (loading && !user) || (user && !user.profile)) ? <AuthLoadingFallback /> : children}
     </AuthContext.Provider>
   );

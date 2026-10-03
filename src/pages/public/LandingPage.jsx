@@ -1,47 +1,19 @@
 import React from 'react';
-import { SUPPORT_EMAIL } from '../../features/privacy/consent';
+import { ArrowRight, Check, ShieldCheck, HeartHandshake, MonitorSmartphone, Utensils, MessageCircle, CalendarDays, Leaf } from 'lucide-react';
+import PublicSiteLayout, { PublicAction, PublicNextStep } from './PublicSiteLayout';
+import ProductIllustration from './ProductIllustration';
+import { publicFeatures, publicQuestions } from './publicSiteContent';
 
 export default function LandingPage() {
-  return <div className="min-h-dvh bg-background text-foreground">
-    <header className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-5 py-5">
-      <a href="/" aria-label="Nello, início"><img src="/nello-logo.png" alt="Nello" width="120" height="48" className="h-12 w-auto object-contain" /></a>
-      <nav aria-label="Navegação pública" className="flex flex-wrap items-center gap-4 text-sm">
-        <a className="inline-flex min-h-11 items-center underline" href="/ajuda">Ajuda</a>
-        <a className="inline-flex min-h-11 items-center underline" href="/status">Status</a>
-        <a className="inline-flex min-h-11 items-center rounded-lg bg-primary px-5 font-medium text-primary-foreground" href="/login">Entrar</a>
-      </nav>
-    </header>
-    <main id="main-content" tabIndex={-1} className="mx-auto max-w-6xl px-5 pb-16">
-      <section className="grid items-center gap-8 py-10 md:grid-cols-[1.3fr_1fr] md:py-20" aria-labelledby="landing-title">
-        <div className="space-y-6">
-          <p className="text-sm font-medium text-primary">Nello · Nutrição clínica · Beta</p>
-          <h1 id="landing-title" className="text-4xl font-semibold leading-tight tracking-tight sm:text-5xl">Mais clareza para cuidar. Mais tempo para acompanhar.</h1>
-          <p className="max-w-xl text-lg leading-relaxed text-muted-foreground">Organize pacientes, avaliações, planos alimentares e a rotina do consultório em um só lugar. Acompanhe o cuidado com informação clínica em destaque.</p>
-          <div className="flex flex-wrap gap-3">
-            <a className="inline-flex min-h-11 items-center justify-center rounded-lg bg-primary px-6 py-3 font-medium text-primary-foreground" href="/register">Criar minha conta</a>
-            <a className="inline-flex min-h-11 items-center justify-center rounded-lg border border-input bg-card px-6 py-3 font-medium" href="/login">Já tenho acesso</a>
-          </div>
-          <p className="text-sm leading-relaxed text-muted-foreground">Nutricionista ou paciente? No cadastro, escolha seu papel. O acompanhamento do paciente depende do vínculo com o profissional.</p>
-        </div>
-        <aside className="space-y-5 rounded-3xl border bg-card p-6 sm:p-8" aria-label="O cuidado em cada etapa">
-          <h2 className="text-xl font-semibold">Do primeiro encontro ao acompanhamento</h2>
-          {[
-            ['01', 'Conheça o paciente', 'Prontuário, anamnese e avaliações em uma jornada organizada.'],
-            ['02', 'Planeje com precisão', 'Cálculos nutricionais e planos alimentares com substituições.'],
-            ['03', 'Mantenha o cuidado próximo', 'Diário alimentar, metas, mensagens e acompanhamento.'],
-          ].map(([number, title, description]) => <div key={number} className="flex gap-4 border-t pt-4"><span className="text-sm font-semibold text-primary" aria-hidden="true">{number}</span><div className="space-y-1"><h3 className="font-semibold">{title}</h3><p className="text-sm leading-relaxed text-muted-foreground">{description}</p></div></div>)}
-        </aside>
-      </section>
-      <section className="grid gap-5 md:grid-cols-3" aria-label="Confiança, acesso e suporte">
-        {[
-          ['Privacidade no cuidado', 'Conheça como os dados são usados e como exercer seus direitos. As preferências de analytics são opcionais.', '/privacidade', 'Conhecer a privacidade'],
-          ['Acesso e segurança', 'Contas, vínculos e documentos possuem controles de acesso. Consulte as orientações de segurança e proteção da sua conta.', '/seguranca', 'Ver orientações de segurança'],
-          ['Suporte durante a Beta', 'Precisa de ajuda para acessar ou usar o Nello? Consulte as orientações e o canal de suporte.', '/ajuda', 'Encontrar ajuda'],
-        ].map(([title, description, href, label]) => <article key={href} className="flex flex-col gap-3 rounded-2xl border bg-card p-6"><h2 className="text-xl font-semibold">{title}</h2><p className="flex-1 text-sm leading-relaxed text-muted-foreground">{description}</p><a href={href} className="inline-flex min-h-11 items-center text-sm font-medium text-primary underline">{label}</a></article>)}
-      </section>
-    </main>
-    <footer className="border-t px-5 py-8 text-sm"><div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4">
-      <p>Nello · Consultório nutricional</p><nav className="flex flex-wrap gap-5" aria-label="Informações e suporte"><a href="/termos" className="underline">Termos</a><a href="/privacidade" className="underline">Privacidade</a><a href={`mailto:${SUPPORT_EMAIL}`} className="break-all underline">{SUPPORT_EMAIL}</a></nav>
-    </div></footer>
-  </div>;
+  return <PublicSiteLayout><main id="main-content" tabIndex={-1}>
+    <section className="site-hero site-container" aria-labelledby="landing-title"><div><span className="site-hero-tag">Nutrição clínica · Nello Beta</span><h1 id="landing-title">Mais clareza para cuidar.<br /><em>Mais tempo para acompanhar.</em></h1><p>Seu consultório, seus planos alimentares e a rotina do paciente. Tudo conectado para um cuidado que continua além da consulta.</p><div className="site-hero-actions"><PublicAction /><PublicAction href="/recursos" secondary>Conhecer os recursos</PublicAction></div><p className="site-small">Feito para nutricionistas. Pensado também para pacientes.<br />Já tem acesso? <a href="/login">Entre no Nello <ArrowRight size={14} aria-hidden="true" /></a></p></div><ProductIllustration /></section>
+    <div className="site-strip"><div className="site-container"><span><UsersIcon />Do consultório à rotina</span><span><Utensils aria-hidden="true" />Planos com porções e alternativas</span><span><MonitorSmartphone aria-hidden="true" />No computador e no celular</span></div></div>
+    <section className="site-section site-container" aria-labelledby="site-features"><div className="site-section-heading"><span className="site-eyebrow">Uma jornada, muitos detalhes</span><h2 id="site-features">Completo para o profissional.<br />Próximo de quem recebe o cuidado.</h2><p>As informações que você precisa e os recursos que sua rotina pede, conectados em uma plataforma de acompanhamento nutricional.</p></div><div className="site-feature-grid">{publicFeatures.map(({icon:Icon,title,text})=><article className="site-feature" key={title}><span className="site-feature-icon"><Icon aria-hidden="true" size={22} /></span><h3>{title}</h3><p>{text}</p></article>)}</div><a href="/recursos" className="site-inline-link">Explore os recursos do Nello <ArrowRight aria-hidden="true" size={17} /></a></section>
+    <section className="site-dark-section"><div className="site-section site-container"><div className="site-section-heading"><span className="site-eyebrow">Cuidado com continuidade</span><h2>Uma boa consulta é o começo.<br />O acompanhamento faz o caminho.</h2><p>Do primeiro encontro aos próximos ajustes, organize cada etapa sem perder de vista a pessoa por trás dos registros.</p></div><div className="site-steps">{[['01 / Conhecer','Comece pelo contexto.','Reúna a história, a anamnese e as avaliações do paciente para apoiar suas decisões.'],['02 / Planejar','Transforme informação em plano.','Defina metas, organize refeições e personalize alimentos, porções e possibilidades.'],['03 / Acompanhar','Continue presente.','Consulte registros, acompanhe a evolução e mantenha a comunicação no decorrer do cuidado.']].map(([number,title,text])=><article className="site-step" key={number}><span>{number}</span><h3>{title}</h3><p>{text}</p></article>)}</div></div></section>
+    <section className="site-section site-container site-patient-section" aria-labelledby="site-patient"><div className="site-section-heading"><span className="site-eyebrow">A experiência do paciente</span><h2 id="site-patient">O cuidado precisa caber<br />na vida de quem é cuidado.</h2><p>Uma área própria para consultar o plano, registrar a alimentação e conversar com o profissional. Mais contexto para você. Mais direção para o paciente.</p><ul className="site-check-list">{['Plano alimentar com porções e substituições','Diário alimentar para registrar a rotina','Metas e evolução do acompanhamento'].map(text=><li key={text}><Check aria-hidden="true" />{text}</li>)}</ul><a href="/para-pacientes" className="site-inline-link">Conheça a área do paciente <ArrowRight aria-hidden="true" size={17} /></a></div><aside className="site-patient-card" aria-label="Recursos da experiência do paciente"><span className="site-eyebrow">Entre uma consulta e outra</span><h3>Um lugar para seguir<br />o seu acompanhamento.</h3><p>O que foi combinado na consulta continua ao alcance do paciente.</p><div className="site-patient-items">{[[Utensils,'Meu plano','Alimentos, porções e alternativas'],[CalendarDays,'Minha rotina','Registros para acompanhar o dia a dia'],[MessageCircle,'Minha conversa','Comunicação com o nutricionista']].map(([Icon,title,text])=><div key={title}><Icon aria-hidden="true" /><div><strong>{title}</strong><span>{text}</span></div></div>)}</div></aside></section>
+    <section className="site-section site-container" aria-labelledby="site-trust"><div className="site-section-heading"><span className="site-eyebrow">Confiança também faz parte</span><h2 id="site-trust">Transparência em cada etapa.</h2><p>Saiba como acessar, onde encontrar ajuda e como suas informações são utilizadas.</p></div><div className="site-trust-grid">{[[ShieldCheck,'Privacidade e acesso','Conheça o uso dos dados, as preferências de análise opcional e os direitos de privacidade.','/privacidade','Conhecer a privacidade'],[HeartHandshake,'Ajuda quando precisar','Orientações para cadastro, convites e recuperação de acesso, com um canal de suporte.','/ajuda','Encontrar ajuda'],[MonitorSmartphone,'Disponibilidade à vista','Consulte o estado dos serviços e as orientações para proteger o acesso à sua conta.','/status','Consultar o status']].map(([Icon,title,text,href,label])=><article key={title}><Icon aria-hidden="true" size={24} /><h3>{title}</h3><p>{text}</p><a href={href} className="site-inline-link">{label}<ArrowRight aria-hidden="true" size={16} /></a></article>)}</div></section>
+    <section className="site-section site-container site-faq" aria-labelledby="site-faq-title"><div className="site-section-heading"><span className="site-eyebrow">Antes de começar</span><h2 id="site-faq-title">Vamos esclarecer<br />o próximo passo.</h2><p>Algumas respostas para conhecer o Nello e encontrar seu caminho.</p><a href="/ajuda" className="site-inline-link">Ir para a central de ajuda <ArrowRight aria-hidden="true" size={17} /></a></div><div className="site-faq-list">{publicQuestions.map(([question,answer])=><details key={question}><summary>{question}</summary><p>{answer}</p></details>)}</div></section>
+    <PublicNextStep />
+  </main></PublicSiteLayout>;
 }
+function UsersIcon(){return <Leaf aria-hidden="true" />;}

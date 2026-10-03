@@ -1,6 +1,8 @@
 User-agent: *
 Allow: /$
 Allow: /ajuda
+Allow: /recursos
+Allow: /para-pacientes
 Allow: /termos
 Allow: /privacidade
 Allow: /seguranca

@@ -37,7 +37,8 @@ createServer(async(req,res)=>{
     else res.writeHead(404).end();
     return;
   }
-  const target=existsSync(file)&&path.extname(file)?file:path.join(root,'index.html');
+  const rewritten=routing.rewrites.find(({source})=>source===requestPath||source+'/'===requestPath)?.destination;
+  const target=existsSync(file)&&path.extname(file)?file:rewritten?path.resolve(root,'.'+rewritten):path.join(root,'index.html');
   const type={'.html':'text/html','.js':'application/javascript','.css':'text/css','.txt':'text/plain','.xml':'application/xml','.webmanifest':'application/manifest+json','.png':'image/png','.ico':'image/x-icon','.svg':'image/svg+xml','.webp':'image/webp','.woff2':'font/woff2'}[path.extname(target)]||'application/octet-stream';
   try {res.writeHead(200,{'content-type':type,'cache-control':'no-store'});res.end(readFileSync(target));} catch {res.writeHead(404).end();}
 }).listen(4173,'127.0.0.1');
