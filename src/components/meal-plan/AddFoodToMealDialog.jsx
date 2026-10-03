@@ -18,7 +18,7 @@ import { formatNutrient } from '@/lib/utils';
 import { useShadowDraft } from '@/hooks/useShadowDraft';
 import { ShadowRecovery, ShadowSaveStatus } from '@/components/ui/shadow-save-status';
 
-const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName, initialData = null, ownerId, shadowKey, autoRestore = false, draftContext = null }) => {
+const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName, initialData = null, ownerId, shadowKey, autoRestore = false, draftContext = null, resumeState = null, onWorkingState, session = null }) => {
     const [selectedFood, setSelectedFood] = useState(null);
     const [portion, setPortion] = useState({ quantity: 100, measureId: null, measureCode: 'gram' });
     const [notes, setNotes] = useState('');
@@ -29,6 +29,7 @@ const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName, initialData = n
     const [isApplying, setIsApplying] = useState(false);
     const touchedRef = useRef(false);
     const recoveryOpenedRef = useRef(false);
+    const sessionRestoredRef = useRef(false);
     const shadow = useShadowDraft({ ownerId, draftKey: shadowKey, enabled: isOpen && Boolean(ownerId && shadowKey) });
     const contextJson = JSON.stringify(draftContext);
     useEffect(() => {
@@ -79,6 +80,18 @@ const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName, initialData = n
             });
         }
     }, [initialData]);
+
+    useEffect(() => {
+        if (!isOpen || !resumeState || sessionRestoredRef.current) return;
+        sessionRestoredRef.current = true;
+        setSelectedFood(resumeState.selectedFood || null);
+        setPortion(resumeState.portion || { quantity: 100, measureId: null, measureCode: 'gram' });
+        setNotes(resumeState.notes || '');
+        setPatientDescription(resumeState.patientDescription || '');
+        setCalculatedNutrition(resumeState.calculatedNutrition || null);
+    }, [isOpen, resumeState]);
+    const editorJson = JSON.stringify({ selectedFood, portion, notes, patientDescription, calculatedNutrition });
+    useEffect(() => { if (isOpen) onWorkingState?.(JSON.parse(editorJson)); }, [isOpen, onWorkingState, editorJson]);
 
     const handleFoodSelect = (food) => {
         touchedRef.current = true;
@@ -143,7 +156,8 @@ const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName, initialData = n
     };
 
     const handleClose = async () => {
-        if (touchedRef.current && ['local', 'saving', 'error', 'conflict'].includes(shadow.status) && !(await shadow.flush())) return;
+        if (session && ['local', 'saving', 'error', 'conflict'].includes(session.status) && !(await session.flush())) return;
+        if (!session && touchedRef.current && ['local', 'saving', 'error', 'conflict'].includes(shadow.status) && !(await shadow.flush())) return;
         touchedRef.current = false;
         setSelectedFood(null);
         setPortion({ quantity: 100, measureId: null, measureCode: 'gram', measure: null });
@@ -171,8 +185,9 @@ const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName, initialData = n
                     </DialogHeader>
 
                     {ownerId && shadowKey && <div className="space-y-2">
-                        <ShadowRecovery recovery={shadow.recovery} onRestore={restoreShadow} onDiscard={() => { void shadow.discardRecovery(); }} />
-                        <ShadowSaveStatus status={shadow.status} onRetry={shadow.flush} />
+                        {session?.recovery && session.reopen && <ShadowRecovery recovery={session.recovery} onRestore={() => { void session.reopen(); }} onDiscard={() => { void session.discardRecovery(); }} />}
+                        {!resumeState && <ShadowRecovery recovery={shadow.recovery} onRestore={restoreShadow} onDiscard={() => { void shadow.discardRecovery(); }} />}
+                        <ShadowSaveStatus status={session?.status || shadow.status} onRetry={session?.flush || shadow.flush} />
                     </div>}
 
                     <div className="space-y-4">
@@ -293,9 +308,9 @@ const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName, initialData = n
 
                         {/* Observações */}
                         <div className="space-y-2">
-                            <Label htmlFor="notes">Observações (opcional)</Label>
+                            <Label htmlFor="food-notes">Observações (opcional)</Label>
                             <Textarea
-                                id="notes"
+                                id="food-notes"
                                 rows={2}
                                 placeholder="Ex: sem sal, sem açúcar, etc."
                                 value={notes}

@@ -45,6 +45,8 @@ const MealPlanForm = ({
     pendingDraft = null,   // rascunho completo já carregado pela página mãe
     recoveryDraft = null,
     beforeCloseRef = null,
+    restoredSession = null,
+    session = null,
     onSubmit,
     onSaveDraft,
     onCancel,
@@ -78,11 +80,16 @@ const MealPlanForm = ({
     const loadedPlanIdRef = useRef(null);
     const recoveryOpenedRef = useRef(false);
     const [nestedRecovery, setNestedRecovery] = useState(null);
+    const [mealEditorState, setMealEditorState] = useState(null);
+    const sessionTouchedRef = useRef(false);
+    const sessionRestoredRef = useRef(false);
+    const receiveMealEditor = useCallback(value => { sessionTouchedRef.current = true; setMealEditorState(value); }, []);
     const shadow = useShadowDraft({
         ownerId: nutritionistId,
         draftKey: recoveryDraft?.draft_key.startsWith('meal-plan:') ? recoveryDraft.draft_key : patientId ? `meal-plan:${patientId}:${initialData?.id || 'new'}` : null,
         enabled: Boolean(patientId && nutritionistId)
     });
+    const queueSession = session?.queue;
 
     // Draft auto-save — only active when creating a new plan (not editing)
     // enabled=false quando já temos um pendingDraft vindo da página mãe (evita double query)
@@ -91,6 +98,12 @@ const MealPlanForm = ({
         nutritionistId,
         enabled: !isEditing && !pendingDraft
     });
+    useEffect(() => {
+        if (!queueSession || !session?.ready || (!sessionTouchedRef.current && !shadowTouchedRef.current && !showMealForm)) return;
+        sessionTouchedRef.current = true;
+        queueSession({ formData, meals, planId: initialData?.id || draft.draftId || null, baseRevision: initialData?.updated_at || pendingDraft?.updated_at || null,
+            editor: { open: showMealForm, mealId: editingMeal?.dbId || editingMeal?.id || editingMeal?.tempId || null, state: mealEditorState } });
+    }, [queueSession, session?.ready, formData, meals, initialData?.id, initialData?.updated_at, pendingDraft?.updated_at, draft.draftId, showMealForm, editingMeal, mealEditorState]);
 
     useEffect(() => {
         if (shadowTouchedRef.current && shadow.ready) {
@@ -148,10 +161,11 @@ const MealPlanForm = ({
             setReferenceValues(data);
         }
     }, [initialData?.id]);
+    useEffect(() => { void loadReferenceValues(); }, [loadReferenceValues]);
 
     // Populate form when editing existing plan
     useEffect(() => {
-        if (initialData && loadedPlanIdRef.current !== initialData.id) {
+        if (initialData && !restoredSession && loadedPlanIdRef.current !== initialData.id) {
             loadedPlanIdRef.current = initialData.id;
             setFormData({
                 name: initialData.name || '',
@@ -172,9 +186,20 @@ const MealPlanForm = ({
             }));
 
             setMeals(mealsWithTempId);
-            loadReferenceValues();
         }
-    }, [initialData, loadReferenceValues]);
+    }, [initialData, loadReferenceValues, restoredSession]);
+
+    useEffect(() => {
+        if (!restoredSession || sessionRestoredRef.current) return;
+        sessionRestoredRef.current = true;
+        sessionTouchedRef.current = true;
+        setFormData(restoredSession.formData);
+        setMeals(restoredSession.meals);
+        setMealEditorState(restoredSession.editor?.state || null);
+        const mealId = restoredSession.editor?.mealId;
+        setEditingMeal(mealId ? restoredSession.meals.find(meal => String(meal.dbId || meal.id || meal.tempId) === String(mealId)) || null : null);
+        setShowMealForm(Boolean(restoredSession.editor?.open));
+    }, [restoredSession]);
 
     // Auto-resume quando pendingDraft é passado como prop (usuário clicou "Retomar" na listagem)
     // Não precisa clicar "Retomar" de NOVO dentro do formulário
@@ -203,7 +228,7 @@ const MealPlanForm = ({
                 fullPlan = await draft.resumeExistingDraft();
             }
 
-            if (fullPlan) {
+            if (fullPlan && !restoredSession) {
                 setFormData({
                     name: fullPlan.name || '',
                     description: fullPlan.description || '',
@@ -232,6 +257,8 @@ const MealPlanForm = ({
     };
 
     const handleDiscardDraftAndStartFresh = async () => {
+        if (session && !(await session.discard())) return;
+        sessionTouchedRef.current = false;
         await shadow.discard();
         shadowTouchedRef.current = false;
         if (pendingDraft) {
@@ -380,7 +407,7 @@ const MealPlanForm = ({
         };
 
         const saved = await onSubmit(planData, initialData?.id);
-        if (saved) await shadow.discard();
+        if (saved) { await shadow.discard(); await session?.discard(); }
     };
 
     // Button: "Salvar como Rascunho" — saves plan without activating
@@ -404,12 +431,13 @@ const MealPlanForm = ({
         };
 
         const saved = await onSaveDraft?.(planData);
-        if (saved) await shadow.discard();
+        if (saved) { await shadow.discard(); await session?.discard(); }
     };
 
     // Button: "Cancelar" — discards draft and closes form
     const handleCancel = async () => {
-        if (['local', 'saving', 'error', 'conflict'].includes(shadow.status) && !(await shadow.flush())) return false;
+        if (session && ['local', 'saving', 'error', 'conflict'].includes(session.status) && !(await session.flush())) return false;
+        if (!session && ['local', 'saving', 'error', 'conflict'].includes(shadow.status) && !(await shadow.flush())) return false;
         if (!isEditing && draft.draftId && !(await draft.flushPlanInfo())) return false;
         onCancel();
         return true;
@@ -534,14 +562,14 @@ const MealPlanForm = ({
                 )}
 
                 {/* Informações Básicas */}
-                <ShadowRecovery recovery={shadow.recovery} onRestore={restoreShadow} onDiscard={() => { void shadow.discardRecovery(); }} />
+                {!restoredSession && <ShadowRecovery recovery={shadow.recovery} onRestore={restoreShadow} onDiscard={() => { void shadow.discardRecovery(); }} />}
                 <Card>
                     <CardHeader>
                         <div className="flex items-center justify-between">
                             <CardTitle className="text-lg">Informações do Plano</CardTitle>
                             <div className="flex flex-wrap items-center gap-2">
-                                {!isEditing && ['local','saving','saved','error','conflict'].includes(draft.saveStatus) && <SaveStatusIndicator status={draft.saveStatus} />}
-                                <ShadowSaveStatus status={shadow.status} onRetry={shadow.flush} />
+                                {!session && !isEditing && ['local','saving','saved','error','conflict'].includes(draft.saveStatus) && <SaveStatusIndicator status={draft.saveStatus} />}
+                                <ShadowSaveStatus status={session?.status || shadow.status} onRetry={session?.flush || shadow.flush} />
                             </div>
                         </div>
                     </CardHeader>
@@ -959,6 +987,9 @@ const MealPlanForm = ({
                 ownerId={nutritionistId}
                 shadowKey={nestedRecovery ? nestedRecovery.draft_key.split(':food:')[0] : patientId ? `meal-plan-meal:${patientId}:${initialData?.id || 'new'}:${editingMeal?.dbId || editingMeal?.id || editingMeal?.tempId || 'new'}` : null}
                 recoveryDraft={nestedRecovery}
+                resumeState={restoredSession?.editor?.open ? restoredSession.editor.state : null}
+                session={session}
+                onWorkingState={receiveMealEditor}
                 draftContext={{ planId: initialData?.id || draft.draftId || null, mealId: editingMeal?.dbId || editingMeal?.id || null }}
                 onClose={() => { setShowMealForm(false); setEditingMeal(null); setNestedRecovery(null); }}
                 onSave={editingMeal ? handleUpdateMeal : handleAddMeal}
