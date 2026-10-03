@@ -1,8 +1,22 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/lib/customSupabaseClient';
 import { Button } from '@/components/ui/button';
+import { removeMemoryDraft } from '@/lib/utils/memoryDrafts';
 
-export default function WorkingDraftRecovery({ ownerId, patientId, onResume }) {
+export async function trimWorkingDrafts(ownerId, drafts, limit) {
+    const retained = drafts.slice(0, limit);
+    for (const draft of drafts.slice(limit)) {
+        // A concurrent change must not be deleted using stale list metadata.
+        const { data, error } = await supabase.from('editor_shadow_drafts').delete()
+            .eq('owner_id', ownerId).eq('id', draft.id).eq('revision', draft.revision)
+            .select('id').maybeSingle();
+        if (error || !data) throw new Error('Draft cleanup unconfirmed');
+        removeMemoryDraft(`nello_shadow:${ownerId}:${draft.draft_key}`);
+    }
+    return retained;
+}
+
+export default function WorkingDraftRecovery({ ownerId, patientId, onResume, maxDrafts = 3 }) {
     const [drafts, setDrafts] = useState([]);
     const [error, setError] = useState(false);
     const [busy, setBusy] = useState(null);
@@ -13,16 +27,21 @@ export default function WorkingDraftRecovery({ ownerId, patientId, onResume }) {
         let active = true;
         const load = async () => {
             const { data, error: failure } = await supabase.from('editor_shadow_drafts')
-                .select('id,draft_key,updated_at').eq('owner_id', ownerId)
+                .select('id,draft_key,updated_at,revision').eq('owner_id', ownerId)
                 .or(`draft_key.like.meal-plan:${patientId}:%,draft_key.like.meal-plan-meal:${patientId}:%`)
                 .order('updated_at', { ascending: false });
-            if (active) { setError(Boolean(failure)); setDrafts(data || []); }
+            if (!active) return;
+            try {
+                if (failure) throw failure;
+                const retained = await trimWorkingDrafts(ownerId, data || [], maxDrafts);
+                if (active) { setError(false); setDrafts(retained); }
+            } catch { if (active) { setError(true); setDrafts((data || []).slice(0, maxDrafts)); } }
         };
         void load();
         const refresh = () => { void load(); };
         window.addEventListener('focus', refresh);
         return () => { active = false; window.removeEventListener('focus', refresh); };
-    }, [ownerId, patientId]);
+    }, [ownerId, patientId, maxDrafts]);
     const resume = async (draft) => {
         setBusy(draft.id); setError(false);
         try {

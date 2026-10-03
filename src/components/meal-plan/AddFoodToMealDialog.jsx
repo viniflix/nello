@@ -33,10 +33,10 @@ const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName, initialData = n
     const shadow = useShadowDraft({ ownerId, draftKey: shadowKey, enabled: isOpen && Boolean(ownerId && shadowKey) });
     const contextJson = JSON.stringify(draftContext);
     useEffect(() => {
-        if (isOpen && shadow.ready && touchedRef.current) {
+        if (!session && isOpen && shadow.ready && touchedRef.current) {
             shadow.queue({ selectedFood, portion, notes, patientDescription, calculatedNutrition, context: JSON.parse(contextJson) });
         }
-    }, [isOpen, shadow.ready, shadow.queue, selectedFood, portion, notes, patientDescription, calculatedNutrition, contextJson]);
+    }, [isOpen, shadow.ready, shadow.queue, selectedFood, portion, notes, patientDescription, calculatedNutrition, contextJson, session]);
     useEffect(() => {
         if (autoRestore && shadow.ready && shadow.recovery && !recoveryOpenedRef.current) {
             recoveryOpenedRef.current = true;

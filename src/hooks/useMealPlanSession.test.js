@@ -1,7 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { clearMemoryDrafts } from '@/lib/utils/memoryDrafts';
-import { useMealPlanSession, isMealPlanSession } from './useMealPlanSession';
+import { useMealPlanSession, isMealPlanSession, sessionWasSuperseded } from './useMealPlanSession';
 vi.mock('@/lib/customSupabaseClient', () => ({ supabase: { from: () => query() } }));
 const rows = new Map();
 function query() {
@@ -24,3 +24,29 @@ it('recovers one complete confirmed session after reload and isolates another ow
     const third=renderHook(()=>useMealPlanSession(args));await waitFor(()=>expect(third.result.current.ready).toBe(true));expect(third.result.current.recovery).toBeNull();third.unmount();
 });
 it('does not classify old partial meal drafts as an automatic complete session',()=>{expect(isMealPlanSession({formData:{},foods:[]})).toBe(false);expect(isMealPlanSession({kind:'meal-plan-session',version:2,formData:{},meals:[]})).toBe(false);});
+it('keeps exactly the last three confirmed full states without nested or unbounded histories after reload', async () => {
+    const args = { ownerId: 'owner', patientId: 'patient' };
+    const hook = renderHook(() => useMealPlanSession(args));
+    await waitFor(() => expect(hook.result.current.ready).toBe(true));
+    for (let number = 1; number <= 6; number++) {
+        act(() => hook.result.current.queue({ formData: { name: `State ${number}` }, meals: [{ foods: [{ quantity: number }] }] }));
+        await act(async () => expect(await hook.result.current.flush()).toBe(true));
+    }
+    expect(rows.size).toBe(1);
+    const saved = rows.get('owner:meal-plan-session:patient').payload;
+    expect([saved, ...saved.history].map(value => value.formData.name)).toEqual(['State 6', 'State 5', 'State 4']);
+    expect(saved.history.every(value => !value.history)).toBe(true);
+    hook.unmount(); clearMemoryDrafts();
+    const reloaded = renderHook(() => useMealPlanSession(args));
+    await waitFor(() => expect(reloaded.result.current.snapshots).toHaveLength(3));
+    expect(reloaded.result.current.snapshots.map(value => value.meals[0].foods[0].quantity)).toEqual([6, 5, 4]);
+    reloaded.unmount();
+});
+it('prioritizes newer applied plans over old sessions, including a different newly created plan', () => {
+    const old = '2026-10-02T20:00:00Z', newer = '2026-10-02T21:00:00Z';
+    const saved = { baselineAppliedAt: old, baseRevision: old };
+    expect(sessionWasSuperseded(saved, [{ id: 99, updated_at: newer }], newer, { updated_at: old })).toBe(true);
+    expect(sessionWasSuperseded(saved, [], newer, { updated_at: newer })).toBe(true);
+    expect(sessionWasSuperseded(saved, [{ updated_at: old }, { is_draft: true, updated_at: newer }], newer, { updated_at: old })).toBe(false);
+    expect(sessionWasSuperseded({ baselineAppliedAt: null }, [{ updated_at: newer }], newer, null)).toBe(true);
+});

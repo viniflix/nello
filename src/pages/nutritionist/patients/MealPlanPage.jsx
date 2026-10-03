@@ -42,7 +42,7 @@ import { useMealPlan } from '@/hooks/useMealPlan';
 import { MealPlanAlertsBar } from '@/components/anamnesis/MealPlanAlertsBar';
 import { patientHubRoute } from '@/lib/utils/patientRoutes';
 import { supabase } from '@/lib/customSupabaseClient';
-import { useMealPlanSession, isMealPlanSession } from '@/hooks/useMealPlanSession';
+import { useMealPlanSession, isMealPlanSession, latestAppliedAt, sessionWasSuperseded } from '@/hooks/useMealPlanSession';
 import { ShadowRecovery } from '@/components/ui/shadow-save-status';
 
 
@@ -62,6 +62,7 @@ const MealPlanPage = () => {
     const automaticSessionRef = useRef(false);
     const [sessionError, setSessionError] = useState(false);
     const [sessionOpening, setSessionOpening] = useState(false);
+    const [supersededSession, setSupersededSession] = useState(null);
     const [sessionRestoreNumber, setSessionRestoreNumber] = useState(0);
     const session = useMealPlanSession({ ownerId: nutritionistId, patientId });
     const sessionScopeRef = useRef('');
@@ -152,8 +153,8 @@ const MealPlanPage = () => {
         setShowForm(true);
     };
 
-    useEffect(() => { automaticSessionRef.current = false; setRestoredSession(null); setSessionError(false); setSessionOpening(false); }, [nutritionistId, patientId]);
-    const restoreSavedSession = async (saved, cancelled = () => false) => {
+    useEffect(() => { automaticSessionRef.current = false; setRestoredSession(null); setSessionError(false); setSessionOpening(false); setSupersededSession(null); }, [nutritionistId, patientId]);
+    const restoreSavedSession = async (saved, cancelled = () => false, automatic = false) => {
         const scope = sessionScopeRef.current;
         let plan = null;
         if (saved.planId) {
@@ -162,7 +163,14 @@ const MealPlanPage = () => {
             plan = result.data;
         }
         if (cancelled() || sessionScopeRef.current !== scope) return false;
+        if (automatic && sessionWasSuperseded(saved, plans, session.lastSavedAt, plan)) {
+            // Preserve the copy for explicit recovery; the newer applied plan wins.
+            setSupersededSession(saved);
+            session.restore();
+            return true;
+        }
         session.restore();
+        setSupersededSession(null);
         setPendingDraft(plan?.is_draft ? plan : null);
         setEditingPlan(plan?.is_draft ? null : plan);
         setWorkingDraft(null);
@@ -174,14 +182,14 @@ const MealPlanPage = () => {
     };
     useEffect(() => {
         const saved = session.recovery?.payload;
-        if (!session.ready || loading || !isMealPlanSession(saved) || automaticSessionRef.current || session.recovery.conflict) return;
+        if (!session.ready || loading || isFetching || plansError || !isMealPlanSession(saved) || automaticSessionRef.current || session.recovery.conflict) return;
         automaticSessionRef.current = true;
         setSessionOpening(true);
         let cancelled = false;
         let completed = false;
         const resume = async () => {
             try {
-                completed = await restoreSavedSession(saved, () => cancelled);
+                completed = await restoreSavedSession(saved, () => cancelled, true);
             } catch { if (!cancelled) { completed = true; setSessionError(true); } }
             finally { if (!cancelled) setSessionOpening(false); }
         };
@@ -189,7 +197,9 @@ const MealPlanPage = () => {
         return () => { cancelled = true; if (!completed) automaticSessionRef.current = false; };
     // Recovery is read once per patient; status changes must not cancel the fetch.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [session.ready, session.recovery, loading, patientId, nutritionistId]);
+    }, [session.ready, session.recovery, loading, isFetching, plansError, patientId, nutritionistId]);
+
+    useEffect(() => { if (session.status === 'idle') setSupersededSession(null); }, [session.status]);
 
     // Obter ID do nutricionista
     useEffect(() => { if (!showForm) { setWorkingDraft(null); setRestoredSession(null); } }, [showForm]);
@@ -219,8 +229,10 @@ const MealPlanPage = () => {
         setSearchParams(nextParams, { replace: true });
 
         const openDirectly = async () => {
-            if (pendingDrafts.length > 0) {
-                await handleResumePendingDraft(pendingDrafts[0]);
+            const appliedAt = latestAppliedAt(plans);
+            const recentDraft = pendingDrafts.find(draft => !appliedAt || Date.parse(draft.updated_at || draft.created_at) > Date.parse(appliedAt));
+            if (recentDraft) {
+                await handleResumePendingDraft(recentDraft);
                 return;
             }
             if (activePlan?.id) {
@@ -234,12 +246,12 @@ const MealPlanPage = () => {
         void openDirectly();
     }, [
         activePlan, handleEdit, handleResumePendingDraft, isFetching, loading,
-        nutritionistId, patientId, pendingDrafts, searchParams, setEditingPlan,
+        nutritionistId, patientId, pendingDrafts, plans, searchParams, setEditingPlan,
         setPendingDraft, setSearchParams, setShowForm,
         session.ready, session.recovery,
     ]);
 
-    if (loading || !session.ready || sessionOpening || (isMealPlanSession(session.recovery?.payload) && !automaticSessionRef.current && !sessionError && !session.recovery.conflict)) {
+    if (loading || !session.ready || sessionOpening || (isMealPlanSession(session.recovery?.payload) && !plansError && !automaticSessionRef.current && !sessionError && !session.recovery.conflict)) {
         return (
             <div className="container mx-auto px-4 py-8 max-w-6xl space-y-6">
                 <div className="flex flex-wrap gap-3 items-center justify-between">
@@ -283,7 +295,10 @@ const MealPlanPage = () => {
                     </Button>
                 </div>
 
-                <details className="mb-4 rounded border p-3 text-sm"><summary className="cursor-pointer font-medium">Outras edições salvas</summary><WorkingDraftRecovery ownerId={nutritionistId} patientId={patientId} onResume={resumeWorkingDraft} /></details>
+                <details className="mb-4 rounded border p-3 text-sm"><summary className="cursor-pointer font-medium">Outras edições salvas</summary>
+                    {(session.snapshots || []).map((saved, index) => <Button key={index} type="button" variant="outline" size="sm" className="m-1" onClick={() => { void beforeCloseRef.current?.().then(closed => { if (closed !== false) return restoreSavedSession(saved); }).catch(() => setSessionError(true)); }}>Recuperar estado {index + 1}{saved.savedAt ? ` · ${formatDate(saved.savedAt)}` : ''}</Button>)}
+                    <WorkingDraftRecovery ownerId={nutritionistId} patientId={patientId} onResume={resumeWorkingDraft} maxDrafts={Math.max(0, 3 - (session.snapshots?.length || 0))} />
+                </details>
                 {sessionError && <p role="alert" className="mb-3 text-sm text-destructive">Não foi possível abrir a sessão. O rascunho foi preservado; tente novamente.</p>}
                 {session.recovery?.conflict && <ShadowRecovery recovery={session.recovery} onRestore={() => { void restoreSavedSession(session.recovery.payload).catch(() => setSessionError(true)); }} onDiscard={() => { void session.discardRecovery(); }} />}
                 <Button type="button" variant="ghost" size="sm" className="mb-3" onClick={async () => {
@@ -298,6 +313,7 @@ const MealPlanPage = () => {
                     initialData={editingPlan}
                     recoveryDraft={workingDraft}
                     restoredSession={restoredSession}
+                    baselineAppliedAt={latestAppliedAt(plans)}
                     session={{ ...session, reopen: () => restoreSavedSession(session.recovery.payload).catch(() => setSessionError(true)) }}
                     beforeCloseRef={beforeCloseRef}
                     pendingDraft={!editingPlan ? pendingDraft : null}
@@ -319,6 +335,10 @@ const MealPlanPage = () => {
         <div className={`container mx-auto px-4 py-6 sm:py-8 max-w-6xl transition-opacity duration-200 ${isFetching ? 'opacity-70 pointer-events-none' : 'opacity-100'}`}>
             {/* Sprint D: Barra de alertas clínicos da anamnese */}
             <MealPlanAlertsBar patientId={patientId} />
+            {supersededSession && <p role="status" className="mb-3 text-sm text-muted-foreground">Há um plano aplicado mais recente. A edição anterior não foi reaberta automaticamente.</p>}
+            {Boolean(session.snapshots?.length) && <details className="mb-4 rounded border p-3 text-sm"><summary className="cursor-pointer font-medium">Últimos estados salvos (até 3)</summary>
+                {session.snapshots.map((saved, index) => <Button key={index} type="button" variant="outline" size="sm" className="m-1" onClick={() => { void restoreSavedSession(saved).catch(() => setSessionError(true)); }}>Recuperar estado {index + 1}{saved.savedAt ? ` · ${formatDate(saved.savedAt)}` : ''}</Button>)}
+            </details>}
             {sessionError && <p role="alert" className="rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">A sessão salva foi preservada, mas não pôde ser aberta. Recarregue para tentar novamente.</p>}
             {session.recovery?.conflict && <ShadowRecovery recovery={session.recovery} onRestore={() => { void restoreSavedSession(session.recovery.payload).catch(() => setSessionError(true)); }} onDiscard={() => { void session.discardRecovery(); }} />}
 
@@ -370,7 +390,7 @@ const MealPlanPage = () => {
             </div>
 
             <div className="flex flex-col gap-[3px]">
-                <WorkingDraftRecovery ownerId={nutritionistId} patientId={patientId} onResume={resumeWorkingDraft} />
+                <WorkingDraftRecovery ownerId={nutritionistId} patientId={patientId} onResume={resumeWorkingDraft} maxDrafts={Math.max(0, 3 - (session.snapshots?.length || 0))} />
                 {/* Centro de Notificações Inteligentes */}
                 {!showForm && (
                     <NotificationCenter

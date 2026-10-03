@@ -47,6 +47,7 @@ const MealPlanForm = ({
     beforeCloseRef = null,
     restoredSession = null,
     session = null,
+    baselineAppliedAt = null,
     onSubmit,
     onSaveDraft,
     onCancel,
@@ -83,6 +84,7 @@ const MealPlanForm = ({
     const [mealEditorState, setMealEditorState] = useState(null);
     const sessionTouchedRef = useRef(false);
     const sessionRestoredRef = useRef(false);
+    const sessionBaselineRef = useRef(restoredSession?.baselineAppliedAt ?? baselineAppliedAt);
     const receiveMealEditor = useCallback(value => { sessionTouchedRef.current = true; setMealEditorState(value); }, []);
     const shadow = useShadowDraft({
         ownerId: nutritionistId,
@@ -101,15 +103,15 @@ const MealPlanForm = ({
     useEffect(() => {
         if (!queueSession || !session?.ready || (!sessionTouchedRef.current && !shadowTouchedRef.current && !showMealForm)) return;
         sessionTouchedRef.current = true;
-        queueSession({ formData, meals, planId: initialData?.id || draft.draftId || null, baseRevision: initialData?.updated_at || pendingDraft?.updated_at || null,
+        queueSession({ formData, meals, baselineAppliedAt: sessionBaselineRef.current, planId: initialData?.id || draft.draftId || null, baseRevision: initialData?.updated_at || pendingDraft?.updated_at || null,
             editor: { open: showMealForm, mealId: editingMeal?.dbId || editingMeal?.id || editingMeal?.tempId || null, state: mealEditorState } });
     }, [queueSession, session?.ready, formData, meals, initialData?.id, initialData?.updated_at, pendingDraft?.updated_at, draft.draftId, showMealForm, editingMeal, mealEditorState]);
 
     useEffect(() => {
-        if (shadowTouchedRef.current && shadow.ready) {
+        if (!session && shadowTouchedRef.current && shadow.ready) {
             shadow.queue({ formData, meals, context: { planId: initialData?.id || draft.draftId || null } });
         }
-    }, [formData, meals, shadow.ready, shadow.queue, initialData?.id, draft.draftId]);
+    }, [formData, meals, shadow.ready, shadow.queue, initialData?.id, draft.draftId, session]);
 
     const restoreShadow = () => {
         const recovered = shadow.restore();

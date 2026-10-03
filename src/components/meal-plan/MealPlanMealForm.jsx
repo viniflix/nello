@@ -53,8 +53,8 @@ const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null, ownerId
     const contextJson = JSON.stringify(draftContext);
 
     useEffect(() => {
-        if (isOpen && shadow.ready && touchedRef.current) shadow.queue({ formData, foods, context: JSON.parse(contextJson) });
-    }, [isOpen, shadow.ready, shadow.queue, formData, foods, contextJson]);
+        if (!session && isOpen && shadow.ready && touchedRef.current) shadow.queue({ formData, foods, context: JSON.parse(contextJson) });
+    }, [isOpen, shadow.ready, shadow.queue, formData, foods, contextJson, session]);
 
     useEffect(() => {
         if (!isOpen || !shadow.ready || !recoveryDraft || recoveryOpenedRef.current === recoveryDraft.id) return;

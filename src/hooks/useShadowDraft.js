@@ -8,7 +8,9 @@ const localKeyFor = (ownerId, draftKey) => `nello_shadow:${ownerId}:${draftKey}`
 const readLocal = readMemoryDraft;
 
 /** A private, versioned working copy. The caller decides when to publish it. */
-export function useShadowDraft({ ownerId, draftKey, enabled = true }) {
+export function useShadowDraft({ ownerId, draftKey, enabled = true, preparePayload, onSaved }) {
+  const callbacksRef = useRef({ preparePayload, onSaved });
+  callbacksRef.current = { preparePayload, onSaved };
   const [status, setStatus] = useState('loading');
   const [recovery, setRecovery] = useState(null);
   const [lastSavedAt, setLastSavedAt] = useState(null);
@@ -130,7 +132,7 @@ export function useShadowDraft({ ownerId, draftKey, enabled = true }) {
     if (inFlightRef.current) return inFlightRef.current;
     const run = async () => {
       while (latestRef.current && generationRef.current === generation) {
-        const snapshot = latestRef.current;
+        const snapshot = callbacksRef.current.preparePayload?.(latestRef.current) || latestRef.current;
         latestRef.current = null;
         setStatus('saving');
         let data;
@@ -173,6 +175,7 @@ export function useShadowDraft({ ownerId, draftKey, enabled = true }) {
         }
         revisionRef.current = data.revision;
         remoteRef.current = { payload: snapshot, revision: data.revision, updated_at: data.updated_at };
+        callbacksRef.current.onSaved?.(snapshot, data);
         setLastSavedAt(data.updated_at);
         if (latestRef.current) {
           try {
