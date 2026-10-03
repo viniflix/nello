@@ -17,6 +17,7 @@ function seed() {
     const output = execFileSync('docker', ['exec', '-i', '-e', 'PGPASSWORD=postgres', 'supabase_db_nello-reconstruction', 'psql', '-X', '-At', '-h', '127.0.0.1', '-U', 'supabase_admin', '-d', 'postgres', '-v', 'ON_ERROR_STOP=1'], {
         encoding:'utf8', input:`INSERT INTO auth.users(id,aud,role,email,raw_user_meta_data) VALUES('${patient}','authenticated','authenticated','${patient}@example.invalid','{"name":"QA Meal Module","user_type":"patient"}');
         UPDATE public.user_profiles SET nutritionist_id='${actor}' WHERE id='${patient}';
+        INSERT INTO public.patient_module_sync_flags(patient_id,needs_meal_plan_review) VALUES('${patient}',true);
         INSERT INTO public.nutritionist_patients(nutritionist_id,patient_id,status) VALUES('${actor}','${patient}','active');
         WITH plan AS (INSERT INTO public.meal_plans(patient_id,nutritionist_id,name,start_date,is_active,is_draft,daily_calories,daily_protein,daily_carbs,daily_fat,plan_mode) VALUES('${patient}','${actor}','QA Plano completo com nome longo para testar leitura e navegação','2026-10-03',true,false,100,0,25,0,'hybrid') RETURNING id)
         INSERT INTO public.meal_plan_meals(meal_plan_id,name,meal_type,meal_time,order_index,total_calories,total_protein,total_carbs,total_fat,include_in_totals)
@@ -54,6 +55,7 @@ for (const screen of [{width:320,height:720},{width:768,height:480},{width:1440,
         await expect(page.getByText('03/10/2026',{exact:true})).toBeVisible();
         if(screen.zoom)await page.evaluate(()=>{document.documentElement.style.fontSize='200%';});
         await expect(page.getByRole('button',{name:'Exportar PDF',exact:true})).toBeVisible();
+        await expect(page.getByRole('heading',{name:'Plano alimentar requer revisão'})).toBeVisible();
         for(const name of ['Macronutrientes','Micronutrientes'])expect(await page.getByRole('button',{name,exact:true}).evaluate(node=>node.scrollWidth<=node.clientWidth)).toBe(true);
         const meals=page.locator('summary');await expect(meals.first()).toContainText('QA Refeição alternativa');await expect(meals.first()).not.toContainText('% do dia');
         await meals.nth(1).focus();await page.keyboard.press('Enter');await expect(page.getByText('Nenhum alimento nesta refeição.').last()).toBeVisible();await audit(page);
