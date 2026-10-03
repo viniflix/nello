@@ -77,10 +77,13 @@ it('shows the list on quick entry when an active plan is already saved and no se
     expect(screen.queryByTestId('restored-plan')).toBeNull();
 });
 it('closes the previous patient editor when a different patient route reuses the page', async () => {
+    let finish;
+    test.planPending = new Promise(resolve => { finish = resolve; });
     const view = render(<MemoryRouter><MealPlanPage /></MemoryRouter>);
-    await screen.findByTestId('restored-plan');
+    await act(async () => { finish({ data: { id: 55, patient_id: 'patient', is_draft: false, meals: [] } }); await test.planPending; });
+    expect(screen.getByTestId('restored-plan')).toBeInTheDocument();
     test.noRecovery = true; test.patientId = 'another-patient';
-    view.rerender(<MemoryRouter><MealPlanPage /></MemoryRouter>);
+    await act(async () => { view.rerender(<MemoryRouter><MealPlanPage /></MemoryRouter>); });
     expect(screen.queryByTestId('restored-plan')).toBeNull();
     expect(screen.getByText('Planos Alimentares')).toBeInTheDocument();
 });
