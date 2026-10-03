@@ -30,7 +30,7 @@ import { isValidMealTime, normalizeMealTime } from '@/lib/utils/mealTime';
 import { useShadowDraft } from '@/hooks/useShadowDraft';
 import { ShadowRecovery, ShadowSaveStatus } from '@/components/ui/shadow-save-status';
 
-const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null, ownerId, shadowKey }) => {
+const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null, ownerId, shadowKey, recoveryDraft = null, draftContext = null }) => {
     const [formData, setFormData] = useState({
         name: '',
         meal_type: '',
@@ -46,11 +46,31 @@ const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null, ownerId
     const [errors, setErrors] = useState({});
     const [isSaving, setIsSaving] = useState(false);
     const touchedRef = useRef(false);
+    const recoveryOpenedRef = useRef(null);
     const shadow = useShadowDraft({ ownerId, draftKey: shadowKey, enabled: isOpen && Boolean(ownerId && shadowKey) });
+    const contextJson = JSON.stringify(draftContext);
 
     useEffect(() => {
-        if (isOpen && shadow.ready && touchedRef.current) shadow.queue({ formData, foods });
-    }, [isOpen, shadow.ready, shadow.queue, formData, foods]);
+        if (isOpen && shadow.ready && touchedRef.current) shadow.queue({ formData, foods, context: JSON.parse(contextJson) });
+    }, [isOpen, shadow.ready, shadow.queue, formData, foods, contextJson]);
+
+    useEffect(() => {
+        if (!isOpen || !shadow.ready || !recoveryDraft || recoveryOpenedRef.current === recoveryDraft.id) return;
+        if (recoveryDraft.draft_key.includes(':food:')) {
+            recoveryOpenedRef.current = recoveryDraft.id;
+            const meal = recoveryDraft.payload?.context?.mealSnapshot;
+            if (meal) { setFormData(meal.formData); setFoods(meal.foods || []); }
+            if (shadow.recovery) shadow.restore();
+            const foodId = recoveryDraft.payload?.context?.foodId;
+            setEditingFood(foodId ? (meal?.foods || initialData?.foods || []).find(food => String(food.id) === String(foodId)) || null : null);
+            setShowAddFood(true);
+        } else if (shadow.ready && shadow.recovery) {
+            recoveryOpenedRef.current = recoveryDraft.id;
+            restoreShadow();
+        }
+    // Apply the explicitly selected saved editor only once.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isOpen, recoveryDraft, shadow.ready, shadow.recovery, initialData]);
 
     const mealTypes = [
         { value: 'breakfast', label: 'Café da Manhã' },
@@ -116,7 +136,7 @@ const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null, ownerId
         touchedRef.current = true;
         setFoods(prev => prev.map(f =>
             f.tempId === editingFood.tempId
-                ? { ...updatedFoodData, tempId: f.tempId }
+                ? { ...updatedFoodData, id: f.id, tempId: f.tempId }
                 : f
         ));
         setEditingFood(null);
@@ -224,7 +244,8 @@ const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null, ownerId
         }
     };
 
-    const handleClose = () => {
+    const handleClose = async () => {
+        if (touchedRef.current && ['local', 'saving', 'error', 'conflict'].includes(shadow.status) && !(await shadow.flush())) return;
         touchedRef.current = false;
         setFormData({
             name: '',
@@ -251,6 +272,8 @@ const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null, ownerId
                             Configure a refeição e adicione os alimentos
                         </DialogDescription>
                     </DialogHeader>
+
+                    {recoveryDraft && !recoveryDraft.payload?.context?.mealId && <p role="status" className="rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">Edição recuperada. Confira os dados antes de adicionar a refeição ao plano.</p>}
 
                     <div className="flex flex-wrap items-center justify-between gap-2">
                         <ShadowRecovery recovery={shadow.recovery} onRestore={restoreShadow} onDiscard={() => { void shadow.discardRecovery(); }} />
@@ -473,7 +496,9 @@ const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null, ownerId
             {/* Dialog para adicionar/editar alimento */}
             <AddFoodToMealDialog
                 ownerId={ownerId}
-                shadowKey={shadowKey ? `${shadowKey}:food:${editingFood?.tempId || 'new'}` : null}
+                shadowKey={recoveryDraft?.draft_key.includes(':food:') ? recoveryDraft.draft_key : shadowKey ? `${shadowKey}:food:${editingFood?.id || editingFood?.tempId || 'new'}` : null}
+                autoRestore={Boolean(recoveryDraft?.draft_key.includes(':food:'))}
+                draftContext={{ ...draftContext, foodId: editingFood?.id || null, mealSnapshot: { formData, foods } }}
                 isOpen={showAddFood}
                 onClose={handleFoodDialogClose}
                 onAdd={editingFood ? handleUpdateFood : handleAddFood}

@@ -18,7 +18,7 @@ import { formatNutrient } from '@/lib/utils';
 import { useShadowDraft } from '@/hooks/useShadowDraft';
 import { ShadowRecovery, ShadowSaveStatus } from '@/components/ui/shadow-save-status';
 
-const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName, initialData = null, ownerId, shadowKey }) => {
+const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName, initialData = null, ownerId, shadowKey, autoRestore = false, draftContext = null }) => {
     const [selectedFood, setSelectedFood] = useState(null);
     const [portion, setPortion] = useState({ quantity: 100, measureId: null, measureCode: 'gram' });
     const [notes, setNotes] = useState('');
@@ -28,12 +28,22 @@ const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName, initialData = n
     const [errors, setErrors] = useState({});
     const [isApplying, setIsApplying] = useState(false);
     const touchedRef = useRef(false);
+    const recoveryOpenedRef = useRef(false);
     const shadow = useShadowDraft({ ownerId, draftKey: shadowKey, enabled: isOpen && Boolean(ownerId && shadowKey) });
+    const contextJson = JSON.stringify(draftContext);
     useEffect(() => {
         if (isOpen && shadow.ready && touchedRef.current) {
-            shadow.queue({ selectedFood, portion, notes, patientDescription, calculatedNutrition });
+            shadow.queue({ selectedFood, portion, notes, patientDescription, calculatedNutrition, context: JSON.parse(contextJson) });
         }
-    }, [isOpen, shadow.ready, shadow.queue, selectedFood, portion, notes, patientDescription, calculatedNutrition]);
+    }, [isOpen, shadow.ready, shadow.queue, selectedFood, portion, notes, patientDescription, calculatedNutrition, contextJson]);
+    useEffect(() => {
+        if (autoRestore && shadow.ready && shadow.recovery && !recoveryOpenedRef.current) {
+            recoveryOpenedRef.current = true;
+            restoreShadow();
+        }
+    // Explicitly selected recovery should reopen this editor once.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [autoRestore, shadow.ready, shadow.recovery]);
     const restoreShadow = () => {
         const value = shadow.restore();
         if (!value) return;
@@ -132,7 +142,8 @@ const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName, initialData = n
         }
     };
 
-    const handleClose = () => {
+    const handleClose = async () => {
+        if (touchedRef.current && ['local', 'saving', 'error', 'conflict'].includes(shadow.status) && !(await shadow.flush())) return;
         touchedRef.current = false;
         setSelectedFood(null);
         setPortion({ quantity: 100, measureId: null, measureCode: 'gram', measure: null });

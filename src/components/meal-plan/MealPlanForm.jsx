@@ -43,6 +43,8 @@ const MealPlanForm = ({
     nutritionistId,
     initialData = null,
     pendingDraft = null,   // rascunho completo já carregado pela página mãe
+    recoveryDraft = null,
+    beforeCloseRef = null,
     onSubmit,
     onSaveDraft,
     onCancel,
@@ -74,9 +76,11 @@ const MealPlanForm = ({
     const [isResuming, setIsResuming] = useState(false);
     const shadowTouchedRef = useRef(false);
     const loadedPlanIdRef = useRef(null);
+    const recoveryOpenedRef = useRef(false);
+    const [nestedRecovery, setNestedRecovery] = useState(null);
     const shadow = useShadowDraft({
         ownerId: nutritionistId,
-        draftKey: patientId ? `meal-plan:${patientId}:${initialData?.id || 'new'}` : null,
+        draftKey: recoveryDraft?.draft_key.startsWith('meal-plan:') ? recoveryDraft.draft_key : patientId ? `meal-plan:${patientId}:${initialData?.id || 'new'}` : null,
         enabled: Boolean(patientId && nutritionistId)
     });
 
@@ -90,9 +94,9 @@ const MealPlanForm = ({
 
     useEffect(() => {
         if (shadowTouchedRef.current && shadow.ready) {
-            shadow.queue({ formData, meals });
+            shadow.queue({ formData, meals, context: { planId: initialData?.id || draft.draftId || null } });
         }
-    }, [formData, meals, shadow.ready, shadow.queue]);
+    }, [formData, meals, shadow.ready, shadow.queue, initialData?.id, draft.draftId]);
 
     const restoreShadow = () => {
         const recovered = shadow.restore();
@@ -101,6 +105,24 @@ const MealPlanForm = ({
         if (recovered.formData) setFormData(recovered.formData);
         if (Array.isArray(recovered.meals)) setMeals(recovered.meals);
     };
+
+    useEffect(() => {
+        if (!recoveryDraft || recoveryOpenedRef.current || !shadow.ready) return;
+        if (recoveryDraft.draft_key.startsWith('meal-plan:')) {
+            if (!shadow.recovery) return;
+            recoveryOpenedRef.current = true;
+            restoreShadow();
+            return;
+        }
+        recoveryOpenedRef.current = true;
+        const mealId = recoveryDraft.payload?.context?.mealId;
+        const match = mealId ? meals.find(meal => String(meal.dbId || meal.id) === String(mealId)) : null;
+        setEditingMeal(match || null);
+        setNestedRecovery(recoveryDraft);
+        setShowMealForm(true);
+    // The recovery is applied once, after the server working copy is available.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [recoveryDraft, shadow.ready, shadow.recovery, meals]);
 
     // Ref para garantir auto-resume executar só uma vez
     const hasAutoResumed = useRef(false);
@@ -295,7 +317,7 @@ const MealPlanForm = ({
     const handleUpdateMeal = async (updatedMeal) => {
         shadowTouchedRef.current = true;
         const mealIndex = meals.findIndex(m => m.tempId === editingMeal.tempId);
-        let newDbId = editingMeal.dbId;
+        let newDbId = editingMeal.dbId || editingMeal.id;
 
         // Persist to DB when building a draft (not editing an existing saved plan)
         if (!isEditing && draft.draftId && draft.updateMeal) {
@@ -387,12 +409,11 @@ const MealPlanForm = ({
 
     // Button: "Cancelar" — discards draft and closes form
     const handleCancel = async () => {
-        if (!isEditing && draft.draftId) {
-            await draft.discardDraft();
-        }
-        await shadow.discard();
+        if (['local', 'saving', 'error', 'conflict'].includes(shadow.status) && !(await shadow.flush())) return;
+        if (!isEditing && draft.draftId && !(await draft.flushPlanInfo())) return;
         onCancel();
     };
+    if (beforeCloseRef) beforeCloseRef.current = handleCancel;
 
     const dailyTotals = calculateDailyTotals();
     const mealOptions = useMemo(
@@ -935,8 +956,10 @@ const MealPlanForm = ({
             <MealPlanMealForm
                 isOpen={showMealForm}
                 ownerId={nutritionistId}
-                shadowKey={patientId ? `meal-plan-meal:${patientId}:${initialData?.id || 'new'}:${editingMeal?.tempId || 'new'}` : null}
-                onClose={() => { setShowMealForm(false); setEditingMeal(null); }}
+                shadowKey={nestedRecovery ? nestedRecovery.draft_key.split(':food:')[0] : patientId ? `meal-plan-meal:${patientId}:${initialData?.id || 'new'}:${editingMeal?.dbId || editingMeal?.id || editingMeal?.tempId || 'new'}` : null}
+                recoveryDraft={nestedRecovery}
+                draftContext={{ planId: initialData?.id || draft.draftId || null, mealId: editingMeal?.dbId || editingMeal?.id || null }}
+                onClose={() => { setShowMealForm(false); setEditingMeal(null); setNestedRecovery(null); }}
                 onSave={editingMeal ? handleUpdateMeal : handleAddMeal}
                 initialData={editingMeal}
             />

@@ -28,6 +28,8 @@ import {
     DialogTitle
 } from '@/components/ui/dialog';
 import MealPlanForm from '@/components/meal-plan/MealPlanForm';
+import WorkingDraftRecovery from '@/components/meal-plan/WorkingDraftRecovery';
+import { getMealPlanById } from '@/lib/supabase/meal-plan-queries';
 import CopyModelDialog from '@/components/meal-plan/CopyModelDialog';
 import TemplateManagerDialog from '@/components/meal-plan/TemplateManagerDialog';
 import MealPlanViewer from '@/components/meal-plan/MealPlanViewer';
@@ -50,8 +52,10 @@ const MealPlanPage = () => {
     const { toast } = useToast();
     const { user } = useAuth();
     const quickEntryHandledRef = useRef(false);
+    const beforeCloseRef = useRef(null);
 
     const [nutritionistId, setNutritionistId] = useState(null);
+    const [workingDraft, setWorkingDraft] = useState(null);
     const { plans, activePlan, pendingDrafts, loading, isFetching, error: plansError, loadPlans, invalidatePlans } = useMealPlan(patientId, nutritionistId);
 
     const {
@@ -119,6 +123,8 @@ const MealPlanPage = () => {
     });
 
     // Obter ID do nutricionista
+    useEffect(() => { if (!showForm) setWorkingDraft(null); }, [showForm]);
+
     useEffect(() => {
         const getNutritionistId = async () => {
             const { data: { user } } = await supabase.auth.getUser();
@@ -200,10 +206,7 @@ const MealPlanPage = () => {
                         variant="ghost"
                         size="sm"
                         className="gap-2"
-                        onClick={() => {
-                            setShowForm(false);
-                            setEditingPlan(null);
-                        }}
+                        onClick={() => { void beforeCloseRef.current?.(); }}
                     >
                         <ArrowLeft className="w-4 h-4 shrink-0" />
                         Voltar
@@ -215,6 +218,8 @@ const MealPlanPage = () => {
                     patientSlugOrId={paramValue}
                     nutritionistId={nutritionistId}
                     initialData={editingPlan}
+                    recoveryDraft={workingDraft}
+                    beforeCloseRef={beforeCloseRef}
                     pendingDraft={!editingPlan ? pendingDraft : null}
                     onSubmit={handleSubmit}
                     onSaveDraft={handleSaveDraft}
@@ -283,6 +288,19 @@ const MealPlanPage = () => {
             </div>
 
             <div className="flex flex-col gap-[3px]">
+                <WorkingDraftRecovery ownerId={nutritionistId} patientId={patientId} onResume={async row => {
+                    const planId = row.payload?.context?.planId || row.draft_key.split(':')[2];
+                    let plan = null;
+                    if (planId !== 'new') {
+                        const result = await getMealPlanById(planId);
+                        if (result.error || !result.data || result.data.patient_id !== patientId) throw new Error('Plan unavailable');
+                        plan = result.data;
+                    }
+                    setPendingDraft(plan?.is_draft ? plan : null);
+                    setEditingPlan(plan?.is_draft ? null : plan);
+                    setWorkingDraft(row);
+                    setShowForm(true);
+                }} />
                 {/* Centro de Notificações Inteligentes */}
                 {!showForm && (
                     <NotificationCenter
