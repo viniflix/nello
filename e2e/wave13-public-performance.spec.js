@@ -22,9 +22,9 @@ for (const mobile of [false, true]) test(`public landing bounds work after new a
     message: 'LCP observer must report a paint before the first keyboard input',
   }).toBeGreaterThan(0);
   const introduction = page.getByRole('region', { name: 'Mais clareza para cuidar. Mais tempo para acompanhar.', exact: true });
-  await introduction.getByRole('link', { name: 'Criar minha conta', exact: true }).focus();
+  await introduction.getByRole('link', { name: mobile ? 'Criar conta' : 'Criar minha conta', exact: true }).focus();
   await page.keyboard.press('Tab');
-  const nextAction = introduction.getByRole('link', { name: 'Conhecer os recursos', exact: true });
+  const nextAction = introduction.getByRole('link', { name: mobile ? 'Ver recursos' : 'Conhecer os recursos', exact: true });
   await expect(nextAction).toBeFocused();
   await expect(nextAction).toHaveAttribute('href', '/recursos');
   await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));

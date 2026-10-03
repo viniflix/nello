@@ -9,17 +9,25 @@ async function audit(page) {
  const overflow=await page.evaluate(()=>[...document.querySelectorAll('.nello-public-site *')].filter(el=>el.getBoundingClientRect().right>innerWidth+1).slice(0,10).map(el=>({tag:el.tagName,class:el.className,text:el.textContent?.slice(0,40)})));
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),JSON.stringify(overflow)).toBe(true);
 }
-for(const screen of [{width:320,height:800},{width:768,height:480},{width:1440,height:900},{width:320,height:900,zoom:true}])test(`public site navigation, readable content and reflow ${screen.width}${screen.zoom?' zoom200':''}`,async({page,request})=>{
+for(const screen of [{width:320,height:800},{width:390,height:844},{width:430,height:932},{width:760,height:480},{width:768,height:480},{width:1440,height:900},{width:320,height:900,zoom:true}])test(`public site navigation, readable content and reflow ${screen.width}${screen.zoom?' zoom200':''}`,async({page,request})=>{
  await page.setViewportSize(screen);await page.emulateMedia({reducedMotion:'reduce'});
  const errors=[];page.on('pageerror',error=>errors.push(error.message));
  await page.goto('/');await expect(page.locator('h1')).toContainText('Mais clareza para cuidar.');
  if(screen.zoom)await page.evaluate(()=>{document.documentElement.style.fontSize='200%';});
  await audit(page);
+ if(screen.width<=760&&!screen.zoom){
+  const actions=page.locator('.site-hero-actions .site-action');
+  const first=await actions.nth(0).boundingBox(),second=await actions.nth(1).boundingBox();
+  expect(Math.abs(first.y-second.y)).toBeLessThan(1);
+  expect(first.height).toBeGreaterThanOrEqual(44);expect(second.height).toBeGreaterThanOrEqual(44);
+  await expect(actions.nth(0)).toHaveAccessibleName('Criar conta');await expect(actions.nth(1)).toHaveAccessibleName('Ver recursos');
+ }
  await test.info().attach('public-site-home',{body:await page.screenshot({fullPage:true}),contentType:'image/png'});
  await test.info().attach('public-site-hero',{body:await page.screenshot(),contentType:'image/png'});
+ if(screen.width<=760&&!screen.zoom)await test.info().attach('mobile-resource-cards',{body:await page.locator('.site-feature-grid').screenshot(),contentType:'image/png'});
  const question=page.locator('.site-faq-list summary').filter({hasText:'Para quem é o Nello?'});await question.focus();await question.press('Enter');
  await expect(page.locator('.site-faq-list details').first()).toHaveAttribute('open','');
- if(screen.width<760){const menu=page.locator('.site-mobile-menu summary');await menu.focus();await menu.press('Enter');await audit(page);await page.getByRole('navigation',{name:'Navegação pública no celular'}).getByRole('link',{name:'Recursos',exact:true}).click();}
+ if(screen.width<=760){const menu=page.locator('.site-mobile-menu summary');await menu.focus();const headingBefore=await page.locator('h1').boundingBox();await menu.press('Enter');const headingAfter=await page.locator('h1').boundingBox();expect(Math.abs(headingBefore.y-headingAfter.y)).toBeLessThan(1);await audit(page);await page.getByRole('navigation',{name:'Navegação pública no celular'}).getByRole('link',{name:'Recursos',exact:true}).click();}
  else await page.getByRole('navigation',{name:'Navegação pública',exact:true}).getByRole('link',{name:'Recursos',exact:true}).click();
  await expect(page).toHaveURL(/\/recursos$/);await expect(page.locator('h1')).toContainText('Seu olhar clínico.');
  for(const path of publicInformationPaths.filter(p=>p!=='/')){
