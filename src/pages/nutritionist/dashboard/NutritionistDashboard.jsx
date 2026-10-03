@@ -445,19 +445,19 @@ export default function NutritionistDashboard() {
                   </Card>
 
                   {/* Card 3: Adesão (Laranja) - Mobile: ocupa 2 colunas embaixo, Desktop: posição 2 */}
-                  <Card className="relative col-span-1 overflow-hidden border-0 bg-secondary text-white shadow-card-dark min-[375px]:col-span-2 lg:order-2 lg:col-span-1">
+                  <Card className="relative col-span-1 overflow-hidden border-0 bg-secondary text-secondary-foreground shadow-card-dark min-[375px]:col-span-2 lg:order-2 lg:col-span-1">
                     <Sparkline data={adherence24hSeries} />
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="font-heading uppercase text-xs lg:text-sm font-medium text-white/80 tracking-wide leading-tight">
+                      <CardTitle className="font-heading uppercase text-xs lg:text-sm font-medium text-secondary-foreground tracking-wide leading-tight">
                         Adesão 24h
                       </CardTitle>
-                      <TrendingUp className="h-5 w-5 lg:h-6 lg:w-6 text-white/80 flex-shrink-0" />
+                      <TrendingUp className="h-5 w-5 lg:h-6 lg:w-6 text-secondary-foreground flex-shrink-0" />
                     </CardHeader>
                     <CardContent className="relative">
-                      <div className="text-3xl lg:text-4xl font-bold text-white">
+                      <div className="text-3xl lg:text-4xl font-bold text-secondary-foreground">
                         {adherencePercent24h}
                       </div>
-                      <p className="text-xs text-white/70">
+                      <p className="text-xs text-secondary-foreground">
                         {failures.stats?'—':adherentPatients24h}/{failures.stats?'—':patients.length} com 2+ registros
                       </p>
                     </CardContent>

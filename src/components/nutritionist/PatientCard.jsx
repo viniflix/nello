@@ -105,7 +105,7 @@ const PatientCard = ({ patient, isOnline, onArchive, onUnarchive, onDelete }) =>
                 {/* Info */}
                 <div className="flex-1 min-w-0 flex flex-col h-full">
                     <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-semibold text-sm text-foreground truncate"><button type="button" disabled={isArchived} className="text-left" onClick={() => navigate(patientRoute(patient, 'hub'))}>{patient.name}</button></h3>
+                        <h3 className="min-w-0 max-w-full font-semibold text-sm text-foreground"><button type="button" disabled={isArchived} className="block max-w-full truncate text-left" onClick={() => navigate(patientRoute(patient, 'hub'))}>{patient.name}</button></h3>
                         {isArchived && (
                             <Badge variant="outline" className="h-4 text-xs px-1.5 uppercase font-bold tracking-wider text-muted-foreground border-dashed">
                                 Arquivado

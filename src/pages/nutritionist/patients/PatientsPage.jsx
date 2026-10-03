@@ -359,12 +359,12 @@ const PatientsPage = () => {
                                     {!loading && activePatients.length > 0 && (
                                         <div className="flex flex-wrap items-center justify-center sm:justify-end gap-2">
                                             {stats.new30 > 0 && (
-                                                <button type="button"  className={`cursor-pointer text-xs gap-1 transition-colors px-2.5 py-1 ${activeChip === 'new30' ? 'bg-orange-500 text-white hover:bg-orange-600 border-transparent shadow-sm' : 'bg-orange-50 text-orange-700 hover:bg-orange-100 border-orange-200/60'}`} onClick={() => handleChipClick('new30')}>
+                                                <button type="button" aria-pressed={activeChip === 'new30'} className={`inline-flex items-center rounded-full border whitespace-nowrap cursor-pointer text-xs gap-1 transition-colors px-2.5 py-1 ${activeChip === 'new30' ? 'bg-orange-500 text-stone-950 hover:bg-orange-400 border-transparent shadow-sm' : 'bg-orange-50 text-orange-700 hover:bg-orange-100 border-orange-200/60'}`} onClick={() => handleChipClick('new30')}>
                                                     <Flame className={`w-3 h-3 ${activeChip === 'new30' ? 'text-white' : 'text-orange-500'}`} /> Adicionados Recentes ({stats.new30})
                                                 </button>
                                             )}
                                             {stats.pending > 0 && (
-                                                <button type="button"  className={`cursor-pointer text-xs gap-1 transition-colors px-2.5 py-1 ${activeChip === 'pending' ? 'bg-amber-500 text-white hover:bg-amber-600 border-transparent shadow-sm' : 'bg-amber-50 text-amber-700 hover:bg-amber-100 border-amber-200/60'}`} onClick={() => handleChipClick('pending')}>
+                                                <button type="button" aria-pressed={activeChip === 'pending'} className={`inline-flex items-center rounded-full border whitespace-nowrap cursor-pointer text-xs gap-1 transition-colors px-2.5 py-1 ${activeChip === 'pending' ? 'bg-amber-500 text-stone-950 hover:bg-amber-400 border-transparent shadow-sm' : 'bg-amber-50 text-amber-700 hover:bg-amber-100 border-amber-200/60'}`} onClick={() => handleChipClick('pending')}>
                                                     <Clock className={`w-3 h-3 ${activeChip === 'pending' ? 'text-white' : 'text-amber-500'}`} /> Convites Pendentes ({stats.pending})
                                                 </button>
                                             )}

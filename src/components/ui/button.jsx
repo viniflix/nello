@@ -14,7 +14,7 @@ const buttonVariants = cva(
 				outline:
           'border border-input bg-background hover:bg-accent hover:text-accent-foreground',
 				secondary:
-          'bg-secondary text-secondary-foreground hover:bg-secondary-800',
+          'bg-secondary text-secondary-foreground hover:bg-secondary-500',
 				ghost: 'hover:bg-accent hover:text-accent-foreground',
 				link: 'text-primary underline-offset-4 hover:underline',
 			},
@@ -36,6 +36,7 @@ const Button = React.forwardRef(({ className, variant, size, asChild = false, ..
 	const Comp = asChild ? Slot : 'button';
 	return (
 		<Comp
+			data-nello-button=""
 			className={cn(buttonVariants({ variant, size, className }))}
 			ref={ref}
 			{...props}

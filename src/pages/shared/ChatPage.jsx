@@ -4,8 +4,9 @@ import AudioPlayer from '@/features/chat/components/AudioPlayer';
 import { uploadVerifiedFile } from '@/lib/storage/verifiedUpload';
 import { validateUploadSelection, CHAT_UPLOAD_MAX_BYTES, fileExtensionForMime } from '@/lib/storage/uploadPolicy';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
-import React, { useState, useEffect, useRef, Fragment, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useLayoutEffect, useRef, Fragment, useCallback } from 'react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import { patientRoute } from '@/lib/utils/patientRoutes';
 import { motion } from 'framer-motion';
 import { Send, ArrowLeft, Paperclip, X, FileText, Mic, Square, Loader2, User as UserIcon } from 'lucide-react'; // Adicionado PlayCircle
 import { useAuth } from '@/contexts/AuthContext';
@@ -93,6 +94,8 @@ const ChatPage = ({ propRecipientId, isEmbedded = false, initialDraft = '' }) =>
   const sendIntent = useRef(null);
   const recipientEpoch = useRef(0);
   const scrollRecipient = useRef(null);
+  const olderScroll = useRef(null);
+  const olderRequest = useRef(false);
   const typingTimeoutRef = useRef(null);
   // --- MUDANÇA NO ESTADO DO MODAL ---
   const [modalMedia, setModalMedia] = useState({ path: null, type: null });
@@ -175,20 +178,28 @@ const ChatPage = ({ propRecipientId, isEmbedded = false, initialDraft = '' }) =>
   }, [userId, recipientId, fetchMessages, closeConversation, setTyping, initialDraft]);
 
   const latestId = messages.at(-1)?.id;
-  useEffect(() => {
+  useLayoutEffect(() => {
     const area = messagesContainerRef.current;
-    if (!area || !latestId) return;
+    if (!area || recipientLoading || !latestId) return;
+    if (olderScroll.current?.recipient === recipientId) {
+      if (!messagesLoading) {
+        area.scrollTop = olderScroll.current.top + area.scrollHeight - olderScroll.current.height;
+        olderScroll.current = null;
+      }
+      return;
+    }
     if (scrollRecipient.current !== recipientId || area.scrollHeight - area.scrollTop - area.clientHeight < 250) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+      area.scrollTop = area.scrollHeight;
       scrollRecipient.current = recipientId;
     }
-  }, [latestId, recipientId, messagesLoading]);
+  }, [latestId, recipientId, recipientLoading, messagesLoading, messages.length]);
   const loadOlder = async () => {
     const area = messagesContainerRef.current;
-    if (!area) return;
-    const height = area.scrollHeight, top = area.scrollTop;
-    await loadOlderMessages();
-    requestAnimationFrame(() => { if (messagesContainerRef.current === area) area.scrollTop = top + area.scrollHeight - height; });
+    if (!area || !hasMoreMessages || messagesLoading || olderRequest.current || loadError) return;
+    olderRequest.current = true;
+    olderScroll.current = { recipient: recipientId, height: area.scrollHeight, top: area.scrollTop };
+    try { await loadOlderMessages(); }
+    finally { olderRequest.current = false; }
   };
 
   useEffect(() => { if(recipientId) markChatAsRead(recipientId); }, [recipientId, markChatAsRead, messages]);
@@ -320,7 +331,7 @@ const ChatPage = ({ propRecipientId, isEmbedded = false, initialDraft = '' }) =>
   );
 
   return (
-    <div className="flex flex-col h-full bg-slate-50">
+    <div className="flex flex-col h-full min-h-0 bg-slate-50">
       {/* --- MUDANÇA NA CHAMADA DO MODAL --- */}
       <ImageModal
         mediaPath={modalMedia.path}
@@ -340,15 +351,19 @@ const ChatPage = ({ propRecipientId, isEmbedded = false, initialDraft = '' }) =>
             <ArrowLeft className="w-5 h-5" />
           </Button>
         )}
-        <div className="w-10 h-10 bg-primary/10 rounded-full mr-3 flex items-center justify-center font-bold overflow-hidden">
+        {user?.profile?.user_type === 'nutritionist' ? <Link to={patientRoute({ id: recipientId })} aria-label={`Abrir perfil de ${recipient.name}`} className="mr-3 shrink-0">
+          <div className="w-10 h-10 shrink-0 bg-primary/10 rounded-full flex items-center justify-center overflow-hidden">
+            {recipient.avatar_url ? <PrivateImage src={recipient.avatar_url} alt="" className="w-full h-full object-cover" /> : <UserIcon aria-hidden="true" className="w-6 h-6 text-primary" />}
+          </div>
+        </Link> : <div className="w-10 h-10 bg-primary/10 rounded-full mr-3 flex items-center justify-center font-bold overflow-hidden">
           {recipient.avatar_url ? (
             <PrivateImage src={recipient.avatar_url} alt={recipient.name} className="w-full h-full object-cover" />
           ) : (
             <UserIcon className="w-6 h-6 text-primary" />
           )}
-        </div>
-        <div>
-          <h2 className="font-semibold text-foreground leading-tight">{recipient.name}</h2>
+        </div>}
+        <div className="min-w-0">
+          <h2 className="font-semibold text-foreground leading-tight truncate">{user?.profile?.user_type === 'nutritionist' ? <Link to={patientRoute({ id: recipientId })}>{recipient.name}</Link> : recipient.name}</h2>
           <div className="flex flex-col min-h-[1.5rem] justify-center">
             {isUserOnline(recipientId) ? (
               <div className="flex items-center gap-1.5 leading-none">
@@ -370,9 +385,9 @@ const ChatPage = ({ propRecipientId, isEmbedded = false, initialDraft = '' }) =>
       </header>
 
       {/* Lista de mensagens - área com rolagem */}
-      <section aria-label="Histórico de mensagens" tabIndex={0} ref={messagesContainerRef} className="flex-1 overflow-y-auto p-4 space-y-2">
+      <section aria-label="Histórico de mensagens" tabIndex={0} ref={messagesContainerRef} onScroll={event => { if (scrollRecipient.current === recipientId && event.currentTarget.scrollTop < 80) void loadOlder(); }} className="flex-1 min-h-0 overflow-y-auto p-4 space-y-2">
         {loadError && <p role="alert" className="text-sm text-destructive">Falha ao atualizar o chat. <Button variant="link" onClick={() => fetchMessages(user.id, recipientId)}>Tentar novamente</Button></p>}
-        {hasMoreMessages && <Button variant="outline" disabled={messagesLoading} onClick={loadOlder}>Carregar mensagens anteriores</Button>}
+        {messagesLoading && messages.length > 0 && <div role="status" aria-label="Carregando mensagens anteriores" className="flex justify-center py-3"><Loader2 aria-hidden="true" className="h-5 w-5 animate-spin text-primary" /></div>}
         {Object.entries(groupedMessages).map(([date, msgs]) => (
           <Fragment key={date}>
             <DateSeparator date={date} />

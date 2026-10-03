@@ -207,11 +207,14 @@ body,
 
 /* Functional controls stay usable with touch, text zoom and keyboard. */
 @layer base {
-  button, [role="button"], input:not([type="checkbox"]):not([type="radio"]), select, [role="combobox"] { min-height: 44px; }
-  button, [role="button"] { min-width: 44px; overflow-wrap: anywhere; }
   :focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 3px; }
   img, video { max-width: 100%; }
   input, textarea, select { font-size: max(1rem, 16px); }
+}
+/* Touch sizing applies to action buttons, preserving switch/checkbox tracks
+   and the compact desktop controls explicitly sized by each component. */
+@media (max-width: 639px) {
+  [data-nello-button] { min-height: 44px; min-width: 44px; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }

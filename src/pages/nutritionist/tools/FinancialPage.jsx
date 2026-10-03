@@ -455,7 +455,7 @@ export default function FinancialPage() {
                                             <div className="min-w-0">
                                                 <span className={`font-semibold break-all ${
                                                     monthlyGoal - summary.income > 0
-                                                        ? 'text-secondary'
+                                                        ? 'text-secondary-800'
                                                         : 'text-primary'
                                                 }`}>
                                                     {monthlyGoal - summary.income > 0

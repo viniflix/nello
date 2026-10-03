@@ -34,7 +34,7 @@ export default function FinancialKPIs({ summary, loading }) {
             value: summary?.pendingIncome || 0,
             details: [['Vencido', summary?.overdue || 0]],
             icon: AlertCircle,
-            color: 'text-secondary',
+            color: 'text-secondary-800',
             bgColor: 'bg-secondary/10'
         }
     ];

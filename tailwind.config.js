@@ -51,12 +51,12 @@ module.exports = {
           300: '#F9BB8B',
           400: '#F7A464',
           500: '#F48D3D',
-          DEFAULT: '#A34F04', // Texto e botões com contraste AA em superfícies claras.
+          DEFAULT: '#F27507', // Laranja original da marca.
           600: '#F27507',
           700: '#C25E06',
           800: '#914604',
           900: '#612F03',
-          foreground: colors.white, // Texto para botões com fundo secondary
+          foreground: colors.stone[950], // Contraste legível sobre o laranja original.
         },
 
         // Cores Semânticas
