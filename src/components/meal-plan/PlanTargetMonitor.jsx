@@ -43,7 +43,7 @@ const PlanTargetMonitor = ({
             <Card className="border-dashed border-2 border-amber-200 bg-amber-50 shadow-sm">
                 <CardContent className="p-4">
                     <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-                        <div className="flex min-w-0 flex-[1_1_20rem] items-start gap-3">
+                        <div className="flex min-w-0 flex-[1_1_20rem] flex-col items-start gap-3 sm:flex-row">
                             <div className="shrink-0 p-3 bg-amber-100 rounded-2xl shadow-sm border border-amber-200">
                                 <Calculator className="w-6 h-6 text-amber-600" />
                             </div>
@@ -58,8 +58,8 @@ const PlanTargetMonitor = ({
                             onClick={() => navigate(`/nutritionist/patients/${patientSegment}/energy-expenditure`)}
                             className="bg-amber-700 hover:bg-amber-800 text-white h-auto min-h-10 py-2 max-w-full px-4 whitespace-normal"
                         >
-                            <Target className="w-4 h-4 mr-2" />
-                            {needsVentaReview ? 'Revisar cálculo energético' : 'Definir Gasto Energético'}
+                            <Target className="w-4 h-4 mr-2 shrink-0" />
+                            <span className="min-w-0 [overflow-wrap:anywhere]">{needsVentaReview ? 'Revisar cálculo energético' : 'Definir Gasto Energético'}</span>
                         </Button>
                     </div>
                 </CardContent>

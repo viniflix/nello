@@ -28,11 +28,12 @@ function seed() {
 async function audit(page) {
     const result = await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze();
     expect(result.violations.map(item=>({id:item.id,nodes:item.nodes.map(node=>({target:node.target,summary:node.failureSummary}))}))).toEqual([]);
-    expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+    const overflow=await page.evaluate(()=>[...document.querySelectorAll('#root *')].filter(node=>{ let parent=node.parentElement; while(parent&&parent!==document.body){if(['auto','scroll','hidden','clip'].includes(getComputedStyle(parent).overflowX))return false;parent=parent.parentElement;}return node.getBoundingClientRect().right>innerWidth+1||(getComputedStyle(node).overflowX==='visible'&&node.scrollWidth>node.clientWidth+1);}).slice(0,30).map(node=>({tag:node.tagName,classes:node.className,text:node.textContent?.slice(0,50),scroll:node.scrollWidth,client:node.clientWidth})));
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),JSON.stringify(overflow)).toBe(true);
     await page.evaluate(()=>window.scrollTo({top:0,left:0,behavior:'instant'}));
     await test.info().attach('meal-plan-module-view', {body:await page.screenshot({fullPage:true}),contentType:'image/png'});
 }
-for (const screen of [{width:320,height:720},{width:768,height:480},{width:1440,height:900},{width:640,height:900,zoom:true}]) {
+for (const screen of [{width:320,height:720},{width:768,height:480},{width:1440,height:900},{width:640,height:900,zoom:true},{width:320,height:900,zoom:true}]) {
     test(`complete meal-plan overview, preview, summary and keyboard reflow ${screen.width}${screen.zoom?' zoom200':''}`,async({page})=>{
         const errors=[];
         await page.addInitScript(()=>{
@@ -57,7 +58,7 @@ for (const screen of [{width:320,height:720},{width:768,height:480},{width:1440,
         const meals=page.locator('summary');await expect(meals.first()).toContainText('QA Refeição alternativa');await expect(meals.first()).not.toContainText('% do dia');
         await meals.nth(1).focus();await page.keyboard.press('Enter');await expect(page.getByText('Nenhum alimento nesta refeição.').last()).toBeVisible();await audit(page);
         await page.getByRole('button',{name:/Meus Planos/}).click();await page.getByRole('button',{name:/Ver QA Plano/}).click();
-        const preview=page.getByRole('dialog').filter({hasText:'Confira refeições e porções sem alterar o plano.'});await expect(preview).toBeVisible();await audit(page);
+        const preview=page.getByRole('dialog').filter({hasText:'Confira refeições e porções sem alterar o plano.'});await expect(preview).toBeVisible();await expect(preview.getByRole('heading',{name:/QA Plano completo/})).toBeVisible();await audit(page);
         await preview.getByRole('button',{name:'Fechar prévia'}).click();
         const planList=page.getByRole('dialog',{name:'Planos Alimentares',exact:true});
         await expect(planList).toBeVisible();

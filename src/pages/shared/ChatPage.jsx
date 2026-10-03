@@ -376,7 +376,7 @@ const ChatPage = ({ propRecipientId, isEmbedded = false, initialDraft = '' }) =>
                 )}
               </div>
             ) : (
-                <p className="text-xs sm:text-xs text-muted-foreground leading-none animate-in fade-in duration-500">
+                <p className="text-xs sm:text-xs text-muted-foreground leading-none">
                     {formatLastSeen(recipient.last_seen_at) || (recipient.user_type === 'nutritionist' ? 'Nutricionista' : 'Paciente')}
                 </p>
             )}

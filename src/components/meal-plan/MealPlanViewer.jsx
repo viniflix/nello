@@ -51,7 +51,7 @@ const MealPlanViewer = ({
 
     return (
         <Card className="overflow-hidden border-primary/20 bg-white shadow-sm">
-            <CardHeader className="border-b bg-primary/5">
+            <CardHeader className="border-b bg-primary/5 p-[12px] sm:p-6">
                 <div className="flex flex-col gap-4">
                     {/* Título e Badge */}
                     <div className="flex flex-col items-start justify-between gap-4 lg:flex-row">
@@ -121,23 +121,23 @@ const MealPlanViewer = ({
                     </div>
                 </div>
             </CardHeader>
-            <CardContent className="space-y-5 pt-5">
+            <CardContent className="space-y-5 p-[12px] pt-5 sm:p-6 sm:pt-5">
                 <MealPlanDocumentActions plan={activePlan} patientId={patientId} />
                 {activePlan.description && (
                     <p className="whitespace-pre-wrap break-words text-sm text-muted-foreground">{activePlan.description}</p>
                 )}
 
                 {/* Metadata Grid */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-                    <div className="p-3 rounded-lg border bg-muted/20">
-                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
+                <div className="grid gap-3 mb-6 [overflow-wrap:anywhere]" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 8rem), 1fr))' }}>
+                    <div className="p-[12px] rounded-lg border bg-muted/20">
+                        <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground mb-1">
                             <Calendar className="w-3.5 h-3.5" />
                             Início
                         </div>
                         <div className="font-semibold text-sm">{formatDate(activePlan.start_date)}</div>
                     </div>
-                    <div className="p-3 rounded-lg border bg-muted/20">
-                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
+                    <div className="p-[12px] rounded-lg border bg-muted/20">
+                        <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground mb-1">
                             <CalendarCheck className="w-3.5 h-3.5" />
                             Término
                         </div>
@@ -145,15 +145,15 @@ const MealPlanViewer = ({
                             {activePlan.end_date ? formatDate(activePlan.end_date) : 'Indeterminado'}
                         </div>
                     </div>
-                    <div className="p-3 rounded-lg border bg-muted/20">
-                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
+                    <div className="p-[12px] rounded-lg border bg-muted/20">
+                        <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground mb-1">
                             <CalendarDays className="w-3.5 h-3.5" />
                             Dias Ativos
                         </div>
                         <div className="font-semibold text-sm break-words">{getDaysLabel(activePlan.active_days)}</div>
                     </div>
-                    <div className="p-3 rounded-lg border bg-muted/20">
-                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
+                    <div className="p-[12px] rounded-lg border bg-muted/20">
+                        <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground mb-1">
                             <UtensilsCrossed className="w-3.5 h-3.5" />
                             Refeições
                         </div>

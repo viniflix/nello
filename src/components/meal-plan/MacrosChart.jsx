@@ -45,7 +45,7 @@ const MacrosChart = ({ protein, carbs, fat, calories, patientId, patientSlugOrId
     const MacrosView = () => (
         <div className="space-y-4">
             <div className="flex justify-center">
-                <svg role="img" aria-label={`Distribuição energética dos macronutrientes: proteínas ${roundedNutrition(pPerc)}%, carboidratos ${roundedNutrition(cPerc)}%, gorduras ${roundedNutrition(fPerc)}%. Energia prescrita: ${roundedNutrition(calories)} kcal.`} width="180" height="180" viewBox="0 0 180 180">
+                <svg role="img" aria-label={`Distribuição energética dos macronutrientes: proteínas ${roundedNutrition(pPerc)}%, carboidratos ${roundedNutrition(cPerc)}%, gorduras ${roundedNutrition(fPerc)}%. Energia prescrita: ${roundedNutrition(calories)} kcal.`} className="h-auto w-full max-w-[180px]" width="180" height="180" viewBox="0 0 180 180">
                     <circle cx="90" cy="90" r="66" fill="none" stroke="#e2e8f0" strokeWidth="16" />
                     {[{key:'protein',percent:pPerc,offset:0},{key:'carbs',percent:cPerc,offset:pPerc},{key:'fat',percent:fPerc,offset:pPerc+cPerc}].map(slice => slice.percent > 0 && <circle key={slice.key} cx="90" cy="90" r="66" pathLength="100" fill="none" stroke={colors[slice.key]} strokeWidth="16" strokeDasharray={`${slice.percent} ${100-slice.percent}`} strokeDashoffset={-slice.offset} transform="rotate(-90 90 90)" />)}
                     <text x="90" y="90" textAnchor="middle" fontSize="24" className="font-bold fill-foreground">{roundedNutrition(calories)}</text>
@@ -55,7 +55,7 @@ const MacrosChart = ({ protein, carbs, fat, calories, patientId, patientSlugOrId
             {!totalMacroCals && <p className="text-center text-sm text-muted-foreground">Sem macronutrientes quantificados.</p>}
             <dl className="space-y-2">
                 {[{label:'Carboidratos',value:carbs,percent:cPerc,key:'carbs'},{label:'Proteínas',value:protein,percent:pPerc,key:'protein'},{label:'Gorduras',value:fat,percent:fPerc,key:'fat'}].map(macro => <div key={macro.key} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-white p-3 text-sm">
-                    <dt className="inline-flex items-center gap-2"><span aria-hidden="true" className="h-2.5 w-2.5 rounded-full" style={{backgroundColor:colors[macro.key]}} />{macro.label}</dt>
+                    <dt className="inline-flex min-w-0 items-center gap-2 [overflow-wrap:anywhere]"><span aria-hidden="true" className="h-2.5 w-2.5 rounded-full" style={{backgroundColor:colors[macro.key]}} />{macro.label}</dt>
                     <dd className="font-semibold tabular-nums">{roundedNutrition(macro.value)} g <span className="ml-2 font-normal text-muted-foreground">{roundedNutrition(macro.percent)}%</span></dd>
                 </div>)}
             </dl>
@@ -116,11 +116,11 @@ const MacrosChart = ({ protein, carbs, fat, calories, patientId, patientSlugOrId
 
     return (
         <Card className="flex min-w-0 flex-col bg-white border-border shadow-sm">
-            <CardHeader className="pb-3 pt-5">
+            <CardHeader className="px-[12px] pb-3 pt-5 sm:px-6">
                 <CardTitle className="text-base font-semibold flex items-center justify-center w-full">
-                    <div className="flex items-center gap-2 text-foreground">
-                        <Flame className="w-4 h-4 text-[#c4661f]" />
-                        Análise nutricional
+                    <div className="flex min-w-0 items-center gap-2 text-foreground">
+                        <Flame className="w-4 h-4 shrink-0 text-[#c4661f]" />
+                        <span className="min-w-0 [overflow-wrap:anywhere]">Análise nutricional</span>
                     </div>
                 </CardTitle>
 
@@ -135,7 +135,7 @@ const MacrosChart = ({ protein, carbs, fat, calories, patientId, patientSlugOrId
                         }`}
                     >
                         <PieChartIcon className="w-3.5 h-3.5" />
-                        Macronutrientes
+                        <span className="min-w-0 [overflow-wrap:anywhere]">Macronutrientes</span>
                     </button>
                     <button
                         type="button" aria-pressed={activeTab === 'micros'} onClick={() => setActiveTab('micros')}
@@ -146,12 +146,12 @@ const MacrosChart = ({ protein, carbs, fat, calories, patientId, patientSlugOrId
                         }`}
                     >
                         <Beaker className="w-3.5 h-3.5" />
-                        Micronutrientes
+                        <span className="min-w-0 [overflow-wrap:anywhere]">Micronutrientes</span>
                     </button>
                 </div>
             </CardHeader>
 
-            <CardContent className="flex-1 flex flex-col pt-2 pb-5">
+            <CardContent className="flex-1 flex flex-col px-[12px] pt-2 pb-5 sm:px-6">
                 <div className={compact ? "min-h-[285px]" : "min-h-[300px]"}>
                     {activeTab === 'macros' ? MacrosView() : MicrosView()}
                 </div>

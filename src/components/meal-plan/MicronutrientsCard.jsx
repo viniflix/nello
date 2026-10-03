@@ -146,18 +146,18 @@ export function MicronutrientsCard({ plan }) {
     };
 
     return (
-        <Card className="min-w-0 bg-white">
-            <CardHeader>
-                <CardTitle className="tracking-normal">Micronutrientes e Valores DRI</CardTitle>
+        <Card className="min-w-0 bg-white [overflow-wrap:anywhere]">
+            <CardHeader className="p-[12px] sm:p-6">
+                <CardTitle className="tracking-normal text-lg">Micronutrientes e Valores DRI</CardTitle>
                 <p className="text-sm text-muted-foreground">
                     Referências gerais para adultos. Valores incompletos do catálogo não são tratados como zero.
                 </p>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="space-y-6 p-[12px] pt-0 sm:p-6 sm:pt-0">
                 {/* Vitaminas */}
                 <div>
                     <h3 className="font-semibold mb-3 text-lg">Vitaminas</h3>
-                    <Table>
+                    <Table className="min-w-[40rem] [&_th]:whitespace-nowrap [&_td]:whitespace-nowrap">
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Nutriente</TableHead>
@@ -177,7 +177,7 @@ export function MicronutrientsCard({ plan }) {
                 {/* Minerais */}
                 <div>
                     <h3 className="font-semibold mb-3 text-lg">Minerais</h3>
-                    <Table>
+                    <Table className="min-w-[40rem] [&_th]:whitespace-nowrap [&_td]:whitespace-nowrap">
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Nutriente</TableHead>
@@ -197,7 +197,7 @@ export function MicronutrientsCard({ plan }) {
                 {/* Outros */}
                 <div>
                     <h3 className="font-semibold mb-3 text-lg">Outros Nutrientes</h3>
-                    <Table>
+                    <Table className="min-w-[40rem] [&_th]:whitespace-nowrap [&_td]:whitespace-nowrap">
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Nutriente</TableHead>

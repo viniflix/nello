@@ -63,10 +63,10 @@ const MealPlanList = ({
             {/* Lista de Planos - Inline quando NÃO tem plano ativo */}
             {!activePlan && (
                 <Card>
-                    <CardHeader>
-                        <CardTitle className="tracking-normal">Todos os Planos</CardTitle>
+                    <CardHeader className="p-[12px] sm:p-6">
+                        <CardTitle className="tracking-normal break-words">Todos os Planos</CardTitle>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="p-[12px] pt-0 sm:p-6 sm:pt-0">
                         {pendingDrafts.length === 0 && plans.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-12 text-center">
                                 <div className="p-4 bg-muted/20 rounded-full mb-4">
@@ -104,7 +104,7 @@ const MealPlanList = ({
                         ) : (
                             <div className="space-y-3">
                                 {pendingDrafts.map((draft) => (
-                                    <div key={draft.id} className="p-4 border-2 border-amber-200 bg-amber-50/50 border-dashed rounded-lg transition-colors">
+                                    <div key={draft.id} className="p-[16px] border-2 border-amber-200 bg-amber-50/50 border-dashed rounded-lg transition-colors">
                                         <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-start justify-between">
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex flex-wrap items-center gap-2">
@@ -115,7 +115,7 @@ const MealPlanList = ({
                                                     {formatRelativeTime(draft.updated_at)} • Pendente
                                                 </div>
                                             </div>
-                                            <div className="flex flex-wrap max-w-full gap-2">
+                                            <div className="flex flex-wrap max-w-full gap-2 [&_button]:h-auto [&_button]:min-h-9 [&_button]:max-w-full [&_button]:whitespace-normal [&_button]:[overflow-wrap:anywhere] [&_svg]:shrink-0">
                                                 <Button variant="outline" size="sm" className="border-amber-300 bg-white text-amber-800 hover:bg-amber-100" onClick={() => handleResumePendingDraft(draft)} title="Retomar edição">
                                                     <Edit className="h-4 w-4 mr-2" />Retomar
                                                 </Button>
@@ -127,7 +127,7 @@ const MealPlanList = ({
                                     </div>
                                 ))}
                                 {plans.map((plan) => (
-                                    <div key={plan.id} className="p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                                    <div key={plan.id} className="p-[16px] border rounded-lg hover:bg-muted/50 transition-colors">
                                         <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-start justify-between">
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex flex-wrap items-center gap-2">
@@ -142,7 +142,7 @@ const MealPlanList = ({
                                                     {' '}• {Math.round(Number(plan.daily_calories) || 0).toLocaleString('pt-BR')} kcal/dia
                                                 </div>
                                             </div>
-                                            <div className="flex flex-wrap max-w-full gap-2">
+                                            <div className="flex flex-wrap max-w-full gap-2 [&_button]:h-auto [&_button]:min-h-9 [&_button]:max-w-full [&_button]:whitespace-normal [&_button]:[overflow-wrap:anywhere] [&_svg]:shrink-0">
                                                 <Button variant="outline" size="sm" aria-label={`Ver ${plan.name}`} onClick={() => openPreview(plan.id)}><Eye className="mr-1 h-4 w-4" />Ver plano</Button>
                                                 {!plan.is_active && (
                                                     <Button variant="default" size="sm" onClick={() => handleSetActive(plan.id)} aria-label={`Ativar ${plan.name}`} title="Ativar este plano">
@@ -220,7 +220,7 @@ const MealPlanList = ({
 
                         {/* Planos salvos */}
                         {visiblePlans.map((plan) => (
-                            <div key={plan.id} className="p-4 border rounded-xl bg-white hover:bg-primary/5 transition-colors">
+                            <div key={plan.id} className="p-[16px] border rounded-xl bg-white hover:bg-primary/5 transition-colors">
                                 <div className="flex flex-wrap items-center justify-between gap-2">
                                     <div className="flex-1 min-w-0">
                                         <div className="flex flex-wrap items-center gap-2">
