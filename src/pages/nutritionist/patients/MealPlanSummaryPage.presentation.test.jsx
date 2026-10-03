@@ -1,0 +1,40 @@
+import React from 'react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
+import { beforeEach, expect, it, vi } from 'vitest';
+import MealPlanSummaryPage from './MealPlanSummaryPage';
+const mock=vi.hoisted(()=>({id:'plan',read:vi.fn(),reference:vi.fn()}));
+vi.mock('react-router-dom',async()=>({...await vi.importActual('react-router-dom'),useParams:()=>({planId:mock.id})}));
+vi.mock('@/hooks/useResolvedPatientId',()=>({useResolvedPatientId:()=>({patientId:'patient',paramValue:'patient'})}));
+vi.mock('@/components/ui/use-toast',()=>({useToast:()=>({toast:vi.fn()})}));
+vi.mock('@/lib/supabase/meal-plan-queries',()=>({getMealPlanById:mock.read,getReferenceValues:mock.reference,deleteReferenceValues:vi.fn()}));
+vi.mock('@/components/meal-plan/ReferenceValuesModal',()=>({default:()=>null}));
+vi.mock('@/components/meal-plan/MicronutrientsCard',()=>({MicronutrientsCard:()=>null}));
+vi.mock('@/components/ui/visible-chart',()=>({VisibleChart:()=>null}));
+const plan={id:'plan',patient_id:'patient',name:'Plano sintético',daily_calories:100,daily_protein:0,daily_carbs:25,daily_fat:0,meals:[{name:'Café',total_calories:100},{name:'Opção',include_in_totals:false,total_calories:300}]};
+const renderPage=()=>render(<MemoryRouter future={{v7_startTransition:true,v7_relativeSplatPath:true}}><MealPlanSummaryPage /></MemoryRouter>);
+beforeEach(()=>{mock.id='plan';mock.read.mockReset().mockResolvedValue({data:plan});mock.reference.mockReset().mockResolvedValue({data:{macro_mode:'percentage',total_energy_kcal:0,protein_percentage:0,carbs_percentage:0,fat_percentage:0}});});
+it('handles zero targets without NaN/Infinity and excludes alternatives from the energy legend',async()=>{
+    renderPage();await screen.findByText('Plano sintético');
+    expect(screen.getAllByText('Sem meta')).toHaveLength(4);
+    expect(document.body.textContent).not.toMatch(/NaN|Infinity/);
+    const legend=screen.getByRole('list',{name:'Distribuição de energia por refeição'});
+    expect(legend).toHaveTextContent('100 kcal · 100%');expect(legend).not.toHaveTextContent('Opção');
+});
+it('offers a retry after a failed read and preserves totals when only references fail',async()=>{
+    mock.read.mockResolvedValueOnce({error:new Error('Synthetic outage')}).mockResolvedValueOnce({data:plan});
+    mock.reference.mockResolvedValue({error:new Error('Synthetic reference outage')});
+    renderPage();await screen.findByRole('alert');
+    fireEvent.click(screen.getByRole('button',{name:'Tentar novamente'}));
+    await screen.findByText('Plano sintético');expect(screen.getByLabelText('Totais diários do plano')).toHaveTextContent('100 kcal');
+    expect(screen.getByRole('button',{name:'Tentar carregar metas'})).toBeVisible();
+});
+it('never restores late data from an old route or a different patient',async()=>{
+    let finish;mock.read.mockImplementation(id=>id==='plan'?new Promise(resolve=>{finish=resolve;}):Promise.resolve({data:{...plan,id:'new',name:'Plano novo'}}));
+    const view=renderPage();mock.id='new';
+    view.rerender(<MemoryRouter future={{v7_startTransition:true,v7_relativeSplatPath:true}}><MealPlanSummaryPage /></MemoryRouter>);
+    await screen.findByText('Plano novo');await act(async()=>finish({data:plan}));expect(screen.queryByText('Plano sintético')).toBeNull();
+    mock.id='foreign';mock.read.mockResolvedValue({data:{...plan,patient_id:'other',name:'Privado'}});
+    view.rerender(<MemoryRouter future={{v7_startTransition:true,v7_relativeSplatPath:true}}><MealPlanSummaryPage /></MemoryRouter>);
+    await screen.findByRole('alert');expect(screen.queryByText('Privado')).toBeNull();
+});

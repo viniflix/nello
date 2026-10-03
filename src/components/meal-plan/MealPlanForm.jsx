@@ -615,9 +615,9 @@ const MealPlanForm = ({
                 {/* Draft Initialization Loading — só mostra durante inicialização real do hook */}
                 {/* NÃO mostra quando pendingDraft está sendo retomado (auto-resume via prop) */}
                 {!isEditing && !draft.draftId && !draft.existingDraft && !pendingDraft && !isResuming && draft.isInitializing && (
-                    <div className="mb-6 p-4 border border-dashed rounded-lg bg-muted/30 flex items-center justify-center gap-3 text-muted-foreground animate-pulse">
-                        <RefreshCw className="h-4 w-4 animate-spin text-primary" />
-                        <span className="text-sm">Iniciando rascunho de segurança...</span>
+                    <div className="mb-6 p-4 border border-dashed rounded-lg bg-muted/30 flex items-center justify-center gap-3 text-muted-foreground motion-safe:animate-pulse">
+                        <RefreshCw className="h-4 w-4 motion-safe:animate-spin text-primary" />
+                        <span className="text-sm">Preparando salvamento automático…</span>
                     </div>
                 )}
 
@@ -626,7 +626,7 @@ const MealPlanForm = ({
                 <Card className="border-t-4 border-t-primary">
                     <CardHeader>
                         <div className="flex flex-wrap items-center justify-between gap-3">
-                            <CardTitle className="text-lg">Informações do Plano</CardTitle>
+                            <CardTitle className="tracking-normal text-lg">Informações do Plano</CardTitle>
                             <div className="flex flex-wrap items-center gap-2">
                                 {!session && !isEditing && ['local','saving','saved','error','conflict'].includes(draft.saveStatus) && <SaveStatusIndicator status={draft.saveStatus} />}
                                 <ShadowSaveStatus status={session?.status || shadow.status} onRetry={session?.flush || shadow.flush} />
@@ -772,7 +772,7 @@ const MealPlanForm = ({
                         <summary className="cursor-pointer text-sm font-medium">Ajustar porções em conjunto · simular antes de aplicar</summary>
                     <Card className="mt-3 border-0 shadow-none">
                         <CardHeader>
-                            <CardTitle className="text-lg">Ajustar porções do plano</CardTitle>
+                            <CardTitle className="tracking-normal text-lg">Ajustar porções do plano</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -885,8 +885,8 @@ const MealPlanForm = ({
                             <Card>
                                 <CardHeader>
                                     <div className="flex flex-wrap items-center justify-between gap-3">
-                                        <CardTitle className="text-lg text-primary">Refeições</CardTitle>
-                                        <div className="flex gap-2">
+                                        <CardTitle className="tracking-normal text-lg text-primary">Refeições</CardTitle>
+                                        <div className="flex flex-wrap gap-2">
                                             <Button
                                                 type="button"
                                                 size="sm"
@@ -914,12 +914,12 @@ const MealPlanForm = ({
                                     <div className="space-y-3">
                                         {meals.map((meal, index) => (
                                             <div key={meal.tempId} data-meal-sort-index={index} className={`p-4 border border-l-4 border-l-primary/60 rounded-xl bg-white hover:bg-primary/5 transition-colors ${draggingMealIndex === index ? 'opacity-60 border-primary' : ''}`}>
-                                                <div className="flex items-start justify-between">
+                                                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                                                     <div className="flex-1 min-w-0">
-                                                        <div className="flex items-center gap-2">
-                                                            <button type="button" aria-label={`Arrastar ${meal.name}`} onPointerDown={event => beginMealDrag(event,index)} onPointerUp={finishMealDrag} onPointerCancel={() => { draggedMealRef.current=null; setDraggingMealIndex(null); }} className="cursor-grab active:cursor-grabbing touch-none select-none p-1"><GripVertical className="h-4 w-4" /></button>
+                                                        <div className="flex flex-wrap items-center gap-2">
+                                                            <button type="button" aria-label={`Arrastar ${meal.name}`} onPointerDown={event => beginMealDrag(event,index)} onPointerUp={finishMealDrag} onPointerCancel={() => { draggedMealRef.current=null; setDraggingMealIndex(null); }} className="cursor-grab active:cursor-grabbing touch-none select-none rounded p-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"><GripVertical className="h-4 w-4" /></button>
                                                             <span className="text-sm text-muted-foreground">#{index + 1}</span>
-                                                            <h4 className="font-semibold">{meal.name}</h4>
+                                                            <h4 className="min-w-0 break-words font-semibold">{meal.name}</h4>
                                                             {meal.meal_time && (
                                                                 <Badge variant="outline">
                                                                     <Calendar className="h-3 w-3 mr-1" />
@@ -984,8 +984,8 @@ const MealPlanForm = ({
                     <Card>
                         <CardHeader>
                             <div className="flex flex-wrap items-center justify-between gap-3">
-                                <CardTitle className="text-lg text-primary">Refeições</CardTitle>
-                                <div className="flex gap-2">
+                                <CardTitle className="tracking-normal text-lg text-primary">Refeições</CardTitle>
+                                <div className="flex flex-wrap gap-2">
                                     <Button
                                         type="button"
                                         size="sm"
@@ -1017,7 +1017,7 @@ const MealPlanForm = ({
                 )}
 
                 {/* Botões de ação — 3 opções */}
-                <div className="sticky bottom-0 z-10 flex flex-col sm:flex-row gap-2 justify-end rounded-lg border bg-background/95 p-3 shadow-sm backdrop-blur">
+                <div className="sticky bottom-0 z-10 flex flex-wrap items-center gap-2 justify-end rounded-lg border bg-white/95 p-3 shadow-sm backdrop-blur">
                     {/* Cancelar */}
                     <Button
                         type="button"
@@ -1048,7 +1048,7 @@ const MealPlanForm = ({
                     <Button
                         type="submit"
                         disabled={loading}
-                        className="sm:order-3 font-semibold"
+                        className="min-h-10 flex-1 sm:flex-none sm:order-3 font-semibold"
                     >
                         <CheckCircle2 className="w-4 h-4 mr-2" />
                         {loading

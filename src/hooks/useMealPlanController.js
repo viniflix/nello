@@ -23,6 +23,7 @@ import { getLatestEnergyCalculation } from '@/lib/supabase/energy-queries';
 import { getPatientModuleSyncFlags, clearPatientModuleSyncFlags } from '@/lib/supabase/anthropometry-queries';
 import { translateMealType } from '@/utils/mealTranslations';
 import { formatQuantityWithUnit } from '@/lib/utils/measureTranslations';
+import { formatMealPlanDate } from '@/lib/utils/mealPlanPresentation';
 import { Events, track } from '@/infrastructure/analytics/posthog';
 
 export function useMealPlanController({
@@ -541,7 +542,7 @@ export function useMealPlanController({
     };
 
     // Formatter helpers
-    const formatDate = (dateString) => dateString ? new Date(dateString).toLocaleDateString('pt-BR') : null;
+    const formatDate = formatMealPlanDate;
 
     const getDaysLabel = (activeDays) => {
         if (!activeDays || activeDays.length === 0) return 'Nenhum dia';

@@ -1,7 +1,7 @@
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { UtensilsCrossed } from 'lucide-react';
 import { translateMealType } from '@/utils/mealTranslations';
+import { roundedNutrition } from '@/lib/utils/mealPlanPresentation';
 import { formatQuantityWithUnit } from '@/lib/utils/measureTranslations';
 
 /**
@@ -17,7 +17,7 @@ import { formatQuantityWithUnit } from '@/lib/utils/measureTranslations';
  *   }
  * ]
  */
-const MealPlanView = ({ mealPlanItems }) => {
+const MealPlanView = ({ mealPlanItems, showNutrition = false }) => {
   if (!mealPlanItems || mealPlanItems.length === 0) {
     return (
       <div className="text-center py-10">
@@ -27,53 +27,36 @@ const MealPlanView = ({ mealPlanItems }) => {
     );
   }
 
-  const mealOrder = ['breakfast', 'cafe_da_manha', 'morning_snack', 'lanche_da_manha', 'lunch', 'almoco', 'afternoon_snack', 'lanche_da_tarde', 'dinner', 'jantar', 'supper', 'ceia'];
-
-  // Agrupar por tipo de refeição
-  const mealsByType = mealPlanItems.reduce((acc, meal) => {
-    const mealType = meal.meal_type;
-    if (!acc[mealType]) {
-      acc[mealType] = [];
-    }
-    acc[mealType].push(meal);
-    return acc;
-  }, {});
-
-  // Ordenar pelos tipos conhecidos
-  const sortedMealTypes = Object.keys(mealsByType).sort(
-    (a, b) => mealOrder.indexOf(a) - mealOrder.indexOf(b)
-  );
+  // Respect the clinician's order instead of regrouping alternatives by type.
+  const orderedMeals = [...mealPlanItems].sort((a, b) => (a.order_index ?? mealPlanItems.indexOf(a)) - (b.order_index ?? mealPlanItems.indexOf(b)));
 
   return (
     <div className="space-y-4">
-      {sortedMealTypes.map((mealType) => (
-        <div key={mealType} className="border-l-4 border-primary/30 pl-4 py-2">
-          <h4 className="font-semibold text-lg mb-3 text-foreground">
-            {translateMealType(mealType)}
-          </h4>
-
-          {mealsByType[mealType].map((meal) => (
-            <div key={meal.id} className="mb-4">
-              {meal.name && (
-                <p className="text-sm text-muted-foreground mb-2 italic">{meal.name}</p>
-              )}
-
+      {orderedMeals.map((meal) => (
+        <section key={meal.id} className="rounded-xl border border-l-4 border-l-primary bg-white p-4">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <h4 className="break-words text-base font-semibold text-foreground">{meal.name || translateMealType(meal.meal_type)}</h4>
+            {meal.meal_time && <span className="rounded bg-primary/10 px-2 py-1 text-sm text-primary">{meal.meal_time.slice(0,5)}</span>}
+          </div>
+          {meal.notes && <p className="mb-3 whitespace-pre-wrap break-words rounded-lg bg-blue-50 p-3 text-sm text-blue-900">{meal.notes}</p>}
               {meal.meal_plan_foods && meal.meal_plan_foods.length > 0 ? (
                 <ul className="space-y-1.5">
                   {meal.meal_plan_foods.map((foodItem, index) => (
                     <li key={index} className="space-y-1">
-                      <div className="flex justify-between items-center text-sm">
-                        <span className="text-foreground">
+                      <div className="flex flex-wrap justify-between items-start gap-x-3 gap-y-1 text-sm">
+                        <span className="min-w-0 flex-1 basis-40 break-words text-foreground">
                           {foodItem.patient_description || foodItem.foods?.name || 'Alimento sem nome'}
                         </span>
                         <span className="font-medium text-primary">
-                          {formatQuantityWithUnit(foodItem.quantity || 0, foodItem.unit || '', foodItem.measure)}
+                          {formatQuantityWithUnit(foodItem.quantity || 0, foodItem.unit || '', foodItem.measure || foodItem.measure_snapshot)}
                         </span>
                       </div>
+                      {foodItem.notes && <p className="whitespace-pre-wrap break-words text-sm text-muted-foreground">{foodItem.notes}</p>}
+                      {showNutrition && <p className="text-xs text-muted-foreground">{roundedNutrition(foodItem.calories)} kcal · Proteínas {roundedNutrition(foodItem.protein)} g · Carboidratos {roundedNutrition(foodItem.carbs)} g · Gorduras {roundedNutrition(foodItem.fat)} g</p>}
                       {foodItem.substitutes && foodItem.substitutes.length > 0 && (
                         <div className="text-xs text-muted-foreground ml-3 bg-muted/30 p-1 rounded italic">
                           <span className="font-semibold text-xs uppercase mr-1">Opções:</span>
-                          {foodItem.substitutes.map(s => s.name).join(', ')}
+                      {foodItem.substitutes.map(s => `${s.name || s.food?.name || 'Alimento'} · ${formatQuantityWithUnit(s.quantity ?? 0,s.unit || 'gram',s.measure || s.measure_snapshot)}`).join('; ')}
                         </div>
                       )}
                     </li>
@@ -82,9 +65,7 @@ const MealPlanView = ({ mealPlanItems }) => {
               ) : (
                 <p className="text-xs text-muted-foreground italic">Nenhum alimento cadastrado</p>
               )}
-            </div>
-          ))}
-        </div>
+        </section>
       ))}
     </div>
   );

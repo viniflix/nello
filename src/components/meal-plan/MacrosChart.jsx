@@ -6,6 +6,7 @@ import { Flame, Target, BarChart3, Beaker, PieChart as PieChartIcon, ArrowRight 
 import ReferenceValuesModal from './ReferenceValuesModal';
 import { summarizeMicronutrients } from '@/lib/utils/micronutrientCoverage';
 import { formatNutrient } from '@/lib/utils';
+import { displayNumber, roundedNutrition } from '@/lib/utils/mealPlanPresentation';
 
 const COMPACT_DRI = {
     fiber: { value: 25, unit: 'g', name: 'Fibras', icon: '🌾' },
@@ -29,104 +30,36 @@ const MacrosChart = ({ protein, carbs, fat, calories, patientId, patientSlugOrId
     const summaryPlanId = readOnly ? (activePlanId || planId) : planId;
 
     const colors = {
-        protein: '#8B3BF2',
-        carbs: '#3B6FF2',
-        fat: '#F28B3B',
+        protein: '#7341ad',
+        carbs: '#2563a6',
+        fat: '#b75b17',
     };
 
-    const totalMacroCals = (protein * 4) + (carbs * 4) + (fat * 9);
+    const totalMacroCals = (displayNumber(protein) * 4) + (displayNumber(carbs) * 4) + (displayNumber(fat) * 9);
     const pPerc = totalMacroCals > 0 ? ((protein * 4) / totalMacroCals) * 100 : 0;
     const cPerc = totalMacroCals > 0 ? ((carbs * 4) / totalMacroCals) * 100 : 0;
     const fPerc = totalMacroCals > 0 ? ((fat * 9) / totalMacroCals) * 100 : 0;
 
     const microTotals = useMemo(() => calculateMicros(plan), [plan]);
 
-    const PieChartSVG = () => {
-        const size = 160;
-        const radius = 64;
-        const centerX = size / 2;
-        const centerY = size / 2;
-        const strokeWidth = 14;
-
-        const polarToCartesian = (cx, cy, r, angleInDeg) => {
-            const rad = (angleInDeg - 90) * Math.PI / 180.0;
-            return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
-        };
-
-        const getArcPath = (startAngle, endAngle) => {
-            if (endAngle - startAngle === 360) {
-                return `M ${centerX} ${centerY - radius} A ${radius} ${radius} 0 1 1 ${centerX} ${centerY + radius} A ${radius} ${radius} 0 1 1 ${centerX} ${centerY - radius}`;
-            }
-            const start = polarToCartesian(centerX, centerY, radius, endAngle);
-            const end = polarToCartesian(centerX, centerY, radius, startAngle);
-            const large = endAngle - startAngle <= 180 ? '0' : '1';
-            return `M ${start.x} ${start.y} A ${radius} ${radius} 0 ${large} 0 ${end.x} ${end.y}`;
-        };
-
-        const pAngle = (pPerc / 100) * 360;
-        const cAngle = (cPerc / 100) * 360;
-
-        const slices = [
-            { key: 'protein', start: 0, end: pAngle, color: colors.protein },
-            { key: 'carbs', start: pAngle, end: pAngle + cAngle, color: colors.carbs },
-            { key: 'fat', start: pAngle + cAngle, end: 360, color: colors.fat },
-        ];
-
-        return (
-            <div className="flex justify-center mb-3 relative">
-                <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-                    {/* Background track */}
-                    <circle cx={centerX} cy={centerY} r={radius} fill="transparent" stroke="#f1f5f9" strokeWidth={strokeWidth} />
-                    {/* Slices */}
-                    {totalMacroCals > 0 && slices.map(s => s.end - s.start > 0 && (
-                        <path
-                            key={s.key}
-                            d={getArcPath(s.start, s.end)}
-                            fill="transparent"
-                            stroke={s.color}
-                            strokeWidth={strokeWidth}
-                            strokeLinecap={s.end - s.start < 360 ? "round" : "butt"}
-                            className="drop-shadow-sm transition-all duration-300"
-                        />
-                    ))}
-                    {/* Circular Fix: Draw the start cap of the first valid slice on top of the last slice */}
-                    {totalMacroCals > 0 && slices.filter(s => s.end - s.start > 0).length > 1 && (
-                        <path
-                            d={getArcPath(0, 0.01)}
-                            fill="transparent"
-                            stroke={slices.find(s => s.end - s.start > 0)?.color}
-                            strokeWidth={strokeWidth}
-                            strokeLinecap="round"
-                        />
-                    )}
-                    {/* Center Text */}
-                    <text x={centerX} y={centerY + 4} textAnchor="middle" className="text-3xl font-bold fill-foreground">{formatNutrient(Math.round(calories))}</text>
-                    <text x={centerX} y={centerY + 20} textAnchor="middle" className="text-xs font-semibold fill-muted-foreground uppercase tracking-widest">Kcal</text>
+    const MacrosView = () => (
+        <div className="space-y-4">
+            <div className="flex justify-center">
+                <svg role="img" aria-label={`Distribuição energética dos macronutrientes: proteínas ${roundedNutrition(pPerc)}%, carboidratos ${roundedNutrition(cPerc)}%, gorduras ${roundedNutrition(fPerc)}%. Energia prescrita: ${roundedNutrition(calories)} kcal.`} width="180" height="180" viewBox="0 0 180 180">
+                    <circle cx="90" cy="90" r="66" fill="none" stroke="#e2e8f0" strokeWidth="16" />
+                    {[{key:'protein',percent:pPerc,offset:0},{key:'carbs',percent:cPerc,offset:pPerc},{key:'fat',percent:fPerc,offset:pPerc+cPerc}].map(slice => slice.percent > 0 && <circle key={slice.key} cx="90" cy="90" r="66" pathLength="100" fill="none" stroke={colors[slice.key]} strokeWidth="16" strokeDasharray={`${slice.percent} ${100-slice.percent}`} strokeDashoffset={-slice.offset} transform="rotate(-90 90 90)" />)}
+                    <text x="90" y="90" textAnchor="middle" fontSize="24" className="font-bold fill-foreground">{roundedNutrition(calories)}</text>
+                    <text x="90" y="110" textAnchor="middle" fontSize="12" className="fill-muted-foreground">kcal no plano</text>
                 </svg>
             </div>
-        );
-    };
-
-    const MacrosView = () => (
-        <div className="flex flex-col h-full justify-center pb-2">
-            {PieChartSVG()}
-            <div className="grid grid-cols-3 gap-2 px-2 mt-2">
-                {[
-                    { label: 'Carboidratos', value: carbs, color: colors.carbs },
-                    { label: 'Proteínas', value: protein, color: colors.protein },
-                    { label: 'Gorduras', value: fat, color: colors.fat }
-                ].map(m => (
-                    <div key={m.label} className="flex flex-col items-center rounded-lg p-2" style={{ backgroundColor: m.color, color: 'white' }}>
-                        <div className="flex items-center gap-1.5 mb-1 text-center">
-                            <span className="text-xs font-medium text-white/90 leading-none">{m.label}</span>
-                        </div>
-                        <div className="flex items-baseline gap-0.5">
-                            <span className="text-sm font-bold text-white">{formatNutrient(Math.round(m.value))}</span>
-                            <span className="text-xs font-medium text-white/70">g</span>
-                        </div>
-                    </div>
-                ))}
-            </div>
+            {!totalMacroCals && <p className="text-center text-sm text-muted-foreground">Sem macronutrientes quantificados.</p>}
+            <dl className="space-y-2">
+                {[{label:'Carboidratos',value:carbs,percent:cPerc,key:'carbs'},{label:'Proteínas',value:protein,percent:pPerc,key:'protein'},{label:'Gorduras',value:fat,percent:fPerc,key:'fat'}].map(macro => <div key={macro.key} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-white p-3 text-sm">
+                    <dt className="inline-flex items-center gap-2"><span aria-hidden="true" className="h-2.5 w-2.5 rounded-full" style={{backgroundColor:colors[macro.key]}} />{macro.label}</dt>
+                    <dd className="font-semibold tabular-nums">{roundedNutrition(macro.value)} g <span className="ml-2 font-normal text-muted-foreground">{roundedNutrition(macro.percent)}%</span></dd>
+                </div>)}
+            </dl>
+            <p className="text-xs text-muted-foreground">Percentuais pela energia dos macros (4/4/9 kcal por grama). Podem diferir da energia informada pelos alimentos.</p>
         </div>
     );
 
@@ -137,7 +70,7 @@ const MacrosChart = ({ protein, carbs, fat, calories, patientId, patientSlugOrId
             return (
                 <div className="flex flex-col items-center justify-center pt-10 text-center space-y-3 px-4">
                     <Beaker className="w-10 h-10 text-muted-foreground/30" />
-                    <p className="text-sm font-medium text-muted-foreground">Nenhum dado de micronutriente</p>
+                    <p className="text-sm font-medium text-muted-foreground">Micronutrientes ainda não informados</p>
                     <p className="text-xs text-muted-foreground/70">As informações dependem do cadastro detalhado dos alimentos.</p>
                 </div>
             );
@@ -158,19 +91,19 @@ const MacrosChart = ({ protein, carbs, fat, calories, patientId, patientSlugOrId
 
                     return (
                         <div key={key} className="space-y-1 bg-white border border-border/60 rounded-md p-1.5 px-2">
-                            <div className="flex items-center justify-between text-xs">
+                            <div className="flex flex-wrap items-center justify-between gap-1 text-sm">
                                 <div className="flex items-center gap-1.5 text-foreground font-medium">
                                     <span>{dri.icon}</span>
                                     <span>{dri.name}</span>
                                 </div>
-                                <div className="flex items-center gap-2">
+                                <div className="flex flex-wrap items-center gap-2">
                                     <span className="font-bold text-foreground">{coverage.known ? `${coverage.unknown ? '≥ ' : ''}${formatNutrient(Math.round(value))} ${dri.unit}${coverage.unknown ? ' (parcial)' : ''}` : 'Não informado'}</span>
                                     {complete && <span className="text-xs text-muted-foreground">/ {formatNutrient(Math.round(dri.value))}{dri.unit}</span>}
                                 </div>
                             </div>
                             <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                                 <div
-                                    className={`h-full rounded-full transition-all duration-700 ${barColor}`}
+                                    className={`h-full rounded-full transition-[width] duration-300 motion-reduce:transition-none ${barColor}`}
                                     style={{ width: complete ? `${Math.max(cappedPct, 2)}%` : '100%' }}
                                 />
                             </div>
@@ -182,7 +115,7 @@ const MacrosChart = ({ protein, carbs, fat, calories, patientId, patientSlugOrId
     };
 
     return (
-        <Card className="flex flex-col bg-background border-border shadow-sm">
+        <Card className="flex min-w-0 flex-col bg-white border-border shadow-sm">
             <CardHeader className="pb-3 pt-5">
                 <CardTitle className="text-base font-semibold flex items-center justify-center w-full">
                     <div className="flex items-center gap-2 text-foreground">
@@ -192,10 +125,10 @@ const MacrosChart = ({ protein, carbs, fat, calories, patientId, patientSlugOrId
                 </CardTitle>
 
                 {/* Tabs */}
-                <div className="flex gap-2 mt-4">
+                <div className="flex flex-wrap gap-2 mt-4">
                     <button
-                        type="button" onClick={() => setActiveTab('macros')}
-                        className={`flex-1 flex items-center justify-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-md border transition-colors ${
+                        type="button" aria-pressed={activeTab === 'macros'} onClick={() => setActiveTab('macros')}
+                        className={`min-w-0 flex-[1_1_9rem] flex flex-wrap items-center justify-center gap-1 min-h-10 px-2 py-2 text-sm font-semibold break-words rounded-md border transition-colors ${
                             activeTab === 'macros'
                                 ? 'bg-primary text-primary-foreground border-primary shadow-sm'
                                 : 'bg-white text-muted-foreground border-border hover:bg-muted'
@@ -205,8 +138,8 @@ const MacrosChart = ({ protein, carbs, fat, calories, patientId, patientSlugOrId
                         Macronutrientes
                     </button>
                     <button
-                        type="button" onClick={() => setActiveTab('micros')}
-                        className={`flex-1 flex items-center justify-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-md border transition-colors ${
+                        type="button" aria-pressed={activeTab === 'micros'} onClick={() => setActiveTab('micros')}
+                        className={`min-w-0 flex-[1_1_9rem] flex flex-wrap items-center justify-center gap-1 min-h-10 px-2 py-2 text-sm font-semibold break-words rounded-md border transition-colors ${
                             activeTab === 'micros'
                                 ? 'bg-primary text-primary-foreground border-primary shadow-sm'
                                 : 'bg-white text-muted-foreground border-border hover:bg-muted'
@@ -219,7 +152,7 @@ const MacrosChart = ({ protein, carbs, fat, calories, patientId, patientSlugOrId
             </CardHeader>
 
             <CardContent className="flex-1 flex flex-col pt-2 pb-5">
-                <div className={compact ? "min-h-[285px]" : "min-h-[350px]"}>
+                <div className={compact ? "min-h-[285px]" : "min-h-[300px]"}>
                     {activeTab === 'macros' ? MacrosView() : MicrosView()}
                 </div>
 

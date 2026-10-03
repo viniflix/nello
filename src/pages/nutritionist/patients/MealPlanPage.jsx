@@ -58,6 +58,10 @@ const MealPlanPage = () => {
     const beforeCloseRef = useRef(null);
 
     const [nutritionistId, setNutritionistId] = useState(null);
+    // Keep only navigation identifiers across access-triggered data reloads.
+    // The preview reloads its protected data on remount and cannot cross scopes.
+    const [planPreview, setPlanPreview] = useState(null);
+    const previewScope = `${nutritionistId}:${patientId}`;
     const [workingDraft, setWorkingDraft] = useState(null);
     const [restoredSession, setRestoredSession] = useState(null);
     const automaticSessionRef = useRef(false);
@@ -156,7 +160,7 @@ const MealPlanPage = () => {
         setShowForm(true);
     };
 
-    useEffect(() => { automaticSessionRef.current = false; setRestoredSession(null); setSessionError(false); setSessionOpening(false); setSupersededSession(null); setCompletedSession(false); }, [nutritionistId, patientId]);
+    useEffect(() => { setPlanPreview(null); automaticSessionRef.current = false; setRestoredSession(null); setSessionError(false); setSessionOpening(false); setSupersededSession(null); setCompletedSession(false); }, [nutritionistId, patientId]);
     const restoreSavedSession = async (saved, cancelled = () => false, automatic = false, onAccepted = () => {}) => {
         const scope = sessionScopeRef.current;
         let plan = null;
@@ -385,14 +389,14 @@ const MealPlanPage = () => {
                         Atualizar
                     </Button>
                 </div>
-                <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-                    <div className="flex-1 min-w-0">
+                <div className="flex flex-wrap items-end justify-between gap-4">
+                    <div className="min-w-0 flex-[1_1_20rem]">
                         <h1 className="text-2xl sm:text-3xl font-bold text-foreground flex items-center gap-2">
                             <Utensils className="h-6 w-6 shrink-0 text-[#5f6f52] sm:h-8 sm:w-8" />
                             <span className="min-w-0 break-words leading-tight">Planos Alimentares</span>
                         </h1>
                         <p className="text-sm text-muted-foreground mt-1">
-                            Gerencie os planos alimentares do paciente
+                            Confira o plano atual, acompanhe a análise e organize as próximas edições.
                         </p>
                     </div>
                     <div className="flex gap-2 w-full sm:w-auto">
@@ -406,7 +410,7 @@ const MealPlanPage = () => {
                         <Button
                             size="sm"
                             onClick={() => setNewPlanChoiceOpen(true)}
-                            className="flex-1 sm:flex-initial h-10 px-6 font-bold bg-primary hover:bg-primary/90 text-white transition-all active:scale-95 shadow-sm"
+                            className="flex-1 sm:flex-initial h-10 px-6 font-bold bg-primary hover:bg-primary/90 text-white transition-colors motion-reduce:transition-none shadow-sm"
                         >
                             <Plus className="h-4 w-4 mr-2" />
                             Novo Plano
@@ -415,7 +419,7 @@ const MealPlanPage = () => {
                 </div>
             </div>
 
-            <div className="flex flex-col gap-[3px]">
+            <div className="flex flex-col gap-5">
                 <WorkingDraftRecovery ownerId={nutritionistId} patientId={patientId} onResume={resumeWorkingDraft} maxDrafts={Math.max(0, 3 - (session.snapshots?.length || 0))} />
                 {/* Centro de Notificações Inteligentes */}
                 {!showForm && (
@@ -471,7 +475,10 @@ const MealPlanPage = () => {
                     getDaysLabel={getDaysLabel}
                 />
 
-                <MealPlanList
+                <MealPlanList key={patientId}
+                    previewState={planPreview?.scope === previewScope ? planPreview : { id: null, fromList: false }}
+                    setPreviewState={value => setPlanPreview({ ...value, scope: previewScope })}
+                    patientId={patientId}
                     activePlan={activePlan}
                     plans={plans}
                     pendingDrafts={pendingDrafts}

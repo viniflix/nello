@@ -41,22 +41,22 @@ const PlanTargetMonitor = ({
     if (needsVentaReview || !targetCalories || targetCalories <= 0) {
         return (
             <Card className="border-dashed border-2 border-amber-200 bg-amber-50 shadow-sm">
-                <CardContent className="p-6">
-                    <div className="flex flex-col md:flex-row items-center justify-between gap-6 text-center md:text-left">
-                        <div className="flex flex-col md:flex-row items-center gap-4">
-                            <div className="p-3 bg-amber-100 rounded-2xl shadow-sm border border-amber-200">
+                <CardContent className="p-4">
+                    <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+                        <div className="flex min-w-0 flex-[1_1_20rem] items-start gap-3">
+                            <div className="shrink-0 p-3 bg-amber-100 rounded-2xl shadow-sm border border-amber-200">
                                 <Calculator className="w-6 h-6 text-amber-600" />
                             </div>
-                            <div>
-                                <h4 className="text-sm font-black text-amber-900 uppercase tracking-tight">Monitoramento Indisponível</h4>
-                                <p className="text-xs text-amber-800 font-medium">{needsVentaReview ? 'A meta VENTA histórica precisa de confirmação clínica antes de ser usada no plano.' : 'O gasto energético (GET) não foi calculado para este paciente.'}</p>
+                            <div className="min-w-0">
+                                <h4 className="text-sm font-semibold text-amber-900">Meta energética ainda não definida</h4>
+                                <p className="mt-1 text-sm text-amber-800">{needsVentaReview ? 'A meta VENTA histórica precisa de confirmação clínica antes de ser usada no plano.' : 'Defina o gasto energético para comparar a energia do plano com a meta.'}</p>
                             </div>
                         </div>
                         <Button
                             variant="default"
-                            size="lg"
+                            size="sm"
                             onClick={() => navigate(`/nutritionist/patients/${patientSegment}/energy-expenditure`)}
-                            className="bg-amber-700 hover:bg-amber-800 text-white font-bold min-h-12 h-auto py-3 max-w-full px-6 rounded-xl shadow-md transition-all active:scale-95"
+                            className="bg-amber-700 hover:bg-amber-800 text-white h-auto min-h-10 py-2 max-w-full px-4 whitespace-normal"
                         >
                             <Target className="w-4 h-4 mr-2" />
                             {needsVentaReview ? 'Revisar cálculo energético' : 'Definir Gasto Energético'}
@@ -70,7 +70,7 @@ const PlanTargetMonitor = ({
     // Calcular diferença e percentual
     const difference = currentCalories - targetCalories;
     const differenceAbs = Math.abs(difference);
-    const percentage = targetCalories > 0 ? Math.min(100, (currentCalories / targetCalories) * 100) : 0;
+    const percentage = targetCalories > 0 ? (currentCalories / targetCalories) * 100 : 0;
 
     // Determinar cor baseado na diferença
     let statusColor = 'text-green-700';
@@ -102,6 +102,7 @@ const PlanTargetMonitor = ({
         statusBg = 'bg-red-100 dark:bg-red-900/30';
         statusBorder = 'border-red-500/50';
         statusIcon = AlertCircle;
+        statusText = difference < 0 ? 'Abaixo da meta' : 'Acima da meta';
         cardBg = 'bg-red-50/50';
     }
 
@@ -177,7 +178,7 @@ const PlanTargetMonitor = ({
                                 <div className="h-10 w-px bg-border/60" />
 
                                 <div className="text-right">
-                                    <p className="text-xs text-muted-foreground font-black uppercase tracking-wider mb-0.5">Alinhamento</p>
+                                    <p className="text-xs text-muted-foreground font-black uppercase tracking-wider mb-0.5">Da meta</p>
                                     <p className={cn("text-lg font-black leading-none", statusColor)}>
                                         {percentage.toFixed(1)}%
                                     </p>
@@ -192,10 +193,10 @@ const PlanTargetMonitor = ({
                                 <div className="relative h-3.5 w-full bg-muted rounded-full overflow-hidden shadow-inner border border-black/5">
                                     <div
                                         className={cn(
-                                            "h-full rounded-full transition-all duration-1000 ease-out",
+                                            "h-full rounded-full transition-[width] duration-300 motion-reduce:transition-none",
                                             dotColor
                                         )}
-                                        style={{ width: `${percentage}%` }}
+                                        style={{ width: `${Math.min(100,Math.max(0,percentage))}%` }}
                                     />
                                     {/* Target Line marker */}
                                     <div className="absolute top-0 bottom-0 w-1 bg-white/40 left-[100%] ml-[-3px] z-10 shadow-sm" />
@@ -203,7 +204,7 @@ const PlanTargetMonitor = ({
                             </div>
 
                             {/* Right-aligned Measurements */}
-                            <div className="flex items-center gap-x-6 gap-y-2 shrink-0 order-2 sm:order-2 ml-0 sm:ml-auto px-1">
+                            <div className="flex max-w-full flex-wrap items-center gap-x-4 gap-y-2 order-2 sm:order-2 ml-0 sm:ml-auto px-1">
                                 <div className="flex items-center gap-2">
                                     <div className={cn("w-2.5 h-2.5 rounded-full border border-black/5 shadow-sm", dotColor)} />
                                     <span className="text-xs font-bold text-muted-foreground whitespace-nowrap">Plano: {Math.round(currentCalories)} <span className="text-xs font-medium ml-0.5">kcal</span></span>

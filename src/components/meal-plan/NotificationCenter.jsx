@@ -36,7 +36,7 @@ const NotificationItem = ({
 
     return (
         <div className={cn(
-            "flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 border rounded-xl border-l-[4px] transition-all hover:shadow-sm",
+            "grid grid-cols-[auto_minmax(0,1fr)] items-start gap-3 p-4 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center border rounded-xl border-l-[4px] transition-shadow motion-reduce:transition-none hover:shadow-sm",
             typeStyles[type] || typeStyles.info
         )}>
             <div className={cn("p-2 rounded-lg bg-white shadow-xs shrink-0", iconStyles[type])}>
@@ -51,7 +51,7 @@ const NotificationItem = ({
                 <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{description}</p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto mt-3 sm:mt-0">
+            <div className="col-span-2 flex flex-wrap items-center gap-2 sm:col-span-1">
                 {actions.map((action, idx) => (
                     <Button
                         key={idx}
@@ -85,7 +85,7 @@ const NotificationCenter = ({
     if (!hasNotifications) return null;
 
     return (
-        <div className="flex flex-col gap-4 mb-8">
+        <div className="flex flex-col gap-4">
             {/* Rascunho Alert */}
             {pendingDrafts.length > 0 && (
                 <NotificationItem

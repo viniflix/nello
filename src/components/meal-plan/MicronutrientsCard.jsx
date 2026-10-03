@@ -130,7 +130,7 @@ export function MicronutrientsCard({ plan }) {
         return (
             <TableRow key={nutrient}>
                 <TableCell className="font-medium">{driInfo.name}</TableCell>
-                <TableCell className="text-right">{coverage.known ? `${partial ? '≥ ' : ''}${formatNutrient(value)}${partial ? ' (parcial)' : ''}` : 'Não informado'}</TableCell>
+                <TableCell className="text-right">{coverage.known ? `${partial ? '≥ ' : ''}${formatNutrient(Math.round(value))}${partial ? ' (parcial)' : ''}` : 'Não informado'}</TableCell>
                 <TableCell className="text-right">{formatNutrient(driInfo.value)}</TableCell>
                 <TableCell className="text-center">{driInfo.unit}</TableCell>
                 <TableCell className="text-right">
@@ -146,11 +146,11 @@ export function MicronutrientsCard({ plan }) {
     };
 
     return (
-        <Card>
+        <Card className="min-w-0 bg-white">
             <CardHeader>
-                <CardTitle>Micronutrientes e Valores DRI</CardTitle>
+                <CardTitle className="tracking-normal">Micronutrientes e Valores DRI</CardTitle>
                 <p className="text-sm text-muted-foreground">
-                    Comparação com Dietary Reference Intakes (DRIs) para adultos
+                    Referências gerais para adultos. Valores incompletos do catálogo não são tratados como zero.
                 </p>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -222,7 +222,7 @@ export function MicronutrientsCard({ plan }) {
                     <p><strong>Insuficiente:</strong> Menos de 75% da recomendação</p>
                     <p><strong>Atenção/Excesso (Sódio):</strong> Acima do limite recomendado</p>
                     <p><strong>Não informado:</strong> a fonte não publicou esse nutriente. Totais parciais não permitem avaliar a adequação. A TACO 4ª edição não informa B12, D, E nem folato.</p>
-                    <p className="text-amber-600"><strong>Nota:</strong> Valores DRI são médias para adultos de 19-50 anos. Ajuste conforme necessidades individuais.</p>
+                    <p className="text-amber-800"><strong>Nota:</strong> Valores DRI são médias para adultos de 19-50 anos. Ajuste conforme necessidades individuais.</p>
                 </div>
             </CardContent>
         </Card>

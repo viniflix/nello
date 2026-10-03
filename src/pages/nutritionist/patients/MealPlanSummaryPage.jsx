@@ -4,494 +4,81 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useResolvedPatientId } from '@/hooks/useResolvedPatientId';
 import { patientRoute } from '@/lib/utils/patientRoutes';
-import { ArrowLeft, Settings, Trash2 } from 'lucide-react';
+import { ArrowLeft, Settings, Trash2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { PieChart, Pie, Cell, Legend, Tooltip } from 'recharts';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow
-} from '@/components/ui/table';
+import { PieChart, Pie, Cell, Tooltip } from 'recharts';
 import ReferenceValuesModal from '@/components/meal-plan/ReferenceValuesModal';
 import { MicronutrientsCard } from '@/components/meal-plan/MicronutrientsCard';
+import PlanNutritionTotals, { nutrientStyles } from '@/components/meal-plan/PlanNutritionTotals';
 import { getMealPlanById, getReferenceValues, deleteReferenceValues } from '@/lib/supabase/meal-plan-queries';
+import { displayNumber, roundedNutrition, referenceTargets, targetComparison, mealColors } from '@/lib/utils/mealPlanPresentation';
 import { useToast } from '@/components/ui/use-toast';
 import { toPortugueseError } from '@/lib/utils/errorMessages';
 
-const MEAL_COLORS = [
-    '#8884d8', // Roxo
-    '#82ca9d', // Verde
-    '#ffc658', // Amarelo
-    '#ff8042', // Laranja
-    '#0088fe', // Azul
-    '#00c49f', // Verde claro
-    '#ffbb28', // Amarelo escuro
-    '#ff6b6b', // Vermelho
-    '#a57ed0'  // Lilás
-];
-
-const MealPlanSummaryPage = () => {
+export default function MealPlanSummaryPage() {
     const { patientId, paramValue } = useResolvedPatientId();
     const { planId } = useParams();
     const navigate = useNavigate();
     const { toast } = useToast();
-
-    const [loading, setLoading] = useState(true);
-    const [plan, setPlan] = useState(null);
-    const [referenceValues, setReferenceValues] = useState(null);
+    const [loadedData, setData] = useState({ plan: null, reference: null, loading: true, error: false, referenceError: false });
+    const [revision, setRevision] = useState(0);
     const [showRefModal, setShowRefModal] = useState(false);
-
+    const [deleting, setDeleting] = useState(false);
+    const scope = `${patientId}:${planId}`;
+    const data = loadedData.scope === scope ? loadedData : {plan:null,reference:null,loading:true,error:false,referenceError:false};
     useEffect(() => {
-        let isMounted = true;
-
-        const loadData = async () => {
-            setLoading(true);
-            try {
-                const [planResult, refResult] = await Promise.all([
-                    getMealPlanById(planId),
-                    getReferenceValues(planId)
-                ]);
-
-                if (planResult.error) throw planResult.error;
-
-                if (isMounted) {
-                    setPlan(planResult.data);
-                    setReferenceValues(refResult.data);
-                }
-            } catch (error) {
-                logDiagnostic('error', 'pages/nutritionist/patients/MealPlanSummaryPage.jsx:65', 'Erro ao carregar dados:', error);
-                if (isMounted) {
-                    toast({
-                        title: 'Erro de conexão',
-                        description: toPortugueseError(error),
-                        variant: 'destructive'
-                    });
-                }
-            } finally {
-                if (isMounted) {
-                    setLoading(false);
-                }
-            }
-        };
-
-        loadData();
-
-        return () => {
-            isMounted = false;
-        };
-    }, [planId, toast]);
-
-    const loadDataManual = async () => {
-        setLoading(true);
-        try {
-            const [planResult, refResult] = await Promise.all([
-                getMealPlanById(planId),
-                getReferenceValues(planId)
-            ]);
-
+        let active = true;
+        setData({ scope, plan: null, reference: null, loading: true, error: false, referenceError: false });
+        if (!patientId || !planId) return () => { active = false; };
+        void Promise.all([getMealPlanById(planId), getReferenceValues(planId)]).then(([planResult, refResult]) => {
+            if (!active) return;
             if (planResult.error) throw planResult.error;
-
-            setPlan(planResult.data);
-            setReferenceValues(refResult.data);
-        } catch (error) {
-            logDiagnostic('error', 'pages/nutritionist/patients/MealPlanSummaryPage.jsx:100', 'Erro ao carregar dados:', error);
-            toast({
-                title: 'Erro',
-                description: toPortugueseError(error),
-                variant: 'destructive'
-            });
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleRefModalClose = () => {
-        setShowRefModal(false);
-        // Recarregar valores de referência
-        loadDataManual();
-    };
-
-    const handleDeleteReferenceValues = async () => {
-        if (!window.confirm('Tem certeza que deseja excluir os valores de referência? Esta ação não pode ser desfeita.')) {
-            return;
-        }
-
-        setLoading(true);
+            if (planResult.data?.patient_id && planResult.data.patient_id !== patientId) throw new Error('Plan scope mismatch');
+            setData({ scope, plan: planResult.data, reference: refResult.error ? null : refResult.data, loading: false, error: false, referenceError: Boolean(refResult.error) });
+        }).catch(error => {
+            if (!active) return;
+            logDiagnostic('error', 'MealPlanSummaryPage:load', 'Falha ao carregar análise', error?.code || 'unknown');
+            setData({ scope, plan: null, reference: null, loading: false, error: true, referenceError: false });
+        });
+        return () => { active = false; };
+    }, [patientId, planId, revision, scope]);
+    const back = () => navigate(patientRoute({ id: patientId, slug: paramValue }, 'meal-plan'));
+    const removeReference = async () => {
+        if (!window.confirm('Excluir as metas deste plano? Os alimentos e o plano serão mantidos.')) return;
+        setDeleting(true);
         try {
             const result = await deleteReferenceValues(planId);
-
             if (result.error) throw result.error;
-
-            toast({
-                title: 'Valores deletados',
-                description: 'Valores de referência foram excluídos com sucesso.',
-            });
-
-            // Recarregar dados para atualizar a UI
-            loadDataManual();
-        } catch (error) {
-            logDiagnostic('error', 'pages/nutritionist/patients/MealPlanSummaryPage.jsx:136', 'Erro ao deletar valores:', error);
-            toast({
-                title: 'Erro ao deletar',
-                description: toPortugueseError(error),
-                variant: 'destructive'
-            });
-        } finally {
-            setLoading(false);
-        }
+            toast({ title: 'Metas excluídas', description: 'O plano alimentar foi mantido.' });
+            setRevision(value => value + 1);
+        } catch (error) { toast({ title: 'Não foi possível excluir as metas', description: toPortugueseError(error), variant: 'destructive' }); }
+        finally { setDeleting(false); }
     };
-
-    // Preparar dados para o gráfico de pizza
-    const prepareChartData = () => {
-        if (!plan || !plan.meals) return [];
-
-        return plan.meals.filter(meal => meal.include_in_totals !== false).map(meal => ({
-            name: meal.name,
-            value: meal.total_calories || 0
-        })).filter(item => item.value > 0);
-    };
-
-    // Calcular metas de referência em gramas
-    const calculateTargets = () => {
-        if (!referenceValues) return null;
-
-        const weight = parseFloat(referenceValues.weight_kg);
-        const energy = parseFloat(referenceValues.total_energy_kcal);
-
-        let proteinG, carbsG, fatG;
-
-        if (referenceValues.macro_mode === 'percentage') {
-            proteinG = (energy * referenceValues.protein_percentage) / 4;
-            carbsG = (energy * referenceValues.carbs_percentage) / 4;
-            fatG = (energy * referenceValues.fat_percentage) / 9;
-        } else {
-            proteinG = weight * referenceValues.protein_g_per_kg;
-            carbsG = weight * referenceValues.carbs_g_per_kg;
-            fatG = weight * referenceValues.fat_g_per_kg;
-        }
-
-        return {
-            protein: proteinG,
-            carbs: carbsG,
-            fat: fatG
-        };
-    };
-
-    // Calcular adequação (verde/amarelo/vermelho)
-    const getAdequacyStatus = (value, target) => {
-        const percentage = (value / target) * 100;
-
-        if (percentage >= 95 && percentage <= 105) return 'adequate'; // Verde
-        if (percentage >= 85 && percentage <= 115) return 'adjust'; // Amarelo
-        return 'inadequate'; // Vermelho
-    };
-
-    const getAdequacyColor = (status) => {
-        switch (status) {
-            case 'adequate': return 'text-green-600 bg-green-50';
-            case 'adjust': return 'text-yellow-600 bg-yellow-50';
-            case 'inadequate': return 'text-red-600 bg-red-50';
-            default: return '';
-        }
-    };
-
-    const chartData = prepareChartData();
-    const targets = calculateTargets();
-
-    if (loading) {
-        return (
-            <div className="p-8 flex justify-center">
-                <p>Carregando...</p>
+    const { plan, reference, loading, error, referenceError } = data;
+    const targets = referenceTargets(reference);
+    const distribution = (plan?.meals || []).filter(meal => meal.include_in_totals !== false && displayNumber(meal.total_calories) > 0).map((meal, index) => ({ name: meal.name, value: displayNumber(meal.total_calories), color: mealColors[index % mealColors.length] }));
+    const chartTotal = distribution.reduce((sum, meal) => sum + meal.value, 0);
+    return <div className="mx-auto max-w-6xl space-y-5 p-4 sm:p-6">
+        <div className="flex flex-wrap items-center justify-between gap-3"><Button variant="ghost" onClick={back} className="gap-2"><ArrowLeft className="h-4 w-4" />Voltar aos planos</Button>{plan && <Button onClick={() => setShowRefModal(true)} className="gap-2"><Settings className="h-4 w-4" />Configurar metas</Button>}</div>
+        <header><p className="text-sm font-medium text-primary">Análise do plano alimentar</p><h1 className="mt-1 break-words text-2xl font-bold">Resumo nutricional</h1><p className="mt-1 break-words text-muted-foreground">{plan?.name || 'Energia, nutrientes e comparação com as metas do plano.'}</p></header>
+        {loading ? <p role="status" className="rounded-xl border bg-white p-8 text-center">Carregando análise nutricional…</p> : !plan ? <div role="alert" className="rounded-xl border bg-white p-6"><p>{error ? 'Não foi possível carregar a análise. Tente novamente.' : 'Este plano não está disponível.'}</p><Button variant="outline" className="mt-3 gap-2" onClick={() => setRevision(value => value + 1)}><RefreshCw className="h-4 w-4" />Tentar novamente</Button></div> : <>
+            <PlanNutritionTotals plan={plan} />
+            <p className="text-sm text-muted-foreground">Totais do dia consideram apenas as refeições incluídas na análise. Opções alternativas permanecem no plano.</p>
+            <div className="grid min-w-0 gap-5 lg:grid-cols-2">
+                <Card className="min-w-0 bg-white"><CardHeader><CardTitle className="tracking-normal text-lg">Energia por refeição</CardTitle></CardHeader><CardContent>
+                    {distribution.length ? <><div aria-hidden="true"><VisibleChart width="100%" height={230}><PieChart accessibilityLayer={false} tabIndex={-1}><Pie rootTabIndex={-1} data={distribution} dataKey="value" innerRadius={62} outerRadius={88} paddingAngle={2} isAnimationActive={false}>{distribution.map((meal, index) => <Cell key={index} fill={meal.color} />)}</Pie><Tooltip formatter={value => `${roundedNutrition(value)} kcal`} /></PieChart></VisibleChart></div><ul aria-label="Distribuição de energia por refeição" className="space-y-2">{distribution.map((meal, index) => <li key={index} className="flex items-start justify-between gap-3 text-sm"><span className="min-w-0 inline-flex items-start gap-2 break-words"><span aria-hidden="true" className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: meal.color }} />{meal.name}</span><span className="shrink-0 tabular-nums">{roundedNutrition(meal.value)} kcal · {roundedNutrition(meal.value / chartTotal * 100)}%</span></li>)}</ul></> : <p className="py-8 text-center text-sm text-muted-foreground">Não há energia quantificada nas refeições incluídas.</p>}
+                </CardContent></Card>
+                <Card className="min-w-0 bg-white"><CardHeader><CardTitle className="tracking-normal text-lg">Plano e metas</CardTitle></CardHeader><CardContent className="space-y-3">
+                    {targets ? <><p className="text-sm text-muted-foreground">Compare a prescrição com as metas que você definiu. Faixa de referência: 95% a 105%.</p>{nutrientStyles.map(item => {
+                        const comparison = targetComparison(plan[`daily_${item.key}`], targets[item.key]);
+                        return <div key={item.key} className="rounded-xl border p-3"><div className="flex flex-wrap items-center justify-between gap-2"><h3 className="text-sm font-semibold">{item.label}</h3><span className={`rounded px-2 py-1 text-xs font-medium ${comparison.className}`}>{comparison.label}</span></div><p className="mt-2 text-sm">Prescrito: <strong>{roundedNutrition(plan[`daily_${item.key}`])} {item.unit}</strong> · Meta: {targets[item.key] > 0 ? `${roundedNutrition(targets[item.key])} ${item.unit}` : 'não definida'}</p>{comparison.percentage !== null && <p className="mt-1 text-xs text-muted-foreground">{roundedNutrition(comparison.percentage)}% da meta</p>}</div>;
+                    })}<Button variant="ghost" disabled={deleting} className="gap-2 text-destructive" onClick={removeReference}><Trash2 className="h-4 w-4" />{deleting ? 'Excluindo…' : 'Excluir metas'}</Button></> : <div className="rounded-xl border border-blue-200 bg-blue-50 p-4"><p className="text-sm text-blue-950">{referenceError ? 'As metas não puderam ser carregadas. Os totais do plano continuam disponíveis.' : 'Defina metas para comparar energia e macronutrientes.'}</p><Button variant="outline" className="mt-3" onClick={() => referenceError ? setRevision(value => value + 1) : setShowRefModal(true)}>{referenceError ? 'Tentar carregar metas' : 'Configurar metas'}</Button></div>}
+                </CardContent></Card>
             </div>
-        );
-    }
-
-    if (!plan) {
-        return (
-            <div className="p-8">
-                <Alert variant="destructive">
-                    <AlertDescription>Plano não encontrado</AlertDescription>
-                </Alert>
-            </div>
-        );
-    }
-
-    return (
-        <div className="container mx-auto p-6 space-y-6">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => navigate(patientRoute({ id: patientId, slug: paramValue }, 'meal-plan'))}
-                        className="gap-2 shrink-0"
-                    >
-                        <ArrowLeft className="w-4 h-4 shrink-0" />
-                        Voltar
-                    </Button>
-                    <div>
-                        <h1 className="text-2xl font-bold">Resumo Nutricional</h1>
-                        <p className="text-muted-foreground">{plan.name}</p>
-                    </div>
-                </div>
-                <Button onClick={() => setShowRefModal(true)}>
-                    <Settings className="h-4 w-4 mr-2" />
-                    Configurar Valores de Referência
-                </Button>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Gráfico de Distribuição de Calorias */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Distribuição de Calorias por Refeição</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        {chartData.length > 0 ? (
-                            <VisibleChart width="100%" height={300}>
-                                <PieChart>
-                                    <Pie
-                                        data={chartData}
-                                        cx="50%"
-                                        cy="50%"
-                                        labelLine={false}
-                                        label={({ name, percent }) =>
-                                            `${name}: ${(percent * 100).toFixed(0)}%`
-                                        }
-                                        outerRadius={80}
-                                        fill="#8884d8"
-                                        dataKey="value"
-                                    >
-                                        {chartData.map((entry, index) => (
-                                            <Cell
-                                                key={`cell-${index}`}
-                                                fill={MEAL_COLORS[index % MEAL_COLORS.length]}
-                                            />
-                                        ))}
-                                    </Pie>
-                                    <Tooltip formatter={(value) => `${value} kcal`} />
-                                    <Legend />
-                                </PieChart>
-                            </VisibleChart>
-                        ) : (
-                            <div className="h-[300px] flex items-center justify-center text-muted-foreground">
-                                Nenhuma refeição com calorias registradas
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
-
-                {/* Totais Diários */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Totais Diários</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="p-4 border rounded-lg">
-                                <div className="text-sm text-muted-foreground">Energia</div>
-                                <div className="text-3xl font-bold">{plan.daily_calories?.toFixed(0) || 0}</div>
-                                <div className="text-xs text-muted-foreground">kcal</div>
-                            </div>
-                            <div className="p-4 border rounded-lg">
-                                <div className="text-sm text-muted-foreground">Proteínas</div>
-                                <div className="text-3xl font-bold">{plan.daily_protein?.toFixed(0) || 0}</div>
-                                <div className="text-xs text-muted-foreground">g</div>
-                            </div>
-                            <div className="p-4 border rounded-lg">
-                                <div className="text-sm text-muted-foreground">Carboidratos</div>
-                                <div className="text-3xl font-bold">{plan.daily_carbs?.toFixed(0) || 0}</div>
-                                <div className="text-xs text-muted-foreground">g</div>
-                            </div>
-                            <div className="p-4 border rounded-lg">
-                                <div className="text-sm text-muted-foreground">Gorduras</div>
-                                <div className="text-3xl font-bold">{plan.daily_fat?.toFixed(0) || 0}</div>
-                                <div className="text-xs text-muted-foreground">g</div>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
-
-            {/* Comparação com Valores de Referência */}
-            {referenceValues && targets && (
-                <Card>
-                    <CardHeader>
-                        <div className="flex items-center justify-between">
-                            <CardTitle>Comparação com Valores de Referência</CardTitle>
-                            <Button
-                                variant="destructive"
-                                size="sm"
-                                onClick={handleDeleteReferenceValues}
-                                disabled={loading}
-                            >
-                                <Trash2 className="h-4 w-4 mr-2" />
-                                Excluir Valores
-                            </Button>
-                        </div>
-                    </CardHeader>
-                    <CardContent>
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Macronutriente</TableHead>
-                                    <TableHead className="text-right">Prescrito</TableHead>
-                                    <TableHead className="text-right">Meta</TableHead>
-                                    <TableHead className="text-right">Adequação (%)</TableHead>
-                                    <TableHead>Status</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {/* Energia */}
-                                <TableRow>
-                                    <TableCell className="font-medium">Energia (kcal)</TableCell>
-                                    <TableCell className="text-right">{plan.daily_calories?.toFixed(0) || 0}</TableCell>
-                                    <TableCell className="text-right">{referenceValues.total_energy_kcal}</TableCell>
-                                    <TableCell className="text-right">
-                                        {((plan.daily_calories / referenceValues.total_energy_kcal) * 100).toFixed(0)}%
-                                    </TableCell>
-                                    <TableCell>
-                                        <span className={`px-2 py-1 rounded text-xs font-semibold ${
-                                            getAdequacyColor(getAdequacyStatus(plan.daily_calories, referenceValues.total_energy_kcal))
-                                        }`}>
-                                            {getAdequacyStatus(plan.daily_calories, referenceValues.total_energy_kcal) === 'adequate' ? 'Adequado' :
-                                             getAdequacyStatus(plan.daily_calories, referenceValues.total_energy_kcal) === 'adjust' ? 'Ajustar' : 'Inadequado'}
-                                        </span>
-                                    </TableCell>
-                                </TableRow>
-
-                                {/* Proteínas */}
-                                <TableRow>
-                                    <TableCell className="font-medium">Proteínas (g)</TableCell>
-                                    <TableCell className="text-right">{plan.daily_protein?.toFixed(0) || 0}</TableCell>
-                                    <TableCell className="text-right">{targets.protein.toFixed(0)}</TableCell>
-                                    <TableCell className="text-right">
-                                        {((plan.daily_protein / targets.protein) * 100).toFixed(0)}%
-                                    </TableCell>
-                                    <TableCell>
-                                        <span className={`px-2 py-1 rounded text-xs font-semibold ${
-                                            getAdequacyColor(getAdequacyStatus(plan.daily_protein, targets.protein))
-                                        }`}>
-                                            {getAdequacyStatus(plan.daily_protein, targets.protein) === 'adequate' ? 'Adequado' :
-                                             getAdequacyStatus(plan.daily_protein, targets.protein) === 'adjust' ? 'Ajustar' : 'Inadequado'}
-                                        </span>
-                                    </TableCell>
-                                </TableRow>
-
-                                {/* Carboidratos */}
-                                <TableRow>
-                                    <TableCell className="font-medium">Carboidratos (g)</TableCell>
-                                    <TableCell className="text-right">{plan.daily_carbs?.toFixed(0) || 0}</TableCell>
-                                    <TableCell className="text-right">{targets.carbs.toFixed(0)}</TableCell>
-                                    <TableCell className="text-right">
-                                        {((plan.daily_carbs / targets.carbs) * 100).toFixed(0)}%
-                                    </TableCell>
-                                    <TableCell>
-                                        <span className={`px-2 py-1 rounded text-xs font-semibold ${
-                                            getAdequacyColor(getAdequacyStatus(plan.daily_carbs, targets.carbs))
-                                        }`}>
-                                            {getAdequacyStatus(plan.daily_carbs, targets.carbs) === 'adequate' ? 'Adequado' :
-                                             getAdequacyStatus(plan.daily_carbs, targets.carbs) === 'adjust' ? 'Ajustar' : 'Inadequado'}
-                                        </span>
-                                    </TableCell>
-                                </TableRow>
-
-                                {/* Gorduras */}
-                                <TableRow>
-                                    <TableCell className="font-medium">Gorduras (g)</TableCell>
-                                    <TableCell className="text-right">{plan.daily_fat?.toFixed(0) || 0}</TableCell>
-                                    <TableCell className="text-right">{targets.fat.toFixed(0)}</TableCell>
-                                    <TableCell className="text-right">
-                                        {((plan.daily_fat / targets.fat) * 100).toFixed(0)}%
-                                    </TableCell>
-                                    <TableCell>
-                                        <span className={`px-2 py-1 rounded text-xs font-semibold ${
-                                            getAdequacyColor(getAdequacyStatus(plan.daily_fat, targets.fat))
-                                        }`}>
-                                            {getAdequacyStatus(plan.daily_fat, targets.fat) === 'adequate' ? 'Adequado' :
-                                             getAdequacyStatus(plan.daily_fat, targets.fat) === 'adjust' ? 'Ajustar' : 'Inadequado'}
-                                        </span>
-                                    </TableCell>
-                                </TableRow>
-                            </TableBody>
-                        </Table>
-                    </CardContent>
-                </Card>
-            )}
-
-            {/* Tabela de Refeições */}
-            <Card>
-                <CardHeader>
-                    <CardTitle>Distribuição por Refeição</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Refeição</TableHead>
-                                <TableHead>Horário</TableHead>
-                                <TableHead className="text-right">Calorias</TableHead>
-                                <TableHead className="text-right">Proteínas (g)</TableHead>
-                                <TableHead className="text-right">Carboidratos (g)</TableHead>
-                                <TableHead className="text-right">Gorduras (g)</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {plan.meals && plan.meals.map((meal) => (
-                                <TableRow key={meal.id}>
-                                    <TableCell className="font-medium">{meal.name}{meal.include_in_totals === false && <span className="block text-xs text-muted-foreground">Alternativa · fora dos totais</span>}</TableCell>
-                                    <TableCell>{meal.meal_time || '-'}</TableCell>
-                                    <TableCell className="text-right">{meal.total_calories?.toFixed(0) || 0}</TableCell>
-                                    <TableCell className="text-right">{meal.total_protein?.toFixed(0) || 0}</TableCell>
-                                    <TableCell className="text-right">{meal.total_carbs?.toFixed(0) || 0}</TableCell>
-                                    <TableCell className="text-right">{meal.total_fat?.toFixed(0) || 0}</TableCell>
-                                </TableRow>
-                            ))}
-                            <TableRow className="font-bold bg-muted/50">
-                                <TableCell colSpan={2}>TOTAL</TableCell>
-                                <TableCell className="text-right">{plan.daily_calories?.toFixed(0) || 0}</TableCell>
-                                <TableCell className="text-right">{plan.daily_protein?.toFixed(0) || 0}</TableCell>
-                                <TableCell className="text-right">{plan.daily_carbs?.toFixed(0) || 0}</TableCell>
-                                <TableCell className="text-right">{plan.daily_fat?.toFixed(0) || 0}</TableCell>
-                            </TableRow>
-                        </TableBody>
-                    </Table>
-                </CardContent>
-            </Card>
-
-            {/* Micronutrientes e DRI */}
+            <Card className="bg-white"><CardHeader><CardTitle className="tracking-normal text-lg">Nutrientes por refeição</CardTitle></CardHeader><CardContent><div role="region" aria-label="Tabela de nutrientes por refeição" tabIndex={0} className="overflow-x-auto rounded-lg border focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"><table className="w-full text-sm"><caption className="sr-only">Refeições e seus nutrientes. Alternativas não entram no total diário.</caption><thead className="bg-slate-50"><tr>{['Refeição', 'Horário', 'Energia (kcal)', 'Proteínas (g)', 'Carboidratos (g)', 'Gorduras (g)'].map(label => <th key={label} scope="col" className="whitespace-nowrap p-3 text-left font-medium">{label}</th>)}</tr></thead><tbody>{(plan.meals || []).map((meal, index) => <tr key={meal.id || index} className="border-t"><th scope="row" className="p-3 text-left font-medium">{meal.name}{meal.include_in_totals === false && <span className="block text-xs text-muted-foreground">Alternativa · fora dos totais</span>}</th><td className="p-3">{meal.meal_time?.slice(0, 5) || '—'}</td>{nutrientStyles.map(item => <td key={item.key} className="p-3 tabular-nums">{roundedNutrition(meal[`total_${item.key}`])}</td>)}</tr>)}</tbody><tfoot className="border-t bg-primary/5 font-semibold"><tr><th scope="row" colSpan={2} className="p-3 text-left">Total diário</th>{nutrientStyles.map(item => <td key={item.key} className="p-3 tabular-nums">{roundedNutrition(plan[`daily_${item.key}`])}</td>)}</tr></tfoot></table></div></CardContent></Card>
             <MicronutrientsCard plan={plan} />
-
-            {/* Aviso se não tiver valores de referência */}
-            {!referenceValues && (
-                <Alert>
-                    <AlertDescription>
-                        Configure os valores de referência para ver a análise de adequação nutricional.
-                        <Button
-                            variant="link"
-                            className="px-2"
-                            onClick={() => setShowRefModal(true)}
-                        >
-                            Configurar agora
-                        </Button>
-                    </AlertDescription>
-                </Alert>
-            )}
-
-            {/* Modal de Valores de Referência */}
-            <ReferenceValuesModal
-                isOpen={showRefModal}
-                onClose={handleRefModalClose}
-                planId={planId}
-            />
-        </div>
-    );
-};
-
-export default MealPlanSummaryPage;
+            <ReferenceValuesModal isOpen={showRefModal} onClose={() => { setShowRefModal(false); setRevision(value => value + 1); }} planId={planId} />
+        </>}
+    </div>;
+}
