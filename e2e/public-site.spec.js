@@ -4,6 +4,25 @@ import {publicInformationPaths} from '../src/features/privacy/publicInformationP
 import {getRouteMetadata} from '../src/app/router/metadataPolicy.js';
 
 async function audit(page) {
+ await page.evaluate(async()=>{await document.fonts.ready;await document.fonts.load('600 24px ClashDisplay');});
+ const typography=await page.evaluate(()=>[...document.querySelectorAll('.nello-public-site h1,.nello-public-site h2,.nello-public-site h3')].filter(el=>!el.closest('.site-footer')).flatMap(el=>{
+  const style=getComputedStyle(el),size=parseFloat(style.fontSize),issues=[];
+  if(!style.fontFamily.startsWith('ClashDisplay')||!document.fonts.check('600 24px ClashDisplay'))issues.push('heading font not loaded');
+  if(style.textTransform!=='uppercase')issues.push('heading identity not uppercase');
+  if(parseFloat(style.letterSpacing)<0||parseFloat(style.wordSpacing)<size*.1)issues.push('compressed heading spacing');
+  const walker=document.createTreeWalker(el,NodeFilter.SHOW_TEXT);let node;
+  while((node=walker.nextNode())){
+   if(parseFloat(getComputedStyle(document.documentElement).fontSize)<32)for(const word of node.textContent.matchAll(/[\p{L}\p{N}]+/gu)){
+    const range=document.createRange();range.setStart(node,word.index);range.setEnd(node,word.index+word[0].length);if(range.getClientRects().length>1)issues.push('heading word split across lines');
+   }
+   for(const match of node.textContent.matchAll(/\S( +)\S/g)){
+   const before=document.createRange(),after=document.createRange();before.setStart(node,match.index);before.setEnd(node,match.index+1);after.setStart(node,match.index+1+match[1].length);after.setEnd(node,match.index+2+match[1].length);
+   const a=before.getBoundingClientRect(),b=after.getBoundingClientRect();if(Math.abs(a.y-b.y)<1&&b.left-a.right<size*.15)issues.push('words visually crowded');
+   }
+  }
+  return issues.map(issue=>({text:el.textContent,issue}));
+ }));
+ expect(typography).toEqual([]);
  const result=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze();
  expect(result.violations.map(v=>({id:v.id,nodes:v.nodes.map(n=>({target:n.target,summary:n.failureSummary}))}))).toEqual([]);
  const overflow=await page.evaluate(()=>[...document.querySelectorAll('.nello-public-site *')].filter(el=>el.getBoundingClientRect().right>innerWidth+1).slice(0,10).map(el=>({tag:el.tagName,class:el.className,text:el.textContent?.slice(0,40)})));

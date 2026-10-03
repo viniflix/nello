@@ -7,9 +7,17 @@
 @media(max-width:400px){.site-product-body{padding:16px}.site-demo-metrics{grid-template-columns:minmax(0,1fr)}.site-demo-meal{padding:14px}.site-feature{padding:22px}.site-footer-grid{grid-template-columns:minmax(0,1fr)}}
 @media(prefers-reduced-motion:reduce){.nello-public-site *{animation:none!important;transition:none!important;scroll-behavior:auto!important}.site-action:hover,.site-feature:hover{transform:none}}
 .site-dark-section .site-inline-link{color:#fff!important}.site-dark-section .site-check-list svg{color:#d5e1d5}
-.nello-public-site h1,.nello-public-site h2,.nello-public-site h3{font-family:Inter,system-ui,sans-serif;letter-spacing:-.035em}.site-product-heading h2,.site-feature h3,.site-document-body h2{letter-spacing:-.02em}
+.nello-public-site h1,.nello-public-site h2,.nello-public-site h3{font-family:ClashDisplay,Inter,system-ui,sans-serif;letter-spacing:.02em;word-spacing:.14em;line-height:1.22;font-weight:600;text-transform:uppercase}.site-footer h2{font-family:Inter,system-ui,sans-serif;letter-spacing:normal;word-spacing:normal;text-transform:none}
 .site-eyebrow{color:#9f370e}.site-product figcaption{font-size:.72rem}
 .site-action-compact-label{display:none}
+@media(min-width:761px){.nello-public-site .site-hero h1{font-size:clamp(1.75rem,3.4vw,3.2rem);line-height:1.2;text-wrap:balance}}
+@media(max-width:760px){
+  .nello-public-site .site-hero h1,.nello-public-site .site-subhero h1{font-size:clamp(1.7rem,7.5vw,2rem);line-height:1.25;text-wrap:balance}
+  .nello-public-site .site-section-heading h2,.nello-public-site .site-cta h2{font-size:clamp(1.55rem,6.5vw,2rem);line-height:1.25;text-wrap:balance}
+}
+@media(max-width:1000px){.nello-public-site .site-patient-card h3{font-size:1.125rem;line-height:1.4;text-wrap:balance}}
+
+
 
 /* The landing has its own phone composition; larger screens keep the original design. */
 @media(max-width:760px){
@@ -23,7 +31,7 @@
   .site-landing .site-hero{padding-block:28px 40px;gap:28px}
   .site-landing .site-hero>div{text-align:center}
   .site-landing .site-hero-tag{font-size:.7rem;margin-bottom:18px}
-  .site-landing .site-hero h1{font-size:clamp(1.8rem,8vw,2.15rem);line-height:1.16;letter-spacing:-.035em;margin-bottom:18px;text-wrap:balance}
+  .site-landing .site-hero h1{font-size:clamp(1.7rem,7.5vw,2rem);line-height:1.25;letter-spacing:.02em;margin-bottom:18px;text-wrap:balance}
   .site-landing .site-hero h1 em{display:inline-block;margin-top:5px}
   .site-landing .site-hero p{font-size:.9375rem;line-height:1.65;margin-inline:auto;max-width:36ch}
   .site-landing .site-hero-actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,8rem),1fr));gap:8px;margin-block:20px 14px}
@@ -39,8 +47,8 @@
   .site-landing .site-product-heading h2{font-size:1.1rem;line-height:1.25}
   .site-landing .site-demo-metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-block:16px}
   .site-landing .site-demo-metrics>div{padding:12px;gap:6px}
-  .site-landing .site-demo-metrics span{font-size:.68rem}
-  .site-landing .site-demo-metrics strong{font-size:.75rem}
+  .site-landing .site-demo-metrics span{font-size:.75rem}
+  .site-landing .site-demo-metrics strong{font-size:.8125rem}
   .site-landing .site-demo-meal{padding:14px}
   .site-landing .site-demo-note{padding:12px;gap:8px}
   .site-landing .site-product figcaption{padding:0 16px 14px;text-align:center}
@@ -53,25 +61,26 @@
   .site-landing .site-feature-grid{gap:12px}
   .site-landing .site-feature{display:grid;grid-template-columns:40px minmax(0,1fr);gap:8px 14px;padding:20px;border-radius:16px}
   .site-landing .site-feature-icon{grid-row:1/3;width:40px;height:40px;padding:9px;margin:0}
-  .site-landing .site-feature h3{grid-column:2;font-size:1.05rem;line-height:1.3;margin:0}
-  .site-landing .site-feature p{grid-column:2;font-size:.8125rem;line-height:1.7;margin:0}
+  .site-landing .site-feature h3{grid-column:2;font-size:1.125rem;line-height:1.3;margin:0;align-self:center}
+  .site-landing .site-feature p{grid-column:1/-1;font-size:.875rem;line-height:1.7;margin:4px 0 0}
+  .site-landing .site-feature-icon{grid-row:1}
   .site-landing .site-steps{gap:12px;margin-top:24px}
   .site-landing .site-step{padding:20px;border:1px solid #62766b;border-radius:16px;background:#ffffff08}
   .site-landing .site-step>span{margin-bottom:10px;font-size:.75rem}
   .site-landing .site-step h3{font-size:1.15rem;line-height:1.3;margin-bottom:10px}
   .site-landing .site-patient-section{gap:24px}
   .site-landing .site-patient-card{padding:22px;border-radius:18px}
-  .site-landing .site-patient-card h3{font-size:1.4rem;line-height:1.25}
+  .site-landing .site-patient-card h3{font-size:1.125rem;line-height:1.4;text-wrap:balance}
   .site-landing .site-patient-items{margin-top:20px;gap:8px}
   .site-landing .site-patient-items>div{padding:14px}
   .site-landing .site-trust-grid{gap:12px}
   .site-landing .site-trust-grid article{display:grid;grid-template-columns:24px minmax(0,1fr);gap:10px 12px;padding:20px;border:1px solid #dce4d4;border-radius:16px;background:#fff}
   .site-landing .site-trust-grid h3{font-size:1.05rem;line-height:1.3;margin:0}
-  .site-landing .site-trust-grid p,.site-landing .site-trust-grid a{grid-column:2;margin:0}
+  .site-landing .site-trust-grid p,.site-landing .site-trust-grid a{grid-column:1/-1;margin:0}
   .site-landing .site-inline-link{font-size:.8125rem;line-height:1.5;margin-top:14px}
   .site-landing .site-faq{gap:12px}
   .site-landing .site-faq-list details{padding-block:12px}
-  .site-landing .site-faq-list summary{font-size:.875rem;line-height:1.55}
+  .site-landing .site-faq-list summary{font-size:.9375rem;line-height:1.55;min-height:48px;align-items:center}
   .site-landing .site-cta{padding:24px;gap:18px;margin-block:8px 40px;border-radius:18px}
   .site-landing .site-cta>div{width:100%}
   .site-landing .site-cta .site-action{width:100%}
@@ -79,9 +88,12 @@
   .site-landing .site-footer{padding-block:32px 18px}
   .site-landing .site-footer-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:24px 16px}
   .site-landing .site-footer-grid p{margin-block:12px;font-size:.75rem}
-  .site-landing .site-footer-grid>div:not(:first-child)>a{font-size:.75rem;line-height:1.5}
-  .site-landing .site-footer h2{font-size:.8rem;line-height:1.4;margin-bottom:10px}
+  .site-landing .site-footer-grid>div:not(:first-child)>a{font-size:.875rem;line-height:1.5}
+  .site-landing .site-footer h2{font-size:.875rem;line-height:1.4;margin-bottom:10px}
   .site-landing .site-footer-bottom{display:grid;gap:0;margin-top:24px}
   .site-landing .site-footer-bottom p{font-size:.7rem;line-height:1.6}
   .site-landing .site-footer-bottom nav{justify-content:space-between;font-size:.75rem}
 }
+@media(max-width:360px){.site-landing .site-section-heading h2{font-size:1.375rem;line-height:1.3}}
+@media(max-width:360px){.nello-public-site:not(.site-landing) .site-hero h1{font-size:1.5rem;line-height:1.3}}
+@media(max-width:1000px){.nello-public-site .site-document-body h2{font-size:1.125rem;line-height:1.4}}
