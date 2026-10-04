@@ -33,7 +33,8 @@ export async function assessPipeline({ readToken, captureKey, previous = {}, fet
         app_release: metadata.release, environment: 'production', event_schema_version: 1, correlation_id: randomUUID(),
       },
     }) });
-    const query = `SELECT countIf(event = 'analytics_pipeline_probe' AND properties.source = 'external-pipeline-monitor'),
+    const query = `SELECT countIf(event = 'analytics_pipeline_probe' AND properties.source = 'external-pipeline-monitor'
+      AND properties.app_release = '${metadata.release}'),
       countIf(toString(properties.event_schema_version) = '1' AND NOT match(ifNull(toString(properties.app_release), ''), '^[a-fA-F0-9]{40}$'))
       FROM events WHERE timestamp >= now() - INTERVAL 20 MINUTE AND properties.environment = 'production'`;
     const data = await json(fetcher, api, { method: 'POST', headers: { Authorization: `Bearer ${readToken}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ refresh: 'force_blocking', query: { kind: 'HogQLQuery', query } }) });
@@ -41,7 +42,7 @@ export async function assessPipeline({ readToken, captureKey, previous = {}, fet
     if (!Array.isArray(values) || values.length !== 2 || values.some(value => !Number.isSafeInteger(value) || value < 0)) throw Error('invalid_provider_response');
     [result.probeCount, result.invalidReleaseCount] = values;
     const priorAge = now - Date.parse(previous.checkedAt);
-    result.silentChecks = result.probeCount ? 0 : (priorAge >= 0 && priorAge < 10 * 60000 ? (previous.silentChecks || 0) : 0) + 1;
+    result.silentChecks = result.probeCount ? 0 : (previous.release === metadata.release && priorAge >= 0 && priorAge < 10 * 60000 ? (previous.silentChecks || 0) : 0) + 1;
     // Three consecutive five-minute runs tolerate asynchronous ingestion.
     if (result.silentChecks >= 3) result.signals.push('ingestion_silent');
     if (result.invalidReleaseCount) result.signals.push('invalid_release');

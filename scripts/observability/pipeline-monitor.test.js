@@ -8,6 +8,24 @@ function provider(count = 1, invalid = 0) {
   return vi.fn(async url => new Response(JSON.stringify(String(url).endsWith('release.json') ? metadata : String(url).endsWith('query/') ? { results: [[count, invalid]] } : { status: 1 }), { status: 200 }));
 }
 describe('independent analytics monitoring', () => {
+  it('does not count a previous release probe as evidence for the current deployment', async () => {
+    const fetcher = vi.fn(async (url, request) => {
+      if (String(url).endsWith('query/')) {
+        const query = JSON.parse(request.body).query.query;
+        const scoped = query.includes(`AND properties.app_release = '${metadata.release}'`);
+        return new Response(JSON.stringify({ results: [[scoped ? 0 : 12, 0]] }));
+      }
+      return new Response(JSON.stringify(String(url).endsWith('release.json') ? metadata : { status: 1 }));
+    });
+    expect(await assessPipeline({ ...options, fetcher })).toMatchObject({
+      release: metadata.release, state: 'warming_up', probeCount: 0, silentChecks: 1,
+    });
+  });
+  it('starts a fresh ingestion grace period when the deployment changes', async () => {
+    expect(await assessPipeline({ ...options, fetcher: provider(0), previous: {
+      release: 'b'.repeat(40), checkedAt: new Date(options.now - 300000).toISOString(), silentChecks: 2,
+    } })).toMatchObject({ state: 'warming_up', silentChecks: 1, signals: [] });
+  });
   it('does not let a previously healthy cached aggregate hide a stopped pipeline', async () => {
     const fetcher = vi.fn(async (url, request) => {
       if (String(url).endsWith('query/')) {
