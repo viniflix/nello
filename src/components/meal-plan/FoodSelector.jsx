@@ -26,7 +26,7 @@ import { calculateEquivalentGrams } from '@/lib/utils/nutritionCalculations';
 import { foodSuggestionQueries, mergeFoodSuggestions } from '@/lib/utils/foodSuggestions';
 
 const SelectorSurface = ({ embedded, isOpen, onClose, children }) => embedded
-    ? <section aria-label="Busca de alimentos" className="flex h-full min-h-[300px] flex-col gap-3">{children}</section>
+    ? <section aria-label="Busca de alimentos" className="flex h-full min-h-0 flex-col gap-3">{children}</section>
     : <Dialog open={isOpen} onOpenChange={onClose}><DialogContent className="flex h-[94dvh] max-h-[calc(100dvh-1rem)] w-[96vw] max-w-[1440px] flex-col overflow-hidden">{children}</DialogContent></Dialog>;
 
 const FoodSelector = ({ isOpen, onClose, onSelect, targetGroup, targetCalories, originalFood, mealType, embedded = false, searchInputRef, selectedFoodId = null }) => {
@@ -134,7 +134,7 @@ const FoodSelector = ({ isOpen, onClose, onSelect, targetGroup, targetCalories, 
                     </DialogDescription>
                 </DialogHeader>}
 
-                <div className="flex-1 min-h-0 flex flex-col space-y-4 overflow-hidden">
+                <div className="flex-1 min-h-0 flex flex-col space-y-4 overflow-y-auto">
                     {/* Barra de busca */}
                     <div className="shrink-0 space-y-2">
                         <Label htmlFor="search">{embedded ? '1 · Escolha o alimento' : 'Nome do Alimento'}</Label>
@@ -153,12 +153,12 @@ const FoodSelector = ({ isOpen, onClose, onSelect, targetGroup, targetCalories, 
                     </div>
 
                     {/* Filtro de fonte */}
-                    <div className="shrink-0 flex gap-2 flex-wrap items-center">
+                    <div className="shrink-0 flex items-center gap-2 overflow-x-auto pb-1 lg:flex-wrap">
                         {sources.map((source) => (
                             <Button type="button" size="sm" aria-pressed={sourceFilter === source.value}
                                 key={source.value || 'all'}
                                 variant={sourceFilter === source.value ? 'default' : 'outline'}
-                                className="cursor-pointer"
+                                className="shrink-0 cursor-pointer"
                                 onClick={() => setSourceFilter(source.value)}
                             >
                                 {source.label}
@@ -168,7 +168,7 @@ const FoodSelector = ({ isOpen, onClose, onSelect, targetGroup, targetCalories, 
                         {targetGroup && (
                             <Button type="button" size="sm" aria-pressed={onlySameGroup}
                                 variant={onlySameGroup ? 'default' : 'outline'}
-                                className="ml-2"
+                                className="ml-2 shrink-0"
                                 onClick={() => setOnlySameGroup(!onlySameGroup)}
                             >
                                 {onlySameGroup ? 'Apenas ' : 'Filtrar por '}{targetGroup}
@@ -178,7 +178,7 @@ const FoodSelector = ({ isOpen, onClose, onSelect, targetGroup, targetCalories, 
 
                     {/* Lista de resultados */}
                     {suggesting && <div className="shrink-0 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950"><p className="font-semibold">{originalFood ? 'Alternativas para comparar' : 'Alimentos comuns nesta refeição'}</p><p className="text-xs">{originalFood ? 'Selecione uma opção e confira a porção e os nutrientes.' : 'Escolha uma opção rápida ou pesquise qualquer outro alimento.'}</p></div>}
-                    <div className="flex-1 min-h-0 rounded-lg border bg-background p-2 overflow-y-auto" aria-live="polite" aria-busy={loading}>
+                    <div className="flex-1 min-h-[8rem] rounded-lg border bg-background p-2 overflow-y-auto" aria-live="polite" aria-busy={loading}>
                         {loading && (
                             <div className="text-center py-8 text-muted-foreground">
                                 Buscando...
@@ -203,14 +203,14 @@ const FoodSelector = ({ isOpen, onClose, onSelect, targetGroup, targetCalories, 
                                 <p className="text-muted-foreground">
                                     {suggesting ? 'Sem opções rápidas nesta base. Pesquise pelo nome ou escolha outra base.' : 'Nenhum alimento encontrado'}
                                 </p>
-                                <Button
+                                {!embedded && <Button
                                     variant="outline"
                                     onClick={() => setQuickCreateOpen(true)}
                                     className="mx-auto"
                                 >
                                     <Plus className="h-4 w-4 mr-2" />
                                     {suggesting ? 'Cadastrar alimento personalizado' : `Cadastrar '${searchTerm}' agora`}
-                                </Button>
+                                </Button>}
                             </div>
                         )}
 

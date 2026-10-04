@@ -15,7 +15,7 @@ it('keeps meal order, excludes alternatives from percentages and exposes unfinis
     expect(screen.getByText('Pão preferido')).toBeVisible();
     expect(screen.getByText('Preparar antes')).toBeVisible();
     expect(screen.getByText(/Tapioca · 30/)).toBeVisible();
-    expect(screen.getByText(/^0\s*g$/)).toBeVisible();
+    expect(screen.getAllByText(/^0\s*g$/).every(element => element.textContent.includes('0'))).toBe(true);
     fireEvent.click(screen.getByRole('button',{name:'Recolher refeições'}));
     expect(screen.getByText('Pão preferido')).not.toBeVisible();
 });

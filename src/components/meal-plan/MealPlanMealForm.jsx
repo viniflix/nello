@@ -104,8 +104,13 @@ const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null, ownerId
         if (!isOpen) { foodTargetRef.current = null; return; }
         if (!foodTarget || foodTargetRef.current === foodTarget) return;
         foodTargetRef.current = foodTarget;
-        setEditingFood(foodTarget.food || null);
-        setShowAddFood(true);
+        if (foodTarget.substitutions && foodTarget.food) {
+            setSubstitutingFood(foodTarget.food);
+            setShowSubstitutions(true);
+        } else {
+            setEditingFood(foodTarget.food || null);
+            setShowAddFood(true);
+        }
     }, [isOpen, foodTarget]);
 
     const restoreShadow = () => {
@@ -258,7 +263,7 @@ const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null, ownerId
                 return;
             }
             await shadow.discard();
-            handleClose();
+            await handleClose();
         } catch {
             setErrors((current) => ({
                 ...current,
@@ -289,9 +294,9 @@ const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null, ownerId
     return (
         <>
             <Dialog open={isOpen && !showAddFood && !showSubstitutions} onOpenChange={handleClose}>
-                <DialogContent className="flex h-[90dvh] max-h-[calc(100dvh-1rem)] w-[96vw] max-w-[1200px] flex-col overflow-hidden">
+                <DialogContent data-meal-plan-dialog className="flex h-[90dvh] max-h-[calc(100dvh-1rem)] w-[96vw] max-w-[1200px] flex-col overflow-hidden max-sm:left-0 max-sm:top-0 max-sm:h-dvh max-sm:max-h-dvh max-sm:w-full max-sm:translate-x-0 max-sm:translate-y-0 max-sm:border-0 max-sm:bg-white max-sm:gap-3 [overflow-wrap:anywhere]">
                     <DialogHeader>
-                        <DialogTitle>
+                        <DialogTitle className="font-sans leading-snug tracking-normal">
                             {initialData ? 'Editar Refeição' : 'Nova Refeição'}
                         </DialogTitle>
                         <DialogDescription>
@@ -307,13 +312,13 @@ const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null, ownerId
                         <ShadowSaveStatus status={session?.status || shadow.status} onRetry={session?.flush || shadow.flush} />
                     </div>
 
-                    <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pr-1">
+                    <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overflow-x-hidden pr-1">
                         {/* Informações da Refeição */}
                         <Card>
-                            <CardHeader>
+                            <CardHeader className="max-sm:p-4">
                                 <CardTitle className="text-lg">Informações da Refeição</CardTitle>
                             </CardHeader>
-                            <CardContent className="space-y-4">
+                            <CardContent className="space-y-4 max-sm:px-4 max-sm:pb-4">
                                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                     {/* Tipo */}
                                     <div className="space-y-2">
@@ -358,11 +363,11 @@ const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null, ownerId
                                 {/* Nome Personalizado - só aparece se tipo = "outro" */}
                                 {formData.meal_type === 'other' && (
                                     <div className="space-y-2">
-                                        <Label htmlFor="name">
+                                        <Label htmlFor="meal_name">
                                             Nome da Refeição <span className="text-destructive">*</span>
                                         </Label>
                                         <Input
-                                            id="name"
+                                            id="meal_name"
                                             placeholder="Ex: Lanche Noturno, Suplementação"
                                             value={formData.name}
                                             onChange={(e) => handleChange('name', e.target.value)}
@@ -390,8 +395,8 @@ const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null, ownerId
 
                         {/* Alimentos */}
                         <Card>
-                            <CardHeader>
-                                <div className="flex items-center justify-between">
+                            <CardHeader className="max-sm:p-4">
+                                <div className="flex flex-wrap items-center justify-between gap-2">
                                     <CardTitle className="text-lg">Alimentos</CardTitle>
                                     <Button type="button" size="sm" onClick={() => setShowAddFood(true)}>
                                         <Plus className="h-4 w-4 mr-2" />
@@ -399,7 +404,7 @@ const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null, ownerId
                                     </Button>
                                 </div>
                             </CardHeader>
-                            <CardContent>
+                            <CardContent className="max-sm:px-4 max-sm:pb-4">
                                 {foods.length === 0 ? (
                                     <div className="text-center py-8 text-muted-foreground">
                                         Nenhum alimento adicionado ainda
@@ -412,10 +417,10 @@ const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null, ownerId
                                         {foods.map((food) => (
                                             <div
                                                 key={food.tempId}
-                                                className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+                                                className="flex min-w-0 flex-col items-stretch gap-2 rounded-lg border p-3 transition-colors hover:bg-muted/50 sm:flex-row sm:items-center sm:justify-between"
                                             >
-                                                <div className="flex-1">
-                                                    <div className="flex items-center gap-2">
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="flex flex-wrap items-center gap-2">
                                                         <div className="font-semibold">
                                                             {food.patient_description || food.food?.name}
                                                         </div>
@@ -443,12 +448,13 @@ const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null, ownerId
                                                         </div>
                                                     )}
                                                 </div>
-                                                <div className="flex gap-2">
+                                                <div className="flex shrink-0 justify-end gap-2">
                                                     <Button
                                                         variant="ghost"
                                                         size="sm"
                                                         onClick={() => handleOpenSubstitutions(food)}
                                                         title="Gerenciar substituições"
+                                                        aria-label={`Substituições de ${food.patient_description || food.food?.name || 'alimento'}`}
                                                         className={food.substitutes?.length > 0 ? "text-primary bg-primary/5" : ""}
                                                     >
                                                         <ArrowRightLeft className="h-4 w-4" />
@@ -458,6 +464,7 @@ const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null, ownerId
                                                         size="sm"
                                                         onClick={() => handleEditFood(food)}
                                                         title="Editar alimento"
+                                                        aria-label={`Editar ${food.patient_description || food.food?.name || 'alimento'}`}
                                                     >
                                                         <Edit className="h-4 w-4" />
                                                     </Button>
@@ -466,6 +473,7 @@ const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null, ownerId
                                                         size="sm"
                                                         onClick={() => handleRemoveFood(food.tempId)}
                                                         title="Remover alimento"
+                                                        aria-label={`Remover ${food.patient_description || food.food?.name || 'alimento'}`}
                                                     >
                                                         <Trash2 className="h-4 w-4 text-destructive" />
                                                     </Button>
@@ -505,10 +513,10 @@ const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null, ownerId
                         </Card>
                     </div>
 
-                    <DialogFooter className="shrink-0 border-t pt-3">
-                        <p className="mr-auto text-xs text-muted-foreground">Confirme esta refeição e salve o plano ao concluir.</p>
+                    <DialogFooter className="grid shrink-0 grid-cols-2 gap-2 border-t pt-3 sm:flex sm:items-center">
+                        <p className="col-span-2 mr-auto text-xs text-muted-foreground sm:flex-1">Confirme esta refeição e salve o plano ao concluir.</p>
                         {errors.save && (
-                            <p className="mr-auto text-sm text-destructive" role="alert">{errors.save}</p>
+                            <p className="col-span-2 mr-auto text-sm text-destructive" role="alert">{errors.save}</p>
                         )}
                         <Button variant="outline" onClick={handleClose}>
                             <X className="h-4 w-4 mr-2" />

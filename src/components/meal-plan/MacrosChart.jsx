@@ -6,7 +6,8 @@ import { Flame, Target, BarChart3, Beaker, PieChart as PieChartIcon, ArrowRight 
 import ReferenceValuesModal from './ReferenceValuesModal';
 import { summarizeMicronutrients } from '@/lib/utils/micronutrientCoverage';
 import { formatNutrient } from '@/lib/utils';
-import { displayNumber, roundedNutrition } from '@/lib/utils/mealPlanPresentation';
+import { roundedNutrition } from '@/lib/utils/mealPlanPresentation';
+import { macroDistribution } from '@/lib/utils/mealPlanWorkspace';
 
 const COMPACT_DRI = {
     fiber: { value: 25, unit: 'g', name: 'Fibras', icon: '🌾' },
@@ -32,13 +33,12 @@ const MacrosChart = ({ protein, carbs, fat, calories, patientId, patientSlugOrId
     const colors = {
         protein: '#7341ad',
         carbs: '#2563a6',
-        fat: '#b75b17',
+        fat: '#ea7c13',
     };
 
-    const totalMacroCals = (displayNumber(protein) * 4) + (displayNumber(carbs) * 4) + (displayNumber(fat) * 9);
-    const pPerc = totalMacroCals > 0 ? ((protein * 4) / totalMacroCals) * 100 : 0;
-    const cPerc = totalMacroCals > 0 ? ((carbs * 4) / totalMacroCals) * 100 : 0;
-    const fPerc = totalMacroCals > 0 ? ((fat * 9) / totalMacroCals) * 100 : 0;
+    const distribution = macroDistribution({ protein, carbs, fat });
+    const totalMacroCals = distribution.total;
+    const { protein: pPerc, carbs: cPerc, fat: fPerc } = distribution;
 
     const microTotals = useMemo(() => calculateMicros(plan), [plan]);
 
@@ -152,6 +152,7 @@ const MacrosChart = ({ protein, carbs, fat, calories, patientId, patientSlugOrId
             </CardHeader>
 
             <CardContent className="flex-1 flex flex-col px-[12px] pt-2 pb-5 sm:px-6">
+                {activeTab === 'micros' && <p className="mb-3 text-xs leading-relaxed text-muted-foreground">Referências gerais para adultos; não são metas individuais. Dados incompletos não permitem avaliar adequação.</p>}
                 <div className={compact ? "min-h-[285px]" : "min-h-[300px]"}>
                     {activeTab === 'macros' ? MacrosView() : MicrosView()}
                 </div>

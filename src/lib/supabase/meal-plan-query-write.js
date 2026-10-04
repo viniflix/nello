@@ -332,12 +332,24 @@ export const restoreMealPlanVersion = async (versionId) => {
             throw new Error('Versão inválida para restauração');
         }
 
+        const current = await getMealPlanById(version.meal_plan_id);
+        if (current.error) throw current.error;
+        if (!current.data) throw new Error('Plano não encontrado para restauração');
+
         const planData = {
             name: planSnapshot.name,
             description: planSnapshot.description || '',
             active_days: planSnapshot.active_days || [],
             start_date: planSnapshot.start_date || getTodayIsoDate(),
             end_date: planSnapshot.end_date || null,
+            // Restore prescription content without silently archiving or publishing it.
+            is_active: Boolean(current.data.is_active),
+            is_draft: Boolean(current.data.is_draft),
+            plan_mode: planSnapshot.plan_mode || current.data.plan_mode,
+            daily_calories: planSnapshot.daily_calories ?? 0,
+            daily_protein: planSnapshot.daily_protein ?? 0,
+            daily_carbs: planSnapshot.daily_carbs ?? 0,
+            daily_fat: planSnapshot.daily_fat ?? 0,
             meals: mealsSnapshot.map((meal, mealIndex) => ({
                 name: meal.name,
                 meal_type: meal.meal_type,
@@ -345,6 +357,10 @@ export const restoreMealPlanVersion = async (versionId) => {
                 notes: meal.notes || null,
                 order_index: meal.order_index ?? mealIndex,
                 include_in_totals: meal.include_in_totals !== false,
+                total_calories: meal.total_calories ?? meal.calories ?? 0,
+                total_protein: meal.total_protein ?? meal.protein ?? 0,
+                total_carbs: meal.total_carbs ?? meal.carbs ?? 0,
+                total_fat: meal.total_fat ?? meal.fat ?? 0,
                 foods: (meal.foods || []).map((food, foodIndex) => ({
                     food_id: food.food_id,
                     quantity: food.quantity ?? 0,

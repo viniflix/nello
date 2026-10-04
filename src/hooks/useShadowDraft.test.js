@@ -80,6 +80,37 @@ describe('useShadowDraft', () => {
     second.unmount();
   });
 
+  it('joins an autosave in progress when closing instead of rejecting its consumed queue', async () => {
+    const hook = renderHook(() => useShadowDraft({ ownerId: 'owner', draftKey: 'meal-editor' }));
+    await waitFor(() => expect(hook.result.current.ready).toBe(true));
+    let finish;
+    supabase.from.mockImplementation(() => {
+      const q = query();
+      q.single = () => new Promise(resolve => { finish = resolve; });
+      return q;
+    });
+    act(() => hook.result.current.queue({ name: 'Refeição confirmada' }));
+    let autosave;
+    let close;
+    let closed = false;
+    act(() => {
+      autosave = hook.result.current.flush();
+      close = hook.result.current.flush().then(saved => { closed = true; return saved; });
+    });
+    await act(async () => { await Promise.resolve(); });
+    expect(closed).toBe(false);
+    await act(async () => {
+      finish({ data: { revision: 1, updated_at: '2026-10-04T00:00:00Z' }, error: null });
+      expect(await autosave).toBe(true);
+      expect(await close).toBe(true);
+    });
+    expect(hook.result.current.status).toBe('saved');
+    const requests = supabase.from.mock.calls.length;
+    await act(async () => { expect(await hook.result.current.flush()).toBe(true); });
+    expect(supabase.from).toHaveBeenCalledTimes(requests);
+    hook.unmount();
+  });
+
   it('detects a concurrent revision instead of overwriting it', async () => {
     const args = { ownerId: 'nutritionist-1', draftKey: 'protocol:recipe:1' };
     const hook = renderHook(() => useShadowDraft(args));

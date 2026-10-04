@@ -2,7 +2,7 @@ import {useSmartFoodFormController} from './useSmartFoodFormController';
 import { mapFatSecretToOFF, normalizeExternalProduct } from '@/lib/utils/externalFood';
 import { idempotentRpc } from '@/lib/supabase/idempotent-mutations';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
-import React, { useState, useEffect, useMemo, forwardRef, useImperativeHandle } from 'react';
+import React, { useState, useEffect, useMemo, useId, forwardRef, useImperativeHandle } from 'react';
 import { Plus, X, Calculator, Barcode, Loader2, Info, ChevronRight, ChevronLeft, Search, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -41,6 +41,7 @@ const SmartFoodForm = forwardRef(function SmartFoodForm({
     mode = 'full',
     initialName = ''
 }, ref) {
+    const formId = useId();
 const {isCompact,externalProvenance,externalReviewed,setReviewedFingerprint,reviewFingerprint,currentStep,totalSteps,stepTitles,progress,name,setName,brand,setBrand,inputMode,setInputMode,labelPortionSize,setLabelPortionSize,normalizedValues,protein,setProtein,carbs,setCarbs,fat,setFat,autoCalcCalories,setAutoCalcCalories,calories,setCalories,fiber,setFiber,sugar,setSugar,saturatedFat,setSaturatedFat,transFat,setTransFat,monounsaturatedFat,setMonounsaturatedFat,polyunsaturatedFat,setPolyunsaturatedFat,cholesterol,setCholesterol,sodium,setSodium,calcium,setCalcium,iron,setIron,magnesium,setMagnesium,phosphorus,setPhosphorus,potassium,setPotassium,zinc,setZinc,vitaminA,setVitaminA,vitaminC,setVitaminC,vitaminD,setVitaminD,vitaminE,setVitaminE,vitaminB12,setVitaminB12,folate,setFolate,commonMeasures,handleAddMeasure,householdMeasures,handleRemoveMeasure,searchQuery,setSearchQuery,searchLoading,handleSearch,showResultsDialog,setShowResultsDialog,searchResults,handleSelectProduct,prevStep,loading,nextStep,handleSubmit}=useSmartFoodFormController({initialData:initialData,onSuccess:onSuccess,mode:mode,initialName:initialName},ref);
 return (
         <div className={isCompact ? "space-y-3" : "space-y-6"}>
@@ -92,11 +93,11 @@ return (
                     {currentStep === 1 && (
                         <div className="space-y-4">
                 <div className="space-y-2">
-                                <Label htmlFor="name">
+                                <Label htmlFor={`${formId}-name`}>
                                     Nome do Alimento <span className="text-destructive">*</span>
                                 </Label>
                     <Input
-                        id="name"
+                        id={`${formId}-name`}
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         placeholder="Ex: Bolo de Chocolate"
@@ -104,9 +105,9 @@ return (
                     />
                 </div>
                 <div className="space-y-2">
-                    <Label htmlFor="brand">Marca (opcional)</Label>
+                    <Label htmlFor={`${formId}-brand`}>Marca (opcional)</Label>
                     <Input
-                        id="brand"
+                        id={`${formId}-brand`}
                         value={brand}
                         onChange={(e) => setBrand(e.target.value)}
                         placeholder="Ex: Marca X"
@@ -136,11 +137,11 @@ return (
 
                     <TabsContent value="portion" className="space-y-4 mt-4">
                         <div className="space-y-2">
-                                        <Label htmlFor="labelPortionSize">
+                                        <Label htmlFor={`${formId}-labelPortionSize`}>
                                             Tamanho da Porção do Rótulo (g) <span className="text-destructive">*</span>
                                         </Label>
                             <Input
-                                id="labelPortionSize"
+                                id={`${formId}-labelPortionSize`}
                                 type="number"
                                 value={labelPortionSize}
                                 onChange={(e) => setLabelPortionSize(e.target.value)}
@@ -167,11 +168,11 @@ return (
 
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                     <div className="space-y-2">
-                        <Label htmlFor="protein">
-                                        Proteína (g) <span className="text-destructive">*</span>
+                        <Label htmlFor={`${formId}-protein`}>
+                                        Proteína (g)
                         </Label>
                         <Input
-                            id="protein"
+                            id={`${formId}-protein`}
                             type="number"
                             step="0.1"
                             value={protein}
@@ -180,11 +181,11 @@ return (
                         />
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="carbs">
-                                        Carboidratos (g) <span className="text-destructive">*</span>
+                        <Label htmlFor={`${formId}-carbs`}>
+                                        Carboidratos (g)
                         </Label>
                         <Input
-                            id="carbs"
+                            id={`${formId}-carbs`}
                             type="number"
                             step="0.1"
                             value={carbs}
@@ -193,11 +194,11 @@ return (
                         />
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="fat">
-                                        Gorduras (g) <span className="text-destructive">*</span>
+                        <Label htmlFor={`${formId}-fat`}>
+                                        Gorduras (g)
                         </Label>
                         <Input
-                            id="fat"
+                            id={`${formId}-fat`}
                             type="number"
                             step="0.1"
                             value={fat}
@@ -209,24 +210,24 @@ return (
 
                 <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                                    <Label htmlFor="calories">
-                                        Calorias (kcal) <span className="text-destructive">*</span>
+                                    <Label htmlFor={`${formId}-calories`}>
+                                        Calorias (kcal)
                                     </Label>
                         <div className="flex items-center gap-2">
                             <input
                                 type="checkbox"
-                                id="autoCalc"
+                                id={`${formId}-autoCalc`}
                                 checked={autoCalcCalories}
                                 onChange={(e) => setAutoCalcCalories(e.target.checked)}
                                 className="w-4 h-4"
                             />
-                            <Label htmlFor="autoCalc" className="text-sm font-normal cursor-pointer">
+                            <Label htmlFor={`${formId}-autoCalc`} className="text-sm font-normal cursor-pointer">
                                 Calcular automaticamente
                             </Label>
                         </div>
                     </div>
                     <Input
-                        id="calories"
+                        id={`${formId}-calories`}
                         type="number"
                         step="0.1"
                         value={calories}
@@ -258,9 +259,9 @@ return (
                             </div>
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                                 <div className="space-y-2">
-                                    <Label htmlFor="fiber">Fibra (g)</Label>
+                                    <Label htmlFor={`${formId}-fiber`}>Fibra (g)</Label>
                                     <Input
-                                        id="fiber"
+                                        id={`${formId}-fiber`}
                                         type="number"
                                         step="0.1"
                                         value={fiber}
@@ -269,9 +270,9 @@ return (
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="sugar">Açúcares (g)</Label>
+                                    <Label htmlFor={`${formId}-sugar`}>Açúcares (g)</Label>
                                     <Input
-                                        id="sugar"
+                                        id={`${formId}-sugar`}
                                         type="number"
                                         step="0.1"
                                         value={sugar}
@@ -280,9 +281,9 @@ return (
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="saturatedFat">Gordura Saturada (g)</Label>
+                                    <Label htmlFor={`${formId}-saturatedFat`}>Gordura Saturada (g)</Label>
                                     <Input
-                                        id="saturatedFat"
+                                        id={`${formId}-saturatedFat`}
                                         type="number"
                                         step="0.1"
                                         value={saturatedFat}
@@ -291,9 +292,9 @@ return (
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="transFat">Gordura Trans (g)</Label>
+                                    <Label htmlFor={`${formId}-transFat`}>Gordura Trans (g)</Label>
                                     <Input
-                                        id="transFat"
+                                        id={`${formId}-transFat`}
                                         type="number"
                                         step="0.1"
                                         value={transFat}
@@ -302,9 +303,9 @@ return (
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="monounsaturatedFat">Gordura Monoinsaturada (g)</Label>
+                                    <Label htmlFor={`${formId}-monounsaturatedFat`}>Gordura Monoinsaturada (g)</Label>
                                     <Input
-                                        id="monounsaturatedFat"
+                                        id={`${formId}-monounsaturatedFat`}
                                         type="number"
                                         step="0.1"
                                         value={monounsaturatedFat}
@@ -313,9 +314,9 @@ return (
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="polyunsaturatedFat">Gordura Poliinsaturada (g)</Label>
+                                    <Label htmlFor={`${formId}-polyunsaturatedFat`}>Gordura Poliinsaturada (g)</Label>
                                     <Input
-                                        id="polyunsaturatedFat"
+                                        id={`${formId}-polyunsaturatedFat`}
                                         type="number"
                                         step="0.1"
                                         value={polyunsaturatedFat}
@@ -324,9 +325,9 @@ return (
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="cholesterol">Colesterol (mg)</Label>
+                                    <Label htmlFor={`${formId}-cholesterol`}>Colesterol (mg)</Label>
                                     <Input
-                                        id="cholesterol"
+                                        id={`${formId}-cholesterol`}
                                         type="number"
                                         step="0.1"
                                         value={cholesterol}
@@ -335,9 +336,9 @@ return (
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="sodium">Sódio (mg)</Label>
+                                    <Label htmlFor={`${formId}-sodium`}>Sódio (mg)</Label>
                                     <Input
-                                        id="sodium"
+                                        id={`${formId}-sodium`}
                                         type="number"
                                         step="0.1"
                                         value={sodium}
@@ -362,9 +363,9 @@ return (
                                 <h3 className="text-sm font-semibold text-muted-foreground">Minerais (mg)</h3>
                                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                                     <div className="space-y-2">
-                                        <Label htmlFor="calcium">Cálcio (mg)</Label>
+                                        <Label htmlFor={`${formId}-calcium`}>Cálcio (mg)</Label>
                                         <Input
-                                            id="calcium"
+                                            id={`${formId}-calcium`}
                                             type="number"
                                             step="0.1"
                                             value={calcium}
@@ -373,9 +374,9 @@ return (
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label htmlFor="iron">Ferro (mg)</Label>
+                                        <Label htmlFor={`${formId}-iron`}>Ferro (mg)</Label>
                                         <Input
-                                            id="iron"
+                                            id={`${formId}-iron`}
                                             type="number"
                                             step="0.1"
                                             value={iron}
@@ -384,9 +385,9 @@ return (
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label htmlFor="magnesium">Magnésio (mg)</Label>
+                                        <Label htmlFor={`${formId}-magnesium`}>Magnésio (mg)</Label>
                                         <Input
-                                            id="magnesium"
+                                            id={`${formId}-magnesium`}
                                             type="number"
                                             step="0.1"
                                             value={magnesium}
@@ -395,9 +396,9 @@ return (
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label htmlFor="phosphorus">Fósforo (mg)</Label>
+                                        <Label htmlFor={`${formId}-phosphorus`}>Fósforo (mg)</Label>
                                         <Input
-                                            id="phosphorus"
+                                            id={`${formId}-phosphorus`}
                                             type="number"
                                             step="0.1"
                                             value={phosphorus}
@@ -406,9 +407,9 @@ return (
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label htmlFor="potassium">Potássio (mg)</Label>
+                                        <Label htmlFor={`${formId}-potassium`}>Potássio (mg)</Label>
                                         <Input
-                                            id="potassium"
+                                            id={`${formId}-potassium`}
                                             type="number"
                                             step="0.1"
                                             value={potassium}
@@ -417,9 +418,9 @@ return (
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label htmlFor="zinc">Zinco (mg)</Label>
+                                        <Label htmlFor={`${formId}-zinc`}>Zinco (mg)</Label>
                                         <Input
-                                            id="zinc"
+                                            id={`${formId}-zinc`}
                                             type="number"
                                             step="0.1"
                                             value={zinc}
@@ -433,9 +434,9 @@ return (
                                 <h3 className="text-sm font-semibold text-muted-foreground">Vitaminas</h3>
                                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                                     <div className="space-y-2">
-                                        <Label htmlFor="vitaminA">Vitamina A (µg RAE)</Label>
+                                        <Label htmlFor={`${formId}-vitaminA`}>Vitamina A (µg RAE)</Label>
                                         <Input
-                                            id="vitaminA"
+                                            id={`${formId}-vitaminA`}
                                             type="number"
                                             step="0.1"
                                             value={vitaminA}
@@ -444,9 +445,9 @@ return (
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label htmlFor="vitaminC">Vitamina C (mg)</Label>
+                                        <Label htmlFor={`${formId}-vitaminC`}>Vitamina C (mg)</Label>
                                         <Input
-                                            id="vitaminC"
+                                            id={`${formId}-vitaminC`}
                                             type="number"
                                             step="0.1"
                                             value={vitaminC}
@@ -455,9 +456,9 @@ return (
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label htmlFor="vitaminD">Vitamina D (µg)</Label>
+                                        <Label htmlFor={`${formId}-vitaminD`}>Vitamina D (µg)</Label>
                                         <Input
-                                            id="vitaminD"
+                                            id={`${formId}-vitaminD`}
                                             type="number"
                                             step="0.1"
                                             value={vitaminD}
@@ -466,9 +467,9 @@ return (
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label htmlFor="vitaminE">Vitamina E (mg)</Label>
+                                        <Label htmlFor={`${formId}-vitaminE`}>Vitamina E (mg)</Label>
                                         <Input
-                                            id="vitaminE"
+                                            id={`${formId}-vitaminE`}
                                             type="number"
                                             step="0.1"
                                             value={vitaminE}
@@ -477,9 +478,9 @@ return (
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label htmlFor="vitaminB12">Vitamina B12 (µg)</Label>
+                                        <Label htmlFor={`${formId}-vitaminB12`}>Vitamina B12 (µg)</Label>
                                         <Input
-                                            id="vitaminB12"
+                                            id={`${formId}-vitaminB12`}
                                             type="number"
                                             step="0.1"
                                             value={vitaminB12}
@@ -488,9 +489,9 @@ return (
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label htmlFor="folate">Folato (µg)</Label>
+                                        <Label htmlFor={`${formId}-folate`}>Folato (µg)</Label>
                                         <Input
-                                            id="folate"
+                                            id={`${formId}-folate`}
                                             type="number"
                                             step="0.1"
                                             value={folate}
@@ -565,7 +566,7 @@ return (
                         </CardTitle>
                         <CardDescription className="text-green-800 dark:text-green-200">
                             <p className="mb-1">Busque por código de barras (EAN) ou nome do produto</p>
-                            <p className="text-xs mt-1 opacity-75">
+                            <p className="text-xs mt-1 text-green-900">
                                 Utilizamos a plataforma OpenFoodFacts. Os dados podem ter imprecisões e devem ser verificados.
                             </p>
                         </CardDescription>
@@ -573,7 +574,7 @@ return (
                     <CardContent className="space-y-3">
                         <div className="flex flex-col sm:flex-row gap-2">
                             <Input
-                                id="searchQuery"
+                                id={`${formId}-searchQuery`}
                                 placeholder="Digite o código de barras (ex: 7891000100103) ou nome do produto (ex: Whey Protein)"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}

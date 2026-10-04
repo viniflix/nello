@@ -54,7 +54,7 @@ describe('TemplateManagerDialog', () => {
     getDietTemplateWithMeals.mockResolvedValue({ data: { meals: [{ id: 'meal-1', name: 'Almoço', foods: [{ food_id: 'food-1', food: null }] }] } });
     render(<TemplateManagerDialog open patientId="p-123" nutritionistId="n-123" onOpenChange={mockOnOpenChange} />);
     fireEvent.click(screen.getByText('Dieta Hipertrofia').closest('button'));
-    const button = await screen.findByText('Aplicar "Dieta Hipertrofia" ao Paciente');
+    const button = await screen.findByText('Abrir cópia para revisão');
     await waitFor(() => expect(button.disabled).toBe(true));
     expect(screen.getByRole('alert').textContent).toContain('food-1');
     expect(cloneDietTemplateToPatient).not.toHaveBeenCalled();
@@ -105,7 +105,7 @@ describe('TemplateManagerDialog', () => {
     fireEvent.click(button);
 
     // O botão de confirmar deve aparecer
-    const confirmBtn = await screen.findByText('Aplicar "Dieta Hipertrofia" ao Paciente');
+    const confirmBtn = await screen.findByText('Abrir cópia para revisão');
     expect(confirmBtn).toBeDefined();
 
     // Clicar em aplicar

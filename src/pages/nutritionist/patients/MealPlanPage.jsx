@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useResolvedPatientId } from '@/hooks/useResolvedPatientId';
-import { ArrowLeft, Plus, Copy, FileText, Download, RefreshCw, Utensils, FolderOpen } from 'lucide-react';
+import { ArrowLeft, Plus, Copy, FileText, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -45,6 +44,11 @@ import { supabase } from '@/infrastructure/supabase/client';
 import { useMealPlanSession, isMealPlanSession, latestAppliedAt, sessionWasSuperseded } from '@/hooks/useMealPlanSession';
 import { sessionMatchesAppliedPlan } from '@/lib/utils/appliedMealPlanSession';
 import { ShadowRecovery } from '@/components/ui/shadow-save-status';
+import MealPlanHeader from '@/components/meal-plan/MealPlanHeader';
+import MealPlanOverview from '@/components/meal-plan/MealPlanOverview';
+import PlanVersionHistory from '@/components/meal-plan/PlanVersionHistory';
+import { planEnergyTarget } from '@/lib/utils/mealPlanWorkspace';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 
 
 
@@ -69,6 +73,8 @@ const MealPlanPageContent = ({ resolvedPatient }) => {
     const [planPreview, setPlanPreview] = useState(null);
     const previewScope = `${nutritionistId}:${patientId}`;
     const [workingDraft, setWorkingDraft] = useState(null);
+    const [workspaceTab, setWorkspaceTab] = useState('active');
+    const [editorIntent, setEditorIntent] = useState(null);
     const [restoredSession, setRestoredSession] = useState(null);
     const automaticSessionRef = useRef(false);
     const [sessionError, setSessionError] = useState(false);
@@ -109,6 +115,7 @@ const MealPlanPageContent = ({ resolvedPatient }) => {
         restoringVersion,
         versionsExpanded, setVersionsExpanded,
         energyCalculation,
+        energyLoading, energyError, versionsLoading, versionsError, retryContext,
         syncFlags, setSyncFlags,
 
         handleDiscardPendingDraft,
@@ -145,6 +152,11 @@ const MealPlanPageContent = ({ resolvedPatient }) => {
         invalidatePlans,
         user
     });
+    const openMealAction = async (action, meal, food) => {
+        if (!activePlan || submitting) return;
+        setEditorIntent({ planId: activePlan.id, action, mealId: meal?.id, foodId: food?.id });
+        if (await handleEdit(activePlan.id) === false) setEditorIntent(null);
+    };
 
     const resumeWorkingDraft = async row => {
         const scope = sessionScopeRef.current;
@@ -203,6 +215,9 @@ const MealPlanPageContent = ({ resolvedPatient }) => {
         return true;
     };
     useEffect(() => {
+        // A working editor owns its current state. Autosave becoming available
+        // must not be interpreted as recovery and remount that same editor.
+        if (showForm) { automaticSessionRef.current = true; return; }
         const saved = session.recovery?.payload;
         if (!session.ready || loading || isFetching || plansError || !isMealPlanSession(saved) || automaticSessionRef.current || session.recovery.conflict) return;
         automaticSessionRef.current = true;
@@ -219,7 +234,7 @@ const MealPlanPageContent = ({ resolvedPatient }) => {
         return () => { cancelled = true; if (!completed) automaticSessionRef.current = false; };
     // Recovery is read once per patient; status changes must not cancel the fetch.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [session.ready, session.recovery, loading, isFetching, plansError, patientId, nutritionistId]);
+    }, [session.ready, session.recovery, loading, isFetching, plansError, patientId, nutritionistId, showForm]);
 
     useEffect(() => { if (session.status === 'idle') setSupersededSession(null); }, [session.status]);
 
@@ -304,17 +319,18 @@ const MealPlanPageContent = ({ resolvedPatient }) => {
 
     if (showForm) {
         return (
-            <div className="container mx-auto px-4 py-8 max-w-6xl">
-                <div className="mb-4 flex flex-wrap items-center gap-3">
-                    <div className="mr-auto"><h1 className="text-2xl font-semibold">Montar plano alimentar</h1><p className="text-sm text-muted-foreground">Organize as refeições, confira as porções e salve o plano ao concluir.</p></div>
+            <div className="container mx-auto px-4 py-6 max-w-[1440px]">
+                <div className="mb-4 flex items-start gap-3 sm:flex-wrap sm:items-center">
+                    <div className="mr-auto min-w-0 flex-1"><h1 className="text-xl sm:text-2xl font-semibold uppercase tracking-wide">{editingPlan ? 'Editar plano alimentar' : 'Montar plano alimentar'}</h1><p className="mt-2 text-sm text-muted-foreground">{patientName ? `${patientName} · ` : ''}Organize as refeições, confira as porções e salve o plano ao concluir.</p></div>
                     <Button
                         variant="ghost"
                         size="sm"
-                        className="gap-2"
+                        className="order-first gap-2 px-2 sm:order-none sm:px-3"
+                        aria-label="Voltar"
                         onClick={() => { void beforeCloseRef.current?.(); }}
                     >
                         <ArrowLeft className="w-4 h-4 shrink-0" />
-                        Voltar
+                        <span className="sr-only sm:not-sr-only">Voltar</span>
                     </Button>
                 </div>
 
@@ -331,6 +347,7 @@ const MealPlanPageContent = ({ resolvedPatient }) => {
                 {session.recovery?.conflict && <ShadowRecovery recovery={session.recovery} onRestore={() => { void restoreSavedSession(session.recovery.payload).catch(() => setSessionError(true)); }} onDiscard={() => { void session.discardRecovery(); }} />}
 
                 <MealPlanForm
+                    editorIntent={editorIntent}
                     key={`meal-plan-editor-${sessionRestoreNumber}`}
                     patientId={patientId}
                     patientSlugOrId={paramValue}
@@ -352,6 +369,8 @@ const MealPlanPageContent = ({ resolvedPatient }) => {
                     }}
                     onSaveDraft={handleSaveDraft}
                     onSaved={() => {
+                        setEditorIntent(null);
+                        setWorkspaceTab('active');
                         automaticSessionRef.current = true;
                         setShowForm(false);
                         setEditingPlan(null);
@@ -360,6 +379,7 @@ const MealPlanPageContent = ({ resolvedPatient }) => {
                         setWorkingDraft(null);
                     }}
                     onCancel={() => {
+                        setEditorIntent(null);
                         setShowForm(false);
                         setEditingPlan(null);
                         setPendingDraft(null);
@@ -372,7 +392,7 @@ const MealPlanPageContent = ({ resolvedPatient }) => {
     }
 
     return (
-        <div className={`container mx-auto px-4 py-6 sm:py-8 max-w-6xl transition-opacity duration-200 ${isFetching ? 'opacity-70 pointer-events-none' : 'opacity-100'}`}>
+        <div className="container mx-auto max-w-[1440px] space-y-5 [overflow-wrap:anywhere] max-sm:[&_button]:max-w-full max-sm:[&_button]:flex-wrap max-sm:[&_button]:whitespace-normal max-sm:[&_button]:h-auto max-sm:[&_button]:min-h-9 [&_h1]:[word-spacing:0.12em] [&_h2]:[word-spacing:0.12em] [&_h3]:[word-spacing:0.1em] px-4 py-6 sm:py-8">
             {/* Sprint D: Barra de alertas clínicos da anamnese */}
             <MealPlanAlertsBar patientId={patientId} />
             {supersededSession && <p role="status" className="mb-3 text-sm text-muted-foreground">{completedSession ? 'Esta edição já corresponde ao plano salvo. Mantivemos a listagem dos planos.' : 'Há um plano aplicado mais recente. A edição anterior não foi reaberta automaticamente.'}</p>}
@@ -382,53 +402,8 @@ const MealPlanPageContent = ({ resolvedPatient }) => {
             {sessionError && <p role="alert" className="rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">A sessão salva foi preservada, mas não pôde ser aberta. Recarregue para tentar novamente.</p>}
             {session.recovery?.conflict && <ShadowRecovery recovery={session.recovery} onRestore={() => { void restoreSavedSession(session.recovery.payload).catch(() => setSessionError(true)); }} onDiscard={() => { void session.discardRecovery(); }} />}
 
-            {/* Header */}
-            <div className="flex flex-col gap-4 mb-6">
-                <div className="flex flex-wrap gap-3 items-center justify-between">
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => navigate(patientHubRoute({ id: patientId, slug: paramValue }, 'nutrition'))}
-                        className="gap-2 -ml-2 shrink-0 text-[#5f6f52] hover:text-[#5f6f52] hover:bg-[#5f6f52]/10 font-bold"
-                    >
-                        <ArrowLeft className="w-4 h-4 shrink-0" />
-                        Voltar
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={loadPlans} className="flex-shrink-0 border-2 font-bold h-9">
-                        <RefreshCw className="h-4 w-4 mr-2" />
-                        Atualizar
-                    </Button>
-                </div>
-                <div className="flex flex-wrap items-end justify-between gap-4">
-                    <div className="min-w-0 flex-[1_1_20rem]">
-                        <h1 className="text-2xl sm:text-3xl font-bold text-foreground flex items-center gap-2">
-                            <Utensils className="h-6 w-6 shrink-0 text-[#5f6f52] sm:h-8 sm:w-8" />
-                            <span className="min-w-0 break-words leading-tight">Planos Alimentares</span>
-                        </h1>
-                        <p className="text-sm text-muted-foreground mt-1">
-                            Confira o plano atual, acompanhe a análise e organize as próximas edições.
-                        </p>
-                    </div>
-                    <div className="flex gap-2 w-full sm:w-auto">
-                        {activePlan && plans.length > 0 && (
-                            <Button size="sm" variant="outline" onClick={() => setPlansModalOpen(true)} className="flex-1 sm:flex-initial gap-2 border-2 h-10 font-bold">
-                                <FolderOpen className="h-4 w-4" />
-                                Meus Planos
-                                <Badge variant="outline" className="ml-1 h-5 min-w-[20px] px-1 justify-center border-[#5f6f52] text-[#5f6f52] font-black">{plans.length}</Badge>
-                            </Button>
-                        )}
-                        <Button
-                            size="sm"
-                            onClick={() => setNewPlanChoiceOpen(true)}
-                            className="flex-1 sm:flex-initial h-10 px-6 font-bold bg-primary hover:bg-primary/90 text-white transition-colors motion-reduce:transition-none shadow-sm"
-                        >
-                            <Plus className="h-4 w-4 mr-2" />
-                            Novo Plano
-                        </Button>
-                    </div>
-                </div>
-            </div>
-
+            <MealPlanHeader patientId={patientId} patientSlugOrId={paramValue} patientName={patientName} hasPlan={Boolean(activePlan)} fetching={isFetching} onBrowse={() => setPlansModalOpen(true)} onNew={() => {setEditorIntent(null);setNewPlanChoiceOpen(true);}} onImport={() => setTemplateManagerOpen(true)} onExport={() => setExportDialogOpen(true)} onRefresh={loadPlans} />
+            <MealPlanOverview plan={activePlan} target={planEnergyTarget(energyCalculation)} formatDate={formatDate} energyLoading={energyLoading} energyError={energyError} />
             <div className="flex flex-col gap-5">
                 <WorkingDraftRecovery ownerId={nutritionistId} patientId={patientId} onResume={resumeWorkingDraft} maxDrafts={Math.max(0, 3 - (session.snapshots?.length || 0))} />
                 {/* Centro de Notificações Inteligentes */}
@@ -451,32 +426,33 @@ const MealPlanPageContent = ({ resolvedPatient }) => {
                     />
                 )}
 
-                {/* Target Monitor - Status do GET vs Plano */}
-                <PlanTargetMonitor
-                    targetCalories={energyCalculation?.final_planned_kcal ?? energyCalculation?.get_with_activities ?? energyCalculation?.get ?? energyCalculation?.get_result ?? null}
-                    currentCalories={activePlan?.daily_calories || 0}
-                    patientId={patientId}
-                    patientSlugOrId={paramValue}
-                    energyCalculation={energyCalculation}
-                />
-
+                {activePlan && (energyLoading ? <div role="status" className="rounded-2xl border bg-white p-5 text-sm text-muted-foreground">Carregando a meta energética…</div> : energyError ? <div role="alert" className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">Não foi possível carregar a meta energética. <Button variant="outline" size="sm" onClick={retryContext}>Tentar novamente</Button></div> : <PlanTargetMonitor targetCalories={planEnergyTarget(energyCalculation)} currentCalories={activePlan.daily_calories} patientId={patientId} patientSlugOrId={paramValue} energyCalculation={energyCalculation} />)}
+                <Tabs value={workspaceTab} onValueChange={setWorkspaceTab} className="min-w-0">
+                    <TabsList className="mb-4 flex h-auto w-full flex-wrap items-stretch justify-start gap-1 rounded-xl bg-slate-100 p-1 sm:w-fit">
+                        <TabsTrigger value="active" className="min-h-10 min-w-0 max-w-full flex-[1_1_5rem] sm:flex-auto whitespace-normal break-words rounded-lg px-3 data-[state=active]:bg-primary data-[state=active]:text-white">Plano ativo</TabsTrigger>
+                        <TabsTrigger value="drafts" className="min-h-10 min-w-0 max-w-full flex-[1_1_5rem] sm:flex-auto whitespace-normal break-words rounded-lg px-3 data-[state=active]:bg-primary data-[state=active]:text-white">Rascunhos ({pendingDrafts.length})</TabsTrigger>
+                        <TabsTrigger value="history" className="min-h-10 min-w-0 max-w-full flex-[1_1_5rem] sm:flex-auto whitespace-normal break-words rounded-lg px-3 data-[state=active]:bg-primary data-[state=active]:text-white">Histórico</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="drafts" className="space-y-3">
+                        <h2 className="text-lg font-semibold tracking-normal">Rascunhos de planos</h2><p className="text-sm text-muted-foreground">Planos ainda não aplicados. As sessões de edição salvas também estão disponíveis na recuperação acima.</p>
+                        {!pendingDrafts.length && <p className="rounded-2xl border border-dashed bg-white p-8 text-center text-sm text-muted-foreground">Nenhum plano em rascunho.</p>}
+                        {pendingDrafts.map(draft => <div key={draft.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-white p-4"><div className="min-w-0"><h3 className="break-words text-base font-semibold tracking-normal">{draft.name || 'Novo plano alimentar'}</h3><p className="mt-1 text-xs text-muted-foreground">{formatRelativeTime(draft.updated_at)} · Não aplicado</p></div><div className="flex gap-2"><Button size="sm" onClick={() => {setEditorIntent(null);void handleResumePendingDraft(draft);}}>Retomar edição</Button><Button size="sm" variant="outline" disabled={discardingDraft} onClick={() => setDraftToDelete(draft)}>Descartar</Button></div></div>)}
+                    </TabsContent>
+                    <TabsContent value="history"><PlanVersionHistory versionsLoading={versionsLoading} versionsError={versionsError} retryContext={retryContext} mealPlanVersions={mealPlanVersions} versionsExpanded={versionsExpanded} setVersionsExpanded={setVersionsExpanded} selectedVersionId={selectedVersionId} setSelectedVersionId={setSelectedVersionId} restoringVersion={restoringVersion} handleRestoreVersion={handleRestoreVersion} currentMetrics={currentMetrics} baseMetrics={baseMetrics} buildDelta={buildDelta} /></TabsContent>
+                    <TabsContent value="active" forceMount className="data-[state=inactive]:hidden">
+                {!activePlan && plans.length > 0 && <section aria-label="Sem plano ativo" className="rounded-2xl border border-dashed bg-white p-6 text-center sm:p-10">
+                    <h2 className="font-sans text-lg font-semibold">Nenhum plano alimentar ativo</h2>
+                    <p className="mt-2 text-sm text-muted-foreground">Os planos anteriores continuam no histórico. Crie um plano ou importe um modelo para começar.</p>
+                    <div className="mt-4 flex flex-wrap justify-center gap-2"><Button onClick={() => setShowForm(true)}>Criar plano</Button><Button variant="outline" onClick={() => setTemplateManagerOpen(true)}>Importar modelo</Button></div>
+                </section>}
                 <MealPlanViewer
+                    onMealAction={openMealAction}
+                    onImport={() => setTemplateManagerOpen(true)}
                     patientId={patientId}
                     patientSlugOrId={paramValue}
                     activePlan={activePlan}
                     referenceValues={referenceValues}
-                    mealPlanVersions={mealPlanVersions}
-                    versionsExpanded={versionsExpanded}
-                    setVersionsExpanded={setVersionsExpanded}
-                    selectedVersionId={selectedVersionId}
-                    setSelectedVersionId={setSelectedVersionId}
-                    restoringVersion={restoringVersion}
-                    handleRestoreVersion={handleRestoreVersion}
-                    currentMetrics={currentMetrics}
-                    baseMetrics={baseMetrics}
-                    buildDelta={buildDelta}
-                    handleEdit={handleEdit}
-                    setExportDialogOpen={setExportDialogOpen}
+                    handleEdit={id => {setEditorIntent(null);void handleEdit(id);}}
                     handleGenerateShoppingList={handleGenerateShoppingList}
                     handleCopy={handleCopy}
                     setSaveTemplateDialogOpen={setSaveTemplateDialogOpen}
@@ -485,7 +461,9 @@ const MealPlanPageContent = ({ resolvedPatient }) => {
                     getDaysLabel={getDaysLabel}
                 />
 
-                <MealPlanList key={patientId}
+                    </TabsContent>
+                </Tabs>
+                <MealPlanList showInline={workspaceTab === 'history' || (workspaceTab === 'active' && !activePlan)} showInlineDrafts={false} key={patientId}
                     previewState={planPreview?.scope === previewScope ? planPreview : { id: null, fromList: false }}
                     setPreviewState={value => setPlanPreview({ ...value, scope: previewScope })}
                     patientId={patientId}
@@ -615,7 +593,7 @@ const MealPlanPageContent = ({ resolvedPatient }) => {
                     <DialogHeader>
                         <DialogTitle>Salvar Plano como Modelo</DialogTitle>
                         <DialogDescription>
-                            Salve este plano como um template para reutilizar em outros pacientes.
+                            Reutilize refeições, alimentos e porções em outros pacientes. Ao importar o modelo, revise dias, substituições e quais refeições entram nos totais.
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
@@ -784,11 +762,9 @@ const MealPlanPageContent = ({ resolvedPatient }) => {
                 onOpenChange={setTemplateManagerOpen}
                 patientId={patientId}
                 nutritionistId={nutritionistId}
-                onTemplateApplied={(newPlan) => {
-                    loadPlans();
-                    if (newPlan?.id) {
-                        toast({ title: 'Protocolo aplicado!', description: 'O plano foi importado e ativado para o paciente.' });
-                    }
+                onTemplateApplied={async (newPlan) => {
+                    await loadPlans();
+                    if (newPlan?.id) await handleEdit(newPlan.id);
                 }}
             />
 

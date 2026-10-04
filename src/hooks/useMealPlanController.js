@@ -1,5 +1,5 @@
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/infrastructure/supabase/client';
 import {
@@ -38,6 +38,12 @@ export function useMealPlanController({
     user
 }) {
     const { toast } = useToast();
+    const editRequest = useRef(0);
+    useEffect(() => {
+        editRequest.current += 1;
+        setSubmitting(false);
+        return () => { editRequest.current += 1; };
+    }, [patientId, user?.id]);
 
     // =============== UI States ===============
     const [submitting, setSubmitting] = useState(false);
@@ -75,6 +81,10 @@ export function useMealPlanController({
 
     // Context states
     const [energyCalculation, setEnergyCalculation] = useState(null);
+    const [contextRevision, setContextRevision] = useState(0);
+    const [versionsError, setVersionsError] = useState(false);
+    const [energyLoading, setEnergyLoading] = useState(false);
+    const [energyError, setEnergyError] = useState(false);
     const [syncFlags, setSyncFlags] = useState(null);
 
     // =============== Effects ===============
@@ -118,7 +128,7 @@ export function useMealPlanController({
 
     useEffect(() => {
         let active = true;
-        setMealPlanVersions([]); setSelectedVersionId(''); setVersionsLoading(false);
+        setMealPlanVersions([]); setSelectedVersionId(''); setVersionsLoading(false); setVersionsError(false);
         const loadVersions = async () => {
             if (!activePlan?.id) {
                 setMealPlanVersions([]);
@@ -137,6 +147,7 @@ export function useMealPlanController({
             } catch (error) {
                 if (!active) return;
                 logDiagnostic('error', 'hooks/useMealPlanController.js:125', 'Erro ao carregar versões do plano:', error);
+                setVersionsError(true);
                 setMealPlanVersions([]);
                 setSelectedVersionId('');
             } finally {
@@ -145,11 +156,13 @@ export function useMealPlanController({
         };
         loadVersions();
         return () => { active = false; };
-    }, [activePlan?.id, patientId, user?.id]);
+    }, [activePlan?.id, activePlan?.updated_at, patientId, user?.id, contextRevision]);
 
     useEffect(() => {
         let active = true;
         setEnergyCalculation(null);
+        setEnergyError(false);
+        setEnergyLoading(Boolean(patientId));
         const loadEnergyCalculation = async () => {
             if (!patientId) return;
             try {
@@ -157,12 +170,16 @@ export function useMealPlanController({
                 if (error) throw error;
                 if (active) setEnergyCalculation(data);
             } catch (error) {
+                if (!active) return;
+                setEnergyError(true);
                 logDiagnostic('error', 'hooks/useMealPlanController.js:143', 'Erro ao carregar cálculo de energia:', error);
+            } finally {
+                if (active) setEnergyLoading(false);
             }
         };
         loadEnergyCalculation();
         return () => { active = false; };
-    }, [patientId, user?.id]);
+    }, [patientId, user?.id, contextRevision]);
 
     useEffect(() => {
         let active = true;
@@ -414,14 +431,23 @@ export function useMealPlanController({
     };
 
     const handleEdit = async (planId) => {
+        const request = ++editRequest.current;
+        setSubmitting(true);
         try {
             const result = await getMealPlanById(planId);
+            if (request !== editRequest.current) return false;
             if (result.error) throw result.error;
+            if (!result.data) throw new Error('Plano não encontrado');
             setEditingPlan(result.data);
             setShowForm(true);
+            return true;
         } catch (error) {
+            if (request !== editRequest.current) return false;
             logDiagnostic('error', 'hooks/useMealPlanController.js:397', 'Erro ao carregar plano para edição:', error);
             toast({ title: 'Erro', description: 'Não foi possível carregar o plano para edição', variant: 'destructive' });
+            return false;
+        } finally {
+            if (request === editRequest.current) setSubmitting(false);
         }
     };
 
@@ -650,6 +676,8 @@ export function useMealPlanController({
         restoringVersion,
         versionsExpanded, setVersionsExpanded,
         energyCalculation,
+        energyLoading, energyError, versionsError,
+        retryContext: () => setContextRevision(value => value + 1),
         syncFlags, setSyncFlags,
         
         // Handlers

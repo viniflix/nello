@@ -102,8 +102,12 @@ export function useShadowDraft({ ownerId, draftKey, enabled = true, preparePaylo
   }, [ownerId, draftKey, enabled, localKey]);
 
   const flush = useCallback(async () => {
-    if (!enabled || !ownerId || !draftKey || !latestRef.current) return false;
+    if (!enabled || !ownerId || !draftKey) return false;
     if (blockedRef.current) return false;
+    // A close/save request can arrive after the running request consumed the
+    // queue. Join its confirmation rather than reporting an unsaved draft.
+    if (inFlightRef.current) return inFlightRef.current;
+    if (!latestRef.current) return loadedRef.current;
     const generation = generationRef.current;
     if (!loadedRef.current) {
       let data;

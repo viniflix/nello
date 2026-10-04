@@ -13,6 +13,52 @@ vi.mock('./MacrosChart', () => ({ default: () => null }));
 vi.mock('./FoodSelector', () => ({ default: props => props.isOpen ? <button onClick={() => props.onSelect({ id: 88, name: 'Alimento sintético', calories: 100 })}>Escolher alimento sintético</button> : null }));
 vi.mock('@/components/nutrition', () => ({ PremiumPortionSelector: props => <input aria-label="Quantidade" value={props.value.quantity} onChange={event => props.onChange({ ...props.value, quantity: Number(event.target.value) })} /> }));
 
+it('makes validation visible even when the invalid settings section is collapsed', async () => {
+    const submit=vi.fn();
+    render(<MealPlanForm patientId="patient" nutritionistId="owner" initialData={{id:55,name:'Plano',start_date:'2026-10-04',active_days:[],meals:[{id:10,name:'Café',foods:[]}]}} onSubmit={submit} />);
+    fireEvent.click(screen.getByRole('button',{name:'Salvar alterações',exact:true}));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Selecione pelo menos um dia da semana');
+    expect(submit).not.toHaveBeenCalled();
+});
+it('explains the existing server requirement for unfinished meals before publishing', async () => {
+    const submit=vi.fn();
+    render(<MealPlanForm patientId="patient" nutritionistId="owner" initialData={{id:55,name:'Plano',start_date:'2026-10-04',active_days:['monday'],meals:[{id:10,name:'Café',foods:[]}]}} onSubmit={submit} />);
+    fireEvent.click(screen.getByRole('button',{name:'Salvar alterações',exact:true}));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Adicione pelo menos um alimento em cada refeição');
+    expect(submit).not.toHaveBeenCalled();
+});
+
+it('opens the requested existing meal without losing other meals or changing stored quantities', async () => {
+    let captured;
+    const session={ready:true,status:'saved',queue:value=>{captured=structuredClone(value);},flush:async()=>true,discard:async()=>true};
+    const initialData={id:55,name:'Plano',meals:[{id:10,name:'Café',meal_type:'breakfast',foods:[{id:20,food_id:1,food:{name:'Alimento'},quantity:33,unit:'gram',calories:40}]},{id:11,name:'Almoço',foods:[]}]};
+    render(<MealPlanForm patientId="patient" nutritionistId="owner" session={session} initialData={initialData} editorIntent={{planId:55,action:'meal',mealId:10}} />);
+    expect(await screen.findByRole('dialog',{name:'Editar Refeição'})).toBeVisible();
+    await waitFor(()=>expect(captured.meals).toHaveLength(2));
+    expect(captured.meals[0].foods[0].quantity).toBe(33);
+    expect(captured.editor.mealId).toBe(10);
+});
+it('keeps the existing meal selected when confirming it cannot yet flush the working session', async () => {
+    const session={ready:true,status:'local',queue:vi.fn(),flush:vi.fn().mockResolvedValue(false),discard:async()=>true};
+    render(<MealPlanForm patientId="patient" nutritionistId="owner" session={session} initialData={{id:55,name:'Plano',meals:[{id:10,name:'Café',meal_type:'breakfast',foods:[{id:20,food_id:1,food:{name:'Alimento'},quantity:100,unit:'gram',calories:100}]}]}} editorIntent={{planId:55,action:'meal',mealId:10}} />);
+    const dialog=await screen.findByRole('dialog',{name:'Editar Refeição'});
+    fireEvent.click(within(dialog).getByRole('button',{name:'Atualizar Refeição'}));
+    await waitFor(()=>expect(session.flush).toHaveBeenCalled());
+    expect(screen.getByRole('dialog',{name:'Editar Refeição'})).toBeVisible();
+    expect(screen.queryByRole('dialog',{name:'Nova Refeição'})).toBeNull();
+});
+
+it('duplicates through the existing editor and strips database identities from the copy', async () => {
+    let captured;
+    const session={ready:true,status:'saved',queue:value=>{captured=structuredClone(value);},flush:async()=>true,discard:async()=>true};
+    render(<MealPlanForm patientId="patient" nutritionistId="owner" session={session} initialData={{id:55,name:'Plano',meals:[{id:10,name:'Almoço',foods:[{id:20,food_id:1,quantity:33,unit:'gram'}]}]}} editorIntent={{planId:55,action:'duplicate',mealId:10}} />);
+    await waitFor(()=>expect(captured.meals).toHaveLength(2));
+    expect(captured.meals[1].name).toBe('Almoço (cópia)');
+    expect(captured.meals[1].id).toBeUndefined();
+    expect(captured.meals[1].foods[0].id).toBeUndefined();
+    expect(captured.meals[1].foods[0].quantity).toBe(33);
+});
+
 it('captures and restores the whole plan and unfinished meal/food editors after leaving the page', async () => {
     let saved;
     const session = { ready: true, status: 'saved', queue: value => { saved = structuredClone(value); }, flush: async () => true, discard: vi.fn().mockResolvedValue(true) };
@@ -97,7 +143,7 @@ it('keeps the editor and recoverable data when applying the plan fails', async (
     const onSaved = vi.fn();
     const discard = vi.fn();
     const onSubmit = vi.fn().mockResolvedValue(false);
-    render(<MealPlanForm patientId="patient" nutritionistId="owner" initialData={{ id: 55, name: 'Plano', start_date: '2026-10-03', active_days: ['monday'], meals: [{ id: 10, name: 'Café', foods: [] }] }} session={{ ready: true, queue: vi.fn(), discard }} onSubmit={onSubmit} onSaved={onSaved} />);
+    render(<MealPlanForm patientId="patient" nutritionistId="owner" initialData={{ id: 55, name: 'Plano', start_date: '2026-10-03', active_days: ['monday'], meals: [{ id: 10, name: 'Café', foods: [{id:20,food_id:1,quantity:100,unit:'gram',calories:100,food:{name:'Alimento'}}] }] }} session={{ ready: true, queue: vi.fn(), discard }} onSubmit={onSubmit} onSaved={onSaved} />);
     fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }));
     await waitFor(() => expect(onSubmit).toHaveBeenCalled());
     expect(onSaved).not.toHaveBeenCalled();

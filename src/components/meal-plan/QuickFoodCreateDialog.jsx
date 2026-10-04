@@ -37,9 +37,9 @@ export default function QuickFoodCreateDialog({
 
     return (
         <Dialog open={open} onOpenChange={handleClose}>
-            <DialogContent className="max-w-4xl max-h-[95dvh] overflow-y-auto">
+            <DialogContent data-meal-plan-dialog className="max-w-4xl max-h-[95dvh] overflow-y-auto max-sm:left-0 max-sm:top-0 max-sm:h-dvh max-sm:max-h-dvh max-sm:w-full max-sm:translate-x-0 max-sm:translate-y-0 max-sm:border-0 max-sm:bg-white [overflow-wrap:anywhere]">
                 <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2">
+                    <DialogTitle className="flex items-start gap-2 font-sans leading-snug tracking-normal">
                         <Plus className="h-5 w-5" />
                         Cadastrar Alimento Personalizado
                     </DialogTitle>

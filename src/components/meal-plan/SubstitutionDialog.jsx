@@ -19,10 +19,12 @@ const nutrientFields = [['calories','Energia','kcal'], ['protein','Proteínas','
 const SubstitutionDialog = ({ isOpen, onClose, originalFood, initialSubstitutes = [], onSave }) => {
   const [substitutes, setSubstitutes] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
+  const [mobileStep, setMobileStep] = useState('search');
   useEffect(() => {
     if (isOpen) {
       setSubstitutes(initialSubstitutes || []);
       setSelectedId(initialSubstitutes?.[0]?.id ?? null);
+      setMobileStep(initialSubstitutes?.length ? 'list' : 'search');
     }
     // Opening starts one working copy; parent renders must not reset it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -36,6 +38,7 @@ const SubstitutionDialog = ({ isOpen, onClose, originalFood, initialSubstitutes 
       }]);
     }
     setSelectedId(food.id);
+    setMobileStep('list');
   };
   const remove = id => {
     const remaining = substitutes.filter(sub => sub.id !== id);
@@ -46,9 +49,9 @@ const SubstitutionDialog = ({ isOpen, onClose, originalFood, initialSubstitutes 
 
   return <>
     <Dialog open={isOpen} onOpenChange={open => { if (!open) onClose(); }}>
-      <DialogContent className="flex h-[94dvh] w-[96vw] max-w-[1440px] flex-col overflow-hidden">
+      <DialogContent data-meal-plan-dialog className="flex h-[94dvh] w-[96vw] max-w-[1440px] flex-col overflow-hidden max-sm:left-0 max-sm:top-0 max-sm:h-dvh max-sm:max-h-dvh max-sm:w-full max-sm:translate-x-0 max-sm:translate-y-0 max-sm:border-0 max-sm:bg-white max-sm:gap-3 max-lg:overflow-y-auto [overflow-wrap:anywhere]">
         <DialogHeader className="shrink-0">
-          <DialogTitle>Substituições de alimento</DialogTitle>
+          <DialogTitle className="font-sans leading-snug tracking-normal">Substituições de alimento</DialogTitle>
           <DialogDescription>Escolha alternativas e ajuste cada porção. A comparação usa a quantidade prescrita, convertida em gramas.</DialogDescription>
         </DialogHeader>
         <div className="shrink-0 rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-950">
@@ -58,11 +61,15 @@ const SubstitutionDialog = ({ isOpen, onClose, originalFood, initialSubstitutes 
             {nutrientFields.map(([field,label,unit]) => <span key={field}>{label}: <strong>{Math.round(Number(originalFood?.[field] || 0))} {unit}</strong></span>)}
           </div>
         </div>
-        <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-y-auto lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:overflow-hidden">
-          <section className="min-h-[360px] min-w-0 lg:min-h-0">
+        <nav aria-label="Etapas das substituições" className="grid shrink-0 grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] gap-2 lg:hidden [&_button]:h-auto [&_button]:min-h-11 [&_button]:whitespace-normal">
+          <Button type="button" variant={mobileStep === 'search' ? 'default' : 'outline'} aria-pressed={mobileStep === 'search'} onClick={() => setMobileStep('search')}>Buscar alternativas</Button>
+          <Button type="button" variant={mobileStep === 'list' ? 'default' : 'outline'} aria-pressed={mobileStep === 'list'} onClick={() => setMobileStep('list')}>Sua lista ({substitutes.length})</Button>
+        </nav>
+        <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-hidden max-lg:min-h-[20rem] max-lg:shrink-0 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+          <section className={`min-h-0 min-w-0 ${mobileStep === 'search' ? '' : 'hidden lg:block'}`}>
             <FoodSelector embedded isOpen={isOpen} onClose={() => {}} onSelect={addSubstitute} targetGroup={originalFood?.food?.group} targetCalories={originalFood?.calories} originalFood={originalFood} selectedFoodId={selectedId} />
           </section>
-          <section className="min-h-0 space-y-4 overflow-y-auto rounded-xl border border-primary/20 bg-white p-4">
+          <section className={`min-h-0 min-w-0 space-y-4 overflow-y-auto rounded-xl border border-primary/20 bg-white p-4 ${mobileStep === 'list' ? '' : 'hidden lg:block'}`}>
             <h3 className="text-sm font-semibold text-primary">2 · Sua lista de alternativas ({substitutes.length})</h3>
             <div className="space-y-2">
               {!substitutes.length && <p className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">Adicione alimentos para montar a lista de substituições.</p>}
@@ -83,19 +90,19 @@ const SubstitutionDialog = ({ isOpen, onClose, originalFood, initialSubstitutes 
                 onChange={value => setSubstitutes(previous => previous.map(sub => sub.id===selected.id ? {...sub,quantity:value.quantity,unit:value.measureCode,measure:value.measure} : sub))} />
               <h4 className="font-medium">Comparação das porções</h4>
               <div className="overflow-x-auto"><table className="w-full text-left text-sm">
-                <thead><tr className="border-b"><th className="py-2">Nutriente</th><th>Original</th><th>Alternativa</th><th>Diferença</th></tr></thead>
+                <thead className="max-sm:sr-only"><tr className="border-b"><th className="py-2">Nutriente</th><th>Original</th><th>Alternativa</th><th>Diferença</th></tr></thead>
                 <tbody>{nutrientFields.map(([field,label,unit]) => {
                   const base = Number(originalFood?.[field] || 0);
                   const alternative = nutrition?.[field];
                   const diff = alternative == null ? null : alternative-base;
-                  return <tr key={field} className="border-b"><td className="py-3">{label}</td><td>{Math.round(base)} {unit}</td><td>{alternative == null ? '—' : `${Math.round(alternative)} ${unit}`}</td><td>{diff===null ? '—' : `${diff>0 ? '+' : ''}${Math.round(diff)} ${unit}`}</td></tr>;
+                  return <tr key={field} className="border-b max-sm:grid max-sm:grid-cols-3 max-sm:gap-2 max-sm:py-3"><td className="py-3 max-sm:col-span-3 max-sm:py-0 max-sm:font-medium">{label}</td><td><span aria-hidden="true" className="block text-xs text-muted-foreground sm:hidden">Original</span>{Math.round(base)} {unit}</td><td><span aria-hidden="true" className="block text-xs text-muted-foreground sm:hidden">Alternativa</span>{alternative == null ? '—' : `${Math.round(alternative)} ${unit}`}</td><td><span aria-hidden="true" className="block text-xs text-muted-foreground sm:hidden">Diferença</span>{diff===null ? '—' : `${diff>0 ? '+' : ''}${Math.round(diff)} ${unit}`}</td></tr>;
                 })}</tbody>
               </table></div>
               <p className="text-sm text-muted-foreground">A quantidade inicial aproxima a energia da porção original. Confira também os macronutrientes antes de salvar.</p>
-            </> : <div className="flex h-full min-h-40 flex-col items-center justify-center gap-3 text-muted-foreground"><Plus className="h-8 w-8" /><p>Adicione ou selecione uma alternativa para editar.</p></div>}
+            </> : <div className="flex min-h-40 flex-col items-center justify-center gap-3 text-muted-foreground"><Plus className="h-8 w-8" /><p>Adicione ou selecione uma alternativa para editar.</p></div>}
           </section>
         </div>
-        <DialogFooter className="shrink-0 border-t pt-3">
+        <DialogFooter className="grid shrink-0 grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] gap-2 border-t bg-white pt-3 max-lg:sticky max-lg:bottom-0 sm:flex sm:items-center [&_button]:min-h-11 [&_button]:h-auto [&_button]:min-w-0 [&_button]:whitespace-normal">
           <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>
           <Button type="button" onClick={save} disabled={substitutes.some(sub => !substitutionNutrition(sub))}>Salvar substituições</Button>
         </DialogFooter>

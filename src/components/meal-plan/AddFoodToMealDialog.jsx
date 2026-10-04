@@ -21,11 +21,15 @@ import { ShadowRecovery, ShadowSaveStatus } from '@/components/ui/shadow-save-st
 
 const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName, mealType, initialData = null, ownerId, shadowKey, autoRestore = false, draftContext = null, resumeState = null, onWorkingState, session = null }) => {
     const [selectedFood, setSelectedFood] = useState(null);
+    const [mobileStep, setMobileStep] = useState('search');
     const [portion, setPortion] = useState({ quantity: '', measureId: null, measureCode: 'gram' });
     const [notes, setNotes] = useState('');
     const [patientDescription, setPatientDescription] = useState('');
     const [calculatedNutrition, setCalculatedNutrition] = useState(null);
     const searchInputRef = useRef(null);
+    useEffect(() => {
+        if (isOpen && mobileStep === 'search') searchInputRef.current?.focus();
+    }, [isOpen, mobileStep]);
     const [errors, setErrors] = useState({});
     const [isApplying, setIsApplying] = useState(false);
     const touchedRef = useRef(false);
@@ -51,6 +55,7 @@ const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName, mealType, initi
         if (!value) return;
         touchedRef.current = true;
         setSelectedFood(value.selectedFood || null);
+        setMobileStep(value.selectedFood ? 'portion' : 'search');
         setPortion(value.portion || { quantity: 100, measureId: null, measureCode: 'gram' });
         setNotes(value.notes || '');
         setPatientDescription(value.patientDescription || '');
@@ -60,6 +65,7 @@ const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName, mealType, initi
     // Popular campos quando está editando
     useEffect(() => {
         if (initialData) {
+            setMobileStep('portion');
             setSelectedFood(initialData.food);
             // Suporta legado (unit numérico) e novo formato (unit = code string)
             const unitCode = isGramUnit(initialData.unit)
@@ -86,6 +92,7 @@ const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName, mealType, initi
         if (!isOpen || !resumeState || sessionRestoredRef.current) return;
         sessionRestoredRef.current = true;
         setSelectedFood(resumeState.selectedFood || null);
+        setMobileStep(resumeState.selectedFood ? 'portion' : 'search');
         setPortion(resumeState.portion || { quantity: 100, measureId: null, measureCode: 'gram' });
         setNotes(resumeState.notes || '');
         setPatientDescription(resumeState.patientDescription || '');
@@ -98,6 +105,7 @@ const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName, mealType, initi
         if (selectedFood?.id === food.id) return;
         touchedRef.current = true;
         setSelectedFood(food);
+        setMobileStep('portion');
         // Resetar porção ao trocar alimento
         setPortion({ quantity: '', measureId: null, measureCode: 'gram', measure: null });
         setCalculatedNutrition(null);
@@ -154,6 +162,7 @@ const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName, mealType, initi
             await shadow.discard();
             if (continueAdding) {
                 setSelectedFood(null);
+                setMobileStep('search');
                 setPortion({ quantity: '', measureId: null, measureCode: 'gram', measure: null });
                 setNotes('');
                 setPatientDescription('');
@@ -173,6 +182,7 @@ const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName, mealType, initi
         if (!session && touchedRef.current && ['local', 'saving', 'error', 'conflict'].includes(shadow.status) && !(await shadow.flush())) return;
         touchedRef.current = false;
         setSelectedFood(null);
+        setMobileStep('search');
         setPortion({ quantity: '', measureId: null, measureCode: 'gram', measure: null });
         setNotes('');
         setPatientDescription('');
@@ -183,9 +193,9 @@ const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName, mealType, initi
 
     return (
         <Dialog open={isOpen} onOpenChange={handleClose}>
-            <DialogContent className="flex h-[92dvh] max-h-[calc(100dvh-1rem)] w-[96vw] max-w-[1440px] flex-col gap-4 overflow-hidden">
+            <DialogContent data-meal-plan-dialog className="flex h-[92dvh] max-h-[calc(100dvh-1rem)] w-[96vw] max-w-[1440px] flex-col gap-4 overflow-hidden max-sm:left-0 max-sm:top-0 max-sm:h-dvh max-sm:max-h-dvh max-sm:w-full max-sm:translate-x-0 max-sm:translate-y-0 max-sm:border-0 max-sm:bg-white max-sm:gap-3 max-lg:overflow-y-auto [overflow-wrap:anywhere]">
                 <DialogHeader className="shrink-0 border-b border-primary/15 pb-3">
-                    <DialogTitle>{initialData ? 'Editar Alimento' : 'Adicionar Alimento'}</DialogTitle>
+                    <DialogTitle className="font-sans leading-snug tracking-normal">{initialData ? 'Editar Alimento' : 'Adicionar Alimento'}</DialogTitle>
                     <DialogDescription>{mealName ? 'Refeição: ' + mealName + '. ' : ''}Busque o alimento, informe a quantidade e escolha a medida.</DialogDescription>
                 </DialogHeader>
                 {ownerId && shadowKey && <div className="shrink-0 space-y-2">
@@ -193,14 +203,18 @@ const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName, mealType, initi
                     {!resumeState && <ShadowRecovery recovery={shadow.recovery} onRestore={restoreShadow} onDiscard={() => { void shadow.discardRecovery(); }} />}
                     <ShadowSaveStatus status={session?.status || shadow.status} onRetry={session?.flush || shadow.flush} />
                 </div>}
-                <div className="grid min-h-0 flex-1 gap-5 overflow-y-auto lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] lg:overflow-hidden">
-                    <div className="min-h-[360px] min-w-0 lg:min-h-0">
+                <nav aria-label="Etapas do alimento" className="grid shrink-0 grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] gap-2 lg:hidden [&_button]:h-auto [&_button]:min-h-11 [&_button]:whitespace-normal">
+                    <Button type="button" variant={mobileStep === 'search' ? 'default' : 'outline'} aria-pressed={mobileStep === 'search'} onClick={() => setMobileStep('search')}>1 · Buscar alimento</Button>
+                    <Button type="button" variant={mobileStep === 'portion' ? 'default' : 'outline'} aria-pressed={mobileStep === 'portion'} disabled={!selectedFood} onClick={() => setMobileStep('portion')}>2 · Ajustar porção</Button>
+                </nav>
+                <div className="grid min-h-0 flex-1 gap-5 overflow-hidden max-lg:min-h-[20rem] max-lg:shrink-0 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+                    <div className={`min-h-0 min-w-0 ${mobileStep === 'search' ? '' : 'hidden lg:block'}`}>
                         <FoodSelector embedded mealType={mealType} isOpen={isOpen} onClose={() => {}} onSelect={handleFoodSelect} searchInputRef={searchInputRef} selectedFoodId={selectedFood?.id} />
                     </div>
-                    <div className="min-w-0 space-y-4 rounded-xl border border-primary/20 bg-white p-4 lg:overflow-y-auto">
+                    <div className={`min-h-0 min-w-0 space-y-4 overflow-y-auto rounded-xl border border-primary/20 bg-white p-4 ${mobileStep === 'portion' ? '' : 'hidden lg:block'}`}>
                         <div className="space-y-2">
                             <span className="text-xs font-semibold uppercase tracking-wide text-primary">2 · Defina a porção</span>
-                            {selectedFood ? <div className="space-y-1"><h3 className="text-lg font-semibold leading-snug">{selectedFood.name}</h3><p className="text-xs text-muted-foreground">{selectedFood.source}{selectedFood.group ? ' · ' + selectedFood.group : ''}</p><Button type="button" variant="ghost" size="sm" className="px-0" onClick={() => searchInputRef.current?.focus()}>Trocar alimento na busca</Button></div> : <div className="rounded-lg border border-dashed p-4"><p className="text-sm text-muted-foreground">Selecione um resultado da busca para definir a porção.</p><Button type="button" variant="outline" size="sm" className="mt-3" onClick={() => searchInputRef.current?.focus()}>Buscar Alimento</Button></div>}
+                            {selectedFood ? <div className="space-y-1"><h3 className="text-lg font-semibold leading-snug">{selectedFood.name}</h3><p className="text-xs text-muted-foreground">{selectedFood.source}{selectedFood.group ? ' · ' + selectedFood.group : ''}</p><Button type="button" variant="ghost" size="sm" className="px-0" onClick={() => { setMobileStep('search'); searchInputRef.current?.focus(); }}>Trocar alimento na busca</Button></div> : <div className="rounded-lg border border-dashed p-4"><p className="text-sm text-muted-foreground">Selecione um resultado da busca para definir a porção.</p><Button type="button" variant="outline" size="sm" className="mt-3" onClick={() => searchInputRef.current?.focus()}>Buscar Alimento</Button></div>}
                             {errors.food && <p role="alert" className="text-xs text-destructive">{errors.food}</p>}
                         </div>
                         <PremiumPortionSelector focusQuantityOnSelect food={selectedFood} value={portion} onChange={value => { touchedRef.current = true; setPortion(value); }} onNutritionChange={handleNutritionChange} showNutrition={false} />
@@ -210,11 +224,11 @@ const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName, mealType, initi
                         <div className="space-y-2"><Label htmlFor="food-notes">Observações (opcional)</Label><Textarea id="food-notes" rows={2} placeholder="Preparo, temperos ou orientação para este alimento" value={notes} onChange={e => { touchedRef.current = true; setNotes(e.target.value); }} /></div>
                     </div>
                 </div>
-                <DialogFooter className="shrink-0 flex-wrap items-center border-t pt-3">
-                    {errors.save && <p role="alert" className="w-full text-xs text-destructive">{errors.save}</p>}
-                    <p className="mr-auto text-xs text-muted-foreground">3 · Adicione à refeição. Salve o plano ao concluir.</p>
+                <DialogFooter className="grid shrink-0 grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] gap-2 border-t bg-white pt-3 max-lg:sticky max-lg:bottom-0 sm:flex sm:flex-wrap sm:items-center [&_button]:min-h-11 [&_button]:h-auto [&_button]:min-w-0 [&_button]:whitespace-normal">
+                    {errors.save && <p role="alert" className="col-span-full w-full text-xs text-destructive">{errors.save}</p>}
+                    <p className="col-span-full mr-auto text-xs text-muted-foreground sm:flex-1">3 · Adicione à refeição. Salve o plano ao concluir.</p>
                     <Button type="button" variant="outline" onClick={handleClose} disabled={isApplying}><X className="mr-2 h-4 w-4" />Cancelar</Button>
-                    {!initialData && <Button type="button" variant="outline" onClick={() => handleAdd(true)} disabled={isApplying || !selectedFood || portion.quantity === ''}>Adicionar e continuar</Button>}
+                    {!initialData && <Button type="button" variant="outline" className="col-span-full row-start-2 sm:order-none" onClick={() => handleAdd(true)} disabled={isApplying || !selectedFood || portion.quantity === ''}>Adicionar e continuar</Button>}
                     <Button type="button" onClick={() => handleAdd()} disabled={isApplying || !selectedFood || portion.quantity === ''}><Plus className="mr-2 h-4 w-4" />{initialData ? 'Atualizar' : 'Adicionar'}</Button>
                 </DialogFooter>
             </DialogContent>

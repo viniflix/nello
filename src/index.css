@@ -155,6 +155,18 @@ html {
   scrollbar-gutter: stable !important;
 }
 
+/* Full-screen meal editors own scrolling on small screens. Keep the desktop
+   gutter, but do not reserve a second scrollbar behind these mobile dialogs. */
+@media (max-width: 639px) {
+  html:has([data-meal-plan-dialog]) {
+    overflow-y: hidden !important;
+    scrollbar-gutter: auto !important;
+  }
+  body:has([data-meal-plan-dialog]) {
+    margin-right: 0 !important;
+  }
+}
+
 /*
    Apenas o body e elementos que o Radix marca explicitamente como locker
    devem ter o padding neutralizado, e NUNCA o margin-right,

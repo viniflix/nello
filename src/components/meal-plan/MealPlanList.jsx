@@ -20,6 +20,8 @@ const MealPlanList = ({
     previewState: controlledPreview,
     setPreviewState: setControlledPreview,
     activePlan,
+    showInline = !activePlan,
+    showInlineDrafts = true,
     plans,
     pendingDrafts,
     plansModalOpen,
@@ -61,13 +63,13 @@ const MealPlanList = ({
     return (
         <>
             {/* Lista de Planos - Inline quando NÃO tem plano ativo */}
-            {!activePlan && (
+            {showInline && (
                 <Card>
                     <CardHeader className="p-[12px] sm:p-6">
                         <CardTitle className="tracking-normal break-words">Todos os Planos</CardTitle>
                     </CardHeader>
                     <CardContent className="p-[12px] pt-0 sm:p-6 sm:pt-0">
-                        {pendingDrafts.length === 0 && plans.length === 0 ? (
+                        {(!showInlineDrafts || pendingDrafts.length === 0) && plans.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-12 text-center">
                                 <div className="p-4 bg-muted/20 rounded-full mb-4">
                                     <Utensils className="w-12 h-12 text-muted-foreground opacity-20" />
@@ -103,7 +105,7 @@ const MealPlanList = ({
                             </div>
                         ) : (
                             <div className="space-y-3">
-                                {pendingDrafts.map((draft) => (
+                                {(showInlineDrafts ? pendingDrafts : []).map((draft) => (
                                     <div key={draft.id} className="p-[16px] border-2 border-amber-200 bg-amber-50/50 border-dashed rounded-lg transition-colors">
                                         <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-start justify-between">
                                             <div className="flex-1 min-w-0">

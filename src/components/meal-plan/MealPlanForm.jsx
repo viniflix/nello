@@ -44,6 +44,7 @@ const MealPlanForm = ({
     patientSlugOrId,
     nutritionistId,
     initialData = null,
+    editorIntent = null,
     pendingDraft = null,   // rascunho completo já carregado pela página mãe
     recoveryDraft = null,
     beforeCloseRef = null,
@@ -91,6 +92,7 @@ const MealPlanForm = ({
     const sessionTouchedRef = useRef(false);
     const applyingRef = useRef(false);
     const sessionRestoredRef = useRef(false);
+    const intentAppliedRef = useRef(null);
     const sessionBaselineRef = useRef(restoredSession?.baselineAppliedAt ?? baselineAppliedAt);
     const receiveMealEditor = useCallback(value => { sessionTouchedRef.current = true; setMealEditorState(value); }, []);
     const shadow = useShadowDraft({
@@ -369,7 +371,6 @@ const MealPlanForm = ({
                 ? { ...m, ...updatedMeal, tempId: m.tempId, dbId: newDbId ?? m.dbId }
                 : m
         ));
-        setEditingMeal(null);
         return true;
     };
 
@@ -416,6 +417,21 @@ const MealPlanForm = ({
         sessionTouchedRef.current = true;
         setMeals(previous => previous.map((meal,i) => i===index ? {...meal,include_in_totals:include} : meal));
     };
+    useEffect(() => {
+        if (!editorIntent || intentAppliedRef.current === editorIntent || restoredSession || initialData?.id !== editorIntent.planId || loadedPlanIdRef.current !== initialData?.id) return;
+        const index = meals.findIndex(meal => String(meal.id || meal.dbId) === String(editorIntent.mealId));
+        if (editorIntent.action !== 'addMeal' && index < 0) return;
+        intentAppliedRef.current = editorIntent;
+        if (editorIntent.action === 'duplicate') { copyMeal(index); return; }
+        if (editorIntent.action === 'addMeal') { setEditingMeal(null); setShowMealForm(true); return; }
+        const meal = meals[index];
+        const food = (meal.foods || []).find(item => String(item.id) === String(editorIntent.foodId));
+        setEditingMeal(meal);
+        setMealFoodTarget(editorIntent.action === 'addFood' ? {newFood:true} : food ? {food,substitutions:editorIntent.action === 'substitutions'} : null);
+        setShowMealForm(true);
+    // A contextual entry is consumed once; all writes stay in existing handlers.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [editorIntent, initialData?.id, meals, restoredSession]);
     const calculateDailyTotals = () => meals.filter(meal => meal.include_in_totals !== false).reduce(
         (acc, meal) => ({
             daily_calories: acc.daily_calories + (meal.calories || 0),
@@ -432,6 +448,7 @@ const MealPlanForm = ({
         if (!formData.start_date) newErrors.start_date = 'Data de início é obrigatória';
         if (formData.end_date && formData.end_date < formData.start_date) newErrors.end_date = 'Data final deve ser posterior à data inicial';
         if (meals.length === 0) newErrors.meals = 'Adicione pelo menos uma refeição';
+        else if (meals.some(meal => !meal.foods?.length)) newErrors.meals = 'Adicione pelo menos um alimento em cada refeição antes de aplicar o plano.';
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
@@ -575,10 +592,10 @@ const MealPlanForm = ({
     return (
         <>
             <form onSubmit={handleApplyPlan} className="space-y-6">
-                <div className="grid gap-3 rounded-xl border border-primary/15 bg-white p-4 text-sm sm:grid-cols-3" aria-label="Etapas da montagem do plano">
-                    <div><p className="font-semibold text-primary">1 · Organize as refeições</p><p className="mt-1 text-xs text-muted-foreground">Crie, importe, duplique ou arraste para ordenar.</p></div>
-                    <div><p className="font-semibold text-blue-800">2 · Monte cada porção</p><p className="mt-1 text-xs text-muted-foreground">Adicione alimentos, medidas e substituições.</p></div>
-                    <div><p className="font-semibold text-orange-800">3 · Revise e salve</p><p className="mt-1 text-xs text-muted-foreground">Confira a análise. Ao salvar, você volta aos planos.</p></div>
+                <div className="grid grid-cols-3 gap-3 rounded-xl border border-primary/15 bg-white p-3 text-xs sm:p-4 sm:text-sm" aria-label="Etapas da montagem do plano">
+                    <div><p className="font-semibold text-primary"><span className="sm:hidden">1 · Refeições</span><span className="hidden sm:inline">1 · Organize as refeições</span></p><p className="mt-1 hidden text-xs text-muted-foreground sm:block">Crie, importe, duplique ou arraste para ordenar.</p></div>
+                    <div><p className="font-semibold text-blue-800"><span className="sm:hidden">2 · Porções</span><span className="hidden sm:inline">2 · Monte cada porção</span></p><p className="mt-1 hidden text-xs text-muted-foreground sm:block">Adicione alimentos, medidas e substituições.</p></div>
+                    <div><p className="font-semibold text-orange-800"><span className="sm:hidden">3 · Revisão</span><span className="hidden sm:inline">3 · Revise e salve</span></p><p className="mt-1 hidden text-xs text-muted-foreground sm:block">Confira a análise. Ao salvar, você volta aos planos.</p></div>
                 </div>
 
                 {/* Draft Recovery Banner */}
@@ -624,16 +641,16 @@ const MealPlanForm = ({
                 {/* Informações Básicas */}
                 {!restoredSession && <ShadowRecovery recovery={shadow.recovery} onRestore={restoreShadow} onDiscard={() => { void shadow.discardRecovery(); }} />}
                 <Card className="border-t-4 border-t-primary">
-                    <CardHeader>
+                    <CardHeader className="p-4 sm:p-6">
                         <div className="flex flex-wrap items-center justify-between gap-3">
-                            <CardTitle className="tracking-normal text-lg">Informações do Plano</CardTitle>
+                            <CardTitle className="font-sans tracking-normal text-lg">Informações do Plano</CardTitle>
                             <div className="flex flex-wrap items-center gap-2">
                                 {!session && !isEditing && ['local','saving','saved','error','conflict'].includes(draft.saveStatus) && <SaveStatusIndicator status={draft.saveStatus} />}
                                 <ShadowSaveStatus status={session?.status || shadow.status} onRetry={session?.flush || shadow.flush} />
                             </div>
                         </div>
                     </CardHeader>
-                    <CardContent className="space-y-4">
+                    <CardContent className="space-y-4 px-4 pb-4 sm:px-6 sm:pb-6">
                         {/* Nome */}
                         <div className="space-y-2">
                             <Label htmlFor="name">
@@ -771,10 +788,10 @@ const MealPlanForm = ({
                     <details className="rounded-lg border bg-card p-4">
                         <summary className="cursor-pointer text-sm font-medium">Ajustar porções em conjunto · simular antes de aplicar</summary>
                     <Card className="mt-3 border-0 shadow-none">
-                        <CardHeader>
-                            <CardTitle className="tracking-normal text-lg">Ajustar porções do plano</CardTitle>
+                        <CardHeader className="p-4 sm:p-6">
+                            <CardTitle className="font-sans tracking-normal text-lg">Ajustar porções do plano</CardTitle>
                         </CardHeader>
-                        <CardContent className="space-y-4">
+                        <CardContent className="space-y-4 px-4 pb-4 sm:px-6 sm:pb-6">
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                                 <div className="space-y-2">
                                     <Label htmlFor="portion-factor">Fator de ajuste</Label>
@@ -883,9 +900,9 @@ const MealPlanForm = ({
                     <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_340px] gap-5">
                         <div className="min-w-0">
                             <Card>
-                                <CardHeader>
+                                <CardHeader className="p-4 sm:p-6">
                                     <div className="flex flex-wrap items-center justify-between gap-3">
-                                        <CardTitle className="tracking-normal text-lg text-primary">Refeições</CardTitle>
+                                        <CardTitle className="font-sans tracking-normal text-lg text-primary">Refeições</CardTitle>
                                         <div className="flex flex-wrap gap-2">
                                             <Button
                                                 type="button"
@@ -910,10 +927,10 @@ const MealPlanForm = ({
                                         </div>
                                     </div>
                                 </CardHeader>
-                                <CardContent>
+                                <CardContent className="px-4 pb-4 sm:px-6 sm:pb-6">
                                     <div className="space-y-3">
                                         {meals.map((meal, index) => (
-                                            <div key={meal.tempId} data-meal-sort-index={index} className={`p-4 border border-l-4 border-l-primary/60 rounded-xl bg-white hover:bg-primary/5 transition-colors ${draggingMealIndex === index ? 'opacity-60 border-primary' : ''}`}>
+                                            <div key={meal.tempId} data-meal-sort-index={index} className={`p-3 sm:p-4 border border-l-4 border-l-primary/60 rounded-xl bg-white hover:bg-primary/5 transition-colors ${draggingMealIndex === index ? 'opacity-60 border-primary' : ''}`}>
                                                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                                                     <div className="flex-1 min-w-0">
                                                         <div className="flex flex-wrap items-center gap-2">
@@ -982,9 +999,9 @@ const MealPlanForm = ({
                 {/* Refeições — Estado vazio */}
                 {meals.length === 0 && (
                     <Card>
-                        <CardHeader>
+                        <CardHeader className="p-4 sm:p-6">
                             <div className="flex flex-wrap items-center justify-between gap-3">
-                                <CardTitle className="tracking-normal text-lg text-primary">Refeições</CardTitle>
+                                <CardTitle className="font-sans tracking-normal text-lg text-primary">Refeições</CardTitle>
                                 <div className="flex flex-wrap gap-2">
                                     <Button
                                         type="button"
@@ -1007,7 +1024,7 @@ const MealPlanForm = ({
                                 </div>
                             </div>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="px-4 pb-4 sm:px-6 sm:pb-6">
                             <div className="text-center py-8 text-muted-foreground">
                                 Nenhuma refeição adicionada ainda
                                 {errors.meals && <p className="text-destructive mt-2">{errors.meals}</p>}
@@ -1017,6 +1034,7 @@ const MealPlanForm = ({
                 )}
 
                 {/* Botões de ação — 3 opções */}
+                {Object.keys(errors).length > 0 && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-900"><p className="font-semibold">Confira antes de salvar</p><p className="mt-1">{Object.values(errors).join(' · ')}</p><p className="mt-1 text-xs">Datas e dias da semana ficam em Configurações do plano.</p></div>}
                 <div className="sticky bottom-0 z-10 flex flex-wrap items-center gap-2 justify-end rounded-lg border bg-white/95 p-3 shadow-sm backdrop-blur">
                     {/* Cancelar */}
                     <Button
