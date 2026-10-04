@@ -22,7 +22,7 @@ import {
 import { useToast } from '@/components/ui/use-toast';
 import { publicOrigin } from '@/lib/utils/publicOrigin';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/customSupabaseClient';
+import { supabase } from '@/infrastructure/supabase/client';
 import { toPortugueseError } from '@/lib/utils/errorMessages';
 import {
   isExpectedLoginRejection,

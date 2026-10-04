@@ -23,7 +23,7 @@ vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ user: { id: 'patien
 vi.mock('@/hooks/useShadowDraft', () => ({
   useShadowDraft: () => ({ status: 'idle', recovery: null, queue: vi.fn(), flush: vi.fn(), discard: vi.fn(), restore: vi.fn(), discardRecovery: vi.fn() }),
 }));
-vi.mock('@/lib/customSupabaseClient', () => ({
+vi.mock('@/infrastructure/supabase/client', () => ({
   supabase: { from: mocks.from },
 }));
 

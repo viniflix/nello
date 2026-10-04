@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
-import { supabase } from '@/lib/customSupabaseClient';
+import { supabase } from '@/infrastructure/supabase/client';
 import { confirmEmailWithCode, confirmationRetryAfterMs, isExpectedConfirmationRejection, normalizeAuthEmail, resendEmailConfirmation } from '@/features/auth/authFlows';
 import { toPortugueseError } from '@/lib/utils/errorMessages';
 import { publicOrigin } from '@/lib/utils/publicOrigin';

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 const { mockRpc } = vi.hoisted(() => ({ mockRpc: vi.fn() }));
-vi.mock('@/lib/customSupabaseClient', () => ({ supabase: { rpc: mockRpc } }));
+vi.mock('@/infrastructure/supabase/client', () => ({ supabase: { rpc: mockRpc } }));
 const { searchFoodsPaginated } = await import('./foodService');
 describe('ranked food search pagination', () => {
   it('sends literal query text and requests a bounded page beyond row 1000', async () => {

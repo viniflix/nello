@@ -16,7 +16,7 @@ import { Target, TrendingDown, TrendingUp, Scale, Activity } from 'lucide-react'
 
 
 import { useToast } from '@/components/ui/use-toast';
-import { supabase } from '@/lib/customSupabaseClient';
+import { supabase } from '@/infrastructure/supabase/client';
 import { createGoal, getPatientGoals, getActiveGoal, updateGoalProgress, completeGoal, cancelGoal, pauseGoal, calculateGoalViability, calculateMinimumDeadline, calculateIdealDeadline } from '@/lib/supabase/goals-queries';
 import { logClinicalImpact } from '@/lib/supabase/clinical-impact-queries';
 

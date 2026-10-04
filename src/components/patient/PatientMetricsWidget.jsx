@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { Scale, Droplet, TrendingUp, TrendingDown, Minus, Activity } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/customSupabaseClient';
+import { supabase } from '@/infrastructure/supabase/client';
 
 /**
  * PatientMetricsWidget - Widget de métricas reais do paciente

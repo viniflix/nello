@@ -17,7 +17,7 @@ import { Camera, Ruler, Droplet, Scale } from 'lucide-react';
 
 
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/customSupabaseClient';
+import { supabase } from '@/infrastructure/supabase/client';
 import {
   deleteProgressPhoto,
   getProgressPhotos,

@@ -21,7 +21,7 @@ import {
     DialogFooter
 } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { supabase } from '@/lib/customSupabaseClient';
+import { supabase } from '@/infrastructure/supabase/client';
 import { searchFoodsPaginated, getFoodMeasures } from '@/lib/supabase/foodService';
 import { useDebounce } from '@/hooks/useDebounce';
 import { formatNutrient } from '@/lib/utils';

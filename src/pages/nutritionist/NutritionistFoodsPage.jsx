@@ -22,7 +22,7 @@ import { searchFoodsPaginated, getFoodMeasures } from '@/lib/supabase/foodServic
 import { useDebounce } from '@/hooks/useDebounce';
 import FoodMeasureManager from '@/components/nutritionist/FoodMeasureManager';
 import SmartFoodForm from '@/components/nutrition/SmartFoodForm';
-import { supabase } from '@/lib/customSupabaseClient';
+import { supabase } from '@/infrastructure/supabase/client';
 import { formatNutrient } from '@/lib/utils';
 
 /**

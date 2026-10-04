@@ -10,7 +10,7 @@ vi.mock('@/features/clinical-records/api/record-foundation-queries', () => ({
 }));
 vi.mock('@/hooks/use-toast', () => ({ useToast: () => ({ toast: vi.fn() }) }));
 vi.mock('@/lib/supabase/patient-queries', () => ({ updatePatientProfile: vi.fn() }));
-vi.mock('@/lib/customSupabaseClient', () => ({ supabase: { storage: { from: vi.fn() } } }));
+vi.mock('@/infrastructure/supabase/client', () => ({ supabase: { storage: { from: vi.fn() } } }));
 
 describe('PatientEditProfileModal integration', () => {
   beforeEach(() => { updateProfile.mockReset().mockResolvedValue({ error: null }); saveGuardian.mockReset().mockResolvedValue({ error: null }); });

@@ -1,3 +1,4 @@
+import { normalizeAuthEmail } from '@/domain/identity/normalization';
 const MIN_PASSWORD_LENGTH = 8;
 const MAX_PASSWORD_LENGTH = 72;
 const EXPECTED_LOGIN_REJECTION_CODES = new Set([
@@ -6,9 +7,7 @@ const EXPECTED_LOGIN_REJECTION_CODES = new Set([
   'user_banned',
 ]);
 
-export function normalizeAuthEmail(value) {
-  return String(value || '').trim().toLowerCase();
-}
+export { normalizeAuthEmail } from '@/domain/identity/normalization';
 
 export function isExpectedLoginRejection(error) {
   const status = Number(error?.status || error?.statusCode);

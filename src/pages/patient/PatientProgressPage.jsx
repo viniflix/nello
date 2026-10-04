@@ -35,7 +35,7 @@ import {
   AlertDialogTitle
 } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/customSupabaseClient';
+import { supabase } from '@/infrastructure/supabase/client';
 import {
   deleteProgressPhoto,
   getProgressPhotos,

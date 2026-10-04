@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { supabase } from '@/lib/customSupabaseClient';
+import { supabase } from '@/infrastructure/supabase/client';
 import { savePatientDiaryMeal } from './food-diary-queries';
 
 vi.mock('@/lib/supabase/idempotent-mutations',()=>({clinicalRpc:(operation,args,expected)=>supabase.rpc('perform_clinical_operation',{p_operation:operation,p_arguments:args,p_expected:expected})}));
-vi.mock('@/lib/customSupabaseClient', () => ({ supabase: { rpc: vi.fn(), from: vi.fn() } }));
+vi.mock('@/infrastructure/supabase/client', () => ({ supabase: { rpc: vi.fn(), from: vi.fn() } }));
 
 const meal = {
   mealId: 42, expectedRevision:'2026-10-01T10:00:00Z', mealDate: '2026-09-23', mealTime: '12:00', mealType: 'Almoço', notes: '',

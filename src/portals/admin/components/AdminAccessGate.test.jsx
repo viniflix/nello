@@ -11,7 +11,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ user: mocks.user, isOffline: false }) }));
-vi.mock('@/lib/customSupabaseClient', () => ({ supabase: { rpc: mocks.rpc, auth: { mfa: mocks } } }));
+vi.mock('@/infrastructure/supabase/client', () => ({ supabase: { rpc: mocks.rpc, auth: { mfa: mocks } } }));
 
 const renderGate = async () => { let view; await act(async () => { view = render(
   <MemoryRouter><AdminAccessGate><div>Dados administrativos</div></AdminAccessGate></MemoryRouter>,

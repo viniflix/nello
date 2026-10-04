@@ -8,7 +8,7 @@ import {
 
 const { rpc } = vi.hoisted(() => ({ rpc: vi.fn() }));
 
-vi.mock('@/lib/customSupabaseClient', () => ({ supabase: { rpc } }));
+vi.mock('@/infrastructure/supabase/client', () => ({ supabase: { rpc } }));
 vi.mock('@/lib/supabase/query-helpers', () => ({ logSupabaseError: vi.fn() }));
 
 describe('supervision queries', () => {

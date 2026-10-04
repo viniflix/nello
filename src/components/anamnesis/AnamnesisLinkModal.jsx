@@ -17,7 +17,7 @@ import { useAnamnesisRunner } from '@/hooks/useAnamnesisRunner';
 import { useAnamnesisTemplates } from '@/hooks/useAnamnesisTemplates';
 import { useToast } from '@/components/ui/use-toast';
 import { publicOrigin } from '@/lib/utils/publicOrigin';
-import { supabase } from '@/lib/customSupabaseClient';
+import { supabase } from '@/infrastructure/supabase/client';
 
 /**
  * Sprint F: Modal para enviar um link de anamnese para o paciente,

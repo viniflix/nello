@@ -1,7 +1,7 @@
 import { readMemoryDraft, writeMemoryDraft, removeMemoryDraft } from '@/lib/utils/memoryDrafts';
 import { useDraftGuard } from './useDraftGuard';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { supabase } from '@/lib/customSupabaseClient';
+import { supabase } from '@/infrastructure/supabase/client';
 
 const WAIT_MS = 450;
 const localKeyFor = (ownerId, draftKey) => `nello_shadow:${ownerId}:${draftKey}`;

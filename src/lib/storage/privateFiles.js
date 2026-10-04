@@ -1,4 +1,4 @@
-import { supabase } from '@/infrastructure/supabase/client';
+import { filesClient as supabase } from '@/infrastructure/supabase/domainClients';
 
 export const PRIVATE_FILE_TTL_SECONDS = 300;
 const BUCKETS = new Set(['avatars', 'financial-docs', 'chat_media', 'lab-results-pdfs',

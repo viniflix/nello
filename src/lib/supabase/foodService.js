@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/customSupabaseClient';
+import { nutritionClient as supabase } from '@/infrastructure/supabase/domainClients';
 import { logSupabaseError, isExpectedRequestCancellation } from '@/lib/supabase/query-helpers';
 import { Events, track } from '@/infrastructure/analytics/posthog';
 

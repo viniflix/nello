@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils';
 import PatientActivityFeed from '@/components/patient-hub/PatientActivityFeed';
 import TemplateDispatchHistoryCard from '@/components/patient-hub/TemplateDispatchHistoryCard';
 import { Skeleton } from '@/components/ui/skeleton';
-import { supabase } from '@/lib/customSupabaseClient';
+import { supabase } from '@/infrastructure/supabase/client';
 
 const TabContentFeed = ({ patientId, patientSlugOrId, activities, loading, onLoadMore }) => {
     const navigate = useNavigate();

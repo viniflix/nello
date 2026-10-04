@@ -34,7 +34,7 @@ vi.mock('recharts', async (importOriginal) => {
 vi.mock('@/features/clinical-records/api/record-foundation-queries', () => ({
   getPatientRecordFoundation: mocks.foundation,
 }));
-vi.mock('@/lib/customSupabaseClient', () => ({
+vi.mock('@/infrastructure/supabase/client', () => ({
   supabase: {
     from: (table) => {
       let pageStart = 0;

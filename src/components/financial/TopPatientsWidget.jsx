@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Trophy, Medal, Award } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatCurrency } from '@/lib/utils';
-import { supabase } from '@/lib/customSupabaseClient';
+import { supabase } from '@/infrastructure/supabase/client';
 
 export default function TopPatientsWidget({ nutritionistId, refreshKey = 0 }) {
     const [topPatients, setTopPatients] = useState([]);

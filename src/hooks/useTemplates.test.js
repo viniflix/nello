@@ -1,13 +1,13 @@
 import { renderHook, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useTemplates } from './useTemplates';
-import { supabase } from '@/lib/customSupabaseClient';
+import { supabase } from '@/infrastructure/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 
 // Mocks
-vi.mock('@/lib/customSupabaseClient', () => ({
+vi.mock('@/infrastructure/supabase/client', () => ({
   supabase: {
     from: vi.fn(),
   },

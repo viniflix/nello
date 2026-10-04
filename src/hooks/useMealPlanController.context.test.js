@@ -3,7 +3,7 @@ import { beforeEach, expect, it, vi } from 'vitest';
 import { useMealPlanController } from './useMealPlanController';
 const state = vi.hoisted(() => ({ pending: [] }));
 function deferred(kind, id) { return new Promise(resolve => { state.pending.push({ kind, id, resolve }); }); }
-vi.mock('@/lib/customSupabaseClient', () => ({ supabase: { from: () => { const q = { select: () => q, eq: (_, id) => { q.id = id; return q; }, single: () => deferred('name', q.id) }; return q; } } }));
+vi.mock('@/infrastructure/supabase/client', () => ({ supabase: { from: () => { const q = { select: () => q, eq: (_, id) => { q.id = id; return q; }, single: () => deferred('name', q.id) }; return q; } } }));
 vi.mock('@/lib/supabase/meal-plan-queries', () => ({ getReferenceValues: id => deferred('reference', id), getMealPlanVersions: id => deferred('versions', id) }));
 vi.mock('@/lib/supabase/energy-queries', () => ({ getLatestEnergyCalculation: id => deferred('energy', id) }));
 vi.mock('@/lib/supabase/anthropometry-queries', () => ({ getPatientModuleSyncFlags: id => deferred('flags', id) }));

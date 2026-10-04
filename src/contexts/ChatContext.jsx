@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/customSupabaseClient';
+import { supabase } from '@/infrastructure/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
 import { invalidateDomain, subscribeDomain } from '@/infrastructure/realtime/events';
 import { mergeChatMessages, reconcileChatPage } from '@/infrastructure/realtime/chatMessages';

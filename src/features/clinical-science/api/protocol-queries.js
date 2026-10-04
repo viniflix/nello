@@ -1,4 +1,4 @@
-import { supabase } from '@/infrastructure/supabase/client';
+import { clinicalClient as supabase } from '@/infrastructure/supabase/domainClients';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
 
 export async function listClinicalProtocols(domain = null) {

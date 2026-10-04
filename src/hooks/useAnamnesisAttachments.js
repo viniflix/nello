@@ -1,6 +1,6 @@
 import { uploadVerifiedFile } from '@/lib/storage/verifiedUpload';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/lib/customSupabaseClient';
+import { supabase } from '@/infrastructure/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
 import { toPortugueseError } from '@/lib/utils/errorMessages';

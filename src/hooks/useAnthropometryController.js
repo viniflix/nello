@@ -2,7 +2,7 @@ import { downloadSavedClinicalPdf } from '@/lib/pdf/savedClinicalPdf';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useToast } from '@/components/ui/use-toast';
-import { supabase } from '@/lib/customSupabaseClient';
+import { supabase } from '@/infrastructure/supabase/client';
 import {
     getAnthropometryRecords,
     getAnthropometryChartData,

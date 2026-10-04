@@ -5,7 +5,7 @@ import {
 } from '@/services/adminService';
 
 const { rpc } = vi.hoisted(() => ({ rpc: vi.fn() }));
-vi.mock('@/lib/customSupabaseClient', () => ({ supabase: { rpc } }));
+vi.mock('@/infrastructure/supabase/client', () => ({ supabase: { rpc } }));
 
 describe('admin verification service', () => {
   beforeEach(() => rpc.mockReset());

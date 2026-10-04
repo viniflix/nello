@@ -22,7 +22,7 @@ import {
 } from '@/features/auth/authFlows';
 import { captureOperationalError } from '@/infrastructure/observability/telemetry';
 import { Events, track } from '@/infrastructure/analytics/posthog';
-import { supabase } from '@/lib/customSupabaseClient';
+import { supabase } from '@/infrastructure/supabase/client';
 import { toPortugueseError } from '@/lib/utils/errorMessages';
 import { publicOrigin } from '@/lib/utils/publicOrigin';
 

@@ -1,6 +1,6 @@
 import {readFileSync} from 'node:fs';
 import {pathToFileURL} from 'node:url';
-export const criticalFiles=['src/features/auth/authFlows.js','src/lib/utils/authRedirect.js','src/features/clinical-records/model/attachmentSchema.js','src/lib/utils/dri-energy.js','src/lib/utils/energy-calculations.js','src/lib/utils/energy-inputs.js','src/lib/utils/energy-numbers.js','src/lib/utils/energy-planning.js','src/lib/utils/nutrition-calculations.js','supabase/functions/confirm-document-asset/assetValidation.ts',...['arithmetic','energy','energy-plan','factors','document'].map(name=>`supabase/functions/_shared/clinical-${name}.js`)];
+export const criticalFiles=['src/domain/identity/normalization.ts','src/features/auth/authFlows.js','src/lib/utils/authRedirect.js','src/features/clinical-records/model/attachmentSchema.js','src/lib/utils/dri-energy.js','src/lib/utils/energy-calculations.js','src/lib/utils/energy-inputs.js','src/lib/utils/energy-numbers.js','src/lib/utils/energy-planning.js','src/domain/nutrition/calculations.ts','supabase/functions/confirm-document-asset/assetValidation.ts',...['arithmetic','energy','energy-plan','factors','document'].map(name=>`supabase/functions/_shared/clinical-${name}.js`)];
 export function assertCriticalCoverage(summary){
  for(const file of criticalFiles){
   const entries=Object.entries(summary).filter(([key])=>key.replaceAll('\\','/').endsWith('/'+file));

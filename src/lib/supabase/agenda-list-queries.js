@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/customSupabaseClient';
+import { agendaClient as supabase } from '@/infrastructure/supabase/domainClients';
 import { Events, track } from '@/infrastructure/analytics/posthog';
 import {MAX_DATA_ROWS} from './bounded-pages';
 

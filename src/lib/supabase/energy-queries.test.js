@@ -1,7 +1,7 @@
 import { getInitialBiometryForEnergy, saveEnergyCalculation } from './energy-queries';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({ insert: vi.fn(), from: vi.fn() }));
-vi.mock('@/lib/customSupabaseClient', () => ({ supabase: { from: mocks.from } }));
+vi.mock('@/infrastructure/supabase/client', () => ({ supabase: { from: mocks.from } }));
 vi.mock('@/lib/supabase/idempotent-mutations',()=>({insertIdempotently: async (table,row)=>{ expect(table).toBe('energy_expenditure_calculations');return mocks.insert(row); }}));
 vi.mock('@/lib/supabase/query-helpers', () => ({ logSupabaseError: vi.fn() }));
 

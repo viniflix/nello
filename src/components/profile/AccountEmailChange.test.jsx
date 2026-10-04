@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import AccountEmailChange from './AccountEmailChange';
 
 const updateUser = vi.hoisted(() => vi.fn());
-vi.mock('@/lib/customSupabaseClient', () => ({ supabase: { auth: { updateUser } } }));
+vi.mock('@/infrastructure/supabase/client', () => ({ supabase: { auth: { updateUser } } }));
 
 describe('AccountEmailChange', () => {
   beforeEach(() => updateUser.mockReset());

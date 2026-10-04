@@ -1,5 +1,5 @@
 
-import { supabase } from '@/lib/customSupabaseClient';
+import { nutritionClient as supabase } from '@/infrastructure/supabase/domainClients';
 import { calculateNutrition as calculateServingNutrition, foodPer100Grams } from '@/lib/utils/nutrition-calculations';
 import { getTodayIsoDate } from '@/lib/utils/date';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';

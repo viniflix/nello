@@ -8,7 +8,7 @@
  *   os registros em meal_plan_foods para gramas.
  */
 
-import { supabase } from '@/lib/customSupabaseClient';
+import { nutritionClient as supabase } from '@/infrastructure/supabase/domainClients';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
 
 const MAX_CUSTOM_MEASURES = 20;

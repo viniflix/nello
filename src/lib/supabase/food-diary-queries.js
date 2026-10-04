@@ -1,5 +1,5 @@
 import { clinicalRpc } from '@/lib/supabase/idempotent-mutations';
-import { supabase } from '@/lib/customSupabaseClient';
+import { nutritionClient as supabase } from '@/infrastructure/supabase/domainClients';
 import { format, subDays } from 'date-fns';
 import { isExpectedRequestCancellation, logSupabaseError } from '@/lib/supabase/query-helpers';
 

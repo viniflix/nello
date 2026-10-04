@@ -2,7 +2,7 @@ import {it,expect,vi,beforeEach,afterEach} from 'vitest';
 import {renderHook,waitFor,act} from '@testing-library/react';
 import {useDashboardController} from './useDashboardController';
 const mocks=vi.hoisted(()=>({from:vi.fn(),rpc:vi.fn(),capture:vi.fn(()=> '00000000-0000-4000-8000-000000000000'),track:vi.fn()}));
-vi.mock('@/lib/customSupabaseClient',()=>({supabase:{from:mocks.from,rpc:mocks.rpc}}));
+vi.mock('@/infrastructure/supabase/client',()=>({supabase:{from:mocks.from,rpc:mocks.rpc}}));
 vi.mock('@/infrastructure/observability/telemetry',()=>({captureOperationalError:mocks.capture}));
 vi.mock('@/infrastructure/analytics/posthog',()=>({Events:{DATA_LOAD_TIMING:'timing'},track:mocks.track}));
 let resolveQuery;

@@ -11,7 +11,7 @@ vi.mock('@tanstack/react-query', () => ({
   }),
   useQueryClient: () => ({ invalidateQueries: vi.fn() }),
 }));
-vi.mock('@/lib/customSupabaseClient', () => ({ supabase: { from: mocks.from, rpc: mocks.rpc } }));
+vi.mock('@/infrastructure/supabase/client', () => ({ supabase: { from: mocks.from, rpc: mocks.rpc } }));
 vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ user: { id: 'patient-1', profile: { user_type: 'patient' } } }) }));
 vi.mock('@/components/ui/use-toast', () => ({ useToast: () => ({ toast: vi.fn() }) }));
 vi.mock('@/lib/supabase/query-helpers', () => ({ logSupabaseError: vi.fn() }));

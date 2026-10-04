@@ -2,7 +2,7 @@ import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useCheckins } from '@/hooks/useCheckins';
-import { supabase } from '@/lib/customSupabaseClient';
+import { supabase } from '@/infrastructure/supabase/client';
 import { Button } from '@/components/ui/button';
 import { PrivateImage } from '@/components/ui/private-image';
 import { ArrowLeft, CheckCircle2, ChevronRight, ChevronLeft, Loader2, Upload, AlertCircle } from 'lucide-react';

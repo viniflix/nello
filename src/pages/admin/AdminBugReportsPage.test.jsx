@@ -6,7 +6,7 @@ const mocks = vi.hoisted(() => ({
   invoke: vi.fn(),
   getLogs: vi.fn(),
 }));
-vi.mock('@/lib/customSupabaseClient', () => ({ supabase: { functions: { invoke: mocks.invoke } } }));
+vi.mock('@/infrastructure/supabase/client', () => ({ supabase: { functions: { invoke: mocks.invoke } } }));
 vi.mock('@/services/adminService', () => ({ getSystemLiveLogs: mocks.getLogs }));
 
 describe('AdminBugReportsPage', () => {

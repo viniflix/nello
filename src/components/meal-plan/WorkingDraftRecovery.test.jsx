@@ -3,7 +3,7 @@ import { act, render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { beforeEach, expect, it, vi } from 'vitest';
 import WorkingDraftRecovery, { trimWorkingDrafts } from './WorkingDraftRecovery';
 const state = vi.hoisted(() => ({ rows: [], calls: [], fail: false, pending: null }));
-vi.mock('@/lib/customSupabaseClient', () => ({ supabase: { from: () => {
+vi.mock('@/infrastructure/supabase/client', () => ({ supabase: { from: () => {
     const filters = {};
     const query = { select: () => query, eq: (key, value) => { filters[key] = value; state.calls.push([key, value]); return query; }, or: value => { state.calls.push(['or', value]); return query; }, order: async () => ({ data: state.rows, error: null }), single: async () => state.pending || ({ data: state.rows.find(row => row.id === filters.id), error: state.fail ? { code: 'OFFLINE' } : null }), delete: () => query, maybeSingle: async () => {
         if (state.fail) return { data: null, error: { code: 'OFFLINE' } };

@@ -1,5 +1,5 @@
 
-import { supabase } from '@/lib/customSupabaseClient';
+import { nutritionClient as supabase } from '@/infrastructure/supabase/domainClients';
 
 
 import { logSupabaseError } from '@/lib/supabase/query-helpers';

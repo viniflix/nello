@@ -20,7 +20,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { format, startOfMonth } from 'date-fns';
 import Papa from 'papaparse';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { supabase } from '@/lib/customSupabaseClient';
+import { supabase } from '@/infrastructure/supabase/client';
 
 // Components
 import FinancialKPIs from '@/components/financial/FinancialKPIs';

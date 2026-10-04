@@ -5,7 +5,7 @@ import EnergyExpenditureSummaryCard from './EnergyExpenditureSummaryCard';
 const mocks = vi.hoisted(() => ({ calc: { id: 1, tmb_protocol: 'harris' }, navigate: vi.fn() }));
 vi.mock('react-router-dom', () => ({ useNavigate: () => mocks.navigate }));
 vi.mock('@/lib/supabase/anthropometry-queries', () => ({ getPatientModuleSyncFlags: async () => ({ data: null }) }));
-vi.mock('@/lib/customSupabaseClient', () => ({ supabase: { from: table => {
+vi.mock('@/infrastructure/supabase/client', () => ({ supabase: { from: table => {
     const query = { select: () => query, eq: () => query, order: () => query, limit: () => query,
         single: async () => ({ data: { weight: 80, height: 180, birth_date: '1990-01-01', gender: 'male' } }),
         maybeSingle: async () => ({ data: table === 'energy_expenditure_calculations' ? mocks.calc : null }),

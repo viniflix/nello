@@ -1,6 +1,6 @@
 
 
-import { supabase } from '@/lib/customSupabaseClient';
+import { patientClient as supabase } from '@/infrastructure/supabase/domainClients';
 import { translateMealType } from '@/utils/mealTranslations';
 import { buildActivityEventPayload, logSupabaseError } from '@/lib/supabase/query-helpers';
 

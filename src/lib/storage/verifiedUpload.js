@@ -1,4 +1,4 @@
-import { supabase } from '@/infrastructure/supabase/client';
+import { filesClient as supabase } from '@/infrastructure/supabase/domainClients';
 import { parsePrivateFile } from './privateFiles';
 
 /** The browser never writes object bytes directly. Retries use the same path. */

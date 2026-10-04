@@ -3,7 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { beforeEach, expect, it, vi } from 'vitest';
 import FoodSelector from './FoodSelector';
 const mocks = vi.hoisted(() => ({ rpc: vi.fn() }));
-vi.mock('@/lib/customSupabaseClient', () => ({ supabase: { rpc: mocks.rpc } }));
+vi.mock('@/infrastructure/supabase/client', () => ({ supabase: { rpc: mocks.rpc } }));
 vi.mock('./QuickFoodCreateDialog', () => ({ default: () => null }));
 vi.mock('@/infrastructure/analytics/posthog', () => ({ Events: {}, track: vi.fn() }));
 vi.mock('@/infrastructure/observability/telemetry', () => ({ captureOperationalError: vi.fn() }));

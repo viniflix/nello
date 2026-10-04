@@ -4,7 +4,7 @@ const { rpc, from, sync, logError } = vi.hoisted(() => ({
     rpc: vi.fn(), from: vi.fn(), sync: vi.fn(), logError: vi.fn()
 }));
 vi.mock('@/lib/supabase/idempotent-mutations',()=>({clinicalRpc: (operation,args,expected)=>rpc('perform_clinical_operation',{p_operation:operation,p_arguments:args,p_expected:expected ?? null})}));
-vi.mock('@/lib/customSupabaseClient', () => ({ supabase: { rpc, from } }));
+vi.mock('@/infrastructure/supabase/client', () => ({ supabase: { rpc, from } }));
 vi.mock('@/lib/supabase/appointment-notifications-queries', () => ({
     syncAppointmentNotificationSchedule: sync
 }));

@@ -43,7 +43,7 @@ const chainable = {
 
 Object.values(chainable).forEach((fn) => fn.mockReturnValue(chainable));
 
-vi.mock('@/lib/customSupabaseClient', () => ({
+vi.mock('@/infrastructure/supabase/client', () => ({
     supabase: {
         from: mockFrom.mockReturnValue(chainable),
         rpc: mockRpc,

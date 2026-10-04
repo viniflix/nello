@@ -11,7 +11,7 @@ import { motion } from 'framer-motion';
 import { Send, ArrowLeft, Paperclip, X, FileText, Mic, Square, Loader2, User as UserIcon } from 'lucide-react'; // Adicionado PlayCircle
 import { useAuth } from '@/contexts/AuthContext';
 import { useChat } from '@/contexts/ChatContext';
-import { supabase } from '@/lib/customSupabaseClient';
+import { supabase } from '@/infrastructure/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/use-toast';

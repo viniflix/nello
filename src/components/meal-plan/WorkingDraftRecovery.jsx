@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { supabase } from '@/lib/customSupabaseClient';
+import { supabase } from '@/infrastructure/supabase/client';
 import { Button } from '@/components/ui/button';
 import { removeMemoryDraft } from '@/lib/utils/memoryDrafts';
 

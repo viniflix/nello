@@ -1,9 +1,9 @@
 import { describe, it, expect, vi } from 'vitest';
 import { cloneDietTemplateToPatient, cloneMealTemplateToPlan, getFoodsMapByIds, getUnavailableTemplateFoods, importDietTemplateMealsToPlan } from './template-queries';
-import { supabase } from '@/lib/customSupabaseClient';
+import { supabase } from '@/infrastructure/supabase/client';
 
 // Mock do supabase client
-vi.mock('@/lib/customSupabaseClient', () => ({
+vi.mock('@/infrastructure/supabase/client', () => ({
   supabase: {
     rpc: vi.fn(),
     from: vi.fn(),

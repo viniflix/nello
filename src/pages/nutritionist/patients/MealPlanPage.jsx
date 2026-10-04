@@ -41,7 +41,7 @@ import NotificationCenter from '@/components/meal-plan/NotificationCenter';
 import { useMealPlan } from '@/hooks/useMealPlan';
 import { MealPlanAlertsBar } from '@/components/anamnesis/MealPlanAlertsBar';
 import { patientHubRoute } from '@/lib/utils/patientRoutes';
-import { supabase } from '@/lib/customSupabaseClient';
+import { supabase } from '@/infrastructure/supabase/client';
 import { useMealPlanSession, isMealPlanSession, latestAppliedAt, sessionWasSuperseded } from '@/hooks/useMealPlanSession';
 import { sessionMatchesAppliedPlan } from '@/lib/utils/appliedMealPlanSession';
 import { ShadowRecovery } from '@/components/ui/shadow-save-status';

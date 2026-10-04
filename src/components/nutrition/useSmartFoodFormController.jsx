@@ -13,7 +13,7 @@ import { useState, useEffect, useMemo, useImperativeHandle } from 'react';
 
 
 import { useToast } from '@/components/ui/use-toast';
-import { supabase } from '@/lib/customSupabaseClient';
+import { supabase } from '@/infrastructure/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toPortugueseError } from '@/lib/utils/errorMessages';
 export function useSmartFoodFormController({ 

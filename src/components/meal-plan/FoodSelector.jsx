@@ -13,7 +13,7 @@ import {
     DialogFooter
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { supabase } from '@/lib/customSupabaseClient';
+import { supabase } from '@/infrastructure/supabase/client';
 import QuickFoodCreateDialog from './QuickFoodCreateDialog';
 import { getSubstitutionAnalysis } from '@/lib/utils/foodSubstitution';
 import { AlertCircle, FolderSync } from 'lucide-react';

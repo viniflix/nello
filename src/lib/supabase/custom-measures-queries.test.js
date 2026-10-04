@@ -1,7 +1,7 @@
 import {beforeEach,it,expect,vi} from 'vitest';
 import {createCustomMeasure,updateCustomMeasure,countCustomMeasures} from './custom-measures-queries';
 const mock=vi.hoisted(()=>({auth:vi.fn(),from:vi.fn(),query:{}}));
-vi.mock('@/lib/customSupabaseClient',()=>({supabase:{auth:{getUser:mock.auth},from:mock.from}}));
+vi.mock('@/infrastructure/supabase/client',()=>({supabase:{auth:{getUser:mock.auth},from:mock.from}}));
 vi.mock('@/lib/supabase/query-helpers',()=>({logSupabaseError:vi.fn()}));
 beforeEach(()=>{
  vi.resetAllMocks();mock.auth.mockResolvedValue({data:{user:{id:'owner'}}});

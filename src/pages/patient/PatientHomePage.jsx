@@ -8,7 +8,7 @@ import { BookMarked, UtensilsCrossed, CalendarClock, Bell, Clock, Info } from 'l
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/customSupabaseClient';
+import { supabase } from '@/infrastructure/supabase/client';
 import NextMealCard from '@/components/patient/NextMealCard';
 import PatientMetricsWidget from '@/components/patient/PatientMetricsWidget';
 import DailyAdherenceCard from '@/components/patient/DailyAdherenceCard';

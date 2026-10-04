@@ -7,7 +7,7 @@ import { clearPasswordReminders, hasDismissedPasswordReminder } from '@/features
 const mocks = vi.hoisted(() => ({ user: { id: 'patient-a' }, updateUser: vi.fn(), from: vi.fn() }));
 vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ user: mocks.user, updateUserProfile: vi.fn() }) }));
 vi.mock('@/components/ui/use-toast', () => ({ useToast: () => ({ toast: vi.fn() }) }));
-vi.mock('@/lib/customSupabaseClient', () => ({ supabase: { auth: { updateUser: mocks.updateUser }, from: mocks.from } }));
+vi.mock('@/infrastructure/supabase/client', () => ({ supabase: { auth: { updateUser: mocks.updateUser }, from: mocks.from } }));
 afterEach(() => { cleanup(); clearPasswordReminders(); });
 
 it('allows the approved optional continuation without changing credentials and scopes it to the current account', () => {

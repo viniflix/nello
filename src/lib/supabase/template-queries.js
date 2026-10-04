@@ -1,5 +1,5 @@
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
-import { supabase } from '@/lib/customSupabaseClient';
+import { nutritionClient as supabase } from '@/infrastructure/supabase/domainClients';
 
 /**
  * Clones a Diet Template into a new Patient Meal Plan.

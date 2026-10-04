@@ -7,7 +7,7 @@ import { bindConsentOwner, hasAnalyticsConsent, markPendingAnalyticsRevocation, 
 
 const mocks = vi.hoisted(() => ({ user: { id: 'qa-account' }, rpc: vi.fn(), optIn: vi.fn(), optOut: vi.fn(), reset: vi.fn() }));
 vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ user: mocks.user }) }));
-vi.mock('@/lib/customSupabaseClient', () => ({ supabase: { rpc: mocks.rpc } }));
+vi.mock('@/infrastructure/supabase/client', () => ({ supabase: { rpc: mocks.rpc } }));
 vi.mock('@/infrastructure/analytics/posthog', () => ({ default: { __loaded: true, opt_in_capturing: mocks.optIn, opt_out_capturing: mocks.optOut, reset: mocks.reset }, identifyUser: vi.fn() }));
 const ui = () => <MemoryRouter initialEntries={['/privacidade']}><PrivacyPreferences /></MemoryRouter>;
 const deferred = () => { let resolve; const promise = new Promise(done => { resolve = done; }); return { promise, resolve }; };

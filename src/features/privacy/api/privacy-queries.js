@@ -1,4 +1,4 @@
-import { supabase } from '@/infrastructure/supabase/client';
+import { clinicalClient as supabase } from '@/infrastructure/supabase/domainClients';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
 
 const rpc = async (name, payload = {}) => {
@@ -23,3 +23,6 @@ export const updatePrivacyRequest = ({ requestId, revision, status, reason, rete
   p_legal_basis: legalBasis,
   p_assign_to_me: true,
 });
+
+export const getMyPrivacyPreferences = () => supabase.rpc('get_my_privacy_preferences');
+export const recordMyPrivacyChoice = (payload) => supabase.rpc('record_my_privacy_choice', payload);

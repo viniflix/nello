@@ -1,5 +1,5 @@
 import { insertIdempotently } from '@/lib/supabase/idempotent-mutations';
-import { supabase } from '@/lib/customSupabaseClient';
+import { clinicalClient as supabase } from '@/infrastructure/supabase/domainClients';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
 import {collectBoundedPages,pageBounds} from './bounded-pages';
 import { logActivityEvent } from '@/lib/supabase/patient-queries';

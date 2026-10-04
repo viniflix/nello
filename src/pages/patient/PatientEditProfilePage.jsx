@@ -16,7 +16,7 @@ import {
   SelectValue
 } from '@/components/ui/select';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/customSupabaseClient';
+import { supabase } from '@/infrastructure/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
 /**

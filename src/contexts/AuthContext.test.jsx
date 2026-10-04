@@ -12,7 +12,7 @@ vi.mock('@tanstack/react-query', () => ({ useQueryClient: () => state.queryClien
 vi.mock('@/hooks/useProfile', () => ({
   useProfile: (id) => ({ data: id ? { id, user_type: 'patient' } : null, isLoading: false, isError: false }),
 }));
-vi.mock('@/lib/customSupabaseClient', () => ({
+vi.mock('@/infrastructure/supabase/client', () => ({
   supabase: {
     auth: {
       getSession: vi.fn(async () => ({ data: { session: { user: state.initialUser } }, error: null })),

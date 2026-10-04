@@ -1,7 +1,7 @@
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
-import { supabase } from '@/lib/customSupabaseClient';
+import { supabase } from '@/infrastructure/supabase/client';
 import {
     CheckCircle, Save, Send, AlertTriangle, Clock, Lock
 } from 'lucide-react';

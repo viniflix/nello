@@ -10,7 +10,7 @@ import { getActiveGoal, getDaysRemaining, getProgressStatus } from '@/lib/supaba
 import { patientRoute } from '@/lib/utils/patientRoutes';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
-import { supabase } from '@/lib/customSupabaseClient';
+import { supabase } from '@/infrastructure/supabase/client';
 import { dispatchMessageTemplate, getMessageTemplates, previewTemplate, TEMPLATE_CONTEXTS } from '@/lib/supabase/message-templates-queries';
 
 const formatDate = value => value && !Number.isNaN(new Date(value).getTime())

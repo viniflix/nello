@@ -5,7 +5,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { usePatientFormStore } from '@/stores/usePatientFormStore';
 import InputMask from 'react-input-mask';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/customSupabaseClient';
+import { supabase } from '@/infrastructure/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
 import { publicOrigin } from '@/lib/utils/publicOrigin';
 

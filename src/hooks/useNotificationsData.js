@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/customSupabaseClient';
+import { supabase } from '@/infrastructure/supabase/client';
 import { subscribeDomain } from '@/infrastructure/realtime/events';
 import {notificationCursorFilter} from '@/lib/supabase/notification-cursor';
 

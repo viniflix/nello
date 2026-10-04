@@ -23,7 +23,7 @@ vi.mock('@tanstack/react-query', () => ({
   useQueryClient: () => ({ invalidateQueries: mocks.invalidateQueries }),
 }));
 vi.mock('@/lib/supabase/idempotent-mutations',()=>({updateIdempotently:mocks.safeUpdate,insertIdempotently:async (table,payload)=>{expect(table).toBe('anamnesis_records');mocks.insert(payload);return {data:{id:'record-1'},error:null};}}));
-vi.mock('@/lib/customSupabaseClient', () => ({ supabase: { from: mocks.from, rpc: vi.fn() } }));
+vi.mock('@/infrastructure/supabase/client', () => ({ supabase: { from: mocks.from, rpc: vi.fn() } }));
 vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ user: { id: 'nutritionist-1' } }) }));
 vi.mock('@/components/ui/use-toast', () => ({ useToast: () => ({ toast: vi.fn() }) }));
 

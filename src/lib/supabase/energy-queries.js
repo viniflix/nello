@@ -1,7 +1,7 @@
 import { civilAge } from '@/lib/utils/date';
 import { insertIdempotently } from '@/lib/supabase/idempotent-mutations';
 import { normalizeEnergyInput, readAnthropometryEnergyValues } from '@/lib/utils/energy-inputs';
-import { supabase } from '@/lib/customSupabaseClient';
+import { nutritionClient as supabase } from '@/infrastructure/supabase/domainClients';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
 import { calculateEnergyPlan, ENERGY_ENGINE_VERSION } from '@/lib/utils/energy-planning';
 import { parseFiniteEnergyNumber } from '@/lib/utils/energy-numbers';

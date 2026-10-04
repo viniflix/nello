@@ -1,5 +1,5 @@
 /* global BigInt */
-import { supabase } from '@/lib/customSupabaseClient';
+import { supabase } from '@/infrastructure/supabase/client';
 import { isUuid } from '@/lib/utils/patientRoutes';
 import { track, Events } from '@/infrastructure/analytics/posthog';
 

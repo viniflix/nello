@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/customSupabaseClient';
+import { agendaClient as supabase } from '@/infrastructure/supabase/domainClients';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
 
 const isFunctionMissing = (err) => {

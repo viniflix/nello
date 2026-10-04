@@ -1,7 +1,7 @@
 import { beforeEach, expect, it, vi } from 'vitest';
 import { markOwnNotificationsRead, deleteOwnNotifications, markAllNotificationsRead } from './notification-mutations';
 const api = vi.hoisted(() => ({ rpc: vi.fn() }));
-vi.mock('@/lib/customSupabaseClient', () => ({ supabase: api }));
+vi.mock('@/infrastructure/supabase/client', () => ({ supabase: api }));
 vi.mock('@/components/ui/use-toast', () => ({ toast: vi.fn() }));
 beforeEach(() => { vi.clearAllMocks(); });
 it('binds mutations to the initiating account, deduplicates and treats an already removed ID as idempotent', async () => {

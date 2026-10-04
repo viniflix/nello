@@ -1,10 +1,10 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { webcrypto } from 'node:crypto';
-import { supabase } from '@/lib/customSupabaseClient';
+import { supabase } from '@/infrastructure/supabase/client';
 import { clearMutationIntents, idempotentRpc } from './idempotent-mutations';
 import { track } from '@/infrastructure/analytics/posthog';
 vi.mock('@/infrastructure/analytics/posthog',()=>({track:vi.fn(),Events:{ANAMNESIS_COMPLETED:'anamnesis_completed'}}));
-vi.mock('@/lib/customSupabaseClient',()=>({supabase:{auth:{getSession:vi.fn(),onAuthStateChange:vi.fn()},rpc:vi.fn()}}));
+vi.mock('@/infrastructure/supabase/client',()=>({supabase:{auth:{getSession:vi.fn(),onAuthStateChange:vi.fn()},rpc:vi.fn()}}));
 describe('same-account manual retry contract',()=>{
   it('records completion only once after the server confirms a concurrent anamnesis save', async()=>{
     track.mockClear();

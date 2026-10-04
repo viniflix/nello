@@ -2,7 +2,7 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { clearMemoryDrafts } from '@/lib/utils/memoryDrafts';
 import { useMealPlanSession, isMealPlanSession, sessionWasSuperseded } from './useMealPlanSession';
-vi.mock('@/lib/customSupabaseClient', () => ({ supabase: { from: () => query() } }));
+vi.mock('@/infrastructure/supabase/client', () => ({ supabase: { from: () => query() } }));
 const rows = new Map();
 function query() {
     const q = { filters: {}, mode: 'read', select() { return this; }, eq(k,v) { this.filters[k]=v; return this; }, insert(v) { this.mode='insert'; this.value=v; return this; }, update(v) { this.mode='update'; this.value=v; return this; }, delete() { this.mode='delete'; return this; },

@@ -4,7 +4,7 @@ const { mockFrom, mockRange, mockOrder, mockGte, mockLt, response } = vi.hoisted
     mockFrom: vi.fn(), mockRange: vi.fn(), mockOrder: vi.fn(), mockGte: vi.fn(), mockLt: vi.fn(),
     response: { current: null },
 }));
-vi.mock('@/lib/customSupabaseClient', () => ({ supabase: { from: mockFrom } }));
+vi.mock('@/infrastructure/supabase/client', () => ({ supabase: { from: mockFrom } }));
 const { fetchAppointmentsInPeriod } = await import('./agenda-list-queries');
 
 describe('agenda por período', () => {

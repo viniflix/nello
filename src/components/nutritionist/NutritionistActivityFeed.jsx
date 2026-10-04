@@ -32,7 +32,7 @@ import {
     attachFeedPriorityMeta
 } from '@/lib/supabase/patient-queries';
 import { getPendingPayments } from '@/lib/supabase/financial-queries';
-import { supabase } from '@/lib/customSupabaseClient';
+import { supabase } from '@/infrastructure/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { format, formatDistanceToNow, isValid, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';

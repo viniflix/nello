@@ -35,7 +35,7 @@ import {
   AlertDialogTrigger
 } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/customSupabaseClient';
+import { supabase } from '@/infrastructure/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import AvatarUpload from '@/components/patient/AvatarUpload';
 import { format } from 'date-fns';

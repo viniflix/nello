@@ -1,5 +1,6 @@
+import { executeDomainOperation as executeOperation } from '@/infrastructure/supabase/versionedOperations';
 import { insertIdempotently, updateIdempotently, idempotentRpc } from '@/lib/supabase/idempotent-mutations';
-import { supabase } from '@/lib/customSupabaseClient';
+import { nutritionClient as supabase } from '@/infrastructure/supabase/domainClients';
 
 import { getTodayIsoDate } from '@/lib/utils/date';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
@@ -42,11 +43,11 @@ export const addMealToPlan = async (mealData) => {
 
 export const saveDraftMeal = async (planId, mealId, mealData, expectedRevision) => {
     try {
-        const result = await idempotentRpc('save_draft_meal', {
+        const result = await executeOperation(idempotentRpc, {version:1,operation:'nutrition.meal.save',args:{
             p_plan_id: planId, p_meal_id: mealId,
             p_meal: { ...mealData, meal_time: normalizeMealTime(mealData.meal_time) },
             p_expected: expectedRevision,
-        });
+        }});
         if (result.error) throw result.error;
         return result;
     } catch (error) {

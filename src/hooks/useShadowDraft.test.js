@@ -1,10 +1,10 @@
 import { clearMemoryDrafts, readMemoryDraft } from '@/lib/utils/memoryDrafts';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { supabase } from '@/lib/customSupabaseClient';
+import { supabase } from '@/infrastructure/supabase/client';
 import { useShadowDraft } from './useShadowDraft';
 
-vi.mock('@/lib/customSupabaseClient', () => ({ supabase: { from: vi.fn() } }));
+vi.mock('@/infrastructure/supabase/client', () => ({ supabase: { from: vi.fn() } }));
 
 let row;
 function query() {

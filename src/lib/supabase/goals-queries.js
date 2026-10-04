@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/customSupabaseClient';
+import { patientClient as supabase } from '@/infrastructure/supabase/domainClients';
 import { getTodayIsoDate } from '@/lib/utils/date';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
 import { logActivityEvent } from '@/lib/supabase/patient-queries';

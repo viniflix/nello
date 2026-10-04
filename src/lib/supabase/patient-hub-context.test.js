@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getActivityCtaRoute, getPatientHubOperationalContext } from './patient-queries';
 const mocks = vi.hoisted(() => ({ from: vi.fn(), records: vi.fn() }));
-vi.mock('@/lib/customSupabaseClient', () => ({ supabase: { from: mocks.from } }));
+vi.mock('@/infrastructure/supabase/client', () => ({ supabase: { from: mocks.from } }));
 vi.mock('@/features/clinical-records/api/evolution-queries', () => ({ listClinicalRecordsByEpisode: mocks.records }));
 vi.mock('@/lib/supabase/lab-results-queries', () => ({ classifyLabResultsRiskBatch: vi.fn(), getLabRiskRules: vi.fn() }));
 vi.mock('@/lib/supabase/query-helpers', () => ({ buildActivityEventPayload: vi.fn(), isExpectedRequestCancellation: vi.fn(), logSupabaseError: vi.fn() }));

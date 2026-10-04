@@ -1,5 +1,5 @@
 import { toast } from '@/components/ui/use-toast';
-import { supabase } from '@/lib/customSupabaseClient';
+import { communicationClient as supabase } from '@/infrastructure/supabase/domainClients';
 import { invalidateDomain } from '@/infrastructure/realtime/events';
 
 async function mutate(userId, rpc, args) {

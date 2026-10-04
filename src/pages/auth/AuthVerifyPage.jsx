@@ -1,7 +1,7 @@
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { supabase } from '@/lib/customSupabaseClient';
+import { supabase } from '@/infrastructure/supabase/client';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { safeAuthRedirect } from '@/lib/utils/authRedirect';

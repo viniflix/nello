@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { calculateDiaryAdherence } from './food-diary-queries';
 
 const state = vi.hoisted(() => ({ rows: [], filters: [], error: null }));
-vi.mock('@/lib/customSupabaseClient', () => ({
+vi.mock('@/infrastructure/supabase/client', () => ({
     supabase: {
         from: () => {
             const query = {

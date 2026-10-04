@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import posthog, { identifyUser } from '@/infrastructure/analytics/posthog';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/customSupabaseClient';
+import { getMyPrivacyPreferences, recordMyPrivacyChoice } from '../api/privacy-queries';
 import { posthogOptions } from '@/app/config/posthog';
 import { reportAnalyticsFailure } from '@/infrastructure/analytics/pipelineHealth';
 import { bindConsentOwner, hasAnalyticsConsent, hasAnalyticsChoice, suspendAnalyticsConsent, hasPendingAnalyticsRevocation, markPendingAnalyticsRevocation, LEGAL_VERSION, storeAnalyticsChoice } from '../consent';
@@ -54,7 +54,7 @@ export default function PrivacyPreferences() {
     if (!user?.id) { applyChoice(hasAnalyticsConsent(), null, false); return undefined; }
     // Default deny while the authenticated preference is being read.
     applyChoice(false, user, false);
-    supabase.rpc('get_my_privacy_preferences').then(({ data, error }) => {
+    getMyPrivacyPreferences().then(({ data, error }) => {
       if (!active || epoch !== preferenceEpoch.current) return;
       const currentVersion = !error && data?.version === LEGAL_VERSION;
       const recorded = currentVersion && data?.analytics_choice_recorded === true;
@@ -77,7 +77,7 @@ export default function PrivacyPreferences() {
     if (!analytics) { markPendingAnalyticsRevocation(ownerId, true); applyChoice(false, user); setAllowed(false); }
     try {
       if (user?.id) {
-        const { error } = await supabase.rpc('record_my_privacy_choice', {
+        const { error } = await recordMyPrivacyChoice({
           p_version: LEGAL_VERSION, p_terms: terms, p_analytics: analytics,
         });
         if (error) throw error;

@@ -1,5 +1,5 @@
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
-import { supabase } from '@/lib/customSupabaseClient';
+import { supabase } from '@/infrastructure/supabase/client';
 
 export async function listAdminPeople({ search = '', type = 'all', page = 1 } = {}) {
   const { data, error } = await supabase.rpc('admin_list_people', {

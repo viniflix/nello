@@ -1,4 +1,6 @@
-import { supabase } from '@/lib/customSupabaseClient';
+import { executeDomainOperation as executeOperation } from '@/infrastructure/supabase/versionedOperations';
+import { isConfirmedAnamnesis } from '@/domain/clinical/status';
+import { identityClient as supabase } from '@/infrastructure/supabase/domainClients';
 import { track, Events } from '@/infrastructure/analytics/posthog';
 const intents = new Map();
 const preparing = new Map();
@@ -47,8 +49,8 @@ export async function idempotentRpc(operation, args) {
       const result=await supabase.rpc(operation,{...entry.args,p_nonce:entry.nonce,p_actor:actor});
       if (intents.get(key) !== entry) return { data:null,error:{code:'SESSION_CHANGED',message:'A conta mudou durante o salvamento. Recarregue os dados da conta atual.'} };
       if(!result.error && args.p_table === 'anamnesis_records'
-        && ['submitted','validated'].includes(args.p_values?.status)
-        && ['submitted','validated'].includes(result.data?.status))track(Events.ANAMNESIS_COMPLETED,{operation:'anamnesis_complete',outcome:'succeeded'});
+        && isConfirmedAnamnesis(args.p_values?.status)
+        && isConfirmedAnamnesis(result.data?.status))track(Events.ANAMNESIS_COMPLETED,{operation:'anamnesis_complete',outcome:'succeeded'});
       if(!result.error || result.error.code === 'PT409')intents.delete(key);
       return result;
     }catch{return{data:null,error:{code:'NETWORK_FAILURE',message:'Sem confirmação do servidor. Tente novamente para conferir a mesma operação.'}};}
@@ -60,11 +62,11 @@ export async function idempotentRpc(operation, args) {
 }
 
 export function insertIdempotently(table,values) {
-  return idempotentRpc('mutate_record_idempotently',{p_table:table,p_values:values,p_id:null,p_expected:null});
+  return executeOperation(idempotentRpc,{version:1,operation:'record.insert',args:{p_table:table,p_values:values,p_id:null,p_expected:null}});
 }
 export function updateIdempotently(table,id,values,expected=null) {
-  return idempotentRpc('mutate_record_idempotently',{p_table:table,p_values:values,p_id:String(id),p_expected:expected});
+  return executeOperation(idempotentRpc,{version:1,operation:'record.update',args:{p_table:table,p_values:values,p_id:String(id),p_expected:expected}});
 }
 export function clinicalRpc(operation, args, expected = null) {
-  return idempotentRpc('perform_clinical_operation', { p_operation: operation, p_arguments: args, p_expected: expected });
+  return executeOperation(idempotentRpc, {version:1,operation:'clinical.perform',args:{ p_operation: operation, p_arguments: args, p_expected: expected }});
 }

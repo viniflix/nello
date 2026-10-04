@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "lint": "eslint src",
-    "build": "npm run lint && vite build",
+    "build": "npm run check:licenses && npm run lint && vite build && npm run publish:notices",
     "preview": "vite preview",
     "test": "vitest",
     "test:run": "node scripts/qa/test-with-diagnostics.mjs",
@@ -17,10 +17,14 @@
     "diagnose:observability": "node scripts/observability/diagnose.mjs",
     "check:coverage": "node scripts/qa/check-critical-coverage.mjs",
     "release:controlled": "node scripts/release/promote.mjs",
-    "verify": "npm run check:dependencies && npm run check:structure && npm run lint && npm run test:coverage && npm run check:coverage && vite build && npm run check:bundle",
+    "verify": "npm run check:dependencies && npm run check:licenses && npm run check:structure && npm run check:architecture && npm run check:types && npm run lint && npm run test:coverage && npm run check:coverage && vite build && npm run publish:notices && npm run check:bundle",
     "verify:release": "npm run verify && npm run check:security",
     "check:backend": "node scripts/backend/prepare.mjs --check",
-    "check:dependencies": "node scripts/qa/check-dependency-policy.mjs"
+    "check:dependencies": "node scripts/qa/check-dependency-policy.mjs",
+    "check:types": "tsc -p tsconfig.domain.json",
+    "check:architecture": "node scripts/qa/check-domain-boundaries.mjs",
+    "check:licenses": "node scripts/qa/third-party-inventory.mjs",
+    "publish:notices": "node scripts/qa/publish-third-party-notices.mjs"
   },
   "dependencies": {
     "@emotion/is-prop-valid": "1.2.1",
@@ -108,6 +112,7 @@
     "supabase": "2.109.1",
     "tailwindcss": "3.4.17",
     "tailwindcss-animate": "1.0.7",
+    "typescript": "6.0.2",
     "vite": "7.3.6",
     "vitest": "4.1.11"
   },
@@ -115,5 +120,6 @@
     "node": "22.x",
     "npm": "11.5.x"
   },
-  "packageManager": "npm@11.5.2"
+  "packageManager": "npm@11.5.2",
+  "license": "UNLICENSED"
 }

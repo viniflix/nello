@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { failurePresentation, classifyFailure, settleResources } from '@/lib/utils/failure';
 import { captureOperationalError } from '@/infrastructure/observability/telemetry';
-import { supabase } from '@/lib/customSupabaseClient';
+import { supabase } from '@/infrastructure/supabase/client';
 import { subscribeDomain } from '@/infrastructure/realtime/events';
 import { format } from 'date-fns';
 

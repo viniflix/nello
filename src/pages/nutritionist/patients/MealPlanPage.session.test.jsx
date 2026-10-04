@@ -6,7 +6,7 @@ import MealPlanPage from './MealPlanPage';
 const test = vi.hoisted(() => ({ plans: [], snapshot: { kind: 'meal-plan-session', version: 1, baselineAppliedAt: '2026-10-02T20:00:00Z', planId: 55, formData: { name: 'Sessão interrompida' }, meals: [{ foods: [{ quantity: 33 }] }], editor: { open: true, state: { formData: { notes: 'Refeição incompleta' } } } } }));
 vi.mock('@/hooks/useResolvedPatientId', () => ({ useResolvedPatientId: () => ({ patientId: test.patientId, paramValue: test.patientId }) }));
 vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ user: { id: 'owner' } }) }));
-vi.mock('@/lib/customSupabaseClient', () => ({ supabase: { auth: { getUser: async () => ({ data: { user: { id: 'owner' } } }) } } }));
+vi.mock('@/infrastructure/supabase/client', () => ({ supabase: { auth: { getUser: async () => ({ data: { user: { id: 'owner' } } }) } } }));
 vi.mock('@/components/ui/use-toast', () => ({ useToast: () => ({ toast: vi.fn() }) }));
 vi.mock('@/hooks/useMealPlan', () => ({ useMealPlan: () => ({ plans: test.plans, activePlan: test.plans.find(plan => plan.is_active), pendingDrafts: [], loading: false, isFetching: false }) }));
 vi.mock('@/lib/supabase/meal-plan-queries', () => ({ getMealPlanById: async () => { if (test.planPending) return test.planPending; await new Promise(resolve => setTimeout(resolve, 5)); return { data: { id: 55, patient_id: 'patient', is_draft: false, meals: [], ...(test.appliedCopy ? { name: 'Já aplicado' } : {}) } }; } }));

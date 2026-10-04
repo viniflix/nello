@@ -6,7 +6,7 @@ import { useOnlinePresence } from '@/hooks/useOnlinePresence';
 const mock=vi.hoisted(()=>({user:{id:'a'},rpc:vi.fn(),channel:vi.fn(),remove:vi.fn(),setAuth:vi.fn(),authChanged:null,query:{invalidateQueries:vi.fn(),resetQueries:vi.fn()},listeners:[]}));
 vi.mock('@/contexts/AuthContext',()=>({useAuth:()=>({user:mock.user})}));
 vi.mock('@tanstack/react-query',()=>({useQueryClient:()=>mock.query}));
-vi.mock('@/lib/customSupabaseClient',()=>({supabase:{rpc:mock.rpc,channel:mock.channel,removeChannel:mock.remove,realtime:{setAuth:mock.setAuth},auth:{onAuthStateChange:fn=>{mock.authChanged=fn;return{data:{subscription:{unsubscribe:vi.fn()}}};}}}}));
+vi.mock('@/infrastructure/supabase/client',()=>({supabase:{rpc:mock.rpc,channel:mock.channel,removeChannel:mock.remove,realtime:{setAuth:mock.setAuth},auth:{onAuthStateChange:fn=>{mock.authChanged=fn;return{data:{subscription:{unsubscribe:vi.fn()}}};}}}}));
 function Probe(){const p=useOnlinePresence();return <><output>{p.connection}:{String(p.isUserOnline('peer'))}:{String(p.isUserTyping('peer'))}</output><button onClick={()=>p.setTyping(true,'peer')}>typing</button></>;}
 beforeEach(()=>{
  vi.clearAllMocks();mock.user={id:'a'};mock.listeners=[];

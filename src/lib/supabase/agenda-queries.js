@@ -1,6 +1,6 @@
 import { clinicalRpc } from '@/lib/supabase/idempotent-mutations';
 import { track, Events } from '@/infrastructure/analytics/posthog';
-import { supabase } from '@/lib/customSupabaseClient';
+import { agendaClient as supabase } from '@/infrastructure/supabase/domainClients';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
 import { syncAppointmentNotificationSchedule } from './appointment-notifications-queries';
 

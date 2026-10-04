@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/customSupabaseClient';
+import { supabase } from '@/infrastructure/supabase/client';
 
 function base64ToBlob(base64, mimeType = 'application/pdf') {
   const binary = atob(base64);

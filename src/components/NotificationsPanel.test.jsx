@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { getNotificationMeta } from './NotificationsPanel';
-vi.mock('@/lib/customSupabaseClient', () => ({ supabase: {} }));
+vi.mock('@/infrastructure/supabase/client', () => ({ supabase: {} }));
 
 describe('clinical amendment notifications', () => {
   it.each([

@@ -1,7 +1,7 @@
 import { getTodayIsoDate } from '@/lib/utils/date';
 import { insertIdempotently, updateIdempotently, idempotentRpc } from '@/lib/supabase/idempotent-mutations';
 import { toCents, fromCents, decimalMoney } from '@/lib/utils/money';
-import { supabase } from '@/lib/customSupabaseClient';
+import { financeClient as supabase } from '@/infrastructure/supabase/domainClients';
 import { format, startOfMonth, endOfMonth, addDays, parseISO, startOfDay } from 'date-fns';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
 import { summarizeFinancialTransactions, buildFinancialCashFlow, buildFinancialExpenseDistribution } from '@/lib/utils/financial-math';

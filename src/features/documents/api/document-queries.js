@@ -1,4 +1,4 @@
-import { supabase } from '@/infrastructure/supabase/client';
+import { filesClient as supabase } from '@/infrastructure/supabase/domainClients';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
 import { isUuid } from '@/lib/utils/patientRoutes';
 import { uploadVerifiedFile } from '@/lib/storage/verifiedUpload';

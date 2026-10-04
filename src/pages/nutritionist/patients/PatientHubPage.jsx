@@ -21,7 +21,7 @@ import PatientEditProfileModal from '@/components/patient-hub/PatientEditProfile
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useToast } from '@/components/ui/use-toast';
 import { publicOrigin } from '@/lib/utils/publicOrigin';
-import { supabase } from '@/lib/customSupabaseClient';
+import { supabase } from '@/infrastructure/supabase/client';
 
 const TabContentOverview = lazy(() => import('@/components/patient-hub/tabs/TabContentOverview'));
 const TabContentFeed = lazy(() => import('@/components/patient-hub/tabs/TabContentFeed'));

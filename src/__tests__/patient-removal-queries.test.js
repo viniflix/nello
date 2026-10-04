@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mockRpc = vi.fn();
 const mockLogSupabaseError = vi.fn();
 
-vi.mock('@/lib/customSupabaseClient', () => ({
+vi.mock('@/infrastructure/supabase/client', () => ({
   supabase: { rpc: mockRpc },
 }));
 

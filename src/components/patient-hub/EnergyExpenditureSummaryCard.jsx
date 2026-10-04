@@ -9,7 +9,7 @@ import { AlertCircle } from 'lucide-react';
 import { HubPanel, HubMetric } from '@/components/patient-hub/HubPanel';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { supabase } from '@/lib/customSupabaseClient';
+import { supabase } from '@/infrastructure/supabase/client';
 import { patientRoute } from '@/lib/utils/patientRoutes';
 import { getPatientModuleSyncFlags } from '@/lib/supabase/anthropometry-queries';
 import { CardSkeleton } from '@/components/ui/card-skeleton';

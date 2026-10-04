@@ -6,7 +6,7 @@ import { parsePrivateFile, signPrivateFile } from '@/lib/storage/privateFiles';
  * Funções para manipular exames laboratoriais de pacientes
  */
 
-import { supabase } from '@/lib/customSupabaseClient';
+import { clinicalClient as supabase } from '@/infrastructure/supabase/domainClients';
 import { formatDateToIsoDate } from '@/lib/utils/date';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
 

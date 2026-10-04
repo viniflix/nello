@@ -67,5 +67,6 @@ dist-ssr/
 /supabase/functions/upload-private-file/.generated/
 .env.example
 /coverage/
+/.qa-licenses/
 /[Dd][Oo][Cc][Ss]/
 /AGENTS.md

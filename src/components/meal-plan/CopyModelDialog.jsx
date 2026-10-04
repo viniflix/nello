@@ -13,7 +13,7 @@ import {
     DialogTitle,
     DialogFooter
 } from '@/components/ui/dialog';
-import { supabase } from '@/lib/customSupabaseClient';
+import { supabase } from '@/infrastructure/supabase/client';
 import { GradientAvatar } from '@/components/nutritionist/PatientCard';
 
 const CopyModelDialog = ({ isOpen, onClose, planId, planName, onCopy }) => {

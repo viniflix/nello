@@ -3,7 +3,7 @@ import { formatDateToIsoDate } from '@/lib/utils/date';
 import { uploadVerifiedFile } from '@/lib/storage/verifiedUpload';
 import { fileExtensionForMime } from '@/lib/storage/uploadPolicy';
 import { parsePrivateFile } from '@/lib/storage/privateFiles';
-import { supabase } from '@/lib/customSupabaseClient';
+import { clinicalClient as supabase } from '@/infrastructure/supabase/domainClients';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
 
 const BUCKET = 'patient-photos';

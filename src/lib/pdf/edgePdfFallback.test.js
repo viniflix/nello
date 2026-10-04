@@ -1,7 +1,7 @@
 import {afterEach,beforeEach,describe,expect,it,vi} from 'vitest';
 import {generatePdfViaEdge} from './edgePdfFallback';
 const invoke=vi.hoisted(()=>vi.fn());
-vi.mock('@/lib/customSupabaseClient',()=>({supabase:{functions:{invoke}}}));
+vi.mock('@/infrastructure/supabase/client',()=>({supabase:{functions:{invoke}}}));
 beforeEach(()=>{
  vi.stubGlobal('URL',Object.assign(class {},{createObjectURL:vi.fn(()=> 'blob:synthetic'),revokeObjectURL:vi.fn()}));
  vi.spyOn(HTMLAnchorElement.prototype,'click').mockImplementation(()=>{});

@@ -5,7 +5,7 @@ const mocks=vi.hoisted(()=>({calculate:vi.fn(),patientId:null,active:vi.fn(),fro
 vi.mock('react-router-dom',()=>({useNavigate:()=>()=>{}}));
 vi.mock('@/hooks/useResolvedPatientId',()=>({useResolvedPatientId:()=>({patientId:mocks.patientId,paramValue:null})}));
 vi.mock('@/components/ui/use-toast',()=>({useToast:()=>({toast:vi.fn()})}));
-vi.mock('@/lib/customSupabaseClient',()=>({supabase:{from:mocks.from,auth:{getUser:async()=>({data:{user:null}})}}}));
+vi.mock('@/infrastructure/supabase/client',()=>({supabase:{from:mocks.from,auth:{getUser:async()=>({data:{user:null}})}}}));
 vi.mock('@/infrastructure/observability/telemetry',()=>({captureOperationalError:mocks.capture}));
 vi.mock('@/lib/supabase/clinical-impact-queries',()=>({logClinicalImpact:vi.fn()}));
 vi.mock('@/lib/supabase/goals-queries',()=>({createGoal:vi.fn(),getPatientGoals:async()=>({data:[]}),getActiveGoal:mocks.active,updateGoalProgress:vi.fn(),completeGoal:vi.fn(),cancelGoal:vi.fn(),pauseGoal:vi.fn(),calculateGoalViability:mocks.calculate,calculateMinimumDeadline:()=>15,calculateIdealDeadline:()=>30}));

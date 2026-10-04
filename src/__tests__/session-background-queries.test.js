@@ -12,7 +12,7 @@ const mocks = vi.hoisted(() => ({
   logSupabaseError: vi.fn(),
 }));
 
-vi.mock('@/lib/customSupabaseClient', () => ({
+vi.mock('@/infrastructure/supabase/client', () => ({
   supabase: {
     auth: { getSession: mocks.getSession },
     from: mocks.from,

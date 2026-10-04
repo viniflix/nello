@@ -5,7 +5,7 @@ import { beforeEach, expect, it, vi } from 'vitest';
 import { NotificationsCacheOwner, useNotificationsData } from './useNotificationsData';
 const mock=vi.hoisted(()=>({from:vi.fn(),user:{id:'owner'}}));
 vi.mock('@/contexts/AuthContext',()=>({useAuth:()=>({user:mock.user})}));
-vi.mock('@/lib/customSupabaseClient',()=>({supabase:{from:mock.from}}));
+vi.mock('@/infrastructure/supabase/client',()=>({supabase:{from:mock.from}}));
 beforeEach(()=>{
  vi.clearAllMocks();mock.user={id:'owner'};
  mock.from.mockImplementation(()=>{

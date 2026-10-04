@@ -6,7 +6,7 @@
  * - food_household_measures: associações específicas por alimento
  */
 
-import { supabase } from '@/lib/customSupabaseClient';
+import { nutritionClient as supabase } from '@/infrastructure/supabase/domainClients';
 import { calculateNutrition, foodPer100Grams } from '@/lib/utils/nutrition-calculations';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
 
