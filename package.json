@@ -17,7 +17,7 @@
     "diagnose:observability": "node scripts/observability/diagnose.mjs",
     "check:coverage": "node scripts/qa/check-critical-coverage.mjs",
     "release:controlled": "node scripts/release/promote.mjs",
-    "verify": "npm run check:dependencies && npm run check:licenses && npm run check:structure && npm run check:architecture && npm run check:types && npm run lint && npm run test:coverage && npm run check:coverage && vite build && npm run publish:notices && npm run check:bundle",
+    "verify": "npm run check:dependencies && npm run check:backend && npm run check:licenses && npm run check:structure && npm run check:architecture && npm run check:types && npm run lint && npm run test:coverage && npm run check:coverage && vite build && npm run publish:notices && npm run check:bundle",
     "verify:release": "npm run verify && npm run check:security",
     "check:backend": "node scripts/backend/prepare.mjs --check",
     "check:dependencies": "node scripts/qa/check-dependency-policy.mjs",

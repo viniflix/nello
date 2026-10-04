@@ -1,4 +1,4 @@
-import { decimalFraction, exactOperation, fractionNumber } from '../../../supabase/functions/_shared/clinical-arithmetic.js';
+import { decimalFraction, exactOperation, fractionNumber } from '../clinical/arithmetic';
 type Nutrient = 'protein' | 'carbs' | 'fat' | 'fiber' | 'sodium';
 export interface Food { source?: string; calories?: number | null; protein?: number | null; carbs?: number | null; fat?: number | null; fiber?: number | null; sodium?: number | null; portion_size?: number | null; nutrition_basis?: {food: Food; portion: number}; }
 /**

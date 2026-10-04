@@ -12,6 +12,7 @@ export const civilDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(value =>
 
 export class ContractError extends Error {
   readonly code = 'INVALID_CONTRACT';
+  readonly status = 400;
   constructor() { super('Contrato de operação inválido.'); this.name = 'ContractError'; }
 }
 /** Validation errors deliberately omit payloads, fields and clinical text. */

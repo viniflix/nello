@@ -62,5 +62,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: third-party-inventory-${{ github.sha }}
-          path: .qa-licenses/
+          path: |
+            .qa-licenses/runtime.cyclonedx.json
+            .qa-licenses/runtime-inventory.json
+            .qa-licenses/THIRD_PARTY_NOTICES.txt
+          include-hidden-files: true
           if-no-files-found: error

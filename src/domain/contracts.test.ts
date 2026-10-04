@@ -10,6 +10,7 @@ import { decimalMoney, netAfterFee } from './finance';
 import { validateUploadSelection } from './files';
 import { messageIntentSchema } from './communication';
 import { acceptSyncReceipt, syncPolicy } from './sync';
+import { clinicalLeaf, clinicalOperation, decimalFraction, roundClinicalFraction } from './clinical/arithmetic';
 
 const actor = '10000000-0000-4000-8000-000000000001';
 const nonce = '10000000-0000-4000-8000-000000000002';
@@ -20,6 +21,12 @@ const operations = [
   {version:1,operation:'nutrition.meal.save',args:{p_plan_id:1,p_meal_id:null,p_meal:{meal_time:'08:00',foods:[]},p_expected:null}},
 ];
 describe('shared web / simulated native contracts', () => {
+  it('preserves exact serialized arithmetic and signed decimal rounding at the typed boundary', () => {
+    const calculation = clinicalOperation('multiply', clinicalLeaf('mass','60','kg'), clinicalLeaf('factor','1.2'), 'result');
+    expect(JSON.parse(JSON.stringify(calculation))).toMatchObject({value:72,exact:{numerator:'72',denominator:'1'}});
+    expect(roundClinicalFraction(decimalFraction('-1.005'),2)).toBe('-1.01');
+    expect(()=>decimalFraction(Infinity)).toThrow('invalid_clinical_number');
+  });
   it.each(operations)('keeps the existing server payload for $operation', async operation => {
     const calls: unknown[] = [];
     const transport = async (rpc: string,args: Record<string,unknown>) => { calls.push({rpc,args});return {data:{id:1},error:null}; };
@@ -40,7 +47,7 @@ describe('shared web / simulated native contracts', () => {
     {version:1,operation:'record.update',args:{p_table:'foods',p_values:{},p_id:null}},
   ])('rejects incompatible / malformed contracts before transport', async operation => {
     const transport = vi.fn();
-    await expect(executeOperation(transport,operation)).rejects.toMatchObject({code:'INVALID_CONTRACT',message:'Contrato de operação inválido.'});
+    await expect(executeOperation(transport,operation)).rejects.toMatchObject({code:'INVALID_CONTRACT',status:400,message:'Contrato de operação inválido.'});
     expect(transport).not.toHaveBeenCalled();
   });
   it('reuses exact nutrition, time and finance rules in a second consumer', () => {
