@@ -23,7 +23,8 @@
     { "scope": "posthog", "requirement": "Person deletion is asynchronous: verify deletion_status and all distinct IDs; event retention windows are not an erasure receipt. Session replay remains disabled.", "source": "https://posthog.com/docs/privacy/data-storage#data-deletion" },
     { "scope": "email", "requirement": "Provider copies and recipients' mailboxes are separate. Published Resend live email/log retention is 30 days for Free/Pro/Scale, backups 7 days. Verify actual account contract; do not promise recall of delivered mail.", "source": "https://resend.com/security" },
     { "scope": "provider_backups", "requirement": "Verify each contracted backup expiry/retirement separately; waiting or a public policy alone is not proof. Supabase database backups exclude Storage bytes.", "source": "https://supabase.com/docs/guides/platform/backups" },
-    { "scope": "private_backups", "requirement": "Encrypted backups need inventory, restricted access, retention review and fresh independent exclusion lists before any recovery." }
+    { "scope": "private_backups", "requirement": "Encrypted backups need inventory, restricted access, retention review and fresh independent exclusion lists before any recovery." },
+    { "scope": "hosting_logs", "requirement": "Review Vercel and Supabase request/runtime logs and exported drains separately from analytics. Verify contracted retention and all exports. GitHub QA artifacts must remain synthetic/sanitized; absence of clinical data is a check, not an assumption." }
   ],
   "certification": "Source documentation proves provider behavior described publicly, not deletion of Nello's copies. No real clinical records are erased by this policy."
 }

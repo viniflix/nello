@@ -3,7 +3,7 @@ import { readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { resolve, relative, isAbsolute } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-export const COPY_SCOPES = ['database', 'auth', 'storage', 'sentry', 'posthog', 'email', 'provider_backups', 'private_backups'];
+export const COPY_SCOPES = ['database', 'auth', 'storage', 'sentry', 'posthog', 'email', 'provider_backups', 'private_backups', 'hosting_logs'];
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const HASH = /^[0-9a-f]{64}$/;
 

@@ -2,7 +2,7 @@
 
 Clinical custody and account erasure are different operations. `copy-policy.json` records public sources and conservative boundaries. Custody dates are minimum calendar dates, never automatic permission to destroy a record; legal holds and professional requirements may extend them.
 
-The existing administrative RPC requires a legal basis for a final response and keeps immutable request events. Its Storage queue targets approved avatars only. `storage-maintenance` removes bytes through the provider API; `finish_storage_erasure_work` verifies metadata absence. Backup acknowledgment requires an operator-provided evidence hash. This **does not prove** erasure of Auth, database relations, Sentry, PostHog, email or provider backups.
+The existing administrative RPC requires a legal basis for a final response and keeps immutable request events. Its Storage queue targets approved avatars only. `storage-maintenance` removes bytes through the provider API; `finish_storage_erasure_work` verifies metadata absence. Backup acknowledgment requires an operator-provided evidence hash. This **does not prove** erasure of Auth, database relations, Sentry, PostHog, email, hosting logs or provider backups.
 
 The UI therefore keeps erasure/anonymization in progress until operational verification is available, while permitting justified legal-custody responses. This UI guard is not an authorization boundary: direct privileged RPC calls remain governed by existing server controls. Full cross-provider server enforcement and independently verified provider receipts remain an open requirement. Do not claim AL-18 closed.
 
