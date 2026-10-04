@@ -11,7 +11,7 @@ const REQUEST_TYPES = [
   ['access', 'Acesso aos dados'], ['portability', 'Portabilidade assistida'], ['correction', 'Correção de dados'],
   ['deletion', 'Exclusão ou anonimização'], ['revocation', 'Revogação de consentimento'], ['objection', 'Oposição a tratamento'],
 ];
-const STATUS = { submitted: 'Recebida', triaged: 'Em triagem', in_progress: 'Em atendimento', fulfilled: 'Concluída', rejected: 'Respondida com restrição', cancelled: 'Cancelada' };
+const STATUS = { submitted: 'Recebida', triaged: 'Em triagem', in_progress: 'Em atendimento', fulfilled: 'Respondida', rejected: 'Respondida com restrição', cancelled: 'Cancelada' };
 
 export default function PatientPrivacyRequests() {
   const { toast } = useToast();

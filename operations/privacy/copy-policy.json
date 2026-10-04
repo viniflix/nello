@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "reviewedAt": "2026-10-04",
+  "clinicalCustody": {
+    "minimumCalendarYearsSinceLastRecord": 20,
+    "automaticPurge": false,
+    "legalHoldsExtendCustody": true,
+    "sources": [
+      "https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13787.htm",
+      "https://www.gov.br/conarq/pt-br/legislacao-arquivistica/resolucoes/resolucao-no-594-de-17-de-dezembro-de-2017"
+    ]
+  },
+  "minimization": {
+    "retainAllHealthtechData": false,
+    "sources": ["https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709compilado.htm"],
+    "articles": [6, 11, 16, 18]
+  },
+  "copies": [
+    { "scope": "database", "requirement": "Classify record and relations before any erasure. Clinical documents and identity necessary for custody are retained with restricted access." },
+    { "scope": "auth", "requirement": "Account closure/revocation is separate from clinical custody. Never delete Auth identities by cascade without reviewing clinical references." },
+    { "scope": "storage", "requirement": "Delete bytes through the Storage API, verify absence and keep independent restore exclusions. Never treat SQL metadata deletion as byte deletion.", "source": "https://supabase.com/docs/guides/storage/schema/design" },
+    { "scope": "sentry", "requirement": "Verify the applicable project plan, event/issue scope, shared-user impact and deletion receipt before erasure. No clinical content in new events." },
+    { "scope": "posthog", "requirement": "Person deletion is asynchronous: verify deletion_status and all distinct IDs; event retention windows are not an erasure receipt. Session replay remains disabled.", "source": "https://posthog.com/docs/privacy/data-storage#data-deletion" },
+    { "scope": "email", "requirement": "Provider copies and recipients' mailboxes are separate. Published Resend live email/log retention is 30 days for Free/Pro/Scale, backups 7 days. Verify actual account contract; do not promise recall of delivered mail.", "source": "https://resend.com/security" },
+    { "scope": "provider_backups", "requirement": "Verify each contracted backup expiry/retirement separately; waiting or a public policy alone is not proof. Supabase database backups exclude Storage bytes.", "source": "https://supabase.com/docs/guides/platform/backups" },
+    { "scope": "private_backups", "requirement": "Encrypted backups need inventory, restricted access, retention review and fresh independent exclusion lists before any recovery." }
+  ],
+  "certification": "Source documentation proves provider behavior described publicly, not deletion of Nello's copies. No real clinical records are erased by this policy."
+}
