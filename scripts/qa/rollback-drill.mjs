@@ -1,9 +1,9 @@
 import { execFileSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { assertIsolatedRuntime } from './isolated-runtime.mjs';
-import { assertRollbackEndpoint, assertRollbackTemplate, exerciseFunctionRollback } from './rollback-contract.mjs';
+import { assertRollbackEndpoint, assertRollbackTemplate, exerciseFunctionRollback, rollbackFunctionSource } from './rollback-contract.mjs';
 
 assertIsolatedRuntime();
 const fixture = JSON.parse(readFileSync('.backend-ci/browser-runtime/fixture.json', 'utf8'));
@@ -16,19 +16,20 @@ for (const container of [source, worker]) {
   const info = JSON.parse(docker(['inspect', container]))[0];
   if (info.Config.Labels?.['com.supabase.cli.project'] !== 'nello-reconstruction') throw Error('Rollback requires the isolated CLI containers');
 }
-const suffix = randomBytes(6).toString('hex'), database = `nello_wave16_rollback_${suffix}`, slug = `qa-rollback-${suffix}`;
+const suffix = randomBytes(6).toString('hex'), database = `nello_wave16_rollback_${suffix}`, slug = 'qa-rollback-proof';
 const root = path.resolve('.backend-ci/supabase/functions'), directory = path.resolve(root, slug);
-if (path.dirname(directory) !== root || existsSync(directory)) throw Error('Unsafe rollback fixture directory');
+if (path.dirname(directory) !== root || !existsSync(directory)) throw Error('Registered rollback fixture directory required');
 const entry = path.join(directory, 'index.ts');
+const original = readFileSync(entry,'utf8');
+if (original !== rollbackFunctionSource(1)) throw Error('Unexpected rollback fixture source');
 const sql = (db, statement) => execFileSync('docker', ['exec', '-i', '-e', 'PGPASSWORD=postgres', source,
   'psql', '-X', '-h', '127.0.0.1', '-U', 'supabase_admin', '-d', db, '-t', '-A', '-v', 'ON_ERROR_STOP=1'],
 { input: statement, encoding: 'utf8', timeout: 120000, maxBuffer: 8 * 1024 * 1024, stdio: ['pipe', 'pipe', 'pipe'] }).trim();
 const restartWorker = () => docker(['restart', worker]);
 let created = false;
-mkdirSync(directory);
 try {
   const functions = await exerciseFunctionRollback({
-    install: async version => { writeFileSync(entry, `Deno.serve(() => Response.json({ version: ${version} }));\n`); restartWorker(); },
+    install: async version => { writeFileSync(entry, rollbackFunctionSource(version)); restartWorker(); },
     read: async () => {
       for (let attempt = 0; attempt < 30; attempt++) {
         try {
@@ -63,6 +64,6 @@ try {
 } finally {
   if (!/^nello_wave16_rollback_[a-f0-9]{12}$/.test(database)) throw Error('Unsafe rollback database cleanup');
   if (created) sql('postgres', `DROP DATABASE ${database} WITH (FORCE);`);
-  if (existsSync(entry)) unlinkSync(entry);
+  writeFileSync(entry,original);
   restartWorker();
 }

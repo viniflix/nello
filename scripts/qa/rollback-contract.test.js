@@ -1,5 +1,16 @@
 import { it, expect } from 'vitest';
-import { assertRollbackEndpoint, assertRollbackTemplate, exerciseFunctionRollback } from './rollback-contract.mjs';
+import { assertRollbackEndpoint, assertRollbackTemplate, exerciseFunctionRollback, rollbackFunctionSource } from './rollback-contract.mjs';
+import { registerRollbackFixture } from './prepare-rollback-fixture.mjs';
+it('registers the fixed QA entrypoint before startup and preserves JWT verification', () => {
+  const config='project_id = "nello-reconstruction"\n[functions.generate-pdf]\nverify_jwt = true\n';
+  const result=registerRollbackFixture(config);
+  expect(result.startsWith(config)).toBe(true);
+  expect(result).toContain('[functions.qa-rollback-proof]\nverify_jwt = true');
+  expect(result).toContain('entrypoint = "./functions/qa-rollback-proof/index.ts"');
+  expect(() => registerRollbackFixture('project_id = "production"')).toThrow('disposable');
+  expect(() => registerRollbackFixture(result)).toThrow('disposable');
+  expect(() => rollbackFunctionSource('1; unsafe')).toThrow('Unsupported');
+});
 it('accepts only the independently verified, named disposable template', () => {
   const result = { applicationCatalogMatched: true, productionData: false, database: 'nello_qa_wave02_template' };
   expect(() => assertRollbackTemplate(result)).not.toThrow();

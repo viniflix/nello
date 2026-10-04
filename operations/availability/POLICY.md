@@ -14,7 +14,7 @@ Rotas são explícitas em `vercel.json`. `node scripts/availability/routes.mjs` 
 
 ## Ensaio de recuperação
 
-Com a reconstrução local, as nove identidades sintéticas e uma jornada clínica preparadas, executar `NELLO_LOCAL_QA=isolated node scripts/availability/recovery-drill.mjs`. O executor confere a identificação do stack e recusa contas fora de `example.invalid`. Não altera o banco de origem. Restaura em um banco com nome aleatório, novos serviços Auth/PostgREST/Storage e volume Linux descartável.
+Com a reconstrução local, as nove personas e uma jornada clínica preparadas, executar `NELLO_LOCAL_QA=isolated node scripts/availability/recovery-drill.mjs`. O executor confere a identificação do stack, exige as nove personas registradas e permite pacientes adicionais somente quando seu e-mail é exatamente `<seu UUID>@example.invalid`, padrão das fixtures de jornada. Outras contas, mesmo no domínio sintético, são recusadas. Não altera o banco de origem. Restaura em um banco com nome aleatório, novos serviços Auth/PostgREST/Storage e volume Linux descartável.
 
 O backup autenticado AES-256-GCM inclui dump, objetos, atributos Linux e configurações secretas dos serviços. Chave errada falha. O ensaio mantém a chave apenas em memória: a produção exige um responsável e armazenamento separado da chave, testado independentemente. Arquivos de trabalho e logs privados ficam ignorados; somente resultados e hashes podem compor evidência pública.
 

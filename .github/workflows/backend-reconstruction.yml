@@ -22,6 +22,7 @@ jobs:
         run: |
           node scripts/backend/auth-contract.mjs
           node scripts/backend/prepare.mjs --baseline-only
+          node scripts/qa/prepare-rollback-fixture.mjs
       - name: Rebuild database on the remote runner
         id: rebuild
         run: |

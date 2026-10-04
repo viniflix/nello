@@ -5,6 +5,7 @@ import path from 'node:path';
 import { applicationRestoreList } from '../backend/restore-list.mjs';
 import { defaultOwnerAclSql } from '../backend/restore-acl.mjs';
 import { assertIsolatedRuntime } from '../qa/isolated-runtime.mjs';
+import { assertSyntheticRecoveryIdentities } from '../qa/recovery-identities.mjs';
 
 // This drill reads a disposable local stack and restores into a new database and
 // new Auth/Storage containers. It never resets or writes the source application.
@@ -42,8 +43,10 @@ if (!source.NetworkSettings.Networks[network]
   || source.Config.Labels?.['com.supabase.cli.project'] !== sourceProject
   || !source.NetworkSettings.Ports['5432/tcp']?.length
   || source.NetworkSettings.Ports['5432/tcp'].some(port => port.HostPort !== String(Number(fixtureUrl.port) + 1))) throw Error('Source is not the disposable CLI stack');
-const guard = sql('postgres', "select count(*) filter(where email not like '%@example.invalid')::text||':'||count(*)::text from auth.users;");
-if (guard !== '0:9') throw Error('Only the nine registered synthetic identities may be backed up');
+// Initial personas plus the UUID patients deliberately seeded by the clinical
+// browser journeys. A generic example.invalid address is not enough to pass.
+const authAccountsCompared = assertSyntheticRecoveryIdentities(JSON.parse(sql('postgres',
+  "select coalesce(jsonb_agg(jsonb_build_object('id',id,'email',email)),'[]'::jsonb) from auth.users;")), fixture.personas);
 if (sql('postgres', 'select count(*) from public.clinical_records;') === '0') throw Error('A real synthetic clinical record is required');
 const digest = buffer => createHash('sha256').update(buffer).digest('hex');
 const key = randomBytes(32), iv = randomBytes(12);
@@ -192,7 +195,7 @@ try {
     capturedAt: new Date(capturedAt).toISOString(), completedAt: new Date().toISOString(),
     rtoMs: restoredAt - outageAt, rpoMs: outageAt - capturedAt,
     clinicalMatched, catalogPoliciesGrantsFunctionsMatched: true, publicTablesCompared: tables.length,
-    authIdentityAndPasswordsMatched: authMatched, actualAuthLogin: true, actualSessionValidation: true,
+    authIdentityAndPasswordsMatched: authMatched, authAccountsCompared, actualAuthLogin: true, actualSessionValidation: true,
     actualRestRead: true, restoredRlsIsolation: true, databaseOutageDetected,
     storageObjectsCompared: objects.length, encryptedBackupIntegrity: true, wrongKeyRejected: true,
     dumpSha256: digest(dump), storageArchiveSha256: digest(storage), productionData: false };

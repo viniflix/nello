@@ -7,6 +7,11 @@ export function assertRollbackTemplate(restoration) {
     || restoration.database !== 'nello_qa_wave02_template') throw Error('Verified isolated restoration template required');
 }
 
+export function rollbackFunctionSource(version) {
+  if (![1,2].includes(version)) throw Error('Unsupported synthetic function version');
+  return `Deno.serve(() => Response.json({ version: ${version} }));\n`;
+}
+
 export async function exerciseFunctionRollback({ install, read }) {
   await install(1);
   if (await read() !== 1) throw Error('Baseline function contract unavailable');
