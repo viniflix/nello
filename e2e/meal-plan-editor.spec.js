@@ -42,6 +42,13 @@ for (const screen of [{ width: 320, height: 800 }, { width: 390, height: 844 }, 
         await expect(page.getByRole('link', { name: 'QA Meal Module', exact: true })).toHaveAttribute('href', `/nutritionist/patients/${sample.patient}/hub?tab=nutrition`);
         await page.getByRole('button', { name: 'Expandir QA Café da manhã com nome longo', exact: true }).click();
         await audit(page);
+        if (screen.width === 1440) {
+            await page.evaluate(() => window.scrollTo({top: 700, behavior: 'instant'}));
+            await expect.poll(() => page.getByRole('complementary', {name: 'Análise da edição'}).evaluate(panel => {
+                const header = document.querySelector('header');
+                return panel.getBoundingClientRect().top >= header.getBoundingClientRect().bottom;
+            })).toBe(true);
+        }
         await page.evaluate(() => window.scrollTo({top: 0, left: 0, behavior: 'instant'}));
         const photo = await page.screenshot({ fullPage: true });
         await info.attach('meal-editor-workspace', { body: photo, contentType: 'image/png' });
