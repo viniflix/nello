@@ -12,10 +12,9 @@ export function clinicalCustodyDate(lastRecordAt) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(lastRecordAt || '')) throw Error('Clinical record date required');
   const date = new Date(`${lastRecordAt}T00:00:00Z`);
   if (!Number.isFinite(date.getTime()) || date.toISOString().slice(0, 10) !== lastRecordAt) throw Error('Invalid clinical record date');
-  const year = date.getUTCFullYear() + 20;
-  const month = date.getUTCMonth();
-  const day = Math.min(date.getUTCDate(), new Date(Date.UTC(year, month + 1, 0)).getUTCDate());
-  return new Date(Date.UTC(year, month, day)).toISOString().slice(0, 10);
+  // If the anniversary day does not exist, move forward (never shorten custody).
+  date.setUTCFullYear(date.getUTCFullYear() + 20);
+  return date.toISOString().slice(0, 10);
 }
 
 /** Receipt validation is evidence organization, not remote deletion or legal certification. */

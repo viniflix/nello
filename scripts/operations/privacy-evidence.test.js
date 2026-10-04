@@ -41,7 +41,7 @@ describe('Cross-provider erasure evidence rehearsal', () => {
     const { manifest, read } = fixture(); manifest.copies[0].retainUntil = '2046-10-03';
     expect(() => reviewPrivacyEvidence(manifest, read, now)).toThrow('minimum');
     expect(() => clinicalCustodyDate('2026-02-30')).toThrow('Invalid');
-    expect(clinicalCustodyDate('2080-02-29')).toBe('2100-02-28');
+    expect(clinicalCustodyDate('2080-02-29')).toBe('2100-03-01');
   });
   it.each(['foreign', 'future', 'stale', 'corrupt', 'accepted_only', 'backup_pending'])('rejects false completion: %s', kind => {
     const { manifest, read, files } = fixture(); const copy = manifest.copies[3];
