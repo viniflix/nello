@@ -24,5 +24,5 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const sha = process.argv[2];
   const evidence = JSON.parse(readFileSync(process.argv[3], 'utf8').replace(/^\uFEFF/, ''));
   assertReleaseReady(evidence, sha);
-  console.log(`Candidate ${sha} passed GitHub and Vercel readiness. Promotion is now eligible; production smoke remains required.`);
+  console.log(`Release ${sha} passed GitHub and Vercel readiness. Verify the direct main deployment on the canonical domain; production smoke remains required.`);
 }

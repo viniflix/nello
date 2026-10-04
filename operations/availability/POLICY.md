@@ -24,4 +24,6 @@ GNU tar do ambiente Linux de QA preserva os atributos estendidos dos objetos. Bu
 
 ## Gate de publicação
 
+Na certificação sistêmica, o workflow Backend reconstruction executa novamente o restore completo depois das jornadas sintéticas e publica somente `.backend-ci/recovery-results/result.json`. Dados, ambientes e backups privados do exercício não são artifacts. O [runbook de certificação](../CERTIFICATION_RUNBOOK.md) descreve o vínculo ao SHA, a conferência V1–V7 e a separação entre testes técnicos e riscos aceitos.
+
 Primeiro: validação local proporcional, incluindo SQL e jornadas afetadas. Depois: um único push validado na main e deploy direto de produção. Confirmar todos os jobs, instalação, SHA, domínio, smoke e recuperação. Observação contínua em Sentry/PostHog e monitor externo; nenhuma espera fixa, canário separado ou tag é gate universal. Não certificar entrega com checks pendentes.

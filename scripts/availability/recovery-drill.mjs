@@ -197,6 +197,10 @@ try {
     storageObjectsCompared: objects.length, encryptedBackupIntegrity: true, wrongKeyRejected: true,
     dumpSha256: digest(dump), storageArchiveSha256: digest(storage), productionData: false };
   writeFileSync(path.join(root, 'result.json'), JSON.stringify(result, null, 2));
+  // Publish only this allowlisted summary, never the encrypted backup, provider
+  // environment, object names, identities or private diagnostics above.
+  mkdirSync('.backend-ci/recovery-results', { recursive: true });
+  writeFileSync('.backend-ci/recovery-results/result.json', JSON.stringify(result, null, 2));
   console.log(JSON.stringify(result, null, 2));
 } finally {
   for (const service of services.reverse()) execute(['rm', '--force', service]);

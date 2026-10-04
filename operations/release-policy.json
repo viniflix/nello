@@ -12,7 +12,8 @@
     "localSyntheticDatabaseRequiredForDatabaseChanges": true
   },
   "slo": {
-    "status": "initial-targets-not-yet-measured",
+    "status": "availability-short-windows-measured-other-targets-unverified",
+    "measurementScope": "Continuous production availability burn rates; latency and recovery measured in synthetic QA, not a 30-day production certification",
     "windowDays": 30,
     "availabilityPercent": 99.9,
     "loginSuccessPercentExcludingExpectedDenials": 99.5,
@@ -36,35 +37,35 @@
       "ownerWave": 4,
       "default": false,
       "gate": "synthetic-onboarding-and-legacy-compatibility",
-      "status": "planned-not-active"
+      "status": "superseded-by-main-cd"
     },
     {
       "key": "private-file-delivery-v2",
       "ownerWave": 7,
       "default": false,
       "gate": "cross-tenant-storage-matrix",
-      "status": "planned-not-active"
+      "status": "superseded-by-main-cd"
     },
     {
       "key": "private-realtime-v2",
       "ownerWave": 8,
       "default": false,
       "gate": "socket-isolation-and-reconnection",
-      "status": "planned-not-active"
+      "status": "superseded-by-main-cd"
     },
     {
       "key": "idempotent-sync-v2",
       "ownerWave": 9,
       "default": false,
       "gate": "concurrency-retry-and-account-switch",
-      "status": "planned-not-active"
+      "status": "superseded-by-main-cd"
     },
     {
       "key": "clinical-engine-v2",
       "ownerWave": 10,
       "default": false,
       "gate": "reference-cases-ui-snapshot-pdf",
-      "status": "planned-not-active"
+      "status": "superseded-by-main-cd"
     }
   ],
   "observation": {
