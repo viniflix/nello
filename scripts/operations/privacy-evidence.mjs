@@ -60,6 +60,7 @@ export function reviewPrivacyEvidence(manifest, readEvidence, now = Date.now()) 
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  try {
   const [input, output] = process.argv.slice(2);
   if (!input || !output) throw Error('Usage: privacy-evidence.mjs private-manifest.json private-report.json');
   const directory = realpathSync(resolve(input, '..'));
@@ -73,4 +74,9 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   writeFileSync(output, JSON.stringify(report, null, 2), { flag: 'wx', mode: 0o600 });
   console.log(JSON.stringify({ evidenceComplete: report.evidenceComplete, providerDeletionCertified: false, executed: false }));
   if (!report.evidenceComplete) process.exitCode = 1;
+  } catch {
+    // Parser/FS errors can contain private receipt text or filenames.
+    console.error('Private privacy evidence validation failed. No operation executed.');
+    process.exitCode = 1;
+  }
 }

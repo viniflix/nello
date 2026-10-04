@@ -1,5 +1,9 @@
 // @vitest-environment node
 import { createHash } from 'node:crypto';
+import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
 import { COPY_SCOPES, clinicalCustodyDate, reviewPrivacyEvidence } from './privacy-evidence.mjs';
 const now = Date.parse('2026-10-04T18:00:00Z');
@@ -56,5 +60,16 @@ describe('Cross-provider erasure evidence rehearsal', () => {
   it('requires every copy scope exactly once, including private backups', () => {
     const { manifest, read } = fixture(); manifest.copies[7] = manifest.copies[6];
     expect(() => reviewPrivacyEvidence(manifest, read, now)).toThrow('duplicate');
+  });
+  it('does not leak private malformed input through CLI diagnostics', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'nello-privacy-synthetic-'));
+    try {
+      const file = join(directory, 'synthetic.json');
+      writeFileSync(file, '{"PRIVATE_SENTINEL": invalid');
+      const result = spawnSync(process.execPath, ['scripts/operations/privacy-evidence.mjs', file, join(directory, 'report.json')], { encoding: 'utf8' });
+      expect(result.status).toBe(1);
+      expect(result.stderr + result.stdout).not.toContain('PRIVATE_SENTINEL');
+      expect(result.stderr).toContain('No operation executed');
+    } finally { rmSync(directory, { recursive: true, force: true }); }
   });
 });
