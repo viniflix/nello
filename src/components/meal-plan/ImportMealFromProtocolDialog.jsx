@@ -121,7 +121,7 @@ export default function ImportMealFromProtocolDialog({ open, onOpenChange, nutri
                                 className="pl-9"
                             />
                         </div>
-                        <ScrollArea className="flex-1">
+                        <ScrollArea className="flex-1" viewportProps={{ tabIndex: 0, role: 'region', 'aria-label': 'Protocolos disponíveis', className: 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary' }}>
                             {loadingTemplates ? (
                                 <div className="flex items-center justify-center py-10">
                                     <Loader2 className="w-6 h-6 animate-spin text-slate-600" />
@@ -191,7 +191,7 @@ export default function ImportMealFromProtocolDialog({ open, onOpenChange, nutri
                                         {selectedMealIds.size === templateMeals.length ? 'Desmarcar todas' : 'Selecionar todas'}
                                     </button>
                                 </div>
-                                <ScrollArea className="flex-1">
+                                <ScrollArea className="flex-1" viewportProps={{ tabIndex: 0, role: 'region', 'aria-label': 'Refeições do protocolo', className: 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary' }}>
                                     <div className="space-y-2 pr-2">
                                         {templateMeals.map(meal => {
                                             const id = meal.id ?? meal.tempId;

@@ -65,6 +65,8 @@ for (const screen of [{ width: 320, height: 800 }, { width: 390, height: 844 }, 
         await history.getByRole('button', { name: 'Fechar', exact: true }).click();
         await page.getByRole('button', { name: 'Importar refeições', exact: true }).click();
         await expect(page.getByRole('dialog', { name: /Importar/ })).toBeVisible();
+        await page.getByPlaceholder('Buscar protocolo...').press('Tab');
+        await expect(page.getByRole('region', {name: 'Protocolos disponíveis'})).toBeFocused();
         await audit(page);
         await page.getByRole('dialog', { name: /Importar/ }).getByRole('button', { name: 'Fechar', exact: true }).click();
         await page.getByRole('button', { name: 'Editar alimento QA Alimento do café', exact: true }).click();
