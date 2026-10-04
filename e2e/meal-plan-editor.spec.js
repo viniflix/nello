@@ -43,7 +43,8 @@ for (const screen of [{ width: 320, height: 800 }, { width: 390, height: 844 }, 
         await page.getByRole('button', { name: 'Expandir QA Café da manhã com nome longo', exact: true }).click();
         await audit(page);
         if (screen.width === 1440) {
-            await page.evaluate(() => window.scrollTo({top: 700, behavior: 'instant'}));
+            const stickyStart = await page.getByRole('complementary', {name: 'Análise da edição'}).evaluate(panel => panel.getBoundingClientRect().top + window.scrollY - 96);
+            await page.evaluate(top => window.scrollTo({top, behavior: 'instant'}), stickyStart);
             await expect.poll(() => page.getByRole('complementary', {name: 'Análise da edição'}).evaluate(panel => {
                 const header = document.querySelector('header');
                 return panel.getBoundingClientRect().top >= header.getBoundingClientRect().bottom;
