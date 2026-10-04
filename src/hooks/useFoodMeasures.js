@@ -4,7 +4,8 @@ import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
  * Usa padrão useState + useEffect (sem React Query)
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import {useAuth} from '@/contexts/AuthContext';
 import { getFoodMeasures } from '@/lib/supabase/foodService';
 import {
   createFoodMeasure,
@@ -13,6 +14,7 @@ import {
   foodHasMeasures
 } from '@/lib/supabase/food-measures-queries';
 import { useToast } from '@/hooks/use-toast';
+const EMPTY_MEASURES = [];
 
 /**
  * Hook para buscar medidas caseiras de um alimento
@@ -20,39 +22,35 @@ import { useToast } from '@/hooks/use-toast';
  * @returns {object} { data, isLoading, error, refetch }
  */
 export const useFoodMeasures = (foodId) => {
-  const [data, setData] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const {user} = useAuth();
+  const scope = `${user?.id || 'anonymous'}:${foodId || ''}`;
+  const owner = useRef(scope), sequence = useRef(0);
+  owner.current = scope;
+  const [state, setState] = useState({scope: null, data: [], isLoading: false, error: null});
 
   const loadMeasures = useCallback(async () => {
-    if (!foodId) {
-      setData([]);
-      return;
-    }
-
-    setIsLoading(true);
-    setError(null);
+    if (!foodId) return;
+    const ticket = ++sequence.current;
+    const current = () => owner.current === scope && sequence.current === ticket;
+    setState(previous => ({scope, data: previous.scope === scope ? previous.data : [], isLoading: true, error: null}));
 
     try {
       const result = await getFoodMeasures(foodId);
-      setData(result || []);
+      if (current()) setState({scope, data: result || [], isLoading: false, error: null});
     } catch (err) {
+      if (!current()) return;
       logDiagnostic('error', 'hooks/useFoodMeasures.js:39', 'Erro ao carregar medidas:', err);
-      setError(err);
-      setData([]);
-    } finally {
-      setIsLoading(false);
+      setState({scope, data: [], isLoading: false, error: err});
     }
-  }, [foodId]);
+  }, [foodId, scope]);
 
   useEffect(() => {
     loadMeasures();
+    return () => { sequence.current += 1; };
   }, [loadMeasures]);
 
   return {
-    data,
-    isLoading,
-    error,
+    ...(foodId && state.scope === scope ? state : {data: EMPTY_MEASURES, isLoading: Boolean(foodId), error: null}),
     refetch: loadMeasures
   };
 };

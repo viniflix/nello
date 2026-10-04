@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import {
@@ -10,30 +10,24 @@ import {
 } from '@/components/ui/select';
 import { calculateNutrition } from '@/lib/supabase/meal-plan-queries';
 import { useAllMeasures } from '@/hooks/useHouseholdMeasures';
+import MeasureLoadError from '@/components/nutrition/MeasureLoadError';
 import { useFoodMeasures } from '@/hooks/useFoodMeasures';
 
 const MeasureSelector = ({ food, quantity, unit, onQuantityChange, onUnitChange, onMeasureChange, onNutritionCalculated }) => {
     // Buscar medidas do sistema + medidas personalizadas do nutricionista
-    const { data: allMeasures = [], isLoading } = useAllMeasures();
+    const { data: allMeasures = [], isLoading, error, refetch } = useAllMeasures();
 
     // Buscar medidas específicas do alimento usando hook
-    const { data: foodMeasures = [], isLoading: loadingFood } = useFoodMeasures(food?.id);
-
-    const [measures, setMeasures] = useState([]);
+    const { data: foodMeasures = [], isLoading: loadingFood, error: foodError, refetch: refetchFood } = useFoodMeasures(food?.id);
 
     const loading = isLoading || loadingFood;
 
-    useEffect(() => {
-        if (allMeasures.length > 0) {
-            const measuresWithFlags = allMeasures.map(measure => ({
+    const measures = useMemo(() => allMeasures.map(measure => ({
                 ...measure,
                 hasSpecificConversion: measure.source === 'system'
                     ? foodMeasures.some(fm => fm.measure_id === measure.id)
                     : false,
-            }));
-            setMeasures(measuresWithFlags);
-        }
-    }, [allMeasures, foodMeasures]);
+            })), [allMeasures, foodMeasures]);
 
     useEffect(() => {
         if (food && quantity && unit) {
@@ -78,6 +72,7 @@ const MeasureSelector = ({ food, quantity, unit, onQuantityChange, onUnitChange,
 
     return (
         <div className="grid grid-cols-2 gap-4">
+            {(error || foodError) && <div className="col-span-2"><MeasureLoadError error={error || foodError} onRetry={() => Promise.all([refetch(), refetchFood()])} loading={loading}/></div>}
             {/* Quantidade */}
             <div className="space-y-2">
                 <Label htmlFor="quantity">

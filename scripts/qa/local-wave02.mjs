@@ -4,7 +4,7 @@ import {supabaseCommand,supabaseArgs,assertIsolatedRuntime} from './isolated-run
 if(process.env.NELLO_LOCAL_QA!=='isolated')throw Error('Explicit NELLO_LOCAL_QA=isolated required');
 assertIsolatedRuntime();
 const run=(command,args,options={})=>execFileSync(command,args,{stdio:'inherit',timeout:300000,...options});
-const node=args=>run(process.execPath,args);
+const node=(args,options)=>run(process.execPath,args,options);
 const sb=(args,options={})=>run(supabaseCommand,supabaseArgs(args),options);
 const sql=input=>run('docker',['exec','-i','-e','PGPASSWORD=postgres','supabase_db_nello-reconstruction','psql','-X','-h','127.0.0.1','-U','supabase_admin','-d','postgres','-v','ON_ERROR_STOP=1'],{input,encoding:'utf8',stdio:['pipe','inherit','inherit']});
 run('docker',['info','--format','{{.ServerVersion}}'],{timeout:15000});
@@ -31,7 +31,7 @@ node(['scripts/qa/edge-boundaries.mjs']);
 node(['scripts/qa/edge-expiry.mjs']);
 node(['scripts/qa/auth-captcha.mjs']);
 node(['node_modules/vite/bin/vite.js','build']);node(['node_modules/vite/bin/vite.js','build','--config','e2e/qa-build.config.mjs']);node(['scripts/qa/css-gate-injection.mjs']);
-node(['node_modules/playwright/cli.js','install','chromium']);node(['node_modules/playwright/cli.js','test',...process.argv.slice(2)]);
+node(['node_modules/playwright/cli.js','install','chromium']);node(['node_modules/playwright/cli.js','test',...process.argv.slice(2)],{timeout:900000});
 node(['scripts/qa/storage-uploads.mjs']);
 const recording=process.argv.slice(2).some(arg=>arg.startsWith('--update-snapshots'));
 writeFileSync('.backend-ci/local-results/result.json',JSON.stringify({passed:!recording,phase:recording?'baseline-recording':'validation',capturedAt:new Date().toISOString(),productionData:false},null,2));

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import {
@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/select';
 import { calculateNutrition } from '@/lib/supabase/meal-plan-queries';
 import { useAllMeasures } from '@/hooks/useHouseholdMeasures';
+import MeasureLoadError from '@/components/nutrition/MeasureLoadError';
 import { useFoodMeasures } from '@/hooks/useFoodMeasures';
 
 /**
@@ -31,25 +32,19 @@ const CascadeMeasureSelector = ({
     onNutritionCalculated
 }) => {
     // Buscar medidas do sistema + medidas personalizadas do nutricionista
-    const { data: allMeasures = [], isLoading } = useAllMeasures();
+    const { data: allMeasures = [], isLoading, error, refetch } = useAllMeasures();
 
     // Buscar medidas específicas do alimento (conversões por alimento)
-    const { data: foodMeasures = [], isLoading: loadingFood } = useFoodMeasures(food?.id);
+    const { data: foodMeasures = [], isLoading: loadingFood, error: foodError, refetch: refetchFood } = useFoodMeasures(food?.id);
 
-    const [measures, setMeasures] = useState([]);
     const [selectedCategory, setSelectedCategory] = useState('');
 
-    useEffect(() => {
-        if (allMeasures.length > 0) {
-            const measuresWithFlags = allMeasures.map(measure => ({
+    const measures = useMemo(() => allMeasures.map(measure => ({
                 ...measure,
                 hasSpecificConversion: measure.source === 'system'
                     ? foodMeasures.some(fm => fm.measure_id === measure.id)
                     : false,
-            }));
-            setMeasures(measuresWithFlags);
-        }
-    }, [allMeasures, foodMeasures]);
+            })), [allMeasures, foodMeasures]);
 
 
     useEffect(() => {
@@ -121,6 +116,7 @@ const CascadeMeasureSelector = ({
 
     return (
         <div className="space-y-4">
+            <MeasureLoadError error={error || foodError} onRetry={() => Promise.all([refetch(), refetchFood()])} loading={isLoading || loadingFood}/>
             {/* Passo 1: Selecionar Grupo de Medidas */}
             <div className="space-y-2">
                 <Label className="flex items-center gap-2">

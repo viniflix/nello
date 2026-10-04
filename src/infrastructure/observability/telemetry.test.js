@@ -25,6 +25,12 @@ vi.mock('@/infrastructure/analytics/posthog', () => ({
 }));
 
 describe('captureOperationalError', () => {
+  it('distinguishes missing assets from API connectivity without forwarding asset URLs',()=>{
+    captureOperationalError(new TypeError('Failed to fetch dynamically imported module: https://private.example/patient/id'),{operation:'render_domain'});
+    expect(track).toHaveBeenCalledWith('operation_failed',expect.objectContaining({failure_reason:'asset_load_failure',failure_kind:'technical'}));
+    expect(JSON.stringify(track.mock.calls)).not.toContain('private.example');
+    expect(Sentry.captureException.mock.calls[0][0].message).toContain('asset_load_failure');
+  });
   beforeEach(() => { clearObservabilityUser(); vi.clearAllMocks(); });
   it('does not let repeated suppressed failures extend the suppression forever',()=>{
     expect(__testing.shouldCapture('repeat',0)).toBe(true);expect(__testing.shouldCapture('repeat',1000)).toBe(false);expect(__testing.shouldCapture('repeat',4000)).toBe(false);expect(__testing.shouldCapture('repeat',6000)).toBe(true);

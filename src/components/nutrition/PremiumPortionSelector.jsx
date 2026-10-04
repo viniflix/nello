@@ -1,6 +1,7 @@
 import React, { useMemo, useEffect, useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import CustomMeasureFormDialog from '@/components/nutritionist/CustomMeasureFormDialog';
+import MeasureLoadError from './MeasureLoadError';
 import { useCreateCustomMeasure } from '@/hooks/useCustomMeasures';
 import { calculateNutrition, foodPer100Grams } from '@/lib/utils/nutrition-calculations';
 import { isGramUnit, portionGrams, changePortionMeasure } from '@/lib/utils/foodPortions';
@@ -39,14 +40,14 @@ export function PremiumPortionSelector({
   onNutritionChange = null,
   focusQuantityOnSelect = false,
 }) {
-  const { customMeasures = [], isLoading: loadingCustom, refetch } = useAllMeasures();
+  const { customMeasures = [], isLoading: loadingCustom, error: measuresError, refetch } = useAllMeasures();
   const [creatingMeasure, setCreatingMeasure] = useState(false);
   const [conversion, setConversion] = useState(null);
   const quantityRef = useRef(null);
   useEffect(() => { setConversion(null); }, [food?.id]);
   useEffect(() => { if (food?.id && focusQuantityOnSelect) quantityRef.current?.focus(); }, [food?.id, focusQuantityOnSelect]);
   const createMeasure = useCreateCustomMeasure();
-  const { data: foodMeasures = [], isLoading: loadingFood } = useFoodMeasures(food?.id);
+  const { data: foodMeasures = [], isLoading: loadingFood, error: foodMeasuresError, refetch: refetchFood } = useFoodMeasures(food?.id);
   const isLoading = loadingCustom || loadingFood;
 
   // Determinar o code selecionado atualmente
@@ -121,6 +122,7 @@ export function PremiumPortionSelector({
 
   return (
     <div className="space-y-3 rounded-lg border bg-background p-4">
+      <MeasureLoadError error={measuresError || foodMeasuresError} onRetry={() => Promise.all([refetch(), refetchFood()])} loading={isLoading}/>
       <div className="flex items-center justify-between mb-1">
         <span className="text-sm font-semibold">Quantidade e medida</span>
         {totalGrams > 0 && (

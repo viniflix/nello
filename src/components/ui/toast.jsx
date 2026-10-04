@@ -30,7 +30,7 @@ const toastVariants = cva(
 				default: 'bg-card border shadow-xl',
 				destructive:
 					'group destructive border-destructive bg-destructive text-destructive-foreground',
-				success: 'group success border-success bg-success text-success-foreground',
+				success: 'group success border-green-700 bg-green-700 text-white',
 				warning: 'group warning border-warning bg-warning text-warning-foreground',
 			},
 		},
@@ -44,6 +44,7 @@ const Toast = React.forwardRef(({ className, variant, ...props }, ref) => {
 	return (
 		<ToastPrimitives.Root
 			ref={ref}
+			role="listitem"
 			className={cn(toastVariants({ variant }), className)}
 			{...props}
 		/>
@@ -66,8 +67,9 @@ ToastAction.displayName = ToastPrimitives.Action.displayName;
 const ToastClose = React.forwardRef(({ className, ...props }, ref) => (
 	<ToastPrimitives.Close
 		ref={ref}
+		aria-label="Fechar aviso"
 		className={cn(
-			'absolute right-2 top-2 rounded-md p-1 text-foreground/50 opacity-0 transition-opacity hover:text-foreground focus:opacity-100 focus:outline-none focus:ring-2 group-hover:opacity-100 group-[.destructive]:text-red-300 group-[.destructive]:hover:text-red-50 group-[.destructive]:focus:ring-red-400 group-[.destructive]:focus:ring-offset-red-600',
+			'absolute right-2 top-2 rounded-md p-1 text-current transition-opacity hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-current focus:ring-offset-2',
 			className,
 		)}
 		toast-close=""

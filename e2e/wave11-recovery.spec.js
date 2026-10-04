@@ -23,9 +23,9 @@ test('an old lazy chunk is contained inside the portal without automatic reload'
  await login(page);const navigation=await page.evaluate(()=>performance.timeOrigin);
  await page.route('**/assets/PatientsPage-*.js',route=>route.abort('failed'));
  await page.locator('a[href="/nutritionist/patients"]:visible').first().click();
- await expect(page.getByText('Uma atualização está disponível',{exact:true})).toBeVisible();await expect(page.locator('header')).toBeVisible();
+ await expect(page.getByText('Não foi possível carregar esta área',{exact:true})).toBeVisible();await expect(page.locator('header')).toBeVisible();
  expect(await page.evaluate(()=>performance.timeOrigin)).toBe(navigation);
- await page.locator('a[href="/nutritionist"]:visible').first().click();await expect(page.getByText('Uma atualização está disponível',{exact:true})).toBeHidden();
+ await page.locator('a[href="/nutritionist"]:visible').first().click();await expect(page.getByText('Não foi possível carregar esta área',{exact:true})).toBeHidden();
 });
 
 test('extracted clinical controllers load goals, exams, anthropometry and patient progress without render failures',async({page})=>{

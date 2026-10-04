@@ -6,6 +6,7 @@ import {
   useDeleteCustomMeasure,
 } from '@/hooks/useCustomMeasures';
 import { useHouseholdMeasures } from '@/hooks/useHouseholdMeasures';
+import MeasureLoadError from '@/components/nutrition/MeasureLoadError';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import CustomMeasureFormDialog from '@/components/nutritionist/CustomMeasureFormDialog';
@@ -120,6 +121,7 @@ const CustomMeasuresSection = () => {
     data: customMeasures,
     isLoading: loadingCustom,
     refetch: refetchCustom,
+    error: customError,
     hasReachedLimit,
     count,
   } = useCustomMeasures();
@@ -204,6 +206,7 @@ const CustomMeasuresSection = () => {
 
   return (
     <div>
+      <MeasureLoadError error={customError} onRetry={refetchCustom} loading={loadingCustom}/>
       {/* Linha 1: Título + Descrição */}
       <div className="mb-6">
         <h2 className="font-heading text-lg sm:text-xl font-semibold uppercase tracking-wide text-primary flex items-center gap-2">

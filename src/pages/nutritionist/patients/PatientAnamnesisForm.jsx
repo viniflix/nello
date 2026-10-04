@@ -67,7 +67,7 @@ export default function PatientAnamnesisForm() {
 
     // Auto-create draft if accessing /new with a templateId
     useEffect(() => {
-        if (!anamnesisId && templateId && !isCreating) {
+        if (patientId && user?.id && !anamnesisId && templateId && !isCreating) {
             setIsCreating(true);
             createRecord.mutateAsync({ templateId })
                 .then(newRecord => {
@@ -77,7 +77,7 @@ export default function PatientAnamnesisForm() {
                     navigate(patientAnamnesisListRoute({ id: patientId, slug: paramValue }));
                 });
         }
-    }, [anamnesisId, templateId, isCreating, createRecord, navigate, paramValue, patientId]);
+    }, [anamnesisId, templateId, isCreating, createRecord, navigate, paramValue, patientId, user?.id]);
 
     useEffect(() => {
         if (record?.content) setContent(record.content);
@@ -179,6 +179,7 @@ export default function PatientAnamnesisForm() {
     };
 
     const renderField = (field) => {
+        const fieldControlId = `anamnesis-field-${field.id}`;
         const value = content[field.id] ?? '';
         const prevValue = previousProfile?.[field.id];
         const showPrevBanner = prevValue !== undefined && JSON.stringify(prevValue) !== JSON.stringify(value);
@@ -187,7 +188,7 @@ export default function PatientAnamnesisForm() {
         return (
             <div key={field.id} className="space-y-2 p-4 rounded-xl bg-slate-50/60 border border-slate-100 hover:border-slate-200 transition-colors">
                 <div className="flex items-start justify-between gap-4">
-                    <Label className="text-[15px] font-semibold text-slate-800 leading-snug">
+                    <Label id={`${fieldControlId}-label`} htmlFor={['text', 'textarea', 'number', 'date', 'select'].includes(field.type) ? fieldControlId : undefined} className="text-[15px] font-semibold text-slate-800 leading-snug">
                         {field.label} {field.required && <span className="text-red-500">*</span>}
                     </Label>
                     {showPrevBanner && (
@@ -202,20 +203,20 @@ export default function PatientAnamnesisForm() {
                 </div>
 
                 {field.type === 'text' && (
-                    <Input className="bg-white" value={value} onChange={e => handleChange(field.id, e.target.value)} placeholder="Digite aqui..." />
+                    <Input id={fieldControlId} className="bg-white" value={value} onChange={e => handleChange(field.id, e.target.value)} placeholder="Digite aqui..." />
                 )}
                 {field.type === 'textarea' && (
-                    <Textarea className="bg-white resize-none" value={value} onChange={e => handleChange(field.id, e.target.value)} rows={3} placeholder="Descreva aqui..." />
+                    <Textarea id={fieldControlId} className="bg-white resize-none" value={value} onChange={e => handleChange(field.id, e.target.value)} rows={3} placeholder="Descreva aqui..." />
                 )}
                 {field.type === 'number' && (
-                    <Input className="bg-white" type="number" value={value} onChange={e => handleChange(field.id, e.target.value)} />
+                    <Input id={fieldControlId} className="bg-white" type="number" value={value} onChange={e => handleChange(field.id, e.target.value)} />
                 )}
                 {field.type === 'date' && (
-                    <Input className="bg-white" type="date" value={value} onChange={e => handleChange(field.id, e.target.value)} />
+                    <Input id={fieldControlId} className="bg-white" type="date" value={value} onChange={e => handleChange(field.id, e.target.value)} />
                 )}
                 {field.type === 'select' && (
                     <Select value={value} onValueChange={v => handleChange(field.id, v)}>
-                        <SelectTrigger className="bg-white"><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                        <SelectTrigger id={fieldControlId} className="bg-white"><SelectValue placeholder="Selecione..." /></SelectTrigger>
                         <SelectContent>
                             {field.options?.map(opt => (
                                 <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
@@ -224,7 +225,7 @@ export default function PatientAnamnesisForm() {
                     </Select>
                 )}
                 {field.type === 'radio' && (
-                    <RadioGroup value={value} onValueChange={v => handleChange(field.id, v)} className="space-y-2 mt-2">
+                    <RadioGroup aria-labelledby={`${fieldControlId}-label`} value={value} onValueChange={v => handleChange(field.id, v)} className="space-y-2 mt-2">
                         {field.options?.map(opt => (
                             <div key={opt.value} className="flex items-center space-x-2 p-2 rounded-lg hover:bg-slate-100 transition-colors">
                                 <RadioGroupItem value={opt.value} id={`radio-${field.id}-${opt.value}`} />
@@ -234,7 +235,7 @@ export default function PatientAnamnesisForm() {
                     </RadioGroup>
                 )}
                 {field.type === 'checkbox' && (
-                    <div className="space-y-2 mt-2">
+                    <div role="group" aria-labelledby={`${fieldControlId}-label`} className="space-y-2 mt-2">
                         {field.options?.map(opt => {
                             const isChecked = Array.isArray(value) && value.includes(opt.value);
                             return (
@@ -251,7 +252,7 @@ export default function PatientAnamnesisForm() {
                     </div>
                 )}
                 {field.type === 'scale_1_10' && (
-                    <div className="flex flex-wrap items-center gap-2 mt-2">
+                    <div role="group" aria-labelledby={`${fieldControlId}-label`} className="flex flex-wrap items-center gap-2 mt-2">
                         {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(num => (
                             <button
                                 key={num}
@@ -335,7 +336,7 @@ export default function PatientAnamnesisForm() {
                             variant="outline"
                             onClick={() => generateLink.mutate({ recordId: record.id })}
                             disabled={generateLink.isPending}
-                            className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                            className="text-blue-700 border-blue-200 hover:bg-blue-50"
                         >
                             {generateLink.isPending
                                 ? <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -352,7 +353,7 @@ export default function PatientAnamnesisForm() {
                             </Button>
                             <AlertDialog>
                                 <AlertDialogTrigger asChild>
-                                    <Button variant="outline" disabled={isSaving || isSubmitting} className="text-red-600 border-red-200 hover:bg-red-50">
+                                    <Button variant="outline" disabled={isSaving || isSubmitting} className="text-red-700 border-red-200 hover:bg-red-50">
                                         <Trash2 className="w-4 h-4 mr-2" />
                                         Excluir
                                     </Button>

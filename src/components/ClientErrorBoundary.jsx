@@ -14,8 +14,8 @@ export default class ClientErrorBoundary extends React.Component {
     if(!error)return <React.Fragment key={this.props.resetKey}>{this.props.children}</React.Fragment>;
     const chunk=isChunkLoadError(error),presentation=failurePresentation(error);
     return <section role="alert" className="flex min-h-[240px] items-center justify-center p-6 bg-background"><div className="max-w-md rounded-xl border bg-card p-6 text-center">
-      <h2 className="text-lg font-semibold">{chunk?'Uma atualização está disponível':'Não foi possível abrir esta área'}</h2>
-      <p className="mt-2 text-sm text-muted-foreground">{chunk?'Atualize quando estiver pronto. Alterações ainda não salvas podem ser descartadas; a página não será recarregada automaticamente.':presentation.message}</p>
+      <h2 className="text-lg font-semibold">{chunk?'Não foi possível carregar esta área':'Não foi possível abrir esta área'}</h2>
+      <p className="mt-2 text-sm text-muted-foreground">{chunk?'O navegador não conseguiu carregar os arquivos desta área. Confira a conexão e atualize quando estiver pronto. Alterações ainda não salvas podem ser descartadas; a página não será recarregada automaticamente.':presentation.message}</p>
       {correlationId&&<p className="mt-2 text-xs">Código para o suporte: {correlationId}</p>}
       <div className="mt-4 flex flex-wrap justify-center gap-3">{chunk?<Button onClick={()=>requestReleaseReload({onBlocked:()=>this.setState({attempts:2})})} disabled={attempts>=2}>Atualizar página</Button>:<Button disabled={attempts>=2} onClick={()=>this.setState({error:null,attempts:attempts+1,correlationId:null})}>Tentar novamente</Button>}<a href="/ajuda" className="underline">Ajuda</a></div>
       {attempts>=2&&<p className="mt-3 text-sm">Não foi possível recuperar esta área. Use a navegação para voltar ou contate o suporte.</p>}

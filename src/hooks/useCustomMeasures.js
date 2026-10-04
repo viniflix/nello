@@ -4,7 +4,8 @@ import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
  * Padrão: useState + useEffect (sem React Query), consistente com o restante do codebase.
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   getAllCustomMeasures,
   getCustomMeasures,
@@ -15,41 +16,50 @@ import {
 import { useToast } from '@/hooks/use-toast';
 
 const MAX_CUSTOM_MEASURES = 20;
+const EMPTY_LIST = [];
 
 /**
  * Busca todas as medidas personalizadas do nutricionista (tela de gerenciamento).
  * @returns {{ data, isLoading, error, refetch, count, hasReachedLimit }}
  */
-export const useCustomMeasures = () => {
-  const [data, setData] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
-
+function useMeasureList(query) {
+  const {user} = useAuth();
+  const accountId = user?.id || null;
+  const owner = useRef(accountId), sequence = useRef(0);
+  owner.current = accountId;
+  const [state, setState] = useState({accountId: null, data: [], isLoading: false, error: null});
   const load = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
+    if (!accountId) return;
+    const ticket = ++sequence.current;
+    const current = () => owner.current === accountId && sequence.current === ticket;
+    setState(previous => ({accountId, data: previous.accountId === accountId ? previous.data : [], isLoading: true, error: null}));
     try {
-      const result = await getAllCustomMeasures();
+      const result = await query(accountId);
+      if (!current()) return;
       if (result.error) throw result.error;
-      setData(result.data || []);
+      setState({accountId, data: result.data || [], isLoading: false, error: null});
     } catch (err) {
-      logDiagnostic('error', 'hooks/useCustomMeasures.js:35', 'Erro ao carregar medidas personalizadas:', err);
-      setError(err);
-      setData([]);
-    } finally {
-      setIsLoading(false);
+      if (!current()) return;
+      logDiagnostic('error', 'hooks/useCustomMeasures.js', 'Erro ao carregar medidas personalizadas:', err);
+      setState({accountId, data: [], isLoading: false, error: err});
     }
-  }, []);
+  }, [accountId, query]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+    return () => { sequence.current += 1; };
+  }, [load]);
+  const visible = accountId && state.accountId === accountId
+    ? state : {data: EMPTY_LIST, isLoading: Boolean(accountId), error: null};
+  return {...visible, refetch: load};
+}
 
+export const useCustomMeasures = () => {
+  const result = useMeasureList(getAllCustomMeasures);
   return {
-    data,
-    isLoading,
-    error,
-    refetch: load,
-    count: data.length,
-    hasReachedLimit: data.length >= MAX_CUSTOM_MEASURES,
+    ...result,
+    count: result.data.length,
+    hasReachedLimit: result.data.length >= MAX_CUSTOM_MEASURES,
   };
 };
 
@@ -58,29 +68,7 @@ export const useCustomMeasures = () => {
  * @returns {{ data, isLoading, error, refetch }}
  */
 export const useActiveCustomMeasures = () => {
-  const [data, setData] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  const load = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const result = await getCustomMeasures();
-      if (result.error) throw result.error;
-      setData(result.data || []);
-    } catch (err) {
-      logDiagnostic('error', 'hooks/useCustomMeasures.js:72', 'Erro ao carregar medidas ativas:', err);
-      setError(err);
-      setData([]);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { load(); }, [load]);
-
-  return { data, isLoading, error, refetch: load };
+  return useMeasureList(getCustomMeasures);
 };
 
 /**

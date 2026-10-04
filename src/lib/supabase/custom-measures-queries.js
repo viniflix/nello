@@ -33,12 +33,14 @@ const generateMeasureCode = (name) => {
  * Busca todas as medidas personalizadas ativas do nutricionista logado.
  * @returns {Promise<{data: Array, error: object}>}
  */
-export const getCustomMeasures = async () => {
+export const getCustomMeasures = async (nutritionistId) => {
   try {
-    const { data, error } = await supabase
+    let query = supabase
       .from('nutritionist_custom_measures')
       .select("id,nutritionist_id,name,code,grams_equivalent,description,category,is_active,order_index,created_at,updated_at")
-      .eq('is_active', true)
+      .eq('is_active', true);
+    if (nutritionistId) query = query.eq('nutritionist_id', nutritionistId);
+    const { data, error } = await query
       .order('order_index', { ascending: true })
       .order('created_at', { ascending: true });
 
@@ -55,11 +57,13 @@ export const getCustomMeasures = async () => {
  * Usado para a tela de gerenciamento.
  * @returns {Promise<{data: Array, error: object}>}
  */
-export const getAllCustomMeasures = async () => {
+export const getAllCustomMeasures = async (nutritionistId) => {
   try {
-    const { data, error } = await supabase
+    let query = supabase
       .from('nutritionist_custom_measures')
-      .select("id,nutritionist_id,name,code,grams_equivalent,description,category,is_active,order_index,created_at,updated_at")
+      .select("id,nutritionist_id,name,code,grams_equivalent,description,category,is_active,order_index,created_at,updated_at");
+    if (nutritionistId) query = query.eq('nutritionist_id', nutritionistId);
+    const { data, error } = await query
       .order('order_index', { ascending: true })
       .order('created_at', { ascending: true });
 
@@ -75,17 +79,20 @@ export const getAllCustomMeasures = async () => {
  * Conta quantas medidas o nutricionista já possui.
  * @returns {Promise<number>}
  */
-export const countCustomMeasures = async () => {
+export const countCustomMeasures = async (nutritionistId) => {
   try {
-    const { count, error } = await supabase
+    let query = supabase
       .from('nutritionist_custom_measures')
       .select('id', { count: 'exact', head: true });
+    if (nutritionistId) query = query.eq('nutritionist_id', nutritionistId);
+    const { count, error } = await query;
 
     if (error) throw error;
-    return count || 0;
+    if (!Number.isInteger(count) || count < 0) throw new Error('Não foi possível verificar o limite de medidas.');
+    return count;
   } catch (error) {
     logSupabaseError("erro_ao_contar_medidas", error);
-    return 0;
+    throw error;
   }
 };
 
@@ -103,18 +110,20 @@ export const createCustomMeasure = async (payload) => {
     if (!name || name.trim().length < 2) {
       throw new Error('Nome deve ter pelo menos 2 caracteres.');
     }
-    if (!grams_equivalent || Number(grams_equivalent) <= 0) {
+    if (!Number.isFinite(Number(grams_equivalent)) || Number(grams_equivalent) <= 0) {
       throw new Error('Equivalência em gramas deve ser maior que 0.');
     }
 
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+    if (authError) throw authError;
+    const user = authData?.user;
+    if (!user) throw Object.assign(new Error('Sua sessão expirou. Entre novamente para continuar.'), {code: 'AUTH_SESSION_MISSING', status: 401});
+
     // Verificar limite antes de tentar inserir (UX melhor que esperar erro do RLS)
-    const count = await countCustomMeasures();
+    const count = await countCustomMeasures(user.id);
     if (count >= MAX_CUSTOM_MEASURES) {
       throw new Error(`Limite de ${MAX_CUSTOM_MEASURES} medidas personalizadas atingido.`);
     }
-
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Usuário não autenticado.');
 
     const code = generateMeasureCode(name.trim());
 
@@ -155,7 +164,7 @@ export const updateCustomMeasure = async (id, payload) => {
     if (name !== undefined && name.trim().length < 2) {
       throw new Error('Nome deve ter pelo menos 2 caracteres.');
     }
-    if (grams_equivalent !== undefined && Number(grams_equivalent) <= 0) {
+    if (grams_equivalent !== undefined && (!Number.isFinite(Number(grams_equivalent)) || Number(grams_equivalent) <= 0)) {
       throw new Error('Equivalência em gramas deve ser maior que 0.');
     }
 

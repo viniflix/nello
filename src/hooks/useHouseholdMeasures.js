@@ -6,7 +6,7 @@ import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { getCustomMeasures } from '@/lib/supabase/custom-measures-queries';
+import { useActiveCustomMeasures } from '@/hooks/useCustomMeasures';
 import { getAllHouseholdMeasures } from '@/lib/supabase/food-measures-queries';
 
 /**
@@ -107,48 +107,20 @@ export const categoryDescriptions = {
  * @returns {{ data: Array, systemMeasures: Array, customMeasures: Array, isLoading, error, refetch }}
  */
 export const useAllMeasures = () => {
-  const [systemMeasures, setSystemMeasures] = useState([]);
-  const [customMeasures, setCustomMeasures] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  const load = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const [systemResult, customResult] = await Promise.all([
-        getAllHouseholdMeasures(),
-        getCustomMeasures(),
-      ]);
-
-      if (systemResult.error) throw systemResult.error;
-
-      setSystemMeasures((systemResult.data || []).map(m => ({ ...m, source: 'system' })));
-      setCustomMeasures((customResult.data || []).map(m => ({
-        ...m,
-        // Normalizar campos para interface unificada
-        category: 'custom',
-        source: 'custom',
-        ml_equivalent: null,
-      })));
-    } catch (err) {
-      logDiagnostic('error', 'hooks/useHouseholdMeasures.js:134', 'Erro ao carregar medidas:', err);
-      setError(err);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { load(); }, [load]);
-
+  const system = useHouseholdMeasures();
+  const custom = useActiveCustomMeasures();
+  const systemMeasures = useMemo(() => system.data.map(m => ({...m, source: 'system'})), [system.data]);
+  const customMeasures = useMemo(() => custom.data.map(m => ({...m, category: 'custom', source: 'custom', ml_equivalent: null})), [custom.data]);
+  const refetchSystem = system.refetch, refetchCustom = custom.refetch;
+  const load = useCallback(() => Promise.all([refetchSystem(), refetchCustom()]), [refetchSystem, refetchCustom]);
   const data = useMemo(() => [...systemMeasures, ...customMeasures], [systemMeasures, customMeasures]);
 
   return {
     data,
     systemMeasures,
     customMeasures,
-    isLoading,
-    error,
+    isLoading: system.isLoading || custom.isLoading,
+    error: system.error || custom.error,
     refetch: load,
   };
 };

@@ -27,6 +27,7 @@ import {
 } from '@/components/ui/select';
 import { useFoodMeasures } from '@/hooks/useFoodMeasures';
 import { useAllMeasures } from '@/hooks/useHouseholdMeasures';
+import MeasureLoadError from './MeasureLoadError';
 
 const CATEGORY_LABELS = {
     volume: 'Volume',
@@ -90,8 +91,9 @@ export function PortionSelector({
     className = '',
     onNutritionChange = null,
 }) {
-    const { systemMeasures = [], customMeasures = [], isLoading } = useAllMeasures();
-    const { data: foodMeasures = [] } = useFoodMeasures(food?.id);
+    const { systemMeasures = [], customMeasures = [], isLoading: loadingMeasures, error, refetch } = useAllMeasures();
+    const { data: foodMeasures = [], isLoading: loadingFood, error: foodError, refetch: refetchFood } = useFoodMeasures(food?.id);
+    const isLoading = loadingMeasures || loadingFood;
 
     // Determinar o code selecionado atualmente
     // Suporta: value.measureId numérico (legado), string code, null = grams
@@ -198,6 +200,7 @@ export function PortionSelector({
 
     return (
         <div className={`space-y-2 ${className}`}>
+            <MeasureLoadError error={error || foodError} onRetry={() => Promise.all([refetch(), refetchFood()])} loading={isLoading}/>
             <Label>Porção</Label>
 
             <div className="flex items-center gap-2">

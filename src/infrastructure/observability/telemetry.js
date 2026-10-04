@@ -1,5 +1,6 @@
 import * as Sentry from '@sentry/react';
 import { classifyFailure } from '@/lib/utils/failure';
+import { isChunkLoadError } from '@/lib/utils/lazyWithReload';
 import {
   Events,
   identifyUser,
@@ -12,6 +13,7 @@ const recentErrors = new Map();
 const DEDUPLICATION_WINDOW_MS = 5000;
 
 function safeFailureReason(error) {
+  if (isChunkLoadError(error)) return 'asset_load_failure';
   const kind = classifyFailure(error);
   if (kind === 'offline' || kind === 'network') return 'network_failure';
   if (kind === 'timeout') return 'request_timeout';

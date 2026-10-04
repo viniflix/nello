@@ -8,14 +8,19 @@ vi.mock('@/lib/customSupabaseClient',()=>({supabase:{auth:{getSession:vi.fn(),on
 describe('same-account manual retry contract',()=>{
   it('records completion only once after the server confirms a concurrent anamnesis save', async()=>{
     track.mockClear();
-    const args={p_table:'anamnesis_records',p_values:{status:'completed'}};
+    const args={p_table:'anamnesis_records',p_values:{status:'validated'}};
     supabase.rpc.mockRejectedValueOnce(Error('PRIVATE_NETWORK_PAYLOAD'));
     await idempotentRpc('mutate_record_idempotently',args);
     expect(track).not.toHaveBeenCalled();
-    supabase.rpc.mockResolvedValue({data:{id:'synthetic'},error:null});
+    supabase.rpc.mockResolvedValue({data:{id:'synthetic',status:'validated'},error:null});
     await Promise.all([idempotentRpc('mutate_record_idempotently',args),idempotentRpc('mutate_record_idempotently',args)]);
     expect(track).toHaveBeenCalledTimes(1);
     expect(track).toHaveBeenCalledWith('anamnesis_completed',{operation:'anamnesis_complete',outcome:'succeeded'});
+  });
+  it.each(['draft','pending_patient','in_progress','completed'])('does not report completion for a nonfinal server state %s',async(status)=>{
+    track.mockClear();supabase.rpc.mockResolvedValue({data:{status},error:null});
+    await idempotentRpc('mutate_record_idempotently',{p_table:'anamnesis_records',p_values:{status:'validated'}});
+    expect(track).not.toHaveBeenCalled();
   });
   beforeEach(()=>{clearMutationIntents();vi.stubGlobal('crypto',webcrypto);supabase.auth.getSession.mockResolvedValue({data:{session:{user:{id:'actor1'}}}});supabase.rpc.mockReset();});
   afterEach(()=>{vi.useRealTimers();vi.unstubAllGlobals();});
