@@ -193,7 +193,7 @@ const AddFoodToMealDialog = ({ isOpen, onClose, onAdd, mealName, mealType, initi
 
     return (
         <Dialog open={isOpen} onOpenChange={handleClose}>
-            <DialogContent data-meal-plan-dialog className="flex h-[92dvh] max-h-[calc(100dvh-1rem)] w-[96vw] max-w-[1440px] flex-col gap-4 overflow-hidden max-sm:left-0 max-sm:top-0 max-sm:h-dvh max-sm:max-h-dvh max-sm:w-full max-sm:translate-x-0 max-sm:translate-y-0 max-sm:border-0 max-sm:bg-white max-sm:gap-3 max-lg:overflow-y-auto [overflow-wrap:anywhere]">
+            <DialogContent data-meal-plan-dialog className="flex bg-white h-[92dvh] max-h-[calc(100dvh-1rem)] w-[96vw] max-w-[1440px] flex-col gap-4 overflow-hidden max-sm:left-0 max-sm:top-0 max-sm:h-dvh max-sm:max-h-dvh max-sm:w-full max-sm:translate-x-0 max-sm:translate-y-0 max-sm:border-0 max-sm:bg-white max-sm:gap-3 max-lg:overflow-y-auto [overflow-wrap:anywhere]">
                 <DialogHeader className="shrink-0 border-b border-primary/15 pb-3">
                     <DialogTitle className="font-sans leading-snug tracking-normal">{initialData ? 'Editar Alimento' : 'Adicionar Alimento'}</DialogTitle>
                     <DialogDescription>{mealName ? 'Refeição: ' + mealName + '. ' : ''}Busque o alimento, informe a quantidade e escolha a medida.</DialogDescription>

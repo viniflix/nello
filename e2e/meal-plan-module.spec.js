@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { readFileSync } from 'node:fs';
-import { execFileSync } from 'node:child_process';
+import { seed } from './helpers/mealPlanFixture';
 import { randomUUID } from 'node:crypto';
 import { assertIsolatedRuntime } from '../scripts/qa/isolated-runtime.mjs';
 import { relevantDiagnostic } from '../scripts/qa/diagnostic-policy.mjs';
@@ -12,27 +12,6 @@ test.afterEach(async({page},info)=>{
 });
 const fixture = JSON.parse(readFileSync('.backend-ci/browser-runtime/fixture.json'));
 if (fixture.url !== 'http://localhost:54321') throw Error('Disposable loopback stack required');
-function seed() {
-    const patient = randomUUID(), actor = fixture.personas['nutritionist-a'].id;
-    const output = execFileSync('docker', ['exec', '-i', '-e', 'PGPASSWORD=postgres', 'supabase_db_nello-reconstruction', 'psql', '-X', '-At', '-h', '127.0.0.1', '-U', 'supabase_admin', '-d', 'postgres', '-v', 'ON_ERROR_STOP=1'], {
-        encoding:'utf8', input:`INSERT INTO auth.users(id,aud,role,email,raw_user_meta_data) VALUES('${patient}','authenticated','authenticated','${patient}@example.invalid','{"name":"QA Meal Module","user_type":"patient"}');
-        UPDATE public.user_profiles SET nutritionist_id='${actor}' WHERE id='${patient}';
-        INSERT INTO public.patient_module_sync_flags(patient_id,needs_meal_plan_review) VALUES('${patient}',true);
-        INSERT INTO public.nutritionist_patients(nutritionist_id,patient_id,status) VALUES('${actor}','${patient}','active');
-        WITH plan AS (INSERT INTO public.meal_plans(patient_id,nutritionist_id,name,start_date,is_active,is_draft,daily_calories,daily_protein,daily_carbs,daily_fat,plan_mode) VALUES('${patient}','${actor}','QA Plano completo com nome longo para testar leitura e navegação','2026-10-03',true,false,100,0,25,0,'hybrid') RETURNING id)
-        INSERT INTO public.meal_plan_meals(meal_plan_id,name,meal_type,meal_time,order_index,total_calories,total_protein,total_carbs,total_fat,include_in_totals)
-        SELECT id,'QA Refeição alternativa','dinner'::public.meal_type_enum,'20:00'::time,0,300,0,75,0,false FROM plan UNION ALL SELECT id,'QA Café da manhã com nome longo','breakfast'::public.meal_type_enum,'08:00'::time,1,100,0,25,0,true FROM plan;
-        UPDATE public.meal_plans SET active_days=to_jsonb(ARRAY['monday','tuesday','wednesday','thursday','friday','saturday','sunday']) WHERE patient_id='${patient}';
-        SELECT set_config('request.jwt.claims','{"sub":"${actor}","role":"authenticated"}',false);
-        INSERT INTO public.energy_expenditure_calculations(patient_id,nutritionist_id,age,gender,weight,height,get_result,final_planned_kcal,protocol_code,protocol_version,confirmed_by)
-        VALUES('${patient}','${actor}',30,'female',60,165,2000,2000,'energy.mifflin_st_jeor',1,'${actor}');
-        WITH food AS (INSERT INTO public.nutritionist_foods(nutritionist_id,name,energy_kcal,carbohydrate_g) VALUES('${actor}','QA Alimento do café',100,25) RETURNING id)
-        INSERT INTO public.meal_plan_foods(meal_plan_meal_id,food_id,quantity,unit,calories,protein,carbs,fat,patient_description)
-        SELECT meal.id,food.id,CASE WHEN meal.meal_type='breakfast' THEN 100 ELSE 300 END,'gram',CASE WHEN meal.meal_type='breakfast' THEN 100 ELSE 300 END,0,CASE WHEN meal.meal_type='breakfast' THEN 25 ELSE 75 END,0,CASE WHEN meal.meal_type='dinner' THEN 'QA Porção alternativa' ELSE null END FROM food,public.meal_plan_meals meal JOIN public.meal_plans plan ON plan.id=meal.meal_plan_id WHERE plan.patient_id='${patient}';
-        SELECT id FROM public.meal_plans WHERE patient_id='${patient}';`, stdio:['pipe','pipe','pipe'],
-    });
-    return {patient,plan:Number(output.trim().split('\n').at(-1))};
-}
 async function audit(page) {
     const result = await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze();
     expect(result.violations.map(item=>({id:item.id,nodes:item.nodes.map(node=>({target:node.target,summary:node.failureSummary}))}))).toEqual([]);
@@ -102,7 +81,7 @@ test('contextual food editing preserves the plan and returns to the workspace af
     const meal=page.getByRole('dialog',{name:'Editar Refeição',exact:true});
     await expect(meal.getByText('QA Porção revisada',{exact:true})).toBeVisible();
     await meal.getByRole('button',{name:'Atualizar Refeição',exact:true}).click();
-    await page.getByRole('button',{name:'Salvar alterações',exact:true}).click();
+    await page.getByRole('button',{name:'Aplicar alterações',exact:true}).click();
     await expect(page.getByRole('button',{name:'Editar Plano',exact:true})).toBeVisible();
     await page.getByRole('region',{name:'Refeições do plano',exact:true}).locator('summary').nth(1).click();
     await expect(page.getByText('QA Porção revisada',{exact:true})).toBeVisible();
@@ -155,7 +134,7 @@ for (const {width, zoom} of [{width:320}, {width:390}, {width:430}, {width:768},
         await expect(meal.getByText('1 substitutos',{exact:true})).toBeVisible();
         await meal.getByRole('button',{name:'Atualizar Refeição',exact:true}).click();
         await expect(meal).not.toBeVisible();
-        await page.getByRole('button',{name:'Salvar alterações',exact:true}).click();
+        await page.getByRole('button',{name:'Aplicar alterações',exact:true}).click();
         await expect(page.getByRole('button',{name:'Editar Plano',exact:true})).toBeVisible();
         await page.reload();
         await expect(page.getByRole('button',{name:'Editar Plano',exact:true})).toBeVisible();
@@ -195,7 +174,7 @@ test('quick food creation has scoped labels, optional macros and accepts a zero 
     await expect(meal.getByText(name,{exact:true})).toBeVisible();
     await meal.getByRole('button',{name:'Atualizar Refeição',exact:true}).click();
     await expect(meal).not.toBeVisible();
-    await page.getByRole('button',{name:'Salvar alterações',exact:true}).click();
+    await page.getByRole('button',{name:'Aplicar alterações',exact:true}).click();
     await expect(page.getByRole('button',{name:'Editar Plano',exact:true})).toBeVisible();
     await page.reload();
     await expect(page.getByRole('button',{name:'Editar Plano',exact:true})).toBeVisible();
@@ -214,7 +193,7 @@ test('restoring a historical version preserves the active plan, alternatives and
     await page.getByRole('button',{name:'Editar refeição QA Café da manhã com nome longo',exact:true}).click();
     const meal=page.getByRole('dialog',{name:'Editar Refeição',exact:true});
     await meal.getByRole('button',{name:'Atualizar Refeição',exact:true}).click();
-    await page.getByRole('button',{name:'Salvar alterações',exact:true}).click();
+    await page.getByRole('button',{name:'Aplicar alterações',exact:true}).click();
     await expect(page.getByRole('button',{name:'Editar Plano',exact:true})).toBeVisible();
     await page.getByRole('tab',{name:/Histórico/}).click();
     await page.getByRole('button',{name:/Histórico de Versões/}).click();
@@ -253,6 +232,7 @@ test('saving a reusable model and importing it opens a real draft editor without
     await audit(page);
     await models.getByRole('button',{name:'Abrir cópia para revisão',exact:true}).click();
     await expect(page.getByRole('heading',{name:'Editar plano alimentar',exact:true})).toBeVisible();
+    await page.getByRole('button',{name:'Editar configurações',exact:true}).click();
     await expect(page.getByLabel('Nome do Plano *',{exact:true})).toHaveValue(name);
     const {createClient}=await import('@supabase/supabase-js');
     const client=createClient(fixture.url,fixture.anonKey,{auth:{persistSession:false}});

@@ -1,15 +1,9 @@
 import { getTodayIsoDate } from '@/lib/utils/date';
 import { reorderMeals, duplicateMeal, ensureMealFoodIds } from '@/lib/utils/mealEditing';
-import { formatQuantityWithUnit } from '@/lib/utils/measureTranslations';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import {
-    Save, X, Plus, Trash2, Edit, Calendar, CloudOff, Cloud, Copy, GripVertical, ArrowUp, ArrowDown,
-    Loader2, AlertTriangle, CheckCircle2, History, FolderOpen, RefreshCw, Download
-} from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { History, FolderOpen, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { DateInputWithCalendar } from '@/components/ui/date-input';
 import { Label } from '@/components/ui/label';
@@ -29,17 +23,27 @@ import {
     AlertDialogTitle
 } from '@/components/ui/alert-dialog';
 import MealPlanMealForm from './MealPlanMealForm';
-import MacrosChart from './MacrosChart';
+import MealPlanEditorHeader from './editor/MealPlanEditorHeader';
+import PlanConfiguration from './editor/PlanConfiguration';
+import MealEditorList from './editor/MealEditorList';
+import QuickPortionAdjustment from './editor/QuickPortionAdjustment';
+import EditorNutritionPanel from './editor/EditorNutritionPanel';
+import MealPlanEditorFooter from './editor/MealPlanEditorFooter';
+import { workingPlanMeals, workingPlanTotals } from '@/lib/utils/mealPlanEditor';
 import ImportMealFromProtocolDialog from './ImportMealFromProtocolDialog';
 import { getReferenceValues, simulateMealPlanPortionAdjustment, getMealPlanById } from '@/lib/supabase/meal-plan-queries';
 import { importDietTemplateMealsToPlan } from '@/lib/supabase/template-queries';
 import { useMealPlanDraft } from '@/hooks/useMealPlanDraft';
 import { useShadowDraft } from '@/hooks/useShadowDraft';
-import { ShadowRecovery, ShadowSaveStatus } from '@/components/ui/shadow-save-status';
-
-const SaveStatusIndicator = ({ status }) => <ShadowSaveStatus status={status} />;
+import { ShadowRecovery } from '@/components/ui/shadow-save-status';
 
 const MealPlanForm = ({
+    patientName,
+    energyCalculation,
+    energyLoading,
+    energyError,
+    onRetryContext,
+    onRecovery,
     patientId,
     patientSlugOrId,
     nutritionistId,
@@ -55,9 +59,11 @@ const MealPlanForm = ({
     onSaved,
     onSaveDraft,
     onCancel,
-    onDraftDiscarded,       // callback após descartar rascunho interno
-    loading = false
+    loading: parentLoading = false
 }) => {
+    const [savingAction, setSavingAction] = useState(null);
+    const saveLock = useRef(false);
+    const loading = parentLoading || Boolean(savingAction);
     const isEditing = Boolean(initialData?.id);
 
     const [formData, setFormData] = useState({
@@ -79,6 +85,7 @@ const MealPlanForm = ({
     const [showImportMealDialog, setShowImportMealDialog] = useState(false);
     const [errors, setErrors] = useState({});
     const [referenceValues, setReferenceValues] = useState(null);
+    const [referenceError, setReferenceError] = useState(false);
     const [portionScaleFactor, setPortionScaleFactor] = useState(1);
     const [portionScope, setPortionScope] = useState('all');
     const [portionMealId, setPortionMealId] = useState('');
@@ -101,6 +108,7 @@ const MealPlanForm = ({
         enabled: Boolean(patientId && nutritionistId)
     });
     const queueSession = session?.queue;
+    const queueShadow = shadow.queue;
 
     // Draft auto-save — only active when creating a new plan (not editing)
     // enabled=false quando já temos um pendingDraft vindo da página mãe (evita double query)
@@ -118,9 +126,9 @@ const MealPlanForm = ({
 
     useEffect(() => {
         if (!session && shadowTouchedRef.current && shadow.ready) {
-            shadow.queue({ formData, meals, context: { planId: initialData?.id || draft.draftId || null } });
+            queueShadow({ formData, meals, context: { planId: initialData?.id || draft.draftId || null } });
         }
-    }, [formData, meals, shadow.ready, shadow.queue, initialData?.id, draft.draftId, session]);
+    }, [formData, meals, shadow.ready, queueShadow, initialData?.id, draft.draftId, session]);
 
     const restoreShadow = () => {
         const recovered = shadow.restore();
@@ -169,8 +177,9 @@ const MealPlanForm = ({
     const loadReferenceValues = useCallback(async () => {
         const referencePlanId = initialData?.id || draft.draftId;
         if (referencePlanId) {
-            const { data } = await getReferenceValues(referencePlanId);
-            setReferenceValues(data);
+            const { data, error } = await getReferenceValues(referencePlanId);
+            setReferenceError(Boolean(error));
+            if (!error) setReferenceValues(data);
         }
     }, [initialData?.id, draft.draftId]);
     useEffect(() => { void loadReferenceValues(); }, [loadReferenceValues]);
@@ -264,35 +273,10 @@ const MealPlanForm = ({
             }
         } catch (error) {
             logDiagnostic('error', 'components/meal-plan/MealPlanForm.jsx:224', '[MealPlanForm] Error resuming draft:', error);
+            setErrors({ recovery: 'Não foi possível recuperar o rascunho. Ele foi preservado; volte aos planos e tente novamente.' });
         } finally {
             setIsResuming(false);
         }
-    };
-
-    const handleDiscardDraftAndStartFresh = async () => {
-        if (session && !(await session.discard())) return;
-        sessionTouchedRef.current = false;
-        await shadow.discard();
-        shadowTouchedRef.current = false;
-        if (pendingDraft) {
-            await import('@/lib/supabase/meal-plan-queries').then(m => m.deleteDraftMealPlan(pendingDraft.id));
-            onDraftDiscarded?.();
-        } else if (draft.existingDraft) {
-            // Deleta o rascunho antigo sem criar um novo (criação é lazy)
-            await import('@/lib/supabase/meal-plan-queries').then(m => m.deleteDraftMealPlan(draft.existingDraft.id));
-            draft.clearExistingDraft(); // sinaliza ao hook que não há mais draft pendente
-        } else if (draft.draftId) {
-            await draft.discardDraft(); // deleta o draft atual (novo, mas vazio)
-        }
-        setFormData({
-            name: '',
-            description: '',
-            plan_mode: 'hybrid',
-            start_date: getTodayIsoDate(),
-            end_date: '',
-            active_days: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
-        });
-        setMeals([]);
     };
 
     const handleChange = (field, value) => {
@@ -350,6 +334,7 @@ const MealPlanForm = ({
     };
 
     const handleEditMeal = (meal, foodTarget = null) => {
+        setMealEditorState(null);
         setEditingMeal(meal);
         setMealFoodTarget(foodTarget);
         setShowMealForm(true);
@@ -378,9 +363,10 @@ const MealPlanForm = ({
         shadowTouchedRef.current = true;
         if (!isEditing && draft.draftId && meal.dbId) {
             const removed = await draft.removeMeal(meal.dbId);
-            if (!removed) return;
+            if (!removed) return false;
         }
         setMeals(prev => prev.filter(m => m.tempId !== meal.tempId));
+        return true;
     };
 
     const moveMeal = (from, to) => {
@@ -432,18 +418,25 @@ const MealPlanForm = ({
     // A contextual entry is consumed once; all writes stay in existing handlers.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [editorIntent, initialData?.id, meals, restoredSession]);
-    const calculateDailyTotals = () => meals.filter(meal => meal.include_in_totals !== false).reduce(
-        (acc, meal) => ({
-            daily_calories: acc.daily_calories + (meal.calories || 0),
-            daily_protein: acc.daily_protein + (meal.protein || 0),
-            daily_carbs: acc.daily_carbs + (meal.carbs || 0),
-            daily_fat: acc.daily_fat + (meal.fat || 0)
-        }),
-        { daily_calories: 0, daily_protein: 0, daily_carbs: 0, daily_fat: 0 }
-    );
+    const dailyTotals = useMemo(() => workingPlanTotals(meals), [meals]);
+    const calculateDailyTotals = () => dailyTotals;
+    const previewMeals = useMemo(() => workingPlanMeals(meals, showMealForm ? mealEditorState : null, editingMeal), [meals, showMealForm, mealEditorState, editingMeal]);
+    const previewTotals = useMemo(() => workingPlanTotals(previewMeals), [previewMeals]);
+    const handleRemoveFood = async (meal, food) => {
+        const foods = meal.foods.filter(item => item !== food);
+        const updated = { ...meal, foods, ...workingPlanTotals([{ foods }], true) };
+        if (!isEditing && draft.draftId && meal.dbId) {
+            if (!(await draft.updateMeal(meal.dbId, updated, meals.indexOf(meal)))) return false;
+        }
+        shadowTouchedRef.current = true;
+        sessionTouchedRef.current = true;
+        setMeals(previous => previous.map(item => item.tempId === meal.tempId ? updated : item));
+        return true;
+    };
 
     const validate = () => {
         const newErrors = {};
+        if (!formData.name.trim()) newErrors.name = 'Dê um nome ao plano';
         if (formData.active_days.length === 0) newErrors.active_days = 'Selecione pelo menos um dia da semana';
         if (!formData.start_date) newErrors.start_date = 'Data de início é obrigatória';
         if (formData.end_date && formData.end_date < formData.start_date) newErrors.end_date = 'Data final deve ser posterior à data inicial';
@@ -454,60 +447,39 @@ const MealPlanForm = ({
     };
 
     // Button: "Aplicar Plano Alimentar" — promotes draft to active, or updates existing
-    const handleApplyPlan = async (e) => {
-        e.preventDefault();
-        if (!validate()) return;
-        if (!isEditing && draft.draftId && !(await draft.flushPlanInfo())) return;
-
-        const totals = calculateDailyTotals();
-        const planData = {
-            patient_id: patientId,
-            nutritionist_id: nutritionistId,
-            ...formData,
-            ...totals,
-            meals,
-            draftId: draft.draftId || null
-        };
-
+    const savePlan = async (action, event) => {
+        event.preventDefault();
+        if (saveLock.current || loading) return;
+        if (action === 'apply' && !validate()) return;
+        if (action === 'draft' && !formData.name.trim()) {
+            setErrors({ name: 'Dê um nome ao plano antes de salvar' });
+            return;
+        }
+        saveLock.current = true;
         applyingRef.current = true;
+        setSavingAction(action);
         try {
-            const saved = await onSubmit(planData, initialData?.id);
+            if (!isEditing && draft.draftId && !(await draft.flushPlanInfo())) return;
+            const planData = { patient_id: patientId, nutritionist_id: nutritionistId, ...formData, ...calculateDailyTotals(), meals, draftId: draft.draftId || (initialData?.is_draft ? initialData.id : null) };
+            const saved = action === 'apply' ? await onSubmit(planData, initialData?.id) : await onSaveDraft?.(planData);
             if (saved) {
                 sessionTouchedRef.current = false;
                 shadowTouchedRef.current = false;
                 sessionBaselineRef.current = saved.updated_at || saved.confirmed_at || baselineAppliedAt;
                 await shadow.discard(); await session?.discard();
-                onSaved?.();
+                onSaved?.(action);
+            } else if (planData.draftId) {
+                const refreshed = await getMealPlanById(planData.draftId);
+                if (refreshed.data) draft.setActiveDraftId(planData.draftId, refreshed.data);
             }
-        } finally { applyingRef.current = false; }
+        } finally { applyingRef.current = false; saveLock.current = false; setSavingAction(null); }
     };
-
-    // Button: "Salvar como Rascunho" — saves plan without activating
-    const handleSaveAsInactivePlan = async (e) => {
-        e.preventDefault();
-        if (!formData.name.trim()) {
-            setErrors({ name: 'Dê um nome ao plano antes de salvar' });
-            return;
-        }
-        if (!isEditing && draft.draftId && !(await draft.flushPlanInfo())) return;
-
-        const totals = calculateDailyTotals();
-        const planData = {
-            patient_id: patientId,
-            nutritionist_id: nutritionistId,
-            ...formData,
-            ...totals,
-            meals,
-            draftId: draft.draftId || null,
-            saveAsInactive: true
-        };
-
-        const saved = await onSaveDraft?.(planData);
-        if (saved) { await shadow.discard(); await session?.discard(); }
-    };
+    const handleApplyPlan = event => savePlan('apply', event);
+    const handleSaveAsInactivePlan = event => savePlan('draft', event);
 
     // Button: "Cancelar" — discards draft and closes form
     const handleCancel = async () => {
+        if (saveLock.current) return false;
         if (session && ['local', 'saving', 'error', 'conflict'].includes(session.status) && !(await session.flush())) return false;
         if (!session && ['local', 'saving', 'error', 'conflict'].includes(shadow.status) && !(await shadow.flush())) return false;
         if (!isEditing && draft.draftId && !(await draft.flushPlanInfo())) return false;
@@ -516,7 +488,6 @@ const MealPlanForm = ({
     };
     if (beforeCloseRef) beforeCloseRef.current = handleCancel;
 
-    const dailyTotals = calculateDailyTotals();
     const mealOptions = useMemo(
         () => meals.map((meal) => ({ id: String(meal.tempId ?? meal.id), name: meal.name || 'Refeição' })),
         [meals]
@@ -547,30 +518,19 @@ const MealPlanForm = ({
 
     const portionSimulation = useMemo(() => {
         if (!meals.length) return null;
-        return simulateMealPlanPortionAdjustment(meals, portionScaleFactor, {
+        if (portionScaleFactor === '' || !Number.isFinite(Number(portionScaleFactor)) || Number(portionScaleFactor) < 0.3 || Number(portionScaleFactor) > 3) return null;
+        return simulateMealPlanPortionAdjustment(meals, Number(portionScaleFactor), {
             scope: portionScope,
             mealId: portionMealId || null,
             foodId: portionFoodId || null
         });
     }, [meals, portionScaleFactor, portionScope, portionMealId, portionFoodId]);
 
-    const parseScaleInput = (value) => {
-        const parsed = Number(value);
-        if (!Number.isFinite(parsed)) return 1;
-        return Math.min(3, Math.max(0.3, parsed));
-    };
-
     const handleApplyPortionAdjustment = () => {
         if (!portionSimulation?.meals?.length) return;
         shadowTouchedRef.current = true;
         setMeals(portionSimulation.meals);
         setPortionScaleFactor(1);
-    };
-
-    const formatDelta = (value, unit = '') => {
-        const numeric = Number(value || 0);
-        const signal = numeric > 0 ? '+' : '';
-        return `${signal}${numeric.toFixed(unit === 'kcal' ? 0 : 1)}${unit ? ` ${unit}` : ''}`;
     };
 
     // Existing draft recovery banner — só aparece quando o usuário veio por "Novo Plano"
@@ -591,13 +551,8 @@ const MealPlanForm = ({
 
     return (
         <>
-            <form onSubmit={handleApplyPlan} className="space-y-6">
-                <div className="grid grid-cols-3 gap-3 rounded-xl border border-primary/15 bg-white p-3 text-xs sm:p-4 sm:text-sm" aria-label="Etapas da montagem do plano">
-                    <div><p className="font-semibold text-primary"><span className="sm:hidden">1 · Refeições</span><span className="hidden sm:inline">1 · Organize as refeições</span></p><p className="mt-1 hidden text-xs text-muted-foreground sm:block">Crie, importe, duplique ou arraste para ordenar.</p></div>
-                    <div><p className="font-semibold text-blue-800"><span className="sm:hidden">2 · Porções</span><span className="hidden sm:inline">2 · Monte cada porção</span></p><p className="mt-1 hidden text-xs text-muted-foreground sm:block">Adicione alimentos, medidas e substituições.</p></div>
-                    <div><p className="font-semibold text-orange-800"><span className="sm:hidden">3 · Revisão</span><span className="hidden sm:inline">3 · Revise e salve</span></p><p className="mt-1 hidden text-xs text-muted-foreground sm:block">Confira a análise. Ao salvar, você volta aos planos.</p></div>
-                </div>
-
+            <MealPlanEditorHeader busy={loading} patientId={patientId} patientSlugOrId={patientSlugOrId} patientName={patientName} plan={initialData || pendingDraft} status={session?.status || shadow.status} onRetry={session?.flush || shadow.flush} onRecovery={onRecovery} onBack={handleCancel} />
+            <form onSubmit={handleApplyPlan} className="mt-5 space-y-5">
                 {/* Draft Recovery Banner */}
                 {/* Recovery Banner */}
                 {showDraftBanner && (
@@ -609,6 +564,7 @@ const MealPlanForm = ({
                             </span>
                             <div className="flex gap-2 flex-shrink-0">
                                 <Button
+                                    type="button"
                                     variant="outline"
                                     size="sm"
                                     className="bg-white border-amber-300 text-amber-800 hover:bg-amber-100"
@@ -617,6 +573,7 @@ const MealPlanForm = ({
                                     Retomar Rascunho
                                 </Button>
                                 <Button
+                                    type="button"
                                     variant="ghost"
                                     size="sm"
                                     className="text-amber-700 hover:bg-amber-100 hover:text-amber-900 border border-transparent hover:border-amber-200"
@@ -640,17 +597,8 @@ const MealPlanForm = ({
 
                 {/* Informações Básicas */}
                 {!restoredSession && <ShadowRecovery recovery={shadow.recovery} onRestore={restoreShadow} onDiscard={() => { void shadow.discardRecovery(); }} />}
-                <Card className="border-t-4 border-t-primary">
-                    <CardHeader className="p-4 sm:p-6">
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                            <CardTitle className="font-sans tracking-normal text-lg">Informações do Plano</CardTitle>
-                            <div className="flex flex-wrap items-center gap-2">
-                                {!session && !isEditing && ['local','saving','saved','error','conflict'].includes(draft.saveStatus) && <SaveStatusIndicator status={draft.saveStatus} />}
-                                <ShadowSaveStatus status={session?.status || shadow.status} onRetry={session?.flush || shadow.flush} />
-                            </div>
-                        </div>
-                    </CardHeader>
-                    <CardContent className="space-y-4 px-4 pb-4 sm:px-6 sm:pb-6">
+                {referenceError && <div role="alert" className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">Não foi possível carregar as metas de macronutrientes. <Button type="button" variant="outline" size="sm" onClick={loadReferenceValues}>Tentar novamente</Button></div>}
+                <PlanConfiguration formData={formData} errors={errors} initiallyOpen={!isEditing}>
                         {/* Nome */}
                         <div className="space-y-2">
                             <Label htmlFor="name">
@@ -670,9 +618,7 @@ const MealPlanForm = ({
                             )}
                         </div>
 
-                        <details className="rounded-lg border p-3" open={Boolean(errors.start_date || errors.end_date || errors.active_days) || undefined}>
-                            <summary className="cursor-pointer text-sm font-medium">Configurações do plano · descrição, estratégia, datas e dias</summary>
-                            <div className="mt-4 space-y-4">
+
                         {/* Descrição */}
                         <div className="space-y-2">
                             <Label htmlFor="description">Descrição (opcional)</Label>
@@ -741,20 +687,20 @@ const MealPlanForm = ({
                                 <Label>
                                     Dias Ativos <span className="text-destructive">*</span>
                                 </Label>
-                                <div className="flex gap-2 flex-shrink-0">
-                                    <Button type="button" variant="outline" size="sm" onClick={handleSelectWeekdays} className="flex-1 sm:flex-none text-xs sm:text-sm">
+                                <div className="flex flex-wrap gap-2">
+                                    <Button type="button" variant="outline" size="sm" disabled={loading} onClick={handleSelectWeekdays} className="flex-1 sm:flex-none text-xs sm:text-sm">
                                         Dias úteis
                                     </Button>
-                                    <Button type="button" variant="outline" size="sm" onClick={handleSelectWeekends} className="flex-1 sm:flex-none text-xs sm:text-sm">
+                                    <Button type="button" variant="outline" size="sm" disabled={loading} onClick={handleSelectWeekends} className="flex-1 sm:flex-none text-xs sm:text-sm">
                                         Fins de semana
                                     </Button>
-                                    <Button type="button" variant="outline" size="sm" onClick={handleSelectAllDays} className="flex-1 sm:flex-none text-xs sm:text-sm">
+                                    <Button type="button" variant="outline" size="sm" disabled={loading} onClick={handleSelectAllDays} className="flex-1 sm:flex-none text-xs sm:text-sm">
                                         {formData.active_days.length === 7 ? 'Limpar' : 'Todos'}
                                     </Button>
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-7 gap-1 sm:gap-2">
+                            <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
                                 {daysOfWeek.map((day) => (
                                     <label
                                         key={day.value}
@@ -772,311 +718,27 @@ const MealPlanForm = ({
                                             disabled={loading}
                                             className="h-3 w-3 sm:h-4 sm:w-4"
                                         />
-                                        <span className="text-xs sm:text-sm leading-tight text-center">{day.label}</span>
+                                        <span className="text-xs sm:text-sm leading-tight text-center">{day.label.slice(0,3)}</span>
                                     </label>
                                 ))}
                             </div>
                             {errors.active_days && <p className="text-xs text-destructive">{errors.active_days}</p>}
                         </div>
-                            </div>
-                        </details>
-                    </CardContent>
-                </Card>
 
-                {/* Simulador de Ajuste de Porções */}
-                {meals.length > 0 && portionSimulation ? (
-                    <details className="rounded-lg border bg-card p-4">
-                        <summary className="cursor-pointer text-sm font-medium">Ajustar porções em conjunto · simular antes de aplicar</summary>
-                    <Card className="mt-3 border-0 shadow-none">
-                        <CardHeader className="p-4 sm:p-6">
-                            <CardTitle className="font-sans tracking-normal text-lg">Ajustar porções do plano</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4 px-4 pb-4 sm:px-6 sm:pb-6">
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                <div className="space-y-2">
-                                    <Label htmlFor="portion-factor">Fator de ajuste</Label>
-                                    <Input
-                                        id="portion-factor"
-                                        name="portion-factor"
-                                        type="number"
-                                        min={0.3}
-                                        max={3}
-                                        step={0.05}
-                                        value={portionScaleFactor}
-                                        onChange={(e) => setPortionScaleFactor(parseScaleInput(e.target.value))}
-                                        disabled={loading}
-                                    />
-                                    <p className="text-xs text-muted-foreground">Ex.: 1.10 aumenta 10%, 0.90 reduz 10%</p>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="portion-scope">Aplicar em</Label>
-                                    <select
-                                        id="portion-scope"
-                                        name="portion-scope"
-                                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                                        value={portionScope}
-                                        onChange={(e) => setPortionScope(e.target.value)}
-                                        disabled={loading}
-                                    >
-                                        <option value="all">Plano completo</option>
-                                        <option value="meal">Refeição específica</option>
-                                        <option value="food">Alimento específico</option>
-                                    </select>
-                                </div>
-                                {portionScope === 'meal' || portionScope === 'food' ? (
-                                    <div className="space-y-2">
-                                        <Label htmlFor="portion-meal">Refeição alvo</Label>
-                                        <select
-                                            id="portion-meal"
-                                            name="portion-meal"
-                                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                                            value={portionMealId}
-                                            onChange={(e) => setPortionMealId(e.target.value)}
-                                            disabled={loading || mealOptions.length === 0}
-                                        >
-                                            {mealOptions.map((meal) => (
-                                                <option key={meal.id} value={meal.id}>{meal.name}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                ) : null}
-                                {portionScope === 'food' ? (
-                                    <div className="space-y-2 md:col-span-3">
-                                        <Label htmlFor="portion-food">Alimento alvo</Label>
-                                        <select
-                                            id="portion-food"
-                                            name="portion-food"
-                                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                                            value={portionFoodId}
-                                            onChange={(e) => setPortionFoodId(e.target.value)}
-                                            disabled={loading || foodOptions.length === 0}
-                                        >
-                                            {foodOptions.length ? (
-                                                foodOptions.map((food) => (
-                                                    <option key={food.id} value={food.id}>{food.name}</option>
-                                                ))
-                                            ) : (
-                                                <option value="">Sem alimentos nesta refeição</option>
-                                            )}
-                                        </select>
-                                    </div>
-                                ) : null}
-                                <div className="rounded-lg border p-3">
-                                    <p className="text-xs text-muted-foreground">Antes</p>
-                                    <p className="text-sm font-medium">{portionSimulation.totalsBefore.calories.toFixed(0)} kcal</p>
-                                    <p className="text-xs text-muted-foreground">
-                                        P {portionSimulation.totalsBefore.protein.toFixed(1)}g · C {portionSimulation.totalsBefore.carbs.toFixed(1)}g · G {portionSimulation.totalsBefore.fat.toFixed(1)}g
-                                    </p>
-                                </div>
-                                <div className="rounded-lg border p-3 bg-muted/20">
-                                    <p className="text-xs text-muted-foreground">Depois (preview)</p>
-                                    <p className="text-sm font-medium">{portionSimulation.totalsAfter.calories.toFixed(0)} kcal</p>
-                                    <p className="text-xs text-muted-foreground">
-                                        P {portionSimulation.totalsAfter.protein.toFixed(1)}g · C {portionSimulation.totalsAfter.carbs.toFixed(1)}g · G {portionSimulation.totalsAfter.fat.toFixed(1)}g
-                                    </p>
-                                </div>
-                            </div>
-                            <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3 bg-muted/10">
-                                <p className="text-xs text-muted-foreground">
-                                    Delta: {formatDelta(portionSimulation.delta.calories, 'kcal')} · {formatDelta(portionSimulation.delta.protein, 'g')} proteína · {formatDelta(portionSimulation.delta.carbs, 'g')} carboidrato · {formatDelta(portionSimulation.delta.fat, 'g')} gordura
-                                </p>
-                                <Button
-                                    type="button"
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={handleApplyPortionAdjustment}
-                                    disabled={loading || Math.abs(Number(portionScaleFactor || 1) - 1) < 0.001}
-                                >
-                                    Aplicar ajuste ao plano
-                                </Button>
-                            </div>
-                        </CardContent>
-                    </Card>
-                    </details>
-                ) : null}
-
-                {/* Refeições + Gráfico */}
-                {meals.length > 0 && (
-                    <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_340px] gap-5">
-                        <div className="min-w-0">
-                            <Card>
-                                <CardHeader className="p-4 sm:p-6">
-                                    <div className="flex flex-wrap items-center justify-between gap-3">
-                                        <CardTitle className="font-sans tracking-normal text-lg text-primary">Refeições</CardTitle>
-                                        <div className="flex flex-wrap gap-2">
-                                            <Button
-                                                type="button"
-                                                size="sm"
-                                                variant="outline"
-                                                onClick={() => setShowImportMealDialog(true)}
-                                                title="Importar refeição de um protocolo salvo"
-                                            >
-                                                <Download className="h-4 w-4 mr-2" />
-                                                Importar refeições
-                                            </Button>
-                                            <Button
-                                            type="button"
-                                            size="sm"
-                                            onClick={() => setShowMealForm(true)}
-                                            disabled={!isEditing && !draft.draftId}
-                                            title={(!isEditing && !draft.draftId) ? "Aguarde a inicialização do rascunho" : ""}
-                                        >
-                                            <Plus className="h-4 w-4 mr-2" />
-                                            Nova Refeição
-                                        </Button>
-                                        </div>
-                                    </div>
-                                </CardHeader>
-                                <CardContent className="px-4 pb-4 sm:px-6 sm:pb-6">
-                                    <div className="space-y-3">
-                                        {meals.map((meal, index) => (
-                                            <div key={meal.tempId} data-meal-sort-index={index} className={`p-3 sm:p-4 border border-l-4 border-l-primary/60 rounded-xl bg-white hover:bg-primary/5 transition-colors ${draggingMealIndex === index ? 'opacity-60 border-primary' : ''}`}>
-                                                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                                                    <div className="flex-1 min-w-0">
-                                                        <div className="flex flex-wrap items-center gap-2">
-                                                            <button type="button" aria-label={`Arrastar ${meal.name}`} onPointerDown={event => beginMealDrag(event,index)} onPointerUp={finishMealDrag} onPointerCancel={() => { draggedMealRef.current=null; setDraggingMealIndex(null); }} className="cursor-grab active:cursor-grabbing touch-none select-none rounded p-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"><GripVertical className="h-4 w-4" /></button>
-                                                            <span className="text-sm text-muted-foreground">#{index + 1}</span>
-                                                            <h4 className="min-w-0 break-words font-semibold">{meal.name}</h4>
-                                                            {meal.meal_time && (
-                                                                <Badge variant="outline">
-                                                                    <Calendar className="h-3 w-3 mr-1" />
-                                                                    {meal.meal_time}
-                                                                </Badge>
-                                                            )}
-                                                        </div>
-                                                        <div className="text-sm text-muted-foreground mt-1">
-                                                            {meal.foods?.length || 0} alimento(s) •{' '}
-                                                            {meal.calories?.toFixed(0) || 0} kcal •
-                                                            P: {meal.protein?.toFixed(1) || 0}g •
-                                                            C: {meal.carbs?.toFixed(1) || 0}g •
-                                                            G: {meal.fat?.toFixed(1) || 0}g
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex flex-wrap gap-1">
-                                                        <Button type="button" variant="ghost" size="sm" disabled={index===0} aria-label={`Mover ${meal.name} para cima`} onClick={() => moveMeal(index,index-1)}><ArrowUp className="h-4 w-4" /></Button>
-                                                        <Button type="button" variant="ghost" size="sm" disabled={index===meals.length-1} aria-label={`Mover ${meal.name} para baixo`} onClick={() => moveMeal(index,index+1)}><ArrowDown className="h-4 w-4" /></Button>
-                                                        <Button type="button" variant="ghost" size="sm" aria-label={`Duplicar ${meal.name}`} onClick={() => copyMeal(index)}><Copy className="h-4 w-4" /></Button>
-                                                        <Button type="button" variant="ghost" size="sm" aria-label={`Editar refeição ${meal.name}`} onClick={() => handleEditMeal(meal)}>
-                                                            <Edit className="mr-1 h-4 w-4" />Editar
-                                                        </Button>
-                                                        <Button type="button" variant="ghost" size="sm" aria-label={`Remover refeição ${meal.name}`} onClick={() => handleDeleteMeal(meal)}>
-                                                            <Trash2 className="h-4 w-4 text-destructive" />
-                                                        </Button>
-                                                    </div>
-                                                </div>
-                                                <div className="mt-3 divide-y rounded-lg border bg-background">
-                                                    {(meal.foods || []).map(food => <button key={food.tempId ?? food.id} type="button" className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left hover:bg-muted/50" aria-label={`Editar alimento ${food.food?.name || food.patient_description || 'sem nome'}`} onClick={() => handleEditMeal(meal,{ food })}><span className="min-w-0"><span className="block text-sm font-medium">{food.patient_description || food.food?.name || 'Alimento'}</span><span className="text-xs text-muted-foreground">{formatQuantityWithUnit(food.quantity,food.unit,food.measure)}{food.substitutes?.length ? ` · ${food.substitutes.length} substituições` : ''}</span></span><span className="shrink-0 text-xs text-muted-foreground">{Math.round(food.calories || 0)} kcal <Edit className="ml-1 inline h-3.5 w-3.5" /></span></button>)}
-                                                </div>
-                                                <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-                                                    <label className="flex items-center gap-2 text-xs text-muted-foreground"><Checkbox checked={meal.include_in_totals !== false} onCheckedChange={checked => toggleMealTotals(index,checked===true)} />Contabilizar esta refeição na análise nutricional</label>
-                                                    <Button type="button" size="sm" variant="outline" aria-label={`Adicionar alimento em ${meal.name}`} onClick={() => handleEditMeal(meal,{ newFood: true })}><Plus className="mr-1 h-4 w-4" />Adicionar alimento</Button>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        </div>
-
-                        <div className="min-w-0 xl:sticky xl:top-4 xl:self-start">
-                            <MacrosChart
-                                protein={dailyTotals.daily_protein}
-                                carbs={dailyTotals.daily_carbs}
-                                fat={dailyTotals.daily_fat}
-                                calories={dailyTotals.daily_calories}
-                                patientId={patientId}
-                                patientSlugOrId={patientSlugOrId}
-                                planId={initialData?.id || draft.draftId}
-                                referenceValues={referenceValues}
-                                compact
-                                onReferenceUpdate={loadReferenceValues}
-                                plan={{ meals }}
-                            />
-                        </div>
-                    </div>
-                )}
-
-                {/* Refeições — Estado vazio */}
-                {meals.length === 0 && (
-                    <Card>
-                        <CardHeader className="p-4 sm:p-6">
-                            <div className="flex flex-wrap items-center justify-between gap-3">
-                                <CardTitle className="font-sans tracking-normal text-lg text-primary">Refeições</CardTitle>
-                                <div className="flex flex-wrap gap-2">
-                                    <Button
-                                        type="button"
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() => setShowImportMealDialog(true)}
-                                    >
-                                        <Download className="h-4 w-4 mr-2" />
-                                        Importar refeições
-                                    </Button>
-                                    <Button
-                                        type="button"
-                                        size="sm"
-                                        onClick={() => { setEditingMeal(null); setShowMealForm(true); }}
-                                        disabled={loading || showDraftBanner}
-                                    >
-                                        <Plus className="h-4 w-4 mr-2" />
-                                        Adicionar Refeição
-                                    </Button>
-                                </div>
-                            </div>
-                        </CardHeader>
-                        <CardContent className="px-4 pb-4 sm:px-6 sm:pb-6">
-                            <div className="text-center py-8 text-muted-foreground">
-                                Nenhuma refeição adicionada ainda
-                                {errors.meals && <p className="text-destructive mt-2">{errors.meals}</p>}
-                            </div>
-                        </CardContent>
-                    </Card>
-                )}
-
+                </PlanConfiguration>
+                <div className="grid min-w-0 items-start gap-5 xl:grid-cols-[minmax(0,2.2fr)_minmax(300px,1fr)]">
+                    <MealEditorList meals={meals} total={dailyTotals.daily_calories} disabled={loading || showDraftBanner} draggingIndex={draggingMealIndex}
+                        onAdd={() => { setEditingMeal(null); setMealFoodTarget(null); setMealEditorState(null); setShowMealForm(true); }} onImport={() => setShowImportMealDialog(true)}
+                        onEdit={handleEditMeal} onCopy={copyMeal} onMove={moveMeal} onDelete={handleDeleteMeal} onInclude={toggleMealTotals} onRemoveFood={handleRemoveFood}
+                        onDragStart={beginMealDrag} onDragEnd={finishMealDrag} onDragCancel={() => { draggedMealRef.current = null; setDraggingMealIndex(null); }}>
+                        {meals.length > 0 && <QuickPortionAdjustment factor={portionScaleFactor} onFactor={setPortionScaleFactor} scope={portionScope} onScope={setPortionScope} mealId={portionMealId} onMeal={setPortionMealId} foodId={portionFoodId} onFood={setPortionFoodId} mealOptions={mealOptions} foodOptions={foodOptions} simulation={portionSimulation} onApply={handleApplyPortionAdjustment} disabled={loading} />}
+                    </MealEditorList>
+                    <EditorNutritionPanel totals={previewTotals} meals={previewMeals} name={formData.name} patientId={patientId} patientSlugOrId={patientSlugOrId} planId={initialData?.id || draft.draftId} referenceValues={referenceValues} onReferenceUpdate={loadReferenceValues} energyCalculation={energyCalculation} energyLoading={energyLoading} energyError={energyError} onRetry={onRetryContext} onRecovery={onRecovery} preview={showMealForm && Boolean(mealEditorState)} />
+                </div>
+                <div className="flex flex-col items-start justify-between gap-3 rounded-xl border border-blue-200 sm:flex-row sm:items-center bg-blue-50 p-3 text-xs leading-relaxed text-blue-900"><p className="min-w-0 sm:flex-1">O salvamento automático preserva a sessão. Salvar rascunho não altera o plano aplicado ao paciente.</p><Button type="button" variant="ghost" size="sm" className="gap-2 text-blue-800" disabled={loading} onClick={onRecovery}><History className="h-4 w-4" />Ver histórico de recuperação</Button></div>
                 {/* Botões de ação — 3 opções */}
                 {Object.keys(errors).length > 0 && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-900"><p className="font-semibold">Confira antes de salvar</p><p className="mt-1">{Object.values(errors).join(' · ')}</p><p className="mt-1 text-xs">Datas e dias da semana ficam em Configurações do plano.</p></div>}
-                <div className="sticky bottom-0 z-10 flex flex-wrap items-center gap-2 justify-end rounded-lg border bg-white/95 p-3 shadow-sm backdrop-blur">
-                    {/* Cancelar */}
-                    <Button
-                        type="button"
-                        variant="outline"
-                        onClick={handleCancel}
-                        disabled={loading}
-                        className="sm:order-1"
-                    >
-                        <X className="w-4 h-4 mr-2" />
-                        Cancelar
-                    </Button>
-
-                    {/* Salvar como Rascunho — only for new plans, or show "Salvar sem Ativar" for editing */}
-                    {!isEditing && (
-                        <Button
-                            type="button"
-                            variant="secondary"
-                            onClick={handleSaveAsInactivePlan}
-                            disabled={loading}
-                            className="sm:order-2"
-                        >
-                            <Save className="w-4 h-4 mr-2" />
-                            {loading ? 'Salvando...' : 'Salvar sem ativar'}
-                        </Button>
-                    )}
-
-                    {/* Aplicar Plano Alimentar — primary action */}
-                    <Button
-                        type="submit"
-                        disabled={loading}
-                        className="min-h-10 flex-1 sm:flex-none sm:order-3 font-semibold"
-                    >
-                        <CheckCircle2 className="w-4 h-4 mr-2" />
-                        {loading
-                            ? 'Salvando...'
-                            : isEditing
-                                ? 'Salvar alterações'
-                                : 'Aplicar Plano Alimentar'
-                        }
-                    </Button>
-                </div>
+                <MealPlanEditorFooter loading={loading} savingAction={savingAction} editing={isEditing && !initialData?.is_draft} onCancel={handleCancel} onSaveDraft={handleSaveAsInactivePlan} />
             </form>
 
             {/* Dialog de Refeição */}
@@ -1090,7 +752,7 @@ const MealPlanForm = ({
                 session={session}
                 onWorkingState={receiveMealEditor}
                 draftContext={{ planId: initialData?.id || draft.draftId || null, mealId: editingMeal?.dbId || editingMeal?.id || null }}
-                onClose={() => { setShowMealForm(false); setEditingMeal(null); setMealFoodTarget(null); setNestedRecovery(null); }}
+                onClose={() => { setMealEditorState(null); setShowMealForm(false); setEditingMeal(null); setMealFoodTarget(null); setNestedRecovery(null); }}
                 onSave={editingMeal ? handleUpdateMeal : handleAddMeal}
                 initialData={editingMeal}
             />

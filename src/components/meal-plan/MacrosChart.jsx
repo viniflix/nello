@@ -22,7 +22,7 @@ const COMPACT_DRI = {
 
 const calculateMicros = (plan) => summarizeMicronutrients(plan, Object.keys(COMPACT_DRI));
 
-const MacrosChart = ({ protein, carbs, fat, calories, patientId, patientSlugOrId, planId, readOnly = false, compact = false, plan = null, activePlanId = null, onReferenceUpdate }) => {
+const MacrosChart = ({ editor = false, title = 'Análise nutricional', protein, carbs, fat, calories, patientId, patientSlugOrId, planId, readOnly = false, compact = false, plan = null, activePlanId = null, onReferenceUpdate }) => {
     const navigate = useNavigate();
     const patientSegment = patientSlugOrId ?? patientId;
     const [showReferenceModal, setShowReferenceModal] = useState(false);
@@ -120,15 +120,15 @@ const MacrosChart = ({ protein, carbs, fat, calories, patientId, patientSlugOrId
                 <CardTitle className="text-base font-semibold flex items-center justify-center w-full">
                     <div className="flex min-w-0 items-center gap-2 text-foreground">
                         <Flame className="w-4 h-4 shrink-0 text-[#c4661f]" />
-                        <span className="min-w-0 [overflow-wrap:anywhere]">Análise nutricional</span>
+                        <span className="min-w-0 [overflow-wrap:anywhere]">{title}</span>
                     </div>
                 </CardTitle>
 
                 {/* Tabs */}
-                <div className="flex flex-wrap gap-2 mt-4">
+                <div className={editor ? "mt-4 grid grid-cols-2 gap-1 rounded-lg bg-slate-100 p-1" : "flex flex-wrap gap-2 mt-4"}>
                     <button
                         type="button" aria-pressed={activeTab === 'macros'} onClick={() => setActiveTab('macros')}
-                        className={`min-w-0 flex-[1_1_9rem] flex flex-wrap items-center justify-center gap-1 min-h-10 px-2 py-2 text-sm font-semibold break-words rounded-md border transition-colors ${
+                        className={`${editor ? "text-xs" : ""} min-w-0 flex-[1_1_9rem] flex flex-wrap items-center justify-center gap-1 min-h-10 px-2 py-2 text-sm font-semibold break-words rounded-md border transition-colors ${
                             activeTab === 'macros'
                                 ? 'bg-primary text-primary-foreground border-primary shadow-sm'
                                 : 'bg-white text-muted-foreground border-border hover:bg-muted'
@@ -139,7 +139,7 @@ const MacrosChart = ({ protein, carbs, fat, calories, patientId, patientSlugOrId
                     </button>
                     <button
                         type="button" aria-pressed={activeTab === 'micros'} onClick={() => setActiveTab('micros')}
-                        className={`min-w-0 flex-[1_1_9rem] flex flex-wrap items-center justify-center gap-1 min-h-10 px-2 py-2 text-sm font-semibold break-words rounded-md border transition-colors ${
+                        className={`${editor ? "text-xs" : ""} min-w-0 flex-[1_1_9rem] flex flex-wrap items-center justify-center gap-1 min-h-10 px-2 py-2 text-sm font-semibold break-words rounded-md border transition-colors ${
                             activeTab === 'micros'
                                 ? 'bg-primary text-primary-foreground border-primary shadow-sm'
                                 : 'bg-white text-muted-foreground border-border hover:bg-muted'

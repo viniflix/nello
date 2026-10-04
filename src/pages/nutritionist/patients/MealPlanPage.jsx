@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useResolvedPatientId } from '@/hooks/useResolvedPatientId';
-import { ArrowLeft, Plus, Copy, FileText, Download } from 'lucide-react';
+import { Plus, Copy, FileText, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -74,6 +74,8 @@ const MealPlanPageContent = ({ resolvedPatient }) => {
     const previewScope = `${nutritionistId}:${patientId}`;
     const [workingDraft, setWorkingDraft] = useState(null);
     const [workspaceTab, setWorkspaceTab] = useState('active');
+    const [recoveryOpen, setRecoveryOpen] = useState(false);
+    const [recoverySelection, setRecoverySelection] = useState(null);
     const [editorIntent, setEditorIntent] = useState(null);
     const [restoredSession, setRestoredSession] = useState(null);
     const automaticSessionRef = useRef(false);
@@ -319,34 +321,24 @@ const MealPlanPageContent = ({ resolvedPatient }) => {
 
     if (showForm) {
         return (
-            <div className="container mx-auto px-4 py-6 max-w-[1440px]">
-                <div className="mb-4 flex items-start gap-3 sm:flex-wrap sm:items-center">
-                    <div className="mr-auto min-w-0 flex-1"><h1 className="text-xl sm:text-2xl font-semibold uppercase tracking-wide">{editingPlan ? 'Editar plano alimentar' : 'Montar plano alimentar'}</h1><p className="mt-2 text-sm text-muted-foreground">{patientName ? `${patientName} · ` : ''}Organize as refeições, confira as porções e salve o plano ao concluir.</p></div>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="order-first gap-2 px-2 sm:order-none sm:px-3"
-                        aria-label="Voltar"
-                        onClick={() => { void beforeCloseRef.current?.(); }}
-                    >
-                        <ArrowLeft className="w-4 h-4 shrink-0" />
-                        <span className="sr-only sm:not-sr-only">Voltar</span>
-                    </Button>
-                </div>
-
-                <details className="mb-4 rounded border p-3 text-sm"><summary className="cursor-pointer font-medium">Rascunhos e recuperação · últimas edições salvas</summary>
-                    {(session.snapshots || []).map((saved, index) => <Button key={index} type="button" variant="outline" size="sm" className="m-1" onClick={() => { void beforeCloseRef.current?.().then(closed => { if (closed !== false) return restoreSavedSession(saved); }).catch(() => setSessionError(true)); }}>Recuperar estado {index + 1}{saved.savedAt ? ` · ${formatDate(saved.savedAt)}` : ''}</Button>)}
-                    <WorkingDraftRecovery ownerId={nutritionistId} patientId={patientId} onResume={resumeWorkingDraft} maxDrafts={Math.max(0, 3 - (session.snapshots?.length || 0))} />
-                    <p className="mt-3 text-xs text-muted-foreground">O rascunho atual é retomado automaticamente. Use os estados abaixo apenas para recuperar outra edição.</p>
-                <Button type="button" variant="ghost" size="sm" className="mb-3" onClick={async () => {
-                    if (!window.confirm('Descartar esta sessão de edição? O plano já aplicado será preservado.')) return;
-                    if (await session.discard()) { setShowForm(false); setEditingPlan(null); setPendingDraft(null); }
-                }}>Descartar sessão de edição</Button>
-                </details>
+            <div className="container mx-auto max-w-[1440px] px-4 py-6 [overflow-wrap:anywhere] max-sm:[&_button]:max-w-full max-sm:[&_button]:whitespace-normal max-sm:[&_button]:h-auto max-sm:[&_button]:min-h-9 [&_h1]:[word-spacing:0.12em] [&_h2]:[word-spacing:0.12em] [&_h3]:[word-spacing:0.1em]">
+                <Dialog open={recoveryOpen} onOpenChange={setRecoveryOpen}><DialogContent className="max-h-[85dvh] overflow-y-auto bg-white sm:max-w-xl"><DialogHeader><DialogTitle className="font-sans tracking-normal">Histórico de recuperação</DialogTitle><DialogDescription>Até três estados da sessão de edição. Recuperar um estado substitui o conteúdo em edição, sem alterar o plano aplicado.</DialogDescription></DialogHeader>
+                    <div className="space-y-2">{(session.snapshots || []).map((saved, index) => <Button key={index} type="button" variant="outline" className="h-auto w-full justify-between gap-2 whitespace-normal py-3 text-left" onClick={() => setRecoverySelection({ saved })}><span>Recuperar estado {index + 1}</span><span className="text-xs text-muted-foreground">{saved.savedAt ? new Date(saved.savedAt).toLocaleString('pt-BR') : 'Horário não informado'}</span></Button>)}{!session.snapshots?.length && <p className="rounded-lg bg-slate-50 p-4 text-sm text-muted-foreground">Nenhum estado anterior salvo nesta sessão.</p>}</div>
+                    <WorkingDraftRecovery ownerId={nutritionistId} patientId={patientId} onResume={draft => setRecoverySelection({ draft })} maxDrafts={Math.max(0, 3 - (session.snapshots?.length || 0))} />
+                    <p className="text-xs leading-relaxed text-muted-foreground">O salvamento automático é uma cópia para recuperação. Para guardar um plano em rascunho, use Salvar rascunho no editor.</p>
+                    <DialogFooter className="gap-2"><Button type="button" variant="ghost" onClick={() => setRecoverySelection({ discard: true })}>Descartar sessão de edição</Button><Button type="button" variant="outline" onClick={async () => { if (await beforeCloseRef.current?.() !== false) { setRecoveryOpen(false); setWorkspaceTab('history'); } }}>Ver versões aplicadas</Button></DialogFooter>
+                </DialogContent></Dialog>
+                <AlertDialog open={Boolean(recoverySelection)} onOpenChange={open => { if (!open) setRecoverySelection(null); }}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>{recoverySelection?.discard ? 'Descartar sessão de edição?' : 'Recuperar esta edição?'}</AlertDialogTitle><AlertDialogDescription>{recoverySelection?.discard ? 'A sessão de edição será removida. O plano aplicado ao paciente será preservado.' : 'Este estado substituirá o conteúdo atual do editor. O plano aplicado ao paciente não será alterado.'}</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Voltar</AlertDialogCancel><AlertDialogAction onClick={async () => { try { if (recoverySelection.discard) { if (await session.discard()) { setShowForm(false); setEditingPlan(null); setPendingDraft(null); setRecoveryOpen(false); } } else { if (!(await session.flush())) return; if (recoverySelection.saved) await restoreSavedSession(recoverySelection.saved); else await resumeWorkingDraft(recoverySelection.draft); setRecoveryOpen(false); } } catch { setSessionError(true); } finally { setRecoverySelection(null); } }}>{recoverySelection?.discard ? 'Descartar sessão' : 'Recuperar edição'}</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
                 {sessionError && <p role="alert" className="mb-3 text-sm text-destructive">Não foi possível abrir a sessão. O rascunho foi preservado; tente novamente.</p>}
                 {session.recovery?.conflict && <ShadowRecovery recovery={session.recovery} onRestore={() => { void restoreSavedSession(session.recovery.payload).catch(() => setSessionError(true)); }} onDiscard={() => { void session.discardRecovery(); }} />}
 
                 <MealPlanForm
+                    patientName={patientName}
+                    energyCalculation={energyCalculation}
+                    energyLoading={energyLoading}
+                    energyError={energyError}
+                    onRetryContext={retryContext}
+                    onRecovery={() => setRecoveryOpen(true)}
                     editorIntent={editorIntent}
                     key={`meal-plan-editor-${sessionRestoreNumber}`}
                     patientId={patientId}
@@ -368,9 +360,9 @@ const MealPlanPageContent = ({ resolvedPatient }) => {
                         return saved;
                     }}
                     onSaveDraft={handleSaveDraft}
-                    onSaved={() => {
+                    onSaved={(action) => {
                         setEditorIntent(null);
-                        setWorkspaceTab('active');
+                        setWorkspaceTab(action === 'draft' ? 'drafts' : 'active');
                         automaticSessionRef.current = true;
                         setShowForm(false);
                         setEditingPlan(null);

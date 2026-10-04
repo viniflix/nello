@@ -28,6 +28,7 @@ import { formatQuantityWithUnit } from '@/lib/utils/measureTranslations';
 import SubstitutionDialog from './SubstitutionDialog';
 import { isValidMealTime, normalizeMealTime } from '@/lib/utils/mealTime';
 import { useShadowDraft } from '@/hooks/useShadowDraft';
+import { roundedNutrition } from '@/lib/utils/mealPlanPresentation';
 import { ensureMealFoodIds } from '@/lib/utils/mealEditing';
 import { ShadowRecovery, ShadowSaveStatus } from '@/components/ui/shadow-save-status';
 
@@ -44,9 +45,11 @@ const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null, ownerId
     const [editingFood, setEditingFood] = useState(null);
     const [showSubstitutions, setShowSubstitutions] = useState(false);
     const [substitutingFood, setSubstitutingFood] = useState(null);
+    const [removedFood, setRemovedFood] = useState(null);
     const [errors, setErrors] = useState({});
     const [isSaving, setIsSaving] = useState(false);
     const touchedRef = useRef(false);
+    const saveLock = useRef(false);
     const recoveryOpenedRef = useRef(null);
     const sessionRestoredRef = useRef(false);
     const foodTargetRef = useRef(null);
@@ -90,6 +93,7 @@ const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null, ownerId
     ];
 
     useEffect(() => {
+        setRemovedFood(null);
         if (initialData) {
             setFormData({
                 name: initialData.name || '',
@@ -174,6 +178,8 @@ const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null, ownerId
 
     const handleRemoveFood = (tempId) => {
         touchedRef.current = true;
+        const index = foods.findIndex(food => food.tempId === tempId);
+        setRemovedFood({ food: foods[index], index });
         setFoods(prev => prev.filter(f => f.tempId !== tempId));
     };
 
@@ -233,7 +239,8 @@ const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null, ownerId
     };
 
     const handleSave = async () => {
-        if (!validate()) return;
+        if (saveLock.current || !validate()) return;
+        saveLock.current = true;
 
         const totals = calculateTotals();
 
@@ -263,18 +270,20 @@ const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null, ownerId
                 return;
             }
             await shadow.discard();
-            await handleClose();
+            await handleClose(true);
         } catch {
             setErrors((current) => ({
                 ...current,
                 save: 'Não foi possível salvar esta refeição. Seus dados foram mantidos; tente novamente.'
             }));
         } finally {
+            saveLock.current = false;
             setIsSaving(false);
         }
     };
 
-    const handleClose = async () => {
+    const handleClose = async (afterSave = false) => {
+        if (saveLock.current && afterSave !== true) return;
         if (session && ['local', 'saving', 'error', 'conflict'].includes(session.status) && !(await session.flush())) return;
         if (!session && touchedRef.current && ['local', 'saving', 'error', 'conflict'].includes(shadow.status) && !(await shadow.flush())) return;
         touchedRef.current = false;
@@ -285,6 +294,8 @@ const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null, ownerId
             notes: ''
         });
         setFoods([]);
+        setRemovedFood(null);
+        setFoodEditorState(null);
         setErrors({});
         onClose();
     };
@@ -293,8 +304,8 @@ const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null, ownerId
 
     return (
         <>
-            <Dialog open={isOpen && !showAddFood && !showSubstitutions} onOpenChange={handleClose}>
-                <DialogContent data-meal-plan-dialog className="flex h-[90dvh] max-h-[calc(100dvh-1rem)] w-[96vw] max-w-[1200px] flex-col overflow-hidden max-sm:left-0 max-sm:top-0 max-sm:h-dvh max-sm:max-h-dvh max-sm:w-full max-sm:translate-x-0 max-sm:translate-y-0 max-sm:border-0 max-sm:bg-white max-sm:gap-3 [overflow-wrap:anywhere]">
+            <Dialog open={isOpen && !showAddFood && !showSubstitutions} onOpenChange={() => handleClose()}>
+                <DialogContent data-meal-plan-dialog className="flex bg-white h-[90dvh] max-h-[calc(100dvh-1rem)] w-[96vw] max-w-[1200px] flex-col overflow-hidden max-sm:left-0 max-sm:top-0 max-sm:h-dvh max-sm:max-h-dvh max-sm:w-full max-sm:translate-x-0 max-sm:translate-y-0 max-sm:border-0 max-sm:bg-white max-sm:gap-3 [overflow-wrap:anywhere]">
                     <DialogHeader>
                         <DialogTitle className="font-sans leading-snug tracking-normal">
                             {initialData ? 'Editar Refeição' : 'Nova Refeição'}
@@ -315,10 +326,10 @@ const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null, ownerId
                     <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overflow-x-hidden pr-1">
                         {/* Informações da Refeição */}
                         <Card>
-                            <CardHeader className="max-sm:p-4">
-                                <CardTitle className="text-lg">Informações da Refeição</CardTitle>
+                            <CardHeader className="p-4">
+                                <CardTitle className="font-sans text-base tracking-normal">Informações da Refeição</CardTitle>
                             </CardHeader>
-                            <CardContent className="space-y-4 max-sm:px-4 max-sm:pb-4">
+                            <CardContent className="space-y-4 px-4 pb-4">
                                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                     {/* Tipo */}
                                     <div className="space-y-2">
@@ -393,18 +404,19 @@ const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null, ownerId
                             </CardContent>
                         </Card>
 
+                        {removedFood?.food && <div role="status" className="flex items-center justify-between gap-2 rounded-xl bg-amber-50 p-3 text-sm text-amber-950"><span>Alimento removido desta edição.</span><Button type="button" variant="outline" size="sm" onClick={() => { touchedRef.current = true; setFoods(previous => { const next = [...previous]; next.splice(Math.min(removedFood.index, next.length), 0, removedFood.food); return next; }); setRemovedFood(null); }}>Desfazer</Button></div>}
                         {/* Alimentos */}
                         <Card>
-                            <CardHeader className="max-sm:p-4">
+                            <CardHeader className="p-4">
                                 <div className="flex flex-wrap items-center justify-between gap-2">
-                                    <CardTitle className="text-lg">Alimentos</CardTitle>
+                                    <CardTitle className="font-sans text-base tracking-normal">Alimentos</CardTitle>
                                     <Button type="button" size="sm" onClick={() => setShowAddFood(true)}>
                                         <Plus className="h-4 w-4 mr-2" />
                                         Adicionar Alimento
                                     </Button>
                                 </div>
                             </CardHeader>
-                            <CardContent className="max-sm:px-4 max-sm:pb-4">
+                            <CardContent className="px-4 pb-4">
                                 {foods.length === 0 ? (
                                     <div className="text-center py-8 text-muted-foreground">
                                         Nenhum alimento adicionado ainda
@@ -487,22 +499,22 @@ const MealPlanMealForm = ({ isOpen, onClose, onSave, initialData = null, ownerId
                                             <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4 sm:gap-4">
                                                 <div>
                                                     <div className="text-muted-foreground">Calorias</div>
-                                                    <div className="font-bold text-lg">{totals.calories.toFixed(1)}</div>
+                                                    <div className="font-bold text-lg text-orange-700">{roundedNutrition(totals.calories)}</div>
                                                     <div className="text-xs text-muted-foreground">kcal</div>
                                                 </div>
                                                 <div>
                                                     <div className="text-muted-foreground">Proteínas</div>
-                                                    <div className="font-bold text-lg">{totals.protein.toFixed(1)}</div>
+                                                    <div className="font-bold text-lg text-violet-700">{roundedNutrition(totals.protein)}</div>
                                                     <div className="text-xs text-muted-foreground">g</div>
                                                 </div>
                                                 <div>
                                                     <div className="text-muted-foreground">Carboidratos</div>
-                                                    <div className="font-bold text-lg">{totals.carbs.toFixed(1)}</div>
+                                                    <div className="font-bold text-lg text-blue-700">{roundedNutrition(totals.carbs)}</div>
                                                     <div className="text-xs text-muted-foreground">g</div>
                                                 </div>
                                                 <div>
                                                     <div className="text-muted-foreground">Gorduras</div>
-                                                    <div className="font-bold text-lg">{totals.fat.toFixed(1)}</div>
+                                                    <div className="font-bold text-lg">{roundedNutrition(totals.fat)}</div>
                                                     <div className="text-xs text-muted-foreground">g</div>
                                                 </div>
                                             </div>

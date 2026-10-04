@@ -1,7 +1,9 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { render as renderBase, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { expect, it, vi } from 'vitest';
 import MealPlanForm from './MealPlanForm';
+import { MemoryRouter } from 'react-router-dom';
+const render = ui => renderBase(ui, { wrapper: MemoryRouter });
 vi.stubGlobal('ResizeObserver', class { observe() {} unobserve() {} disconnect() {} });
 const mocks = vi.hoisted(() => ({ shadow: { ready: true, status: 'idle', recovery: null, queue: vi.fn(), flush: vi.fn().mockResolvedValue(true), discard: vi.fn().mockResolvedValue(true) } }));
 vi.mock('@/hooks/useShadowDraft', () => ({ useShadowDraft: () => mocks.shadow }));
@@ -16,14 +18,14 @@ vi.mock('@/components/nutrition', () => ({ PremiumPortionSelector: props => <inp
 it('makes validation visible even when the invalid settings section is collapsed', async () => {
     const submit=vi.fn();
     render(<MealPlanForm patientId="patient" nutritionistId="owner" initialData={{id:55,name:'Plano',start_date:'2026-10-04',active_days:[],meals:[{id:10,name:'Café',foods:[]}]}} onSubmit={submit} />);
-    fireEvent.click(screen.getByRole('button',{name:'Salvar alterações',exact:true}));
+    fireEvent.click(screen.getByRole('button',{name:'Aplicar alterações',exact:true}));
     expect(await screen.findByRole('alert')).toHaveTextContent('Selecione pelo menos um dia da semana');
     expect(submit).not.toHaveBeenCalled();
 });
 it('explains the existing server requirement for unfinished meals before publishing', async () => {
     const submit=vi.fn();
     render(<MealPlanForm patientId="patient" nutritionistId="owner" initialData={{id:55,name:'Plano',start_date:'2026-10-04',active_days:['monday'],meals:[{id:10,name:'Café',foods:[]}]}} onSubmit={submit} />);
-    fireEvent.click(screen.getByRole('button',{name:'Salvar alterações',exact:true}));
+    fireEvent.click(screen.getByRole('button',{name:'Aplicar alterações',exact:true}));
     expect(await screen.findByRole('alert')).toHaveTextContent('Adicione pelo menos um alimento em cada refeição');
     expect(submit).not.toHaveBeenCalled();
 });
@@ -64,8 +66,9 @@ it('captures and restores the whole plan and unfinished meal/food editors after 
     const session = { ready: true, status: 'saved', queue: value => { saved = structuredClone(value); }, flush: async () => true, discard: vi.fn().mockResolvedValue(true) };
     const props = { patientId: 'synthetic-patient', nutritionistId: 'synthetic-owner', session, initialData: { id: 55, updated_at: 'revision-1', name: 'Plano base', active_days: [], meals: [{ id: 10, name: 'Refeição já existente', foods: [{ id: 20, food: { name: 'Alimento já existente' }, food_id: 1, quantity: 100, calories: 100 }] }] }, onCancel: vi.fn() };
     const first = render(<React.StrictMode><MealPlanForm {...props} /></React.StrictMode>);
+    fireEvent.click(screen.getByRole('button', { name: 'Editar configurações' }));
     fireEvent.change(screen.getByLabelText(/Nome do Plano/), { target: { value: 'Plano em andamento' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Nova Refeição', exact: true }));
+    fireEvent.click(screen.getByRole('button', { name: 'Nova refeição', exact: true }));
     const mealDialog = await screen.findByRole('dialog', { name: 'Nova Refeição' });
     fireEvent.change(within(mealDialog).getByLabelText(/Observações/), { target: { value: 'Refeição ainda em preenchimento' } });
     fireEvent.click(within(mealDialog).getByRole('button', { name: 'Adicionar Alimento' }));
@@ -100,11 +103,12 @@ it('finishes only after successful persistence and draft cleanup, then returns t
         return editing ? <MealPlanForm patientId="synthetic-patient" nutritionistId="synthetic-owner" initialData={initialData} session={session} onSubmit={async () => applied} onSaved={() => { expect(session.discard).toHaveBeenCalled(); setEditing(false); }} /> : <p>Listagem de planos</p>;
     }
     render(<Page />);
+    fireEvent.click(screen.getByRole('button', { name: 'Editar configurações' }));
     fireEvent.change(screen.getByLabelText(/Nome do Plano/), { target: { value: 'Nome atualizado' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Aplicar alterações' }));
     await waitFor(() => expect(session.discard).toHaveBeenCalled());
     await screen.findByText('Listagem de planos');
-    expect(screen.queryByRole('button', { name: 'Salvar alterações' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Aplicar alterações' })).toBeNull();
     expect(snapshot.formData.name).toBe('Nome atualizado');
 });
 
@@ -144,10 +148,11 @@ it('keeps the editor and recoverable data when applying the plan fails', async (
     const discard = vi.fn();
     const onSubmit = vi.fn().mockResolvedValue(false);
     render(<MealPlanForm patientId="patient" nutritionistId="owner" initialData={{ id: 55, name: 'Plano', start_date: '2026-10-03', active_days: ['monday'], meals: [{ id: 10, name: 'Café', foods: [{id:20,food_id:1,quantity:100,unit:'gram',calories:100,food:{name:'Alimento'}}] }] }} session={{ ready: true, queue: vi.fn(), discard }} onSubmit={onSubmit} onSaved={onSaved} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Aplicar alterações' }));
     await waitFor(() => expect(onSubmit).toHaveBeenCalled());
     expect(onSaved).not.toHaveBeenCalled();
     expect(discard).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Editar configurações' }));
     expect(screen.getByLabelText(/Nome do Plano/)).toHaveValue('Plano');
 });
 

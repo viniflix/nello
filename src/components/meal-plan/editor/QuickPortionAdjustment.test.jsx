@@ -1,0 +1,21 @@
+import React from 'react';
+import { render, fireEvent, screen } from '@testing-library/react';
+import { expect, it, vi } from 'vitest';
+import QuickPortionAdjustment from './QuickPortionAdjustment';
+it('requires simulation and invalidates the preview after scope, food or working meals change', () => {
+    const apply = vi.fn();
+    const simulation = { totalsBefore: { calories: 100 }, totalsAfter: { calories: 120 }, delta: { calories: 20 } };
+    const props = { factor: '1.2', scope: 'all', mealId: 'meal', foodId: 'food', simulation, mealOptions: [], foodOptions: [], onApply: apply };
+    const view = render(<QuickPortionAdjustment {...props} />);
+    expect(screen.queryByRole('button', { name: 'Aplicar ajuste ao plano' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Simular ajuste' }));
+    expect(apply).not.toHaveBeenCalled();
+    view.rerender(<QuickPortionAdjustment {...props} scope="meal" />);
+    expect(screen.queryByRole('button', { name: 'Aplicar ajuste ao plano' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Simular ajuste' }));
+    view.rerender(<QuickPortionAdjustment {...props} scope="meal" simulation={{ ...simulation, totalsBefore: { calories: 200 } }} />);
+    expect(screen.queryByRole('button', { name: 'Aplicar ajuste ao plano' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Simular ajuste' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Aplicar ajuste ao plano' }));
+    expect(apply).toHaveBeenCalledTimes(1);
+});

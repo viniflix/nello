@@ -98,7 +98,7 @@ export default function ImportMealFromProtocolDialog({ open, onOpenChange, nutri
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="flex h-[min(90dvh,700px)] max-h-[calc(100dvh-1rem)] w-[96vw] max-w-6xl flex-col overflow-hidden">
+            <DialogContent className="flex bg-white h-[min(90dvh,700px)] max-h-[calc(100dvh-1rem)] w-[96vw] max-w-6xl flex-col overflow-hidden">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <FileText className="w-5 h-5 text-emerald-600" />
@@ -113,7 +113,7 @@ export default function ImportMealFromProtocolDialog({ open, onOpenChange, nutri
                     {/* Coluna esquerda: lista de protocolos */}
                     <div className="flex h-36 min-h-0 w-full shrink-0 flex-col border-b pb-3 sm:h-auto sm:w-2/5 sm:shrink sm:border-b-0 sm:border-r sm:pb-0 sm:pr-5">
                         <div className="relative mb-3 flex-shrink-0">
-                            <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                            <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-600" />
                             <Input
                                 placeholder="Buscar protocolo..."
                                 value={searchTerm}
@@ -124,10 +124,10 @@ export default function ImportMealFromProtocolDialog({ open, onOpenChange, nutri
                         <ScrollArea className="flex-1">
                             {loadingTemplates ? (
                                 <div className="flex items-center justify-center py-10">
-                                    <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
+                                    <Loader2 className="w-6 h-6 animate-spin text-slate-600" />
                                 </div>
                             ) : filtered.length === 0 ? (
-                                <div className="text-center py-10 text-slate-400 text-sm">
+                                <div className="text-center py-10 text-slate-600 text-sm">
                                     <FileText className="w-10 h-10 mx-auto mb-2 opacity-20" />
                                     Nenhum protocolo encontrado
                                 </div>
@@ -146,7 +146,7 @@ export default function ImportMealFromProtocolDialog({ open, onOpenChange, nutri
                                             <div className="min-w-0">
                                                 <p className="text-sm font-semibold text-slate-800 truncate">{t.name}</p>
                                                 {t.description && (
-                                                    <p className="text-xs text-slate-400 line-clamp-1 mt-0.5">{t.description}</p>
+                                                    <p className="text-xs text-slate-600 line-clamp-1 mt-0.5">{t.description}</p>
                                                 )}
                                             </div>
                                             {selectedTemplate?.id === t.id && <ChevronRight className="w-4 h-4 text-emerald-600 flex-shrink-0" />}
@@ -160,18 +160,18 @@ export default function ImportMealFromProtocolDialog({ open, onOpenChange, nutri
                     {/* Coluna direita: refeições do protocolo selecionado */}
                     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
                         {!selectedTemplate ? (
-                            <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-2">
+                            <div className="flex flex-col items-center justify-center h-full text-slate-600 gap-2">
                                 <FileText className="w-12 h-12 opacity-20" />
                                 <p className="text-sm">Selecione um protocolo à esquerda</p>
                             </div>
                         ) : loadingMeals ? (
                             <div className="flex items-center justify-center h-full">
-                                <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
+                                <Loader2 className="w-6 h-6 animate-spin text-slate-600" />
                             </div>
                         ) : loadError ? (
                             <p role="alert" className="text-sm text-red-700">{loadError}</p>
                         ) : templateMeals.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-2">
+                            <div className="flex flex-col items-center justify-center h-full text-slate-600 gap-2">
                                 <p className="text-sm">Este protocolo não tem refeições.</p>
                             </div>
                         ) : (
@@ -218,7 +218,7 @@ export default function ImportMealFromProtocolDialog({ open, onOpenChange, nutri
                                                                 <Badge variant="outline" className="text-xs py-0">{meal.meal_time}</Badge>
                                                             )}
                                                             {meal.foods?.length > 0 && (
-                                                                <span className="text-xs text-slate-400">{meal.foods.length} alimento(s)</span>
+                                                                <span className="text-xs text-slate-600">{meal.foods.length} alimento(s)</span>
                                                             )}
                                                             {meal.calories > 0 && (
                                                                 <span className="text-xs text-slate-500 font-medium">{Math.round(meal.calories)} kcal</span>

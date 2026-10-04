@@ -10,7 +10,7 @@ import {
     updateFullMealPlan,
     promoteDraftToActive,
     createMealPlan,
-    saveDraftAsPlan,
+    createDraftMealPlan,
     archiveMealPlan,
     setActiveMealPlan,
     copyMealPlanToPatient,
@@ -39,8 +39,10 @@ export function useMealPlanController({
 }) {
     const { toast } = useToast();
     const editRequest = useRef(0);
+    const savedDraftAttempt = useRef(null);
     useEffect(() => {
         editRequest.current += 1;
+        savedDraftAttempt.current = null;
         setSubmitting(false);
         return () => { editRequest.current += 1; };
     }, [patientId, user?.id]);
@@ -303,21 +305,34 @@ export function useMealPlanController({
             let savedPlanId = planId || finalPlanData.draftId;
 
             if (planId) {
-                const existingPlan = plans.find((plan) => plan.id === planId);
+                const existingPlan = [...plans, ...pendingDrafts].find((plan) => plan.id === planId);
+                const isDraft = existingPlan?.is_draft ?? finalPlanData.draftId === planId;
                 const result = await updateFullMealPlan(planId, {
                     ...finalPlanData,
-                    is_active: Boolean(existingPlan?.is_active)
+                    is_active: Boolean(existingPlan?.is_active),
+                    is_draft: false
                 });
                 if (result.error) throw result.error;
+                if (isDraft) {
+                    const promotion = await promoteDraftToActive(planId, patientId);
+                    if (promotion.error) {
+                        await updateFullMealPlan(planId, { ...finalPlanData, is_active: false, is_draft: true });
+                        throw promotion.error;
+                    }
+                }
             } else if (finalPlanData.draftId) {
                 const syncResult = await updateFullMealPlan(finalPlanData.draftId, {
                     ...finalPlanData,
-                    is_active: false
+                    is_active: false,
+                    is_draft: false
                 });
                 if (syncResult.error) throw syncResult.error;
 
                 const result = await promoteDraftToActive(finalPlanData.draftId, patientId);
-                if (result.error) throw result.error;
+                if (result.error) {
+                    await updateFullMealPlan(finalPlanData.draftId, { ...finalPlanData, is_active: false, is_draft: true });
+                    throw result.error;
+                }
             } else {
                 const result = await createMealPlan({
                     patient_id: finalPlanData.patient_id,
@@ -378,37 +393,24 @@ export function useMealPlanController({
     const handleSaveDraft = async (planData) => {
         setSubmitting(true);
         try {
-            const resolvedName = resolveUniquePlanName(planData.name, plans);
-            const finalPlanData = { ...planData, name: resolvedName };
-
-            if (finalPlanData.draftId) {
-                const updateResult = await updateFullMealPlan(finalPlanData.draftId, { ...finalPlanData, is_active: false });
-                if (updateResult.error) throw updateResult.error;
-
-                const result = await saveDraftAsPlan(finalPlanData.draftId);
+            const draftId = planData.draftId || null;
+            const resolvedName = resolveUniquePlanName(planData.name, [...plans, ...pendingDrafts], draftId);
+            const finalPlanData = { ...planData, name: resolvedName, is_active: false, is_draft: true };
+            let savedDraftId = draftId || savedDraftAttempt.current;
+            // Saving an edit as a draft creates a separate working plan; the applied plan is untouched.
+            if (!savedDraftId) {
+                const result = await createDraftMealPlan(patientId, nutritionistId);
                 if (result.error) throw result.error;
-            } else {
-                const result = await createMealPlan({
-                    patient_id: patientId,
-                    nutritionist_id: nutritionistId,
-                    name: finalPlanData.name,
-                    description: finalPlanData.description,
-                    active_days: finalPlanData.active_days,
-                    start_date: finalPlanData.start_date,
-                    end_date: finalPlanData.end_date || null,
-                    is_active: false,
-                    is_draft: false,
-                    plan_mode: finalPlanData.plan_mode || 'hybrid'
-                });
-                if (result.error) throw result.error;
-
-                const updateResult = await updateFullMealPlan(result.data.id, { ...finalPlanData, is_active: false });
-                if (updateResult.error) throw updateResult.error;
+                savedDraftId = result.data.id;
+                savedDraftAttempt.current = savedDraftId;
             }
+            const updateResult = await updateFullMealPlan(savedDraftId, finalPlanData);
+            if (updateResult.error) throw updateResult.error;
+            savedDraftAttempt.current = null;
 
             toast({
                 title: 'Rascunho salvo',
-                description: 'O rascunho foi salvo na lista de planos sem ser ativado.',
+                description: 'O rascunho está disponível para continuar a edição. O plano aplicado foi preservado.',
                 variant: 'success'
             });
 
