@@ -20,6 +20,6 @@ describe('feed care lifecycle', () => {
     const general={patient_id:null,status:'resolved'};
     expect(scopeFeedStates([old,current,general],patients)).toEqual([current,general]);
   });
-  it.each(['NETWORK_FAILURE','OFFLINE','PT409','57014','PGRST003',null])('allows recoverable failure %s', code=>expect(canRetryFeedFailure(code)).toBe(true));
+  it.each(['NETWORK_FAILURE','OFFLINE','RETRY_LIMIT','PT409','57014','PGRST003',null])('allows recoverable failure %s', code=>expect(canRetryFeedFailure(code)).toBe(true));
   it.each(['42501','22023','23503','SESSION_CHANGED'])('does not offer an endless retry for %s',code=>expect(canRetryFeedFailure(code)).toBe(false));
 });

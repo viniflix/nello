@@ -25,7 +25,12 @@ function createPatient(actor,name) {
 }
 
 test('feed retry really saves the failed subset and removes its warning',async({page})=>{
- const client=await owner();const patient=createPatient(fixture.personas['nutritionist-a'].id,'QA Retry');
+ test.setTimeout(90000);
+ const client=await owner();
+ // At least 104 missing clinical items: exceed the 100 pending-intent bound
+ // independently of records left by other journeys, then confirm one manual retry.
+ const patients=Array.from({length:26},(_,index)=>createPatient(fixture.personas['nutritionist-a'].id,`QA Retry ${index}`));
+ try {
  let fail=true;const failed=new Set();const retried=new Set();
  await page.route('**/rest/v1/rpc/save_feed_task',async route=>{
   const body=route.request().postDataJSON();const key=body.p_values.source_type+':'+body.p_values.source_id;
@@ -34,32 +39,38 @@ test('feed retry really saves the failed subset and removes its warning',async({
  });
  await login(page);
  await expect(page.getByRole('alert').filter({hasText:'alterações do feed não foram salvas'})).toBeVisible();
- expect(failed.size).toBeGreaterThan(0);fail=false;
+ expect(failed.size).toBe(100);fail=false;
  await page.getByRole('button',{name:'Tentar salvar novamente',exact:true}).click();
  await expect(page.getByRole('alert').filter({hasText:'alterações do feed não foram salvas'})).toHaveCount(0);
- expect(retried.size).toBeGreaterThan(0);expect([...retried].every(key=>failed.has(key))).toBe(true);
- expect((await client.rpc('end_care_episode',{p_patient_id:patient,p_end_reason:'ended_by_nutritionist'})).error).toBeNull();
- await client.auth.signOut();
+ await expect.poll(()=>retried.size).toBeGreaterThan(100);
+ await expect.poll(()=>[...failed].every(key=>retried.has(key))).toBe(true);
+ const confirmed=await client.rpc('get_my_feed_task_states');expect(confirmed.error).toBeNull();
+ for(const patient of patients)expect(confirmed.data.filter(row=>row.patient_id===patient&&row.source_type==='pending')).toHaveLength(4);
+ } finally {
+  for(const patient of patients)expect((await client.rpc('end_care_episode',{p_patient_id:patient,p_end_reason:'ended_by_nutritionist'})).error).toBeNull();
+  await client.auth.signOut();
+ }
 });
 
 test('archive with an open dashboard removes ghosts; restart rejects old writes and preserves history',async({page})=>{
- const client=await owner();const actor=fixture.personas['nutritionist-a'].id;const patient=createPatient(actor,'QA Lifecycle');
+ const client=await owner();const actor=fixture.personas['nutritionist-a'].id;
+ const name=`QA-Lifecycle-${randomUUID().slice(0,8)}`;const patient=createPatient(actor,name);
  const scope=await client.rpc('get_active_feed_patients');expect(scope.error).toBeNull();
  const episode=scope.data.find(row=>row.id===patient).care_episode_id;
- await login(page);await expect(page.locator('article').filter({hasText:'QA Lifecycle'}).first()).toBeVisible();
+ await login(page);await expect(page.locator('article').filter({hasText:name}).first()).toBeVisible();
  const old=(await client.rpc('get_my_feed_task_states')).data.filter(row=>row.patient_id===patient);expect(old.length).toBeGreaterThan(0);
  const args={p_values:{nutritionist_id:actor,patient_id:patient,source_type:'pending',source_id:'race-'+patient,title:'Synthetic archive race',metadata:{care_episode_id:episode}},p_action:null,p_expected:null,p_actor:actor,p_nonce:randomUUID()};
  const results=await Promise.all([client.rpc('end_care_episode',{p_patient_id:patient,p_end_reason:'ended_by_nutritionist'}),
   ...Array.from({length:4},()=>client.rpc('save_feed_task',args))]);results.forEach(result=>expect(result.error).toBeNull());
- await expect(page.locator('article').filter({hasText:'QA Lifecycle'})).toHaveCount(0);
+ await expect(page.locator('article').filter({hasText:name})).toHaveCount(0);
  expect((await client.rpc('get_my_feed_task_states')).data.some(row=>row.patient_id===patient)).toBe(false);
  await page.goto('/nutritionist/patients');
  await page.getByRole('button',{name:/Ver Arquivados/}).click();
- await page.getByRole('button',{name:'Reativar acompanhamento de QA Lifecycle',exact:true}).click();
+ await page.getByRole('button',{name:`Reativar acompanhamento de ${name}`,exact:true}).click();
  await page.getByRole('button',{name:'Confirmar reativação',exact:true}).click();
- await expect(page.getByRole('button',{name:'Ações de QA Lifecycle',exact:true})).toHaveCount(0);
+ await expect(page.getByRole('button',{name:`Ações de ${name}`,exact:true})).toHaveCount(0);
  await page.goto('/nutritionist');
- await expect(page.locator('article').filter({hasText:'QA Lifecycle'}).first()).toBeVisible();
+ await expect(page.locator('article').filter({hasText:name}).first()).toBeVisible();
  const late=await client.rpc('save_feed_task',{...args,p_action:'resolved',p_nonce:randomUUID()});
  expect(late.error).toBeNull();expect(late.data.no_longer_applicable).toBe(true);
  const current=(await client.rpc('get_my_feed_task_states')).data.filter(row=>row.patient_id===patient);

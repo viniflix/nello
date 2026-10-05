@@ -9,7 +9,7 @@ export function scopeFeedItems(items, patients, { preserveEpisode = false } = {}
 }
 
 export function canRetryFeedFailure(code) {
-  return ['NETWORK_FAILURE', 'OFFLINE', 'PT409', '40001', '40P01', '57014', '57P01', '53300', '08000', '08006', 'PGRST000', 'PGRST001', 'PGRST002', 'PGRST003'].includes(code)
+  return ['NETWORK_FAILURE', 'OFFLINE', 'RETRY_LIMIT', 'PT409', '40001', '40P01', '57014', '57P01', '53300', '08000', '08006', 'PGRST000', 'PGRST001', 'PGRST002', 'PGRST003'].includes(code)
     || !code;
 }
 

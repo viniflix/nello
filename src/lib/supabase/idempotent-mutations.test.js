@@ -24,6 +24,18 @@ describe('same-account manual retry contract',()=>{
   });
   beforeEach(()=>{clearMutationIntents();vi.stubGlobal('crypto',webcrypto);supabase.auth.getSession.mockResolvedValue({data:{session:{user:{id:'actor1'}}}});supabase.rpc.mockReset();});
   afterEach(()=>{vi.useRealTimers();vi.unstubAllGlobals();});
+  it('recovers after the pending-intent bound without dropping an unknown result or duplicating its nonce',async()=>{
+    supabase.rpc.mockResolvedValue({data:null,error:{code:'PGRST003'}});
+    for(let index=0;index<100;index++)await idempotentRpc('save_feed_task',{p_values:{source_id:String(index)}});
+    const original=supabase.rpc.mock.calls[0][1];
+    expect((await idempotentRpc('save_feed_task',{p_values:{source_id:'overflow'}})).error.code).toBe('RETRY_LIMIT');
+    expect(supabase.rpc).toHaveBeenCalledTimes(100);
+    supabase.rpc.mockResolvedValue({data:{id:'confirmed'},error:null});
+    expect((await idempotentRpc('save_feed_task',{p_values:{source_id:'0'}})).error).toBeNull();
+    expect(supabase.rpc.mock.calls[100][1]).toEqual(original);
+    expect((await idempotentRpc('save_feed_task',{p_values:{source_id:'overflow'}})).error).toBeNull();
+    expect(supabase.rpc).toHaveBeenCalledTimes(102);
+  });
   it('deduplicates concurrent requests and retries the original revision after timeout',async()=>{
     supabase.rpc.mockRejectedValueOnce(new Error('lost response'));
     const args={p_values:{title:'synthetic'},p_expected:'2026-10-01T10:00:00Z'};
