@@ -1,50 +1,38 @@
-import { VisibleChart } from '@/components/ui/visible-chart';
-import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Activity, ArrowRight, CalendarDays, ClipboardCheck, HeartPulse, RefreshCw, ShieldCheck, Users, Utensils } from 'lucide-react';
-import { Area, AreaChart, CartesianGrid, Legend, Tooltip, XAxis, YAxis } from 'recharts';
+import { ArrowRight, ClipboardCheck, FileClock, HeartPulse, ShieldCheck, Users } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { getDashboardStats } from '@/services/adminService';
+import { getAdminBriefing } from '@/services/adminService';
+import { useAdminSource } from '@/portals/admin/hooks/useAdminSource';
+import AdminSourceStatus from '@/portals/admin/components/AdminSourceStatus';
+import { operationalCount, operationalDate } from '@/portals/admin/model/sourceState';
 
-const number = (value) => Number(value ?? 0).toLocaleString('pt-BR');
-const cards = [
-  { key: 'nutritionists', label: 'Nutricionistas', icon: Users, source: 'Perfis cadastrados' },
-  { key: 'patients', label: 'Pacientes', icon: HeartPulse, source: 'Perfis cadastrados' },
-  { key: 'active_patients_30d', label: 'Pacientes ativos', icon: Activity, source: 'Eventos nos últimos 30 dias' },
-  { key: 'meals_30d', label: 'Refeições registradas', icon: Utensils, source: 'Últimos 30 dias' },
-  { key: 'plans_created_30d', label: 'Planos criados', icon: ClipboardCheck, source: 'Últimos 30 dias' },
-  { key: 'appointments_today', label: 'Consultas hoje', icon: CalendarDays, source: 'Horário de Fortaleza' },
-  { key: 'pending_verifications', label: 'Verificações pendentes', icon: ShieldCheck, source: 'Fila profissional' },
+const metrics = [
+  ['nutritionists', 'Nutricionistas', Users, 'Perfis cadastrados', 'bg-primary/10 text-primary'],
+  ['patients', 'Pacientes', HeartPulse, 'Perfis cadastrados', 'bg-blue-50 text-blue-800'],
+  ['plans_confirmed_30d', 'Planos confirmados', ClipboardCheck, 'Criados nos últimos 30 dias · não arquivados', 'bg-emerald-50 text-emerald-800'],
+  ['plans_draft_30d', 'Planos em rascunho', FileClock, 'Criados nos últimos 30 dias · não arquivados', 'bg-orange-50 text-orange-800'],
 ];
-
 export default function AdminDashboard() {
-  const [state, setState] = useState({ loading: true, data: null, error: null });
-  const [refresh, setRefresh] = useState(0);
-  useEffect(() => {
-    let active = true;
-    getDashboardStats().then(({ data, error }) => {
-      if (active) setState({ loading: false, data, error });
-    });
-    return () => { active = false; };
-  }, [refresh]);
-  const data = state.data;
-  const chart = (data?.registrations || []).map((row) => ({
-    ...row,
-    label: new Date(`${row.month}-01T12:00:00`).toLocaleDateString('pt-BR', { month: 'short' }),
-  }));
-  return <div className="space-y-7">
-    <div className="flex flex-wrap items-start justify-between gap-4">
-      <div><p className="text-sm font-medium text-primary">Visão geral · Nello</p><h1 className="mt-1 text-3xl font-semibold tracking-tight">Operação da plataforma</h1><p className="mt-2 text-sm text-muted-foreground">Cadastros, uso e pendências derivados dos registros reais.</p></div>
-      <Button variant="outline" onClick={() => { setState((current) => ({ ...current, loading: true })); setRefresh((n) => n + 1); }}><RefreshCw className="mr-2 h-4 w-4" />Atualizar</Button>
+  const query = useAdminSource('briefing', getAdminBriefing);
+  const data = query.data;
+  return <div className="space-y-6">
+    <header className="space-y-2"><p className="text-sm font-medium text-primary">Administração · {/^http:\/\/(localhost|127\.0\.0\.1)(:|\/|$)/.test(import.meta.env.VITE_SUPABASE_URL || '') ? 'ensaio local' : 'produção'}</p><h1 className="font-heading text-2xl uppercase leading-tight sm:text-3xl">Central de operação</h1><p className="max-w-2xl text-sm text-muted-foreground">Encontre o que precisa de atenção, investigue a origem e acompanhe a ação.</p><p className="text-xs text-muted-foreground">Versão da aplicação: {import.meta.env.VITE_APP_RELEASE || 'Não identificada'}</p></header>
+    <AdminSourceStatus query={query} />
+    <section aria-labelledby="admin-priorities" className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2"><h2 id="admin-priorities" className="text-lg font-semibold">Precisa de atenção</h2><span className="text-xs text-muted-foreground">Prazos exibidos em Fortaleza</span></div>
+      <div className="grid gap-4 md:grid-cols-3">{query.isPending ? [0, 1, 2].map(i => <Skeleton key={i} className="h-48 rounded-2xl" />) : data?.queues.map(queue => <Card key={queue.key} className="overflow-hidden rounded-2xl border-border/70 shadow-sm"><CardContent className="flex h-full flex-col gap-3 p-5">
+        <div className="flex items-start justify-between gap-2"><h3 className="text-sm font-semibold">{queue.label}</h3>{queue.overdue > 0 && <Badge variant="destructive">Prazo vencido</Badge>}</div>
+        <p className="text-3xl font-semibold tabular-nums">{operationalCount(queue.count)}</p>
+        <div className="space-y-1 text-xs text-muted-foreground">{queue.overdue != null && <p>{operationalCount(queue.overdue)} vencidas · {operationalCount(queue.due_soon)} vencem em até 2 dias</p>}<p>{queue.oldest_at ? `Mais antiga: ${operationalDate(queue.oldest_at)}` : 'Nenhuma pendência confirmada'}</p><p>Fonte: {queue.source}</p></div>
+        <Link to={queue.route} className="mt-auto flex min-h-11 items-center justify-between gap-2 rounded-lg border px-3 py-2 text-sm font-medium text-primary hover:bg-primary/5">Abrir fila<ArrowRight className="h-4 w-4 shrink-0" /></Link>
+      </CardContent></Card>)}</div>
+    </section>
+    <section aria-labelledby="admin-pulse" className="space-y-3"><h2 id="admin-pulse" className="text-lg font-semibold">Pulso da plataforma</h2><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{metrics.map(([key, label, Icon, explanation, color]) => <Card key={key} className="rounded-2xl shadow-none"><CardContent className="p-5"><div className="flex items-start justify-between gap-3"><h3 className="text-sm font-medium">{label}</h3><span className={`rounded-xl p-2 ${color}`}><Icon className="h-4 w-4" /></span></div>{query.isPending ? <Skeleton className="mt-3 h-9 w-20" /> : <p className="mt-3 text-3xl font-semibold tabular-nums">{operationalCount(data?.counts[key])}</p>}<p className="mt-2 text-xs text-muted-foreground">{explanation}</p></CardContent></Card>)}</div><p className="text-xs text-muted-foreground">{data?.population || 'A população será informada quando a consulta for confirmada.'} Registro criado não equivale a adoção ou resultado clínico.</p></section>
+    <div className="grid gap-4 lg:grid-cols-2">
+      <Card className="rounded-2xl"><CardHeader><CardTitle className="text-lg">Confiança nos resultados</CardTitle></CardHeader><CardContent className="space-y-4">{data?.invariants.map(item => <div key={item.key} className="rounded-xl bg-muted/40 p-4"><h3 className="text-sm font-medium">{item.label} <span className="ml-1 text-xs text-muted-foreground">· ainda não instrumentado</span></h3><p className="mt-2 text-sm text-muted-foreground">{item.detail}</p></div>)}<Link to="/admin/integrations" className="inline-flex min-h-11 items-center gap-2 text-sm font-medium text-primary">Conferir fontes e integrações<ArrowRight className="h-4 w-4" /></Link></CardContent></Card>
+      <Card className="rounded-2xl"><CardHeader><CardTitle className="flex items-center gap-2 text-lg"><ShieldCheck className="h-5 w-5 text-primary" />Acessos e governança</CardTitle></CardHeader><CardContent className="space-y-2">{[['/admin/users', 'Pessoas e contexto operacional'], ['/admin/security', 'Operadores e autenticação'], ['/admin/operations', 'Volume por módulo'], ['/admin/study', 'Indicadores disponíveis']].map(([to, label]) => <Link key={to} to={to} className="flex min-h-11 items-center justify-between gap-2 rounded-xl border p-3 text-sm hover:bg-muted/50">{label}<ArrowRight className="h-4 w-4 shrink-0" /></Link>)}</CardContent></Card>
     </div>
-    {state.error && <div role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">Não foi possível carregar os dados administrativos. Tente atualizar.</div>}
-    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{cards.map(({ key, label, icon: Icon, source }) => <Card key={key} className="rounded-2xl border-border/70 shadow-sm"><CardContent className="p-5"><div className="flex items-start justify-between gap-3"><span className="text-sm text-muted-foreground">{label}</span><span className="rounded-xl bg-primary/10 p-2 text-primary"><Icon className="h-4 w-4" /></span></div>{state.loading ? <Skeleton className="mt-4 h-9 w-20" /> : <p className="mt-3 text-3xl font-semibold tabular-nums">{data ? number(data.counts?.[key]) : '—'}</p>}<p className="mt-1 text-xs text-muted-foreground">{source}</p></CardContent></Card>)}</div>
-    <div className="grid gap-5 lg:grid-cols-[2fr_1fr]">
-      <Card className="rounded-2xl border-border/70 shadow-sm"><CardHeader><CardTitle className="text-lg">Novos cadastros por mês</CardTitle><p className="text-sm text-muted-foreground">Nutricionistas e pacientes · últimos seis meses · fonte: user_profiles</p></CardHeader><CardContent>{state.loading ? <Skeleton className="h-64 w-full" /> : !data ? <div className="flex h-64 items-center justify-center text-sm text-muted-foreground">Dados indisponíveis</div> : <VisibleChart width="100%" height={260}><AreaChart data={chart} margin={{ top: 8, right: 8, left: -22, bottom: 0 }}><CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" /><XAxis dataKey="label" /><YAxis allowDecimals={false} /><Tooltip /><Legend /><Area name="Nutricionistas" dataKey="nutritionists" type="monotone" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.14} /><Area name="Pacientes" dataKey="patients" type="monotone" stroke="#14b8a6" fill="#14b8a6" fillOpacity={0.12} /></AreaChart></VisibleChart>}</CardContent></Card>
-      <Card className="rounded-2xl border-border/70 shadow-sm"><CardHeader><CardTitle className="text-lg">Ações prioritárias</CardTitle></CardHeader><CardContent className="space-y-2">{[['/admin/verifications', 'Revisar profissionais'], ['/admin/privacy', 'Solicitações de privacidade'], ['/admin/bugs', 'Incidentes e erros'], ['/admin/users', 'Pessoas cadastradas']].map(([to, label]) => <Link key={to} to={to} className="flex items-center justify-between rounded-xl border border-border/70 p-3 text-sm hover:bg-muted/60">{label}<ArrowRight className="h-4 w-4 text-muted-foreground" /></Link>)}</CardContent></Card>
-    </div>
-    <p className="text-xs text-muted-foreground">{data?.generated_at ? `Dados consultados em ${new Date(data.generated_at).toLocaleString('pt-BR')}.` : 'Aguardando consulta ao banco.'} Contas de simulação não entram nos indicadores de pessoas.</p>
   </div>;
 }

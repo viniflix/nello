@@ -80,10 +80,17 @@ begin
         or has_function_privilege('authenticated', p.oid, 'execute')
       )
       and pg_get_functiondef(p.oid) !~ 'auth\.uid\(\)'
-      and p.oid::regprocedure::text <> all(array['admin_brand_migration_status()','admin_list_people(text,text,integer)','admin_security_overview()','admin_workflow_overview()','check_is_admin()','clone_diet_template_to_patient(uuid,uuid,uuid,text)','end_care_episode(uuid,text)','get_admin_dashboard_stats()','get_anamnesis_by_token(uuid)','get_anamnesis_draft_revision(uuid)','save_anamnesis_draft_revision(uuid,jsonb,boolean,timestamp with time zone)','complete_anamnesis_revision(uuid,jsonb,boolean,timestamp with time zone,uuid)','get_empty_patient_removal_status(uuid)','get_nutritionist_detail(uuid)','get_nutritionists_list()','get_system_live_logs(integer)','get_tcc_study_metrics()','import_diet_template_meals_to_plan(uuid,bigint,uuid[])','is_admin()','list_data_subject_requests(text)','list_professional_verifications(text,text)','request_student_supervision_by_email(text)','submit_anamnesis_by_token(uuid,jsonb,text,boolean,text,jsonb)','upsert_full_meal_plan(bigint,jsonb,jsonb)','verify_document_authenticity(uuid)']::text[])
+      and p.oid::regprocedure::text <> all(array['admin_operational_briefing()','admin_incident_state(text)','admin_triage_incident(text,bigint,text,text)','admin_brand_migration_status()','admin_list_people(text,text,integer)','admin_security_overview()','admin_workflow_overview()','check_is_admin()','clone_diet_template_to_patient(uuid,uuid,uuid,text)','end_care_episode(uuid,text)','get_admin_dashboard_stats()','get_anamnesis_by_token(uuid)','get_anamnesis_draft_revision(uuid)','save_anamnesis_draft_revision(uuid,jsonb,boolean,timestamp with time zone)','complete_anamnesis_revision(uuid,jsonb,boolean,timestamp with time zone,uuid)','get_empty_patient_removal_status(uuid)','get_nutritionist_detail(uuid)','get_nutritionists_list()','get_system_live_logs(integer)','get_tcc_study_metrics()','import_diet_template_meals_to_plan(uuid,bigint,uuid[])','is_admin()','list_data_subject_requests(text)','list_professional_verifications(text,text)','request_student_supervision_by_email(text)','submit_anamnesis_by_token(uuid,jsonb,text,boolean,text,jsonb)','upsert_full_meal_plan(bigint,jsonb,jsonb)','verify_document_authenticity(uuid)']::text[])
   ) then
     raise exception 'c6_unreviewed_indirect_guard_added';
   end if;
+
+  -- New indirect admin guards are explicitly reviewed and must retain per-action authorization.
+  foreach v_definition in array array['admin_operational_briefing()','admin_incident_state(text)','admin_triage_incident(text,bigint,text,text)'] loop
+    if pg_get_functiondef(('public.'||v_definition)::regprocedure) !~ 'private\.admin_action_allowed' then
+      raise exception 'c6_admin_action_guard_drift:%',v_definition;
+    end if;
+  end loop;
 
   foreach v_definition in array array['get_anamnesis_draft_revision(uuid)','save_anamnesis_draft_revision(uuid,jsonb,boolean,timestamp with time zone)','complete_anamnesis_revision(uuid,jsonb,boolean,timestamp with time zone,uuid)'] loop
     if pg_get_functiondef(('public.'||v_definition)::regprocedure) !~ 'public\.get_anamnesis_by_token\(p_token\)' then

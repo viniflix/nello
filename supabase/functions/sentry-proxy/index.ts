@@ -1,5 +1,6 @@
 import { edgeBoundary, timedFetch } from '../_shared/http.ts';
 import { consumeQuota } from '../_shared/quota.ts';
+import { parseSentryRequest, nextSentryCursor, safeSentryIssue, safeSentryEvent } from './contracts.js';
 function corsHeaders(_req: Request) { return {}; }
 
 function json(req: Request, status: number, body: unknown) {
@@ -52,17 +53,38 @@ Deno.serve(edgeBoundary(async (req: Request) => {
   const sentryOrg = Deno.env.get('SENTRY_ORG') || 'nello';
   const sentryProject = Deno.env.get('SENTRY_PROJECT') || 'javascript-react';
 
-  if (!sentryToken) {
-    return json(req, 503, { error: 'Sentry integration is not configured' });
-  }
-
   try {
     const requestBody = await req.json().catch(() => ({}));
-    const action = requestBody?.action === 'latest_event' ? 'latest_event' : 'issues';
-    const issueId = String(requestBody?.issue_id || '');
-    const hours = Math.min(336, Math.max(1, Number(requestBody?.hours) || 24));
-    const limit = Math.min(100, Math.max(1, Number(requestBody?.limit) || 25));
-    const correlation = String(requestBody?.correlation_id || '');
+    let filter;
+    try { filter = parseSentryRequest(requestBody); }
+    catch { return json(req, 400, { error: 'invalid_sentry_filter' }); }
+    const { action, issueId, hours, limit, correlation, cursor, release, environment } = filter;
+    if (action === 'sources') {
+      const checkedAt = new Date().toISOString();
+      const check = async (provider: string, token: string | undefined, url: string, validate: (data: any) => boolean) => {
+        if (!token) return { provider, state: 'not_configured', generated_at: checkedAt, data_through: null, reason: 'Credencial de leitura não configurada', usage: null };
+        try {
+          const response = await timedFetch(url, { headers: { Authorization: `Bearer ${token}` } });
+          if (!response.ok) return { provider, state: response.status === 401 || response.status === 403 ? 'authorization_required' : response.status === 429 ? 'rate_limited' : 'unavailable', generated_at: checkedAt, data_through: null, reason: `HTTP ${response.status}`, usage: null };
+          const data = await response.json();
+          if (!validate(data)) throw Error('invalid_source_contract');
+          return { provider, state: 'available', generated_at: checkedAt, data_through: checkedAt, reason: 'Endpoint de leitura respondeu; não certifica entregas, disponibilidade global ou billing', usage: null };
+        } catch { return { provider, state: 'unavailable', generated_at: checkedAt, data_through: null, reason: 'Consulta não confirmada', usage: null }; }
+      };
+      const sentryUrl = `https://sentry.io/api/0/projects/${encodeURIComponent(sentryOrg)}/${encodeURIComponent(sentryProject)}/`;
+      const [sentry, resend] = await Promise.all([
+        check('Sentry', sentryToken, sentryUrl, data => Boolean(data.id && data.slug === sentryProject)),
+        check('Resend', Deno.env.get('RESEND_API_KEY'), 'https://api.resend.com/domains', data => Array.isArray(data.data)),
+      ]);
+      const posthogProject = Deno.env.get('POSTHOG_PROJECT_ID');
+      const posthogHost = Deno.env.get('POSTHOG_API_HOST') || 'https://us.posthog.com';
+      const permittedHost = ['https://us.posthog.com', 'https://eu.posthog.com'].includes(posthogHost);
+      const posthog = await check('PostHog', permittedHost && /^\d+$/.test(posthogProject || '') ? Deno.env.get('POSTHOG_PERSONAL_API_KEY') : undefined,
+        `${permittedHost ? posthogHost : 'https://us.posthog.com'}/api/projects/${posthogProject || '0'}/`, data => String(data.id) === posthogProject);
+      return json(req, 200, { source: 'Endpoints de leitura dos provedores', generated_at: checkedAt, data_through: checkedAt,
+        sources: [{ provider: 'Supabase', state: 'available', generated_at: checkedAt, data_through: checkedAt, reason: 'Auth e autorização administrativa confirmados', usage: null }, sentry, resend, posthog] });
+    }
+    if (!sentryToken) return json(req, 503, { error: 'sentry_not_configured' });
 
     if (correlation && !/^[a-zA-Z0-9-]{1,80}$/.test(correlation)) {
       return json(req, 400, { error: 'Invalid correlation ID' });
@@ -86,10 +108,13 @@ Deno.serve(edgeBoundary(async (req: Request) => {
         `https://sentry.io/api/0/projects/${encodeURIComponent(sentryOrg)}/${encodeURIComponent(sentryProject)}/issues/`,
       );
 
-    if (action === 'issues') {
-      url.searchParams.set('statsPeriod', hours <= 24 ? '24h' : '14d');
+    if (action === 'issues' || action === 'issues_page') {
+      url.searchParams.set('statsPeriod', `${hours}h`);
       url.searchParams.set('limit', String(limit));
       url.searchParams.set('query', correlation ? `correlation.id:${correlation}` : 'is:unresolved');
+      if (cursor) url.searchParams.set('cursor', cursor);
+      if (environment !== 'all') url.searchParams.set('environment', environment);
+      if (release) url.searchParams.set('query', `${url.searchParams.get('query')} release:${release}`);
     }
 
     const response = await timedFetch(url, {
@@ -102,66 +127,15 @@ Deno.serve(edgeBoundary(async (req: Request) => {
     }
 
     const data = await response.json();
-
-    if (action === 'latest_event') {
-      const exceptionEntry = data.entries?.find((entry: any) => entry.type === 'exception');
-      const exceptions = (exceptionEntry?.data?.values || []).map((exception: any) => ({
-        type: exception.type,
-        value: exception.value,
-        frames: (exception.stacktrace?.frames || []).map((frame: any) => ({
-          filename: frame.filename,
-          function: frame.function,
-          line: frame.lineNo,
-          column: frame.colNo,
-          in_app: frame.inApp,
-        })),
-      }));
-      const allowedTags = new Set([
-        'browser',
-        'correlation.id',
-        'environment',
-        'error.code',
-        'error.module',
-        'error.source',
-        'http.status_code',
-        'level',
-        'release',
-        'transaction',
-      ]);
-
-      return json(req, 200, {
-        event_id: data.eventID,
-        issue_id: data.groupID,
-        date_created: data.dateCreated,
-        title: data.title,
-        location: data.location,
-        browser: data.contexts?.browser
-          ? { name: data.contexts.browser.name, version: data.contexts.browser.version }
-          : null,
-        os: data.contexts?.os
-          ? { name: data.contexts.os.name, version: data.contexts.os.version }
-          : null,
-        exceptions,
-        tags: (data.tags || []).filter((tag: { key: string }) => allowedTags.has(tag.key)),
-      });
-    }
-
-    const issues = data.map((issue: Record<string, unknown>) => ({
-      id: issue.id,
-      shortId: issue.shortId,
-      title: issue.title,
-      culprit: issue.culprit,
-      firstSeen: issue.firstSeen,
-      lastSeen: issue.lastSeen,
-      count: issue.count,
-      userCount: issue.userCount,
-      level: issue.level,
-      status: issue.status,
-      permalink: issue.permalink,
-      type: issue.type,
-    }));
-
-    return json(req, 200, issues);
+    if (action === 'latest_event') return json(req, 200, safeSentryEvent(data));
+    if (!Array.isArray(data)) return json(req, 502, { error: 'invalid_sentry_response' });
+    const safeIssues = data.map(safeSentryIssue);
+    if (action === 'issues_page') return json(req, 200, {
+      items: safeIssues, next_cursor: nextSentryCursor(response.headers.get('link')),
+      generated_at: new Date().toISOString(), source: `Sentry · ${sentryProject}`,
+      hours, environment, release: release || null, count_semantics: 'lifetime',
+    });
+    return json(req, 200, safeIssues);
   } catch (error) {
     console.error('Sentry proxy failed', {
       errorType: error instanceof Error ? error.name : 'UnknownError',

@@ -1584,17 +1584,23 @@
     },
     {
       "slug": "sentry-proxy",
-      "version": 11,
+      "version": 13,
       "verify_jwt": true,
       "files": [
         {
           "file": "index.ts",
-          "sha256": "7bf47345341abf597e767b2ec54c241802724d75b65010c4e17256a9ceb67271",
+          "sha256": "bbb7615c9d1678f0e9dbd02fa197f9f00f8615f324fec55b10166329da407b31",
           "matchedLocal": true,
-          "repositorySha256": "0cc7b74d1522803d6402a18388010ab840e4fa7327fbd9259c2de5fde7f580c0"
+          "repositorySha256": "bbb7615c9d1678f0e9dbd02fa197f9f00f8615f324fec55b10166329da407b31"
+        },
+        {
+          "file": "contracts.js",
+          "repositorySha256": "b4774170537aca3db6bb93d008200f9a236f2996bd3b4ec7be79b70ad795bd15",
+          "matchedLocal": true,
+          "sha256": "b4774170537aca3db6bb93d008200f9a236f2996bd3b4ec7be79b70ad795bd15"
         }
       ],
-      "sourcePolicy": "Published source"
+      "sourcePolicy": "Published version 13; source readback matched all four uploaded files on 2026-10-05. Previous baseline preserved in Git history."
     },
     {
       "slug": "openfoodfacts-proxy",

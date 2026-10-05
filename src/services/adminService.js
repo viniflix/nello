@@ -1,5 +1,21 @@
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import { supabase } from '@/infrastructure/supabase/client';
+import { validateBriefing } from '@/portals/admin/model/sourceState';
+
+export async function getAdminBriefing() {
+  const { data, error } = await supabase.rpc('admin_operational_briefing');
+  if (error) return { data: null, error };
+  try { return { data: validateBriefing(data), error: null }; }
+  catch (contractError) { return { data: null, error: contractError }; }
+}
+
+export const getAdminIncidentState = (issueId) => supabase.rpc('admin_incident_state', { p_issue_id: String(issueId) });
+export const triageAdminIncident = ({ issueId, revision, status, reason }) => supabase.rpc('admin_triage_incident', {
+  p_issue_id: String(issueId), p_expected_revision: revision, p_status: status, p_reason: reason,
+});
+export const getAdminIntegrations = () => supabase.functions.invoke('sentry-proxy', { method: 'POST', body: { action: 'sources' } });
+export const getAdminIssuePage = (filters) => supabase.functions.invoke('sentry-proxy', { method: 'POST', body: { action: 'issues_page', limit: 25, ...filters } });
+export const getAdminIssueEvent = (issueId) => supabase.functions.invoke('sentry-proxy', { method: 'POST', body: { action: 'latest_event', issue_id: String(issueId) } });
 
 export async function listAdminPeople({ search = '', type = 'all', page = 1 } = {}) {
   const { data, error } = await supabase.rpc('admin_list_people', {

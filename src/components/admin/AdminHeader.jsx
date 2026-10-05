@@ -16,6 +16,7 @@ const NAV_ITEMS = [
     { name: 'Jornadas', path: '/admin/operations', icon: Activity },
     { name: 'Uso da plataforma', path: '/admin/study', icon: Activity },
     { name: 'Incidentes', path: '/admin/bugs', icon: Bug },
+    { name: 'Integrações', path: '/admin/integrations', icon: Settings },
   ]},
   { section: 'Pessoas', items: [
     { name: 'Cadastros', path: '/admin/users', icon: Users },
@@ -75,7 +76,7 @@ export default function AdminHeader() {
     <header className="sticky top-0 z-40 flex h-16 items-center justify-between gap-2 border-b bg-card px-3 md:px-6 shadow-sm">
       <div className="max-w-7xl mx-auto w-full flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 md:gap-4">
-          <div className="md:hidden">
+          <div className="xl:hidden">
             <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
               <SheetTrigger asChild>
                 <Button aria-label="Abrir navegação administrativa" variant="ghost" size="icon" className="h-11 w-11"><Menu className="h-5 w-5" /></Button>
@@ -125,31 +126,29 @@ export default function AdminHeader() {
             <span className="font-bold text-sm hidden sm:inline">Nello · Administração</span>
           </Link>
 
-          <nav className="hidden md:flex items-center gap-1">
+          <nav aria-label="Navegação administrativa" className="hidden xl:flex items-center gap-1">
             {NAV_ITEMS.map((group) => {
               const SectionIcon = group.items[0].icon;
               return (
-                <div key={group.section} className="relative group">
-                  <button className="px-4 py-2 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent flex items-center gap-1">
+                <DropdownMenu key={group.section}>
+                  <DropdownMenuTrigger asChild><Button variant="ghost" className="text-sm text-muted-foreground">
                     <SectionIcon className="w-4 h-4" />{group.section}
-                  </button>
-                  <div className="absolute top-full left-0 mt-1 w-48 rounded-md border bg-popover shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible group-focus-within:opacity-100 group-focus-within:visible transition-all z-50">
-                    <div className="p-1">
+                  </Button></DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-56">
                       {group.items.map((item) => {
                         const ItemIcon = item.icon;
                         return (
-                          <NavLink
+                          <DropdownMenuItem key={item.path} asChild><NavLink
                             key={item.path}
                             to={item.path}
                             className="flex items-center gap-2 px-3 py-2 rounded-sm text-sm text-muted-foreground hover:text-foreground hover:bg-accent"
                           >
                             <ItemIcon className="w-4 h-4" />{item.name}
-                          </NavLink>
+                          </NavLink></DropdownMenuItem>
                         );
                       })}
-                    </div>
-                  </div>
-                </div>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               );
             })}
           </nav>

@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "migrations": [
+    {
+      "file": "supabase/migrations/releases/20261005090000_admin_operational_workspace.sql",
+      "sha256": "6308884b4ec20915bf19ad204b4977c1d2345180e0c151fa73ddd2fc8f6b086e"
+    },
+    {
+      "file": "supabase/migrations/releases/20261005093000_admin_triage_conflict_contract.sql",
+      "sha256": "4861d0852a7c13ea1d40adbdd89dfb4d43b87cb796ea769aa0cc805a923fcb3b"
+    }
+  ]
+}

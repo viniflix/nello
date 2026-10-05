@@ -260,6 +260,10 @@
       "destination": "/index.html"
     },
     {
+      "source": "/admin/integrations",
+      "destination": "/index.html"
+    },
+    {
       "source": "/f/:token",
       "destination": "/index.html"
     },

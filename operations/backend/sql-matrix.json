@@ -278,6 +278,11 @@
       "fixtures": [
         "supabase/fixtures/wave02/clinical-attachments.sql"
       ]
+    },
+    {
+      "file": "admin_operational_workspace.sql",
+      "kind": "assertion-suite",
+      "fixtures": []
     }
   ]
 }
