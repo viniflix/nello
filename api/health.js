@@ -9,7 +9,7 @@ export default async function handler(request, response) {
     response.setHeader('Allow', 'GET, HEAD');
     return response.status(405).end(JSON.stringify({ error: 'method_not_allowed' }));
   }
-  const health = await inspectHealth();
+  const health = await inspectHealth({ onDiagnostic: record => console.warn('dependency_health_check', record) });
   return response.status(health.status === 'operational' ? 200 : 503)
     .end(request.method === 'HEAD' ? undefined : JSON.stringify({ ...health, incidents: publicIncidents() }));
 }

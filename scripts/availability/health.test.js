@@ -47,6 +47,58 @@ describe('dependency health over real HTTP', () => {
       expect((await inspectHealth({ env, fetcher: () => { throw Error('must not fetch'); } })).status).toBe('unavailable');
     }
   });
+  it('recovers a transient Storage 502 with exactly one fresh probe and private bounded diagnostics', async () => {
+    let storageCalls=0;
+    const diagnostics=[];
+    const origin=await fixture((request,response)=>{
+      response.setHeader('Content-Type','application/json');
+      if(request.url==='/storage/v1/health' && ++storageCalls===1){response.statusCode=502;response.end(JSON.stringify({private:'PRIVATE_PROVIDER_SENTINEL'}));return;}
+      response.end(JSON.stringify(payloads[request.url]));
+    });
+    const result=await inspectHealth({env:{NELLO_LOCAL_QA:'isolated',SUPABASE_URL:origin,SUPABASE_ANON_KEY:'synthetic'},onDiagnostic:row=>diagnostics.push(row)});
+    expect(result.status).toBe('operational');expect(storageCalls).toBe(2);
+    expect(diagnostics).toHaveLength(1);
+    expect(diagnostics[0]).toMatchObject({dependency:'storage',attempts:2,failures:['http_502'],recovered:true});
+    expect(JSON.stringify([result,diagnostics])).not.toMatch(/PRIVATE_PROVIDER_SENTINEL|synthetic|127\.0\.0\.1/);
+  });
+  it('keeps persistent Storage failure unavailable and never retries denial or a malformed successful contract', async () => {
+    for(const status of [502,503,504,401,429,200]) {
+      let storageCalls=0;const diagnostics=[];
+      const origin=await fixture((request,response)=>{
+        response.setHeader('Content-Type','application/json');
+        if(request.url==='/storage/v1/health'){storageCalls++;response.statusCode=status;response.end('{}');return;}
+        response.end(JSON.stringify(payloads[request.url]));
+      });
+      const result=await inspectHealth({env:{NELLO_LOCAL_QA:'isolated',SUPABASE_URL:origin,SUPABASE_ANON_KEY:'synthetic'},onDiagnostic:row=>diagnostics.push(row)});
+      expect(result.status).toBe('degraded');expect(result.checks.storage).toBe('unavailable');
+      expect(storageCalls).toBe([502,503,504].includes(status)?2:1);
+      expect(diagnostics[0].recovered).toBe(false);
+    }
+  });
+  it('uses one total deadline across timeout and retry and preserves health if diagnostics fail', async () => {
+    let storageCalls=0;const diagnostics=[];
+    const origin=await fixture((request,response)=>{
+      if(request.url==='/storage/v1/health'){storageCalls++;return;}
+      response.setHeader('Content-Type','application/json');response.end(JSON.stringify(payloads[request.url]));
+    });
+    const started=performance.now();
+    const result=await inspectHealth({timeoutMs:90,totalBudgetMs:140,env:{NELLO_LOCAL_QA:'isolated',SUPABASE_URL:origin,SUPABASE_ANON_KEY:'synthetic'},onDiagnostic:row=>{diagnostics.push(row);throw Error('PRIVATE_LOGGING_FAILURE');}});
+    expect(result.status).toBe('degraded');expect(storageCalls).toBe(2);
+    expect(diagnostics[0]).toMatchObject({dependency:'storage',attempts:2,failures:['timeout','timeout'],recovered:false});
+    expect(performance.now()-started).toBeLessThan(450);
+  });
+  it('recovers after a bounded slow first attempt without retrying the other dependencies', async () => {
+    const calls={};const diagnostics=[];
+    const origin=await fixture((request,response)=>{
+      calls[request.url]=(calls[request.url]||0)+1;
+      if(request.url==='/storage/v1/health' && calls[request.url]===1)return;
+      response.setHeader('Content-Type','application/json');response.end(JSON.stringify(payloads[request.url]));
+    });
+    const result=await inspectHealth({timeoutMs:70,totalBudgetMs:180,env:{NELLO_LOCAL_QA:'isolated',SUPABASE_URL:origin,SUPABASE_ANON_KEY:'synthetic'},onDiagnostic:row=>diagnostics.push(row)});
+    expect(result.status).toBe('operational');expect(calls['/storage/v1/health']).toBe(2);
+    expect(calls['/auth/v1/settings']).toBe(1);expect(calls['/rest/v1/foods?select=id&limit=0']).toBe(1);
+    expect(diagnostics[0]).toMatchObject({failures:['timeout'],recovered:true});
+  });
 });
 
 describe('monitor response contract and burn rate', () => {

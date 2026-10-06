@@ -8,7 +8,7 @@ const checks = {
 
 // Only public settings and a zero-row catalog query are requested. Never use
 // service-role credentials or read clinical records in this endpoint.
-export async function inspectHealth({ env = process.env, fetcher = fetch, timeoutMs = 2500 } = {}) {
+export async function inspectHealth({ env = process.env, fetcher = fetch, timeoutMs = 2500, totalBudgetMs = 4500, onDiagnostic = () => {} } = {}) {
   const checkedAt = new Date().toISOString();
   const key = env.SUPABASE_ANON_KEY || env.VITE_SUPABASE_ANON_KEY;
   let origin;
@@ -26,14 +26,36 @@ export async function inspectHealth({ env = process.env, fetcher = fetch, timeou
       checks: { auth: 'unavailable', database: 'unavailable', storage: 'unavailable' } };
   }
   const entries = await Promise.all(Object.entries(checks).map(async ([name, check]) => {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
-    try {
+    const started = performance.now();
+    const failures = [];
+    let available = false;
+    let attempts = 0;
+    // Read-only probes: one transient retry, one shared deadline, no healthy cache.
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const remaining = totalBudgetMs - (performance.now() - started);
+      if (remaining <= 0) break;
+      attempts++;
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), Math.min(timeoutMs, remaining));
+      let reason = 'network';
+      let retryable = true;
+      try {
       const result = await fetcher(`${origin}${check.path}`, {
         headers: { apikey: key, Accept: 'application/json', ...(key.split('.').length === 3 ? { Authorization: `Bearer ${key}` } : {}) },
         signal: controller.signal, redirect: 'error',
       });
-      if (result.status !== 200 || !check.type.test(result.headers.get('content-type') || '')) throw new Error();
+      if (result.status !== 200) {
+        reason = [429, 502, 503, 504].includes(result.status) ? `http_${result.status}` : 'http_rejected';
+        retryable = [502, 503, 504].includes(result.status);
+        await result.body?.cancel();
+        throw new Error();
+      }
+      reason = 'invalid_contract';
+      retryable = false;
+      if (!check.type.test(result.headers.get('content-type') || '')) {
+        await result.body?.cancel();
+        throw new Error();
+      }
       // Read incrementally to bound memory, including malformed upstream bodies.
       const reader = result.body.getReader();
       const chunks = [];
@@ -49,9 +71,21 @@ export async function inspectHealth({ env = process.env, fetcher = fetch, timeou
       } finally { await reader.cancel(); }
       const body = JSON.parse(Buffer.concat(chunks).toString('utf8'));
       if (!check.valid(body)) throw new Error();
-      return [name, 'operational'];
-    } catch { return [name, 'unavailable']; }
-    finally { clearTimeout(timer); }
+      available = true;
+      break;
+      } catch {
+        if (controller.signal.aborted) { reason = 'timeout'; retryable = true; }
+        failures.push(reason);
+        if (!retryable) break;
+      } finally { clearTimeout(timer); }
+    }
+    if (failures.length) {
+      // No provider URL/body, token, free-form error, user, or clinical data.
+      // Logging failures cannot change the actual health outcome.
+      try { onDiagnostic({ dependency: name, attempts, failures, recovered: available,
+        durationMs: Math.round(performance.now() - started), checkedAt }); } catch { /* best effort */ }
+    }
+    return [name, available ? 'operational' : 'unavailable'];
   }));
   const statuses = Object.fromEntries(entries);
   const available = entries.filter(([, status]) => status === 'operational').length;
