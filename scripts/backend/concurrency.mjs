@@ -41,7 +41,7 @@ export function assertAtomicPair(label, results) {
 }
 
 export async function runRace({ database, label, key, scripts, query, session = startSession,
-  sleep = delay, attempts = 100, environment = process.env }) {
+  sleep = delay, attempts = 100, environment = process.env, assertPair = assertAtomicPair }) {
   assertRemoteDatabase(database, environment);
   if (!Number.isSafeInteger(key) || key <= 0 || scripts.length !== 2
     || scripts.some(script => !script.includes('__BARRIER__'))) throw Error('Invalid concurrency scenario.');
@@ -72,7 +72,7 @@ perform pg_sleep(0.05); end loop; end $$; select pg_advisory_unlock(${key});`));
     query(database, release);
     const results = await Promise.all(sessions.map(session => session.done));
     if (results[0].code !== 0) throw Error(`${label}: barrier failed: ${results[0].output}`);
-    assertAtomicPair(label, results.slice(1));
+    assertPair(label, results.slice(1));
     return { label, overlappingSessions: 2, results: results.slice(1) };
   } finally {
     try { query(database, release); } finally {

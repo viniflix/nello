@@ -55,4 +55,17 @@ describe('administrative Sentry handler',()=>{
   expect(JSON.stringify(body)).not.toContain('synthetic-private-ph');expect(mocks.quota).toHaveBeenCalledOnce();
   expect(mocks.fetch.mock.calls[2][0]).toBe('https://us.posthog.com/api/projects/341310/query/');
  });
+ it('returns only official release SHA/date, with cursor and no private descriptions',async()=>{
+  authorize();mocks.fetch.mockResolvedValueOnce(response([{version:'a'.repeat(40),dateCreated:'2026-10-01T12:00:00Z',authors:['PRIVATE_AUTHOR'],url:'PRIVATE_URL'},{version:'non-sha',dateCreated:'2026-10-01T12:00:00Z'}]));
+  const r=await handler(request({action:'releases',limit:20,cursor:'1:2:0'}));const b=await r.json();
+  expect(r.status).toBe(200);expect(b.items).toEqual([{version:'a'.repeat(40),created_at:'2026-10-01T12:00:00.000Z'}]);expect(b.omitted).toBe(1);expect(b.data_through).toBeNull();expect(JSON.stringify(b)).not.toContain('PRIVATE');
+  expect(mocks.fetch.mock.calls[2][0].searchParams.get('per_page')).toBe('20');
+ });
+ it('requires active admin authority before monitor history access and hides provider failure body',async()=>{
+  mocks.fetch.mockResolvedValueOnce(response({id:'synthetic-user'})).mockResolvedValueOnce(response({authorized:false}));
+  expect((await handler(request({action:'continuity'}))).status).toBe(403);expect(mocks.fetch).toHaveBeenCalledTimes(2);
+  authorize();mocks.fetch.mockResolvedValueOnce(response({private:'PRIVATE_BODY'},403));
+  const b=await (await handler(request({action:'continuity'}))).json();expect(b.state).toBe('unavailable');expect(b.assessment).toBeNull();expect(JSON.stringify(b)).not.toMatch(/PRIVATE|synthetic-server-token/);
+ });
+
 });

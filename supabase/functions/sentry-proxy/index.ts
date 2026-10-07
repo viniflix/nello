@@ -1,7 +1,8 @@
 import { edgeBoundary, timedFetch } from '../_shared/http.ts';
 import { consumeQuota } from '../_shared/quota.ts';
-import { parseSentryRequest, nextSentryCursor, safeSentryIssue, safeSentryEvent } from './contracts.js';
+import { parseSentryRequest, nextSentryCursor, safeSentryIssue, safeSentryEvent, safeSentryRelease, boundedReleaseJson } from './contracts.js';
 import { analyticsWindow, readProductAnalytics } from './productAnalytics.js';
+import { readContinuity } from './monitor.js';
 function corsHeaders(_req: Request) { return {}; }
 
 function json(req: Request, status: number, body: unknown) {
@@ -60,6 +61,9 @@ Deno.serve(edgeBoundary(async (req: Request) => {
     try { filter = parseSentryRequest(requestBody); }
     catch { return json(req, 400, { error: 'invalid_sentry_filter' }); }
     const { action, issueId, hours, limit, correlation, cursor, release, environment } = filter;
+    if (action === 'continuity') {
+      return json(req, 200, await readContinuity({ token: Deno.env.get('SENTRY_MONITOR_READ_TOKEN') || sentryToken, fetcher: timedFetch }));
+    }
     if (action === 'product_analytics') {
       let days;
       try { days=analyticsWindow(requestBody); } catch { return json(req,400,{error:'invalid_analytics_window'}); }
@@ -90,6 +94,18 @@ Deno.serve(edgeBoundary(async (req: Request) => {
         `${permittedHost ? posthogHost : 'https://us.posthog.com'}/api/projects/${posthogProject || '0'}/`, data => String(data.id) === posthogProject);
       return json(req, 200, { source: 'Endpoints de leitura dos provedores', generated_at: checkedAt, data_through: checkedAt,
         sources: [{ provider: 'Supabase', state: 'available', generated_at: checkedAt, data_through: checkedAt, reason: 'Auth e autorização administrativa confirmados', usage: null }, sentry, resend, posthog] });
+    }
+    if(action==='releases') {
+      const base={schema_version:1,source:`Sentry · releases registradas em ${sentryProject}`,generated_at:new Date().toISOString(),data_through:null};
+      if(!sentryToken)return json(req,200,{...base,state:'not_configured',items:[],next_cursor:null,omitted:0});
+      const url=new URL(`https://sentry.io/api/0/projects/${encodeURIComponent(sentryOrg)}/${encodeURIComponent(sentryProject)}/releases/`);
+      url.searchParams.set('per_page',String(limit));if(cursor)url.searchParams.set('cursor',cursor);
+      const response=await timedFetch(url,{headers:{Authorization:`Bearer ${sentryToken}`},redirect:'error'});
+      if(!response.ok)return json(req,502,{error:'release_source_unavailable',status:response.status});
+      const rows=await boundedReleaseJson(response);
+      if(!Array.isArray(rows)||rows.length>limit)throw Error('invalid_release_source');
+      const items=rows.map(safeSentryRelease).filter(Boolean);
+      return json(req,200,{...base,state:'available',items,next_cursor:nextSentryCursor(response.headers.get('link')),omitted:rows.length-items.length});
     }
     if (!sentryToken) return json(req, 503, { error: 'sentry_not_configured' });
 

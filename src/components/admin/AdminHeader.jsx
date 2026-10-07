@@ -18,6 +18,7 @@ const NAV_ITEMS = [
     { name: 'Pesquisa legada', path: '/admin/study', icon: Activity },
     { name: 'Incidentes', path: '/admin/bugs', icon: Bug },
     { name: 'Integrações', path: '/admin/integrations', icon: Settings },
+    { name: 'Inteligência', path: '/admin/intelligence', icon: Activity },
   ]},
   { section: 'Pessoas', items: [
     { name: 'Cadastros', path: '/admin/users', icon: Users },

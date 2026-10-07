@@ -20,6 +20,10 @@
     {
       "file": "supabase/migrations/releases/20261007170000_admin_support_workspace.sql",
       "sha256": "700bd98971ecee3633a2136eace1466a7bb51b7662055caf26efffb195613610"
+    },
+    {
+      "file": "supabase/migrations/releases/20261007210000_admin_intelligence_workspace.sql",
+      "sha256": "50f03badeec127cfd4c3e763991dadb70753046ec9ff976528f17c743cb0cc67"
     }
   ]
 }

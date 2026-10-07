@@ -1,0 +1,5 @@
+-- Reviewed intelligence APIs: active operator, MFA, bounded records and CAS history.
+insert into wave02_client_rpc_contract(signature,anonymous,authenticated,config,definition_md5,body_only) values('admin_intelligence_save(text,uuid,bigint,uuid,jsonb,text)',false,true,array['search_path=""']::text[],'9f3e95eb198378c14fb833b0a614def3',true);
+insert into wave02_client_rpc_contract(signature,anonymous,authenticated,config,definition_md5,body_only) values('admin_intelligence_overview(text,integer)',false,true,array['search_path=""']::text[],'bfaf2ebba5f776ccf679365b6443336a',true);
+insert into wave02_client_rpc_contract(signature,anonymous,authenticated,config,definition_md5,body_only) values('admin_intelligence_history(uuid,integer)',false,true,array['search_path=""']::text[],'f07600c8067c6f10c508bf646d1a94fa',true);
+insert into wave02_client_rpc_contract(signature,anonymous,authenticated,config,definition_md5,body_only) values('admin_intelligence_mute(text,bigint,integer,uuid,text)',false,true,array['search_path=""']::text[],'d5ade126ed1c2015b504b7f77ace6604',true);

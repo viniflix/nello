@@ -1,6 +1,6 @@
 export function parseSentryRequest(body = {}) {
   const action = body.action || 'issues';
-  if (!['issues', 'issues_page', 'latest_event', 'sources', 'product_analytics'].includes(action)) throw Error('invalid_action');
+  if (!['issues', 'issues_page', 'latest_event', 'sources', 'product_analytics', 'releases', 'continuity'].includes(action)) throw Error('invalid_action');
   const issueId = String(body.issue_id || '');
   const cursor = String(body.cursor || '');
   const release = String(body.release || '');
@@ -21,6 +21,21 @@ export function nextSentryCursor(link) {
   const next = (link || '').split(',').find(part => /rel="next"/.test(part) && /results="true"/.test(part));
   const cursor = next?.match(/cursor="([0-9:]{1,100})"/)?.[1];
   return cursor || null;
+}
+export function safeSentryRelease(value) {
+  if(typeof value?.version!=='string'||!/^[a-f0-9]{40}$/i.test(value.version))return null;
+  const created=Date.parse(value.dateCreated);
+  if(!Number.isFinite(created)||created>Date.now()+300000)throw Error('invalid_release_date');
+  return {version:value.version.toLowerCase(),created_at:new Date(created).toISOString()};
+}
+export async function boundedReleaseJson(response) {
+  if(!response.body)throw Error('missing_release_body');
+  const reader=response.body.getReader();let size=0;const chunks=[];
+  try {
+    for(;;){const chunk=await reader.read();if(chunk.done)break;size+=chunk.value.byteLength;if(size>524288)throw Error('release_body_too_large');chunks.push(chunk.value);}
+    const bytes=new Uint8Array(size);let offset=0;for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.byteLength;}
+    return JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes));
+  }finally{await reader.cancel().catch(()=>{});reader.releaseLock();}
 }
 const identifier = (value, fallback = 'Não informado') => typeof value === 'string' && /^[a-zA-Z0-9_.:-]{1,120}$/.test(value) ? value : fallback;
 export function safeSentryIssue(issue) {

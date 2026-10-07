@@ -1584,29 +1584,35 @@
     },
     {
       "slug": "sentry-proxy",
-      "version": 14,
+      "version": 17,
       "verify_jwt": true,
       "files": [
         {
           "file": "index.ts",
-          "sha256": "8ead8691eff84631f4f831569b6ae0e940df1ba96118ac629b9fe5c9fb380420",
+          "sha256": "79bc3c9d0002b78c2171b2e922bae231f5721591a24b726d0a70d1a950358f62",
           "matchedLocal": true,
-          "repositorySha256": "8ead8691eff84631f4f831569b6ae0e940df1ba96118ac629b9fe5c9fb380420"
+          "repositorySha256": "79bc3c9d0002b78c2171b2e922bae231f5721591a24b726d0a70d1a950358f62"
         },
         {
           "file": "contracts.js",
-          "repositorySha256": "bbe26cbdbd11ae806b3575966916fa3729d95e2dc3638b0111774ca808cfde99",
+          "repositorySha256": "4cd3a2601815720b571f2f878b658b2c43c417ee35f7399bd5e98b2421fc8196",
           "matchedLocal": true,
-          "sha256": "bbe26cbdbd11ae806b3575966916fa3729d95e2dc3638b0111774ca808cfde99"
+          "sha256": "4cd3a2601815720b571f2f878b658b2c43c417ee35f7399bd5e98b2421fc8196"
         },
         {
           "file": "productAnalytics.js",
           "repositorySha256": "5acde0fc9df5500b7b3e84dca93128ffac06251fd752bb31a8daf23bd176d726",
           "matchedLocal": true,
           "sha256": "5acde0fc9df5500b7b3e84dca93128ffac06251fd752bb31a8daf23bd176d726"
+        },
+        {
+          "file": "monitor.js",
+          "repositorySha256": "28111916ed41500f993758da4893833105ebecf3e8667d20e56954b95181a2db",
+          "matchedLocal": true,
+          "sha256": "28111916ed41500f993758da4893833105ebecf3e8667d20e56954b95181a2db"
         }
       ],
-      "sourcePolicy": "Published F2 version 14; five exact normalized files independently read back; JWT verification retained"
+      "sourcePolicy": "Published F4 v17 readback verified: releases and independent monitor aggregates; prior v16 source preserved privately; no clinical data capture"
     },
     {
       "slug": "openfoodfacts-proxy",

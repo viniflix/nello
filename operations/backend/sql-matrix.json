@@ -298,6 +298,11 @@
       "file": "admin_support_workspace.sql",
       "kind": "assertion-suite",
       "fixtures": []
+    },
+    {
+      "file": "admin_intelligence_workspace.sql",
+      "kind": "assertion-suite",
+      "fixtures": []
     }
   ]
 }

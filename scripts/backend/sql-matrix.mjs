@@ -5,6 +5,7 @@ import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { assertForwardRestoration } from './forward-restoration.mjs';
 import { runAmendmentConcurrency } from './concurrency.mjs';
+import { runIntelligenceConcurrency } from './intelligence-concurrency.mjs';
 import { validateSqlManifest } from './sql-manifest.mjs';
 import { candidateMigrations } from './candidate-migrations.mjs';
 
@@ -81,6 +82,11 @@ for (const [index, source] of manifest.sources.entries()) {
       contents[0]=contents[0].replace('create function pg_temp.assert_client_rpc_surface()',reviewed+'\ncreate function pg_temp.assert_client_rpc_surface()');
       hashes.push({file:'supabase/fixtures/wave02/admin-support-client-rpc-contract.sql',sha256:createHash('sha256').update(reviewed).digest('hex')});
     }
+    if(candidates.some(m=>m.file.includes('admin_intelligence_workspace'))) {
+      const reviewed=readFileSync('supabase/fixtures/wave02/admin-intelligence-client-rpc-contract.sql','utf8');
+      contents[0]=contents[0].replace('create function pg_temp.assert_client_rpc_surface()',reviewed+'\ncreate function pg_temp.assert_client_rpc_surface()');
+      hashes.push({file:'supabase/fixtures/wave02/admin-intelligence-client-rpc-contract.sql',sha256:createHash('sha256').update(reviewed).digest('hex')});
+    }
     // Reviewed candidate bodies come from the checksum-pinned migration, never from
     // the database under test. Unchanged RPCs retain the independently captured digest.
     if(candidates.length){
@@ -101,6 +107,10 @@ for (const [index, source] of manifest.sources.entries()) {
     log = docker('psql', ['-X', '-v', 'ON_ERROR_STOP=1', '-v', 'VERBOSITY=verbose', '-d', database], { input: script, encoding: 'utf8' });
     if (source.kind === 'concurrency-setup') {
       concurrency = await runAmendmentConcurrency({ database, query: sql });
+      log += `\n${JSON.stringify(concurrency, null, 2)}`;
+    }
+    if (source.file === 'admin_intelligence_workspace.sql') {
+      concurrency = await runIntelligenceConcurrency({ database, query: sql });
       log += `\n${JSON.stringify(concurrency, null, 2)}`;
     }
     passed = true;
