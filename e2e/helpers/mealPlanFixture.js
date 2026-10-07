@@ -3,8 +3,9 @@ import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 const fixture = JSON.parse(readFileSync('.backend-ci/browser-runtime/fixture.json'));
 if (fixture.url !== 'http://localhost:54321') throw Error('Disposable loopback stack required');
-export function seed() {
-    const patient = randomUUID(), actor = fixture.personas['nutritionist-a'].id;
+export function seed(actor = fixture.personas['nutritionist-a'].id) {
+    if (!/^[a-f0-9-]{36}$/.test(actor)) throw Error('Synthetic actor ID required');
+    const patient = randomUUID();
     const output = execFileSync('docker', ['exec', '-i', '-e', 'PGPASSWORD=postgres', 'supabase_db_nello-reconstruction', 'psql', '-X', '-At', '-h', '127.0.0.1', '-U', 'supabase_admin', '-d', 'postgres', '-v', 'ON_ERROR_STOP=1'], {
         encoding:'utf8', input:`INSERT INTO auth.users(id,aud,role,email,raw_user_meta_data) VALUES('${patient}','authenticated','authenticated','${patient}@example.invalid','{"name":"QA Meal Module","user_type":"patient"}');
         UPDATE public.user_profiles SET nutritionist_id='${actor}' WHERE id='${patient}';

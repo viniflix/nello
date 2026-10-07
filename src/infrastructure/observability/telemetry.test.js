@@ -25,6 +25,12 @@ vi.mock('@/infrastructure/analytics/posthog', () => ({
 }));
 
 describe('captureOperationalError', () => {
+  it('classifies only the reviewed missing-identity rule as expected, retaining unknown constraints', () => {
+    captureOperationalError({ code: '23514', message: 'responsible_document_identity_required' }, { operation: 'prepare_document' });
+    captureOperationalError({ code: '23514', message: 'PRIVATE_UNKNOWN_CONSTRAINT' }, { operation: 'prepare_document' });
+    expect(track.mock.calls.map(([, properties]) => properties.failure_kind)).toEqual(['expected', 'technical']);
+    expect(JSON.stringify(track.mock.calls)).not.toContain('PRIVATE_UNKNOWN_CONSTRAINT');
+  });
   it('distinguishes missing assets from API connectivity without forwarding asset URLs',()=>{
     captureOperationalError(new TypeError('Failed to fetch dynamically imported module: https://private.example/patient/id'),{operation:'render_domain'});
     expect(track).toHaveBeenCalledWith('operation_failed',expect.objectContaining({failure_reason:'asset_load_failure',failure_kind:'technical'}));

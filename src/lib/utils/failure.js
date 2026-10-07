@@ -13,6 +13,7 @@ export function classifyFailure(error, online = typeof navigator === 'undefined'
   if ([409,412].includes(status) || ['40001','PT409','23505'].includes(code)) return 'conflict';
   if (status === 404 || code === 'PGRST116') return 'missing';
   if (status === 429) return 'rate_limit';
+  if (code === '23514' && message === 'responsible_document_identity_required') return 'validation';
   if (status === 400 || ['22P02','22023','23502'].includes(code)) return 'validation';
   // Inspect the cause's category, never forward its arbitrary text or payload.
   if (cause) return classifyFailure({name:cause.name,code:cause.code,status:cause.status,message:cause.message},online);

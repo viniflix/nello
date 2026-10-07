@@ -13,6 +13,7 @@ import {
   signDocumentArtifact,
 } from '../api/document-queries';
 import { downloadCanonicalDocumentPdf } from '../pdf/render-canonical-document';
+import { documentFailurePresentation } from '../model/documentFailure';
 
 const STATUS = {
   draft: 'Rascunho documental',
@@ -23,21 +24,22 @@ const STATUS = {
 };
 
 const failureMessage = (error) => {
-  const value = error?.message || '';
-  if (value.includes('responsible_document_identity_required')) return 'Configure a identidade documental do profissional responsável antes de emitir.';
-  if (value.includes('document_artifact_revision_conflict')) return 'O documento foi atualizado em outra sessão. Recarregue antes de continuar.';
-  if (value.includes('document_signature_requires_current_verified_crn')) return 'A assinatura exige um CRN aprovado e vigente.';
-  return 'Não foi possível avançar o documento. Nenhum registro clínico foi alterado.';
+  return documentFailurePresentation(error).message;
 };
 
 export default function ClinicalDocumentPanel({ record, currentUserId }) {
+  if (!record || !['signed', 'corrected'].includes(record.status)) return null;
+  return <ClinicalDocumentActions key={JSON.stringify([record.patient_id, record.care_episode_id, record.id, currentUserId])} record={record} currentUserId={currentUserId} />;
+}
+
+function ClinicalDocumentActions({ record, currentUserId }) {
   const { toast } = useToast();
   const [artifact, setArtifact] = useState(null);
   const [state, setState] = useState('loading');
   const [error, setError] = useState(null);
 
   const load = useCallback(async () => {
-    if (!record?.patient_id || !record?.care_episode_id) return;
+    if (!record?.patient_id || !record?.care_episode_id) { setState('error'); setError('Os dados do atendimento não estão disponíveis. Atualize o registro antes de emitir.'); return; }
     setState('loading');
     setError(null);
     const result = await listDocumentArtifacts(record.patient_id, record.care_episode_id);
@@ -111,6 +113,7 @@ export default function ClinicalDocumentPanel({ record, currentUserId }) {
   const isResponsible = currentUserId === responsibleId;
   const isPreparer = isResponsible || currentUserId === record.student_id || currentUserId === record.supervisor_id;
   const busy = state === 'loading' || state === 'working';
+  const blocked = busy || state === 'error';
 
   return (
     <Card>
@@ -125,13 +128,13 @@ export default function ClinicalDocumentPanel({ record, currentUserId }) {
         {!artifact ? (
           <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-muted-foreground">O registro está assinado, mas ainda não possui sua versão documental oficial.</p>
-            {isPreparer ? <Button onClick={() => void create()} disabled={busy}>{busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}Preparar documento</Button> : null}
+            {isPreparer ? <Button onClick={() => void create()} disabled={blocked}>{busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}Preparar documento</Button> : null}
           </div>
         ) : null}
-        {artifact?.status === 'draft' ? <div className="flex flex-wrap items-center justify-between gap-3"><p className="text-sm">Revise o preview da identidade antes de congelar esta versão.</p><Button onClick={() => void finalize()} disabled={busy}>{busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}Finalizar documento</Button></div> : null}
-        {artifact?.status === 'finalized' ? <div className="flex flex-wrap items-center justify-between gap-3"><p className="text-sm">Hash gerado. Somente o nutricionista responsável pode concluir a assinatura.</p>{isResponsible ? <Button onClick={() => void sign()} disabled={busy}>{busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileSignature className="mr-2 h-4 w-4" />}Assinar documento</Button> : <Badge variant="outline">Aguardando nutricionista responsável</Badge>}</div> : null}
-        {artifact?.status === 'signed' ? <div className="space-y-3"><Alert><ShieldCheck className="h-4 w-4 text-emerald-600" /><AlertDescription><strong>Documento autêntico.</strong> Hash SHA-256 preservado e código público gerado sem expor dados do paciente.</AlertDescription></Alert><Button variant="outline" onClick={() => void download()} disabled={busy}><Download className="mr-2 h-4 w-4" />Baixar PDF oficial</Button></div> : null}
-        {artifact && state === 'error' ? <Button variant="outline" size="sm" onClick={() => void load()}><RefreshCw className="mr-2 h-4 w-4" />Recarregar</Button> : null}
+        {artifact?.status === 'draft' ? <div className="flex flex-wrap items-center justify-between gap-3"><p className="text-sm">Revise o preview da identidade antes de congelar esta versão.</p><Button onClick={() => void finalize()} disabled={blocked}>{busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}Finalizar documento</Button></div> : null}
+        {artifact?.status === 'finalized' ? <div className="flex flex-wrap items-center justify-between gap-3"><p className="text-sm">Hash gerado. Somente o nutricionista responsável pode concluir a assinatura.</p>{isResponsible ? <Button onClick={() => void sign()} disabled={blocked}>{busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileSignature className="mr-2 h-4 w-4" />}Assinar documento</Button> : <Badge variant="outline">Aguardando nutricionista responsável</Badge>}</div> : null}
+        {artifact?.status === 'signed' ? <div className="space-y-3"><Alert><ShieldCheck className="h-4 w-4 text-emerald-600" /><AlertDescription><strong>Documento autêntico.</strong> Hash SHA-256 preservado e código público gerado sem expor dados do paciente.</AlertDescription></Alert><Button variant="outline" onClick={() => void download()} disabled={blocked}><Download className="mr-2 h-4 w-4" />Baixar PDF oficial</Button></div> : null}
+        {state === 'error' ? <Button variant="outline" size="sm" onClick={() => void load()}><RefreshCw className="mr-2 h-4 w-4" />Recarregar</Button> : null}
       </CardContent>
     </Card>
   );
