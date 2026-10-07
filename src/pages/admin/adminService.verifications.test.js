@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   listProfessionalVerifications,
-  reviewProfessionalVerification
+  reviewProfessionalVerification,
+  decideAdminVerification
 } from '@/services/adminService';
 
 const { rpc } = vi.hoisted(() => ({ rpc: vi.fn() }));
@@ -27,5 +28,14 @@ describe('admin verification service', () => {
     });
     expect(result.error?.message).toBe('Justificativa obrigatória.');
     expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it('does not confirm malformed or mismatched decisions after a successful transport', async () => {
+    for (const data of [null, { success: false }, { success: true, status: 'rejected', replayed: false }, { success: true, status: 'approved' }]) {
+      rpc.mockResolvedValue({ data, error: null });
+      expect((await decideAdminVerification({ decision: 'approved' })).error).toBeTruthy();
+    }
+    rpc.mockResolvedValue({ data: { success: true, status: 'approved', replayed: true }, error: null });
+    expect((await decideAdminVerification({ decision: 'approved' })).error).toBeNull();
   });
 });

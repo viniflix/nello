@@ -1,0 +1,3 @@
+-- Reviewed private administrative decisions: bounded queue, AAL2, role guard, revision and nonce.
+insert into wave02_client_rpc_contract(signature,anonymous,authenticated,config,definition_md5,body_only) values('admin_verification_queue(text,text,integer)',false,true,array['search_path=""']::text[],'4650d4c9f92c78d3eb0f55bafad36086',true);
+insert into wave02_client_rpc_contract(signature,anonymous,authenticated,config,definition_md5,body_only) values('admin_decide_verification(uuid,timestamp with time zone,uuid,text,text,text,timestamp with time zone)',false,true,array['search_path=""']::text[],'7719ada1bfd08b0398a778c48930abf6',true);

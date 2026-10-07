@@ -1,23 +1,25 @@
-import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { motion } from 'framer-motion';
 import { format, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
   ArrowLeft, User, Mail, Phone, BookOpen, Award,
-  Users, Calendar, Activity, Clock, MapPin, ChevronRight
+  Users, Calendar, Activity, Clock
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
-import { supabase } from '@/infrastructure/supabase/client';
+import { getAdminNutritionistDetail } from '@/services/adminService';
+import { useAdminSource } from '@/portals/admin/hooks/useAdminSource';
+import AdminSourceStatus from '@/portals/admin/components/AdminSourceStatus';
 
 const formatAge = (dateStr) => {
   if (!dateStr) return null;
   try {
-    const days = differenceInDays(new Date(), new Date(dateStr));
+    const parsed = new Date(dateStr);
+    if (!Number.isFinite(parsed.getTime()) || parsed > new Date()) return '—';
+    const days = differenceInDays(new Date(), parsed);
     if (days === 0) return 'Hoje';
     if (days === 1) return 'Ontem';
     if (days < 7) return `${days} dias atrás`;
@@ -39,21 +41,9 @@ const goalLabels = {
 export default function AdminNutritionistDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [data, setData] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    if (!id) return;
-    const load = async () => {
-      setIsLoading(true);
-      const { data: result, error } = await supabase.rpc('get_nutritionist_detail', {
-        p_nutritionist_id: id,
-      });
-      if (!error && result) setData(result);
-      setIsLoading(false);
-    };
-    load();
-  }, [id]);
+  const query = useAdminSource(['person', id], () => getAdminNutritionistDetail(id));
+  const data = query.data?.person;
+  const isLoading = query.isPending && !query.data;
 
   return (
     <div className="space-y-6">
@@ -68,12 +58,13 @@ export default function AdminNutritionistDetailPage() {
         Voltar à Lista
       </Button>
 
+      <AdminSourceStatus query={query} queryOnly />
       {isLoading ? (
         <div className="space-y-6">
           <Skeleton className="h-32 w-full rounded-xl" />
           <Skeleton className="h-64 w-full rounded-xl" />
         </div>
-      ) : !data ? (
+      ) : !data && query.isError ? null : !data ? (
         <div className="flex flex-col items-center justify-center py-24 text-muted-foreground">
           <User className="w-12 h-12 mb-3 opacity-40" />
           <p>Nutricionista não encontrado.</p>
@@ -81,7 +72,7 @@ export default function AdminNutritionistDetailPage() {
       ) : (
         <>
           {/* Profile Card */}
-          <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }}>
+          <div>
             <Card>
               <CardContent className="pt-6">
                 <div className="flex flex-col md:flex-row gap-6 items-center md:items-start text-center md:text-left">
@@ -155,7 +146,7 @@ export default function AdminNutritionistDetailPage() {
                 <div className="flex flex-wrap gap-4 mt-4 pt-4 border-t text-xs text-muted-foreground">
                   <span className="flex items-center gap-1.5">
                     <Calendar className="w-3.5 h-3.5" />
-                    Cadastro: {data.created_at ? format(new Date(data.created_at), "dd 'de' MMM 'de' yyyy", { locale: ptBR }) : '—'}
+                    Cadastro: {Number.isFinite(Date.parse(data.created_at)) ? format(new Date(data.created_at), "dd 'de' MMM 'de' yyyy", { locale: ptBR }) : '—'}
                   </span>
                   <span className="flex items-center gap-1.5">
                     <Clock className="w-3.5 h-3.5" />
@@ -164,15 +155,15 @@ export default function AdminNutritionistDetailPage() {
                 </div>
               </CardContent>
             </Card>
-          </motion.div>
+          </div>
 
           {/* Patients Table */}
-          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+          <div>
             <Card>
               <CardHeader>
                 <div className="flex items-center gap-2">
                   <Users className="w-5 h-5 text-primary" />
-                  <CardTitle>Pacientes Vinculados</CardTitle>
+                  <CardTitle className="tracking-normal [word-spacing:.08em]">Pacientes vinculados</CardTitle>
                 </div>
                 <CardDescription>
                   {data.patients_count ?? 0} paciente{data.patients_count !== 1 ? 's' : ''} vinculado{data.patients_count !== 1 ? 's' : ''} a {data.name}
@@ -229,7 +220,7 @@ export default function AdminNutritionistDetailPage() {
                 )}
               </CardContent>
             </Card>
-          </motion.div>
+          </div>
         </>
       )}
     </div>

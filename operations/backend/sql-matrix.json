@@ -288,6 +288,11 @@
       "file": "admin_product_analytics.sql",
       "kind": "assertion-suite",
       "fixtures": []
+    },
+    {
+      "file": "admin_verification_actions.sql",
+      "kind": "assertion-suite",
+      "fixtures": []
     }
   ]
 }

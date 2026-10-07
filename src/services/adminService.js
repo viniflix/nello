@@ -2,6 +2,29 @@ import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import { supabase } from '@/infrastructure/supabase/client';
 import { validateBriefing } from '@/portals/admin/model/sourceState';
 import { validateProductMetrics } from '@/portals/admin/model/productMetrics';
+import { validateVerificationQueue } from '@/portals/admin/model/verificationDecision';
+
+export async function getAdminVerificationQueue({ status = null, role = null, page = 1 } = {}) {
+  const { data, error } = await supabase.rpc('admin_verification_queue', { p_status: status, p_role: role, p_page: page });
+  if (error) return { data: null, error };
+  try { return { data: validateVerificationQueue(data), error: null }; }
+  catch (failure) { return { data: null, error: failure }; }
+}
+
+export async function decideAdminVerification({ verificationId, expected, nonce, decision, reason, sourceUrl, validUntil }) {
+  const { data, error } = await supabase.rpc('admin_decide_verification', {
+    p_id: verificationId, p_expected: expected, p_nonce: nonce, p_decision: decision,
+    p_reason: reason, p_source_url: sourceUrl, p_valid_until: validUntil,
+  });
+  if (error) return { data: null, error };
+  if (data?.success !== true || data.status !== decision || typeof data.replayed !== 'boolean') return { data: null, error: new Error('A resposta da decisão não foi confirmada. Atualize a fila antes de prosseguir.') };
+  return { data, error: null };
+}
+
+export async function getAdminNutritionistDetail(id) {
+  const { data, error } = await supabase.rpc('get_nutritionist_detail', { p_nutritionist_id: id });
+  return { data: error ? null : { person: data, generated_at: new Date().toISOString(), source: 'Banco Nello · detalhe cadastral' }, error };
+}
 
 export async function getAdminProductMetrics(days=30) {
   if (![30,90,180].includes(days)) return {data:null,error:new Error('invalid_analytics_window')};
@@ -32,7 +55,7 @@ export async function listAdminPeople({ search = '', type = 'all', page = 1 } = 
     p_type: type,
     p_page: page,
   });
-  return { data, error };
+  return { data: data ? { ...data, generated_at: new Date().toISOString(), source: 'Banco Nello · consulta do diretório' } : null, error };
 }
 
 export async function getAdminWorkflowOverview() {

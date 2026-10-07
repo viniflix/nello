@@ -12,6 +12,10 @@
     {
       "file": "supabase/migrations/releases/20261005100000_admin_product_analytics.sql",
       "sha256": "5e6b251629156fec252f33249c7582d8bdabde6ec9f2f432e7aed5d4c0ae4d38"
+    },
+    {
+      "file": "supabase/migrations/releases/20261007150000_admin_verification_actions.sql",
+      "sha256": "46b0a9c6cc7c588914f3ea79a6c336c5bb72e1cb4d8f8348985baa247fb5ba4b"
     }
   ]
 }
