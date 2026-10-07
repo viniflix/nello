@@ -8,6 +8,10 @@
     {
       "file": "supabase/migrations/releases/20261005093000_admin_triage_conflict_contract.sql",
       "sha256": "4861d0852a7c13ea1d40adbdd89dfb4d43b87cb796ea769aa0cc805a923fcb3b"
+    },
+    {
+      "file": "supabase/migrations/releases/20261005100000_admin_product_analytics.sql",
+      "sha256": "5e6b251629156fec252f33249c7582d8bdabde6ec9f2f432e7aed5d4c0ae4d38"
     }
   ]
 }

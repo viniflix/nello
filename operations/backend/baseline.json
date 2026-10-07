@@ -1584,23 +1584,29 @@
     },
     {
       "slug": "sentry-proxy",
-      "version": 13,
+      "version": 14,
       "verify_jwt": true,
       "files": [
         {
           "file": "index.ts",
-          "sha256": "bbb7615c9d1678f0e9dbd02fa197f9f00f8615f324fec55b10166329da407b31",
+          "sha256": "8ead8691eff84631f4f831569b6ae0e940df1ba96118ac629b9fe5c9fb380420",
           "matchedLocal": true,
-          "repositorySha256": "bbb7615c9d1678f0e9dbd02fa197f9f00f8615f324fec55b10166329da407b31"
+          "repositorySha256": "8ead8691eff84631f4f831569b6ae0e940df1ba96118ac629b9fe5c9fb380420"
         },
         {
           "file": "contracts.js",
-          "repositorySha256": "b4774170537aca3db6bb93d008200f9a236f2996bd3b4ec7be79b70ad795bd15",
+          "repositorySha256": "bbe26cbdbd11ae806b3575966916fa3729d95e2dc3638b0111774ca808cfde99",
           "matchedLocal": true,
-          "sha256": "b4774170537aca3db6bb93d008200f9a236f2996bd3b4ec7be79b70ad795bd15"
+          "sha256": "bbe26cbdbd11ae806b3575966916fa3729d95e2dc3638b0111774ca808cfde99"
+        },
+        {
+          "file": "productAnalytics.js",
+          "repositorySha256": "5acde0fc9df5500b7b3e84dca93128ffac06251fd752bb31a8daf23bd176d726",
+          "matchedLocal": true,
+          "sha256": "5acde0fc9df5500b7b3e84dca93128ffac06251fd752bb31a8daf23bd176d726"
         }
       ],
-      "sourcePolicy": "Published version 13; source readback matched all four uploaded files on 2026-10-05. Previous baseline preserved in Git history."
+      "sourcePolicy": "Published F2 version 14; five exact normalized files independently read back; JWT verification retained"
     },
     {
       "slug": "openfoodfacts-proxy",

@@ -14,7 +14,8 @@ const NAV_ITEMS = [
   { section: 'Visão geral', items: [{ name: 'Operação', path: '/admin/dashboard', icon: LayoutDashboard }] },
   { section: 'Operação', items: [
     { name: 'Jornadas', path: '/admin/operations', icon: Activity },
-    { name: 'Uso da plataforma', path: '/admin/study', icon: Activity },
+    { name: 'Uso e valor', path: '/admin/analytics', icon: Activity },
+    { name: 'Pesquisa legada', path: '/admin/study', icon: Activity },
     { name: 'Incidentes', path: '/admin/bugs', icon: Bug },
     { name: 'Integrações', path: '/admin/integrations', icon: Settings },
   ]},

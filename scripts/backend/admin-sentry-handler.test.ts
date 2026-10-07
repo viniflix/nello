@@ -39,4 +39,20 @@ describe('administrative Sentry handler',()=>{
  it('rejects malformed fixed filters before provider access',async()=>{
   authorize();expect((await handler(request({action:'issues_page',cursor:'https://evil.example'}))).status).toBe(400);expect(mocks.fetch).toHaveBeenCalledTimes(2);
  });
+ it('requires administrative authority for analytics and refuses arbitrary queries before provider calls',async()=>{
+  mocks.fetch.mockResolvedValueOnce(response({id:'synthetic-user'})).mockResolvedValueOnce(response({authorized:false}));
+  expect((await handler(request({action:'product_analytics',window_days:30}))).status).toBe(403);
+  expect(mocks.fetch).toHaveBeenCalledTimes(2);
+  authorize();expect((await handler(request({action:'product_analytics',window_days:30,query:'SELECT private_data'}))).status).toBe(400);
+  expect(mocks.fetch).toHaveBeenCalledTimes(4);
+ });
+ it('serves aggregate analytics without requiring a Sentry token and returns no credentials',async()=>{
+  const env:Record<string,string>={SUPABASE_URL:'https://database.example',SUPABASE_ANON_KEY:'synthetic-anon',POSTHOG_PERSONAL_API_KEY:'synthetic-private-ph',POSTHOG_PROJECT_ID:'341310'};
+  vi.stubGlobal('Deno',{env:{get:(key:string)=>env[key]}});
+  authorize();mocks.fetch.mockResolvedValueOnce(response({columns:['event','outcome','captures','observed_people','last_observed_at'],results:[]}));
+  const result=await handler(request({action:'product_analytics',window_days:30}));const body=await result.json();
+  expect(result.status).toBe(200);expect(body.state).toBe('available');expect(body.rows).toEqual([]);
+  expect(JSON.stringify(body)).not.toContain('synthetic-private-ph');expect(mocks.quota).toHaveBeenCalledOnce();
+  expect(mocks.fetch.mock.calls[2][0]).toBe('https://us.posthog.com/api/projects/341310/query/');
+ });
 });

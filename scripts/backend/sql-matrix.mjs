@@ -79,6 +79,13 @@ for (const [index, source] of manifest.sources.entries()) {
         return `update wave02_client_rpc_contract set definition_md5='${digest}',body_only=true where signature like '${match[1]}(%';`;
       })).join('\n');
       contents[0]=contents[0].replace('create function pg_temp.assert_client_rpc_surface()',overrides+'\ncreate function pg_temp.assert_client_rpc_surface()');
+      // Explicitly reviewed final admin bodies supersede earlier forward repairs.
+      // Derive only from the pinned source, never from the database under test.
+      if(candidates.some(m=>m.file.includes('admin_product_analytics'))) {
+        const reviewed=readFileSync('supabase/fixtures/wave02/admin-client-rpc-contract.sql','utf8')
+          .split('\n').filter(line=>line.startsWith('update wave02_client_rpc_contract ')).join('\n');
+        contents[0]=contents[0].replace('create function pg_temp.assert_client_rpc_surface()',reviewed+'\ncreate function pg_temp.assert_client_rpc_surface()');
+      }
     }
     const script = contents.join('\n');
     log = docker('psql', ['-X', '-v', 'ON_ERROR_STOP=1', '-v', 'VERBOSITY=verbose', '-d', database], { input: script, encoding: 'utf8' });

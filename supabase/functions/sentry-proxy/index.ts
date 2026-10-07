@@ -1,6 +1,7 @@
 import { edgeBoundary, timedFetch } from '../_shared/http.ts';
 import { consumeQuota } from '../_shared/quota.ts';
 import { parseSentryRequest, nextSentryCursor, safeSentryIssue, safeSentryEvent } from './contracts.js';
+import { analyticsWindow, readProductAnalytics } from './productAnalytics.js';
 function corsHeaders(_req: Request) { return {}; }
 
 function json(req: Request, status: number, body: unknown) {
@@ -59,6 +60,12 @@ Deno.serve(edgeBoundary(async (req: Request) => {
     try { filter = parseSentryRequest(requestBody); }
     catch { return json(req, 400, { error: 'invalid_sentry_filter' }); }
     const { action, issueId, hours, limit, correlation, cursor, release, environment } = filter;
+    if (action === 'product_analytics') {
+      let days;
+      try { days=analyticsWindow(requestBody); } catch { return json(req,400,{error:'invalid_analytics_window'}); }
+      return json(req,200,await readProductAnalytics({days,host:Deno.env.get('POSTHOG_API_HOST') || 'https://us.posthog.com',
+        project:Deno.env.get('POSTHOG_PROJECT_ID'),token:Deno.env.get('POSTHOG_PERSONAL_API_KEY'),fetcher:timedFetch}));
+    }
     if (action === 'sources') {
       const checkedAt = new Date().toISOString();
       const check = async (provider: string, token: string | undefined, url: string, validate: (data: any) => boolean) => {

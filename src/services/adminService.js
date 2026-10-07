@@ -1,6 +1,15 @@
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import { supabase } from '@/infrastructure/supabase/client';
 import { validateBriefing } from '@/portals/admin/model/sourceState';
+import { validateProductMetrics } from '@/portals/admin/model/productMetrics';
+
+export async function getAdminProductMetrics(days=30) {
+  if (![30,90,180].includes(days)) return {data:null,error:new Error('invalid_analytics_window')};
+  const {data,error}=await supabase.rpc('admin_product_analytics',{p_window_days:days});
+  if(error)return {data:null,error};
+  try {return {data:validateProductMetrics(data),error:null};} catch(error){return {data:null,error};}
+}
+export const getAdminProductCaptures = (days=30) => supabase.functions.invoke('sentry-proxy',{method:'POST',body:{action:'product_analytics',window_days:days}});
 
 export async function getAdminBriefing() {
   const { data, error } = await supabase.rpc('admin_operational_briefing');

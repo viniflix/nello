@@ -1,6 +1,6 @@
 export function parseSentryRequest(body = {}) {
   const action = body.action || 'issues';
-  if (!['issues', 'issues_page', 'latest_event', 'sources'].includes(action)) throw Error('invalid_action');
+  if (!['issues', 'issues_page', 'latest_event', 'sources', 'product_analytics'].includes(action)) throw Error('invalid_action');
   const issueId = String(body.issue_id || '');
   const cursor = String(body.cursor || '');
   const release = String(body.release || '');

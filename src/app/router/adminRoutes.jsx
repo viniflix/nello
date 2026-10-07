@@ -17,6 +17,7 @@ const AdminSecurityPage = route('security', () => import('@/pages/admin/AdminSec
 const AdminVerificationsPage = route('verifications', () => import('@/pages/admin/AdminVerificationsPage.jsx'));
 const AdminPrivacyRequestsPage = route('privacy', () => import('@/pages/admin/AdminPrivacyRequestsPage.jsx'));
 const AdminIntegrationsPage = route('integrations', () => import('@/pages/admin/AdminIntegrationsPage.jsx'));
+const AdminAnalyticsPage = route('analytics', () => import('@/pages/admin/AdminAnalyticsPage.jsx'));
 
 function LoadingFallback() {
   return <div className="flex items-center justify-center min-h-dvh"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" /></div>;
@@ -37,6 +38,7 @@ export const adminRoutes = (
       <Route path="/admin/verifications" element={<Suspense fallback={<LoadingFallback />}><AdminVerificationsPage /></Suspense>} />
       <Route path="/admin/privacy" element={<Suspense fallback={<LoadingFallback />}><AdminPrivacyRequestsPage /></Suspense>} />
       <Route path="/admin/integrations" element={<Suspense fallback={<LoadingFallback />}><AdminIntegrationsPage /></Suspense>} />
+      <Route path="/admin/analytics" element={<Suspense fallback={<LoadingFallback />}><AdminAnalyticsPage /></Suspense>} />
     </Route>
   </>
 );
