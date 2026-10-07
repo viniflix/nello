@@ -37,7 +37,8 @@ export const sessionChangedDuringWrite = async (error, expectedUserId) => {
 export const getFeedTaskStates = async (nutritionistId) => {
     try {
         if (!await ownsCurrentSession(nutritionistId)) return { data: [], error: null, skipped: true };
-        const { data, error } = await supabase.rpc('get_my_feed_task_states');
+        const { data, error } = await retryNetworkRead(() => supabase.rpc('get_my_feed_task_states'),
+            () => ownsCurrentSession(nutritionistId), { httpStatuses: [502, 503, 504] });
 
         if (error) throw error;
         return { data: data || [], error: null };
@@ -297,11 +298,11 @@ export const getComprehensiveActivityFeed = async (nutritionistId, limit = 20) =
 
     try {
         // OTIMIZADO: Usa função SQL que consolida 8 queries em 1
-        const { data, error } = await supabase
+        const { data, error } = await retryNetworkRead(() => supabase
             .rpc('get_comprehensive_activity_feed_optimized', {
                 p_nutritionist_id: nutritionistId,
                 p_limit: limit
-            });
+            }), () => ownsCurrentSession(nutritionistId), { httpStatuses: [502, 503, 504] });
 
         if (error) throw error;
 

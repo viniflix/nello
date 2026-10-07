@@ -32,6 +32,15 @@ test('feed retry really saves the failed subset and removes its warning',async({
  const patients=Array.from({length:26},(_,index)=>createPatient(fixture.personas['nutritionist-a'].id,`QA Retry ${index}`));
  try {
  let fail=true;const failed=new Set();const retried=new Set();
+ const gatewayFailures=new Map();
+ // Reproduce the real gateway failures seen in reconstruction. Only the first
+ // read fails; the authorized retry must reach the actual local SQL service.
+ for(const rpc of ['get_my_feed_task_states','get_comprehensive_activity_feed_optimized']) {
+  await page.route(`**/rest/v1/rpc/${rpc}`,async route=>{
+   if(!gatewayFailures.has(rpc)){gatewayFailures.set(rpc,1);return route.fulfill({status:502,contentType:'application/json',body:JSON.stringify({message:'Synthetic gateway unavailable'})});}
+   gatewayFailures.set(rpc,gatewayFailures.get(rpc)+1);await route.continue();
+  });
+ }
  await page.route('**/rest/v1/rpc/save_feed_task',async route=>{
   const body=route.request().postDataJSON();const key=body.p_values.source_type+':'+body.p_values.source_id;
   if(fail){failed.add(key);await route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({code:'PGRST003',message:'Synthetic transient outage'})});}
@@ -39,6 +48,8 @@ test('feed retry really saves the failed subset and removes its warning',async({
  });
  await login(page);
  await expect(page.getByRole('alert').filter({hasText:'alterações do feed não foram salvas'})).toBeVisible();
+ expect([...gatewayFailures.values()]).toHaveLength(2);
+ expect([...gatewayFailures.values()].every(attempts=>attempts>=2)).toBe(true);
  expect(failed.size).toBe(100);fail=false;
  await page.getByRole('button',{name:'Tentar salvar novamente',exact:true}).click();
  await expect(page.getByRole('alert').filter({hasText:'alterações do feed não foram salvas'})).toHaveCount(0);

@@ -23,4 +23,26 @@ describe('bounded retry for explicit reads', () => {
     await retryNetworkRead(read, () => false);
     expect(read).toHaveBeenCalledTimes(1);
   });
+  it('recovers only explicitly allowed gateway failures in read results', async () => {
+    for (const status of [502, 503, 504]) {
+      const read = vi.fn().mockResolvedValueOnce({ error: { message: 'Gateway unavailable' }, status })
+        .mockResolvedValueOnce({ data: ['confirmed'], error: null });
+      expect(await retryNetworkRead(read, () => true, { httpStatuses: [502, 503, 504] })).toEqual({ data: ['confirmed'], error: null });
+      expect(read).toHaveBeenCalledTimes(2);
+    }
+    for (const status of [400, 401, 403, 429, 500]) {
+      const read = vi.fn().mockResolvedValue({ error: { message: 'Denied' }, status });
+      await retryNetworkRead(read, () => true, { httpStatuses: [502, 503, 504] });
+      expect(read).toHaveBeenCalledTimes(1);
+    }
+  });
+  it('retains persistent gateway errors and prevents retries after identity changes', async () => {
+    const unavailable = { error: { message: 'Gateway unavailable' }, status: 502 };
+    const read = vi.fn().mockResolvedValue(unavailable);
+    expect(await retryNetworkRead(read, () => true, { httpStatuses: [502] })).toEqual(unavailable);
+    expect(read).toHaveBeenCalledTimes(2);
+    read.mockClear();
+    expect(await retryNetworkRead(read, () => false, { httpStatuses: [502] })).toEqual(unavailable);
+    expect(read).toHaveBeenCalledTimes(1);
+  });
 });
