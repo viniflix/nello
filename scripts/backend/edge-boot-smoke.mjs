@@ -10,9 +10,10 @@ const api = new URL(status.API_URL);
 if (api.origin !== 'http://127.0.0.1:54321' || !status.ANON_KEY) throw Error('Unexpected isolated API endpoint');
 const baseline = JSON.parse(readFileSync('operations/backend/baseline.json', 'utf8'));
 const storage = JSON.parse(readFileSync('operations/backend/wave07-edge-functions.json', 'utf8'));
+const admin=JSON.parse(readFileSync('operations/backend/admin-edge-functions.json','utf8'));
 const retired = new Set(['sentry-issues', 'sentry-test']);
 const results = [];
-for (const fn of [...baseline.functions, ...storage.functions]) {
+for (const fn of [...baseline.functions, ...storage.functions,...admin.functions]) {
   const expected = retired.has(fn.slug) ? 410 : 405;
   const started = Date.now();
   const response = await fetch(new URL(`/functions/v1/${fn.slug}`, api), {

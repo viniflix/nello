@@ -293,6 +293,11 @@
       "file": "admin_verification_actions.sql",
       "kind": "assertion-suite",
       "fixtures": []
+    },
+    {
+      "file": "admin_support_workspace.sql",
+      "kind": "assertion-suite",
+      "fixtures": []
     }
   ]
 }

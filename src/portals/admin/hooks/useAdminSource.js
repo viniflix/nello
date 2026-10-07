@@ -1,7 +1,7 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
-function accessDenied(error) {
+export function accessDenied(error) {
   return ['42501', 'PGRST301', 'PGRST302'].includes(error?.code)
     || [401, 403].includes(Number(error?.status || error?.statusCode || error?.context?.status));
 }

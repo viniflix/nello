@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "functions": [
+    {
+      "slug": "admin-support",
+      "verifyJwt": true,
+      "deploymentStatus": "ACTIVE",
+      "files": [
+        {
+          "file": "contracts.js",
+          "repositorySha256": "f078ced9ed1196152cf420fd889e62886294826b669f002cd54d2d84f327e06f"
+        },
+        {
+          "file": "deno.json",
+          "repositorySha256": "c48140b805245c58494fa1f36416fcf34878b2ad4f105d0590c6f68d6f51df77"
+        },
+        {
+          "file": "gateway.js",
+          "repositorySha256": "a481fc1bdfc08d9b440bfdcb38046ed0356c75dd402f766747fc4c4f34641d55"
+        },
+        {
+          "file": "index.ts",
+          "repositorySha256": "27d35048948e3ef1b11673d3a55da4037dad1a51ab8569feefcc2ee0fd8c2179"
+        }
+      ],
+      "productionVersion": 1
+    },
+    {
+      "slug": "support-webhook",
+      "verifyJwt": false,
+      "deploymentStatus": "ACTIVE",
+      "files": [
+        {
+          "file": "index.ts",
+          "repositorySha256": "ff58e59e588414b4b3baeb50b73c485ff22522e9cb7be89571db3d64d4045149"
+        }
+      ],
+      "productionVersion": 1
+    }
+  ]
+}

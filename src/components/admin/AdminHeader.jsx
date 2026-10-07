@@ -22,6 +22,7 @@ const NAV_ITEMS = [
   { section: 'Pessoas', items: [
     { name: 'Cadastros', path: '/admin/users', icon: Users },
     { name: 'Verificações', path: '/admin/verifications', icon: BadgeCheck },
+    { name: 'Atendimento', path: '/admin/support', icon: Users },
   ]},
   { section: 'Governança', items: [
     { name: 'Segurança', path: '/admin/security', icon: ShieldCheck },

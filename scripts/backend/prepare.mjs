@@ -37,6 +37,12 @@ for (const fn of storageFunctions.functions) {
     if (sha(readFileSync(resolve('supabase/functions', fn.slug, file.file), 'utf8')) !== file.repositorySha256) throw Error(`Storage Edge checksum drift: ${fn.slug}/${file.file}`);
   }
 }
+const adminFunctions=JSON.parse(readFileSync('operations/backend/admin-edge-functions.json','utf8'));
+if(adminFunctions.schemaVersion!==1||!Array.isArray(adminFunctions.functions))throw Error('Invalid Admin Edge manifest');
+for(const fn of adminFunctions.functions){
+ if(!['admin-support','support-webhook'].includes(fn.slug))throw Error('Unexpected Admin Edge function');
+ for(const file of fn.files)if(sha(readFileSync(resolve('supabase/functions',fn.slug,file.file),'utf8'))!==file.repositorySha256)throw Error('Admin Edge checksum drift: '+fn.slug+'/'+file.file);
+}
 if (process.argv.includes('--check')) process.exit(0);
 assertIsolatedRuntime();
 const destination = resolve('.backend-ci');

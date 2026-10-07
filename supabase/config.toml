@@ -75,3 +75,8 @@ static_files = [ "./functions/upload-private-file/.generated/*" ]
 verify_jwt = false
 [functions.storage-maintenance]
 verify_jwt = true
+[functions.admin-support]
+verify_jwt = true
+[functions.support-webhook]
+# Public provider callbacks require exact-byte Svix signature and replay checks.
+verify_jwt = false
