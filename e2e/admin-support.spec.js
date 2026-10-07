@@ -32,6 +32,7 @@ test('private support: real Auth/MFA, case, note, triage, reviewed intent and re
  for(const width of [320,390,768,1024,1440]){
   await page.setViewportSize({width,height:900});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
   if(width<640){const row=page.getByRole('button').filter({hasText:title});const bounds=await row.boundingBox();const subjectBounds=await row.locator('strong').boundingBox();expect(subjectBounds.width).toBeGreaterThanOrEqual(bounds.width-35);}
+  expect(await page.locator('main button').evaluateAll(buttons=>buttons.filter(button=>button.scrollWidth>button.clientWidth+1).map(button=>button.textContent))).toEqual([]);
   expect((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze()).violations.map(v=>({id:v.id,targets:v.nodes.map(n=>n.target)}))).toEqual([]);
   await page.screenshot({path:`.backend-ci/browser-results/support-${width}.jpg`,fullPage:true});
  }
