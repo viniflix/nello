@@ -144,6 +144,7 @@ export default function AdminAccessGate({ children }) {
   const { user, isOffline } = useAuth();
   const [access, setAccess] = useState(null);
   const [error, setError] = useState(false);
+  const [retry, setRetry] = useState(0);
   const userId = user?.id;
   const requestId = useRef(0);
   const statusRef = useRef(null);
@@ -187,9 +188,9 @@ export default function AdminAccessGate({ children }) {
       window.removeEventListener('focus', onFocus);
       document.removeEventListener('visibilitychange', onVisibility);
     };
-  }, [userId]);
+  }, [userId, retry]);
 
-  if (isOffline || error) return <div role="alert" className="p-8 text-center text-sm text-destructive">A conexão segura com o painel não pôde ser validada. Atualize a página quando estiver online.</div>;
+  if (isOffline || error) return <div role="alert" className="space-y-4 p-8 text-center text-sm"><p className="text-destructive">A conexão segura com o painel não pôde ser validada. Confira sua conexão e tente novamente.</p><Button variant="outline" disabled={isOffline} onClick={() => setRetry((attempt) => attempt + 1)}>Validar acesso novamente</Button>{isOffline && <p className="text-muted-foreground">Aguarde a conexão voltar para validar o acesso.</p>}</div>;
   if (!access || access.userId !== userId) return <div className="flex min-h-dvh items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   if (!access.status.eligible) return <Navigate to={getHomePath(user)} replace />;
   if (!access.status.authorized) return <AdminMfa onVerified={refresh} />;

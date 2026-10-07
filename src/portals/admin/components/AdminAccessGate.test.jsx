@@ -144,4 +144,27 @@ describe('AdminAccessGate', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('não pôde ser validada');
     expect(screen.queryByText('Dados administrativos')).not.toBeInTheDocument();
   });
+
+  it('permite recuperar falha transitória apenas após nova autorização do servidor', async () => {
+    mocks.rpc.mockResolvedValueOnce({ data: null, error: new Error('network') })
+      .mockImplementationOnce(() => new Promise((resolve) => { mocks.resolveRetry = resolve; }));
+    await renderGate();
+    await screen.findByRole('alert');
+    fireEvent.click(screen.getByRole('button', { name: 'Validar acesso novamente' }));
+    await waitFor(() => expect(mocks.rpc).toHaveBeenCalledTimes(2));
+    expect(screen.queryByText('Dados administrativos')).not.toBeInTheDocument();
+    expect(mocks.rpc).toHaveBeenNthCalledWith(2, 'admin_access_status');
+    await act(async () => mocks.resolveRetry({ data: { eligible: true, authorized: true }, error: null }));
+    expect(await screen.findByText('Dados administrativos')).toBeInTheDocument();
+  });
+
+  it('retentativa não contorna MFA exigido pelo servidor', async () => {
+    mocks.rpc.mockResolvedValueOnce({ data: null, error: new Error('network') })
+      .mockResolvedValueOnce({ data: { eligible: true, authorized: false }, error: null });
+    await renderGate();
+    await screen.findByRole('alert');
+    fireEvent.click(screen.getByRole('button', { name: 'Validar acesso novamente' }));
+    expect(await screen.findByText('Acesso administrativo protegido')).toBeInTheDocument();
+    expect(screen.queryByText('Dados administrativos')).not.toBeInTheDocument();
+  });
 });

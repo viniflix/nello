@@ -16,6 +16,12 @@ test('private support: real Auth/MFA, case, note, triage, reviewed intent and re
  await page.goto('/admin/support');await page.locator('#email').fill(fixture.email);await page.locator('#password').fill(fixture.password);await page.getByRole('button',{name:'Entrar',exact:true}).click();await expect(page).not.toHaveURL(/\/login/);
  await page.goto('/admin/support');await page.locator('#admin-mfa-code').fill(totp(fixture.secret));await page.getByRole('button',{name:'Verificar e entrar',exact:true}).click();
  await expect(page.getByRole('heading',{name:'Atendimento e feedback'})).toBeVisible();
+ // A transport failure closes the workspace; recovery still uses real Auth/MFA and RPC.
+ await page.route('**/rest/v1/rpc/admin_access_status',route=>route.fulfill({status:503,json:{message:'Synthetic transient outage'}}),{times:1});
+ await page.reload();await expect(page.getByRole('alert')).toContainText('não pôde ser validada');
+ await expect(page.getByRole('heading',{name:'Atendimento e feedback'})).not.toBeVisible();
+ await page.getByRole('button',{name:'Validar acesso novamente'}).click();
+ await expect(page.getByRole('heading',{name:'Atendimento e feedback'})).toBeVisible();
  await page.getByRole('button',{name:'Novo caso',exact:true}).click();await page.getByLabel('Assunto',{exact:true}).fill(title);await page.getByLabel('E-mail de contato').fill('qa@example.invalid');await page.getByRole('button',{name:'Criar atendimento',exact:true}).click();
  await expect(page.getByRole('heading',{name:title})).toBeVisible();
  await page.getByLabel('Nota interna',{exact:true}).fill('Synthetic private note: never sent.');await page.getByRole('button',{name:'Registrar nota',exact:true}).click();await expect(page.getByText('Synthetic private note: never sent.',{exact:true})).toBeVisible();
