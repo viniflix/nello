@@ -1,9 +1,9 @@
 import {beforeEach, describe, expect, it, vi} from 'vitest';
 import {nutritionClient} from '@/infrastructure/supabase/domainClients';
 import {getActiveMealPlan} from './meal-plan-query-read';
+import {updateFullMealPlan} from './meal-plan-query-write';
 
 vi.mock('@/infrastructure/supabase/domainClients', () => ({nutritionClient:{from:vi.fn(),rpc:vi.fn()}}));
-import {updateFullMealPlan} from './meal-plan-query-write';
 vi.mock('@/lib/supabase/query-helpers', () => ({logSupabaseError:vi.fn()}));
 vi.mock('@/lib/supabase/idempotent-mutations', () => ({clinicalRpc:vi.fn()}));
 
