@@ -230,7 +230,16 @@ export const getActiveMealPlan = async (patientId) => {
         // Se encontrou um plano, buscar com detalhes completos
         if (data) {
             const result = await getMealPlansByIds([data.id], [data]);
-            return { data: result.data?.[0] || null, error: result.error };
+            const plan = result.data?.[0];
+            // Patient home/diary consume the nested relation names; keep the
+            // professional meals/foods shape as well, from the same RLS read.
+            return { data: plan ? {
+                ...plan,
+                meal_plan_meals: plan.meals.map(meal => ({
+                    ...meal,
+                    meal_plan_foods: meal.foods || [],
+                })),
+            } : null, error: result.error };
         }
 
         return { data: null, error: null };

@@ -3,12 +3,13 @@ import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 const fixture = JSON.parse(readFileSync('.backend-ci/browser-runtime/fixture.json'));
 if (fixture.url !== 'http://localhost:54321') throw Error('Disposable loopback stack required');
-export function seed(actor = fixture.personas['nutritionist-a'].id) {
+export function seed(actor = fixture.personas['nutritionist-a'].id, existingPatient = null) {
     if (!/^[a-f0-9-]{36}$/.test(actor)) throw Error('Synthetic actor ID required');
-    const patient = randomUUID();
+    if (existingPatient && !/^[a-f0-9-]{36}$/.test(existingPatient)) throw Error('Synthetic patient ID required');
+    const patient = existingPatient || randomUUID();
     const output = execFileSync('docker', ['exec', '-i', '-e', 'PGPASSWORD=postgres', 'supabase_db_nello-reconstruction', 'psql', '-X', '-At', '-h', '127.0.0.1', '-U', 'supabase_admin', '-d', 'postgres', '-v', 'ON_ERROR_STOP=1'], {
-        encoding:'utf8', input:`INSERT INTO auth.users(id,aud,role,email,raw_user_meta_data) VALUES('${patient}','authenticated','authenticated','${patient}@example.invalid','{"name":"QA Meal Module","user_type":"patient"}');
-        UPDATE public.user_profiles SET nutritionist_id='${actor}' WHERE id='${patient}';
+        encoding:'utf8', input:`${existingPatient ? '' : `INSERT INTO auth.users(id,aud,role,email,raw_user_meta_data) VALUES('${patient}','authenticated','authenticated','${patient}@example.invalid','{"name":"QA Meal Module","user_type":"patient"}');`}
+        UPDATE public.user_profiles SET user_type='patient',nutritionist_id='${actor}' WHERE id='${patient}';
         INSERT INTO public.patient_module_sync_flags(patient_id,needs_meal_plan_review) VALUES('${patient}',true);
         INSERT INTO public.nutritionist_patients(nutritionist_id,patient_id,status) VALUES('${actor}','${patient}','active');
         WITH plan AS (INSERT INTO public.meal_plans(patient_id,nutritionist_id,name,start_date,is_active,is_draft,daily_calories,daily_protein,daily_carbs,daily_fat,plan_mode) VALUES('${patient}','${actor}','QA Plano completo com nome longo para testar leitura e navegação','2026-10-03',true,false,100,0,25,0,'hybrid') RETURNING id)

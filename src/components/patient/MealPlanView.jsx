@@ -38,6 +38,7 @@ const MealPlanView = ({ mealPlanItems, showNutrition = false }) => {
             <h4 className="break-words text-base font-semibold text-foreground">{meal.name || translateMealType(meal.meal_type)}</h4>
             {meal.meal_time && <span className="rounded bg-primary/10 px-2 py-1 text-sm text-primary">{meal.meal_time.slice(0,5)}</span>}
           </div>
+          {meal.include_in_totals === false && <p className="mb-3 text-sm text-muted-foreground">Refeição alternativa — não contabilizada nos totais.</p>}
           {meal.notes && <p className="mb-3 whitespace-pre-wrap break-words rounded-lg bg-blue-50 p-3 text-sm text-blue-900">{meal.notes}</p>}
               {meal.meal_plan_foods && meal.meal_plan_foods.length > 0 ? (
                 <ul className="space-y-1.5">

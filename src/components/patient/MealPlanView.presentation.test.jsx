@@ -21,4 +21,11 @@ it('patient dialog excludes alternate meals from daily totals, retains them for 
     expect(screen.getByText('Peixe')).toBeVisible();
     expect(screen.getByText(/Proteínas 30 g/)).toBeVisible();
     expect(screen.getByText(/De 03\/10\/2026/)).toBeVisible();
+    expect(screen.getByText('Refeição alternativa — não contabilizada nos totais.')).toBeVisible();
+});
+it('patient totals retain measured zero fiber and incomplete catalog coverage',()=>{
+    render(<MealPlanViewDialog open onOpenChange={vi.fn()} mealPlan={{id:'p',meal_plan_meals:[{id:'meal',meal_plan_foods:[{quantity:100,unit:'gram',foods:{name:'Conhecido',fiber:0}},{quantity:100,unit:'gram',foods:{name:'Desconhecido',fiber:null}}]}]}} />);
+    const totals=screen.getByLabelText('Totais diários do plano');
+    expect(totals).toHaveTextContent('≥ 0 g');
+    expect(totals).toHaveTextContent('Dados do catálogo incompletos');
 });
