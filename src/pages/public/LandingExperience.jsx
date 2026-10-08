@@ -1,11 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ArrowRight, ArrowUpRight, CalendarDays, Check, ChevronRight, ClipboardList, Leaf, MessageCircle, Pause, Play, Plus, Users, Utensils } from 'lucide-react';
+import { ArrowUpRight, Check, MessageCircle, Pause, Play } from 'lucide-react';
 import { PublicAction } from './PublicSiteLayout';
+import ProductScreenshot from './ProductScreenshot';
 
 const examples = {
-  plan: { label: 'Plano alimentar', eyebrow: 'Planejar com contexto', title: 'Cada refeição, uma possibilidade.', note: 'Refeições, porções e alternativas', rows: [['Café da manhã', '08:00', 'Alimentos e medidas para começar o dia'], ['Almoço', '12:30', 'Porções e alternativas para a rotina'], ['Lanche da tarde', '16:00', 'Um plano feito para acompanhar']] },
-  context: { label: 'Visão clínica', eyebrow: 'Conhecer a pessoa', title: 'O contexto faz parte do cuidado.', note: 'História, avaliações e evolução', rows: [['História do paciente', '01', 'Informações do acompanhamento'], ['Avaliações', '02', 'Registros que apoiam o olhar clínico'], ['Evolução', '03', 'Uma perspectiva do percurso']] },
-  patient: { label: 'Área do paciente', eyebrow: 'Continuar presente', title: 'O cuidado encontra a rotina.', note: 'Plano, diário e comunicação', rows: [['Meu plano', '01', 'Alimentos, porções e orientações'], ['Meu diário', '02', 'Registros da alimentação'], ['Minha conversa', '03', 'Comunicação com o nutricionista']] },
+  plan: { label: 'Plano alimentar', title: 'Planejamento alimentar no Nello' },
+  context: { label: 'Visão clínica', title: 'O acompanhamento em uma visão' },
+  patient: { label: 'Área do paciente', title: 'O cuidado na rotina do paciente' },
 };
 
 export function useLandingMotion() {
@@ -76,10 +77,11 @@ function CarePreview({ paused, reduced }) {
   return <div className="landing-preview-stage" ref={stage}>
     <div className="landing-preview-tabs" role="group" aria-label="Explorar a demonstração do Nello">{Object.entries(examples).map(([key, { label }]) => <button type="button" key={key} aria-pressed={selected === key} onClick={() => setSelected(key)}>{label}<ArrowUpRight aria-hidden="true" size={14} /></button>)}</div>
     <figure className="landing-demo">
-      <div className="landing-demo-chrome"><span><Leaf size={20} aria-hidden="true" />nello<span className="landing-demo-beta">Beta</span></span><span className="landing-demo-label">Seu consultório, conectado.</span><span className="landing-demo-avatar" aria-hidden="true">N</span></div>
-      <div className="landing-demo-layout"><div className="landing-demo-sidebar" aria-hidden="true"><span className="landing-demo-sidebar-label">SEU ESPAÇO</span>{[[Users, 'Pacientes'], [ClipboardList, 'Avaliações'], [Utensils, 'Planos'], [CalendarDays, 'Agenda'], [MessageCircle, 'Mensagens']].map(([Icon, label]) => <span className={label === 'Planos' && selected === 'plan' ? 'is-selected' : ''} key={label}><Icon size={16} />{label}</span>)}<span className="landing-sidebar-bottom"><Leaf size={16} />Cuidado em cada detalhe.</span></div>
-        <div className="landing-demo-workspace" key={selected}><div className="landing-demo-heading"><div><span>{example.eyebrow}</span><h2>{example.title}</h2></div><span className="landing-demo-add" aria-hidden="true"><Plus size={18} /></span></div><div className="landing-demo-summary"><span><span className="landing-demo-dot" />{example.note}</span><span>Exemplo ilustrativo</span></div><div className="landing-demo-rows">{example.rows.map(([title, time, text], index) => <div className="landing-demo-row" key={title}><span className="landing-demo-row-icon" aria-hidden="true">{index === 0 ? <Utensils size={18} /> : index === 1 ? <Leaf size={18} /> : <CalendarDays size={18} />}</span><div><strong>{title}</strong><span>{text}</span></div><span className="landing-demo-time">{time}</span><ChevronRight size={16} aria-hidden="true" /></div>)}</div><div className="landing-demo-bottom"><span><Check aria-hidden="true" size={15} />O profissional orienta. O Nello conecta.</span><span aria-hidden="true"><ArrowUpRight size="1em" /></span></div></div>
-      </div><figcaption>Demonstração ilustrativa. Dados fictícios; não é uma prescrição alimentar.</figcaption>
+      <div className="landing-demo-workspace landing-capture-workspace" key={selected}>
+        <h2 className="sr-only">{example.title}</h2>
+        <ProductScreenshot screen={selected} eager />
+      </div>
+      <figcaption><span className="landing-capture-dot" aria-hidden="true" />Interface real do Nello · contas temporárias com dados fictícios.</figcaption>
     </figure>
     <div className="landing-float landing-float-plan"><span className="landing-float-icon"><Check aria-hidden="true" size={20} /></span><div><strong>Do plano à rotina.</strong><span>Cuidado com continuidade</span></div></div>
     <div className="landing-float landing-float-message"><span className="landing-float-icon"><MessageCircle aria-hidden="true" size={20} /></span><div><strong>Uma conversa mais próxima.</strong><span>Entre uma consulta e outra</span></div></div>
@@ -96,9 +98,9 @@ export function LandingHero({ paused, reduced, toggleMotion }) {
 }
 
 export function LandingMealVisual() {
-  return <div className="landing-meal-visual" aria-label="Exemplo ilustrativo de organização de refeições"><div className="landing-meal-orbit" aria-hidden="true" /><div className="landing-meal-icon" aria-hidden="true"><Utensils size={30} /></div>{[['Café da manhã', 'Comece pelo contexto'], ['Almoço', 'Personalize as porções'], ['Lanche', 'Explore as alternativas']].map(([label, text], index) => <div className={`landing-meal-chip landing-meal-chip-${index}`} key={label}><span className="landing-meal-chip-dot" aria-hidden="true" /><span><strong>{label}</strong><small>{text}</small></span><Check size={14} aria-hidden="true" /></div>)}</div>;
+  return <figure className="landing-meal-visual landing-meal-capture"><ProductScreenshot screen="plan" sizes="(max-width: 760px) 288px, 520px" /><figcaption>Planejamento real · dados fictícios.</figcaption></figure>;
 }
 
 export function LandingPatientVisual() {
-  return <div className="landing-phone-scene"><div className="landing-phone-halo" aria-hidden="true" /><div className="landing-phone"><div className="landing-phone-camera" aria-hidden="true" /><div className="landing-phone-header"><Leaf aria-hidden="true" size={20} /><span>nello</span><span className="landing-phone-avatar" aria-hidden="true">N</span></div><span className="landing-phone-greeting">Um dia de cada vez.</span><h3>Seu plano.<br />Sua rotina.</h3><div className="landing-phone-date"><CalendarDays aria-hidden="true" size={14} />Meu acompanhamento</div><div className="landing-phone-meal"><span><Utensils aria-hidden="true" size={17} />Café da manhã</span><p>Alimentos, porções<br />e alternativas.</p><span className="landing-phone-link">Consultar o plano<ArrowRight aria-hidden="true" size={14} /></span></div><div className="landing-phone-message"><MessageCircle aria-hidden="true" size={18} /><span>Uma dúvida?<br /><strong>Converse com seu nutri.</strong></span></div><div className="landing-phone-nav" aria-hidden="true"><Leaf size={18} /><Utensils size={18} /><MessageCircle size={18} /></div></div><div className="landing-phone-caption"><span aria-hidden="true"><ArrowUpRight size="1em" /></span>O que foi combinado<br />continua ao alcance.</div><span className="landing-phone-disclaimer">Demonstração ilustrativa da área do paciente.</span></div>;
+  return <div className="landing-phone-scene"><div className="landing-phone-halo" aria-hidden="true" /><figure className="landing-phone landing-phone-capture"><ProductScreenshot screen="patient" mobileOnly /><figcaption>Área real do paciente · dados fictícios.</figcaption></figure><div className="landing-phone-caption"><span aria-hidden="true"><ArrowUpRight size="1em" /></span>O que foi combinado<br />continua ao alcance.</div></div>;
 }

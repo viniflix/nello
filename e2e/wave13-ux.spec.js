@@ -27,11 +27,17 @@ async function uniqueMetadata(page, path) {
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', privateRoute ? 'noindex,nofollow' : 'index,follow');
 }
 for (const width of [320, 768, 1440]) test(`public landing, help and safe crawler metadata ${width}`, async ({ page, request }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.setViewportSize({ width, height: width === 768 ? 480 : 900 });
   const response = await request.get('/'); const html = await response.text();
   expect(html).toContain('O cuidado não termina'); expect(html).toContain('https://nellonutri.com.br/og-image.png');
   await page.goto('/'); await expect(page.getByRole('heading', { level: 1 })).toContainText('O cuidado não termina');
   await uniqueMetadata(page, '/');
+  for (const image of await page.locator('.landing-experience img').all()) {
+    await image.scrollIntoViewIfNeeded();
+    await expect.poll(() => image.evaluate(img => img.complete && img.naturalWidth > 0)).toBe(true);
+  }
+  await page.keyboard.press('Control+Home');
   await audit(page); await expect(page).toHaveScreenshot(`landing-${width}.png`, { fullPage: true, animations: 'disabled' });
   for (const route of ['/ajuda', '/seguranca', '/privacidade']) { await page.goto(route); await expect(page.locator('main h1')).toBeVisible(); await uniqueMetadata(page, route); await audit(page); }
   const sitemap = await (await request.get('/sitemap.xml')).text(); expect(sitemap).not.toMatch(/patient|nutritionist|admin|convite/);

@@ -113,3 +113,17 @@
 @media(max-width:760px){.site-landing .research-experience .research-hero h1,.site-landing .research-experience .research-hero h1>em{overflow-wrap:anywhere}.research-hero h1>em{display:block;max-width:100%}}
 .landing-phone-caption>span{height:1.2em}.landing-phone-caption>span>svg{display:block}
 .landing-motion-paused .landing-demo-workspace{animation:none!important}
+
+/* Genuine authenticated product captures; the surrounding scene remains decorative. */
+.product-screenshot{display:block;min-width:0}.product-screenshot img{display:block;width:100%;height:auto}
+.landing-capture-workspace.landing-demo-workspace{padding:0;background:#eeedeb;min-width:0}
+.landing-demo figcaption{display:flex;justify-content:center;align-items:center;gap:8px;padding:13px 20px;font-size:.7rem;line-height:1.6;background:#f7f9f3;color:#425344}
+.landing-capture-dot{width:6px;height:6px;flex:none;border-radius:50%;background:#486c34}
+.landing-phone.landing-phone-capture{padding:6px;width:280px;max-width:100%;margin:0;border-radius:29px;background:#102b25;overflow:hidden;box-shadow:0 32px 60px #153e2733;transform:rotate(4deg)}
+.landing-phone-capture .product-screenshot{border-radius:23px;overflow:hidden}.landing-phone-capture figcaption{padding:10px 8px 7px;text-align:center;font-size:.59rem;line-height:1.6;color:#f1f6e9}
+.landing-meal-visual.landing-meal-capture{height:auto;margin:28px 0 18px;border-radius:14px;overflow:hidden;background:#fff;border:1px solid #294d3c22;box-shadow:0 15px 35px #153e2715}
+.landing-meal-capture figcaption{padding:9px 12px;text-align:center;font-size:.64rem;color:#425344}
+.landing-progress-capture{margin:22px auto 0;max-width:160px;background:#fff;border:1px solid #dce4d4;border-radius:14px;overflow:hidden;transform:rotate(-3deg);box-shadow:0 12px 30px #153e2712}.landing-progress-capture img{width:100%;height:auto;display:block}.landing-progress-capture figcaption{padding:8px;font-size:.54rem;text-align:center;line-height:1.6;color:#425344}
+.site-product-capture{min-width:0;padding:0!important}.site-product-capture figcaption{padding:14px 18px!important;line-height:1.7;color:#425344;text-align:center}.site-product-capture .product-screenshot{background:#eeedeb}
+@media(min-width:761px){.landing-preview-wrap{padding-bottom:110px}.landing-float-plan{top:auto;bottom:-90px;left:24px}.landing-float-message{bottom:-90px;right:24px}}
+@media(max-width:760px){.landing-capture-workspace .product-screenshot{max-width:288px;margin:auto}.landing-demo figcaption{font-size:.62rem;padding:12px 16px;align-items:flex-start}.landing-capture-dot{margin-top:5px}.landing-phone.landing-phone-capture{width:260px;transform:rotate(3deg)}.landing-phone-scene{min-height:620px}.landing-meal-capture .product-screenshot{max-width:250px;margin:auto}.site-product-capture .product-screenshot{max-width:288px;margin:auto}.landing-progress-capture{max-width:155px}}

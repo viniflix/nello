@@ -10,12 +10,15 @@ test('landing demonstration supports keyboard, pausing and reduced movement',asy
  await page.mouse.move(box.x+box.width*.75,box.y+box.height*.45);
  await expect.poll(()=>demo.evaluate(el=>getComputedStyle(el).transform)).toMatch(/^matrix3d/);
  const patient=page.getByRole('button',{name:'Área do paciente',exact:true});await patient.focus();await patient.press('Enter');
- await expect(patient).toHaveAttribute('aria-pressed','true');await expect(page.locator('.landing-demo h2')).toContainText('rotina');
+ await expect(patient).toHaveAttribute('aria-pressed','true');await expect(page.locator('.landing-demo img')).toHaveAttribute('alt',/Área real do paciente/);
+ await expect.poll(()=>page.locator('.landing-demo img').evaluate(img=>img.complete&&img.naturalWidth>0)).toBe(true);
  await page.getByRole('button',{name:'Pausar animações',exact:true}).click();
  await expect.poll(()=>page.locator('.landing-aurora-green').evaluate(el=>el.getAnimations().every(a=>a.playState==='paused'))).toBe(true);
  await expect.poll(()=>demo.evaluate(el=>getComputedStyle(el).transform)).toBe('none');
  const clinical=page.getByRole('button',{name:'Visão clínica',exact:true});await clinical.focus();await clinical.press('Enter');
  await expect(clinical).toHaveAttribute('aria-pressed','true');
+ await expect(page.locator('.landing-demo img')).toHaveAttribute('alt',/Prontuário real/);
+ await expect.poll(()=>page.locator('.landing-demo img').evaluate(img=>img.complete&&img.naturalWidth>0)).toBe(true);
  await expect(page.locator('.landing-demo-workspace')).toHaveCSS('opacity','1');
  await page.getByRole('button',{name:'Ativar animações',exact:true}).click();
  await expect.poll(()=>page.locator('.landing-aurora-green').evaluate(el=>el.getAnimations().some(a=>a.playState==='running'))).toBe(true);
@@ -28,10 +31,18 @@ test('landing initial content and navigation work without JavaScript',async({bro
  const context=await browser.newContext({javaScriptEnabled:false});const page=await context.newPage();
  await page.goto(baseURL+'/');await expect(page.locator('h1')).toContainText('O cuidado não termina');
  await expect(page.getByRole('link',{name:'Começar com o Nello',exact:true})).toHaveAttribute('href','/register');
- await expect(page.locator('.landing-demo h2')).toBeVisible();await context.close();
+ await expect(page.locator('.landing-demo img')).toBeVisible();
+ await expect.poll(()=>page.locator('.landing-demo img').evaluate(img=>img.complete&&img.naturalWidth>0)).toBe(true);await context.close();
 });
 
 async function audit(page) {
+ for(const image of await page.locator('.product-screenshot img').all()){
+  await image.scrollIntoViewIfNeeded();
+  await expect.poll(()=>image.evaluate(img=>img.complete&&img.naturalWidth>0)).toBe(true);
+  const mobile=await page.evaluate(()=>innerWidth<=760);
+  if(mobile)await expect.poll(()=>image.evaluate(img=>img.currentSrc)).toMatch(/-mobile-375\.webp$/);
+ }
+ await page.keyboard.press('Control+Home');
  await page.evaluate(async()=>{await document.fonts.ready;await document.fonts.load('600 24px ClashDisplay');});
  const typography=await page.evaluate(()=>[...document.querySelectorAll('.nello-public-site h1,.nello-public-site h2,.nello-public-site h3')].filter(el=>!el.closest('.site-footer')).flatMap(el=>{
   const style=getComputedStyle(el),size=parseFloat(style.fontSize),issues=[];
