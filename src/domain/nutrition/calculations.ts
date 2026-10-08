@@ -65,8 +65,8 @@ export function calculateNutrition(food: Food | null | undefined, totalGrams: nu
       protein: 0,
       carbs: 0,
       fat: 0,
-      fiber: food?.fiber ? 0 : null,
-      sodium: food?.sodium ? 0 : null
+      fiber: food?.fiber == null ? null : 0,
+      sodium: food?.sodium == null ? null : 0
     };
   }
 
