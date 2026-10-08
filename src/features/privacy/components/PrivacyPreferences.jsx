@@ -35,6 +35,7 @@ export default function PrivacyPreferences() {
   const { pathname } = useLocation();
   const [open, setOpen] = useState(false);
   const [needsChoice, setNeedsChoice] = useState(true);
+  const [ready, setReady] = useState(!user?.id);
   const [allowed, setAllowed] = useState(false);
   const [terms, setTerms] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -51,11 +52,17 @@ export default function PrivacyPreferences() {
     setTerms(false);
     setBusy(false);
     setMessage('');
+    setOpen(false);
+    setReady(!user?.id);
     if (!user?.id) { applyChoice(hasAnalyticsConsent(), null, false); return undefined; }
     // Default deny while the authenticated preference is being read.
     applyChoice(false, user, false);
     getMyPrivacyPreferences().then(({ data, error }) => {
       if (!active || epoch !== preferenceEpoch.current) return;
+      if (error) {
+        setReady(true);
+        return;
+      }
       const currentVersion = !error && data?.version === LEGAL_VERSION;
       const recorded = currentVersion && data?.analytics_choice_recorded === true;
       const consent = currentVersion && data?.analytics_allowed === true && !hasPendingAnalyticsRevocation(user.id);
@@ -63,7 +70,11 @@ export default function PrivacyPreferences() {
       setNeedsChoice(!recorded);
       setAllowed(consent);
       setTerms(currentVersion && data?.terms_accepted === true);
-    }).catch(() => { /* A failed read must never grant analytics. */ });
+      setReady(true);
+    }).catch(() => {
+      if (active && epoch === preferenceEpoch.current) setReady(true);
+      /* A failed read must never grant analytics or erase the stored choice. */
+    });
     return () => { active = false; };
   }, [user?.id]);
 
@@ -74,7 +85,13 @@ export default function PrivacyPreferences() {
     const ownerId = user?.id;
     ++preferenceEpoch.current;
     // Revocation takes effect before any network operation.
-    if (!analytics) { markPendingAnalyticsRevocation(ownerId, true); applyChoice(false, user); setAllowed(false); }
+    if (!analytics) {
+      markPendingAnalyticsRevocation(ownerId, true);
+      applyChoice(false, user);
+      // A refusal must stay effective in this browser after logout as well.
+      if (ownerId) storeAnalyticsChoice(false, 'anonymous');
+      setAllowed(false);
+    }
     try {
       if (user?.id) {
         const { error } = await recordMyPrivacyChoice({
@@ -85,19 +102,26 @@ export default function PrivacyPreferences() {
       if (currentOwner.current !== ownerId) return;
       markPendingAnalyticsRevocation(ownerId, false);
       applyChoice(analytics, user);
+      if (!ownerId && !hasAnalyticsChoice()) throw Error('browser_preference_not_saved');
       setAllowed(hasAnalyticsConsent());
       setNeedsChoice(false);
+      setReady(true);
+      setOpen(false);
       setMessage('Preferências salvas.');
     } catch {
       if (currentOwner.current !== ownerId) return;
-      setMessage(analytics
+      setMessage(!ownerId
+        ? 'Não foi possível guardar a preferência neste navegador. As métricas continuam desligadas; verifique o armazenamento e tente novamente.'
+        : analytics
         ? 'Não foi possível salvar. Analytics continua desligado; tente novamente.'
         : 'Analytics está desligado neste navegador. Falta salvar a revogação na conta; tente novamente.');
     } finally { if (currentOwner.current === ownerId) setBusy(false); }
   };
 
   if (!['/login', '/register', '/confirm-signup', '/update-password', '/convite', '/privacidade', '/ajuda', '/termos', '/seguranca', '/patient/profile', '/nutritionist/profile'].includes(pathname.replace(/\/$/, ''))) return null;
-  return <aside aria-label="Preferências de cookies" className="sticky bottom-0 z-50 mx-auto w-full max-w-3xl rounded-lg border bg-card p-3 text-foreground shadow-sm">
+  const canReview = ['/privacidade', '/patient/profile', '/nutritionist/profile'].includes(pathname.replace(/\/$/, ''));
+  if ((!ready && !canReview) || (!needsChoice && !open && !canReview)) return null;
+  return <aside aria-label="Preferências de cookies" className="mx-auto my-4 w-full max-w-3xl rounded-lg border bg-card p-3 text-foreground shadow-sm">
     <button type="button" className="text-xs underline" aria-expanded={open} onClick={() => setOpen(v => !v)}>Preferências de privacidade</button>
     {needsChoice && !open && <div className="space-y-3 pt-2 text-sm">
       <p>Usamos recursos necessários para manter seu acesso e proteger a Plataforma. Com sua permissão, usamos métricas de navegação para melhorar o Nello. Você pode recusar as métricas e continuar normalmente.</p>
@@ -117,6 +141,7 @@ export default function PrivacyPreferences() {
         <button type="button" disabled={busy} onClick={() => save(false)} className="rounded border px-3 py-2">Sem analytics</button>
         <button type="button" disabled={busy} onClick={() => save(true)} className="rounded border px-3 py-2">Permitir analytics</button>
       </div>
+      <button type="button" onClick={() => setOpen(false)} className="rounded border px-3 py-2">Fechar preferências</button>
     </div>}
     <p role="status">{message}</p>
   </aside>;

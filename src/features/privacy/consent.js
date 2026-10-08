@@ -8,24 +8,37 @@ const blockedOwners = new Set();
 const pendingRevocations = new Set();
 
 export function bindConsentOwner(userId) { owner = userId || 'anonymous'; }
+const validChoice = (record, expectedOwner) => !!record && record.owner === expectedOwner && record.version === LEGAL_VERSION
+  && typeof record.allowed === 'boolean' && Date.now() - record.at >= 0 && Date.now() - record.at < MAX_AGE;
+function readChoice(expectedOwner) {
+  const stored = JSON.parse(localStorage.getItem(KEY));
+  // Accept the existing single-owner format without transferring its choice.
+  return stored?.owner === expectedOwner ? stored
+    : stored?.choices && Object.hasOwn(stored.choices, expectedOwner) ? stored.choices[expectedOwner] : null;
+}
 export function hasAnalyticsChoice(expectedOwner = owner) {
   try {
-    const record = JSON.parse(localStorage.getItem(KEY));
-    return record?.owner === expectedOwner && record.version === LEGAL_VERSION
-      && typeof record.allowed === 'boolean' && Date.now() - record.at >= 0
-      && Date.now() - record.at < MAX_AGE;
+    return validChoice(readChoice(expectedOwner), expectedOwner);
   } catch { return false; }
 }
 export function suspendAnalyticsConsent() { blockedOwners.add(owner); }
 export function hasAnalyticsConsent(expectedOwner = owner) {
   if (blockedOwners.has(expectedOwner) || !hasAnalyticsChoice(expectedOwner)) return false;
-  try { return JSON.parse(localStorage.getItem(KEY)).allowed === true; } catch { return false; }
+  try { return readChoice(expectedOwner)?.allowed === true; } catch { return false; }
 }
-export function storeAnalyticsChoice(allowed) {
-  blockedOwners.add(owner);
+export function storeAnalyticsChoice(allowed, expectedOwner = owner) {
+  blockedOwners.add(expectedOwner);
   try {
-    localStorage.setItem(KEY, JSON.stringify({ owner, version: LEGAL_VERSION, allowed: allowed === true, at: Date.now() }));
-    if (allowed === true) blockedOwners.delete(owner);
+    let previous;
+    try { previous = JSON.parse(localStorage.getItem(KEY)); } catch { previous = null; }
+    const choices = Object.fromEntries(Object.entries(previous?.choices || {}).filter(([id, record]) => validChoice(record, id)));
+    if (validChoice(previous, previous?.owner)) choices[previous.owner] = {
+      owner: previous.owner, version: previous.version, allowed: previous.allowed, at: previous.at,
+    };
+    const record = { owner: expectedOwner, version: LEGAL_VERSION, allowed: allowed === true, at: Date.now() };
+    choices[expectedOwner] = record;
+    localStorage.setItem(KEY, JSON.stringify({ ...record, choices }));
+    if (allowed === true) blockedOwners.delete(expectedOwner);
     return true;
   } catch { return false; }
 }

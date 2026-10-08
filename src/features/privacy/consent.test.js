@@ -17,6 +17,28 @@ describe('analytics consent boundary', () => {
     expect(hasAnalyticsConsent('account-a')).toBe(true);
     clearAnalyticsChoice(); expect(hasAnalyticsConsent('account-a')).toBe(false);
   });
+  it('remembers each browser choice when another account saves its own preference', () => {
+    storeAnalyticsChoice(false);
+    bindConsentOwner('account-a'); storeAnalyticsChoice(true);
+    bindConsentOwner('account-b'); storeAnalyticsChoice(false);
+    bindConsentOwner(null);
+    expect(hasAnalyticsChoice()).toBe(true);
+    expect(hasAnalyticsConsent()).toBe(false);
+    bindConsentOwner('account-a');
+    expect(hasAnalyticsChoice()).toBe(true);
+    expect(hasAnalyticsConsent()).toBe(true);
+    bindConsentOwner('account-b');
+    expect(hasAnalyticsChoice()).toBe(true);
+    expect(hasAnalyticsConsent()).toBe(false);
+  });
+  it('reads a legacy choice and retains it when upgrading the browser record', () => {
+    localStorage.setItem('nello_analytics_choice_v1', JSON.stringify({ owner: 'anonymous', version: LEGAL_VERSION, allowed: false, at: Date.now() }));
+    expect(hasAnalyticsChoice()).toBe(true);
+    bindConsentOwner('upgraded-account'); storeAnalyticsChoice(true);
+    bindConsentOwner(null);
+    expect(hasAnalyticsChoice()).toBe(true);
+    expect(hasAnalyticsConsent()).toBe(false);
+  });
   it.each([
     { version: 'old', at: Date.now() },
     { version: LEGAL_VERSION, at: Date.now() - 181 * 86400000 },

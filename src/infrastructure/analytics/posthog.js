@@ -2,7 +2,7 @@ import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import posthog from './lazyPosthog';
 import { createTimingSampler } from './timingSample';
 import { technicalIdentity } from '@/infrastructure/observability/technicalIdentity';
-import { bindConsentOwner, clearAnalyticsChoice, hasAnalyticsConsent } from '@/features/privacy/consent';
+import { bindConsentOwner, hasAnalyticsConsent, suspendAnalyticsConsent } from '@/features/privacy/consent';
 import { validateProductEvent, CONFIRMED_OUTCOMES, EVENT_SCHEMA_VERSION } from './eventCatalog';
 import { reportAnalyticsFailure } from './pipelineHealth';
 const sampleTiming = createTimingSampler();
@@ -145,11 +145,11 @@ export function identifyUser(user) {
 }
 
 export function resetUser() {
+  if (identifiedOwner) suspendAnalyticsConsent();
   identifiedOwner = null;
   identifiedWithConsent = null;
   audience = 'public';
   identifiedRole = 'anonymous';
-  clearAnalyticsChoice();
   bindConsentOwner(null);
   try {
     if (!POSTHOG_KEY) return;

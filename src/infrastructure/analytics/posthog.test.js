@@ -3,6 +3,21 @@ import { sanitizeAnalyticsProperties, sanitizePosthogEvent } from './posthog';
 vi.mock('./lazyPosthog', () => ({ default: { capture: vi.fn(), get_session_id: () => '018d3b7f-81d8-7abc-8f12-aabbccddeeff' } }));
 
 describe('sanitizeAnalyticsProperties', () => {
+  it('resets identity on logout while remembering the independent public browser choice', async () => {
+    vi.resetModules(); vi.stubEnv('VITE_PUBLIC_POSTHOG_KEY', 'test-key');
+    const { identifyUser, resetUser } = await import('./posthog');
+    const consent = await import('@/features/privacy/consent');
+    localStorage.clear(); consent.bindConsentOwner(null); consent.storeAnalyticsChoice(false);
+    consent.bindConsentOwner('logout-account'); consent.storeAnalyticsChoice(true);
+    identifyUser({ id: 'logout-account', profile: { user_type: 'nutritionist' } });
+    resetUser();
+    expect(consent.hasAnalyticsChoice()).toBe(true);
+    expect(consent.hasAnalyticsConsent()).toBe(false);
+    expect(consent.hasAnalyticsConsent('logout-account')).toBe(false);
+    consent.bindConsentOwner('unrelated-account');
+    expect(consent.hasAnalyticsChoice()).toBe(false);
+    expect(consent.hasAnalyticsConsent()).toBe(false);
+  });
   it('drops nontechnical identities and nested payloads disguised as SDK metadata',()=>{
     const result=sanitizePosthogEvent({event:'$pageview',properties:{distinct_id:'PRIVATE_SENTINEL', $browser:{unexpected:'PRIVATE_SENTINEL'},$current_url:{unexpected:'PRIVATE_SENTINEL'}}});
     expect(JSON.stringify(result)).not.toContain('PRIVATE_SENTINEL');

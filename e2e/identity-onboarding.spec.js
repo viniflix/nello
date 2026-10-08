@@ -91,9 +91,12 @@ test('application defers analytics initialization until explicit optional consen
   await expect(page.getByText(/opcional e está desligado/)).toBeVisible();
   expect(calls).toEqual([]);
   await page.getByRole('button', { name: 'Permitir analytics' }).click();
+  await expect(page.getByRole('button', { name: 'Permitir analytics' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Preferências de privacidade' }).click();
   await expect(page.getByText(/opcional e está ligado/)).toBeVisible();
   await expect.poll(() => calls.length).toBeGreaterThan(0);
   await page.getByRole('button', { name: 'Sem analytics' }).click();
+  await page.getByRole('button', { name: 'Preferências de privacidade' }).click();
   await expect(page.getByText(/opcional e está desligado/)).toBeVisible();
 });
 
