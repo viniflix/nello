@@ -127,3 +127,32 @@
 .site-product-capture{min-width:0;padding:0!important}.site-product-capture figcaption{padding:14px 18px!important;line-height:1.7;color:#425344;text-align:center}.site-product-capture .product-screenshot{background:#eeedeb}
 @media(min-width:761px){.landing-preview-wrap{padding-bottom:110px}.landing-float-plan{top:auto;bottom:-90px;left:24px}.landing-float-message{bottom:-90px;right:24px}}
 @media(max-width:760px){.landing-capture-workspace .product-screenshot{max-width:288px;margin:auto}.landing-demo figcaption{font-size:.62rem;padding:12px 16px;align-items:flex-start}.landing-capture-dot{margin-top:5px}.landing-phone.landing-phone-capture{width:260px;transform:rotate(3deg)}.landing-phone-scene{min-height:620px}.landing-meal-capture .product-screenshot{max-width:250px;margin:auto}.site-product-capture .product-screenshot{max-width:288px;margin:auto}.landing-progress-capture{max-width:155px}}
+
+/* Audit: readable captures, stable selection and predictable motion controls. */
+.landing-capture-workspace{aspect-ratio:1410/891;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.landing-capture-workspace>.product-screenshot{width:100%}
+.landing-capture-patient>.product-screenshot{width:auto;height:100%;max-width:100%}
+.landing-capture-patient .product-screenshot img{height:100%;width:auto;max-width:100%;object-fit:contain}
+.landing-capture-workspace.landing-demo-workspace{animation:none}
+.landing-motion-paused *,.landing-motion-paused *:before,.landing-motion-paused *:after{transition:none!important}
+[data-tab-hidden] *,.landing-motion-offscreen *,.landing-motion-offscreen *:before,.landing-motion-offscreen *:after{animation-play-state:paused!important}
+.landing-arrived .landing-hero h1>span,.landing-arrived .landing-hero h1>em,.landing-arrived .site-hero-actions,.landing-arrived .landing-demo{animation:none!important;translate:none;filter:none}
+.site-product-patient{width:min(100%,280px);justify-self:center;overflow:hidden}
+.landing-progress-capture{max-width:220px;transform:none}
+.landing-phone.landing-phone-capture{transform:none}
+.landing-research{background:#e9efdf;border-block:1px solid #d4dfc6}
+.landing-research h2{margin-bottom:24px}.landing-research h2 em{color:#536f42}
+.landing-research p{font-size:.94rem;line-height:1.8;color:#4e654a}
+.landing-research h3{font-size:1.3rem;margin:0 0 18px}
+.landing-research-authors{padding-left:20px;margin:0 0 24px;line-height:1.9;font-size:.9rem}
+.landing-research-advisor{border-top:1px solid #c1d0b1;padding-top:20px}
+.landing-research .landing-text-link{margin-top:12px}
+@media(max-width:1000px) and (min-width:761px){.site-landing .site-header{gap:12px;padding-inline:20px}.site-landing .site-desktop-nav{padding-inline:2px}.site-landing .site-desktop-nav>a{padding-inline:8px}.site-landing .site-desktop-access{gap:12px}.site-landing .site-desktop-access>.site-action{padding-inline:12px}}
+@media(max-width:760px){.landing-capture-workspace{aspect-ratio:360/812;width:min(100%,288px);margin-inline:auto}.landing-capture-workspace>.product-screenshot{height:100%;max-width:288px}.landing-capture-workspace .product-screenshot img{height:100%;width:100%;object-fit:contain}.landing-capture-patient>.product-screenshot{height:100%;width:auto}.landing-phone.landing-phone-capture{transform:none}.landing-phone-scene{min-height:0;padding-block:24px}.landing-progress-capture{max-width:240px}.landing-research p{font-size:.85rem}.landing-research-authors{font-size:.82rem}.landing-hero .site-action-full-label{font-size:inherit}}
+.landing-hero-copy .landing-motion-toggle{margin:16px auto 0;font-size:.75rem}
+.landing-preview-tabs button{font-size:.8rem}
+.landing-demo figcaption,.site-product-capture figcaption{font-size:.8rem}
+.landing-meal-capture figcaption,.landing-phone-capture figcaption,.landing-progress-capture figcaption{font-size:.75rem}
+@media(max-width:760px){.landing-preview-tabs button{font-size:.75rem;padding-inline:10px}.landing-demo figcaption{font-size:.75rem}.landing-phone-capture figcaption{font-size:.75rem}.landing-hero-copy .landing-motion-toggle{font-size:.75rem}.landing-scroll-cue{font-size:.7rem}}
+@keyframes landing-phone-float{0%,100%{translate:0 0}50%{translate:0 -4px}}
+.site-landing .site-header a:focus-visible,.site-landing .site-header summary:focus-visible,.landing-hero a:focus-visible,.landing-hero button:focus-visible,.landing-final-cta a:focus-visible{outline-color:#d3f3a7}

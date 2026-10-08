@@ -24,7 +24,7 @@ for (const mobile of [false, true]) test(`public landing bounds work after new a
   const introduction = page.getByRole('region', { name: 'O cuidado não termina na consulta.', exact: true });
   await introduction.getByRole('link', { name: mobile ? 'Criar conta' : 'Começar com o Nello', exact: true }).focus();
   await page.keyboard.press('Tab');
-  const nextAction = introduction.getByRole('link', { name: mobile ? 'Ver o Nello' : 'Explore a experiência', exact: true });
+  const nextAction = introduction.getByRole('link', { name: mobile ? 'Ver o Nello' : 'Ver as telas do Nello', exact: true });
   await expect(nextAction).toBeFocused();
   await expect(nextAction).toHaveAttribute('href', '#nello-em-acao');
   await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));

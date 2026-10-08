@@ -22,6 +22,12 @@ test('landing demonstration supports keyboard, pausing and reduced movement',asy
  await expect(page.locator('.landing-demo-workspace')).toHaveCSS('opacity','1');
  await page.getByRole('button',{name:'Ativar animações',exact:true}).click();
  await expect.poll(()=>page.locator('.landing-aurora-green').evaluate(el=>el.getAnimations().some(a=>a.playState==='running'))).toBe(true);
+ await expect(page.locator('.landing-hero h1>span')).toHaveCSS('filter','none');
+ await expect.poll(()=>page.locator('.landing-hero h1>span').evaluate(el=>el.getAnimations().length)).toBe(0);
+ await page.locator('.landing-faq').scrollIntoViewIfNeeded();
+ await expect.poll(()=>page.locator('.landing-aurora-green').evaluate(el=>el.getAnimations().every(a=>a.playState==='paused'))).toBe(true);
+ await page.getByRole('button',{name:'Pausar animações',exact:true}).scrollIntoViewIfNeeded();
+ await expect.poll(()=>page.locator('.landing-aurora-green').evaluate(el=>el.getAnimations().some(a=>a.playState==='running'))).toBe(true);
  await page.emulateMedia({reducedMotion:'reduce'});await expect(page.getByRole('button',{name:'Movimento reduzido'})).toBeDisabled();
  await expect.poll(()=>page.locator('.landing-aurora-green').evaluate(el=>el.getAnimations().length)).toBe(0);
  await expect(page.locator('h1')).toBeVisible();await expect(page).toHaveURL(/\/$/);
@@ -35,12 +41,34 @@ test('landing initial content and navigation work without JavaScript',async({bro
  await expect.poll(()=>page.locator('.landing-demo img').evaluate(img=>img.complete&&img.naturalWidth>0)).toBe(true);await context.close();
 });
 
+for(const width of [320,768,1440])test(`public design audit: stable captures, research and navigation ${width}`,async({page})=>{
+ await page.setViewportSize({width,height:900});await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/');
+ const capture=page.locator('.landing-capture-workspace');const original=await capture.boundingBox();
+ for(const label of ['Visão clínica','Área do paciente','Plano alimentar']){
+  await page.getByRole('button',{name:label,exact:true}).click();
+  await expect.poll(()=>capture.locator('img').evaluate(img=>img.complete&&img.naturalWidth>0)).toBe(true);
+  const next=await capture.boundingBox();expect(Math.abs(next.height-original.height)).toBeLessThan(1);
+  if(label==='Área do paciente')await expect.poll(()=>capture.locator('img').evaluate(img=>img.currentSrc)).toMatch(/paciente-inicio-mobile-345\.webp$/);
+ }
+ await expect(page.locator('.landing-research-authors li')).toHaveCount(5);
+ await expect(page.locator('.landing-research')).toContainText('Universidade de Marília');
+ await expect(page.locator('.landing-research-advisor')).toContainText('Cláudia Rucco');
+ if(width<=760){
+  const menu=page.locator('.site-mobile-menu');const summary=menu.locator('summary');
+  await summary.click();await page.keyboard.press('Escape');await expect(menu).not.toHaveAttribute('open','');await expect(summary).toBeFocused();
+  await summary.click();await page.locator('.landing-hero-for').click();await expect(menu).not.toHaveAttribute('open','');
+  await summary.click();await menu.getByRole('link',{name:'Pesquisa',exact:true}).click();
+ }else await page.getByRole('navigation',{name:'Navegação pública',exact:true}).getByRole('link',{name:'Pesquisa',exact:true}).click();
+ await expect(page).toHaveURL(/\/pesquisa$/);await expect(page.locator('.research-credit-grid article')).toHaveCount(5);
+ await page.goto('/para-pacientes');await expect.poll(()=>page.locator('.site-product img').evaluate(img=>img.complete&&img.currentSrc)).toMatch(/paciente-inicio-mobile-345\.webp$/);
+});
+
 async function audit(page) {
  for(const image of await page.locator('.product-screenshot img').all()){
   await image.scrollIntoViewIfNeeded();
   await expect.poll(()=>image.evaluate(img=>img.complete&&img.naturalWidth>0)).toBe(true);
   const mobile=await page.evaluate(()=>innerWidth<=760);
-  if(mobile)await expect.poll(()=>image.evaluate(img=>img.currentSrc)).toMatch(/-mobile-375\.webp$/);
+  if(mobile)await expect.poll(()=>image.evaluate(img=>img.currentSrc)).toMatch(/-mobile-(345|360)\.webp$/);
  }
  await page.keyboard.press('Control+Home');
  await page.evaluate(async()=>{await document.fonts.ready;await document.fonts.load('600 24px ClashDisplay');});
