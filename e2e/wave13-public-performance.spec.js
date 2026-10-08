@@ -21,7 +21,7 @@ for (const mobile of [false, true]) test(`public landing bounds work after new a
     timeout: mobile ? 10000 : 6000,
     message: 'LCP observer must report a paint before the first keyboard input',
   }).toBeGreaterThan(0);
-  const introduction = page.getByRole('region', { name: 'Mais clareza para cuidar. Mais tempo para acompanhar.', exact: true });
+  const introduction = page.getByRole('region', { name: 'Mais clareza para cuidar. Mais contexto para acompanhar.', exact: true });
   await introduction.getByRole('link', { name: mobile ? 'Criar conta' : 'Criar minha conta', exact: true }).focus();
   await page.keyboard.press('Tab');
   const nextAction = introduction.getByRole('link', { name: mobile ? 'Ver recursos' : 'Conhecer os recursos', exact: true });
