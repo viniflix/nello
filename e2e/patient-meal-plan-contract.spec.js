@@ -29,9 +29,14 @@ for(const width of [320,390,768,1024,1440])test(`patient reads the applied meals
   await page.getByRole('button',{name:'Entrar',exact:true}).click();await expect(page).toHaveURL(/\/patient$/);
   await expect(page.getByRole('button',{name:'Registrar Esta Refeição',exact:true})).toBeVisible();
   await expect(page.getByText('Nenhum plano alimentar ativo no momento.',{exact:true})).toHaveCount(0);
+  await expect(page.locator('[data-patient-shell]')).toBeVisible();
+  expect(await page.evaluate(() => ({ overflow: getComputedStyle(document.documentElement).overflowY, gutter: getComputedStyle(document.documentElement).scrollbarGutter }))).toEqual({ overflow: 'hidden', gutter: 'auto' });
+  if (width < 768) expect(await page.locator('#main-content').evaluate(node => getComputedStyle(node).scrollbarWidth)).toBe('none');
+  await page.locator('#main-content').evaluate(node => { node.scrollTop = node.scrollHeight; });
   await page.getByRole('link',{name:'Plano',exact:true}).click();
   await expect(page.getByText('Registrar Jantar',{exact:true})).toBeVisible();
   await expect(page.getByText('Registrar Café da Manhã',{exact:true})).toBeVisible();
+  await expect.poll(() => page.locator('#main-content').evaluate(node => node.scrollTop)).toBe(0);
   await page.waitForFunction(()=>[...document.querySelectorAll('.patient-page-content p')].every(node=>{
     for(let parent=node;parent;parent=parent.parentElement)if(Number(getComputedStyle(parent).opacity)<1)return false;
     return true;

@@ -6,6 +6,7 @@ import { CalendarDays, CalendarPlus, HeartPulse, MessageCircle, Pencil, Scale, T
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { appointmentStatusLabel, patientCategoryLabel } from '@/lib/utils/patientHubPresentation';
 
 const goalLabels = {
     lose: 'Perda de peso', gain: 'Ganho de peso', maintain: 'Manutenção', muscle: 'Hipertrofia',
@@ -61,8 +62,8 @@ function Metric({ icon: Icon, label, value, detail }) {
             <Icon className="h-4 w-4 shrink-0 text-[#718065]" />
             <div className="min-w-0">
                 <p className="text-xs font-bold uppercase tracking-[0.09em] text-slate-600">{label}</p>
-                <p className="truncate text-[15px] font-semibold leading-5 text-slate-800">{value}</p>
-                {detail && <p className="truncate text-xs leading-4 text-slate-600">{detail}</p>}
+                <p className="break-words text-[15px] font-semibold leading-5 text-slate-800">{value}</p>
+                {detail && <p className="break-words text-xs leading-4 text-slate-600">{detail}</p>}
             </div>
         </div>
     );
@@ -109,8 +110,8 @@ const PatientProfileSummary = ({
                                 {patientData?.patient_invite_code && <Badge variant="outline" className="border-sky-200 bg-sky-50 text-xs text-sky-700">Sem conta</Badge>}
                             </div>
                             <p className="mt-1 text-xs leading-5 text-slate-600 sm:text-sm">{age !== null ? `${age} anos` : 'Idade não informada'} · {goal}</p>
-                            <p className="text-xs leading-5 text-slate-600">{patientData?.created_at ? `Membro desde ${formatDate(patientData.created_at)}` : 'Data de cadastro não informada'}</p>
-                            {(flags.length > 0 || patientData?.patient_category) && <div className="mt-2 flex flex-wrap gap-1.5">{flags.map((flag) => <Badge key={flag} variant="outline" className="border-red-200 bg-red-50/60 text-xs font-medium text-red-600 sm:text-xs">{flag}</Badge>)}{patientData?.patient_category && <Badge variant="outline" className="border-slate-200 bg-slate-50 text-xs font-medium text-slate-600 sm:text-xs">{patientData.patient_category}</Badge>}</div>}
+                            {formatDate(patientData?.created_at) && <p className="text-xs leading-5 text-slate-600">Membro desde {formatDate(patientData.created_at)}</p>}
+                            {(flags.length > 0 || patientData?.patient_category) && <div className="mt-2 flex flex-wrap gap-1.5">{flags.map((flag) => <Badge key={flag} variant="outline" className="border-red-200 bg-red-50/60 text-xs font-medium text-red-600 sm:text-xs">{flag}</Badge>)}{patientData?.patient_category && <Badge variant="outline" className="border-slate-200 bg-slate-50 text-xs font-medium text-slate-600 sm:text-xs">{patientCategoryLabel(patientData.patient_category)}</Badge>}</div>}
                         </div>
                     </div>
 
@@ -125,7 +126,7 @@ const PatientProfileSummary = ({
                     <Metric icon={Scale} label="Peso atual" value={currentWeight ? `${currentWeight.toLocaleString('pt-BR')} kg` : 'Não informado'} detail={weightDelta !== null ? `${weightDelta > 0 ? '+' : ''}${weightDelta.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} kg no período` : null} />
                     <Metric icon={HeartPulse} label="IMC" value={imc || 'Não calculado'} detail={getImcLabel(imc)} />
                     <Metric icon={Utensils} label="Plano" value={plan?.daily_calories != null ? `${Math.round(Number(plan.daily_calories)).toLocaleString('pt-BR')} kcal` : plan ? plan.name : operationalContext?.planStatus === 'missing' ? 'Não iniciado' : '—'} detail={planStatusLabel} />
-                    <Metric icon={CalendarDays} label="Próxima consulta" value={nextAppointmentAt ? formatDate(nextAppointmentAt, 'dd MMM · HH:mm') : 'Não agendada'} detail={nextAppointmentAt ? operationalContext?.nextAppointment?.status : null} />
+                    <Metric icon={CalendarDays} label="Próxima consulta" value={nextAppointmentAt ? formatDate(nextAppointmentAt, 'dd MMM · HH:mm') : 'Não agendada'} detail={nextAppointmentAt ? appointmentStatusLabel(operationalContext?.nextAppointment?.status) : null} />
                 </div>
 
                 {profileRequirements.length > 0 && <div role="status" className="mx-4 mb-4 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900 lg:mx-5"><Target className="mt-0.5 h-3.5 w-3.5 shrink-0" />Complete os dados essenciais do perfil antes de novos registros clínicos.</div>}

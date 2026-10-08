@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { appointmentStatusLabel, appointmentTypeLabel, checkinStatusLabel } from '@/lib/utils/patientHubPresentation';
 
 const sectionClass = 'rounded-xl border border-[#d8d5d0] bg-white shadow-card';
 
@@ -59,7 +60,7 @@ function RecommendationInfo({ insight }) {
                         {reasons.map((reason) => <li key={reason}>• {reason}</li>)}
                     </ul>
                 ) : <p className="mt-2 text-slate-200">Não há evidências adicionais disponíveis.</p>}
-                <p className="mt-2 border-t border-white/15 pt-2 text-slate-600">Dados considerados: perfil, agenda, plano, avaliações e check-ins disponíveis.</p>
+                <p className="mt-2 border-t border-white/15 pt-2 text-slate-200">Dados considerados: perfil, agenda, plano, avaliações e check-ins disponíveis.</p>
             </div>
         </div>
     );
@@ -155,8 +156,8 @@ function AppointmentCard({ context, onAction }) {
                 {appointment ? (
                     <>
                         <p className="font-heading text-xl font-semibold tracking-wide text-slate-900">{formatDateTime(appointmentAt)}</p>
-                        <p className="mt-1 text-xs text-slate-600">{appointment.appointment_type || 'Consulta'} · {appointment.duration || 60} min</p>
-                        <Badge variant="outline" className="mt-3 border-sky-200 bg-sky-50 text-sky-700">{appointment.status || 'Agendada'}</Badge>
+                        <p className="mt-1 text-xs text-slate-600">{appointmentTypeLabel(appointment.appointment_type)} · {appointment.duration ?? 'Duração não informada'}{appointment.duration != null ? ' min' : ''}</p>
+                        <Badge variant="outline" className="mt-3 border-sky-200 bg-sky-50 text-sky-700">{appointmentStatusLabel(appointment.status)}</Badge>
                     </>
                 ) : <p className="text-sm leading-5 text-slate-600">Nenhuma consulta futura está agendada.</p>}
                 <Button variant="outline" size="sm" onClick={() => onAction({ type: 'schedule' })} className="mt-4 w-full border-[#c9d2c3] text-[#526047]">{appointment ? 'Abrir agenda' : 'Agendar consulta'}</Button>
@@ -168,7 +169,7 @@ function AppointmentCard({ context, onAction }) {
 function Signals({ insights, adherence, context, onAction }) {
     const items = [];
     if (adherence) items.push({ icon: CheckCircle2, label: 'Adesão recente', value: adherence.totalMeals > 0 ? `${adherence.adherencePercentage}% em 7 dias` : 'Sem registros nos últimos 7 dias', action: { type: 'tab', tab: 'adherence' } });
-    if (context?.latestCheckin) items.push({ icon: ClipboardCheck, label: 'Último check-in', value: context.latestCheckin.completed_at ? `Respondido em ${formatDateTime(context.latestCheckin.completed_at)}` : `Status: ${context.latestCheckin.status}`, action: { type: 'tab', tab: 'checkins' } });
+    if (context?.latestCheckin) items.push({ icon: ClipboardCheck, label: 'Último check-in', value: context.latestCheckin.completed_at ? `Respondido em ${formatDateTime(context.latestCheckin.completed_at)}` : checkinStatusLabel(context.latestCheckin.status), action: { type: 'tab', tab: 'checkins' } });
     if (context?.lastAppointment) items.push({ icon: CalendarDays, label: 'Última consulta', value: formatDateTime(context.lastAppointment.start_time || context.lastAppointment.appointment_time), action: { type: 'tab', tab: 'clinical' } });
     if (items.length === 0 && insights?.signals?.length) {
         insights.signals.slice(0, 3).forEach((signal) => items.push({ icon: AlertCircle, label: signal.title, value: signal.description, action: signal.action }));

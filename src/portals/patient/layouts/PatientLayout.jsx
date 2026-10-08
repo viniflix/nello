@@ -5,7 +5,7 @@ import { useChat } from '@/contexts/ChatContext';
 import { Button } from '@/components/ui/button';
 import NotificationsPanel from '@/components/NotificationsPanel';
 import { useNotificationsData } from '@/hooks/useNotificationsData';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOnlinePresence } from '@/hooks/useOnlinePresence';
 import { isPatientNavItemActive, PATIENT_NAV_ITEMS } from './patientNavigation';
@@ -32,6 +32,10 @@ export default function PatientLayout() {
 
   // Check if current route is chat page (chat handles its own internal scroll)
   const isChatPage = location.pathname.includes('/chat');
+  const mainRef = useRef(null);
+  useLayoutEffect(() => {
+    if (mainRef.current) mainRef.current.scrollTop = 0;
+  }, [location.pathname]);
 
   // Buscar notificações não lidas
 
@@ -52,7 +56,7 @@ export default function PatientLayout() {
   }));
 
   return (
-    <div className="flex h-[var(--app-viewport-height,100dvh)] min-w-0 flex-col overflow-hidden bg-background md:flex-row">
+    <div data-patient-shell className="flex h-[var(--app-viewport-height,100dvh)] min-w-0 flex-col overflow-hidden bg-background md:flex-row">
       {/* SIDEBAR (Desktop apenas) */}
       <aside className="fixed inset-y-0 left-0 z-30 hidden border-r border-border bg-card md:flex md:w-64 md:flex-col">
         <div className="border-b border-border p-6">
@@ -67,6 +71,7 @@ export default function PatientLayout() {
                 key={item.to}
                 to={item.to}
                 end={item.end}
+                aria-label={`${item.label}${item.badge > 0 ? `, ${item.badge} ${item.badge === 1 ? 'conversa não lida' : 'conversas não lidas'}` : ''}`}
                 className={({ isActive }) =>
                   `flex items-center gap-3 px-4 py-3 rounded-lg transition-colors relative ${
                     isPatientNavItemActive(item, location.pathname, isActive)
@@ -84,7 +89,7 @@ export default function PatientLayout() {
                       {item.label}
                     </span>
                     {item.badge > 0 && (
-                      <span className="ml-auto bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                      <span aria-hidden="true" className="ml-auto bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
                         {item.badge > 9 ? '9+' : item.badge}
                       </span>
                     )}
@@ -124,7 +129,7 @@ export default function PatientLayout() {
       </aside>
 
       {/* MAIN CONTENT AREA */}
-      <main id="main-content" tabIndex={-1} className={`min-h-0 min-w-0 flex-1 md:ml-64 ${isChatPage ? 'overflow-hidden' : 'overflow-y-auto'}`}>
+      <main ref={mainRef} id="main-content" tabIndex={-1} className={`min-h-0 min-w-0 flex-1 overscroll-contain md:ml-64 ${isChatPage ? 'overflow-hidden' : 'overflow-y-auto'}`}>
         <ClientErrorBoundary resetKey={`${user?.id}:${location.pathname}`}><Outlet /></ClientErrorBoundary>
       </main>
 
@@ -138,6 +143,7 @@ export default function PatientLayout() {
                 key={item.to}
                 to={item.to}
                 end={item.end}
+                aria-label={`${item.label}${item.badge > 0 ? `, ${item.badge} ${item.badge === 1 ? 'conversa não lida' : 'conversas não lidas'}` : ''}`}
                 className={({ isActive }) =>
                   `flex min-w-0 flex-1 flex-col items-center justify-center h-full px-0.5 transition-colors ${
                     isPatientNavItemActive(item, location.pathname, isActive) ? 'text-primary' : 'text-muted-foreground'
@@ -151,7 +157,7 @@ export default function PatientLayout() {
                     <div className="relative">
                       <Icon className="w-6 h-6" strokeWidth={itemIsActive ? 2.5 : 2} />
                       {item.badge > 0 && (
-                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-4 w-4 flex items-center justify-center">
+                        <span aria-hidden="true" className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-4 w-4 flex items-center justify-center">
                           {item.badge > 9 ? '9' : item.badge}
                         </span>
                       )}

@@ -156,6 +156,16 @@ html {
   scrollbar-gutter: stable !important;
 }
 
+/* Patient pages already scroll inside their viewport-height shell. A root
+   scrollbar would reserve a second gutter and allow the bottom navigation to drift. */
+html:has([data-patient-shell]) {
+  overflow-y: hidden !important;
+  scrollbar-gutter: auto !important;
+}
+@media (max-width: 767px) {
+  [data-patient-shell] > main { scrollbar-width: none; }
+}
+
 /* Full-screen meal editors own scrolling on small screens. Keep the desktop
    gutter, but do not reserve a second scrollbar behind these mobile dialogs. */
 @media (max-width: 639px) {

@@ -4,6 +4,13 @@ import { describe, it, expect, vi } from 'vitest';
 import PatientProfileSummary from './PatientProfileSummary';
 
 describe('PatientProfileSummary', () => {
+  it('translates consultation status without displaying a technical enum', () => {
+    render(<PatientProfileSummary patientData={{ name: 'Paciente', patient_category: 'adult' }} operationalContext={{ nextAppointment: { start_time: '2026-10-09T15:00:00Z', status: 'scheduled' } }} />);
+    expect(screen.getByText('Agendada')).toBeInTheDocument();
+    expect(screen.queryByText('scheduled')).not.toBeInTheDocument();
+    expect(screen.getByText('Adulto')).toBeInTheDocument();
+    expect(screen.queryByText('adult')).not.toBeInTheDocument();
+  });
   it('does not classify missing measurements as underweight', () => {
     render(<PatientProfileSummary patientData={{ name: 'Paciente' }} latestMetrics={{}} />);
     expect(screen.getByText('Não calculado')).toBeInTheDocument();
