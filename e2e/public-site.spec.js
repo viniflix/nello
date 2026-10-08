@@ -14,6 +14,9 @@ test('landing demonstration supports keyboard, pausing and reduced movement',asy
  await page.getByRole('button',{name:'Pausar animações',exact:true}).click();
  await expect.poll(()=>page.locator('.landing-aurora-green').evaluate(el=>el.getAnimations().every(a=>a.playState==='paused'))).toBe(true);
  await expect.poll(()=>demo.evaluate(el=>getComputedStyle(el).transform)).toBe('none');
+ const clinical=page.getByRole('button',{name:'Visão clínica',exact:true});await clinical.focus();await clinical.press('Enter');
+ await expect(clinical).toHaveAttribute('aria-pressed','true');
+ await expect(page.locator('.landing-demo-workspace')).toHaveCSS('opacity','1');
  await page.getByRole('button',{name:'Ativar animações',exact:true}).click();
  await expect.poll(()=>page.locator('.landing-aurora-green').evaluate(el=>el.getAnimations().some(a=>a.playState==='running'))).toBe(true);
  await page.emulateMedia({reducedMotion:'reduce'});await expect(page.getByRole('button',{name:'Movimento reduzido'})).toBeDisabled();
