@@ -3,6 +3,28 @@ export {uploadVerifiedFile} from '../src/lib/storage/verifiedUpload';
 import React from 'react';
 import ImageModal from '../src/components/ImageModal';
 import { createRoot } from 'react-dom/client';
+import { Toaster } from '../src/components/ui/toaster';
+import { toast } from '../src/components/ui/use-toast';
+import { ToastAction } from '../src/components/ui/toast';
+import { Dialog, DialogTrigger, DialogContent, DialogTitle, DialogDescription } from '../src/components/ui/dialog';
+export function mountSyntheticToast() {
+  function Probe() {
+    const [actions, setActions] = React.useState(0);
+    const notify = duration => toast({title:'Aviso de teste', description:'Orientação sintética para continuar.', duration,
+      action:React.createElement(ToastAction,{altText:'Continuar tarefa sintética',onClick:()=>setActions(value=>value+1)},'Continuar')});
+    return React.createElement(React.Fragment,null,
+      React.createElement('main',null,React.createElement('h1',null,'Avisos sintéticos'),
+        React.createElement('button',{onClick:()=>notify(Infinity)},'Mostrar aviso'),
+        React.createElement('button',{onClick:()=>notify(800)},'Aviso temporário'),
+        React.createElement('p',{'aria-label':'Ações realizadas'},String(actions)),
+        React.createElement(Dialog,null,React.createElement(DialogTrigger,{asChild:true},React.createElement('button',null,'Abrir diálogo')),
+          React.createElement(DialogContent,null,React.createElement(DialogTitle,null,'Diálogo sintético'),
+            React.createElement(DialogDescription,null,'Nenhum dado enviado.'),
+            React.createElement('button',{onClick:()=>notify(Infinity)},'Avisar no diálogo')))),
+      React.createElement(Toaster));
+  }
+  createRoot(document.getElementById('root')).render(React.createElement(Probe));
+}
 export function mountSyntheticMediaModal() {
   function Probe() {
     const [open, setOpen] = React.useState(false);

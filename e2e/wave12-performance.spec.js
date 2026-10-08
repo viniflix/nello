@@ -6,7 +6,10 @@ for(const mobile of [false,true])test(`public login has bounded initial work on 
  await page.route('https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit',route=>route.fulfill({contentType:'application/javascript',body:''}));
  const session=await context.newCDPSession(page);await session.send('Emulation.setCPUThrottlingRate',{rate:mobile?4:1});
  await page.addInitScript(()=>{window.__wave12={lcp:0,interactions:[]};new PerformanceObserver(list=>{for(const e of list.getEntries())window.__wave12.lcp=e.startTime;}).observe({type:'largest-contentful-paint',buffered:true});new PerformanceObserver(list=>{for(const e of list.getEntries())if(e.interactionId)window.__wave12.interactions.push(e.duration);}).observe({type:'event',durationThreshold:16,buffered:true});});
- await page.goto('/login');await expect(page.getByRole('button',{name:'Entrar',exact:true})).toBeVisible();await page.getByPlaceholder('seu@email.com').first().fill('synthetic@example.invalid');
+ await page.goto('/login');await expect(page.getByRole('button',{name:'Entrar',exact:true})).toBeVisible();
+ // Observe the first paint before input can end LCP collection.
+ await expect.poll(()=>page.evaluate(()=>window.__wave12.lcp)).toBeGreaterThan(0);
+ await page.getByPlaceholder('seu@email.com').first().fill('synthetic@example.invalid');
  await page.getByRole('button',{name:'Preferências de privacidade',exact:true}).click();
  await expect(page.getByRole('button',{name:'Sem analytics',exact:true})).toBeVisible();
  const metrics=await page.evaluate(()=>({...window.__wave12,heap:performance.memory?.usedJSHeapSize||0}));

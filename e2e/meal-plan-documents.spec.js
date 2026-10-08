@@ -54,7 +54,7 @@ test('official meal-plan document recovers lookup, guides identity and preserves
   const saved = page.waitForResponse(response => response.url().endsWith('/rpc/save_my_document_identity'));
   await page.getByRole('button', { name: 'Salvar identidade documental', exact: true }).click();
   expect((await saved).status()).toBe(200);
-  await expect(page.getByText(/Versão \d+ preservada no histórico\./)).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Notifications (F8)' }).getByText(/Versão \d+ preservada no histórico\./)).toBeVisible();
   await page.goto(path); await page.getByRole('button', { name: 'Preparar', exact: true }).click();
   await page.getByRole('button', { name: 'Finalizar', exact: true }).click();
   await page.getByRole('button', { name: 'Assinar', exact: true }).click();
@@ -67,8 +67,7 @@ test('official meal-plan document recovers lookup, guides identity and preserves
   for (const value of ['Nello', '100 kcal', 'QA Alimento do café', 'não contabilizada', 'Status: Assinado']) expect(officialPdf.text).toContain(value);
   for (const field of ['professional_confirmation', 'source_snapshot', 'responsible_id', 'prepared_by']) expect(officialPdf.text).not.toContain(field);
   // Exercise the real toast keyboard path; then audit the persistent workspace.
-  // Radix 1.2.14 uses aria-hidden tab proxies while notifications are mounted
-  // (upstream issue 2584). This is recorded separately, never disabled in Axe.
+  // Active notifications receive a separate full Axe audit in toast-accessibility.
   await page.keyboard.press('F8');
   expect(await page.evaluate(() => document.activeElement?.closest('[role="region"]')?.getAttribute('aria-label'))).toBe('Notifications (F8)');
   for (let count = 0; count < 3 && await page.getByRole('button', { name: 'Fechar aviso', exact: true }).count(); count++) {
