@@ -28,6 +28,8 @@ test('modal focus and toast dismissal recover the dialog trigger',async({page})=
   await expect(page.getByText('Orientação sintética para continuar.',{exact:true})).toBeVisible();
   expect((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze()).violations.map(v=>({id:v.id,targets:v.nodes.map(n=>n.target)}))).toEqual([]);
   await page.getByRole('button',{name:'Fechar aviso',exact:true}).click();
+  // Wait for the exit animation to release its dismissal layer before Escape.
+  await expect(page.getByText('Orientação sintética para continuar.',{exact:true})).not.toBeVisible();
   await dialog.getByRole('button',{name:'Avisar no diálogo',exact:true}).focus();
   await page.keyboard.press('Shift+Tab');await expect.poll(()=>page.evaluate(()=>!!document.activeElement?.closest('[role="dialog"]'))).toBe(true);
   await page.keyboard.press('Escape');await expect(dialog).not.toBeVisible();await expect(trigger).toBeFocused();

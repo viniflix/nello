@@ -111,3 +111,4 @@
 @media(max-width:360px){.site-landing .public-product-experience .site-hero h1{font-size:1.75rem}}
 .public-product-experience .site-demo-metrics>div{min-width:0}.public-product-experience .site-demo-metrics strong{max-width:100%;overflow-wrap:anywhere}
 @media(max-width:760px){.site-landing .research-experience .research-hero h1,.site-landing .research-experience .research-hero h1>em{overflow-wrap:anywhere}.research-hero h1>em{display:block;max-width:100%}}
+.landing-phone-caption>span{height:1.2em}.landing-phone-caption>span>svg{display:block}
