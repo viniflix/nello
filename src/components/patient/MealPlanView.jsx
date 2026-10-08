@@ -57,7 +57,12 @@ const MealPlanView = ({ mealPlanItems, showNutrition = false }) => {
                       {foodItem.substitutes && foodItem.substitutes.length > 0 && (
                         <div className="text-xs text-muted-foreground ml-3 bg-muted/30 p-1 rounded italic">
                           <span className="font-semibold text-xs uppercase mr-1">Opções:</span>
-                      {foodItem.substitutes.map(s => `${s.name || s.food?.name || 'Alimento'} · ${formatQuantityWithUnit(s.quantity ?? 0,s.unit || 'gram',s.measure || s.measure_snapshot)}`).join('; ')}
+                          <ul className="mt-1 space-y-1">
+                            {foodItem.substitutes.map((s, subIndex) => <li key={s.id || subIndex} className="break-words">
+                              {s.name || s.food?.name || 'Alimento'} · {formatQuantityWithUnit(s.quantity ?? 0,s.unit || 'gram',s.measure || s.measure_snapshot)}
+                              {s.notes && <p className="whitespace-pre-wrap break-words">{s.notes}</p>}
+                            </li>)}
+                          </ul>
                         </div>
                       )}
                     </li>

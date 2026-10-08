@@ -75,7 +75,7 @@ export const getMealPlansByIds = async (planIds, existingPlans = null) => {
         if (allMealPlanFoodIds.length > 0) {
             const subs = await fetchByIdsInPages(allMealPlanFoodIds, (ids, offset, pageSize) => supabase
                 .from('meal_plan_food_substitutions')
-                .select('id, meal_plan_food_id, substitute_food_id, quantity, unit, food_snapshot, measure_snapshot')
+                .select('id, meal_plan_food_id, substitute_food_id, quantity, unit, notes, food_snapshot, measure_snapshot')
                 .in('meal_plan_food_id', ids)
                 .order('id', { ascending: true })
                 .range(offset, offset + pageSize - 1));
@@ -167,6 +167,7 @@ export const getMealPlansByIds = async (planIds, existingPlans = null) => {
                             ...subFood,
                             quantity: s.quantity,
                             unit: s.unit,
+                            notes: s.notes,
                             measure: s.measure_snapshot || resolveMeasure(s.unit)
                         };
                     }
@@ -425,7 +426,7 @@ export const getFoodSubstitutions = async (mealPlanFoodId) => {
     try {
         const { data: subs, error: subsError } = await supabase
             .from('meal_plan_food_substitutions')
-            .select('substitute_food_id, quantity, unit, measure_snapshot')
+            .select('substitute_food_id, quantity, unit, notes, measure_snapshot')
             .eq('meal_plan_food_id', mealPlanFoodId);
 
         if (subsError) throw subsError;
@@ -446,6 +447,7 @@ export const getFoodSubstitutions = async (mealPlanFoodId) => {
             return {
                 ...food,
                 quantity: subData?.quantity ?? null,
+                notes: subData?.notes,
                 measure: subData?.measure_snapshot || null,
                 unit: subData?.unit || null
             };

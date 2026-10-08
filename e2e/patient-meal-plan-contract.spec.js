@@ -19,6 +19,7 @@ for(const width of [320,390,768,1024,1440])test(`patient reads the applied meals
   const patient=identity.data.user.id;
   expect((await admin.auth.admin.updateUserById(patient,{email:`${patient}@example.invalid`,email_confirm:true})).error).toBeNull();
   const sample=seed(fixture.personas['nutritionist-a'].id,patient);
+  execFileSync('docker',['exec','-i','-e','PGPASSWORD=postgres','supabase_db_nello-reconstruction','psql','-X','-h','127.0.0.1','-U','supabase_admin','-d','postgres','-v','ON_ERROR_STOP=1'],{encoding:'utf8',stdio:['pipe','pipe','pipe'],input:`INSERT INTO public.meal_plan_food_substitutions(meal_plan_food_id,substitute_food_id,quantity,unit,notes,food_snapshot) SELECT f.id,f.food_id,50,'gram','QA Orientação da substituição: conservar o preparo e a porção indicados.',jsonb_build_object('id',f.food_id,'name','QA Substituição orientada') FROM public.meal_plan_foods f JOIN public.meal_plan_meals m ON m.id=f.meal_plan_meal_id WHERE m.meal_plan_id=${sample.plan} AND m.meal_type='breakfast';`});
   const other=createClient(fixture.url,fixture.anonKey,{auth:{persistSession:false,autoRefreshToken:false}});
   expect((await other.auth.signInWithPassword({email:fixture.personas['patient-b'].email,password:fixture.password})).error).toBeNull();
   const denied=await other.from('meal_plans').select('id').eq('id',sample.plan);
@@ -40,6 +41,7 @@ for(const width of [320,390,768,1024,1440])test(`patient reads the applied meals
   await expect(dialog.getByLabel('Totais diários do plano')).toContainText('100 kcal');
   await expect(dialog.getByText('QA Alimento do café',{exact:true})).toBeVisible();
   await expect(dialog.getByText('QA Porção alternativa',{exact:true})).toBeVisible();
+  await expect(dialog.getByText('QA Orientação da substituição: conservar o preparo e a porção indicados.',{exact:true})).toBeVisible();
   await expect(dialog.getByText('Refeição alternativa — não contabilizada nos totais.',{exact:true})).toBeVisible();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   const region=dialog.getByRole('region',{name:'Refeições e detalhes do plano'});
@@ -54,4 +56,5 @@ for(const width of [320,390,768,1024,1440])test(`patient reads the applied meals
   await dialog.getByRole('button',{name:'Fechar plano',exact:true}).click();await page.reload();
   await page.getByRole('button',{name:'Ver plano alimentar',exact:true}).click();
   await expect(page.getByRole('dialog').getByLabel('Totais diários do plano')).toContainText('100 kcal');
+  await expect(page.getByRole('dialog').getByText('QA Orientação da substituição: conservar o preparo e a porção indicados.',{exact:true})).toBeVisible();
 });
