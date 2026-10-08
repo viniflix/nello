@@ -71,6 +71,7 @@ jobs:
         run: |
           node scripts/qa/browser-fixture.mjs
           node scripts/qa/wave10-clinical-pdf.mjs
+          node scripts/qa/mc04-canonical-pdf.mjs
           node scripts/qa/realtime-boundaries.mjs
           node scripts/qa/auth-onboarding.mjs
           node scripts/qa/edge-boundaries.mjs

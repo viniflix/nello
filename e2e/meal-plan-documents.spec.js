@@ -7,6 +7,7 @@ import { createClient } from '@supabase/supabase-js';
 import { seed } from './helpers/mealPlanFixture';
 import { assertIsolatedRuntime, supabaseCommand, supabaseArgs } from '../scripts/qa/isolated-runtime.mjs';
 import { assertSyntheticRecoveryIdentities } from '../scripts/qa/recovery-identities.mjs';
+import { inspectPdf } from '../scripts/qa/pdf-content.mjs';
 assertIsolatedRuntime();
 const fixture = JSON.parse(readFileSync('.backend-ci/browser-runtime/fixture.json'));
 if (fixture.url !== 'http://localhost:54321') throw Error('Disposable loopback stack required');
@@ -59,7 +60,12 @@ test('official meal-plan document recovers lookup, guides identity and preserves
   await page.getByRole('button', { name: 'Assinar', exact: true }).click();
   await expect(page.getByRole('button', { name: 'PDF oficial', exact: true })).toBeEnabled();
   const download = page.waitForEvent('download'); await page.getByRole('button', { name: 'PDF oficial', exact: true }).click();
-  expect(await (await download).failure()).toBeNull();
+  const downloaded = await download;
+  expect(await downloaded.failure()).toBeNull();
+  const officialPdf = await inspectPdf(readFileSync(await downloaded.path()));
+  expect(officialPdf.pages).toBeGreaterThan(0);
+  for (const value of ['Nello', '100 kcal', 'QA Alimento do café', 'não contabilizada', 'Status: Assinado']) expect(officialPdf.text).toContain(value);
+  for (const field of ['professional_confirmation', 'source_snapshot', 'responsible_id', 'prepared_by']) expect(officialPdf.text).not.toContain(field);
   // Exercise the real toast keyboard path; then audit the persistent workspace.
   // Radix 1.2.14 uses aria-hidden tab proxies while notifications are mounted
   // (upstream issue 2584). This is recorded separately, never disabled in Axe.

@@ -9,6 +9,19 @@ const describe = (value, depth = 0) => {
   if (typeof value === 'object') return Object.entries(value).map(([key,item])=>`${key}: ${describe(item,depth+1)}`).join('\n');
   return text(value);
 };
+/** Bound saved text without splitting ordinary words at arbitrary character offsets. */
+export function boundedClinicalLines(lines) {
+  return lines.flatMap(value=>{
+    const chunks=[];let current='';
+    for(const word of String(value).trim().split(/\s+/)) {
+      for(const part of word.match(/.{1,900}/g) || ['']) {
+        if(current && current.length+part.length+1>900){chunks.push(current);current='';}
+        current+=`${current ? ' ' : ''}${part}`;
+      }
+    }
+    chunks.push(current);return chunks;
+  });
+}
 export const energyInputsFromSnapshot = row => {
   const input = row.input_snapshot || {};
   return { weight:input.weight_kg, height:input.height_cm, age:input.age_years, gender:input.sex,
@@ -54,6 +67,40 @@ export function energyDocument(row) {
     'Estimativa energética sujeita à variabilidade individual. VENTA usa aproximação estática de 7.700 kcal/kg, não uma previsão garantida de peso.',
   ].filter(Boolean).flatMap(line=>String(line).split('\n')) };
 }
+const recordedNumber = value => value == null || value === '' || !Number.isFinite(Number(value))
+  ? 'Não registrado' : Number(value).toLocaleString('pt-BR',{maximumFractionDigits:8});
+const civilDate = value => /^\d{4}-\d{2}-\d{2}$/.test(String(value)) ? String(value).split('-').reverse().join('/') : text(value || 'Não registrada');
+/** Project only frozen fields. Missing historical fields never consult today's plan. */
+export function canonicalMealPlanLines(content) {
+  describe(content); // Preserve the depth bound for all canonical document kinds.
+  const diet=content.diet_characteristics || {}, totals=content.nutritional_targets || {};
+  const days={monday:'Segunda-feira',tuesday:'Terça-feira',wednesday:'Quarta-feira',thursday:'Quinta-feira',friday:'Sexta-feira',saturday:'Sábado',sunday:'Domingo'};
+  const macros=(row,energy='calories',protein='protein',carbs='carbs',fat='fat') =>
+    `${recordedNumber(row[energy])} kcal; Proteínas: ${recordedNumber(row[protein])} g; Carboidratos: ${recordedNumber(row[carbs])} g; Gorduras: ${recordedNumber(row[fat])} g`;
+  const lines=['Nello · Prescrição alimentar',text(content.plan_name || 'Plano alimentar'),`Emissão: ${civilDate(content.issued_on)}`,
+    `Vigência: ${civilDate(diet.start_date)} até ${diet.end_date ? civilDate(diet.end_date) : 'prazo indeterminado'}`,
+    Array.isArray(diet.active_days) && diet.active_days.length ? `Dias: ${diet.active_days.map(day=>days[day] || 'Dia não registrado').join(', ')}` : 'Dias: não registrados',
+    text(diet.description || ''),'Totais diários registrados',macros(totals,'energy_kcal','protein_g','carbohydrate_g','fat_g')];
+  for(const meal of content.meals || []) {
+    lines.push(`${text(meal.time ? String(meal.time).slice(0,5) : 'Horário não registrado')} · ${text(meal.name || 'Refeição')}`,
+      meal.include_in_totals===false ? 'Refeição alternativa — não contabilizada nos totais.' : '',text(meal.notes || ''));
+    for(const food of meal.foods || []) {
+      lines.push(`${text(food.patient_description || food.name || 'Alimento')}: ${prescriptionQuantity(food)}`,
+        macros(food),text(food.notes || ''));
+      const composition=food.food_snapshot;
+      if(composition)lines.push(
+        `Composição do catálogo por ${recordedNumber(composition.portion_size ?? 100)} ${text(composition.base_unit || 'g')}: Fibras: ${recordedNumber(composition.fiber)} g; Sódio: ${recordedNumber(composition.sodium)} mg. Valores de referência, não totais da porção prescrita.`);
+      else lines.push('Composição de fibras e sódio não registrada neste documento.');
+      for(const option of food.substitutes || [])lines.push(
+        `Opção: ${text(option.name || option.food_snapshot?.name || 'Alimento alternativo')}${option.quantity != null ? ': '+prescriptionQuantity(option) : ' — porção não registrada'}`,
+        text(option.notes || ''));
+    }
+    if(!meal.foods?.length)lines.push('Nenhum alimento registrado nesta refeição.');
+  }
+  if(!content.meals?.length)lines.push('Nenhuma refeição registrada neste documento.');
+  lines.push('Prescrição do documento salvo. Composição ausente não equivale a zero; dados históricos não são recalculados.');
+  return lines;
+}
 export function canonicalDocument(artifact) {
   if (!artifact?.id || !artifact.canonical_payload || !artifact.sha256) throw new Error('canonical_document_required');
   const payload = artifact.canonical_payload, content = payload.content || {};
@@ -61,8 +108,8 @@ export function canonicalDocument(artifact) {
   return {title:text(content.title || 'Documento clínico'), fileName:`nello-documento-${artifact.id}.pdf`,lines:[
     professional.clinic_name || '', `${professional.name || 'Profissional responsável'} ${professional.normalized_crn || ''}`,
     `Paciente: ${patient.name || 'Não informado'}`,patient.birth_date ? `Nascimento: ${patient.birth_date}` : '',
-    ...Object.entries(content).filter(([key])=>!['title','source_canonical_hash'].includes(key)).map(([key,value])=>`${key}: ${describe(value)}`),
-    `Status: ${artifact.status}`,artifact.signed_at ? `Assinado em: ${artifact.signed_at}` : '',
+    ...(payload.layout?.code==='meal_plan' ? canonicalMealPlanLines(content) : Object.entries(content).filter(([key])=>!['title','source_canonical_hash'].includes(key)).map(([key,value])=>`${key}: ${describe(value)}`)),
+    `Status: ${payload.layout?.code==='meal_plan' ? ({draft:'Rascunho',finalized:'Finalizado',signed:'Assinado',invalidated:'Invalidado',superseded:'Substituído'}[artifact.status] || 'Não registrado') : artifact.status}`,artifact.signed_at ? `Assinado em: ${artifact.signed_at}` : '',
     artifact.authenticity_code ? `Autenticidade: ${artifact.authenticity_code}` : '', `SHA-256 canônico: ${artifact.sha256}`,
   ].filter(Boolean).flatMap(line=>String(line).split('\n'))};
 }

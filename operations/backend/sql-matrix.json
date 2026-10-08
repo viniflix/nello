@@ -303,6 +303,11 @@
       "file": "admin_intelligence_workspace.sql",
       "kind": "assertion-suite",
       "fixtures": []
+    },
+    {
+      "file": "mc04_frozen_meal_document.sql",
+      "kind": "assertion-suite",
+      "fixtures": []
     }
   ]
 }

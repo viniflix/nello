@@ -1,5 +1,5 @@
 import { edgeBoundary, RequestError, timedFetch } from '../_shared/http.ts';
-import { energyDocument, canonicalDocument, storedClinicalDocument, renderMealPlanPdf } from '../_shared/clinical-document.js';
+import { energyDocument, canonicalDocument, storedClinicalDocument, renderMealPlanPdf, boundedClinicalLines } from '../_shared/clinical-document.js';
 import { activeActor } from '../_shared/actor.ts';
 import { consumeQuota } from '../_shared/quota.ts';
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
@@ -97,7 +97,7 @@ serve(edgeBoundary(async (req) => {
       }
       if(clinicalKind==='mealPlanId'){mealPdfRecord=records[0];mealPdfIdentity={patientName,includeNutrients:body.includeNutrients};}
       body={...storedClinicalDocument(clinicalKind,records,{patientName,includeNutrients:body.includeNutrients}),format:'binary'};
-      body.lines=body.lines.flatMap((line:string)=>line.match(/.{1,900}/g)||['']);
+      body.lines=boundedClinicalLines(body.lines);
     }
     if (body?.energyCalculationId != null || body?.documentArtifactId != null) {
       const energy = body.energyCalculationId != null;
@@ -122,7 +122,7 @@ serve(edgeBoundary(async (req) => {
       const saved = JSON.parse(raw), record = energy ? saved?.[0] : saved;
       if (!record) throw new RequestError(404,'document_unavailable');
       body = {...(energy ? energyDocument(record) : canonicalDocument(record)),format:'binary'};
-      body.lines = body.lines.flatMap((line:string)=>line.match(/.{1,900}/g)||['']);
+      body.lines = boundedClinicalLines(body.lines);
       if(body.lines.length>1200)throw new RequestError(413,'pdf_too_large');
     }
     if (!body || !Array.isArray(body.lines) || body.lines.length > 1200

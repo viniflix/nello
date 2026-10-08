@@ -1543,10 +1543,10 @@
           "file": "index.ts",
           "sha256": "f0015be07e3d70272d3cae068e28708aa46954eacb621c848f2e45bc6e7bfea5",
           "matchedLocal": false,
-          "repositorySha256": "d249ef9f13c467c79f53bcc034e329ada9f2c63e7dfafbfa386f937fcd71dfbd"
+          "repositorySha256": "db7e9feaace009b7d5927499ad83395d9479c307978eece5cbaa34702c354f14"
         }
       ],
-      "sourcePolicy": "Wave10: authorized stored clinical records, shared engine, bounded binary PDF; original published sha256 preserved."
+      "sourcePolicy": "Wave10 and MC04: authorized stored clinical records; frozen meal prescription presentation and bounded readable binary PDF; original published sha256 preserved."
     },
     {
       "slug": "sentry-issues",
@@ -1674,7 +1674,7 @@
     },
     {
       "file": "clinical-document.js",
-      "repositorySha256": "5045243f87c372c8d5225d6f0db6e0d9716d79e863eef061739f8a26f0c3521b"
+      "repositorySha256": "9773f66718bcc3ce0c7d572f69fbdb41cd4b2576e0f4ddc10d581e3ac363340c"
     },
     {
       "file": "clinical-energy-plan.js",

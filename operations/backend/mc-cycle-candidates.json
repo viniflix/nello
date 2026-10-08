@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "migrations": [
+    {
+      "file": "supabase/migrations/releases/20261008120000_mc04_frozen_meal_document.sql",
+      "sha256": "38feb9ed83e7d15dc3f19e8a96c4e4dc719315e3d88adefe2dbe0ca8e6b9601f"
+    }
+  ]
+}
