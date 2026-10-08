@@ -7,7 +7,7 @@ describe('route metadata privacy and public contracts', () => {
     expect(meta.robots).toBe('noindex,nofollow');
     expect(meta.canonical).toBe('https://nellonutri.com.br/');
   });
-  it.each(['/', '/recursos', '/para-pacientes', '/ajuda', '/termos', '/privacidade', '/seguranca'])('indexes only intended public information %s', path => {
+  it.each(['/', '/recursos', '/para-pacientes', '/pesquisa', '/ajuda', '/termos', '/privacidade', '/seguranca'])('indexes only intended public information %s', path => {
     expect(getRouteMetadata(path).robots).toBe('index,follow');
     expect(getRouteMetadata(path + (path === '/' ? '' : '/')).canonical).toBe('https://nellonutri.com.br' + path);
   });

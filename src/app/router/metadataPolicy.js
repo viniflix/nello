@@ -6,6 +6,7 @@ const publicPages = {
   '/register': ['Criar conta — Nello', 'Conheça os papéis de nutricionista e paciente e crie sua conta.'],
   '/recursos': ['Recursos para nutricionistas — Nello', 'Conheça prontuários, avaliações, planos alimentares, agenda e acompanhamento nutricional no Nello.'],
   '/para-pacientes': ['Para pacientes — Nello', 'Seu plano alimentar, diário, metas e mensagens com o nutricionista em uma área de acompanhamento própria.'],
+  '/pesquisa': ['Pesquisa e equipe — Nello', 'Conheça o projeto de pesquisa em Nutrição da UNIMAR e os créditos de autoria, orientação acadêmica e desenvolvimento do Nello.'],
   '/ajuda': ['Ajuda e suporte — Nello', 'Orientações de acesso e canal de suporte do Nello.'],
   '/termos': ['Termos de uso — Nello', 'Condições de uso do Nello.'],
   '/privacidade': ['Privacidade — Nello', 'Informações sobre tratamento de dados e direitos de privacidade.'],

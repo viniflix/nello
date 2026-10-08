@@ -29,8 +29,8 @@ async function uniqueMetadata(page, path) {
 for (const width of [320, 768, 1440]) test(`public landing, help and safe crawler metadata ${width}`, async ({ page, request }) => {
   await page.setViewportSize({ width, height: width === 768 ? 480 : 900 });
   const response = await request.get('/'); const html = await response.text();
-  expect(html).toContain('Mais clareza para cuidar.'); expect(html).toContain('https://nellonutri.com.br/og-image.png');
-  await page.goto('/'); await expect(page.getByRole('heading', { level: 1 })).toContainText('Mais clareza para cuidar.');
+  expect(html).toContain('O cuidado não termina'); expect(html).toContain('https://nellonutri.com.br/og-image.png');
+  await page.goto('/'); await expect(page.getByRole('heading', { level: 1 })).toContainText('O cuidado não termina');
   await uniqueMetadata(page, '/');
   await audit(page); await expect(page).toHaveScreenshot(`landing-${width}.png`, { fullPage: true, animations: 'disabled' });
   for (const route of ['/ajuda', '/seguranca', '/privacidade']) { await page.goto(route); await expect(page.locator('main h1')).toBeVisible(); await uniqueMetadata(page, route); await audit(page); }

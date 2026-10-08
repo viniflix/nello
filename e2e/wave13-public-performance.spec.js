@@ -14,19 +14,19 @@ for (const mobile of [false, true]) test(`public landing bounds work after new a
     new PerformanceObserver(list => { for (const entry of list.getEntries()) if (entry.interactionId) window.__wave13.interactions.push(entry.duration); }).observe({ type: 'event', durationThreshold: 16, buffered: true });
   });
   await page.goto('/');
-  await expect(page.getByRole('heading', { level: 1 })).toContainText('Mais clareza para cuidar.');
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('O cuidado não termina');
   // Text can exist before its first paint. Keyboard input ends LCP collection,
   // so wait for the observer's first delivered entry before exercising focus.
   await expect.poll(() => page.evaluate(() => window.__wave13.lcp), {
     timeout: mobile ? 10000 : 6000,
     message: 'LCP observer must report a paint before the first keyboard input',
   }).toBeGreaterThan(0);
-  const introduction = page.getByRole('region', { name: 'Mais clareza para cuidar. Mais contexto para acompanhar.', exact: true });
-  await introduction.getByRole('link', { name: mobile ? 'Criar conta' : 'Criar minha conta', exact: true }).focus();
+  const introduction = page.getByRole('region', { name: 'O cuidado não termina na consulta.', exact: true });
+  await introduction.getByRole('link', { name: mobile ? 'Criar conta' : 'Começar com o Nello', exact: true }).focus();
   await page.keyboard.press('Tab');
-  const nextAction = introduction.getByRole('link', { name: mobile ? 'Ver recursos' : 'Conhecer os recursos', exact: true });
+  const nextAction = introduction.getByRole('link', { name: mobile ? 'Ver o Nello' : 'Explore a experiência', exact: true });
   await expect(nextAction).toBeFocused();
-  await expect(nextAction).toHaveAttribute('href', '/recursos');
+  await expect(nextAction).toHaveAttribute('href', '#nello-em-acao');
   await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   const metrics = await page.evaluate(() => ({ ...window.__wave13, heap: performance.memory?.usedJSHeapSize || 0 }));
   expect(metrics.lcp).toBeGreaterThan(0);

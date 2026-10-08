@@ -1,2 +1,2 @@
 // Canonical public information routes shared by navigation, SEO and availability checks.
-export const publicInformationPaths = ['/', '/recursos', '/para-pacientes', '/ajuda', '/termos', '/privacidade', '/seguranca'];
+export const publicInformationPaths = ['/', '/recursos', '/para-pacientes', '/pesquisa', '/ajuda', '/termos', '/privacidade', '/seguranca'];

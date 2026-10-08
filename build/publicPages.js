@@ -16,11 +16,12 @@ export function publicPages() {
     try {
       const { default: Landing } = await server.ssrLoadModule('/src/pages/public/LandingPage.jsx');
       const { default: Product } = await server.ssrLoadModule('/src/pages/public/ProductInformationPage.jsx');
+      const { default: Research } = await server.ssrLoadModule('/src/pages/public/ResearchPage.jsx');
       const { default: Legal } = await server.ssrLoadModule('/src/pages/public/LegalInformationPage.jsx');
       const html = await readFile(output, 'utf8');
       const escape = value => value.replaceAll('&','&amp;').replaceAll('"','&quot;').replaceAll('<','&lt;').replaceAll('>','&gt;');
       for(const pathname of publicInformationPaths) {
-        const Component = pathname === '/' ? Landing : ['/recursos','/para-pacientes'].includes(pathname) ? Product : Legal;
+        const Component = pathname === '/' ? Landing : pathname === '/pesquisa' ? Research : ['/recursos','/para-pacientes'].includes(pathname) ? Product : Legal;
         const rendered = renderToStaticMarkup(React.createElement(Component,{pathname}));
         const meta = getRouteMetadata(pathname);
         let page = html.replace('<div id="root"></div>', `<div id="root">${rendered}</div>`)

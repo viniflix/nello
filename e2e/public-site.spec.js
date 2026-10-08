@@ -3,13 +3,39 @@ import AxeBuilder from '@axe-core/playwright';
 import {publicInformationPaths} from '../src/features/privacy/publicInformationPaths.js';
 import {getRouteMetadata} from '../src/app/router/metadataPolicy.js';
 
+test('landing demonstration supports keyboard, pausing and reduced movement',async({page})=>{
+ await page.emulateMedia({reducedMotion:'no-preference'});await page.goto('/');
+ await expect.poll(()=>page.locator('.landing-aurora-green').evaluate(el=>el.getAnimations().some(a=>a.playState==='running'))).toBe(true);
+ const demo=page.locator('.landing-demo');await demo.scrollIntoViewIfNeeded();const box=await demo.boundingBox();
+ await page.mouse.move(box.x+box.width*.75,box.y+box.height*.45);
+ await expect.poll(()=>demo.evaluate(el=>getComputedStyle(el).transform)).toMatch(/^matrix3d/);
+ const patient=page.getByRole('button',{name:'Área do paciente',exact:true});await patient.focus();await patient.press('Enter');
+ await expect(patient).toHaveAttribute('aria-pressed','true');await expect(page.locator('.landing-demo h2')).toContainText('rotina');
+ await page.getByRole('button',{name:'Pausar animações',exact:true}).click();
+ await expect.poll(()=>page.locator('.landing-aurora-green').evaluate(el=>el.getAnimations().every(a=>a.playState==='paused'))).toBe(true);
+ await expect.poll(()=>demo.evaluate(el=>getComputedStyle(el).transform)).toBe('none');
+ await page.getByRole('button',{name:'Ativar animações',exact:true}).click();
+ await expect.poll(()=>page.locator('.landing-aurora-green').evaluate(el=>el.getAnimations().some(a=>a.playState==='running'))).toBe(true);
+ await page.emulateMedia({reducedMotion:'reduce'});await expect(page.getByRole('button',{name:'Movimento reduzido'})).toBeDisabled();
+ await expect.poll(()=>page.locator('.landing-aurora-green').evaluate(el=>el.getAnimations().length)).toBe(0);
+ await expect(page.locator('h1')).toBeVisible();await expect(page).toHaveURL(/\/$/);
+});
+
+test('landing initial content and navigation work without JavaScript',async({browser,baseURL})=>{
+ const context=await browser.newContext({javaScriptEnabled:false});const page=await context.newPage();
+ await page.goto(baseURL+'/');await expect(page.locator('h1')).toContainText('O cuidado não termina');
+ await expect(page.getByRole('link',{name:'Começar com o Nello',exact:true})).toHaveAttribute('href','/register');
+ await expect(page.locator('.landing-demo h2')).toBeVisible();await context.close();
+});
+
 async function audit(page) {
  await page.evaluate(async()=>{await document.fonts.ready;await document.fonts.load('600 24px ClashDisplay');});
  const typography=await page.evaluate(()=>[...document.querySelectorAll('.nello-public-site h1,.nello-public-site h2,.nello-public-site h3')].filter(el=>!el.closest('.site-footer')).flatMap(el=>{
   const style=getComputedStyle(el),size=parseFloat(style.fontSize),issues=[];
-  if(!style.fontFamily.startsWith('ClashDisplay')||!document.fonts.check('600 24px ClashDisplay'))issues.push('heading font not loaded');
-  if(style.textTransform!=='uppercase')issues.push('heading identity not uppercase');
-  if(parseFloat(style.letterSpacing)<0||parseFloat(style.wordSpacing)<size*.1)issues.push('compressed heading spacing');
+  const landing=!!el.closest('.site-landing');
+  if((!style.fontFamily.startsWith('ClashDisplay')&&!el.closest('.landing-demo'))||!document.fonts.check('600 24px ClashDisplay'))issues.push('heading font not loaded');
+  if(style.textTransform!==(landing?'none':'uppercase'))issues.push('unexpected heading case');
+  if(!landing&&(parseFloat(style.letterSpacing)<0||parseFloat(style.wordSpacing)<size*.1))issues.push('compressed heading spacing');
   const walker=document.createTreeWalker(el,NodeFilter.SHOW_TEXT);let node;
   while((node=walker.nextNode())){
    if(parseFloat(getComputedStyle(document.documentElement).fontSize)<32)for(const word of node.textContent.matchAll(/[\p{L}\p{N}]+/gu)){
@@ -31,7 +57,7 @@ async function audit(page) {
 for(const screen of [{width:320,height:800},{width:390,height:844},{width:430,height:932},{width:760,height:480},{width:768,height:480},{width:1440,height:900},{width:320,height:900,zoom:true}])test(`public site navigation, readable content and reflow ${screen.width}${screen.zoom?' zoom200':''}`,async({page,request})=>{
  await page.setViewportSize(screen);await page.emulateMedia({reducedMotion:'reduce'});
  const errors=[];page.on('pageerror',error=>errors.push(error.message));
- await page.goto('/');await expect(page.locator('h1')).toContainText('Mais clareza para cuidar.');
+ await page.goto('/');await expect(page.locator('h1')).toContainText('O cuidado não termina');
  if(screen.zoom)await page.evaluate(()=>{document.documentElement.style.fontSize='200%';});
  await audit(page);
  if(screen.width<=760&&!screen.zoom){
@@ -39,7 +65,7 @@ for(const screen of [{width:320,height:800},{width:390,height:844},{width:430,he
   const first=await actions.nth(0).boundingBox(),second=await actions.nth(1).boundingBox();
   expect(Math.abs(first.y-second.y)).toBeLessThan(1);
   expect(first.height).toBeGreaterThanOrEqual(44);expect(second.height).toBeGreaterThanOrEqual(44);
-  await expect(actions.nth(0)).toHaveAccessibleName('Criar conta');await expect(actions.nth(1)).toHaveAccessibleName('Ver recursos');
+  await expect(actions.nth(0)).toHaveAccessibleName('Criar conta');await expect(actions.nth(1)).toHaveAccessibleName('Ver o Nello');
  }
  await test.info().attach('public-site-home',{body:await page.screenshot({fullPage:true}),contentType:'image/png'});
  await test.info().attach('public-site-hero',{body:await page.screenshot(),contentType:'image/png'});

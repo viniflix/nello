@@ -300,6 +300,10 @@
       "destination": "/para-pacientes/index.html"
     },
     {
+      "source": "/pesquisa",
+      "destination": "/pesquisa/index.html"
+    },
+    {
       "source": "/ajuda",
       "destination": "/ajuda/index.html"
     },
