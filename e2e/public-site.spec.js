@@ -48,7 +48,7 @@ for(const width of [320,768,1440])test(`public design audit: stable captures, re
   await page.getByRole('button',{name:label,exact:true}).click();
   await expect.poll(()=>capture.locator('img').evaluate(img=>img.complete&&img.naturalWidth>0)).toBe(true);
   const next=await capture.boundingBox();expect(Math.abs(next.height-original.height)).toBeLessThan(1);
-  if(label==='Área do paciente')await expect.poll(()=>capture.locator('img').evaluate(img=>img.currentSrc)).toMatch(/paciente-inicio-mobile-345\.webp$/);
+  if(label==='Área do paciente')await expect.poll(()=>capture.locator('img').evaluate(img=>img.currentSrc)).toMatch(/\/images\/product\/captures-[a-f0-9]{12}\/paciente-inicio-mobile-345\.webp$/);
  }
  await expect(page.locator('.landing-research-authors li')).toHaveCount(5);
  await expect(page.locator('.landing-research')).toContainText('Universidade de Marília');
@@ -60,7 +60,7 @@ for(const width of [320,768,1440])test(`public design audit: stable captures, re
   await summary.click();await menu.getByRole('link',{name:'Pesquisa',exact:true}).click();
  }else await page.getByRole('navigation',{name:'Navegação pública',exact:true}).getByRole('link',{name:'Pesquisa',exact:true}).click();
  await expect(page).toHaveURL(/\/pesquisa$/);await expect(page.locator('.research-credit-grid article')).toHaveCount(5);
- await page.goto('/para-pacientes');await expect.poll(()=>page.locator('.site-product img').evaluate(img=>img.complete&&img.currentSrc)).toMatch(/paciente-inicio-mobile-345\.webp$/);
+ await page.goto('/para-pacientes');await expect.poll(()=>page.locator('.site-product img').evaluate(img=>img.complete&&img.currentSrc)).toMatch(/\/images\/product\/captures-[a-f0-9]{12}\/paciente-inicio-mobile-345\.webp$/);
 });
 
 async function audit(page) {

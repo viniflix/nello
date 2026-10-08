@@ -1,4 +1,5 @@
 import React from 'react';
+import { PRODUCT_CAPTURE_BASE } from './productCaptureAssets';
 
 const screens = {
   plan: { desktop: 'nutri-plano-desktop', mobile: 'nutri-plano-mobile', width: 1410, height: 891, mobileWidth: 360, alt: 'Tela real de planejamento alimentar do Nello, com refeições, porções e análise nutricional. Dados fictícios.' },
@@ -9,7 +10,7 @@ const screens = {
 
 export default function ProductScreenshot({ screen = 'plan', mobileOnly = false, eager = false, sizes = '(max-width: 760px) 288px, (max-width: 1000px) 90vw, 1100px', className = '' }) {
   const image = screens[screen];
-  const base = '/images/product/';
+  const base = PRODUCT_CAPTURE_BASE;
   return <picture className={`product-screenshot ${className}`}>
     {!mobileOnly && <source media="(max-width: 760px)" srcSet={`${base}${image.mobile}-${image.mobileWidth}.webp`} width={image.mobileWidth} height="812" />}
     <img
