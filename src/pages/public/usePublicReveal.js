@@ -5,7 +5,7 @@ export function usePublicReveal(root, enabled = true, stopped = false) {
     const element = root.current;
     if (!element || !enabled) return undefined;
     const media = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const targets = [...element.querySelectorAll('[data-reveal] > div, .landing-bento-card, .landing-journey-grid > article, .landing-trust-grid > article, .landing-final-cta > .site-container, main h1, main .site-feature, main .research-credit-grid > article')].filter(target => !target.closest('.landing-hero') && !target.matches('.landing-bento, .landing-journey-grid, .landing-trust-grid'));
+    const targets = [...element.querySelectorAll('[data-reveal] > div, .landing-bento-card, .landing-trust-grid > article, .landing-final-cta > .site-container, main h1, main .site-feature, main .research-credit-grid > article')].filter(target => !target.closest('.landing-hero') && !target.matches('.landing-bento, .landing-journey-grid, .landing-trust-grid'));
     let observer;
     const show = target => target.classList.add('public-motion-visible');
     const sync = () => {
@@ -21,9 +21,12 @@ export function usePublicReveal(root, enabled = true, stopped = false) {
           observer.unobserve(entry.target);
         }
       }, { threshold: 0, rootMargin: '0px 0px -32px 0px' });
-      targets.forEach((target, index) => {
+      targets.forEach(target => {
         target.classList.add('public-motion-item');
-        target.style.setProperty('--entrance-delay', `${Math.min(index % 4, 3) * 70}ms`);
+        const kind = target.matches('h1, .landing-section-heading') ? 'heading' : target.matches('.landing-phone-scene') ? 'media' : target.closest('.landing-final-cta') ? 'cta' : target.matches('.landing-bento-card, .site-feature, .research-credit-grid > article') ? 'card' : 'fade';
+        target.dataset.motionKind = kind;
+        const index = [...target.parentElement.children].filter(child => child.matches('.landing-bento-card, .site-feature, article')).indexOf(target);
+        target.style.setProperty('--entrance-delay', `${Math.max(0, Math.min(index, 3)) * 90}ms`);
         observer.observe(target);
       });
       element.setAttribute('data-motion-ready', '');

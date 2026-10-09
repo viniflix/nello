@@ -193,9 +193,49 @@ html:has(.landing-experience) {view-transition-name:none}
 @keyframes landing-signal-flow{from{stroke-dashoffset:100}to{stroke-dashoffset:0}}
 @keyframes landing-word-arrive{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
 @keyframes landing-line-arrive{from{transform:scaleX(0)}to{transform:scaleX(1)}}
-@keyframes landing-capture-out{to{opacity:0;translate:0 -8px}}
-@keyframes landing-capture-in{from{opacity:0;translate:0 8px}to{opacity:1;translate:0 0}}
+@keyframes landing-capture-out{to{opacity:0}}
+@keyframes landing-capture-in{from{opacity:0}to{opacity:1}}
 @keyframes landing-node-breathe{50%{box-shadow:0 0 0 7px #d3f3a714}}
 @keyframes landing-cta-breathe{50%{transform:scale(1.06);opacity:.7}}
 .landing-motion-paused .landing-hero h1>em:after{animation:none;transform:none}
 @media(prefers-reduced-motion:reduce){[data-motion-ready] .public-motion-item{opacity:1;translate:none;transition:none}.site-landing .site-action,.site-landing .research-hero-link svg{transition:none;translate:none!important}.landing-title-word{animation:none!important}.landing-reading-progress{display:none}.landing-care-track>span{transform:none;transition:none}::view-transition-group(nello-capture),::view-transition-old(nello-capture),::view-transition-new(nello-capture){animation:none!important}}
+
+/* Capture frames retain the source orientation; captions never round the image twice. */
+.landing-demo{background:none;border:0;border-radius:0;box-shadow:none;animation:none;overflow:visible}
+.landing-demo .landing-capture-workspace{border-radius:18px;box-shadow:0 20px 55px #00000040,0 0 0 1px #d3f3a730;clip-path:inset(0 round 18px);isolation:isolate}
+.landing-demo .landing-capture-patient{width:calc(100% * 891 / 1410 * 345 / 812);aspect-ratio:345/812;margin-inline:auto;background:#102b25}
+.landing-demo .landing-capture-patient>.product-screenshot{width:100%;height:auto}
+.landing-demo .landing-capture-patient .product-screenshot img{width:100%;height:auto;object-fit:initial}
+.landing-demo figcaption{background:none;color:#c4d2c6;padding:15px 8px;font-size:.75rem;border:0}
+.landing-demo .landing-capture-dot{background:#d3f3a7}
+.product-screenshot img{border-radius:inherit}
+.landing-phone.landing-phone-capture{border-radius:30px;padding:6px;overflow:hidden;isolation:isolate}
+.landing-phone-capture .product-screenshot{border-radius:17px;clip-path:inset(0 round 17px)}
+.landing-meal-capture .product-screenshot,.site-product-capture .product-screenshot{overflow:hidden;border-radius:inherit;clip-path:inset(0 round 14px)}
+.landing-meal-capture .product-screenshot{border-bottom-left-radius:0;border-bottom-right-radius:0;clip-path:inset(0 round 14px 14px 0 0)}
+.site-product-capture .product-screenshot{border-bottom-left-radius:0;border-bottom-right-radius:0;clip-path:inset(0 round 18px 18px 0 0)}
+.landing-progress-capture .product-screenshot,.landing-progress-capture>img{border-radius:13px 13px 0 0;clip-path:inset(0 round 13px 13px 0 0)}
+::view-transition-old(nello-capture),::view-transition-new(nello-capture){border-radius:18px;overflow:clip;clip-path:inset(0 round 18px)}
+.landing-aurora-green{animation-delay:-4s}.landing-aurora-orange{animation-delay:-9s}
+.landing-care-orbits .landing-orbit-signal{animation-delay:-3s}.landing-care-orbits .landing-orbit-signal-secondary{animation-delay:-11s}
+.landing-hero h1>em{animation-duration:.8s;animation-delay:.18s}
+.landing-hero-copy>p{animation:landing-copy-arrive .55s .35s both}
+.landing-hero-copy .site-hero-actions{animation:landing-copy-arrive .5s .45s both}
+.landing-hero-copy .site-hero-actions:focus-within{animation:none;opacity:1}
+.landing-arrived .landing-hero-copy>p,.landing-arrived .landing-hero-copy .site-hero-actions{animation:none!important;opacity:1}
+[data-motion-ready] .public-motion-item{translate:var(--reveal-x,0px) var(--reveal-y,0px);scale:var(--reveal-scale,1);transition:opacity .5s ease,translate .65s cubic-bezier(.22,1,.36,1),scale .7s ease;transition-delay:var(--entrance-delay,0ms)}
+[data-motion-ready] [data-motion-kind=heading]{--reveal-y:12px;opacity:1}
+[data-motion-ready] [data-motion-kind=card]{--reveal-y:8px}
+[data-motion-ready] [data-motion-kind=media]{--reveal-x:32px}
+[data-motion-ready] [data-motion-kind=cta]{--reveal-scale:1.02}
+[data-motion-ready] .public-motion-visible,[data-motion-ready] .public-motion-item:focus-within{translate:0 0;scale:1}
+@keyframes landing-copy-arrive{from{opacity:0}to{opacity:1}}
+@media(max-width:760px){.landing-demo .landing-capture-patient{width:min(calc(100% * 345 / 360),276px);aspect-ratio:345/812}.landing-demo .landing-capture-workspace{border-radius:14px;clip-path:inset(0 round 14px)}.landing-demo figcaption{font-size:.7rem}.landing-demo .landing-capture-patient .product-screenshot{max-width:none}.landing-demo .landing-capture-patient .product-screenshot img{width:100%;height:auto}[data-motion-ready] [data-motion-kind=media]{--reveal-x:0px}::view-transition-old(nello-capture),::view-transition-new(nello-capture){border-radius:14px;clip-path:inset(0 round 14px)}}
+@media(prefers-reduced-motion:reduce){[data-motion-ready] .public-motion-item{opacity:1;translate:none;scale:1;transition:none}.landing-hero-copy>p{animation:none!important}}
+.site-landing .site-action:hover{transform:none}
+.public-product-experience .site-product-capture{animation:none;overflow:hidden}
+@media(max-width:1000px){.landing-demo .landing-capture-workspace{width:min(100%,320px);aspect-ratio:360/812;margin-inline:auto}.landing-demo .landing-capture-patient{width:min(calc(100% * 345 / 360),306.666667px);aspect-ratio:345/812}.landing-demo .landing-capture-workspace>.product-screenshot{width:100%;height:auto;max-width:none}.landing-demo .landing-capture-workspace .product-screenshot img{width:100%;height:auto;object-fit:initial}.landing-preview-wrap{padding-bottom:28px}.landing-float{display:none}.landing-meal-capture .product-screenshot{max-width:320px;margin-inline:auto}.public-product-experience .site-product-capture{width:min(100%,320px);justify-self:center}.site-product-capture .product-screenshot{max-width:none;width:100%}}
+.landing-motion-slot{display:flex;align-items:flex-start;justify-content:center;min-height:60px}
+.landing-motion-controller-fixed{position:fixed;bottom:16px;right:16px;margin:0;z-index:60;background:#183c2e;color:#f4f8ed;border-color:#729967;box-shadow:0 5px 22px #102b2530;font-family:Inter,system-ui,sans-serif;font-size:.75rem;transition:none}
+.landing-motion-controller-fixed:focus-visible{outline:3px solid #d3f3a7;outline-offset:5px}
+@media(max-width:760px){.landing-motion-controller-fixed{bottom:12px;right:12px}}

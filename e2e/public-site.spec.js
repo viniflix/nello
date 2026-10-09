@@ -44,6 +44,7 @@ test('landing initial content and navigation work without JavaScript',async({bro
 
 for(const width of [320,768,1440])test(`public design audit: stable captures, research and navigation ${width}`,async({page})=>{
  await page.setViewportSize({width,height:900});await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/');
+ await expect(page.locator('.landing-journey-node[data-care-active]')).toHaveCount(0);
  const capture=page.locator('.landing-capture-workspace');const original=await capture.boundingBox();
  for(const label of ['Visão clínica','Área do paciente','Plano alimentar']){
   await page.getByRole('button',{name:label,exact:true}).click();
@@ -175,10 +176,46 @@ test('section entrances complete once and reduced motion exposes content and cre
  await page.getByRole('button', { name: 'Pausar animações', exact: true }).click();
  await expect(page.locator('.landing-experience')).not.toHaveAttribute('data-motion-ready', '');
  await expect(page.locator('.landing-trust-grid article').last()).toHaveCSS('opacity', '1');
+ await page.locator('.landing-final-cta').scrollIntoViewIfNeeded();
+ const resume = page.getByRole('button', { name: 'Ativar animações', exact: true });
+ await expect(resume).toBeInViewport();
+ expect(await resume.evaluate(el => {
+  const b = el.getBoundingClientRect(); return el.contains(document.elementFromPoint(b.left+b.width/2, b.top+b.height/2));
+ })).toBe(true);
+ await resume.click(); await expect(page.locator('.landing-experience')).toHaveAttribute('data-motion-ready', '');
  await page.goto('/pesquisa'); await expect(page.locator('.research-credit-grid article')).toHaveCount(4);
  await expect(page.locator('main')).not.toContainText('Giulia');
  await page.emulateMedia({ reducedMotion: 'reduce' });
  await expect(page.locator('.nello-public-site')).not.toHaveAttribute('data-motion-ready', '');
  await expect(page.locator('.research-credit-grid article').last()).toHaveCSS('opacity', '1');
  for (const path of ['/', '/pesquisa']) expect(await (await request.get(path)).text()).not.toContain('Giulia Borges de Souza Bastos');
+});
+
+for (const width of [320, 844, 1440]) test(`genuine captures preserve orientation and retina detail ${width}`, async ({ browser, baseURL }) => {
+ const context = await browser.newContext({ viewport: { width, height: width === 844 ? 390 : 900 }, deviceScaleFactor: 2, reducedMotion: 'reduce' });
+ try {
+  const page = await context.newPage(); await page.goto(baseURL + '/');
+  const capture = page.locator('.landing-capture-workspace'); const original = await capture.boundingBox();
+  for (const name of ['Visão clínica', 'Área do paciente', 'Plano alimentar']) {
+   const selection = page.getByRole('button', { name, exact: true });
+   await selection.click(); await expect(selection).toHaveAttribute('aria-pressed', 'true');
+   await expect.poll(() => capture.locator('img').evaluate(img => img.complete && img.naturalWidth > 0)).toBe(true);
+   const bounds = await capture.boundingBox(); expect(Math.abs(bounds.height-original.height)).toBeLessThan(1);
+   if (name === 'Área do paciente' || width <= 1000) expect(bounds.width/bounds.height).toBeLessThan(.5);
+   const details = await capture.locator('img').evaluate(async img => {
+    const bitmap = await createImageBitmap(await (await fetch(img.currentSrc)).blob());
+    const box = img.getBoundingClientRect();
+    const result = { density: bitmap.width/box.width, sourceRatio: bitmap.width/bitmap.height, renderedRatio: box.width/box.height, src: img.currentSrc };
+    bitmap.close(); return result;
+   });
+   expect(details.density).toBeGreaterThanOrEqual(1.9);
+   expect(Math.abs(details.sourceRatio-details.renderedRatio)).toBeLessThan(.015);
+   if (width <= 1000) expect(details.src).toMatch(/-mobile-(690|720)\.webp$/);
+   await test.info().attach(`retina-${width}-${name}`, { body: await capture.screenshot(), contentType: 'image/png' });
+  }
+  await page.goto(baseURL + '/para-pacientes');
+  const patient = page.locator('.site-product-patient');
+  await expect.poll(() => patient.locator('img').evaluate(img => img.complete && img.currentSrc)).toMatch(/paciente-inicio-mobile-690\.webp$/);
+  const picture = await patient.locator('.product-screenshot').boundingBox(); expect(picture.width/picture.height).toBeLessThan(.5);
+ } finally { await context.close(); }
 });

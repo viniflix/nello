@@ -13,7 +13,7 @@ export function PublicNextStep() {
 export default function PublicSiteLayout({ children, activePath = '/', landing = false }) {
   const menu = useRef(null);
   const surface = useRef(null);
-  usePublicReveal(surface, !(landing && activePath === '/'));
+  usePublicReveal(surface, landing && activePath !== '/');
   useEffect(() => {
     const element = menu.current;
     const close = event => {

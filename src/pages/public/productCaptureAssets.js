@@ -1,2 +1,2 @@
-// Content-derived URLs prevent refreshed captures from reusing a browser cache entry.
-export const PRODUCT_CAPTURE_BASE = '/images/product/captures-da3b53200e6d/';
+// Content-derived URLs retain genuine native captures at standard and retina density.
+export const PRODUCT_CAPTURE_BASE = '/images/product/captures-3a534ee872fd/';

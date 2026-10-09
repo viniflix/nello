@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { flushSync } from 'react-dom';
+import { createPortal, flushSync } from 'react-dom';
 import { ArrowDown, ArrowUpRight, Check, MessageCircle, Pause, Play } from 'lucide-react';
 import { PublicAction } from './PublicSiteLayout';
 import ProductScreenshot, { getProductCaptureSrc } from './ProductScreenshot';
@@ -16,6 +16,7 @@ export function useLandingMotion() {
   const [paused, setPaused] = useState(false);
   const [reduced, setReduced] = useState(false);
   const [arrived, setArrived] = useState(false);
+  const [heroAway, setHeroAway] = useState(false);
   usePublicReveal(root, true, paused || reduced);
   useEffect(() => {
     const media = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -36,10 +37,13 @@ export function useLandingMotion() {
     const observer = 'IntersectionObserver' in window ? new IntersectionObserver(entries => {
       entries.forEach(entry => {
         entry.target.classList.toggle('landing-motion-offscreen', !entry.isIntersecting);
-        if (entry.target.classList.contains('landing-hero')) element.toggleAttribute('data-hero-away', !entry.isIntersecting);
+        if (entry.target.classList.contains('landing-hero-copy')) {
+          element.toggleAttribute('data-hero-away', !entry.isIntersecting);
+          setHeroAway(!entry.isIntersecting);
+        }
       });
     }) : null;
-    element.querySelectorAll('.landing-hero, .landing-phone-scene, .landing-journey, .landing-final-cta').forEach(scene => observer?.observe(scene));
+    element.querySelectorAll('.landing-hero, .landing-hero-copy, .landing-phone-scene, .landing-journey, .landing-final-cta').forEach(scene => observer?.observe(scene));
     return () => { document.removeEventListener('visibilitychange', sync); observer?.disconnect(); };
   }, []);
   useEffect(() => {
@@ -47,7 +51,8 @@ export function useLandingMotion() {
     if (!element) return undefined;
     const journey = element.querySelector('.landing-journey-grid');
     const nodes = [...element.querySelectorAll('.landing-journey-node')];
-    const stopped = paused || reduced;
+    const reducedNow = reduced || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const stopped = paused || reducedNow;
     let frame = 0;
     const update = () => {
       frame = 0;
@@ -60,7 +65,10 @@ export function useLandingMotion() {
       const mobile = window.matchMedia('(max-width: 760px)').matches;
       const trackHeight = nodes.at(-1).parentElement.offsetTop - nodes[0].parentElement.offsetTop;
       journey.style.setProperty('--care-track-height', `${trackHeight}px`);
-      if (stopped) return;
+      if (stopped) {
+        if (reducedNow) nodes.forEach(node => node.removeAttribute('data-care-active'));
+        return;
+      }
       const span = mobile ? trackHeight : bounds.height;
       const progress = Math.min(1, Math.max(0, (innerHeight * .64 - first.top - first.height / 2) / Math.max(1, span)));
       journey.style.setProperty('--care-progress', String(progress));
@@ -81,7 +89,7 @@ export function useLandingMotion() {
       observer?.disconnect();
     };
   }, [paused, reduced]);
-  return { root, paused, reduced, arrived, toggleMotion: () => setPaused(value => !value) };
+  return { root, paused, reduced, arrived, heroAway, toggleMotion: () => setPaused(value => !value) };
 }
 
 function CarePreview({ paused, reduced }) {
@@ -133,7 +141,7 @@ function CarePreview({ paused, reduced }) {
     const request = ++selectionRequest.current;
     setPending(key);
     const image = new Image();
-    image.src = getProductCaptureSrc(key, key === 'patient' || window.matchMedia('(max-width: 760px)').matches);
+    image.src = getProductCaptureSrc(key, key === 'patient' || window.matchMedia('(max-width: 1000px)').matches, window.devicePixelRatio > 1);
     try { await image.decode(); } catch { /* The normal image element retains its native error/alt fallback. */ }
     if (request !== selectionRequest.current) return;
     transition.current?.skipTransition();
@@ -142,10 +150,11 @@ function CarePreview({ paused, reduced }) {
     });
     const bounds = stage.current?.getBoundingClientRect();
     const stopped = motionStopped.current || window.matchMedia('(prefers-reduced-motion: reduce)').matches || document.hidden || !bounds || bounds.bottom <= 0 || bounds.top >= innerHeight;
-    if (stopped || !document.startViewTransition) {
+    // Portrait and desktop captures have different geometry; never morph one into the other.
+    if (stopped || !document.startViewTransition || key === 'patient' || selected === 'patient') {
       update();
       fallbackAnimation.current?.cancel();
-      if (!stopped) fallbackAnimation.current = stage.current?.querySelector('.product-screenshot')?.animate([{ opacity: .3, transform: 'translateY(8px)' }, { opacity: 1, transform: 'none' }], { duration: 420, easing: 'cubic-bezier(.22,1,.36,1)' });
+      if (!stopped) fallbackAnimation.current = stage.current?.querySelector('.product-screenshot')?.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 320, easing: 'ease-out' });
     } else {
       transition.current = document.startViewTransition(update);
       transition.current.ready.catch(() => {});
@@ -197,8 +206,18 @@ function CarePreview({ paused, reduced }) {
   </div>;
 }
 
-export function LandingHero({ paused, reduced, toggleMotion }) {
-  const motionControl = <button type="button" className="landing-motion-toggle landing-motion-controller" aria-pressed={paused} onClick={toggleMotion} disabled={reduced}>{paused || reduced ? <Play aria-hidden="true" size={14} /> : <Pause aria-hidden="true" size={14} />}{reduced ? 'Movimento reduzido' : paused ? 'Ativar animações' : 'Pausar animações'}</button>;
+function LandingMotionControl({ paused, reduced, toggleMotion, floating }) {
+  const button = useRef(null);
+  const focused = useRef(false);
+  useEffect(() => {
+    if (focused.current) button.current?.focus({ preventScroll: true });
+  }, [floating]);
+  const control = <button ref={button} onFocus={() => { focused.current = true; }} onBlur={() => { focused.current = false; }} type="button" className={`landing-motion-toggle landing-motion-controller${floating ? ' landing-motion-controller-fixed' : ''}`} aria-pressed={paused} onClick={toggleMotion} disabled={reduced}>{paused || reduced ? <Play aria-hidden="true" size={14} /> : <Pause aria-hidden="true" size={14} />}{reduced ? 'Movimento reduzido' : paused ? 'Ativar animações' : 'Pausar animações'}</button>;
+  return floating ? createPortal(control, document.body) : control;
+}
+
+export function LandingHero({ paused, reduced, toggleMotion, heroAway }) {
+  const motionControl = <div className="landing-motion-slot"><LandingMotionControl paused={paused} reduced={reduced} toggleMotion={toggleMotion} floating={heroAway} /></div>;
   return <section className="landing-hero" aria-labelledby="landing-title">
     <div className="landing-atmosphere" aria-hidden="true"><div className="landing-aurora landing-aurora-green" /><div className="landing-aurora landing-aurora-orange" /><div className="landing-light-beam" /><div className="landing-orbit landing-orbit-one" /><div className="landing-orbit landing-orbit-two" /><div className="landing-grid" /><span className="landing-star landing-star-one" /><span className="landing-star landing-star-two" /><span className="landing-star landing-star-three" /></div>
     <svg className="landing-care-orbits" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><path d="M-100 780C80 140 850-70 1390 190S1700 810 1030 940" pathLength="100" /><path d="M-100 780C80 140 850-70 1390 190S1700 810 1030 940" pathLength="100" className="landing-orbit-signal" /><path d="M-80 380C270 860 950 940 1530 290" pathLength="100" className="landing-orbit-signal landing-orbit-signal-secondary" /></svg>
