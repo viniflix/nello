@@ -247,7 +247,7 @@ test('hero callouts overlap genuine captures without reserving space or offering
 });
 
 
-test('public navigation shares the hero axis and feature cards keep a consistent grid and inset', async ({page}) => {
+test('public navigation shares the hero axis and product views retain their readable proportions', async ({page}) => {
  await page.emulateMedia({reducedMotion:'reduce'});
  for(const width of [768,1440]) {
   await page.setViewportSize({width,height:1000});await page.goto('/');
@@ -255,11 +255,18 @@ test('public navigation shares the hero axis and feature cards keep a consistent
   expect(Math.abs(nav.x+nav.width/2-title.x-title.width/2)).toBeLessThan(2);
   const cards=page.locator('.landing-bento-card');await expect(cards).toHaveCount(4);
   const boxes=await Promise.all((await cards.all()).map(card=>card.boundingBox()));
-  expect(Math.abs(boxes[0].y-boxes[1].y)).toBeLessThan(2);expect(Math.abs(boxes[2].y-boxes[3].y)).toBeLessThan(2);
-  expect(boxes[2].y).toBeGreaterThan(boxes[0].y+boxes[0].height);
-  const preview=await page.locator('.landing-feature-visual-progress').boundingBox();expect(preview.width).toBeGreaterThan(boxes[2].width*.8);
+  expect(boxes[0].width).toBeGreaterThan(boxes[1].width*1.6);
+  expect(Math.abs(boxes[1].y-boxes[2].y)).toBeLessThan(2);
+  expect(boxes[3].y).toBeGreaterThan(boxes[2].y+boxes[2].height);
+  for(const image of await page.locator('.feature-panel-media img').all()) {
+   await image.scrollIntoViewIfNeeded();await expect.poll(()=>image.evaluate(img=>img.complete&&img.naturalWidth>0)).toBe(true);
+   const ratio=await image.evaluate(img=>({shown:img.clientWidth/img.clientHeight,source:img.naturalWidth/img.naturalHeight}));
+   expect(Math.abs(ratio.shown-ratio.source)).toBeLessThan(.01);
+  }
+  await expect(page.locator('.feature-panel-media-progress img')).toHaveCSS('object-fit','contain');
+  await expect(page.locator('.feature-panel-media-agenda img')).toHaveAttribute('alt',/Painel profissional/);
   await expect(page.locator('.landing-float-plan')).toHaveCSS('background-color','rgb(23, 63, 50)');
-  await expect(page.locator('.landing-bento-progress .public-phone-frame')).toHaveCount(0);
+  await expect(page.locator('.feature-panel-progress .public-phone-frame')).toHaveCount(0);
   await page.goto('/recursos');
   for(const card of await page.locator('.site-feature').all()) {
    const inset=await card.evaluate(el=>parseFloat(getComputedStyle(el).paddingLeft));expect(inset).toBeGreaterThanOrEqual(22);
