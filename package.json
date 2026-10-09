@@ -122,5 +122,8 @@
     "npm": "11.5.x"
   },
   "packageManager": "npm@11.5.2",
-  "license": "UNLICENSED"
+  "license": "UNLICENSED",
+  "overrides": {
+    "postcss-selector-parser": "7.1.6"
+  }
 }
