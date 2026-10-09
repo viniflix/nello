@@ -245,3 +245,28 @@ test('hero callouts overlap genuine captures without reserving space or offering
  await page.getByRole('button',{name:'Área do paciente',exact:true}).click();await expect(page.locator('.landing-demo')).toHaveAttribute('data-screen','patient');
  await expect(page.locator('.landing-capture-patient')).toHaveCSS('clip-path','none');await expect(page.locator('.landing-capture-patient')).toHaveCSS('border-top-width','7px');
 });
+
+
+test('public navigation shares the hero axis and feature cards keep a consistent grid and inset', async ({page}) => {
+ await page.emulateMedia({reducedMotion:'reduce'});
+ for(const width of [768,1440]) {
+  await page.setViewportSize({width,height:1000});await page.goto('/');
+  const nav=await page.locator('.site-desktop-nav').boundingBox();const title=await page.locator('.landing-hero h1').boundingBox();
+  expect(Math.abs(nav.x+nav.width/2-title.x-title.width/2)).toBeLessThan(2);
+  const cards=page.locator('.landing-bento-card');await expect(cards).toHaveCount(4);
+  const boxes=await Promise.all((await cards.all()).map(card=>card.boundingBox()));
+  expect(Math.abs(boxes[0].y-boxes[1].y)).toBeLessThan(2);expect(Math.abs(boxes[2].y-boxes[3].y)).toBeLessThan(2);
+  expect(boxes[2].y).toBeGreaterThan(boxes[0].y+boxes[0].height);
+  const preview=await page.locator('.landing-feature-visual-progress').boundingBox();expect(preview.width).toBeGreaterThan(boxes[2].width*.8);
+  await expect(page.locator('.landing-float-plan')).toHaveCSS('background-color','rgb(23, 63, 50)');
+  await expect(page.locator('.landing-bento-progress .public-phone-frame')).toHaveCount(0);
+  await page.goto('/recursos');
+  for(const card of await page.locator('.site-feature').all()) {
+   const inset=await card.evaluate(el=>parseFloat(getComputedStyle(el).paddingLeft));expect(inset).toBeGreaterThanOrEqual(22);
+   await expect(card).toHaveCSS('border-top-left-radius','24px');
+  }
+ }
+ await page.setViewportSize({width:320,height:900});await page.goto('/');
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ await expect(page.locator('.landing-bento-card')).toHaveCount(4);
+});
