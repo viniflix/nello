@@ -247,7 +247,7 @@ test('hero callouts overlap genuine captures without reserving space or offering
 });
 
 
-test('public navigation shares the hero axis and product views retain their readable proportions', async ({page}) => {
+test('public navigation shares the hero axis and benefit cards stay compact without product prints', async ({page}) => {
  await page.emulateMedia({reducedMotion:'reduce'});
  for(const width of [768,1440]) {
   await page.setViewportSize({width,height:1000});await page.goto('/');
@@ -255,16 +255,12 @@ test('public navigation shares the hero axis and product views retain their read
   expect(Math.abs(nav.x+nav.width/2-title.x-title.width/2)).toBeLessThan(2);
   const cards=page.locator('.landing-bento-card');await expect(cards).toHaveCount(4);
   const boxes=await Promise.all((await cards.all()).map(card=>card.boundingBox()));
-  expect(boxes[0].width).toBeGreaterThan(boxes[1].width*1.6);
-  expect(Math.abs(boxes[1].y-boxes[2].y)).toBeLessThan(2);
-  expect(boxes[3].y).toBeGreaterThan(boxes[2].y+boxes[2].height);
-  for(const image of await page.locator('.feature-panel-media img').all()) {
-   await image.scrollIntoViewIfNeeded();await expect.poll(()=>image.evaluate(img=>img.complete&&img.naturalWidth>0)).toBe(true);
-   const ratio=await image.evaluate(img=>({shown:img.clientWidth/img.clientHeight,source:img.naturalWidth/img.naturalHeight}));
-   expect(Math.abs(ratio.shown-ratio.source)).toBeLessThan(.01);
-  }
-  await expect(page.locator('.feature-panel-media-progress img')).toHaveCSS('object-fit','contain');
-  await expect(page.locator('.feature-panel-media-agenda img')).toHaveAttribute('alt',/Painel profissional/);
+  expect(Math.abs(boxes[0].y-boxes[1].y)).toBeLessThan(2);
+  expect(Math.abs(boxes[2].y-boxes[3].y)).toBeLessThan(2);
+  for(const box of boxes) expect(box.height).toBeLessThan(400);
+  await expect(page.locator('.landing-feature-showcase img')).toHaveCount(0);
+  await expect(page.locator('.feature-benefit-art[aria-hidden="true"]')).toHaveCount(4);
+  await expect(page.locator('.landing-demo img')).toBeVisible();
   await expect(page.locator('.landing-float-plan')).toHaveCSS('background-color','rgb(23, 63, 50)');
   await expect(page.locator('.feature-panel-progress .public-phone-frame')).toHaveCount(0);
   await page.goto('/recursos');
@@ -273,7 +269,17 @@ test('public navigation shares the hero axis and product views retain their read
    await expect(card).toHaveCSS('border-top-left-radius','24px');
   }
  }
+ await page.setViewportSize({width:1440,height:900});await page.emulateMedia({reducedMotion:'no-preference'});await page.goto('/');
+ const benefit=page.locator('.feature-panel').first();await benefit.scrollIntoViewIfNeeded();await benefit.hover();
+ await expect.poll(()=>benefit.locator('.feature-art-detail').evaluate(el=>getComputedStyle(el).transform)).not.toBe('none');
+ await benefit.locator('a').focus();await expect.poll(()=>benefit.evaluate(el=>getComputedStyle(el,'::after').opacity)).toBe('1');
+ await page.emulateMedia({reducedMotion:'reduce'});await expect(benefit.locator('.feature-art-detail')).toHaveCSS('transform','none');
+ await benefit.locator('a').press('Enter');await expect(page).toHaveURL(/\/recursos#recurso-planos$/);await expect(page.locator('#recurso-planos')).toBeInViewport();
  await page.setViewportSize({width:320,height:900});await page.goto('/');
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
  await expect(page.locator('.landing-bento-card')).toHaveCount(4);
+ for(const card of await page.locator('.feature-panel').all()) {
+  expect((await card.boundingBox()).height).toBeLessThan(360);
+  const link=card.locator('a');await expect(link).toHaveAttribute('href',/\/recursos#recurso-/);
+ }
 });

@@ -1,28 +1,25 @@
 import React from 'react';
-import { ArrowRight, ArrowUpRight, CalendarDays, Check, HeartHandshake, Leaf, MessageCircle, MonitorSmartphone, ShieldCheck, Users } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, Check, HeartHandshake, Leaf, MessageCircle, MonitorSmartphone, ShieldCheck, Users } from 'lucide-react';
 import PublicSiteLayout, { PublicAction } from './PublicSiteLayout';
 import { publicQuestions } from './publicSiteContent';
 import { LandingHero, LandingPatientVisual, useLandingMotion } from './LandingExperience';
 import { researchAuthors, researchAdvisor } from './researchContent';
-import ProductScreenshot from './ProductScreenshot';
+import FeatureBenefitArt from './FeatureBenefitArt';
 
 export default function LandingPage() {
   const { root, reduced, arrived } = useLandingMotion();
   return <PublicSiteLayout landing><main id="main-content" tabIndex={-1} className={`landing-experience${reduced ? ' landing-motion-paused' : ''}${arrived ? ' landing-arrived' : ''}`} ref={root}>
     <div className="landing-reading-progress" aria-hidden="true" /><LandingHero reduced={reduced} />
     <div className="landing-manifest"><div className="site-container"><span><Leaf aria-hidden="true" size={18} />Do consultório à rotina.</span><span>Organize.<i aria-hidden="true" />Planeje.<i aria-hidden="true" />Acompanhe.</span></div></div>
-    <section className="landing-section site-container landing-features-section" aria-labelledby="site-features" data-reveal><div className="landing-section-heading"><span className="landing-kicker">01 / Seu consultório, conectado</span><h2 id="site-features">Da história do paciente<br /><em>ao cuidado de cada dia.</em></h2><p>Conheça o contexto, personalize o plano e acompanhe os registros. Um fluxo de trabalho para manter o cuidado conectado.</p></div><div className="site-feature-grid landing-feature-showcase landing-bento">
+    <section className="landing-section site-container landing-features-section" aria-labelledby="site-features" data-reveal><div className="landing-section-heading"><span className="landing-kicker">01 / Seu consultório, conectado</span><h2 id="site-features">Mais espaço para cuidar.<br /><em>Menos informação espalhada.</em></h2><p>Da primeira consulta ao acompanhamento: encontre o que precisa para cada etapa do cuidado.</p></div><div className="site-feature-grid landing-feature-showcase landing-bento">
       {[
-        { kind: 'plan', Icon: Leaf, label: 'Planejamento alimentar', title: 'Um plano feito para a vida do seu paciente.', text: 'Ajuste refeições, porções e substituições no mesmo lugar. Transforme sua orientação em um plano que o paciente pode consultar na rotina.', screen: 'plan', href: '/recursos#recurso-planos', action: 'Conhecer o planejamento', caption: 'Refeições, porções e análise nutricional em uma única tela.' },
-        { kind: 'context', Icon: Users, label: 'Prontuário e avaliações', title: 'Retome a consulta com a história à mão.', text: 'Encontre anamnese, avaliações e histórico no prontuário. Menos informação espalhada na hora de preparar o próximo atendimento.', screen: 'context', href: '/recursos#recurso-pacientes', action: 'Explorar o prontuário', caption: 'O contexto clínico reunido por paciente.' },
-        { kind: 'progress', Icon: HeartHandshake, label: 'Acompanhamento', title: 'Veja o que mudou entre as consultas.', text: 'Consulte medidas e registros para orientar os próximos ajustes. O paciente também encontra seu histórico pelo celular.', screen: 'progress', href: '/recursos#recurso-evolucao', action: 'Ver os recursos de evolução', caption: 'A evolução disponível na área do paciente.' },
-        { kind: 'agenda', Icon: CalendarDays, label: 'Gestão do consultório', title: 'Comece o dia sabendo o que precisa de atenção.', text: 'Consulte os próximos agendamentos e os registros recentes no painel. Agenda e financeiro completam sua organização profissional.', screen: 'dashboard', href: '/recursos#recurso-consultorio', action: 'Conhecer a organização do consultório', caption: 'Uma visão geral para começar sua rotina profissional.' },
-      ].map(({ kind, Icon, label, title, text, screen, href, action, caption }) => <article key={kind} className={`landing-bento-card feature-panel feature-panel-${kind}`}>
-        <div className="feature-panel-copy"><span className="feature-panel-label"><Icon size={18} aria-hidden="true" />{label}</span><h3>{title}</h3><p>{text}</p><a href={href} className="feature-panel-link">{action}<ArrowUpRight aria-hidden="true" size={18} /></a></div>
-        <figure className={`feature-panel-media feature-panel-media-${kind}`}>
-          <ProductScreenshot screen={screen} sizes={kind === 'context' ? '(max-width: 1000px) 300px, 690px' : '(max-width: 1000px) 300px, 740px'} />
-          <figcaption>{caption}</figcaption>
-        </figure>
+        { kind: 'plan', label: '01 / Planejamento', title: 'Planos que cabem na rotina.', text: 'Personalize refeições, porções e alternativas para cada paciente.', href: '/recursos#recurso-planos', action: 'Planejamento alimentar' },
+        { kind: 'context', label: '02 / Contexto clínico', title: 'A história sempre por perto.', text: 'Reúna prontuário e avaliações para preparar o próximo encontro.', href: '/recursos#recurso-pacientes', action: 'Prontuário e avaliações' },
+        { kind: 'progress', label: '03 / Acompanhamento', title: 'Presença entre as consultas.', text: 'Acompanhe medidas e registros para orientar os próximos ajustes.', href: '/recursos#recurso-evolucao', action: 'Evolução do paciente' },
+        { kind: 'agenda', label: '04 / Organização', title: 'Seu dia com mais clareza.', text: 'Conecte agenda, consultas e financeiro à rotina do consultório.', href: '/recursos#recurso-consultorio', action: 'Gestão do consultório' },
+      ].map(({ kind, label, title, text, href, action }) => <article key={kind} className={`landing-bento-card feature-panel feature-panel-${kind}`}>
+        <div className="feature-panel-copy"><span className="feature-panel-label">{label}</span><h3>{title}</h3><p>{text}</p><a href={href} className="feature-panel-link">{action}<ArrowUpRight aria-hidden="true" size={18} /></a></div>
+        <FeatureBenefitArt kind={kind} />
       </article>)}
     </div></section>
     <section className="landing-journey" aria-labelledby="landing-journey-title"><div className="site-container landing-section" data-reveal><div className="landing-section-heading"><span className="landing-kicker">02 / Cuidado com continuidade</span><h2 id="landing-journey-title">Uma boa consulta<br /><em>é só o começo.</em></h2></div><div className="landing-journey-grid"><div className="landing-care-track" aria-hidden="true"><span /></div>{[[Users, '01', 'Conhecer', 'Comece pela pessoa.', 'Reúna a história, a anamnese e as avaliações para entender o contexto do acompanhamento.'], [Leaf, '02', 'Planejar', 'Dê forma ao seu cuidado.', 'Personalize refeições, porções e possibilidades. Revise o plano com o seu olhar profissional.'], [MessageCircle, '03', 'Acompanhar', 'Continue presente.', 'Acompanhe os registros e mantenha a comunicação entre uma consulta e outra.']].map(([Icon, number, label, title, text]) => <article key={number}><div className="landing-journey-node"><Icon aria-hidden="true" size={24} /><span>{number}</span></div><span className="landing-journey-label">{label}</span><h3>{title}</h3><p>{text}</p></article>)}</div></div></section>
