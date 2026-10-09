@@ -395,7 +395,7 @@ const PatientAddFoodDialog = ({
                                         placeholder="Buscar alimento..."
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
-                                        className="pl-10"
+                                        className="pl-10 focus-visible:ring-inset focus-visible:ring-offset-0"
                                     />
                                 </div>
 

@@ -185,7 +185,8 @@ export default function TemplateManagerDialog({
                                 placeholder="Buscar protocolo..."
                                 value={searchTerm}
                                 onChange={e => setSearchTerm(e.target.value)}
-                                className="pl-9"
+                                className="pl-9 focus-visible:ring-inset focus-visible:ring-offset-0"
+                                aria-label="Buscar protocolo"
                             />
                         </div>
 

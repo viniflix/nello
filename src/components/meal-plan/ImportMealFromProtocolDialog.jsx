@@ -16,6 +16,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/components/ui/use-toast';
 import { useTemplates } from '@/hooks/useTemplates';
+import { formatNutrient } from '@/lib/utils';
 import { getDietTemplateWithMeals, getUnavailableTemplateFoods } from '@/lib/supabase/template-queries';
 
 /**
@@ -118,7 +119,8 @@ export default function ImportMealFromProtocolDialog({ open, onOpenChange, nutri
                                 placeholder="Buscar protocolo..."
                                 value={searchTerm}
                                 onChange={e => setSearchTerm(e.target.value)}
-                                className="pl-9"
+                                className="pl-9 focus-visible:ring-inset focus-visible:ring-offset-0"
+                                aria-label="Buscar protocolo"
                             />
                         </div>
                         <ScrollArea className="flex-1" viewportProps={{ tabIndex: 0, role: 'region', 'aria-label': 'Protocolos disponíveis', className: 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary' }}>
@@ -229,6 +231,19 @@ export default function ImportMealFromProtocolDialog({ open, onOpenChange, nutri
                                                                 </Badge>
                                                             )}
                                                         </div>
+                                                        {meal.foods?.length > 0 ? (
+                                                            <ul aria-label={`Alimentos de ${meal.name}`} className="mt-2 space-y-1 border-t border-emerald-200/60 pt-2 text-sm text-slate-700">
+                                                                {meal.foods.map((item, index) => (
+                                                                    <li key={item.id ?? `${item.food_id}-${index}`} className="flex flex-wrap justify-between gap-x-3 gap-y-0.5 [overflow-wrap:anywhere]">
+                                                                        <span className="min-w-0 flex-1">{item.food?.name || 'Alimento indisponível'}</span>
+                                                                        <span className="text-xs text-slate-600">
+                                                                            {item.quantity != null ? `${formatNutrient(Number(item.quantity))} ${item.unit === 'gram' || item.unit === 'g' ? 'g' : item.measure?.name || 'medida caseira'}` : 'Porção não informada'}
+                                                                            {item.measure?.grams_equivalent > 0 && ` (${formatNutrient(Number(item.quantity) * Number(item.measure.grams_equivalent))} g)`}
+                                                                        </span>
+                                                                    </li>
+                                                                ))}
+                                                            </ul>
+                                                        ) : <p className="mt-2 text-xs text-slate-600">Nenhum alimento nesta refeição.</p>}
                                                     </div>
                                                     {selectedMealIds.has(id) && <Check className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />}
                                                 </div>

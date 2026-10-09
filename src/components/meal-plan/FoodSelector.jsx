@@ -146,7 +146,7 @@ const FoodSelector = ({ isOpen, onClose, onSelect, targetGroup, targetCalories, 
                                 placeholder="Digite pelo menos 2 caracteres..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-10"
+                                className="pl-10 focus-visible:ring-inset focus-visible:ring-offset-0"
                                 autoFocus
                             />
                         </div>

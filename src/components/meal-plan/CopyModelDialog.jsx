@@ -120,7 +120,7 @@ const CopyModelDialog = ({ isOpen, onClose, planId, planName, onCopy }) => {
                                 placeholder="Nome, email ou telefone..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-10"
+                                className="pl-10 focus-visible:ring-inset focus-visible:ring-offset-0"
                                 autoFocus
                             />
                         </div>

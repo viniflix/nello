@@ -1,7 +1,7 @@
 import { PrivateImage } from '@/components/ui/private-image';
 import { isPatientAccessPending } from '@/lib/utils/patientAccessStatus';
 import React, { useState, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { patientRoute } from '@/lib/utils/patientRoutes';
 import {
     MoreVertical, Archive, ArchiveRestore, Trash2, Loader2, AlertCircle, FileText, Copy, Check
@@ -85,7 +85,7 @@ const PatientCard = ({ patient, isOnline, onArchive, onUnarchive, onDelete }) =>
     return (
         <>
             <div
-                className={`flex items-start gap-3 p-4 border bg-background rounded-xl transition-all duration-150 h-full
+                className={`relative isolate flex items-start gap-3 p-4 border bg-background rounded-xl transition-all duration-150 h-full focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2
                     ${isArchived
                         ? 'opacity-60 border-dashed'
                         : 'hover:shadow-md hover:border-primary/40 cursor-pointer'
@@ -105,7 +105,7 @@ const PatientCard = ({ patient, isOnline, onArchive, onUnarchive, onDelete }) =>
                 {/* Info */}
                 <div className="flex-1 min-w-0 flex flex-col h-full">
                     <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="min-w-0 max-w-full font-semibold text-sm text-foreground"><button type="button" disabled={isArchived} className="block max-w-full truncate text-left" onClick={() => navigate(patientRoute(patient, 'hub'))}>{patient.name}</button></h3>
+                        <h3 className="min-w-0 max-w-full font-semibold text-sm text-foreground">{isArchived ? <span className="block max-w-full truncate">{patient.name}</span> : <Link to={patientRoute(patient, 'hub')} aria-label={`Abrir prontuário de ${patient.name}`} className="block max-w-full truncate text-left focus-visible:outline-none after:absolute after:inset-0 after:z-10 after:rounded-xl">{patient.name}</Link>}</h3>
                         {isArchived && (
                             <Badge variant="outline" className="h-4 text-xs px-1.5 uppercase font-bold tracking-wider text-muted-foreground border-dashed">
                                 Arquivado
@@ -160,7 +160,7 @@ const PatientCard = ({ patient, isOnline, onArchive, onUnarchive, onDelete }) =>
                     onClick={e => e.stopPropagation()}
                     onPointerDown={e => e.stopPropagation()}
                     onPointerUp={e => e.stopPropagation()}
-                    className="flex-shrink-0 -mt-1 -mr-1"
+                    className="relative z-20 flex-shrink-0 -mt-1 -mr-1"
                 >
                     <DropdownMenu onOpenChange={handleDropdownOpen} modal={false}>
                         <DropdownMenuTrigger asChild>

@@ -119,7 +119,7 @@ const ChatDashboardPage = () => {
   };
 
   return (
-    <div className="flex h-[calc(100dvh-64px)] bg-background overflow-hidden">
+    <div className="flex h-full min-h-0 bg-background overflow-hidden">
       {/* Sidebar - Lista de Conversas */}
       <aside className={`w-full md:w-80 lg:w-96 border-r flex flex-col bg-card shrink-0
         ${patientId ? 'hidden md:flex' : 'flex'}`}>

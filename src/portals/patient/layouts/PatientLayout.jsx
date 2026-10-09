@@ -1,4 +1,5 @@
 import ClientErrorBoundary from '@/components/ClientErrorBoundary';
+import PortalBreadcrumbs from '@/components/navigation/PortalBreadcrumbs';
 import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { LogOut, Shield } from 'lucide-react';
 import { useChat } from '@/contexts/ChatContext';
@@ -129,8 +130,9 @@ export default function PatientLayout() {
       </aside>
 
       {/* MAIN CONTENT AREA */}
-      <main ref={mainRef} id="main-content" tabIndex={-1} className={`min-h-0 min-w-0 flex-1 overscroll-contain md:ml-64 ${isChatPage ? 'overflow-hidden' : 'overflow-y-auto'}`}>
-        <ClientErrorBoundary resetKey={`${user?.id}:${location.pathname}`}><Outlet /></ClientErrorBoundary>
+      <main ref={mainRef} id="main-content" tabIndex={-1} className={`min-h-0 min-w-0 flex-1 overscroll-contain md:ml-64 ${isChatPage ? 'flex flex-col overflow-hidden' : 'overflow-y-auto'}`}>
+        <PortalBreadcrumbs />
+        <div className={isChatPage ? 'min-h-0 flex-1' : undefined}><ClientErrorBoundary resetKey={`${user?.id}:${location.pathname}`}><Outlet /></ClientErrorBoundary></div>
       </main>
 
       {/* BOTTOM NAV (Mobile apenas) */}

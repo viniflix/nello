@@ -82,12 +82,12 @@ const MacrosChart = ({ editor = false, title = 'Análise nutricional', protein, 
                     const coverage = microTotals[key];
                     const value = coverage.value;
                     const complete = coverage.known > 0 && coverage.unknown === 0;
-                    const pct = complete && dri.value > 0 ? (value / dri.value) * 100 : 0;
+                    const pct = coverage.known > 0 && dri.value > 0 ? (value / dri.value) * 100 : 0;
                     const cappedPct = Math.min(pct, 100);
 
                     const isLimit = dri.isLimit;
                     const isSafe = isLimit ? pct <= 100 : pct >= 100;
-                    const barColor = !complete ? 'bg-slate-300' : isSafe ? 'bg-green-500' : (isLimit ? 'bg-red-500' : 'bg-yellow-500');
+                    const barColor = !complete ? 'bg-slate-500' : isSafe ? 'bg-green-500' : (isLimit ? 'bg-red-500' : 'bg-yellow-500');
 
                     return (
                         <div key={key} className="space-y-1 bg-white border border-border/60 rounded-md p-1.5 px-2">
@@ -101,10 +101,10 @@ const MacrosChart = ({ editor = false, title = 'Análise nutricional', protein, 
                                     {complete && <span className="text-xs text-muted-foreground">/ {formatNutrient(Math.round(dri.value))}{dri.unit}</span>}
                                 </div>
                             </div>
-                            <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                            <div role="img" aria-label={`${dri.name}: ${coverage.known ? `${coverage.unknown ? 'quantidade conhecida, pelo menos ' : ''}${Math.round(pct)}% da referência geral${complete ? '' : '; dados incompletos, adequação não avaliada'}` : 'não informado'}`} className="h-1.5 bg-muted rounded-full overflow-hidden">
                                 <div
                                     className={`h-full rounded-full transition-[width] duration-300 motion-reduce:transition-none ${barColor}`}
-                                    style={{ width: complete ? `${Math.max(cappedPct, 2)}%` : '100%' }}
+                                    style={{ width: `${cappedPct}%` }}
                                 />
                             </div>
                         </div>
@@ -152,7 +152,7 @@ const MacrosChart = ({ editor = false, title = 'Análise nutricional', protein, 
             </CardHeader>
 
             <CardContent className="flex-1 flex flex-col px-[12px] pt-2 pb-5 sm:px-6">
-                {activeTab === 'micros' && <p className="mb-3 text-xs leading-relaxed text-muted-foreground">Referências gerais para adultos; não são metas individuais. Dados incompletos não permitem avaliar adequação.</p>}
+                {activeTab === 'micros' && <p className="mb-3 text-xs leading-relaxed text-muted-foreground">Referências gerais para adultos; não são metas individuais. Barras cinzas mostram a quantidade conhecida em relação à referência. Dados incompletos não permitem avaliar adequação.</p>}
                 <div className={compact ? "min-h-[285px]" : "min-h-[300px]"}>
                     {activeTab === 'macros' ? MacrosView() : MicrosView()}
                 </div>

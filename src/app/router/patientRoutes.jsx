@@ -1,5 +1,6 @@
 import React from 'react';
-import { Route } from 'react-router-dom';
+import { Route, Outlet } from 'react-router-dom';
+import PortalBreadcrumbs from '@/components/navigation/PortalBreadcrumbs';
 import { ProtectedRoute } from './routeGuards';
 import { lazyWithReload } from '@/lib/utils/lazyWithReload';
 const PatientLayout = lazyWithReload(() => import('@/portals/patient/layouts/PatientLayout.jsx'), 'patient:layout');
@@ -35,8 +36,10 @@ export const patientRoutes = (
         </Route>
 
         {/* Rotas do Paciente (Fora do layout - páginas completas) */}
-        <Route path="/patient/add-food/:mealId?" element={<ProtectedRoute userType="patient"><AddFoodPage /></ProtectedRoute>} />
-        <Route path="/patient/add-meal" element={<ProtectedRoute userType="patient"><AddMealPage /></ProtectedRoute>} />
-        <Route path="/patient/checkin/:sessionId" element={<ProtectedRoute userType="patient"><CheckinResponsePage /></ProtectedRoute>} />
+        <Route element={<ProtectedRoute userType="patient"><div className="min-h-dvh min-w-0"><PortalBreadcrumbs /><Outlet /></div></ProtectedRoute>}>
+            <Route path="/patient/add-food/:mealId?" element={<AddFoodPage />} />
+            <Route path="/patient/add-meal" element={<AddMealPage />} />
+            <Route path="/patient/checkin/:sessionId" element={<CheckinResponsePage />} />
+        </Route>
     </>
 );

@@ -153,7 +153,7 @@ export async function getDietTemplateWithMeals(templateId) {
   let measuresMap = {};
   if (measureIds.length) {
     const { data: measures, error: measureError } = await supabase.from('household_measures')
-      .select('id, grams_equivalent').in('id', measureIds.map(Number));
+      .select('id, name, grams_equivalent').in('id', measureIds.map(Number));
     if (measureError) throw measureError;
     measuresMap = Object.fromEntries((measures || []).map(m => [String(m.id), m]));
   }
