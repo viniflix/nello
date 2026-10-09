@@ -8,6 +8,28 @@ function provider(count = 1, invalid = 0) {
   return vi.fn(async url => new Response(JSON.stringify(String(url).endsWith('release.json') ? metadata : String(url).endsWith('query/') ? { results: [[count, invalid]] } : { status: 1 }), { status: 200 }));
 }
 describe('independent analytics monitoring', () => {
+  it('locates a forbidden query without exposing provider messages or credentials', async () => {
+    const fetcher = provider();
+    fetcher.mockImplementationOnce(async () => new Response(JSON.stringify(metadata)))
+      .mockImplementationOnce(async () => new Response('{"status":"Ok"}'))
+      .mockImplementationOnce(async () => new Response('PRIVATE_PROVIDER_SENTINEL synthetic-read-key', { status: 403 }));
+    const result = await assessPipeline({ ...options, fetcher });
+    expect(result).toMatchObject({ state: 'attention', signals: ['pipeline_unavailable'], diagnostic: { stage: 'query', reason: 'http_error', httpStatus: 403 } });
+    expect(JSON.stringify(result)).not.toMatch(/PRIVATE_PROVIDER_SENTINEL|synthetic-read-key|phc_synthetic/);
+  });
+  it('distinguishes capture timeout from malformed query data without copying raw errors', async () => {
+    const timed = provider();
+    timed.mockImplementationOnce(async () => new Response(JSON.stringify(metadata)))
+      .mockImplementationOnce(async () => { throw new DOMException('PRIVATE_TIMEOUT_SENTINEL', 'TimeoutError'); });
+    expect(await assessPipeline({ ...options, fetcher: timed })).toMatchObject({ diagnostic: { stage: 'capture', reason: 'timeout' } });
+    const invalid = provider();
+    invalid.mockImplementationOnce(async () => new Response(JSON.stringify(metadata)))
+      .mockImplementationOnce(async () => new Response('{"status":"Ok"}'))
+      .mockImplementationOnce(async () => new Response('{"results":[["PRIVATE_PAYLOAD",0]]}'));
+    const result = await assessPipeline({ ...options, fetcher: invalid });
+    expect(result.diagnostic).toEqual({ stage: 'query', reason: 'invalid_provider_response' });
+    expect(JSON.stringify(result)).not.toContain('PRIVATE_PAYLOAD');
+  });
   it('does not count a previous release probe as evidence for the current deployment', async () => {
     const fetcher = vi.fn(async (url, request) => {
       if (String(url).endsWith('query/')) {
