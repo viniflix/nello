@@ -58,7 +58,9 @@ for(const width of [320,390,768,1024,1440])test(`patient reads the applied meals
   await test.info().attach('accessibility',{body:JSON.stringify(axe.violations),contentType:'application/json'});
   expect(axe.violations.map(x=>({id:x.id,nodes:x.nodes.map(y=>y.target)}))).toEqual([]);
   await test.info().attach(`patient-prescription-${width}`,{body:await page.screenshot({fullPage:false}),contentType:'image/png'});
-  await dialog.getByRole('button',{name:'Fechar plano',exact:true}).click();await page.reload();
+  await dialog.getByRole('button',{name:'Fechar plano',exact:true}).click();
+  await expect(page.getByRole('button',{name:'Ver plano alimentar',exact:true})).toBeFocused();
+  await page.reload();
   await page.getByRole('button',{name:'Ver plano alimentar',exact:true}).click();
   await expect(page.getByRole('dialog').getByLabel('Totais diários do plano')).toContainText('100 kcal');
   await expect(page.getByRole('dialog').getByText('QA Orientação da substituição: conservar o preparo e a porção indicados.',{exact:true})).toBeVisible();

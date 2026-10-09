@@ -42,6 +42,27 @@ test('patient without prescription keeps the diary without a fabricated clinical
     }
     await page.reload();
     await expect(page.getByText('Meta não definida', { exact: true })).toHaveCount(4);
+    for (const width of [320, 768, 1440]) {
+      await page.setViewportSize({ width, height: 900 });
+      const trigger = page.getByRole('button', { name: 'Configurar lembretes', exact: true });
+      await trigger.click();
+      const dialog = page.getByRole('dialog', { name: 'Preferências de Lembrete', exact: true });
+      for (const name of ['Lembrete de diário', 'Lembrete de medidas', 'Canal in-app']) {
+        await expect(dialog.getByRole('switch', { name, exact: true })).toBeVisible();
+      }
+      await page.waitForFunction(() => [...document.querySelectorAll('[role="dialog"]')].every(node => Number(getComputedStyle(node).opacity) === 1));
+      expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+      await page.keyboard.press('Escape');
+      await expect(dialog).not.toBeVisible();
+      await expect(trigger).toBeFocused();
+    }
+    const notificationTrigger = page.getByRole('button', { name: 'Abrir notificações', exact: true });
+    await notificationTrigger.click();
+    const notifications = page.getByRole('dialog', { name: 'Notificações', exact: true });
+    await expect(notifications).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(notifications).not.toBeVisible();
+    await expect(notificationTrigger).toBeFocused();
   } finally {
     expect((await admin.auth.admin.deleteUser(id)).error).toBeNull();
   }

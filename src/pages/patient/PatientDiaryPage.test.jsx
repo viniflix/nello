@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import PatientDiaryPage from './PatientDiaryPage';
@@ -29,6 +29,16 @@ async function summary() {
 }
 describe('patient diary prescribed targets', () => {
   beforeEach(() => mocks.plan.mockResolvedValue({ data: null, error: null }));
+  it('names reminder switches so keyboard and assistive users can distinguish their purpose', async () => {
+    await summary();
+    fireEvent.click(screen.getByRole('button', { name: 'Configurar lembretes' }));
+    const dialog = within(await screen.findByRole('dialog', { name: 'Preferências de Lembrete' }));
+    for (const name of ['Lembrete de diário', 'Lembrete de medidas', 'Canal in-app']) {
+      expect(dialog.getByRole('switch', { name, exact: true })).toBeInTheDocument();
+    }
+    fireEvent.click(dialog.getByRole('button', { name: 'Cancelar', exact: true }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Configurar lembretes' })).toHaveFocus());
+  });
   it('keeps logged consumption without inventing a clinical target for a patient without a plan', async () => {
     const card = await summary();
     expect(card.getByText('250 kcal')).toBeInTheDocument();

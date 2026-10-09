@@ -8,7 +8,7 @@ import MealPlanView from './MealPlanView';
 import PlanNutritionTotals from '@/components/meal-plan/PlanNutritionTotals';
 import { displayNumber, formatMealPlanDate as formatCivilDate } from '@/lib/utils/mealPlanPresentation';
 
-export default function MealPlanViewDialog({ open, onOpenChange, mealPlan }) {
+export default function MealPlanViewDialog({ open, onOpenChange, mealPlan, onCloseAutoFocus }) {
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState(false);
   if (!mealPlan) return null;
@@ -23,7 +23,7 @@ export default function MealPlanViewDialog({ open, onOpenChange, mealPlan }) {
     catch(error) { logDiagnostic('error','patient_meal_plan_pdf',error?.code || 'unknown');setExportError(true); }
     finally {setExporting(false);}
   };
-  return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent className="flex max-h-[92dvh] w-[96vw] max-w-5xl flex-col overflow-hidden bg-white">
+  return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent onCloseAutoFocus={onCloseAutoFocus} className="flex max-h-[92dvh] w-[96vw] max-w-5xl flex-col overflow-hidden bg-white">
     <DialogHeader className="shrink-0"><DialogTitle className="tracking-normal break-words pr-6">{mealPlan.name || 'Meu plano alimentar'}</DialogTitle><DialogDescription>De {formatCivilDate(mealPlan.start_date) || 'início não informado'} até {mealPlan.end_date ? formatCivilDate(mealPlan.end_date) : 'prazo indeterminado'}.</DialogDescription></DialogHeader>
     <div role="region" aria-label="Refeições e detalhes do plano" tabIndex={0} className="min-h-0 space-y-4 overflow-y-auto pr-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"><PlanNutritionTotals plan={{...totals, meals:meals.map(meal => ({...meal, foods:meal.meal_plan_foods || []}))}} />{mealPlan.description && <p className="whitespace-pre-wrap break-words text-sm text-muted-foreground">{mealPlan.description}</p>}<MealPlanView mealPlanItems={meals} showNutrition /></div>
     {exportError && <p role="alert" className="text-sm text-destructive">Não foi possível gerar o PDF. Confira sua conexão e tente novamente.</p>}

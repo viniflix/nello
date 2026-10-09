@@ -1,5 +1,5 @@
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { format, addDays, subDays, isToday, isYesterday, isTomorrow, startOfDay, isSameDay, parseISO, isValid } from 'date-fns';
@@ -51,6 +51,13 @@ export default function PatientDiaryPage() {
   const { unreadCount } = useNotifications();
   const [prescriptionGoal, setPrescriptionGoal] = useState(null);
   const [preferencesDialogOpen, setPreferencesDialogOpen] = useState(false);
+  const reminderTriggerRef = useRef(null);
+  const planTriggerRef = useRef(null);
+  const notificationTriggerRef = useRef(null);
+  const restoreDialogFocus = triggerRef => event => {
+    event.preventDefault();
+    triggerRef.current?.focus();
+  };
   const [reminderPrefs, setReminderPrefs] = useState({
     daily_log_enabled: true,
     measurement_enabled: true,
@@ -347,6 +354,7 @@ export default function PatientDiaryPage() {
                 variant="ghost"
                 size="sm"
                 aria-label="Ver plano alimentar"
+                ref={planTriggerRef}
                 onClick={() => setPlanDialogOpen(true)}
                 className="h-10 w-10 p-0 text-muted-foreground hover:text-primary sm:h-9 sm:w-auto sm:px-3"
               >
@@ -358,6 +366,7 @@ export default function PatientDiaryPage() {
               variant="ghost"
               size="sm"
               aria-label="Configurar lembretes"
+              ref={reminderTriggerRef}
               onClick={() => setPreferencesDialogOpen(true)}
               className="h-10 w-10 p-0 text-muted-foreground hover:text-primary sm:h-9 sm:w-auto sm:px-3"
             >
@@ -368,6 +377,7 @@ export default function PatientDiaryPage() {
               variant="ghost"
               size="icon"
               aria-label="Abrir notificações"
+              ref={notificationTriggerRef}
               onClick={() => setShowNotifications(true)}
               className="relative h-10 w-10 text-muted-foreground hover:text-primary"
             >
@@ -690,16 +700,17 @@ export default function PatientDiaryPage() {
       <MealPlanViewDialog
         open={planDialogOpen}
         onOpenChange={setPlanDialogOpen}
+        onCloseAutoFocus={restoreDialogFocus(planTriggerRef)}
         mealPlan={mealPlan}
         patientName={user?.profile?.name}
       />
 
       {/* Painel de Notificações */}
-      <NotificationsPanel isOpen={showNotifications} setIsOpen={setShowNotifications} />
+      <NotificationsPanel isOpen={showNotifications} setIsOpen={setShowNotifications} onCloseAutoFocus={restoreDialogFocus(notificationTriggerRef)} />
 
       {/* Dialog: Preferências de Lembrete */}
       <Dialog open={preferencesDialogOpen} onOpenChange={setPreferencesDialogOpen}>
-        <DialogContent className="patient-dialog-content sm:max-w-lg">
+        <DialogContent className="patient-dialog-content sm:max-w-lg" onCloseAutoFocus={restoreDialogFocus(reminderTriggerRef)}>
           <DialogHeader>
             <DialogTitle className="patient-dialog-title">Preferências de Lembrete</DialogTitle>
             <DialogDescription>
@@ -714,6 +725,7 @@ export default function PatientDiaryPage() {
                   <p className="text-xs text-muted-foreground">Registrar refeições diariamente</p>
                 </div>
                 <Switch
+                  aria-label="Lembrete de diário"
                   checked={reminderPrefs.daily_log_enabled}
                   onCheckedChange={(checked) => updateReminderPref('daily_log_enabled', checked)}
                 />
@@ -737,6 +749,7 @@ export default function PatientDiaryPage() {
                   <p className="text-xs text-muted-foreground">Atualizar dados e evolução</p>
                 </div>
                 <Switch
+                  aria-label="Lembrete de medidas"
                   checked={reminderPrefs.measurement_enabled}
                   onCheckedChange={(checked) => updateReminderPref('measurement_enabled', checked)}
                 />
@@ -760,6 +773,7 @@ export default function PatientDiaryPage() {
                   <p className="text-xs text-muted-foreground">Receber lembretes dentro do aplicativo</p>
                 </div>
                 <Switch
+                  aria-label="Canal in-app"
                   checked={reminderPrefs.channel_in_app}
                   onCheckedChange={(checked) => updateReminderPref('channel_in_app', checked)}
                 />

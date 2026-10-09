@@ -118,7 +118,7 @@ export const getNotificationMeta = (notification, userType) => {
   };
 };
 
-const NotificationsPanel = ({ isOpen, setIsOpen }) => {
+const NotificationsPanel = ({ isOpen, setIsOpen, onCloseAutoFocus }) => {
   const { user } = useAuth();
   const { markChatAsRead } = useChat();
   const navigate = useNavigate();
@@ -176,7 +176,7 @@ const NotificationsPanel = ({ isOpen, setIsOpen }) => {
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg" onCloseAutoFocus={onCloseAutoFocus}>
         <DialogHeader className="sr-only">
           <DialogTitle>Notificações</DialogTitle>
           <DialogDescription>
