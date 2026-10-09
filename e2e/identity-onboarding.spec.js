@@ -33,7 +33,9 @@ for (const width of [390, 1440]) {
       await page.goto(path);
       await expect(page.getByRole('heading', { name: title, exact: true })).toBeVisible();
       await expect(page.locator('.site-document-contact').getByRole('link', { name: 'suporte@nellonutri.com.br', exact:true })).toBeVisible();
-      await expect(page.getByRole('contentinfo').getByRole('link', { name: 'suporte@nellonutri.com.br', exact:true })).toBeVisible();
+      const support = page.getByRole('contentinfo').getByRole('link', { name: 'Falar com o suporte por email: suporte@nellonutri.com.br', exact:true });
+      await expect(support).toBeVisible();
+      await expect(support).toHaveAttribute('href', 'mailto:suporte@nellonutri.com.br');
       const { violations } = await new AxeBuilder({ page }).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze();
       expect(violations.map(v=>({id:v.id,targets:v.nodes.map(n=>n.target)}))).toEqual([]);
       expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
