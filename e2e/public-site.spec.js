@@ -16,13 +16,7 @@ test('public acquisition fixes keep transient geometry, footer and image explora
   expect(overlap).toBe(0);
   await page.locator('.site-footer-bottom').getByRole('link', { name: 'Privacidade', exact: true }).click(); await expect(page).toHaveURL(/\/privacidade$/);
  }
- await page.goto('/recursos');
- await page.getByRole('button', { name: 'Ampliar a tela', exact: true }).click();
- await expect(page.getByRole('dialog')).toBeVisible(); await expect(page.getByRole('dialog').locator('img')).toBeVisible();
- const expanded = await page.getByRole('dialog').boundingBox(); expect(expanded.width).toBeGreaterThan(1200);
- const zoomAudit = await new AxeBuilder({ page }).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze(); expect(zoomAudit.violations.map(issue => issue.id)).toEqual([]);
- await page.keyboard.press('Escape'); await expect(page.getByRole('dialog')).toHaveCount(0);
- await expect(page.getByRole('button', { name: 'Ampliar a tela', exact: true })).toBeFocused();
+ await page.goto('/recursos');await expect(page.getByRole('button',{name:'Ampliar a tela'})).toHaveCount(0);
  await page.goto('/para-pacientes'); await page.getByRole('link', { name: 'Recebi um convite', exact: true }).click();
  await expect(page).toHaveURL(/\/ajuda#document-section-1$/); await expect(page.locator('#document-section-1')).toBeInViewport();
  await page.goto('/status'); await expect(page.getByRole('link', { name: 'Nello, início' }).first()).toBeVisible();
@@ -237,7 +231,17 @@ test('document navigation is painted on desktop and collapsible on mobile',async
   await page.setViewportSize({width:390,height:900});await page.goto(route);await expect(page.locator('.site-document-desktop')).toBeHidden();const mobile=page.locator('.site-document-mobile');await expect(mobile.locator('nav')).toBeHidden();await mobile.locator('summary').click();await expect(mobile.getByRole('link').first()).toBeVisible();
  }
 });
-test('patient devices have real outer chrome and evolution opens a portrait capture',async({page})=>{
- await page.setViewportSize({width:1440,height:900});await page.goto('/');await page.getByRole('button',{name:'Área do paciente',exact:true}).click();await expect(page.locator('.landing-capture-patient')).toHaveCSS('clip-path','none');await expect(page.locator('.landing-capture-patient')).toHaveCSS('border-top-width','7px');
- await page.locator('.landing-progress-capture').getByRole('button',{name:'Ampliar a tela'}).click();await expect(page.getByRole('dialog').locator('img')).toHaveAttribute('src',/paciente-progresso-mobile/);await expect(page.getByRole('dialog').locator('.public-capture-scroll')).toBeFocused();await page.keyboard.press('Tab');await expect(page.getByRole('dialog').getByRole('button',{name:'Fechar',exact:true})).toBeFocused();await page.keyboard.press('Escape');await expect(page.getByRole('dialog')).toBeHidden();
+test('hero callouts overlap genuine captures without reserving space or offering enlargement',async({page})=>{
+ for(const width of [1001,1440]) {
+  await page.setViewportSize({width,height:900});await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/');
+  await expect(page.getByRole('button',{name:'Ampliar a tela'})).toHaveCount(0);
+  const device=page.locator('.landing-capture-workspace');await expect(device).toHaveCSS('padding-top','0px');
+  for(const card of await page.locator('.landing-float').all()) {
+   await expect(card).toBeVisible();const a=await card.boundingBox(),b=await device.boundingBox();
+   expect(Math.min(a.right??a.x+a.width,b.x+b.width)-Math.max(a.x,b.x)).toBeGreaterThan(a.width*.7);
+   expect(a.y).toBeGreaterThan(b.y);expect(a.y+a.height).toBeLessThan(b.y+b.height);
+  }
+ }
+ await page.getByRole('button',{name:'Área do paciente',exact:true}).click();await expect(page.locator('.landing-demo')).toHaveAttribute('data-screen','patient');
+ await expect(page.locator('.landing-capture-patient')).toHaveCSS('clip-path','none');await expect(page.locator('.landing-capture-patient')).toHaveCSS('border-top-width','7px');
 });
