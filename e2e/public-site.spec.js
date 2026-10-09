@@ -3,35 +3,47 @@ import AxeBuilder from '@axe-core/playwright';
 import {publicInformationPaths} from '../src/features/privacy/publicInformationPaths.js';
 import {getRouteMetadata} from '../src/app/router/metadataPolicy.js';
 
-test('landing demonstration supports keyboard, pausing and reduced movement',async({page})=>{
+test('public acquisition fixes keep transient geometry, footer and image exploration usable', async ({ page }) => {
+ for (const width of [320, 768, 1000, 1001, 1100, 1440]) {
+  await page.setViewportSize({ width, height: 900 }); await page.emulateMedia({ reducedMotion: 'no-preference' }); await page.goto('/');
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  if (width > 760) await expect(page.locator('.site-desktop-access').getByRole('link', { name: 'Criar minha conta', exact: true })).toBeVisible();
+  await page.locator('.landing-phone-scene').scrollIntoViewIfNeeded();
+  const overlap = await page.evaluate(() => {
+   const a = document.querySelector('.landing-phone').getBoundingClientRect(), b = document.querySelector('.landing-phone-caption').getBoundingClientRect();
+   return Math.max(0, Math.min(a.right,b.right)-Math.max(a.left,b.left)) * Math.max(0, Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top));
+  });
+  expect(overlap).toBe(0);
+  await page.locator('.site-footer-bottom').getByRole('link', { name: 'Privacidade', exact: true }).click(); await expect(page).toHaveURL(/\/privacidade$/);
+ }
+ await page.goto('/recursos');
+ await page.getByRole('button', { name: 'Ampliar a tela', exact: true }).click();
+ await expect(page.getByRole('dialog')).toBeVisible(); await expect(page.getByRole('dialog').locator('img')).toBeVisible();
+ const expanded = await page.getByRole('dialog').boundingBox(); expect(expanded.width).toBeGreaterThan(1200);
+ const zoomAudit = await new AxeBuilder({ page }).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze(); expect(zoomAudit.violations.map(issue => issue.id)).toEqual([]);
+ await page.keyboard.press('Escape'); await expect(page.getByRole('dialog')).toHaveCount(0);
+ await expect(page.getByRole('button', { name: 'Ampliar a tela', exact: true })).toBeFocused();
+ await page.goto('/para-pacientes'); await page.getByRole('link', { name: 'Recebi um convite', exact: true }).click();
+ await expect(page).toHaveURL(/\/ajuda#document-section-1$/); await expect(page.locator('#document-section-1')).toBeInViewport();
+ await page.goto('/status'); await expect(page.getByRole('link', { name: 'Nello, início' }).first()).toBeVisible();
+ await expect(page.locator('.site-footer')).toBeVisible();
+});
+
+test('landing demonstration supports keyboard, finite motion and reduced movement',async({page})=>{
  await page.emulateMedia({reducedMotion:'no-preference'});await page.goto('/');
- await expect.poll(()=>page.locator('.landing-aurora-green').evaluate(el=>el.getAnimations().some(a=>a.playState==='running'))).toBe(true);
+ await expect(page.getByRole('button',{name:'Pausar animações',exact:true})).toHaveCount(0);
  const demo=page.locator('.landing-demo');await demo.scrollIntoViewIfNeeded();const box=await demo.boundingBox();
  await page.mouse.move(box.x+box.width*.75,box.y+box.height*.45);
  await expect.poll(()=>demo.evaluate(el=>getComputedStyle(el).transform)).toMatch(/^matrix3d/);
  const patient=page.getByRole('button',{name:'Área do paciente',exact:true});await patient.focus();await patient.press('Enter');
  await expect(patient).toHaveAttribute('aria-pressed','true');await expect(page.locator('.landing-demo img')).toHaveAttribute('alt',/Área real do paciente/);
  await expect.poll(()=>page.locator('.landing-demo img').evaluate(img=>img.complete&&img.naturalWidth>0)).toBe(true);
- await page.getByRole('button',{name:'Pausar animações',exact:true}).click();
- await expect.poll(()=>page.locator('.landing-aurora-green').evaluate(el=>el.getAnimations().every(a=>a.playState==='paused'))).toBe(true);
- await expect.poll(()=>demo.evaluate(el=>getComputedStyle(el).transform)).toBe('none');
- const clinical=page.getByRole('button',{name:'Visão clínica',exact:true});await clinical.focus();await clinical.press('Enter');
- await expect(clinical).toHaveAttribute('aria-pressed','true');
- await expect(page.locator('.landing-demo img')).toHaveAttribute('alt',/Prontuário real/);
- await expect.poll(()=>page.locator('.landing-demo img').evaluate(img=>img.complete&&img.naturalWidth>0)).toBe(true);
- await expect(page.locator('.landing-demo-workspace')).toHaveCSS('opacity','1');
- await page.getByRole('button',{name:'Ativar animações',exact:true}).click();
- await expect.poll(()=>page.locator('.landing-aurora-green').evaluate(el=>el.getAnimations().some(a=>a.playState==='running'))).toBe(true);
- await expect(page.locator('.landing-hero h1>span')).toHaveCSS('filter','none');
- await expect.poll(()=>page.locator('.landing-hero h1>span').evaluate(el=>el.getAnimations().length)).toBe(0);
- await page.locator('.landing-faq').scrollIntoViewIfNeeded();
- await expect.poll(()=>page.locator('.landing-aurora-green').evaluate(el=>el.getAnimations().every(a=>a.playState==='paused'))).toBe(true);
- await expect(page.getByRole('button',{name:'Pausar animações',exact:true})).toBeInViewport();
- await page.locator('.landing-hero').scrollIntoViewIfNeeded();
- await expect.poll(()=>page.locator('.landing-aurora-green').evaluate(el=>el.getAnimations().some(a=>a.playState==='running'))).toBe(true);
- await page.emulateMedia({reducedMotion:'reduce'});await expect(page.getByRole('button',{name:'Movimento reduzido'})).toBeDisabled();
+ await expect.poll(()=>page.evaluate(()=>document.getAnimations().filter(a=>a.playState==='running'&&a.effect?.getTiming().iterations===Infinity).length)).toBe(0);
+ await page.emulateMedia({reducedMotion:'reduce'});
  await expect.poll(()=>page.locator('.landing-aurora-green').evaluate(el=>el.getAnimations().length)).toBe(0);
- await expect(page.locator('h1')).toBeVisible();await expect(page).toHaveURL(/\/$/);
+ const clinical=page.getByRole('button',{name:'Visão clínica',exact:true});await clinical.focus();await clinical.press('Enter');
+ await expect(clinical).toHaveAttribute('aria-pressed','true');await expect(page.locator('.landing-demo img')).toHaveAttribute('alt',/Prontuário real/);
+ await expect(page.locator('h1')).toBeVisible();
 });
 
 test('landing initial content and navigation work without JavaScript',async({browser,baseURL})=>{
@@ -45,11 +57,11 @@ test('landing initial content and navigation work without JavaScript',async({bro
 for(const width of [320,768,1440])test(`public design audit: stable captures, research and navigation ${width}`,async({page})=>{
  await page.setViewportSize({width,height:900});await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/');
  await expect(page.locator('.landing-journey-node[data-care-active]')).toHaveCount(0);
- const capture=page.locator('.landing-capture-workspace');const original=await capture.boundingBox();
+ const capture=page.locator('.landing-capture-workspace');
  for(const label of ['Visão clínica','Área do paciente','Plano alimentar']){
   await page.getByRole('button',{name:label,exact:true}).click();
   await expect.poll(()=>capture.locator('img').evaluate(img=>img.complete&&img.naturalWidth>0)).toBe(true);
-  const next=await capture.boundingBox();expect(Math.abs(next.height-original.height)).toBeLessThan(1);
+  const next=await capture.boundingBox();expect(next.height).toBeGreaterThan(300);if(label==='Área do paciente')expect(next.width/next.height).toBeLessThan(.5);
   if(label==='Área do paciente')await expect.poll(()=>capture.locator('img').evaluate(img=>img.currentSrc)).toMatch(/\/images\/product\/captures-[a-f0-9]{12}\/paciente-inicio-mobile-345\.webp$/);
  }
  await expect(page.locator('.landing-research-authors li')).toHaveCount(4);
@@ -133,7 +145,7 @@ for(const screen of [{width:320,height:800},{width:390,height:844},{width:430,he
  expect(errors).toEqual([]);
 });
 
-for (const fallback of [false, true]) test(`capture motion preserves the last selection and pause (${fallback ? 'fallback' : 'native'})`, async ({ page }) => {
+for (const fallback of [false, true]) test(`capture motion preserves the last selection and reduced preference (${fallback ? 'fallback' : 'native'})`, async ({ page }) => {
  await page.addInitScript(({ fallback }) => {
   window.captureTransitions = 0;
   if (fallback) document.startViewTransition = undefined;
@@ -158,7 +170,7 @@ for (const fallback of [false, true]) test(`capture motion preserves the last se
   const a = el.getBoundingClientRect(), b = el.parentElement.querySelector('[aria-pressed=true]').getBoundingClientRect();
   return Math.abs(a.x-b.x)+Math.abs(a.width-b.width);
  })).toBeLessThan(1);
- await page.getByRole('button', { name: 'Pausar animações', exact: true }).click();
+ await page.emulateMedia({ reducedMotion: 'reduce' });
  const count = await page.evaluate(() => window.captureTransitions);
  const patient = group.getByRole('button', { name: 'Área do paciente', exact: true }); await patient.click();
  await expect(patient).toHaveAttribute('aria-pressed', 'true');
@@ -173,16 +185,13 @@ test('section entrances complete once and reduced motion exposes content and cre
  await page.locator('.landing-journey-grid').scrollIntoViewIfNeeded();
  await expect.poll(() => page.locator('.landing-experience').evaluate(el => parseFloat(el.style.getPropertyValue('--reading-progress')))).toBeGreaterThan(0);
  await expect(page.locator('.landing-journey-node[data-care-active]')).toHaveCount(1);
- await page.getByRole('button', { name: 'Pausar animações', exact: true }).click();
+ await page.emulateMedia({ reducedMotion: 'reduce' });
  await expect(page.locator('.landing-experience')).not.toHaveAttribute('data-motion-ready', '');
  await expect(page.locator('.landing-trust-grid article').last()).toHaveCSS('opacity', '1');
  await page.locator('.landing-final-cta').scrollIntoViewIfNeeded();
- const resume = page.getByRole('button', { name: 'Ativar animações', exact: true });
- await expect(resume).toBeInViewport();
- expect(await resume.evaluate(el => {
-  const b = el.getBoundingClientRect(); return el.contains(document.elementFromPoint(b.left+b.width/2, b.top+b.height/2));
- })).toBe(true);
- await resume.click(); await expect(page.locator('.landing-experience')).toHaveAttribute('data-motion-ready', '');
+ await expect(page.getByRole('button', { name: 'Ativar animações', exact: true })).toHaveCount(0);
+ await page.emulateMedia({ reducedMotion: 'no-preference' });
+ await expect(page.locator('.landing-experience')).toHaveAttribute('data-motion-ready', '');
  await page.goto('/pesquisa'); await expect(page.locator('.research-credit-grid article')).toHaveCount(4);
  await expect(page.locator('main')).not.toContainText('Giulia');
  await page.emulateMedia({ reducedMotion: 'reduce' });
@@ -195,12 +204,12 @@ for (const width of [320, 844, 1440]) test(`genuine captures preserve orientatio
  const context = await browser.newContext({ viewport: { width, height: width === 844 ? 390 : 900 }, deviceScaleFactor: 2, reducedMotion: 'reduce' });
  try {
   const page = await context.newPage(); await page.goto(baseURL + '/');
-  const capture = page.locator('.landing-capture-workspace'); const original = await capture.boundingBox();
+  const capture = page.locator('.landing-capture-workspace');
   for (const name of ['Visão clínica', 'Área do paciente', 'Plano alimentar']) {
    const selection = page.getByRole('button', { name, exact: true });
    await selection.click(); await expect(selection).toHaveAttribute('aria-pressed', 'true');
    await expect.poll(() => capture.locator('img').evaluate(img => img.complete && img.naturalWidth > 0)).toBe(true);
-   const bounds = await capture.boundingBox(); expect(Math.abs(bounds.height-original.height)).toBeLessThan(1);
+   const bounds = await capture.boundingBox(); expect(bounds.height).toBeGreaterThan(300);
    if (name === 'Área do paciente' || width <= 1000) expect(bounds.width/bounds.height).toBeLessThan(.5);
    const details = await capture.locator('img').evaluate(async img => {
     const bitmap = await createImageBitmap(await (await fetch(img.currentSrc)).blob());

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { validHealth } from '@/lib/utils/healthContract';
+import PublicSiteLayout from './PublicSiteLayout';
 
 const labels = { operational: 'Operacional', degraded: 'Instabilidade parcial', unavailable: 'Indisponível' };
 const incidentLabels = { investigating: 'Em investigação', identified: 'Causa identificada', monitoring: 'Em observação', resolved: 'Resolvido' };
@@ -28,9 +29,9 @@ export default function StatusPage() {
     const interval = setInterval(refresh, 30000);
     return () => { active = false; clearInterval(interval); clearTimeout(timer); controller?.abort(); };
   }, []);
-  return <main id="main-content" tabIndex={-1} className="min-h-dvh max-w-2xl mx-auto p-8 space-y-6">
-    <h1 className="text-3xl font-semibold">Status do Nello</h1>
-    <section aria-live="polite" className="space-y-3">
+  return <PublicSiteLayout activePath="/status"><main id="main-content" tabIndex={-1} className="site-container public-status">
+    <header className="site-subhero"><span className="site-eyebrow">Disponibilidade dos serviços</span><h1>Status do Nello</h1><p>Acompanhe a conexão dos serviços e os comunicados de incidentes.</p></header>
+    <section aria-live="polite" className={`public-status-summary${failed ? ' public-status-unknown' : ''}`}>
       <h2 className="text-xl">{failed ? 'Não foi possível verificar a disponibilidade' : health ? labels[health.status] : 'Verificando disponibilidade…'}</h2>
       {health && !failed && <>
         <p>Autenticação: {labels[health.checks.auth]}</p>
@@ -40,7 +41,7 @@ export default function StatusPage() {
       </>}
       <p>A verificação acompanha a conexão dos serviços. Em caso de instabilidade, tente novamente em alguns minutos.</p>
     </section>
-    <section className="space-y-3" aria-labelledby="incidents-title">
+    <section className="public-status-incidents" aria-labelledby="incidents-title">
       <h2 id="incidents-title" className="text-xl">Comunicados de incidentes</h2>
       {failed || !Array.isArray(health?.incidents) ? <p>Os comunicados não estão disponíveis nesta verificação.</p>
         : health.incidents.length === 0 ? <p>Nenhum incidente comunicado.</p>
@@ -51,6 +52,6 @@ export default function StatusPage() {
             <time dateTime={incident.updatedAt}>{new Date(incident.updatedAt).toLocaleString('pt-BR')}</time>
           </article>)}
     </section>
-    <Link className="underline" to="/login">Ir para o login</Link>
-  </main>;
+    <div className="public-status-actions"><Link className="site-action" to="/login">Ir para o login</Link><a className="site-inline-link" href="/ajuda">Encontrar ajuda</a></div>
+  </main></PublicSiteLayout>;
 }

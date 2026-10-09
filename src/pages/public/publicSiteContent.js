@@ -12,5 +12,6 @@ export const publicQuestions = [
   ['Como começo a usar?', 'Crie sua conta, escolha seu papel e siga as orientações de confirmação de email e acesso. Se você é paciente e recebeu um convite, use o link enviado pelo seu nutricionista. A central de ajuda explica cada etapa.'],
   ['O que o paciente encontra no Nello?', 'O plano alimentar disponibilizado pelo nutricionista, registros do diário alimentar, metas, evolução e mensagens, conforme os recursos utilizados no acompanhamento.'],
   ['Posso usar no celular?', 'Sim. O Nello é acessado pelo navegador e possui interfaces para celular, tablet e computador. Você e seu paciente podem acessar suas contas nos dispositivos que utilizam no dia a dia.'],
-  ['O Nello está em Beta?', 'Sim. O produto está em evolução. Você pode relatar dificuldades pelo canal de suporte e consultar a disponibilidade dos serviços na página de status.'],
+  ['O Nello está em desenvolvimento?', 'Sim. O produto está em fase beta: os recursos e a experiência continuam recebendo melhorias. A central de ajuda reúne orientações e o canal de suporte para relatar dificuldades. A página de status informa a disponibilidade dos serviços.'],
+  ['As telas mostram dados de pacientes?', 'As demonstrações mostram o Nello em uso com uma conta de exemplo. Os dados são fictícios e não representam prontuários de pacientes reais.'],
 ];

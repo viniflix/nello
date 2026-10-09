@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { createPortal, flushSync } from 'react-dom';
-import { ArrowDown, ArrowUpRight, Check, MessageCircle, Pause, Play } from 'lucide-react';
+import { flushSync } from 'react-dom';
+import { ArrowDown, Check, MessageCircle } from 'lucide-react';
 import { PublicAction } from './PublicSiteLayout';
 import ProductScreenshot, { getProductCaptureSrc } from './ProductScreenshot';
 import { usePublicReveal } from './usePublicReveal';
@@ -13,11 +13,10 @@ const examples = {
 
 export function useLandingMotion() {
   const root = useRef(null);
-  const [paused, setPaused] = useState(false);
   const [reduced, setReduced] = useState(false);
   const [arrived, setArrived] = useState(false);
-  const [heroAway, setHeroAway] = useState(false);
-  usePublicReveal(root, true, paused || reduced);
+
+  usePublicReveal(root, true, reduced);
   useEffect(() => {
     const media = window.matchMedia('(prefers-reduced-motion: reduce)');
     const sync = () => setReduced(media.matches);
@@ -26,8 +25,8 @@ export function useLandingMotion() {
     return () => media.removeEventListener('change', sync);
   }, []);
   useEffect(() => {
-    if (paused || reduced) setArrived(true);
-  }, [paused, reduced]);
+    if (reduced) setArrived(true);
+  }, [reduced]);
   useEffect(() => {
     const element = root.current;
     if (!element) return undefined;
@@ -39,7 +38,7 @@ export function useLandingMotion() {
         entry.target.classList.toggle('landing-motion-offscreen', !entry.isIntersecting);
         if (entry.target.classList.contains('landing-hero-copy')) {
           element.toggleAttribute('data-hero-away', !entry.isIntersecting);
-          setHeroAway(!entry.isIntersecting);
+
         }
       });
     }) : null;
@@ -52,7 +51,7 @@ export function useLandingMotion() {
     const journey = element.querySelector('.landing-journey-grid');
     const nodes = [...element.querySelectorAll('.landing-journey-node')];
     const reducedNow = reduced || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const stopped = paused || reducedNow;
+    const stopped = reducedNow;
     let frame = 0;
     const update = () => {
       frame = 0;
@@ -88,11 +87,11 @@ export function useLandingMotion() {
       document.removeEventListener('visibilitychange', schedule);
       observer?.disconnect();
     };
-  }, [paused, reduced]);
-  return { root, paused, reduced, arrived, heroAway, toggleMotion: () => setPaused(value => !value) };
+  }, [reduced]);
+  return { root, reduced, arrived };
 }
 
-function CarePreview({ paused, reduced }) {
+function CarePreview({ reduced }) {
   const [selected, setSelected] = useState('plan');
   const [interactive, setInteractive] = useState(false);
   useEffect(() => setInteractive(true), []);
@@ -100,8 +99,8 @@ function CarePreview({ paused, reduced }) {
   const tabs = useRef(null);
   const transition = useRef(null);
   const fallbackAnimation = useRef(null);
-  const motionStopped = useRef(paused || reduced);
-  motionStopped.current = paused || reduced;
+  const motionStopped = useRef(reduced);
+  motionStopped.current = reduced;
   const selectionRequest = useRef(0);
   const [pending, setPending] = useState(null);
   const example = examples[selected];
@@ -123,10 +122,10 @@ function CarePreview({ paused, reduced }) {
   }, [selected]);
   useEffect(() => {
     const stop = () => { if (document.hidden) { transition.current?.skipTransition(); fallbackAnimation.current?.cancel(); } };
-    if (paused || reduced) { transition.current?.skipTransition(); fallbackAnimation.current?.cancel(); }
+    if (reduced) { transition.current?.skipTransition(); fallbackAnimation.current?.cancel(); }
     document.addEventListener('visibilitychange', stop);
     return () => document.removeEventListener('visibilitychange', stop);
-  }, [paused, reduced]);
+  }, [reduced]);
   useEffect(() => () => { selectionRequest.current += 1; transition.current?.skipTransition(); fallbackAnimation.current?.cancel(); }, []);
   useEffect(() => {
     if (!stage.current || !('IntersectionObserver' in window)) return undefined;
@@ -163,7 +162,7 @@ function CarePreview({ paused, reduced }) {
   };
   useEffect(() => {
     const element = stage.current;
-    if (!element || paused || reduced) return undefined;
+    if (!element || reduced) return undefined;
     const pointer = window.matchMedia('(min-width: 761px) and (hover: hover) and (pointer: fine)');
     let frame = 0;
     const reset = () => {
@@ -191,46 +190,31 @@ function CarePreview({ paused, reduced }) {
       element.removeEventListener('pointerleave', reset);
       window.removeEventListener('resize', reset);
     };
-  }, [paused, reduced]);
+  }, [reduced]);
   return <div className="landing-preview-stage" ref={stage}>
     <div className="landing-preview-tabs" ref={tabs} role="group" aria-label="Explorar a demonstração do Nello" aria-busy={pending !== null}><span className="landing-tab-marker" aria-hidden="true" />{Object.entries(examples).map(([key, { label }]) => <button type="button" key={key} disabled={!interactive} aria-controls="landing-product-capture" aria-pressed={selected === key} onClick={() => selectExample(key)}>{label}</button>)}</div>
-    <figure className="landing-demo">
-      <div id="landing-product-capture" className={`landing-demo-workspace landing-capture-workspace${selected === 'patient' ? ' landing-capture-patient' : ''}`}>
+    <figure className="landing-demo" data-screen={selected}>
+      <div id="landing-product-capture" data-device={selected === 'patient' ? 'phone' : 'adaptive'} className={`landing-demo-workspace landing-capture-workspace${selected === 'patient' ? ' landing-capture-patient' : ''}`}>
         <h2 className="sr-only">{example.title}</h2>
         <ProductScreenshot screen={selected} mobileOnly={selected === 'patient'} eager />
       </div>
-      <figcaption><span className="landing-capture-dot" aria-hidden="true" />Capturas reais do Nello · dados fictícios. Selecione uma tela acima.</figcaption>
-    </figure>
+      <figcaption className="landing-demo-summary">{selected === 'plan' ? 'Refeições, porções e análise nutricional. Seu plano, do início à revisão.' : selected === 'context' ? 'Histórico e avaliações para acompanhar cada paciente com contexto.' : 'O plano do nutricionista, os registros e as mensagens na rotina do paciente.'}</figcaption>
     <div className="landing-float landing-float-plan"><span className="landing-float-icon"><Check aria-hidden="true" size={20} /></span><div><strong>Do plano à rotina.</strong><span>Cuidado com continuidade</span></div></div>
     <div className="landing-float landing-float-message"><span className="landing-float-icon"><MessageCircle aria-hidden="true" size={20} /></span><div><strong>Uma conversa mais próxima.</strong><span>Entre uma consulta e outra</span></div></div>
+    </figure>
   </div>;
 }
 
-function LandingMotionControl({ paused, reduced, toggleMotion, floating }) {
-  const button = useRef(null);
-  const focused = useRef(false);
-  useEffect(() => {
-    if (focused.current) button.current?.focus({ preventScroll: true });
-  }, [floating]);
-  const control = <button ref={button} onFocus={() => { focused.current = true; }} onBlur={() => { focused.current = false; }} type="button" className={`landing-motion-toggle landing-motion-controller${floating ? ' landing-motion-controller-fixed' : ''}`} aria-pressed={paused} onClick={toggleMotion} disabled={reduced}>{paused || reduced ? <Play aria-hidden="true" size={14} /> : <Pause aria-hidden="true" size={14} />}{reduced ? 'Movimento reduzido' : paused ? 'Ativar animações' : 'Pausar animações'}</button>;
-  return floating ? createPortal(control, document.body) : control;
-}
-
-export function LandingHero({ paused, reduced, toggleMotion, heroAway }) {
-  const motionControl = <div className="landing-motion-slot"><LandingMotionControl paused={paused} reduced={reduced} toggleMotion={toggleMotion} floating={heroAway} /></div>;
+export function LandingHero({ reduced }) {
   return <section className="landing-hero" aria-labelledby="landing-title">
     <div className="landing-atmosphere" aria-hidden="true"><div className="landing-aurora landing-aurora-green" /><div className="landing-aurora landing-aurora-orange" /><div className="landing-light-beam" /><div className="landing-orbit landing-orbit-one" /><div className="landing-orbit landing-orbit-two" /><div className="landing-grid" /><span className="landing-star landing-star-one" /><span className="landing-star landing-star-two" /><span className="landing-star landing-star-three" /></div>
     <svg className="landing-care-orbits" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><path d="M-100 780C80 140 850-70 1390 190S1700 810 1030 940" pathLength="100" /><path d="M-100 780C80 140 850-70 1390 190S1700 810 1030 940" pathLength="100" className="landing-orbit-signal" /><path d="M-80 380C270 860 950 940 1530 290" pathLength="100" className="landing-orbit-signal landing-orbit-signal-secondary" /></svg>
-    <div className="landing-hero-copy site-container"><span className="landing-pill"><span aria-hidden="true" />Nutrição, conectada.<span className="landing-pill-beta">Nello Beta</span></span><h1 id="landing-title"><span className="landing-title-line">{'O cuidado não termina'.split(' ').map((word, index) => <React.Fragment key={word}><span className="landing-title-word" style={{ '--word-order': index }}>{word}</span>{index < 3 ? ' ' : null}</React.Fragment>)}</span><em>na consulta.</em></h1><p>Seu olhar clínico. A rotina do paciente.<br className="landing-desktop-break" /> Um lugar para conectar cada parte do acompanhamento.</p><div className="site-hero-actions"><PublicAction compactLabel="Criar conta">Começar com o Nello</PublicAction><a className="site-action site-action-secondary landing-explore" href="#nello-em-acao"><span className="site-action-full-label">Ver as telas do Nello</span><span className="site-action-compact-label">Ver o Nello</span><ArrowDown size={16} aria-hidden="true" /></a></div><span className="landing-hero-for">Feito para nutricionistas. Pensado também para pacientes.</span>{motionControl}</div>
-    <div id="nello-em-acao" className="landing-preview-wrap site-container"><CarePreview paused={paused} reduced={reduced} /></div>
-    <div className="landing-hero-bottom site-container"><a href="#site-features" className="landing-scroll-cue"><span aria-hidden="true">↓</span>Conheça o cuidado conectado</a></div>
+    <div className="landing-hero-copy site-container"><span className="landing-pill"><span aria-hidden="true" />Seu consultório e seus pacientes, no mesmo lugar.</span><h1 id="landing-title"><span className="landing-title-line">{'O cuidado não termina'.split(' ').map((word, index) => <React.Fragment key={word}><span className="landing-title-word" style={{ '--word-order': index }}>{word}</span>{index < 3 ? ' ' : null}</React.Fragment>)}</span><em>na consulta.</em></h1><p>Prontuários, planos alimentares e acompanhamento.<br className="landing-desktop-break" /> Organize o consultório e mantenha o plano perto da rotina do paciente.</p><div className="site-hero-actions"><PublicAction compactLabel="Criar conta">Começar com o Nello</PublicAction><a className="site-action site-action-secondary landing-explore" href="#nello-em-acao"><span className="site-action-full-label">Ver as telas do Nello</span><span className="site-action-compact-label">Ver o Nello</span><ArrowDown size={16} aria-hidden="true" /></a></div><span className="landing-hero-for">Feito para nutricionistas. Acessível também aos seus pacientes.</span></div>
+    <div id="nello-em-acao" className="landing-preview-wrap site-container"><CarePreview reduced={reduced} /></div>
+    <div className="landing-hero-bottom site-container"><a href="#site-features" className="landing-scroll-cue"><span aria-hidden="true">↓</span>Explore os recursos</a></div>
   </section>;
 }
 
-export function LandingMealVisual() {
-  return <figure className="landing-meal-visual landing-meal-capture"><ProductScreenshot screen="plan" sizes="(max-width: 760px) 288px, 520px" /><figcaption>Planejamento real · dados fictícios.</figcaption></figure>;
-}
-
 export function LandingPatientVisual() {
-  return <div className="landing-phone-scene"><div className="landing-phone-halo" aria-hidden="true" /><figure className="landing-phone landing-phone-capture"><ProductScreenshot screen="patient" mobileOnly /><figcaption>Área real do paciente · dados fictícios.</figcaption></figure><div className="landing-phone-caption"><span aria-hidden="true"><ArrowUpRight size="1em" /></span>O que foi combinado<br />continua ao alcance.</div></div>;
+  return <div className="landing-phone-scene"><div className="landing-phone-halo" aria-hidden="true" /><figure className="landing-phone landing-phone-capture"><ProductScreenshot screen="patient" mobileOnly /></figure><div className="landing-phone-caption"><Check aria-hidden="true" size={18} /><span>O plano sempre por perto.</span></div></div>;
 }
