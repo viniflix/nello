@@ -8,6 +8,11 @@ const screens = {
   patient: { desktop: 'paciente-inicio-desktop', mobile: 'paciente-inicio-mobile', width: 1235, height: 712, mobileWidth: 345, alt: 'Área real do paciente no Nello, com plano alimentar, registro de refeições e navegação mobile. Dados fictícios.' },
 };
 
+export function getProductCaptureSrc(screen, mobile = false) {
+  const image = screens[screen];
+  return `${PRODUCT_CAPTURE_BASE}${mobile ? image.mobile + '-' + image.mobileWidth : image.desktop + '-' + image.width}.webp`;
+}
+
 export default function ProductScreenshot({ screen = 'plan', mobileOnly = false, eager = false, sizes = '(max-width: 760px) 288px, (max-width: 1000px) 90vw, 1100px', className = '' }) {
   const image = screens[screen];
   const base = PRODUCT_CAPTURE_BASE;

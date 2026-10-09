@@ -30,7 +30,7 @@ for (const width of [320, 768, 1440]) test(`public landing, help and safe crawle
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.setViewportSize({ width, height: width === 768 ? 480 : 900 });
   const response = await request.get('/'); const html = await response.text();
-  expect(html).toContain('O cuidado não termina'); expect(html).toContain('https://nellonutri.com.br/og-image.png');
+  expect(html.replace(/<[^>]+>/g, '')).toContain('O cuidado não termina'); expect(html).toContain('https://nellonutri.com.br/og-image.png');
   await page.goto('/'); await expect(page.getByRole('heading', { level: 1 })).toContainText('O cuidado não termina');
   await uniqueMetadata(page, '/');
   for (const image of await page.locator('.landing-experience img').all()) {

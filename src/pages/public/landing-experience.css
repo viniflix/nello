@@ -149,3 +149,53 @@
 @media(max-width:760px){.landing-preview-tabs button{font-size:.75rem;padding-inline:10px}.landing-demo figcaption{font-size:.75rem}.landing-phone-capture figcaption{font-size:.75rem}.landing-hero-copy .landing-motion-toggle{font-size:.75rem}.landing-scroll-cue{font-size:.7rem}}
 @keyframes landing-phone-float{0%,100%{translate:0 0}50%{translate:0 -4px}}
 .site-landing .site-header a:focus-visible,.site-landing .site-header summary:focus-visible,.landing-hero a:focus-visible,.landing-hero button:focus-visible,.landing-final-cta a:focus-visible{outline-color:#d3f3a7}
+
+/* Motion is decorative: real captures, readable text and an explicit pause control. */
+.landing-care-orbits{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:-1;fill:none;stroke:#d3f3a729;stroke-width:1}
+.landing-care-orbits .landing-orbit-signal{stroke:#d3f3a7b3;stroke-width:2;stroke-dasharray:1.5 98.5;animation:landing-signal-flow 12s linear infinite}
+.landing-care-orbits .landing-orbit-signal-secondary{stroke:#e6bf9399;animation-duration:17s;animation-delay:-5s}
+.landing-aurora-green{animation-duration:12s}.landing-aurora-orange{animation-duration:15s}
+.landing-hero h1>.landing-title-line{animation:none}
+.landing-title-word{display:inline-block;animation:landing-word-arrive .7s cubic-bezier(.22,1,.36,1) both;animation-delay:calc(var(--word-order)*90ms)}
+.landing-arrived .landing-title-word,.landing-motion-paused .landing-title-word{animation:none!important;opacity:1;transform:none}
+.landing-hero h1>em{position:relative}
+.landing-hero h1>em:after{content:'';position:absolute;left:23%;right:23%;bottom:-.09em;height:2px;background:linear-gradient(90deg,transparent,#d3f3a7,transparent);transform-origin:left;animation:landing-line-arrive 1s .45s both}
+[data-motion-ready] .public-motion-item{opacity:0;translate:0 24px;transition:opacity .65s ease,translate .65s cubic-bezier(.22,1,.36,1);transition-delay:var(--entrance-delay,0ms)}
+[data-motion-ready] .public-motion-visible,[data-motion-ready] .public-motion-item:focus-within{opacity:1;translate:0 0}
+[data-motion-ready] .public-motion-item:focus-within{transition:none}
+.landing-preview-tabs{position:relative;isolation:isolate}
+.landing-tab-marker{display:none;position:absolute;left:0;top:0;width:var(--tab-width);height:var(--tab-height);transform:translate(var(--tab-x),var(--tab-y));border-radius:999px;background:#d3f3a7;pointer-events:none;transition:transform .42s cubic-bezier(.22,1,.36,1),width .42s,height .42s}
+.landing-preview-tabs[data-marker-ready] .landing-tab-marker{display:block}
+.landing-preview-tabs[data-marker-ready] button{position:relative;z-index:1}
+.landing-preview-tabs[data-marker-ready] button[aria-pressed=true]{background:transparent;border-color:transparent;color:#193a29}
+.landing-preview-tabs[aria-busy=true]{cursor:progress}
+html:has(.landing-experience) {view-transition-name:none}
+.landing-capture-workspace{view-transition-name:nello-capture}
+::view-transition-group(nello-capture){animation-duration:.42s}
+::view-transition-old(nello-capture){animation:landing-capture-out .42s ease both}
+::view-transition-new(nello-capture){animation:landing-capture-in .42s cubic-bezier(.22,1,.36,1) both}
+::view-transition{pointer-events:none}
+.landing-reading-progress{position:fixed;top:0;left:0;right:0;height:3px;z-index:30;background:#d3f3a7;transform:scaleX(var(--reading-progress,0));transform-origin:left;pointer-events:none}
+.landing-journey-grid:before{content:none}
+.landing-care-track{position:absolute;top:28px;left:28px;right:28px;height:2px;background:#88a37355;pointer-events:none}
+.landing-care-track>span{display:block;width:100%;height:100%;background:linear-gradient(90deg,#d3f3a7,#92c07a);transform:scaleX(var(--care-progress,0));transform-origin:left;transition:transform .25s ease}
+.landing-journey-node>svg{transition:background .35s,border-color .35s,box-shadow .35s}
+.landing-journey-node[data-care-active]>svg{background:#3c6139;border-color:#d3f3a7;animation:landing-node-breathe 3s ease-in-out infinite}
+.landing-final-orbit{animation:landing-cta-breathe 12s ease-in-out infinite}
+.landing-experience[data-hero-away] .landing-motion-controller{position:fixed;bottom:16px;right:16px;margin:0;z-index:40;background:#183c2e;color:#f4f8ed;border-color:#729967;box-shadow:0 5px 22px #102b2530}
+.site-landing .site-action{transition:background .25s,box-shadow .25s,translate .25s}
+.site-landing .site-action:focus-visible{box-shadow:0 0 0 5px #8cae6b30}
+.site-landing .landing-text-link svg,.site-landing .research-hero-link svg{transition:translate .25s}
+.site-landing .landing-text-link:focus-visible svg,.site-landing .research-hero-link:focus-visible svg{translate:4px 0}
+.research-credit-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media(hover:hover) and (pointer:fine){.site-landing .site-action:hover{translate:0 -2px;box-shadow:0 7px 20px #102b2520}.site-landing .research-hero-link:hover svg{translate:4px -4px}}
+@media(max-width:760px){.landing-journey-grid{padding-left:24px}.landing-care-track{left:0;right:auto;top:24px;width:2px;height:var(--care-track-height,0px)}.landing-care-track>span{transform:scaleY(var(--care-progress,0));transform-origin:top}.landing-journey-grid>article:before{content:'';position:absolute;left:-27px;top:20px;width:8px;height:8px;border-radius:50%;background:#d3f3a7}.research-credit-grid{grid-template-columns:minmax(0,1fr)}.landing-experience[data-hero-away] .landing-motion-controller{bottom:12px;right:12px}}
+@keyframes landing-signal-flow{from{stroke-dashoffset:100}to{stroke-dashoffset:0}}
+@keyframes landing-word-arrive{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+@keyframes landing-line-arrive{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes landing-capture-out{to{opacity:0;translate:0 -8px}}
+@keyframes landing-capture-in{from{opacity:0;translate:0 8px}to{opacity:1;translate:0 0}}
+@keyframes landing-node-breathe{50%{box-shadow:0 0 0 7px #d3f3a714}}
+@keyframes landing-cta-breathe{50%{transform:scale(1.06);opacity:.7}}
+.landing-motion-paused .landing-hero h1>em:after{animation:none;transform:none}
+@media(prefers-reduced-motion:reduce){[data-motion-ready] .public-motion-item{opacity:1;translate:none;transition:none}.site-landing .site-action,.site-landing .research-hero-link svg{transition:none;translate:none!important}.landing-title-word{animation:none!important}.landing-reading-progress{display:none}.landing-care-track>span{transform:none;transition:none}::view-transition-group(nello-capture),::view-transition-old(nello-capture),::view-transition-new(nello-capture){animation:none!important}}

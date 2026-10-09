@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { ArrowUpRight, Menu, ArrowRight } from 'lucide-react';
 import { SUPPORT_EMAIL } from '../../features/privacy/consent';
+import { usePublicReveal } from './usePublicReveal';
 
 const links = [['/recursos', 'Recursos'], ['/para-pacientes', 'Para pacientes'], ['/pesquisa', 'Pesquisa'], ['/ajuda', 'Ajuda']];
 export function PublicAction({ href = '/register', children = 'Criar minha conta', secondary = false, compactLabel }) {
@@ -11,6 +12,8 @@ export function PublicNextStep() {
 }
 export default function PublicSiteLayout({ children, activePath = '/', landing = false }) {
   const menu = useRef(null);
+  const surface = useRef(null);
+  usePublicReveal(surface, !(landing && activePath === '/'));
   useEffect(() => {
     const element = menu.current;
     const close = event => {
@@ -27,7 +30,7 @@ export default function PublicSiteLayout({ children, activePath = '/', landing =
     desktop.addEventListener('change', sync);
     return () => { document.removeEventListener('keydown', close); document.removeEventListener('pointerdown', close); desktop.removeEventListener('change', sync); };
   }, []);
-  return <div className={`nello-public-site${landing ? ' site-landing' : ''}`}>
+  return <div ref={surface} className={`nello-public-site${landing ? ' site-landing' : ''}`}>
     <header className="site-header site-container">
       <a href="/" aria-label="Nello, início" className="site-brand"><img src="/nello-logo.png" alt="Nello" width="130" height="52" /><span>Nutrição, conectada.</span></a>
       <nav aria-label="Navegação pública" className="site-desktop-nav">{links.map(([href, label]) => <a key={href} href={href} aria-current={activePath === href ? 'page' : undefined}>{label}</a>)}</nav>

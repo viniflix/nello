@@ -26,7 +26,8 @@ test('landing demonstration supports keyboard, pausing and reduced movement',asy
  await expect.poll(()=>page.locator('.landing-hero h1>span').evaluate(el=>el.getAnimations().length)).toBe(0);
  await page.locator('.landing-faq').scrollIntoViewIfNeeded();
  await expect.poll(()=>page.locator('.landing-aurora-green').evaluate(el=>el.getAnimations().every(a=>a.playState==='paused'))).toBe(true);
- await page.getByRole('button',{name:'Pausar animações',exact:true}).scrollIntoViewIfNeeded();
+ await expect(page.getByRole('button',{name:'Pausar animações',exact:true})).toBeInViewport();
+ await page.locator('.landing-hero').scrollIntoViewIfNeeded();
  await expect.poll(()=>page.locator('.landing-aurora-green').evaluate(el=>el.getAnimations().some(a=>a.playState==='running'))).toBe(true);
  await page.emulateMedia({reducedMotion:'reduce'});await expect(page.getByRole('button',{name:'Movimento reduzido'})).toBeDisabled();
  await expect.poll(()=>page.locator('.landing-aurora-green').evaluate(el=>el.getAnimations().length)).toBe(0);
@@ -50,7 +51,7 @@ for(const width of [320,768,1440])test(`public design audit: stable captures, re
   const next=await capture.boundingBox();expect(Math.abs(next.height-original.height)).toBeLessThan(1);
   if(label==='Área do paciente')await expect.poll(()=>capture.locator('img').evaluate(img=>img.currentSrc)).toMatch(/\/images\/product\/captures-[a-f0-9]{12}\/paciente-inicio-mobile-345\.webp$/);
  }
- await expect(page.locator('.landing-research-authors li')).toHaveCount(5);
+ await expect(page.locator('.landing-research-authors li')).toHaveCount(4);
  await expect(page.locator('.landing-research')).toContainText('Universidade de Marília');
  await expect(page.locator('.landing-research-advisor')).toContainText('Cláudia Rucco');
  if(width<=760){
@@ -59,7 +60,7 @@ for(const width of [320,768,1440])test(`public design audit: stable captures, re
   await summary.click();await page.locator('.landing-hero-for').click();await expect(menu).not.toHaveAttribute('open','');
   await summary.click();await menu.getByRole('link',{name:'Pesquisa',exact:true}).click();
  }else await page.getByRole('navigation',{name:'Navegação pública',exact:true}).getByRole('link',{name:'Pesquisa',exact:true}).click();
- await expect(page).toHaveURL(/\/pesquisa$/);await expect(page.locator('.research-credit-grid article')).toHaveCount(5);
+ await expect(page).toHaveURL(/\/pesquisa$/);await expect(page.locator('.research-credit-grid article')).toHaveCount(4);
  await page.goto('/para-pacientes');await expect.poll(()=>page.locator('.site-product img').evaluate(img=>img.complete&&img.currentSrc)).toMatch(/\/images\/product\/captures-[a-f0-9]{12}\/paciente-inicio-mobile-345\.webp$/);
 });
 
@@ -129,4 +130,55 @@ for(const screen of [{width:320,height:800},{width:390,height:844},{width:430,he
  }
  const sitemap=await (await request.get('/sitemap.xml')).text();expect(sitemap).not.toMatch(/\/nutritionist|\/patient\/|\/admin|\/convite/);
  expect(errors).toEqual([]);
+});
+
+for (const fallback of [false, true]) test(`capture motion preserves the last selection and pause (${fallback ? 'fallback' : 'native'})`, async ({ page }) => {
+ await page.addInitScript(({ fallback }) => {
+  window.captureTransitions = 0;
+  if (fallback) document.startViewTransition = undefined;
+  else if (document.startViewTransition) {
+   const original = document.startViewTransition.bind(document);
+   document.startViewTransition = (...args) => { window.captureTransitions++; return original(...args); };
+  }
+ }, { fallback });
+ await page.emulateMedia({ reducedMotion: 'no-preference' }); await page.goto('/');
+ const group = page.getByRole('group', { name: 'Explorar a demonstração do Nello' });
+ await group.scrollIntoViewIfNeeded();
+ const clinical = group.getByRole('button', { name: 'Visão clínica', exact: true });
+ await clinical.focus(); await clinical.press('Enter');
+ await expect(clinical).toHaveAttribute('aria-pressed', 'true');
+ await expect(group).toHaveAttribute('aria-busy', 'false');
+ if (!fallback) expect(await page.evaluate(() => window.captureTransitions)).toBeGreaterThan(0);
+ for (const name of ['Área do paciente', 'Plano alimentar', 'Visão clínica']) {
+  const button = group.getByRole('button', { name, exact: true }); await button.focus(); await button.press('Enter');
+ }
+ await expect(clinical).toHaveAttribute('aria-pressed', 'true'); await expect(group).toHaveAttribute('aria-busy', 'false');
+ await expect.poll(() => page.locator('.landing-tab-marker').evaluate(el => {
+  const a = el.getBoundingClientRect(), b = el.parentElement.querySelector('[aria-pressed=true]').getBoundingClientRect();
+  return Math.abs(a.x-b.x)+Math.abs(a.width-b.width);
+ })).toBeLessThan(1);
+ await page.getByRole('button', { name: 'Pausar animações', exact: true }).click();
+ const count = await page.evaluate(() => window.captureTransitions);
+ const patient = group.getByRole('button', { name: 'Área do paciente', exact: true }); await patient.click();
+ await expect(patient).toHaveAttribute('aria-pressed', 'true');
+ expect(await page.evaluate(() => window.captureTransitions)).toBe(count);
+ await expect.poll(() => page.locator('.landing-demo .product-screenshot').evaluate(el => el.getAnimations().length)).toBe(0);
+});
+
+test('section entrances complete once and reduced motion exposes content and credits', async ({ page, request }) => {
+ await page.emulateMedia({ reducedMotion: 'no-preference' }); await page.goto('/');
+ const card = page.locator('.landing-bento-card').first();
+ await expect(card).toHaveCSS('opacity', '0'); await card.scrollIntoViewIfNeeded(); await expect(card).toHaveCSS('opacity', '1');
+ await page.locator('.landing-journey-grid').scrollIntoViewIfNeeded();
+ await expect.poll(() => page.locator('.landing-experience').evaluate(el => parseFloat(el.style.getPropertyValue('--reading-progress')))).toBeGreaterThan(0);
+ await expect(page.locator('.landing-journey-node[data-care-active]')).toHaveCount(1);
+ await page.getByRole('button', { name: 'Pausar animações', exact: true }).click();
+ await expect(page.locator('.landing-experience')).not.toHaveAttribute('data-motion-ready', '');
+ await expect(page.locator('.landing-trust-grid article').last()).toHaveCSS('opacity', '1');
+ await page.goto('/pesquisa'); await expect(page.locator('.research-credit-grid article')).toHaveCount(4);
+ await expect(page.locator('main')).not.toContainText('Giulia');
+ await page.emulateMedia({ reducedMotion: 'reduce' });
+ await expect(page.locator('.nello-public-site')).not.toHaveAttribute('data-motion-ready', '');
+ await expect(page.locator('.research-credit-grid article').last()).toHaveCSS('opacity', '1');
+ for (const path of ['/', '/pesquisa']) expect(await (await request.get(path)).text()).not.toContain('Giulia Borges de Souza Bastos');
 });
