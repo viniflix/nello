@@ -22,7 +22,9 @@ export default function LegalInformationPage({ pathname }) {
     let active = true;
     const update = () => {
       frame = 0;
-      const boundary = (document.querySelector('.site-header')?.getBoundingClientRect().bottom || 0) + 32;
+      const headerBoundary = (document.querySelector('.site-header')?.getBoundingClientRect().bottom || 0) + 32;
+      const anchorMargin = sections[0] ? parseFloat(getComputedStyle(sections[0]).scrollMarginTop) || 0 : 0;
+      const boundary = Math.max(headerBoundary, anchorMargin) + 1;
       const current = sections.filter(section => section.getBoundingClientRect().top <= boundary).at(-1);
       setActiveSection(Number(current?.dataset.sectionIndex || 0));
     };

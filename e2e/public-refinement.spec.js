@@ -32,6 +32,7 @@ test('document index follows reading in both directions and mobile selection clo
  await disclosure.locator('a[href="#document-section-1"]').click();
  await expect(disclosure).not.toHaveAttribute('open');
  await expect(page).toHaveURL(/#document-section-1$/);
+  await expect(disclosure.locator('a[aria-current="location"]')).toHaveAttribute('href','#document-section-1');
  await expect.poll(()=>page.locator('#document-section-1').evaluate(node=>Math.round(node.getBoundingClientRect().top))).toBeGreaterThanOrEqual(60);
  await expect.poll(()=>page.locator('#document-section-1').evaluate(node=>Math.round(node.getBoundingClientRect().top))).toBeLessThanOrEqual(130);
 });
