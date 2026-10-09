@@ -21,4 +21,12 @@ describe('route metadata privacy and public contracts', () => {
     for(const path of ['/login','/register','/status','/f/PRIVATE_TOKEN','/verificar-documento/PRIVATE_CODE','/nutritionist/patients/PRIVATE_ID']) expect(serializePublicStructuredData(path)).toBeNull();
     expect(JSON.stringify(home)).not.toMatch(/aggregateRating|offers|review/);
   });
+  it.each([['/verificar-documento/PRIVATE_CODE','Verificar documento — Nello'],['/f/PRIVATE_TOKEN','Questionário nutricional — Nello']])('labels public utility %s without exposing its identifier', (path,title) => {
+    const meta=getRouteMetadata(path);
+    expect(meta.title).toBe(title);
+    expect(JSON.stringify(meta)).not.toContain('PRIVATE_');
+    expect(meta.robots).toBe('noindex,nofollow');
+    expect(meta.canonical).toBe('https://nellonutri.com.br/');
+    expect(getPublicStructuredData(path)).toBeNull();
+  });
 });

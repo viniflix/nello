@@ -18,10 +18,15 @@ export function getRouteMetadata(pathname) {
   const path = pathname.replace(/\/+$/, '') || '/';
   const page = publicPages[path];
   const privateRoute = /^\/(patient|nutritionist|admin)(\/|$)/.test(path);
+  const publicUtility = /^\/verificar-documento(?:\/[^/]+)?$/.test(path)
+    ? ['Verificar documento — Nello', 'Consulte a autenticidade de um documento emitido pelo Nello.']
+    : /^\/f\/[^/]+$/.test(path)
+      ? ['Questionário nutricional — Nello', 'Responda ao questionário enviado pelo seu nutricionista.']
+      : null;
   // Only allowlisted static segments affect titles. Never interpolate a name,
   // UUID, invitation code, query, hash or user-entered template title.
   const label = privateRoute ? path.split('/').map(part => modules[part]).filter(Boolean).at(-1) || 'Área de acompanhamento' : 'Página não encontrada';
-  return { title: page?.[0] || `${label} — Nello`, description: page?.[1] || 'Área de acesso do Nello.', canonical: PUBLIC_ORIGIN + (page ? path : '/'), robots: publicInformationPaths.includes(path) ? 'index,follow' : 'noindex,nofollow' };
+  return { title: page?.[0] || publicUtility?.[0] || `${label} — Nello`, description: page?.[1] || publicUtility?.[1] || 'Área de acesso do Nello.', canonical: PUBLIC_ORIGIN + (page ? path : '/'), robots: publicInformationPaths.includes(path) ? 'index,follow' : 'noindex,nofollow' };
 }
 
 export function getPublicStructuredData(pathname) {
