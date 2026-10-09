@@ -88,24 +88,14 @@ export default function PatientDiaryPage() {
 
     setMealPlan(mealPlanData);
 
-    // Definir metas nutricionais (prioridade: plano alimentar ativo > padrão)
-    if (mealPlanData && mealPlanData.daily_calories > 0) {
-      // Usar metas do plano alimentar ativo
-      setPrescriptionGoal({
-        calories: mealPlanData.daily_calories || 0,
-        protein: mealPlanData.daily_protein || 0,
-        carbs: mealPlanData.daily_carbs || 0,
-        fat: mealPlanData.daily_fat || 0
-      });
-    } else {
-      // Valores padrão para pacientes sem plano alimentar
-      setPrescriptionGoal({
-        calories: 2000,
-        protein: 0,
-        carbs: 0,
-        fat: 0
-      });
-    }
+    // Ausência de prescrição não define uma meta clínica. Zero conhecido é preservado.
+    const target = value => value == null || value === '' || !Number.isFinite(Number(value)) || Number(value) < 0 ? null : Number(value);
+    setPrescriptionGoal({
+      calories: target(mealPlanData?.daily_calories),
+      protein: target(mealPlanData?.daily_protein),
+      carbs: target(mealPlanData?.daily_carbs),
+      fat: target(mealPlanData?.daily_fat)
+    });
   }, [user]);
 
   const loadMeals = useCallback(async () => {
@@ -470,80 +460,40 @@ export default function PatientDiaryPage() {
             <Card className="border-[#5f6f52]/20 shadow-sm">
               <CardHeader className="pb-4">
                 <CardTitle className="text-lg text-[#5f6f52]">Progresso do Dia</CardTitle>
-                <CardDescription>Consumido vs Meta</CardDescription>
+                <CardDescription>Consumo registrado e metas do plano alimentar. Esta comparação não mede adesão.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Calories */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Flame className="w-4 h-4 text-orange-500" />
-                      <span className="text-sm font-medium text-foreground">Calorias</span>
+                {[
+                  { key: 'calories', label: 'Calorias', unit: 'kcal', icon: Flame, iconClass: 'text-orange-500', barClass: 'bg-gradient-to-r from-orange-500 to-red-500' },
+                  { key: 'protein', label: 'Proteínas', unit: 'g', icon: Beef, iconClass: 'text-sky-500', barClass: 'bg-sky-500' },
+                  { key: 'carbs', label: 'Carboidratos', unit: 'g', icon: Wheat, iconClass: 'text-amber-500', barClass: 'bg-amber-500' },
+                  { key: 'fat', label: 'Gorduras', unit: 'g', icon: Droplet, iconClass: 'text-yellow-500', barClass: 'bg-yellow-500' }
+                ].map(({ key, label, unit, icon: Icon, iconClass, barClass }) => {
+                  const goal = prescriptionGoal[key];
+                  const consumed = Math.round(dailyTotals[key]);
+                  return (
+                    <div key={key} className="space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <Icon className={`w-4 h-4 ${iconClass}`} />
+                          <span className="text-sm font-medium text-foreground">{label}</span>
+                        </div>
+                        <span className="text-sm font-semibold text-foreground">
+                          {goal === null ? `${consumed} ${unit}` : `${consumed} / ${Math.round(goal)} ${unit}`}
+                        </span>
+                      </div>
+                      {goal === null && <p className="text-sm text-muted-foreground">Meta não definida</p>}
+                      {goal > 0 && (
+                        <Progress
+                          aria-label={`Consumo de ${label.toLowerCase()} em relação à meta`}
+                          value={Math.min((dailyTotals[key] / goal) * 100, 100)}
+                          className="h-3"
+                          indicatorClassName={barClass}
+                        />
+                      )}
                     </div>
-                    <span className="text-sm font-semibold text-foreground">
-                      {Math.round(dailyTotals.calories)} / {Math.round(prescriptionGoal.calories)} kcal
-                    </span>
-                  </div>
-                  <Progress
-                    value={prescriptionGoal.calories > 0 ? Math.min((dailyTotals.calories / prescriptionGoal.calories) * 100, 100) : 0}
-                    className="h-3"
-                    indicatorClassName="bg-gradient-to-r from-orange-500 to-red-500"
-                  />
-                </div>
-
-                {/* Protein */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Beef className="w-4 h-4 text-sky-500" />
-                      <span className="text-sm font-medium text-foreground">Proteínas</span>
-                    </div>
-                    <span className="text-sm font-semibold text-foreground">
-                      {Math.round(dailyTotals.protein)} / {Math.round(prescriptionGoal.protein)}g
-                    </span>
-                  </div>
-                  <Progress
-                    value={prescriptionGoal.protein > 0 ? Math.min((dailyTotals.protein / prescriptionGoal.protein) * 100, 100) : 0}
-                    className="h-3"
-                    indicatorClassName="bg-sky-500"
-                  />
-                </div>
-
-                {/* Carbs */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Wheat className="w-4 h-4 text-amber-500" />
-                      <span className="text-sm font-medium text-foreground">Carboidratos</span>
-                    </div>
-                    <span className="text-sm font-semibold text-foreground">
-                      {Math.round(dailyTotals.carbs)} / {Math.round(prescriptionGoal.carbs)}g
-                    </span>
-                  </div>
-                  <Progress
-                    value={prescriptionGoal.carbs > 0 ? Math.min((dailyTotals.carbs / prescriptionGoal.carbs) * 100, 100) : 0}
-                    className="h-3"
-                    indicatorClassName="bg-amber-500"
-                  />
-                </div>
-
-                {/* Fat */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Droplet className="w-4 h-4 text-yellow-500" />
-                      <span className="text-sm font-medium text-foreground">Gorduras</span>
-                    </div>
-                    <span className="text-sm font-semibold text-foreground">
-                      {Math.round(dailyTotals.fat)} / {Math.round(prescriptionGoal.fat)}g
-                    </span>
-                  </div>
-                  <Progress
-                    value={prescriptionGoal.fat > 0 ? Math.min((dailyTotals.fat / prescriptionGoal.fat) * 100, 100) : 0}
-                    className="h-3"
-                    indicatorClassName="bg-yellow-500"
-                  />
-                </div>
+                  );
+                })}
               </CardContent>
             </Card>
           </motion.div>
