@@ -5,7 +5,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import React from 'react';
 import path from 'node:path';
 import { publicInformationPaths } from '../src/features/privacy/publicInformationPaths.js';
-import { getRouteMetadata } from '../src/app/router/metadataPolicy.js';
+import { getRouteMetadata, serializePublicStructuredData } from '../src/app/router/metadataPolicy.js';
 
 export function publicPages() {
   let output;
@@ -29,6 +29,8 @@ export function publicPages() {
           .replace(/(<meta\b[^>]*\bname="description" content=")[^"]*/,`$1${escape(meta.description)}`)
           .replace(/(<link\b[^>]*\brel="canonical" href=")[^"]*/,`$1${escape(meta.canonical)}`);
         for(const [key,value] of [['og:title',meta.title],['og:description',meta.description],['og:url',meta.canonical],['twitter:title',meta.title],['twitter:description',meta.description]])page=page.replace(new RegExp(`(<meta\\b[^>]*\\b(?:property|name)="${key}" content=")[^"]*`),`$1${escape(value)}`);
+        const structuredData = serializePublicStructuredData(pathname);
+        if (structuredData) page = page.replace('</head>', `<script data-rh="true" id="nello-public-schema" type="application/ld+json">${structuredData}</script></head>`);
         const file = pathname === '/' ? output : path.join(path.dirname(output),pathname.slice(1),'index.html');
         await mkdir(path.dirname(file),{recursive:true});await writeFile(file,page);
       }

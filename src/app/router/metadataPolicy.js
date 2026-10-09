@@ -1,7 +1,7 @@
 import { publicInformationPaths } from '../../features/privacy/publicInformationPaths.js';
 export const PUBLIC_ORIGIN = 'https://nellonutri.com.br';
 const publicPages = {
-  '/': ['Nello — Consultório nutricional', 'Organize pacientes, avaliações, planos alimentares e acompanhamento nutricional. Conheça o Nello e encontre ajuda para acessar.'],
+  '/': ['Nello — Consultório nutricional', 'Prontuários, avaliações, planos alimentares e mensagens para organizar seu consultório e acompanhar a rotina dos pacientes. Conheça o Nello.'],
   '/login': ['Entrar — Nello', 'Acesse sua conta Nello.'],
   '/register': ['Criar conta — Nello', 'Conheça os papéis de nutricionista e paciente e crie sua conta.'],
   '/recursos': ['Recursos para nutricionistas — Nello', 'Conheça prontuários, avaliações, planos alimentares, agenda e acompanhamento nutricional no Nello.'],
@@ -22,4 +22,25 @@ export function getRouteMetadata(pathname) {
   // UUID, invitation code, query, hash or user-entered template title.
   const label = privateRoute ? path.split('/').map(part => modules[part]).filter(Boolean).at(-1) || 'Área de acompanhamento' : 'Página não encontrada';
   return { title: page?.[0] || `${label} — Nello`, description: page?.[1] || 'Área de acesso do Nello.', canonical: PUBLIC_ORIGIN + (page ? path : '/'), robots: publicInformationPaths.includes(path) ? 'index,follow' : 'noindex,nofollow' };
+}
+
+export function getPublicStructuredData(pathname) {
+  const path = pathname.replace(/\/+$/, '') || '/';
+  if (!publicInformationPaths.includes(path)) return null;
+  if (path === '/') return {
+    '@context': 'https://schema.org',
+    '@graph': [
+      { '@type': 'Organization', '@id': `${PUBLIC_ORIGIN}/#organization`, name: 'Nello', url: PUBLIC_ORIGIN, logo: `${PUBLIC_ORIGIN}/nello-logo.png`, email: 'suporte@nellonutri.com.br' },
+      { '@type': 'WebSite', '@id': `${PUBLIC_ORIGIN}/#website`, name: 'Nello', url: PUBLIC_ORIGIN, inLanguage: 'pt-BR', publisher: { '@id': `${PUBLIC_ORIGIN}/#organization` } },
+    ],
+  };
+  return { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [
+    { '@type': 'ListItem', position: 1, name: 'Nello', item: `${PUBLIC_ORIGIN}/` },
+    { '@type': 'ListItem', position: 2, name: publicPages[path][0].split(' — ')[0], item: `${PUBLIC_ORIGIN}${path}` },
+  ] };
+}
+
+export function serializePublicStructuredData(pathname) {
+  const data = getPublicStructuredData(pathname);
+  return data ? JSON.stringify(data).replace(/</g, '\\u003c') : null;
 }

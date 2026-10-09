@@ -84,7 +84,7 @@
 .site-document-body p { font-size: 1rem; line-height: 1.8; }
 .site-document-body p > a { text-decoration: underline; text-underline-offset: 4px; }
 .site-document-body > section { padding-bottom: 24px; }
-.site-document-body h2 { font-size: 1.5rem; line-height: 1.4; text-transform: none; letter-spacing: -.02em; word-spacing: .04em; }
+.site-document-body h2 { font-size: 1.5rem; line-height: 1.4; text-transform: none; letter-spacing: 0; word-spacing: .16em; }
 .public-status { padding-bottom: 64px; }
 .public-status-summary, .public-status-incidents { padding: 32px; margin-bottom: 24px; border: 1px solid #d3dfc9; border-radius: 24px; background: #f0f4e9; }
 .public-status-summary h2 { font-size: 1.5rem; margin-bottom: 20px; }
@@ -322,3 +322,18 @@
 }
 .site-landing .site-footer-bottom p,.research-status,.research-advisor span { font-size:.8125rem; }
 .landing-progress-capture { background:transparent; box-shadow:none; border:0; padding:0; border-radius:0; overflow:visible; }
+.public-product-professional .site-hero h1 { max-width:920px; margin-inline:auto; text-wrap:balance; }
+.site-inline-link,.landing-text-link { text-decoration-color:transparent; text-underline-offset:5px; transition:text-decoration-color .2s; }
+.site-inline-link:focus-visible,.landing-text-link:focus-visible { text-decoration:underline; text-decoration-color:currentColor; }
+.site-action svg,.public-capture-expand svg { transition:transform .22s var(--public-ease); }
+.site-action:active,.public-capture-expand:active { transform:translateY(1px); }
+@media(hover:hover) and (pointer:fine) {
+ .site-inline-link:hover,.landing-text-link:hover { text-decoration:underline; text-decoration-color:currentColor; }
+ .site-action:hover svg { transform:translate(2px,-2px); }
+ .public-capture-expand:hover { background:#e4edd8; color:#193a29; }
+ .public-capture-expand:hover svg { transform:scale(1.12); }
+}
+@media(prefers-reduced-motion:reduce) {
+ .site-action svg,.public-capture-expand svg,.site-inline-link,.landing-text-link { transition:none; }
+ .site-action:active,.public-capture-expand:active,.site-action:hover svg,.public-capture-expand:hover svg { transform:none; }
+}

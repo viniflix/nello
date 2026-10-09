@@ -14,20 +14,28 @@ export default function StatusPage() {
     let controller;
     let timer;
     async function refresh() {
-      controller = new AbortController();
-      timer = setTimeout(() => controller.abort(), 6000);
+      if (document.hidden || controller && !controller.signal.aborted) return;
+      const request = new AbortController();
+      controller = request;
+      const timeout = setTimeout(() => request.abort(), 6000);
+      timer = timeout;
       try {
-        const response = await fetch('/api/health', { cache: 'no-store', signal: controller.signal });
+        const response = await fetch('/api/health', { cache: 'no-store', signal: request.signal });
         if (![200, 503].includes(response.status) || !response.headers.get('content-type')?.includes('application/json')) throw new Error();
         const result = await response.json();
         if (!validHealth(result) || (response.status === 200) !== (result.status === 'operational')) throw new Error();
-        if (active) { setHealth(result); setFailed(false); }
-      } catch { if (active) setFailed(true); }
-      finally { clearTimeout(timer); }
+        if (active && controller === request && !document.hidden) { setHealth(result); setFailed(false); }
+      } catch { if (active && controller === request && !document.hidden) setFailed(true); }
+      finally { clearTimeout(timeout); if (controller === request) controller = null; }
     }
+    const visibility = () => {
+      if (document.hidden) { controller?.abort(); clearTimeout(timer); }
+      else { setHealth(null); setFailed(false); refresh(); }
+    };
     refresh();
     const interval = setInterval(refresh, 30000);
-    return () => { active = false; clearInterval(interval); clearTimeout(timer); controller?.abort(); };
+    document.addEventListener('visibilitychange', visibility);
+    return () => { active = false; clearInterval(interval); clearTimeout(timer); controller?.abort(); document.removeEventListener('visibilitychange', visibility); };
   }, []);
   return <PublicSiteLayout activePath="/status"><main id="main-content" tabIndex={-1} className="site-container public-status">
     <header className="site-subhero"><span className="site-eyebrow">Disponibilidade dos serviços</span><h1>Status do Nello</h1><p>Acompanhe a conexão dos serviços e os comunicados de incidentes.</p></header>

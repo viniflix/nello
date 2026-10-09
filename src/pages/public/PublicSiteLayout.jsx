@@ -17,12 +17,15 @@ export default function PublicSiteLayout({ children, activePath = '/', landing =
   useEffect(() => {
     let active = true;
     let frame;
+    let anchorRequest = 0;
     const followAnchor = async () => {
+      const request = ++anchorRequest;
       let id;
       try { id = decodeURIComponent(window.location.hash.slice(1)); } catch { return; }
       if (!id) return;
       await document.fonts?.ready;
-      if (!active) return;
+      if (!active || request !== anchorRequest) return;
+      cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
         const target = surface.current?.querySelectorAll('[id]');
         const destination = [...(target || [])].find(element => element.id === id);
@@ -57,6 +60,6 @@ export default function PublicSiteLayout({ children, activePath = '/', landing =
       <details className="site-mobile-menu" ref={menu}><summary><Menu aria-hidden="true" size={20} />Menu</summary><nav aria-label="Navegação pública no celular">{links.map(([href, label]) => <a key={href} href={href} aria-current={activePath === href ? 'page' : undefined}>{label}</a>)}<a href="/login">Entrar</a><PublicAction /></nav></details>
     </header>
     {children}
-    <footer className="site-footer"><div className="site-container site-footer-grid"><div><a href="/" aria-label="Nello, início"><img src="/nello-logo.png" alt="Nello" width="120" height="48" /></a><p>Tecnologia para organizar o cuidado.<br />Planos e registros para acompanhar pacientes.</p><a className="site-beta" href="/ajuda#sobre-o-nello">Sobre o Nello e seu desenvolvimento</a></div><div><h2>Conheça o Nello</h2><a href="/recursos">Recursos para o consultório</a><a href="/para-pacientes">Experiência do paciente</a><a href="/pesquisa">Pesquisa e equipe</a><a href="/register">Criar conta</a><a href="/login">Acessar minha conta</a></div><div><h2>Conte com a gente</h2><a href="/ajuda">Central de ajuda</a><a href="/status">Status dos serviços</a><a href="/seguranca">Segurança</a><a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a></div></div><div className="site-container site-footer-bottom"><p>Nello · Plataforma de acompanhamento nutricional</p><nav aria-label="Documentos e privacidade"><a href="#public-site-top">Voltar ao início</a><a href="/termos">Termos de uso</a><a href="/privacidade">Privacidade</a></nav></div></footer>
+    <footer className="site-footer"><div className="site-container site-footer-grid"><div><a href="/" aria-label="Nello, início"><img src="/nello-logo.png" alt="Nello" width="120" height="48" /></a><p>Tecnologia para organizar o cuidado.<br />Planos e registros para acompanhar pacientes.</p><a className="site-beta" href="/ajuda#sobre-o-nello">Sobre o Nello e seu desenvolvimento</a></div><div><h2>Conheça o Nello</h2><a href="/recursos">Recursos para o consultório</a><a href="/para-pacientes">Experiência do paciente</a><a href="/pesquisa">Pesquisa e equipe</a><a href="/register">Criar conta</a><a href="/login">Acessar minha conta</a></div><div><h2>Conte com a gente</h2><a href="/ajuda">Central de ajuda</a><a href="/status">Status dos serviços</a><a href="/seguranca">Segurança</a><a href={`mailto:${SUPPORT_EMAIL}`} aria-label={`Falar com o suporte por email: ${SUPPORT_EMAIL}`}>Falar com o suporte</a></div></div><div className="site-container site-footer-bottom"><p>Nello · Plataforma de acompanhamento nutricional</p><nav aria-label="Documentos e privacidade"><a href="#public-site-top">Voltar ao início</a><a href="/termos">Termos de uso</a><a href="/privacidade">Privacidade</a></nav></div></footer>
   </div>;
 }

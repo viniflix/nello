@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { AlertCircle, FileCheck2, Loader2, Search, ShieldCheck } from 'lucide-react';
+import { AlertCircle, Clock, FileCheck2, Loader2, Search, ShieldCheck } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -18,13 +18,15 @@ export default function DocumentAuthenticityPage() {
 
   useEffect(() => {
     let current = true;
-    if (!code) return undefined;
+    setQuery(code || '');
+    setResult(null);
+    if (!code) { setState('idle'); return undefined; }
     setState('loading');
     void verifyDocumentAuthenticity(code).then(({ data, error }) => {
       if (!current) return;
       setResult(error ? null : data);
-      setState(error ? 'error' : 'ready');
-    });
+      setState(error ? 'error' : data?.rate_limited ? 'limited' : 'ready');
+    }).catch(() => { if (current) { setResult(null); setState('error'); } });
     return () => { current = false; };
   }, [code]);
 
@@ -35,13 +37,14 @@ export default function DocumentAuthenticityPage() {
   };
 
   return (
-    <main className="min-h-dvh bg-slate-50 px-4 py-10 text-slate-900">
+    <main id="main-content" tabIndex={-1} className="min-h-dvh bg-slate-50 px-4 py-10 text-slate-900">
       <div className="mx-auto max-w-2xl space-y-6">
         <header className="text-center"><div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-700"><FileCheck2 /></div><h1 className="mt-4 text-2xl font-bold uppercase">Verificar documento</h1><p className="mt-2 text-sm text-slate-600">Consulte a autenticidade sem expor dados do paciente ou o conteúdo clínico.</p></header>
         <Card><CardContent className="pt-6"><form className="flex flex-col gap-3 sm:flex-row" onSubmit={submit}><Input aria-label="Código de autenticidade" required value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Informe o código do documento" /><Button type="submit"><Search className="mr-2 h-4 w-4" />Verificar</Button></form></CardContent></Card>
 
         {state === 'loading' ? <div role="status" className="flex items-center justify-center gap-2 py-8 text-slate-500"><Loader2 className="h-5 w-5 animate-spin" />Verificando autenticidade...</div> : null}
         {state === 'error' ? <Card className="border-red-200"><CardContent className="flex gap-3 py-6 text-red-700"><AlertCircle /><p>Não foi possível verificar agora. Tente novamente em alguns instantes.</p></CardContent></Card> : null}
+        {state === 'limited' ? <Card className="border-amber-200"><CardContent role="status" className="flex gap-3 py-6 text-amber-800"><Clock className="shrink-0" /><p>Limite de consultas atingido. Aguarde um minuto antes de verificar novamente.</p></CardContent></Card> : null}
         {state === 'ready' && !result?.found ? <Card className="border-amber-200"><CardContent className="flex gap-3 py-6 text-amber-800"><AlertCircle /><div><p className="font-semibold">Documento não encontrado</p><p className="mt-1 text-sm">Confira o código. Por privacidade, nenhum outro dado é exibido.</p></div></CardContent></Card> : null}
         {state === 'ready' && result?.found ? (
           <Card className="border-emerald-200">

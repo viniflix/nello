@@ -17,16 +17,28 @@ export default function LegalInformationPage({ pathname }) {
   const page = legalContent[pathname];
   const [activeSection, setActiveSection] = useState(0);
   useEffect(() => {
-    if (!('IntersectionObserver' in window)) return undefined;
-    const observer = new IntersectionObserver(entries => {
-      const visible = entries.filter(entry => entry.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
-      if (visible.length) setActiveSection(Number(visible[0].target.dataset.sectionIndex));
-    }, { rootMargin: '-12% 0px -55% 0px' });
-    document.querySelectorAll('.site-document-body > section[data-section-index]').forEach(section => observer.observe(section));
-    return () => observer.disconnect();
+    const sections = [...document.querySelectorAll('.site-document-body > section[data-section-index]')];
+    let frame = 0;
+    let active = true;
+    const update = () => {
+      frame = 0;
+      const boundary = (document.querySelector('.site-header')?.getBoundingClientRect().bottom || 0) + 32;
+      const current = sections.filter(section => section.getBoundingClientRect().top <= boundary).at(-1);
+      setActiveSection(Number(current?.dataset.sectionIndex || 0));
+    };
+    const queue = () => { if (active && !frame) frame = requestAnimationFrame(update); };
+    queue();
+    document.fonts?.ready.then(queue);
+    window.addEventListener('scroll', queue, { passive: true });
+    window.addEventListener('resize', queue);
+    return () => { active = false; cancelAnimationFrame(frame); window.removeEventListener('scroll', queue); window.removeEventListener('resize', queue); };
   }, [pathname]);
   const intro = {'/ajuda':'Encontre seu caminho para acessar, receber um convite e continuar o acompanhamento.', '/seguranca':'Proteja sua conta e saiba como relatar uma possível falha de forma responsável.', '/privacidade':'Entenda o uso das informações, suas preferências e como exercer seus direitos.', '/termos':'Conheça as condições de acesso e as responsabilidades no uso da plataforma.'}[pathname];
-  const indexLinks = page.sections.map(([title], index) => <a key={title} href={`#document-section-${index}`} aria-current={activeSection === index ? 'location' : undefined} onClick={() => setActiveSection(index)}>{title}</a>);
+  const indexLinks = page.sections.map(([title], index) => <a key={title} href={`#document-section-${index}`} aria-current={activeSection === index ? 'location' : undefined} onClick={event => {
+    setActiveSection(index);
+    const disclosure = event.currentTarget.closest('details');
+    if (disclosure) { disclosure.open = false; disclosure.querySelector('summary').focus(); }
+  }}>{title}</a>);
   return <PublicSiteLayout activePath={pathname}><main id="main-content" tabIndex={-1} className="site-container">
     <header className="site-subhero"><span className="site-eyebrow">Nello · Informação e confiança</span><h1>{page.title}</h1><p>{intro}</p><p className="site-small">Versão {LEGAL_VERSION}</p></header>
     {pathname === '/ajuda' && <nav className="site-support-cards" aria-label="Acesso rápido à ajuda">{[[KeyRound,'Entrar na minha conta','Acesse com seu email e senha.','/login'],[ShieldCheck,'Orientações de segurança','Cuide da sua conta e dos seus acessos.','/seguranca'],[Mail,'Falar com o suporte','Ajuda para usar e acessar o Nello.',`mailto:${SUPPORT_EMAIL}`]].map(([Icon,title,text,href])=><a key={href} href={href}><Icon aria-hidden="true" size={22} /><strong>{title}</strong><span>{text}</span></a>)}</nav>}

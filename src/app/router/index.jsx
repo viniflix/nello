@@ -50,7 +50,7 @@ const AppRouter = () => {
               {adminRoutes}
 
               {/* Rota Externa Segura: Formulários Omnichannel Mobile-First */}
-              <Route path="/f/:token" element={<PatientFacingAnamnesis />} />
+              <Route path="/f/:token" element={<PatientFacingAnamnesis key={pathname} />} />
               <Route path="/verificar-documento/:code?" element={<DocumentAuthenticityPage />} />
 
               {/* Rotas de redirecionamento */}

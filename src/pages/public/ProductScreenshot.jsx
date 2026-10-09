@@ -18,14 +18,15 @@ export function getProductCaptureSrc(screen, mobile = false, retina = false) {
 export default function ProductScreenshot({ screen = 'plan', mobileOnly = false, eager = false, sizes = '(max-width: 760px) 288px, (max-width: 1000px) 90vw, 1100px', className = '' }) {
   const image = screens[screen];
   const base = PRODUCT_CAPTURE_BASE;
+  const portraitOnly = mobileOnly || image.desktop === image.mobile;
   return <picture className={`product-screenshot ${className}`}>
-    {!mobileOnly && <source media="(max-width: 1000px)" srcSet={`${base}${image.mobile}-${image.mobileWidth}.webp 1x, ${base}${image.mobile}-${image.mobileWidth * 2}.webp 2x`} width={image.mobileWidth} height="812" />}
+    {!portraitOnly && <source media="(max-width: 1000px)" srcSet={`${base}${image.mobile}-${image.mobileWidth}.webp 1x, ${base}${image.mobile}-${image.mobileWidth * 2}.webp 2x`} width={image.mobileWidth} height="812" />}
     <img
-      src={`${base}${mobileOnly ? image.mobile + '-' + image.mobileWidth : image.desktop + '-' + image.width}.webp`}
-      srcSet={mobileOnly ? `${base}${image.mobile}-${image.mobileWidth}.webp 1x, ${base}${image.mobile}-${image.mobileWidth * 2}.webp 2x` : `${base}${image.desktop}-720.webp 720w, ${base}${image.desktop}-${image.width}.webp ${image.width}w, ${base}${image.desktop}-${image.width * 2}.webp ${image.width * 2}w`}
-      sizes={mobileOnly ? undefined : sizes}
-      width={mobileOnly ? image.mobileWidth : image.width}
-      height={mobileOnly ? 812 : image.height}
+      src={`${base}${portraitOnly ? image.mobile + '-' + image.mobileWidth : image.desktop + '-' + image.width}.webp`}
+      srcSet={portraitOnly ? `${base}${image.mobile}-${image.mobileWidth}.webp 1x, ${base}${image.mobile}-${image.mobileWidth * 2}.webp 2x` : `${base}${image.desktop}-720.webp 720w, ${base}${image.desktop}-${image.width}.webp ${image.width}w, ${base}${image.desktop}-${image.width * 2}.webp ${image.width * 2}w`}
+      sizes={portraitOnly ? undefined : sizes}
+      width={portraitOnly ? image.mobileWidth : image.width}
+      height={portraitOnly ? 812 : image.height}
       alt={image.alt}
       loading={eager ? 'eager' : 'lazy'}
       decoding="async"
