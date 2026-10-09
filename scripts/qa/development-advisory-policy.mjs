@@ -42,5 +42,6 @@ export function checkDevelopmentAdvisories(audit, lock, policy, now = new Date()
     walk(finding.name);
     reviewed.push(finding.name);
   }
-  return { reviewedDevelopmentWarnings: reviewed.sort(), reviewBy: policy.reviewBy, patched: findings.length === 0 };
+  return { reviewedDevelopmentWarnings: reviewed.sort(), reviewBy: policy.reviewBy,
+    completeAuditClear: findings.length === 0, upstreamPatchVerified: false };
 }

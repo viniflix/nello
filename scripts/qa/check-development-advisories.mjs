@@ -20,4 +20,6 @@ const result = checkDevelopmentAdvisories(audit,
   JSON.parse(readFileSync('package-lock.json', 'utf8')),
   JSON.parse(readFileSync('operations/development-advisory-policy.json', 'utf8')));
 writeFileSync('.qa-security/development-review.json', JSON.stringify({ checkedAt: new Date().toISOString(), ...result }, null, 2));
-console.log(JSON.stringify({ ...result, notice: 'Reviewed dev-only advisory remains unpatched; this is not audit zero.' }));
+console.log(JSON.stringify({ ...result, notice: result.completeAuditClear
+  ? 'No audit warnings reported; this does not itself verify an upstream patch.'
+  : 'Reviewed dev-only advisory remains unpatched; this is not audit zero.' }));

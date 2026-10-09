@@ -14,13 +14,13 @@ const fixture = () => ({
 });
 const run = ({ audit, lock, policy }, now = new Date('2026-10-09')) => checkDevelopmentAdvisories(audit, lock, policy, now);
 describe('development security review gate', () => {
-  it('keeps the exact dev-only advisory visible and allows a repaired tree', () => {
+  it('distinguishes audit findings from proof of an upstream patch', () => {
     const f = fixture();
-    expect(run(f)).toMatchObject({ patched: false, reviewedDevelopmentWarnings: ['braces', 'compiler'] });
+    expect(run(f)).toMatchObject({ completeAuditClear: false, upstreamPatchVerified: false, reviewedDevelopmentWarnings: ['braces', 'compiler'] });
     f.audit.vulnerabilities = {};
     f.audit.metadata.vulnerabilities.high = 0;
     f.audit.metadata.vulnerabilities.total = 0;
-    expect(run(f)).toMatchObject({ patched: true, reviewedDevelopmentWarnings: [] });
+    expect(run(f)).toMatchObject({ completeAuditClear: true, upstreamPatchVerified: false, reviewedDevelopmentWarnings: [] });
   });
   it('blocks a new advisory even on a reviewed package', () => {
     const f = fixture(); f.audit.vulnerabilities.braces.via.push({ url: 'new-advisory' });
@@ -31,7 +31,7 @@ describe('development security review gate', () => {
   });
   it('accepts omission of redundant reviewed edges without allowing a new cause', () => {
     const f = fixture(); f.policy.packages.compiler.via.push('redundant-reviewed-edge');
-    expect(run(f).patched).toBe(false);
+    expect(run(f).completeAuditClear).toBe(false);
     f.audit.vulnerabilities.compiler.via.push('unexpected-edge');
     expect(() => run(f)).toThrow('cause changed');
   });
