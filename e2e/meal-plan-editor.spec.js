@@ -40,6 +40,10 @@ for (const screen of [{ width: 320, height: 800 }, { width: 390, height: 844 }, 
         if (screen.zoom) await page.evaluate(() => { document.documentElement.style.fontSize = '200%'; });
         await expect(page.getByRole('button', { name: 'Editar configurações' })).toBeVisible();
         await expect(page.getByRole('link', { name: 'QA Meal Module', exact: true })).toHaveAttribute('href', `/nutritionist/patients/${sample.patient}/hub?tab=nutrition`);
+        const breadcrumb = page.getByRole('navigation', { name: 'Navegação estrutural' });
+        await expect(breadcrumb.getByRole('link', { name: 'Prontuário', exact: true })).toHaveAttribute('href', `/nutritionist/patients/${sample.patient}/hub`);
+        await expect(breadcrumb.getByRole('link', { name: 'Nutrição', exact: true })).toHaveAttribute('href', `/nutritionist/patients/${sample.patient}/hub?tab=nutrition`);
+        await expect(breadcrumb.locator('[aria-current="page"]')).toHaveText('Editar plano');
         await page.getByRole('button', { name: 'Expandir QA Café da manhã com nome longo', exact: true }).click();
         await audit(page);
         if (screen.width === 1440) {
