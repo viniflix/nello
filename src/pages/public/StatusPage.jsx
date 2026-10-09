@@ -34,9 +34,7 @@ export default function StatusPage() {
     <section aria-live="polite" className={`public-status-summary${failed ? ' public-status-unknown' : ''}`}>
       <h2 className="text-xl">{failed ? 'Não foi possível verificar a disponibilidade' : health ? labels[health.status] : 'Verificando disponibilidade…'}</h2>
       {health && !failed && <>
-        <p>Autenticação: {labels[health.checks.auth]}</p>
-        <p>Banco de dados: {labels[health.checks.database]}</p>
-        <p>Arquivos: {labels[health.checks.storage]}</p>
+        <div className="public-service-grid">{[['auth','Autenticação'],['database','Banco de dados'],['storage','Arquivos']].map(([key, title]) => <div className="public-service" data-state={health.checks[key]} key={key}><p>{title}: <span className="public-service-badge"><i aria-hidden="true" />{labels[health.checks[key]]}</span></p></div>)}</div>
         <p>Última verificação: <time dateTime={health.checkedAt}>{new Date(health.checkedAt).toLocaleString('pt-BR')}</time></p>
       </>}
       <p>A verificação acompanha a conexão dos serviços. Em caso de instabilidade, tente novamente em alguns minutos.</p>

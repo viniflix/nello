@@ -216,5 +216,5 @@ export function LandingHero({ reduced }) {
 }
 
 export function LandingPatientVisual() {
-  return <div className="landing-phone-scene"><div className="landing-phone-halo" aria-hidden="true" /><figure className="landing-phone landing-phone-capture"><ProductScreenshot screen="patient" mobileOnly /></figure><div className="landing-phone-caption"><Check aria-hidden="true" size={18} /><span>O plano sempre por perto.</span></div></div>;
+  return <div className="landing-phone-scene"><div className="landing-phone-halo" aria-hidden="true" /><figure className="landing-phone landing-phone-capture"><ProductScreenshot screen="diary" mobileOnly /></figure><div className="landing-phone-caption"><Check aria-hidden="true" size={18} /><span>Sua rotina, registrada.</span></div></div>;
 }

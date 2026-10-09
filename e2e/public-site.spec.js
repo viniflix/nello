@@ -60,6 +60,7 @@ for(const width of [320,768,1440])test(`public design audit: stable captures, re
  const capture=page.locator('.landing-capture-workspace');
  for(const label of ['Visão clínica','Área do paciente','Plano alimentar']){
   await page.getByRole('button',{name:label,exact:true}).click();
+  await expect(page.locator('.landing-demo')).toHaveAttribute('data-screen', {'Visão clínica':'context','Área do paciente':'patient','Plano alimentar':'plan'}[label]);
   await expect.poll(()=>capture.locator('img').evaluate(img=>img.complete&&img.naturalWidth>0)).toBe(true);
   const next=await capture.boundingBox();expect(next.height).toBeGreaterThan(300);if(label==='Área do paciente')expect(next.width/next.height).toBeLessThan(.5);
   if(label==='Área do paciente')await expect.poll(()=>capture.locator('img').evaluate(img=>img.currentSrc)).toMatch(/\/images\/product\/captures-[a-f0-9]{12}\/paciente-inicio-mobile-345\.webp$/);
@@ -74,7 +75,7 @@ for(const width of [320,768,1440])test(`public design audit: stable captures, re
   await summary.click();await menu.getByRole('link',{name:'Pesquisa',exact:true}).click();
  }else await page.getByRole('navigation',{name:'Navegação pública',exact:true}).getByRole('link',{name:'Pesquisa',exact:true}).click();
  await expect(page).toHaveURL(/\/pesquisa$/);await expect(page.locator('.research-credit-grid article')).toHaveCount(4);
- await page.goto('/para-pacientes');await expect.poll(()=>page.locator('.site-product img').evaluate(img=>img.complete&&img.currentSrc)).toMatch(/\/images\/product\/captures-[a-f0-9]{12}\/paciente-inicio-mobile-345\.webp$/);
+ await page.goto('/para-pacientes');await expect.poll(()=>page.locator('.site-product img').evaluate(img=>img.complete&&img.currentSrc)).toMatch(/\/images\/product\/captures-[a-f0-9]{12}\/paciente-chat-mobile-345\.webp$/);
 });
 
 async function audit(page) {
@@ -224,7 +225,19 @@ for (const width of [320, 844, 1440]) test(`genuine captures preserve orientatio
   }
   await page.goto(baseURL + '/para-pacientes');
   const patient = page.locator('.site-product-patient');
-  await expect.poll(() => patient.locator('img').evaluate(img => img.complete && img.currentSrc)).toMatch(/paciente-inicio-mobile-690\.webp$/);
+  await expect.poll(() => patient.locator('img').evaluate(img => img.complete && img.currentSrc)).toMatch(/paciente-chat-mobile-690\.webp$/);
   const picture = await patient.locator('.product-screenshot').boundingBox(); expect(picture.width/picture.height).toBeLessThan(.5);
  } finally { await context.close(); }
+});
+
+test('document navigation is painted on desktop and collapsible on mobile',async({page})=>{
+ for(const route of ['/ajuda','/termos','/privacidade','/seguranca']) {
+  await page.setViewportSize({width:1440,height:900});await page.goto(route);const index=page.locator('.site-document-desktop');await expect(index).toBeVisible();await expect(index.getByRole('link').first()).toBeVisible();expect((await index.boundingBox()).height).toBeGreaterThan(44);
+  await index.getByRole('link').nth(1).click();await expect(page).toHaveURL(/#document-section-1$/);
+  await page.setViewportSize({width:390,height:900});await page.goto(route);await expect(page.locator('.site-document-desktop')).toBeHidden();const mobile=page.locator('.site-document-mobile');await expect(mobile.locator('nav')).toBeHidden();await mobile.locator('summary').click();await expect(mobile.getByRole('link').first()).toBeVisible();
+ }
+});
+test('patient devices have real outer chrome and evolution opens a portrait capture',async({page})=>{
+ await page.setViewportSize({width:1440,height:900});await page.goto('/');await page.getByRole('button',{name:'Área do paciente',exact:true}).click();await expect(page.locator('.landing-capture-patient')).toHaveCSS('clip-path','none');await expect(page.locator('.landing-capture-patient')).toHaveCSS('border-top-width','7px');
+ await page.locator('.landing-progress-capture').getByRole('button',{name:'Ampliar a tela'}).click();await expect(page.getByRole('dialog').locator('img')).toHaveAttribute('src',/paciente-progresso-mobile/);await expect(page.getByRole('dialog').locator('.public-capture-scroll')).toBeFocused();await page.keyboard.press('Tab');await expect(page.getByRole('dialog').getByRole('button',{name:'Fechar',exact:true})).toBeFocused();await page.keyboard.press('Escape');await expect(page.getByRole('dialog')).toBeHidden();
 });

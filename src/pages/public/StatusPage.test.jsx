@@ -9,8 +9,8 @@ const body = () => ({ schemaVersion: 1, checkedAt: new Date().toISOString(), sta
 it('reports verified availability and dependency states', async () => {
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(body()), { headers: { 'content-type': 'application/json' } })));
   render(<MemoryRouter><StatusPage /></MemoryRouter>);
-  await waitFor(() => expect(screen.getByText('Autenticação: Operacional')).toBeInTheDocument());
-  expect(screen.getByText('Banco de dados: Operacional')).toBeInTheDocument();
+  await waitFor(() => expect(screen.getByText((_, element) => element.tagName === 'P' && element.textContent === 'Autenticação: Operacional')).toBeInTheDocument());
+  expect(screen.getByText((_, element) => element.tagName === 'P' && element.textContent === 'Banco de dados: Operacional')).toBeInTheDocument();
 });
 it.each(['html', 'stale', 'contradictory', 'outage'])('does not show a green status for %s', async mode => {
   const payload = body();
@@ -23,5 +23,5 @@ it.each(['html', 'stale', 'contradictory', 'outage'])('does not show a green sta
   render(<MemoryRouter><StatusPage /></MemoryRouter>);
   await waitFor(() => expect(screen.getByRole('heading', { level: 2,
     name: mode === 'outage' ? 'Indisponível' : 'Não foi possível verificar a disponibilidade' })).toBeInTheDocument());
-  expect(screen.queryByText('Autenticação: Operacional')).not.toBeInTheDocument();
+  expect(screen.queryByText((_, element) => element.tagName === 'P' && element.textContent === 'Autenticação: Operacional')).not.toBeInTheDocument();
 });

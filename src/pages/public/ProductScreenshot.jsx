@@ -2,6 +2,9 @@ import React from 'react';
 import { PRODUCT_CAPTURE_BASE } from './productCaptureAssets';
 
 const screens = {
+  diary: { desktop: 'paciente-diario-mobile', mobile: 'paciente-diario-mobile', width: 345, height: 812, mobileWidth: 345, alt: 'Diário alimentar real do Nello, com registros de uma conta de exemplo.' },
+  chat: { desktop: 'paciente-chat-mobile', mobile: 'paciente-chat-mobile', width: 345, height: 812, mobileWidth: 345, alt: 'Conversa real na área do paciente do Nello, com mensagens fictícias de acompanhamento.' },
+  progress: { desktop: 'paciente-progresso-mobile', mobile: 'paciente-progresso-mobile', width: 345, height: 812, mobileWidth: 345, alt: 'Histórico de evolução na área do paciente do Nello, com dados de uma conta de exemplo.' },
   plan: { desktop: 'nutri-plano-desktop', mobile: 'nutri-plano-mobile', width: 1410, height: 891, mobileWidth: 360, alt: 'Tela real de planejamento alimentar do Nello, com refeições, porções e análise nutricional. Dados fictícios.' },
   context: { desktop: 'nutri-prontuario-desktop', mobile: 'nutri-prontuario-mobile', width: 1410, height: 891, mobileWidth: 360, alt: 'Prontuário real do Nello com resumo do acompanhamento da paciente fictícia Marina Alves.' },
   patient: { desktop: 'paciente-inicio-desktop', mobile: 'paciente-inicio-mobile', width: 1235, height: 712, mobileWidth: 345, alt: 'Área real do paciente no Nello, com plano alimentar, registro de refeições e navegação mobile. Dados fictícios.' },

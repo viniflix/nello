@@ -15,6 +15,25 @@ export default function PublicSiteLayout({ children, activePath = '/', landing =
   const surface = useRef(null);
   usePublicReveal(surface, landing && activePath !== '/');
   useEffect(() => {
+    let active = true;
+    let frame;
+    const followAnchor = async () => {
+      let id;
+      try { id = decodeURIComponent(window.location.hash.slice(1)); } catch { return; }
+      if (!id) return;
+      await document.fonts?.ready;
+      if (!active) return;
+      frame = requestAnimationFrame(() => {
+        const target = surface.current?.querySelectorAll('[id]');
+        const destination = [...(target || [])].find(element => element.id === id);
+        destination?.scrollIntoView({ block: 'start', behavior: 'instant' });
+      });
+    };
+    followAnchor();
+    window.addEventListener('hashchange', followAnchor);
+    return () => { active = false; cancelAnimationFrame(frame); window.removeEventListener('hashchange', followAnchor); };
+  }, [activePath]);
+  useEffect(() => {
     const element = menu.current;
     const close = event => {
       if (!element?.open) return;
