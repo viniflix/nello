@@ -3,7 +3,7 @@ import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import AuthCaptcha from './AuthCaptcha';
 
-afterEach(() => { cleanup(); delete window.turnstile; });
+afterEach(() => { cleanup(); delete window.turnstile; vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 it('clears expired and failed tokens, recreates on retry and ignores callbacks after leaving', async () => {
   let callbacks;
   window.turnstile = { render: vi.fn((_, options) => { callbacks = options; return 'widget'; }), remove: vi.fn() };
@@ -31,4 +31,31 @@ it('clears expired and failed tokens, recreates on retry and ignores callbacks a
 it('does not load an external provider when CAPTCHA is not configured', () => {
   render(<AuthCaptcha sitekey="" attempt={0} onToken={vi.fn()} />);
   expect(document.querySelector('script[src*="challenges.cloudflare.com"]')).toBeNull();
+});
+
+it('fits narrow containers and replaces the widget safely across the 300px boundary', async () => {
+  let width = 223, resized;
+  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(() => ({ width }));
+  const disconnect = vi.fn();
+  vi.stubGlobal('ResizeObserver', class { constructor(callback) { resized = callback; } observe() {} disconnect() { disconnect(); } });
+  window.turnstile = { render: vi.fn(() => 'widget'), remove: vi.fn() };
+  const onToken = vi.fn();
+  const view = render(<AuthCaptcha sitekey="synthetic" attempt={0} onToken={onToken} />);
+  await waitFor(() => expect(window.turnstile.render).toHaveBeenCalledOnce());
+  expect(window.turnstile.render.mock.calls[0][1].size).toBe('compact');
+  const stale = window.turnstile.render.mock.calls[0][1];
+  act(() => stale.callback('temporary-token'));
+  act(() => { width = 300; resized(); });
+  await waitFor(() => expect(window.turnstile.render).toHaveBeenCalledTimes(2));
+  expect(window.turnstile.render.mock.calls[1][1].size).toBe('flexible');
+  expect(window.turnstile.remove).toHaveBeenCalledWith('widget');
+  expect(onToken).toHaveBeenLastCalledWith('');
+  onToken.mockClear(); act(() => stale.callback('stale-token'));
+  expect(onToken).not.toHaveBeenCalled();
+  act(() => { width = 299; resized(); });
+  await waitFor(() => expect(window.turnstile.render).toHaveBeenCalledTimes(3));
+  expect(window.turnstile.render.mock.calls[2][1].size).toBe('compact');
+  act(() => { width = 250; resized(); });
+  expect(window.turnstile.render).toHaveBeenCalledTimes(3);
+  view.unmount(); expect(disconnect).toHaveBeenCalledOnce();
 });

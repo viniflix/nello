@@ -92,3 +92,12 @@ export async function syntheticAnalyticsPrivacyBoundary() {
   posthog.capture('ui_action_outcome',{operation:'qa_revoked_denied',outcome:'succeeded'});
   return { optedOut: posthog.has_opted_out_capturing() };
 }
+
+import AuthCaptcha from '../src/features/auth/AuthCaptcha';
+export function mountSyntheticCaptcha() {
+  function Probe() {
+    const [token,setToken]=React.useState('');
+    return React.createElement('main',{className:'min-h-dvh flex items-center justify-center p-4'},React.createElement('div',{className:'w-full max-w-md'},React.createElement('div',{className:'rounded-lg border p-6'},React.createElement('h1',null,'Verificação sintética'),React.createElement(AuthCaptcha,{sitekey:'synthetic',attempt:0,onToken:setToken}),React.createElement('p',null,token?'Verificado':'Aguardando'))));
+  }
+  createRoot(document.getElementById('root')).render(React.createElement(Probe));
+}

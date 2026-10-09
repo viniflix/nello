@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 const SCRIPT_URL = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
 let loadingScript;
@@ -38,6 +38,16 @@ export function useAuthCaptcha() {
 export default function AuthCaptcha({ sitekey, attempt, onToken }) {
   const container = useRef(null);
   const [failed, setFailed] = useState(false);
+  const [size, setSize] = useState('compact');
+  useEffect(() => {
+    if (!sitekey || !container.current) return undefined;
+    const measure = () => setSize(container.current.getBoundingClientRect().width < 300 ? 'compact' : 'flexible');
+    measure();
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measure);
+    observer?.observe(container.current);
+    window.addEventListener('resize', measure);
+    return () => { observer?.disconnect(); window.removeEventListener('resize', measure); };
+  }, [sitekey]);
   useEffect(() => {
     if (!sitekey) return undefined;
     let active = true;
@@ -48,14 +58,14 @@ export default function AuthCaptcha({ sitekey, attempt, onToken }) {
       if (!active) return;
       provider = api;
       widget = api.render(container.current, {
-        sitekey, language: 'pt-BR', size: 'flexible',
+        sitekey, language: 'pt-BR', size,
         callback: value => { if (active) { onToken(value); setFailed(false); } },
         'expired-callback': () => { if (active) onToken(''); },
         'error-callback': () => { if (active) { onToken(''); setFailed(true); } },
       });
     }).catch(() => { if (active) { onToken(''); setFailed(true); } });
     return () => { active = false; if (widget !== undefined) provider?.remove(widget); };
-  }, [sitekey, attempt, onToken]);
+  }, [sitekey, attempt, onToken, size]);
   if (!sitekey) return null;
   return <div className="space-y-2">
     <div ref={container} aria-label="Verificação de segurança" />
