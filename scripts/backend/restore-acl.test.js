@@ -32,4 +32,14 @@ describe('restore explicit default owner ACL without relaxing catalog comparison
       expect(() => defaultOwnerAclSql({ relations: [relation] }, database)).toThrow('isolated');
     }
   });
+  it('preserves owner-only sequence defaults without accepting table privileges on a sequence', () => {
+    const sequence = { schema: 'private', name: 'security_audit_events_id_seq', kind: 'S', owner: 'supabase_admin', grants: '{supabase_admin=rwU/supabase_admin}' };
+    const sql = build([sequence]);
+    expect(sql).toContain('security_audit_events_id_seq');
+    expect(sql).toContain('GRANT ALL PRIVILEGES ON SEQUENCE %I.%I TO %I');
+    expect(sql).toContain('c.relkind::text=expected.kind');
+    for (const grants of [null, '{}', '{supabase_admin=rw/supabase_admin}', '{supabase_admin=rwU/supabase_admin,anon=U/supabase_admin}', '{supabase_admin=rwU/other}', '{supabase_admin=r*wU/supabase_admin}', '{supabase_admin=arwdDxtm/supabase_admin}']) {
+      expect(build([{ ...sequence, grants }])).not.toContain('security_audit_events_id_seq');
+    }
+  });
 });
