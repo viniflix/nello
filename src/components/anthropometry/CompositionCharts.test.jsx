@@ -10,6 +10,11 @@ vi.mock('recharts', () => {
 vi.mock('@/components/ui/visible-chart', () => ({ VisibleChart: ({ children }) => <div>{children}</div> }));
 
 describe('composition history arriving after the empty state', () => {
+  it('keeps incomplete records in the empty state before processing somatotypes', () => {
+    const records = [{ results: { somatotype: { endo: 2, meso: 3, ecto: 4 } } }];
+    expect(() => render(<CompositionCharts data={records} />)).not.toThrow();
+    expect(screen.getByText('Nenhum dado disponível para exibir')).toBeInTheDocument();
+  });
   it('can receive and remove records without changing the order of hooks', () => {
     const { rerender } = render(<CompositionCharts data={[]} />);
     expect(screen.getByText('Nenhum dado disponível para exibir')).toBeInTheDocument();

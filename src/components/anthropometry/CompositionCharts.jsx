@@ -71,7 +71,8 @@ export default function CompositionCharts({ data = [] }) {
 
   // Processar dados para Somatochart
   const somatotypeData = useMemo(() => {
-    if (!data || data.length === 0) return [];
+    // Preserve the original empty-state guard while keeping this hook unconditional.
+    if (chartData.length === 0) return [];
 
     return data
       .filter(record => record.results?.somatotype && typeof record.results.somatotype === 'object')
@@ -96,7 +97,7 @@ export default function CompositionCharts({ data = [] }) {
         };
       })
       .sort((a, b) => a.dateValue - b.dateValue);
-  }, [data]);
+  }, [data, chartData.length]);
 
   if (chartData.length === 0) {
     return (
