@@ -2,6 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { toPortugueseError } from './errorMessages';
 
 describe('toPortugueseError', () => {
+  it('explains revoked care without suggesting that history was deleted', () => {
+    expect(toPortugueseError('anamnesis_relationship_inactive')).toBe(
+      'Este acompanhamento não está ativo. O histórico foi preservado, mas o formulário não aceita alterações.',
+    );
+  });
   it('preserves actionable password validation written by the application', () => {
     expect(toPortugueseError('As senhas não coincidem.')).toBe('As senhas não coincidem.');
     expect(toPortugueseError('Solicite um novo link e tente novamente.')).toBe(

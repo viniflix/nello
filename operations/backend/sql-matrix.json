@@ -305,6 +305,11 @@
       "fixtures": []
     },
     {
+      "file": "security_anamnesis_lifecycle.sql",
+      "kind": "assertion-suite",
+      "fixtures": []
+    },
+    {
       "file": "mc04_frozen_meal_document.sql",
       "kind": "assertion-suite",
       "fixtures": []

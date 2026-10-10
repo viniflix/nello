@@ -1,4 +1,5 @@
 const ERROR_TRANSLATIONS = [
+  { test: /anamnesis_relationship_inactive/i, message: 'Este acompanhamento não está ativo. O histórico foi preservado, mas o formulário não aceita alterações.' },
   { test: /patient_creation_rate_limited|over_email_send_rate_limit/i, message: 'Limite de envios atingido. Aguarde alguns minutos antes de tentar novamente.' },
   { test: /professional_verification_required/i, message: 'Conclua a verificação profissional para convidar pacientes.' },
   { test: /patient_account_already_exists/i, message: 'Este email já tem uma conta. Use o vínculo por convite ou a recuperação de acesso, sem criar outra conta.' },

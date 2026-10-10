@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "migrations": [
+    {
+      "file": "supabase/migrations/releases/20261009235500_security_anamnesis_revocation.sql",
+      "sha256": "036b4ddb314cbac24d428337f85f22855e8470851d7ad797a691f85c14881edc"
+    }
+  ]
+}
