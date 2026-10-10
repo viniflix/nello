@@ -1,5 +1,6 @@
 import PublicHelpLinks from '@/features/privacy/components/PublicHelpLinks';
 import AuthCaptcha, { useAuthCaptcha } from '@/features/auth/AuthCaptcha';
+import CurrentPasswordField from '@/features/auth/CurrentPasswordField';
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Leaf, Loader2 } from 'lucide-react';
@@ -24,6 +25,7 @@ import { Events, track } from '@/infrastructure/analytics/posthog';
 export default function UpdatePasswordPage() {
   const captcha = useAuthCaptcha();
   const [password, setPassword] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
@@ -84,7 +86,8 @@ export default function UpdatePasswordPage() {
 
     setLoading(true);
     try {
-      await updateAndVerifyPassword(supabase, { session, password, captchaOptions: captcha.options });
+      await updateAndVerifyPassword(supabase, { session, password, currentPassword, captchaOptions: captcha.options });
+      setCurrentPassword('');
       try {
         await clearForcedPasswordReset(supabase, session.user.id);
       } catch (profileError) {
@@ -186,6 +189,7 @@ export default function UpdatePasswordPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4" autoComplete="off">
+            <CurrentPasswordField value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} disabled={loading} />
             <div className="space-y-2">
               <Label htmlFor="password">Nova senha</Label>
               <div className="relative">

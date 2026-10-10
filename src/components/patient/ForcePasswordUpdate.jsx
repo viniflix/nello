@@ -1,4 +1,5 @@
 import AuthCaptcha, { useAuthCaptcha } from '@/features/auth/AuthCaptcha';
+import CurrentPasswordField from '@/features/auth/CurrentPasswordField';
 import React, { useState } from 'react';
 import { Eye, EyeOff, Loader2, Lock, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/infrastructure/supabase/client';
@@ -23,6 +24,7 @@ export default function ForcePasswordUpdate({ children }) {
   const [dismissedFor, setDismissedFor] = useState(null);
   const captcha = useAuthCaptcha();
   const [password, setPassword] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -48,8 +50,10 @@ export default function ForcePasswordUpdate({ children }) {
       await updateAndVerifyPassword(supabase, {
         session: sessionData?.session,
         password,
+        currentPassword,
         captchaOptions: captcha.options,
       });
+      setCurrentPassword('');
       await clearForcedPasswordReset(supabase, user.id);
 
       track(Events.AUTH_PASSWORD_UPDATED, { user_type: 'patient', flow: 'first_access' });
@@ -98,6 +102,7 @@ export default function ForcePasswordUpdate({ children }) {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4" autoComplete="off">
+            <CurrentPasswordField value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} disabled={loading} />
             <div className="space-y-2">
               <Label htmlFor="firstAccessPassword">Nova senha</Label>
               <div className="relative">

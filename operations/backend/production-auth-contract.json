@@ -10,6 +10,7 @@
     "mfa_totp_enroll_enabled": true,
     "mfa_totp_verify_enabled": true,
     "security_captcha_enabled": true,
-    "security_update_password_require_reauthentication": false
+    "security_update_password_require_reauthentication": false,
+    "security_update_password_require_current_password": true
   }
 }

@@ -1,5 +1,6 @@
 import { edgeBoundary, timedFetch } from '../_shared/http.ts';
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { provisionPatientInvitation } from './provision-invitation.js';
 
 const corsHeaders = {};
 
@@ -196,32 +197,19 @@ Deno.serve(edgeBoundary(async (req) => {
   }
   normalizedMetadata.nello_provisioning_nonce = nonce;
 
-  const { data: userData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(
-    normalizedEmail!,
-    {
-      data: normalizedMetadata,
-      redirectTo: "https://nellonutri.com.br/update-password?mode=invite",
-    }
-  );
-
-  if (inviteError || !userData?.user?.id) {
-    console.error('Supabase Invite Error', { status: inviteError?.status });
-    return jsonResponse(inviteError?.status === 429 ? 429 : inviteError?.status === 422 ? 409 : 502,
-      { error: inviteError?.status === 429 ? 'patient_creation_rate_limited' : inviteError?.status === 422 ? 'patient_account_already_exists' : 'patient_invite_failed' });
+  const provisioned = await provisionPatientInvitation(supabaseAdmin.auth.admin, {
+    email: normalizedEmail!, password: defaultPassword, metadata: normalizedMetadata,
+    redirectTo: 'https://nellonutri.com.br/update-password?mode=invite',
+  });
+  if (!provisioned.accountCreated) {
+    const status = provisioned.error?.status;
+    console.error('Patient account creation failed', { status });
+    return jsonResponse(status === 429 ? 429 : status === 422 ? 409 : 502,
+      { error: status === 429 ? 'patient_creation_rate_limited' : status === 422 ? 'patient_account_already_exists' : 'patient_invite_failed' });
   }
-
-  // Update newly invited user to set their default password so they can log in via email+senha
-  const { error: passwordError } = await supabaseAdmin.auth.admin.updateUserById(
-    userData.user.id,
-    { password: defaultPassword }
-  );
-
-  if (passwordError) {
-    console.error('Supabase Set Password Error', { status: passwordError.status });
-    // The email has already been delivered/queued. Preserve the account and
-    // its valid invitation rather than deleting an account with a live link.
-    return jsonResponse(200, { userId: userData.user.id, initialPasswordAvailable: false, invitationSent: true });
+  if (!provisioned.invitationSent) {
+    // Preserve the new account/history and report partial delivery accurately.
+    console.error('Patient invitation delivery failed', { status: provisioned.invitationError?.status });
   }
-
-  return jsonResponse(200, { userId: userData.user.id, initialPasswordAvailable: true, invitationSent: true });
+  return jsonResponse(200, { userId: provisioned.userId, initialPasswordAvailable: true, invitationSent: provisioned.invitationSent });
 }));

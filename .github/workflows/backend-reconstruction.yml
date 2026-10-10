@@ -63,6 +63,9 @@ jobs:
       - name: Verify anamnesis revocation and both concurrent transaction orders
         if: ${{ !cancelled() && steps.rebuild.outcome == 'success' }}
         run: node scripts/backend/security-anamnesis.mjs
+      - name: Verify atomic current-password authorization and server recovery exception
+        if: ${{ !cancelled() && steps.rebuild.outcome == 'success' }}
+        run: node scripts/qa/password-authorization.mjs
       - name: Prove the catalog gate blocks a controlled RLS and grant failure
         if: ${{ !cancelled() && steps.rebuild.outcome == 'success' }}
         run: node scripts/backend/gate-injections.mjs
@@ -118,6 +121,7 @@ jobs:
             .backend-ci/auth-captcha-results/
             .backend-ci/sql-results/
             .backend-ci/security-anamnesis-results/
+            .backend-ci/password-authorization-results/result.json
             .backend-ci/wave09-results/
             .backend-ci/wave10-results/
             .backend-ci/browser-results/

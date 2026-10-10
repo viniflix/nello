@@ -40,6 +40,10 @@ export function toPortugueseError(errorOrMessage, fallback = 'Ocorreu um erro. T
   if (code === 'over_email_send_rate_limit' || Number(errorOrMessage?.status) === 429) return 'Aguarde um minuto antes de pedir outro código. Confira também a caixa de spam.';
   if (code === 'otp_expired' || code === 'invalid_token') return 'Código inválido ou expirado. Peça um novo código e use apenas o mais recente.';
   if (code === 'same_password') return 'A nova senha deve ser diferente da senha atual.';
+  if (code === 'current_password_required') return 'Informe sua senha atual para autorizar a troca. Se não a lembra, solicite um link de recuperação.';
+  if (code === 'current_password_invalid' || code === 'current_password_mismatch') return 'A senha atual não confere. Revise o campo ou solicite um link de recuperação.';
+  if (code === 'reauthentication_needed' || code === 'reauthentication_not_valid') return 'Confirme novamente sua identidade. Solicite um novo link de recuperação antes de alterar a senha.';
+  if (code === 'weak_password') return 'Escolha uma senha mais segura e evite senhas conhecidas ou já utilizadas em outros serviços.';
   if (code === 'invalid_credentials') return 'E-mail ou senha inválidos.';
   const raw = typeof errorOrMessage === 'string'
     ? errorOrMessage

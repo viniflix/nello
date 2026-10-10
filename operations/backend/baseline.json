@@ -1528,8 +1528,13 @@
           "file": "index.ts",
           "sha256": "e2f1566ae5bfa8faa911976d2b1882bb6893d5ee64ef7d4b752ac064e8d86e21",
           "matchedLocal": true,
-          "repositorySha256": "28c907fc022ed6154f25c7f828c67f3dc0335841f7b81c2cdb2f54774f66ef09",
-          "releaseEvidence": "Wave04: verified professional, metadata allowlist, server-derived initial credential, quota and invitation-preserving fallback. Historical provider checksum retained."
+          "repositorySha256": "2dcd8f9e5b0320f11f8e640b470aac68145a458fcfc4dd17007336ae791d3d17",
+          "releaseEvidence": "SEC-02: initial DDMMAA assigned before issuing original one-use invitation; account preserved and delivery accurately reported on SMTP failure. Historical provider checksum retained."
+        },
+        {
+          "file": "provision-invitation.js",
+          "repositorySha256": "17ea3be91ac1ab9daeda27e7007a1880ad4a814683d6a177697dcc7b387bdf1b",
+          "releaseEvidence": "SEC-02 local candidate; real Auth protocol and original SMTP invitation tested. Not a historical published checksum."
         }
       ],
       "sourcePolicy": "Published source"

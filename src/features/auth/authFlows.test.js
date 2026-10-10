@@ -15,6 +15,24 @@ import {
 } from './authFlows';
 
 describe('authFlows', () => {
+  it('forwards the exact current password for atomic server authorization without using it in the verification login', async () => {
+    const currentPassword = ' Senha atual 123 ';
+    const auth = {
+      updateUser: vi.fn().mockResolvedValue({ data: { user: { id: 'qa' } }, error: null }),
+      signInWithPassword: vi.fn().mockResolvedValue({ data: { user: { id: 'qa' } }, error: null }),
+    };
+    await updateAndVerifyPassword({ auth }, { session: { user: { id: 'qa', email: 'qa@example.invalid' } }, password: 'Nova senha 123', currentPassword });
+    expect(auth.updateUser).toHaveBeenCalledWith({ password: 'Nova senha 123', current_password: currentPassword });
+    expect(auth.signInWithPassword).toHaveBeenCalledWith({ email: 'qa@example.invalid', password: 'Nova senha 123' });
+  });
+
+  it.each(['current_password_required', 'current_password_invalid', 'current_password_mismatch'])('never retries or verifies the new password after %s', async code => {
+    const error = { code, status: 400 };
+    const auth = { updateUser: vi.fn().mockResolvedValue({ error }), signInWithPassword: vi.fn() };
+    await expect(updateAndVerifyPassword({ auth }, { session: { user: { id: 'qa', email: 'qa@example.invalid' } }, password: 'Nova senha 123', currentPassword: 'wrong' })).rejects.toBe(error);
+    expect(auth.signInWithPassword).not.toHaveBeenCalled();
+    expect(isExpectedPasswordRejection(error)).toBe(true);
+  });
   it('forwards CAPTCHA to confirmation resend, recovery and the verification of the new password', async () => {
     const captchaOptions = { captchaToken: 'synthetic-one-use-token' };
     const auth = {

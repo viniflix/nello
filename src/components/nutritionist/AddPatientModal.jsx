@@ -291,9 +291,11 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded }) => {
                     duration: 10000,
                 });
             } else if (!isOffline) {
-                toast({ title: "Convite enviado", description: data?.initialPasswordAvailable === false
+                toast({ title: data?.invitationSent === false ? 'Paciente cadastrado; envio pendente' : "Convite enviado", description: data?.invitationSent === false
+                    ? 'A conta e a senha inicial foram preservadas, mas o convite não pôde ser enviado. O paciente pode solicitar a confirmação do email na tela de acesso.'
+                    : data?.initialPasswordAvailable === false
                     ? 'A conta foi preservada e o convite foi enviado. O paciente deve usar o link do email para definir a senha; a senha inicial não foi configurada.'
-                    : `Convite enviado para ${formData.name}. O paciente pode usar a senha inicial ou definir uma senha pelo email.`, variant: "success" });
+                    : `Convite enviado para ${formData.name}. O paciente pode usar a senha inicial ou definir uma senha pelo email.`, variant: data?.invitationSent === false ? 'default' : "success" });
             } else {
                 toast({ title: "Sucesso!", description: `Paciente ${formData.name} adicionado.`, variant: "success" });
             }

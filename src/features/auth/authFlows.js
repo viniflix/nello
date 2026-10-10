@@ -18,6 +18,8 @@ export function isExpectedLoginRejection(error) {
 }
 
 export function isExpectedPasswordRejection(error) {
+  const status = Number(error?.status || error?.statusCode);
+  if (status === 400 && ['current_password_required', 'current_password_invalid', 'current_password_mismatch', 'reauthentication_needed', 'reauthentication_not_valid'].includes(String(error?.code || ''))) return true;
   return Number(error?.status || error?.statusCode) === 422 && (
     String(error?.code || '') === 'same_password'
     || /new password should be different|same password/i.test(String(error?.message || ''))
@@ -94,13 +96,19 @@ export async function requestPasswordRecovery(authClient, email, origin, captcha
  * the controlled form authenticates. A success toast must only be shown after
  * both remote operations succeed.
  */
-export async function updateAndVerifyPassword(authClient, { session, password, captchaOptions }) {
+export async function updateAndVerifyPassword(authClient, { session, password, currentPassword, captchaOptions }) {
   const email = normalizeAuthEmail(session?.user?.email);
   if (!session?.user?.id || !email) {
     throw new Error('Sessão de recuperação inválida ou expirada. Solicite um novo link.');
   }
 
-  const { data: updated, error: updateError } = await authClient.auth.updateUser({ password });
+  // Auth verifies current_password atomically before changing the credential.
+  // Its recovery/invitation exception is enforced by the server, never by a URL
+  // parameter, browser event or a client-supplied recovery flag.
+  const { data: updated, error: updateError } = await authClient.auth.updateUser({
+    password,
+    ...(currentPassword ? { current_password: currentPassword } : {}),
+  });
   if (updateError) throw updateError;
   if (updated?.user?.id !== session.user.id) {
     throw new Error('Não foi possível confirmar a conta atualizada. Solicite um novo link.');
