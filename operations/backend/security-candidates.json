@@ -4,6 +4,10 @@
     {
       "file": "supabase/migrations/releases/20261009235500_security_anamnesis_revocation.sql",
       "sha256": "036b4ddb314cbac24d428337f85f22855e8470851d7ad797a691f85c14881edc"
+    },
+    {
+      "file": "supabase/migrations/releases/20261010154500_security_admin_active_actor.sql",
+      "sha256": "012a199cff2050f8281077b956f7a78442671aaad96402d098603a1e617c82b0"
     }
   ]
 }

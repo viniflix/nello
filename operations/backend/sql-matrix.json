@@ -313,6 +313,11 @@
       "file": "mc04_frozen_meal_document.sql",
       "kind": "assertion-suite",
       "fixtures": []
+    },
+    {
+      "file": "security_admin_active_actor.sql",
+      "kind": "assertion-suite",
+      "fixtures": []
     }
   ]
 }
