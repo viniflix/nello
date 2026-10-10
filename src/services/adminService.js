@@ -68,6 +68,10 @@ export async function getAdminSecurityOverview() {
   return { data, error };
 }
 
+export const getAdminSecurityActivity = (before = null) => supabase.rpc('admin_security_activity', {
+  p_before: before, p_limit: 25,
+});
+
 export async function getAdminBrandMigrationStatus() {
   const { data, error } = await supabase.rpc('admin_brand_migration_status');
   return { data, error };

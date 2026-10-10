@@ -318,6 +318,11 @@
       "file": "security_admin_active_actor.sql",
       "kind": "assertion-suite",
       "fixtures": []
+    },
+    {
+      "file": "security_audit_alerts.sql",
+      "kind": "assertion-suite",
+      "fixtures": []
     }
   ]
 }

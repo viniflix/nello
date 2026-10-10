@@ -6,6 +6,7 @@ import { execFileSync } from 'node:child_process';
 import { assertForwardRestoration } from './forward-restoration.mjs';
 import { runAmendmentConcurrency } from './concurrency.mjs';
 import { runIntelligenceConcurrency } from './intelligence-concurrency.mjs';
+import { runSecurityAuditConcurrency } from './security-audit-concurrency.mjs';
 import { validateSqlManifest } from './sql-manifest.mjs';
 import { candidateMigrations } from './candidate-migrations.mjs';
 
@@ -82,6 +83,11 @@ for (const [index, source] of manifest.sources.entries()) {
       contents[0]=contents[0].replace('create function pg_temp.assert_client_rpc_surface()',reviewed+'\ncreate function pg_temp.assert_client_rpc_surface()');
       hashes.push({file:'supabase/fixtures/wave02/admin-support-client-rpc-contract.sql',sha256:createHash('sha256').update(reviewed).digest('hex')});
     }
+    if(candidates.some(m=>m.file.includes('security_audit_alerts'))) {
+      const reviewed=readFileSync('supabase/fixtures/wave02/security-audit-client-rpc-contract.sql','utf8');
+      contents[0]=contents[0].replace('create function pg_temp.assert_client_rpc_surface()',reviewed+'\ncreate function pg_temp.assert_client_rpc_surface()');
+      hashes.push({file:'supabase/fixtures/wave02/security-audit-client-rpc-contract.sql',sha256:createHash('sha256').update(reviewed).digest('hex')});
+    }
     if(candidates.some(m=>m.file.includes('admin_intelligence_workspace'))) {
       const reviewed=readFileSync('supabase/fixtures/wave02/admin-intelligence-client-rpc-contract.sql','utf8');
       contents[0]=contents[0].replace('create function pg_temp.assert_client_rpc_surface()',reviewed+'\ncreate function pg_temp.assert_client_rpc_surface()');
@@ -111,6 +117,10 @@ for (const [index, source] of manifest.sources.entries()) {
     }
     if (source.file === 'admin_intelligence_workspace.sql') {
       concurrency = await runIntelligenceConcurrency({ database, query: sql });
+      log += `\n${JSON.stringify(concurrency, null, 2)}`;
+    }
+    if (source.file === 'security_audit_alerts.sql') {
+      concurrency = await runSecurityAuditConcurrency({ database, query: sql });
       log += `\n${JSON.stringify(concurrency, null, 2)}`;
     }
     passed = true;

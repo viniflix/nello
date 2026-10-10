@@ -25,6 +25,13 @@ vi.mock('@/infrastructure/analytics/posthog', () => ({
 }));
 
 describe('captureOperationalError', () => {
+  it('treats a server-confirmed audit outage as technical and never forwards the row or SQL detail', () => {
+    captureOperationalError({ code: 'PT503', message: 'security_audit_unavailable', details: 'PRIVATE_FINANCIAL_ROW', hint: 'PRIVATE_SQL' }, { operation: 'save_transaction', source: 'supabase' });
+    expect(track).toHaveBeenCalledWith('operation_failed', expect.objectContaining({ failure_reason: 'audit_recording_failed', failure_kind: 'technical' }));
+    expect(Sentry.captureException.mock.calls[0][0].message).toContain('audit_recording_failed');
+    expect(JSON.stringify(track.mock.calls)).not.toContain('PRIVATE_FINANCIAL_ROW');
+    expect(JSON.stringify(Sentry.captureException.mock.calls)).not.toContain('PRIVATE_SQL');
+  });
   it('classifies only the reviewed missing-identity rule as expected, retaining unknown constraints', () => {
     captureOperationalError({ code: '23514', message: 'responsible_document_identity_required' }, { operation: 'prepare_document' });
     captureOperationalError({ code: '23514', message: 'PRIVATE_UNKNOWN_CONSTRAINT' }, { operation: 'prepare_document' });

@@ -8,6 +8,10 @@
     {
       "file": "supabase/migrations/releases/20261010154500_security_admin_active_actor.sql",
       "sha256": "012a199cff2050f8281077b956f7a78442671aaad96402d098603a1e617c82b0"
+    },
+    {
+      "file": "supabase/migrations/releases/20261010223000_security_audit_alerts.sql",
+      "sha256": "3690dd17861fddd2f1d967409833c455c477d07b1ab86556116304769d4b14ff"
     }
   ]
 }

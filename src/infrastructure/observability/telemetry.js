@@ -13,6 +13,7 @@ const recentErrors = new Map();
 const DEDUPLICATION_WINDOW_MS = 5000;
 
 function safeFailureReason(error) {
+  if (error?.code === 'PT503' && error?.message === 'security_audit_unavailable') return 'audit_recording_failed';
   if (isChunkLoadError(error)) return 'asset_load_failure';
   const kind = classifyFailure(error);
   if (kind === 'offline' || kind === 'network') return 'network_failure';

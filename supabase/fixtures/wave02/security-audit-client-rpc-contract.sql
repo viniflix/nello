@@ -1,0 +1,2 @@
+insert into wave02_client_rpc_contract(signature,anonymous,authenticated,config,definition_md5,body_only) values('financial_audit_history(bigint,integer)',false,true,array['search_path=""']::text[],'5bb1356b013d69ad55fa280b65a3003a',true);
+insert into wave02_client_rpc_contract(signature,anonymous,authenticated,config,definition_md5,body_only) values('admin_security_activity(bigint,integer)',false,true,array['search_path=""']::text[],'47f33131b5ad98aedeae0a7383901014',true);

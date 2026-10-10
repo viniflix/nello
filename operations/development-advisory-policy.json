@@ -43,6 +43,15 @@
         "braces"
       ]
     },
+    "tailwindcss-animate": {
+      "severity": "high",
+      "nodes": {
+        "node_modules/tailwindcss-animate": "1.0.7"
+      },
+      "via": [
+        "tailwindcss"
+      ]
+    },
     "tailwindcss": {
       "severity": "high",
       "nodes": {
