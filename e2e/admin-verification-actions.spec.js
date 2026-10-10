@@ -42,9 +42,13 @@ test('admin verification: real role matrix, invalid date recovery, approval and 
     }
   }
   await page.goto('/admin/verifications'); await expect(row).toContainText('Aprovado');
-  await page.route('**/rest/v1/rpc/admin_verification_queue', route => route.fulfill({ status: 503, json: { code: 'temporarily_unavailable' } }), { times: 1 });
+  // Keep the outage active through the assertion: a concurrent/focus refresh
+  // may otherwise consume one injected failure and immediately recover.
+  const queueFailure = route => route.fulfill({ status: 503, json: { code: 'temporarily_unavailable' } });
+  await page.route('**/rest/v1/rpc/admin_verification_queue', queueFailure);
   await page.getByRole('button', { name: 'Atualizar', exact: true }).click();
   await expect(page.getByText('Falha ao atualizar · última consulta preservada', { exact: true })).toBeVisible(); await expect(row).toContainText('Aprovado');
+  await page.unroute('**/rest/v1/rpc/admin_verification_queue', queueFailure);
   sql(`update private.admin_operators set role='auditor' where user_id='${fixture.id}';`);
   await page.getByRole('button', { name: 'Atualizar', exact: true }).click();
   await row.getByRole('button', { name: 'Consultar', exact: true }).click();
