@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "reviewedAt": "2026-10-10",
+  "reviewBy": "2026-10-23T00:00:00Z",
+  "responsible": "Vinicius Costa",
+  "packages": {
+    "eslint": {
+      "version": "9.39.5",
+      "status": "end_of_life",
+      "reason": "React, jsx-a11y and import plugin peer contracts exclude ESLint 10. Flat-config migration preserves existing checks; supported-major migration remains open.",
+      "source": "https://eslint.org/version-support/"
+    },
+    "react-input-mask": {
+      "version": "2.0.4",
+      "status": "repository_archived",
+      "reason": "Patient creation mask requires a separately validated replacement preserving DDMMAA and editing/paste behavior. No npm runtime advisory was found; maintenance remains open.",
+      "source": "https://github.com/sanniassin/react-input-mask"
+    }
+  }
+}

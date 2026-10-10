@@ -110,7 +110,7 @@ export default function FoodMeasureManager({ food, isOpen, onClose }) {
   };
 
   const handleDeleteMeasure = async (measureId) => {
-    if (!confirm('Tem certeza que deseja excluir esta medida?')) {
+    if (!window.confirm('Tem certeza que deseja excluir esta medida?')) {
       return;
     }
 

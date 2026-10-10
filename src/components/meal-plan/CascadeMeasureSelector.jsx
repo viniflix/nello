@@ -36,6 +36,7 @@ const CascadeMeasureSelector = ({
 
     // Buscar medidas específicas do alimento (conversões por alimento)
     const { data: foodMeasures = [], isLoading: loadingFood, error: foodError, refetch: refetchFood } = useFoodMeasures(food?.id);
+    const loading = isLoading || loadingFood;
 
     const [selectedCategory, setSelectedCategory] = useState('');
 

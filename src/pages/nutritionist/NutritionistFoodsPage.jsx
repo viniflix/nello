@@ -36,7 +36,6 @@ export default function NutritionistFoodsPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [searchTerm, setSearchTerm] = useState('');
 
   // Security check: Only admins can access this page
   const isAdmin = user?.profile?.is_admin === true;
@@ -75,6 +74,13 @@ export default function NutritionistFoodsPage() {
       </div>
     );
   }
+  return <AdminFoodsContent toast={toast} />;
+}
+
+// Mount the data consumer only after authorization, keeping hook order stable
+// when the session loads or loses administrator access.
+function AdminFoodsContent({ toast }) {
+  const [searchTerm, setSearchTerm] = useState('');
   const [foods, setFoods] = useState([]);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(0);

@@ -105,8 +105,7 @@
     "@vitejs/plugin-react": "4.7.0",
     "@vitest/coverage-v8": "4.1.11",
     "autoprefixer": "10.4.21",
-    "eslint": "8.57.1",
-    "eslint-config-react-app": "7.0.1",
+    "eslint": "9.39.5",
     "jsdom": "29.0.1",
     "mediainfo.js": "0.3.8",
     "pdf-lib": "1.17.1",
@@ -116,13 +115,19 @@
     "tailwindcss-animate": "1.0.7",
     "typescript": "6.0.2",
     "vite": "7.3.6",
-    "vitest": "4.1.11"
+    "vitest": "4.1.11",
+    "eslint-plugin-react": "7.37.5",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "eslint-plugin-jsx-a11y": "6.10.2",
+    "eslint-plugin-import": "2.32.0",
+    "typescript-eslint": "8.71.1",
+    "globals": "17.13.0"
   },
   "engines": {
     "node": "22.x",
-    "npm": "11.5.x"
+    "npm": "11.21.x"
   },
-  "packageManager": "npm@11.5.2",
+  "packageManager": "npm@11.21.0",
   "license": "UNLICENSED",
   "overrides": {
     "postcss-selector-parser": "7.1.6"

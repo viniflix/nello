@@ -1,69 +1,12 @@
 {
   "schemaVersion": 1,
-  "reviewedAt": "2026-10-09",
+  "reviewedAt": "2026-10-10",
   "reviewBy": "2026-10-23T00:00:00Z",
   "responsible": "Nello maintainer / Vinicius Costa",
   "advisory": "https://github.com/advisories/GHSA-vfj7-8cjw-p6xm",
-  "scope": "Unpatched braces dev-only build/lint chain, trusted repository patterns only; no production exposure acceptance. No audit fix force or package substitution.",
+  "scope": "Unpatched braces dev-only Tailwind 3 build/watch chain, trusted repository patterns only; no production exposure acceptance. No audit fix force or package substitution.",
   "mitigation": "Exact dependency paths, versions and advisory causes are checked; new advisories, runtime exposure, path/version changes or expired review fail release. Keep residual finding open for upstream patch or separately validated replacement.",
   "packages": {
-    "@typescript-eslint/eslint-plugin": {
-      "severity": "high",
-      "nodes": {
-        "node_modules/@typescript-eslint/eslint-plugin": "5.62.0"
-      },
-      "via": [
-        "@typescript-eslint/parser",
-        "@typescript-eslint/type-utils",
-        "@typescript-eslint/utils"
-      ]
-    },
-    "@typescript-eslint/experimental-utils": {
-      "severity": "high",
-      "nodes": {
-        "node_modules/@typescript-eslint/experimental-utils": "5.62.0"
-      },
-      "via": [
-        "@typescript-eslint/utils"
-      ]
-    },
-    "@typescript-eslint/parser": {
-      "severity": "high",
-      "nodes": {
-        "node_modules/@typescript-eslint/parser": "5.62.0"
-      },
-      "via": [
-        "@typescript-eslint/typescript-estree"
-      ]
-    },
-    "@typescript-eslint/type-utils": {
-      "severity": "high",
-      "nodes": {
-        "node_modules/@typescript-eslint/type-utils": "5.62.0"
-      },
-      "via": [
-        "@typescript-eslint/typescript-estree",
-        "@typescript-eslint/utils"
-      ]
-    },
-    "@typescript-eslint/typescript-estree": {
-      "severity": "high",
-      "nodes": {
-        "node_modules/@typescript-eslint/typescript-estree": "5.62.0"
-      },
-      "via": [
-        "globby"
-      ]
-    },
-    "@typescript-eslint/utils": {
-      "severity": "high",
-      "nodes": {
-        "node_modules/@typescript-eslint/utils": "5.62.0"
-      },
-      "via": [
-        "@typescript-eslint/typescript-estree"
-      ]
-    },
     "braces": {
       "severity": "high",
       "nodes": {
@@ -82,25 +25,6 @@
         "braces"
       ]
     },
-    "eslint-config-react-app": {
-      "severity": "high",
-      "nodes": {
-        "node_modules/eslint-config-react-app": "7.0.1"
-      },
-      "via": [
-        "@typescript-eslint/eslint-plugin",
-        "@typescript-eslint/parser"
-      ]
-    },
-    "eslint-plugin-testing-library": {
-      "severity": "high",
-      "nodes": {
-        "node_modules/eslint-plugin-testing-library": "5.11.1"
-      },
-      "via": [
-        "@typescript-eslint/utils"
-      ]
-    },
     "fast-glob": {
       "severity": "high",
       "nodes": {
@@ -108,15 +32,6 @@
       },
       "via": [
         "micromatch"
-      ]
-    },
-    "globby": {
-      "severity": "high",
-      "nodes": {
-        "node_modules/globby": "11.1.0"
-      },
-      "via": [
-        "fast-glob"
       ]
     },
     "micromatch": {

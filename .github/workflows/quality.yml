@@ -29,7 +29,7 @@ jobs:
           npm_config_registry: http://127.0.0.1:9
       - name: Check installed npm and compile the clean dependency tree
         run: |
-          test "$(npm --version)" = '11.5.2'
+          test "$(npm --version)" = '11.21.0'
           npm run build
           npm run check:bundle
         env:

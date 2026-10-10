@@ -48,10 +48,10 @@ backup/compatibility checks. Capture revisions and commit SHA together in releas
 evidence. Product version starts at 0.1.0; Sentry/PostHog release remains the deployment
 commit SHA, maintaining existing observability correlation.
 
-CI/local verification uses exact Node 22.18.0 and npm 11.5.2. Vercel supports pinning
+CI/local verification uses exact Node 22.23.3 and npm 11.21.0. Vercel supports pinning
 the [Node major](https://vercel.com/docs/functions/runtimes/node-js/node-js-versions)
 and applies minor/patch updates itself, so `engines.node` is `22.x`, consistent with
-the existing hosted project. Vercel installs npm 11.5.2 globally before `npm ci`,
+the existing hosted project. Vercel installs the exact packageManager version (npm 11.21.0) globally before `npm ci`,
 matching the successful GitHub runner procedure; build then uses that installed npm.
 `.nvmrc` remains the reproducible verification runtime. This provider limit
 is documented rather than claiming production has an exact minor pin.
@@ -278,3 +278,5 @@ Os testes em memória executam a função PL/pgSQL capturada e controles legíti
 PGlite é somente dependência de desenvolvimento. O teste remoto mantém a prova no
 schema completo do Supabase. Nenhum Docker/Hyper-V ou preview local foi iniciado,
 nenhum registro real foi utilizado e nenhum serviço adicional foi contratado.
+
+Security stage 5 updates the local/CI baseline to Node 22.23.3 and npm 11.21.0. The provider installation regression retains the observed Node 22.23.2 and verifies npm 11.21.0, the explicit public registry override, and a clean build. Historical incident versions above are preserved.

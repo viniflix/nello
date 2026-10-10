@@ -66,24 +66,6 @@ export default function CompositionCharts({ data = [] }) {
       .sort((a, b) => a.dateValue - b.dateValue); // Ordenar por data
   }, [data]);
 
-  if (chartData.length === 0) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Composição Corporal</CardTitle>
-          <CardDescription>
-            Evolução de peso, massa magra e massa gorda
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-center h-[300px] text-muted-foreground">
-            <p>Nenhum dado disponível para exibir</p>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
   // Verificar se temos dados de composição
   const hasCompositionData = chartData.some(d => d.leanMass !== null || d.fatMass !== null);
 
@@ -115,6 +97,24 @@ export default function CompositionCharts({ data = [] }) {
       })
       .sort((a, b) => a.dateValue - b.dateValue);
   }, [data]);
+
+  if (chartData.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Composição Corporal</CardTitle>
+          <CardDescription>
+            Evolução de peso, massa magra e massa gorda
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-center h-[300px] text-muted-foreground">
+            <p>Nenhum dado disponível para exibir</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   const hasSomatotypeData = somatotypeData.length > 0;
 

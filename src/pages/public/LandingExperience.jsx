@@ -56,8 +56,8 @@ export function useLandingMotion() {
     const update = () => {
       frame = 0;
       if (document.hidden) return;
-      const height = document.documentElement.scrollHeight - innerHeight;
-      if (!stopped) element.style.setProperty('--reading-progress', height > 0 ? String(Math.min(1, Math.max(0, scrollY / height))) : '0');
+      const height = document.documentElement.scrollHeight - window.innerHeight;
+      if (!stopped) element.style.setProperty('--reading-progress', height > 0 ? String(Math.min(1, Math.max(0, window.scrollY / height))) : '0');
       if (!journey || nodes.length < 2) return;
       const bounds = journey.getBoundingClientRect();
       const first = nodes[0].getBoundingClientRect();
@@ -69,7 +69,7 @@ export function useLandingMotion() {
         return;
       }
       const span = mobile ? trackHeight : bounds.height;
-      const progress = Math.min(1, Math.max(0, (innerHeight * .64 - first.top - first.height / 2) / Math.max(1, span)));
+      const progress = Math.min(1, Math.max(0, (window.innerHeight * .64 - first.top - first.height / 2) / Math.max(1, span)));
       journey.style.setProperty('--care-progress', String(progress));
       nodes.forEach((node, index) => node.toggleAttribute('data-care-active', index === Math.round(progress * (nodes.length - 1))));
     };
@@ -148,7 +148,7 @@ function CarePreview({ reduced }) {
       if (request === selectionRequest.current) { setSelected(key); setPending(null); }
     });
     const bounds = stage.current?.getBoundingClientRect();
-    const stopped = motionStopped.current || window.matchMedia('(prefers-reduced-motion: reduce)').matches || document.hidden || !bounds || bounds.bottom <= 0 || bounds.top >= innerHeight;
+    const stopped = motionStopped.current || window.matchMedia('(prefers-reduced-motion: reduce)').matches || document.hidden || !bounds || bounds.bottom <= 0 || bounds.top >= window.innerHeight;
     // Portrait and desktop captures have different geometry; never morph one into the other.
     if (stopped || !document.startViewTransition || key === 'patient' || selected === 'patient') {
       update();
