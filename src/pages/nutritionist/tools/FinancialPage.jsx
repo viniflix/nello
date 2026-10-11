@@ -1,15 +1,14 @@
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Target, Settings, FileSpreadsheet, Download, ChevronDown } from 'lucide-react';
+import { Plus, Settings, FileSpreadsheet, Download, ChevronDown } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { MonthInputWithCalendar } from '@/components/ui/date-input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Progress } from '@/components/ui/progress';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -30,6 +29,7 @@ import TransactionDialog from '@/components/financial/TransactionDialog';
 import ServicesManager from '@/components/financial/ServicesManager';
 import PendingPaymentsWidget from '@/components/financial/PendingPaymentsWidget';
 import TopPatientsWidget from '@/components/financial/TopPatientsWidget';
+import FinancialGoal from '@/components/financial/FinancialGoal';
 
 // Queries
 import {
@@ -52,9 +52,12 @@ import { summarizeFinancialTransactions, buildFinancialCashFlow, buildFinancialE
 export default function FinancialPage() {
     const { user } = useAuth();
     const { toast } = useToast();
+    const navigate = useNavigate();
+    const location = useLocation();
+    const returnView = user?.id && location.state?.financialReturn?.userId === user.id ? location.state.financialReturn : null;
 
     // State
-    const [selectedMonth, setSelectedMonth] = useState(new Date());
+    const [selectedMonth, setSelectedMonth] = useState(() => /^\d{4}-(0[1-9]|1[0-2])$/.test(returnView?.month || '') ? new Date(returnView.month + '-02T12:00:00') : new Date());
     const [monthRows, setMonthRows] = useState([]);
     const [patients, setPatients] = useState([]);
     const [services, setServices] = useState([]);
@@ -69,8 +72,11 @@ export default function FinancialPage() {
     const [deleteConfirm, setDeleteConfirm] = useState(null);
     const [paymentConfirm, setPaymentConfirm] = useState(null);
     const [refundConfirm, setRefundConfirm] = useState(null);
-    const [filters, setFilters] = useState({ type: null, status: null, search: null });
-    const [monthlyGoal, setMonthlyGoal] = useState(10000); // R$ 10.000,00 (editable)
+    const [filters, setFilters] = useState(() => ({ type: ['income', 'expense'].includes(returnView?.filters?.type) ? returnView.filters.type : null, status: ['paid', 'pending', 'overdue', 'refunded'].includes(returnView?.filters?.status) ? returnView.filters.status : null, search: typeof returnView?.filters?.search === 'string' ? returnView.filters.search : null }));
+    const [monthlyGoal, setMonthlyGoal] = useState(null);
+    const [goalState, setGoalState] = useState('loading');
+    const [goalRevision, setGoalRevision] = useState(0);
+    const openFinancialSettings = () => navigate('/nutritionist/profile?tab=financial', { state: { financialReturn: { userId: user?.id, month: format(selectedMonth, 'yyyy-MM'), filters } } });
     const monthStartKey = format(startOfMonth(selectedMonth), 'yyyy-MM-dd');
     const monthEndKey = format(new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 1, 0), 'yyyy-MM-dd');
     const summary = useMemo(() => summarizeFinancialTransactions(monthRows, monthStartKey, monthEndKey, format(new Date(), 'yyyy-MM-dd')), [monthRows, monthStartKey, monthEndKey]);
@@ -86,14 +92,25 @@ export default function FinancialPage() {
 
     // Load monthly goal from clinic settings
     useEffect(() => {
+        let cancelled = false;
+        setGoalState('loading');
+        setMonthlyGoal(null);
         if (user?.id) {
             getClinicSettings(user.id).then(settings => {
-                if (settings.monthlyFinancialGoal) {
-                    setMonthlyGoal(settings.monthlyFinancialGoal);
-                }
-            }).catch(error => logDiagnostic('error', 'financial.load_clinic_settings', error));
+                if (cancelled) return;
+                const raw = settings.monthlyFinancialGoal;
+                const value = raw == null || raw === '' ? null : Number(raw);
+                if (value !== null && (!Number.isFinite(value) || value < 0)) throw new Error('Invalid financial goal');
+                setMonthlyGoal(value);
+                setGoalState('ready');
+            }).catch(error => {
+                if (cancelled) return;
+                setGoalState('error');
+                logDiagnostic('error', 'financial.load_clinic_settings', error);
+            });
         }
-    }, [user?.id]);
+        return () => { cancelled = true; };
+    }, [user?.id, goalRevision]);
 
     // Only transactions depend on the selected month.
     const loadData = useCallback(async () => {
@@ -353,11 +370,6 @@ export default function FinancialPage() {
         }
     };
 
-    const goalProgress = useMemo(() => {
-        if (monthlyGoal <= 0) return 0;
-        return Math.min((summary.income / monthlyGoal) * 100, 100);
-    }, [summary.income, monthlyGoal]);
-
     return (
         <div className="min-h-dvh bg-background min-w-0">
             <main className="max-w-7xl mx-auto w-full px-4 md:px-8 pt-4 md:pt-8 pb-8 min-w-0 min-w-0">
@@ -368,7 +380,7 @@ export default function FinancialPage() {
                     className="min-w-0"
                 >
                     {/* Header */}
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 md:mb-8 text-center sm:text-left">
+                    <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4 mb-5 text-left">
                         <div className="min-w-0">
                             <h1 className="text-2xl md:text-3xl font-bold font-heading uppercase tracking-wide text-primary break-words">Financeiro</h1>
                             <p className="text-neutral-600 mt-1 text-sm md:text-base">
@@ -376,6 +388,7 @@ export default function FinancialPage() {
                             </p>
                         </div>
                         <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:justify-end">
+                            <Button variant="outline" onClick={openFinancialSettings} className="min-w-0"><Settings className="mr-2 h-4 w-4 shrink-0" aria-hidden="true" /><span className="hidden sm:inline">Configurações financeiras</span><span className="sm:hidden">Configurações</span></Button>
                             <Button onClick={() => setIsServicesManagerOpen(true)} variant="outline" className="min-w-0 border-primary text-primary hover:bg-primary hover:text-white">
                                 <Settings className="w-4 h-4 mr-2" />
                                 <span className="hidden sm:inline">Gerenciar Serviços</span>
@@ -429,68 +442,11 @@ export default function FinancialPage() {
 
                     {loadError && <div role="alert" className="mb-6 rounded-lg border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">Não foi possível carregar os lançamentos deste mês. <Button variant="outline" size="sm" className="ml-2" onClick={loadData}>Tentar novamente</Button></div>}
 
-                    {/* Financial Goal Bar - Above KPIs */}
-                    <div className="mb-4">
-                        <Card className="overflow-hidden shadow-card-dark">
-                            <CardContent className="p-4">
-                                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                                    <div className="flex-1 min-w-0 w-full">
-                                        <div className="flex items-center gap-2 mb-2">
-                                            <Target className="w-4 h-4 text-primary shrink-0" />
-                                            <span className="text-sm font-semibold break-words">Meta Financeira Mensal</span>
-                                        </div>
-                                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-                                            <div className="min-w-0">
-                                                <span className="text-muted-foreground">Recebido no mês: </span>
-                                                <span className="font-semibold text-primary break-all">
-                                                    R$ {summary.income.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                                                </span>
-                                            </div>
-                                            <div className="min-w-0">
-                                                <span className="text-muted-foreground">Meta: </span>
-                                                <span className="font-semibold break-all">
-                                                    R$ {monthlyGoal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                                                </span>
-                                            </div>
-                                            <div className="min-w-0">
-                                                <span className={`font-semibold break-all ${
-                                                    monthlyGoal - summary.income > 0
-                                                        ? 'text-secondary-800'
-                                                        : 'text-primary'
-                                                }`}>
-                                                    {monthlyGoal - summary.income > 0
-                                                        ? `Faltam R$ ${Math.max(0, monthlyGoal - summary.income).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
-                                                        : `Superou em R$ ${Math.abs(monthlyGoal - summary.income).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
-                                                    }
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="flex-1 w-full sm:w-auto sm:min-w-[200px]">
-                                        <div className="flex justify-between text-xs mb-1">
-                                            <span className="text-muted-foreground">Progresso</span>
-                                            <span className="font-semibold">{goalProgress.toFixed(1)}%</span>
-                                        </div>
-                                        <Progress aria-label="Progresso da meta financeira mensal" value={goalProgress} className="h-2" />
-                                    </div>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    </div>
+                    <FinancialGoal goal={monthlyGoal} state={goalState} income={summary.income} loading={loading} incomeUnavailable={loadError} onSettings={openFinancialSettings} onRetry={() => setGoalRevision(v => v + 1)} />
 
                     {/* KPIs */}
                     <div className="mb-6">
                         <FinancialKPIs summary={summary} loading={loading} />
-                    </div>
-
-                    {/* Charts - 50/50 Split */}
-                    <div className="grid min-w-0 grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                        <FinancialCharts
-                            cashFlowData={cashFlowData}
-                            expenseDistribution={expenseDistribution}
-                            projectedCashFlow={projectedCashFlow}
-                            loading={loading}
-                        />
                     </div>
 
                     {/* Transaction List & Top Patients - 70/30 Split */}
@@ -512,6 +468,17 @@ export default function FinancialPage() {
                             <TopPatientsWidget nutritionistId={user?.id} refreshKey={rankingRevision} />
                         </div>
                     </div>
+                    <h2 className="mb-3 text-lg font-semibold text-primary">Análise financeira</h2>
+                    {/* Charts - 50/50 Split */}
+                    <div className="grid min-w-0 grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                        <FinancialCharts
+                            cashFlowData={cashFlowData}
+                            expenseDistribution={expenseDistribution}
+                            projectedCashFlow={projectedCashFlow}
+                            loading={loading}
+                        />
+                    </div>
+
                 </motion.div>
             </main>
 

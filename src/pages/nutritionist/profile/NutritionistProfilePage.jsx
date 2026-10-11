@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation, useSearchParams } from 'react-router-dom';
+import { useLocation, useSearchParams, useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
 import { Settings, User, Calendar, DollarSign, Key, FileSignature, BookOpenCheck } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,6 +21,8 @@ const NutritionistProfilePage = () => {
     const { user, updateUserProfile } = useAuth();
     const [searchParams, setSearchParams] = useSearchParams();
     const location = useLocation();
+    const navigate = useNavigate();
+    const financialReturn = user?.id && location.state?.financialReturn?.userId === user.id ? location.state.financialReturn : null;
     const requestedTab = searchParams.get('tab');
     const activeTab = ['personal', 'agenda', 'financial', 'documents', 'protocols', 'account'].includes(requestedTab) ? requestedTab : 'personal';
     const [loading, setLoading] = useState(true);
@@ -74,6 +77,7 @@ const NutritionistProfilePage = () => {
                     className="space-y-6 min-w-0"
                 >
                     {/* Header */}
+                    {financialReturn && <Button variant="outline" onClick={() => navigate('/nutritionist/financial', { state: { financialReturn } })}>Voltar ao financeiro</Button>}
                     <Card className="overflow-hidden">
                         <CardHeader>
                             <div className="flex flex-col sm:flex-row sm:items-center min-w-0 justify-between">
@@ -98,7 +102,7 @@ const NutritionistProfilePage = () => {
                     {/* Tabs */}
                     <Card>
                         <CardContent className="p-0">
-                            <Tabs value={activeTab} onValueChange={(tab) => setSearchParams(previous => { const next = new URLSearchParams(previous); next.set('tab', tab); return next; }, { replace: true })} className="w-full">
+                            <Tabs value={activeTab} onValueChange={(tab) => setSearchParams(previous => { const next = new URLSearchParams(previous); next.set('tab', tab); return next; }, { replace: true, state: location.state })} className="w-full">
                                 <TabsList className="grid w-full grid-cols-2 md:grid-cols-6 h-auto p-1">
                                     <TabsTrigger value="personal" className="flex items-center gap-2 py-3">
                                         <User className="w-4 h-4" />

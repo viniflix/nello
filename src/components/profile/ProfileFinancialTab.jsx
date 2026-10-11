@@ -72,7 +72,7 @@ export default function ProfileFinancialTab({ userId, onUpdate }) {
             setFinancialSettings({
                 defaultPixKey: settings.defaultPixKey || '',
                 defaultFeePercentage: settings.defaultFeePercentage || '',
-                monthlyFinancialGoal: settings.monthlyFinancialGoal || 10000
+                monthlyFinancialGoal: settings.monthlyFinancialGoal ?? 10000
             });
 
             setServices(servicesData);
@@ -93,10 +93,10 @@ export default function ProfileFinancialTab({ userId, onUpdate }) {
         if (!userId) return;
         setSaving(true);
         try {
-            await updateClinicSettings(userId, {
+            const updatedProfile = await updateClinicSettings(userId, {
                 defaultPixKey: financialSettings.defaultPixKey,
                 defaultFeePercentage: financialSettings.defaultFeePercentage ? parseFloat(financialSettings.defaultFeePercentage) : null,
-                monthlyFinancialGoal: financialSettings.monthlyFinancialGoal ? parseFloat(financialSettings.monthlyFinancialGoal) : 10000
+                monthlyFinancialGoal: financialSettings.monthlyFinancialGoal === '' ? 10000 : parseFloat(financialSettings.monthlyFinancialGoal)
             });
 
             toast({
@@ -104,7 +104,7 @@ export default function ProfileFinancialTab({ userId, onUpdate }) {
                 description: "As configurações financeiras foram atualizadas."
             });
 
-            if (onUpdate) onUpdate();
+            if (onUpdate) onUpdate(updatedProfile);
         } catch (error) {
             toast({
                 title: "Erro",

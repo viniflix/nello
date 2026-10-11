@@ -112,7 +112,7 @@ export default function TopPatientsWidget({ nutritionistId, refreshKey = 0 }) {
                         Top Pacientes
                     </CardTitle>
                     <CardDescription>
-                        Maiores contribuidores (LTV)
+                        Histórico acumulado · todos os períodos (LTV)
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -133,7 +133,7 @@ export default function TopPatientsWidget({ nutritionistId, refreshKey = 0 }) {
                     Top 3 Pacientes
                 </CardTitle>
                 <CardDescription>
-                    Maiores contribuidores (LTV)
+                    Histórico acumulado · todos os períodos (LTV)
                 </CardDescription>
             </CardHeader>
             <CardContent>

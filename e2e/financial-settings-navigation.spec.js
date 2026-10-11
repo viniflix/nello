@@ -1,0 +1,34 @@
+import { test, expect } from '@playwright/test';
+import { readFileSync } from 'node:fs';
+const fixture = JSON.parse(readFileSync(process.env.NELLO_FINANCIAL_QA_FIXTURE || '.backend-ci/browser-runtime/fixture.json'));
+if (!['http://localhost:54321', 'http://localhost:4180'].includes(fixture.url)) throw Error('Disposable loopback fixture required');
+
+test('financial settings retain month and filters across tabs and preserve a zero goal', async ({ page }) => {
+    await page.goto('/login');
+    await page.locator('#email').fill(fixture.personas['nutritionist-a'].email);
+    await page.locator('#password').fill(fixture.password);
+    await page.getByRole('button', { name: 'Entrar', exact: true }).click();
+    await expect(page).toHaveURL(/\/nutritionist/);
+    await page.goto('/nutritionist/financial');
+    const month = page.getByRole('textbox', { name: 'Mês do financeiro' });
+    await month.fill('09/2026');
+    await month.press('Tab');
+    await page.getByRole('textbox', { name: /Buscar.*transações|Buscar por descrição/ }).fill('Synthetic return');
+    await page.getByRole('button', { name: /Configurações financeiras|^Configurações$/ }).click();
+    await expect(page).toHaveURL(/profile\?tab=financial/);
+    const goal = page.getByLabel('Meta Financeira Mensal (R$)', { exact: true });
+    await goal.fill('0');
+    const saved = page.waitForResponse(r => r.request().method() === 'PATCH' && r.url().includes('/user_profiles'));
+    await page.getByRole('button', { name: /Salvar Configurações/ }).click();
+    expect((await saved).status()).toBeLessThan(300);
+    await expect(page.getByRole('button', { name: 'Salvar Configurações' })).toBeEnabled();
+    await page.getByRole('tab', { name: /Agenda/ }).click();
+    await page.getByRole('tab', { name: /Financeiro/ }).click();
+    await expect(goal).toHaveValue('0');
+    await page.getByRole('button', { name: 'Voltar ao financeiro', exact: true }).click();
+    await expect(month).toHaveValue('09/2026');
+    await expect(page.getByRole('textbox', { name: /Buscar.*transações|Buscar por descrição/ })).toHaveValue('Synthetic return');
+    await expect(page.getByText(/Sem meta definida/)).toBeVisible();
+    await page.getByRole('button', { name: 'Editar meta' }).click();
+    await expect(goal).toHaveValue('0');
+});
