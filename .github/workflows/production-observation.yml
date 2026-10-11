@@ -14,21 +14,22 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: main
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
+          package-manager-cache: false
           node-version-file: .nvmrc
       - name: Locate previous budget delivery state
         id: previous-budget
-        uses: actions/github-script@v7
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
             const { data } = await github.rest.actions.listArtifactsForRepo({ ...context.repo, name: 'production-budget-state', per_page: 20 });
             const prior = data.artifacts.find(a => !a.expired && a.workflow_run?.head_branch === 'main' && a.workflow_run.id !== context.runId);
             if (prior) core.setOutput('run-id', String(prior.workflow_run.id));
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         if: steps.previous-budget.outputs.run-id != ''
         with:
           name: production-budget-state
@@ -46,7 +47,7 @@ jobs:
           POSTHOG_MONITOR_READ_TOKEN: ${{ secrets.POSTHOG_MONITOR_READ_TOKEN }}
           POSTHOG_MONITOR_CAPTURE_KEY: ${{ secrets.POSTHOG_MONITOR_CAPTURE_KEY }}
           SENTRY_DSN: ${{ secrets.PRODUCTION_MONITOR_SENTRY_DSN }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: production-budget-state
           path: |
@@ -58,7 +59,7 @@ jobs:
         run: node scripts/availability/production-check.mjs
         env:
           SENTRY_DSN: ${{ secrets.PRODUCTION_MONITOR_SENTRY_DSN }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: production-observation-${{ github.run_id }}
           path: production-check.json
