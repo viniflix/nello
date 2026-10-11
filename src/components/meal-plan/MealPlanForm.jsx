@@ -477,7 +477,7 @@ const MealPlanForm = ({
     const handleApplyPlan = event => savePlan('apply', event);
     const handleSaveAsInactivePlan = event => savePlan('draft', event);
 
-    // Button: "Cancelar" — discards draft and closes form
+    // Leaving the editor must persist its recoverable working session first.
     const handleCancel = async () => {
         if (saveLock.current) return false;
         if (session && ['local', 'saving', 'error', 'conflict'].includes(session.status) && !(await session.flush())) return false;

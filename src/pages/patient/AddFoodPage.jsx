@@ -241,7 +241,7 @@ const AddFoodPage = () => {
         <div className="min-h-dvh bg-background">
             <header className="sticky top-0 z-10 border-b border-border bg-background/95 backdrop-blur-md">
                 <div className="mx-auto flex h-16 max-w-4xl items-center px-4 md:px-8">
-                    <Button variant="ghost" size="icon" aria-label="Voltar" onClick={() => navigate(-1)} className="mr-2"><ArrowLeft className="w-5 h-5" /></Button>
+                    <Button variant="ghost" size="icon" aria-label="Voltar ao diário" onClick={() => navigate('/patient/diario')} className="mr-2"><ArrowLeft className="w-5 h-5" /></Button>
                     <h1 className="patient-page-title text-xl sm:text-2xl">{mealId ? 'Editar Refeição' : 'Adicionar Refeição'}</h1>
                 </div>
             </header>

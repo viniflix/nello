@@ -230,7 +230,7 @@ const CheckinResponsePage = () => {
           <div className="absolute inset-0 bg-black/10 mix-blend-multiply" />
           <div className="relative z-10">
             <div className="flex items-center justify-between mb-6">
-              <Button variant="ghost" size="icon" aria-label="Voltar" className="text-white hover:bg-white/20" onClick={() => navigate(-1)}>
+              <Button variant="ghost" size="icon" aria-label="Voltar ao início" className="text-white hover:bg-white/20" onClick={() => navigate('/patient')}>
                 <ArrowLeft className="w-5 h-5" />
               </Button>
               {branding?.logo_url ? (

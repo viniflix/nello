@@ -69,7 +69,8 @@ for (const width of [320, 768, 1440]) test(`clinical chat, financial cards and 2
   for (const route of ['/nutritionist/financial', `/nutritionist/chat/${fixture.personas['patient-a'].id}`, `/nutritionist/patients/${fixture.personas['patient-a'].id}/meal-plan`, `/nutritionist/patients/${fixture.personas['patient-a'].id}/anamnese`]) {
     await page.goto(route);
     await (route.includes('/chat/') ? page.getByRole('textbox', { name: 'Mensagem', exact: true }) : page.locator('main h1').first()).waitFor();
-    await page.waitForLoadState('networkidle');
+    // Chat presence can keep the network active. Wait for the actual UI instead.
+    await expect(page.locator('main').getByText('Carregando...', { exact: true })).toHaveCount(0);
     await uniqueMetadata(page, route);
     await page.evaluate(() => { document.documentElement.style.fontSize = '200%'; }); await audit(page);
   }

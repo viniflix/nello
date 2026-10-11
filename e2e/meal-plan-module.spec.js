@@ -56,7 +56,7 @@ for (const screen of [{width:320,height:720},{width:768,height:480},{width:1440,
         await page.getByRole('button',{name:'Análise Completa'}).click();await expect(page.getByRole('heading',{name:'Resumo nutricional'})).toBeVisible();
         if(screen.zoom)await page.evaluate(()=>{document.documentElement.style.fontSize='200%';});
         await expect(page.getByRole('list',{name:'Distribuição de energia por refeição'})).not.toContainText('QA Refeição alternativa');await audit(page);
-        await page.getByRole('button',{name:'Voltar aos planos'}).click();await expect(page).toHaveURL(new RegExp(route+'$'));
+        await page.getByRole('navigation',{name:'Navegação estrutural'}).getByRole('button',{name:'Plano alimentar',exact:true}).click();await expect(page).toHaveURL(new RegExp(route+'$'));
         await expect(page.getByRole('button',{name:'Novo Plano',exact:true})).toBeVisible();
         expect(errors).toEqual([]);
     });

@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { getPortalBreadcrumbs, portalBreadcrumbRoutes } from './portalBreadcrumbs';
+import { getPortalBreadcrumbs, getPortalBreadcrumbPolicy, portalBreadcrumbRoutes } from './portalBreadcrumbs';
 
 const concretize = pattern => pattern.replace(/:([\w]+)\??/g, (_, name) => name === 'type' ? 'diet' : `synthetic-${name}`);
 describe('portal breadcrumb route coverage', () => {
@@ -27,5 +27,21 @@ describe('portal breadcrumb route coverage', () => {
     expect(new Set(portalBreadcrumbRoutes.map(route => route.path)).size).toBe(portalBreadcrumbRoutes.length);
     getPortalBreadcrumbs('/patient').push({ label: 'Other' });
     expect(getPortalBreadcrumbs('/patient')).toHaveLength(1);
+  });
+  it('separates complete route coverage from visibility and the owning header', () => {
+    expect(getPortalBreadcrumbPolicy('/nutritionist/financial/')).toEqual({ visible: false, owner: 'shell' });
+    expect(getPortalBreadcrumbPolicy('/nutritionist/patients/private/meal-plan')).toEqual({ visible: true, owner: 'header' });
+    expect(getPortalBreadcrumbPolicy('/patient/add-food/private')).toEqual({ visible: false, owner: 'form' });
+    expect(getPortalBreadcrumbPolicy('/unknown')).toEqual({ visible: false, owner: 'none' });
+  });
+  it.each([
+    ['forms/new', '?group=forms&ftab=forms'], ['checkins/private/edit', '?group=forms&ftab=checkins'],
+    ['new/meal', '?group=nutrition&ntab=meal'], ['edit/message/private', '?group=messages'],
+  ])('returns %s to the corresponding protocols group', (path, query) => {
+    expect(getPortalBreadcrumbs(`/nutritionist/templates/${path}`).at(-2).to).toBe(`/nutritionist/templates${query}`);
+  });
+  it('uses safe settings labels and does not interpolate unknown query values', () => {
+    expect(getPortalBreadcrumbs('/nutritionist/profile', '?tab=financial').map(c => c.label)).toEqual(['Início', 'Ajustes do consultório', 'Financeiro']);
+    expect(getPortalBreadcrumbs('/nutritionist/profile', '?tab=private')).toHaveLength(2);
   });
 });

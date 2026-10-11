@@ -15,6 +15,20 @@ vi.mock('./MacrosChart', () => ({ default: () => null }));
 vi.mock('./FoodSelector', () => ({ default: props => props.isOpen ? <button onClick={() => props.onSelect({ id: 88, name: 'Alimento sintético', calories: 100 })}>Escolher alimento sintético</button> : null }));
 vi.mock('@/components/nutrition', () => ({ PremiumPortionSelector: props => <input aria-label="Quantidade" value={props.value.quantity} onChange={event => props.onChange({ ...props.value, quantity: Number(event.target.value) })} /> }));
 
+it.each(['local', 'saving', 'error', 'conflict'])('prevents an ancestor exit while the %s working session cannot be persisted', async status => {
+    const onCancel = vi.fn();
+    const session = { ready: true, status, queue: vi.fn(), flush: vi.fn().mockResolvedValue(false) };
+    renderBase(<MemoryRouter initialEntries={['/nutritionist/patients/synthetic/meal-plan']}><MealPlanForm patientId="synthetic" nutritionistId="owner" initialData={{ id: 55, name: 'Plano', meals: [] }} session={session} onCancel={onCancel} /></MemoryRouter>);
+    fireEvent.click(screen.getByRole('button', { name: 'Editar configurações' }));
+    fireEvent.change(screen.getByLabelText(/Nome do Plano/), { target: { value: 'Edição sintética pendente' } });
+    await waitFor(() => expect(session.queue).toHaveBeenCalled());
+    fireEvent.click(screen.getByRole('button', { name: 'Início' }));
+    await waitFor(() => expect(session.flush).toHaveBeenCalledOnce());
+    expect(onCancel).not.toHaveBeenCalled();
+    expect(await screen.findByRole('alert')).toHaveTextContent('Não foi possível salvar');
+    expect(screen.getByLabelText(/Nome do Plano/)).toHaveValue('Edição sintética pendente');
+});
+
 it('makes validation visible even when the invalid settings section is collapsed', async () => {
     const submit=vi.fn();
     render(<MealPlanForm patientId="patient" nutritionistId="owner" initialData={{id:55,name:'Plano',start_date:'2026-10-04',active_days:[],meals:[{id:10,name:'Café',foods:[]}]}} onSubmit={submit} />);

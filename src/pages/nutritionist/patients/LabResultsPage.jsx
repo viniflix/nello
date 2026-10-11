@@ -50,7 +50,7 @@ if (resolveLoading || !patientId) {
             <div className="flex flex-col min-h-dvh bg-background items-center justify-center p-8">
                 <AlertCircle className="w-10 h-10 text-destructive" />
                 <p className="mt-4 text-sm text-foreground">Paciente não encontrado.</p>
-                <Button variant="outline" className="mt-4 gap-2" onClick={() => navigate(-1)}>
+                <Button variant="outline" className="mt-4 gap-2" onClick={() => navigate('/nutritionist/patients')}>
                     <ArrowLeft className="w-4 h-4 shrink-0" />
                     Voltar
                 </Button>

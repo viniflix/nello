@@ -438,7 +438,7 @@ function EnergyExpenditureForm({ resolvedPatient }) {
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>{resolveError?.message || 'Paciente não encontrado.'}</AlertDescription>
         </Alert>
-        <Button variant="outline" className="mt-4 gap-2" onClick={() => navigate(-1)}>
+        <Button variant="outline" className="mt-4 gap-2" onClick={() => navigate('/nutritionist/patients')}>
           <ArrowLeft className="w-4 h-4 shrink-0" />
           Voltar
         </Button>
