@@ -50,7 +50,12 @@ test('patient without prescription keeps the diary without a fabricated clinical
       for (const name of ['Lembrete de diário', 'Lembrete de medidas', 'Canal in-app']) {
         await expect(dialog.getByRole('switch', { name, exact: true })).toBeVisible();
       }
-      await page.waitForFunction(() => [...document.querySelectorAll('[role="dialog"]')].every(node => Number(getComputedStyle(node).opacity) === 1));
+      // Reload also restarts the diary's entrance animation behind the dialog.
+      // Contrast must be measured after both surfaces reach their final opacity.
+      await page.waitForFunction(() => [...document.querySelectorAll('.patient-page-content p, [role="dialog"]')].every(node => {
+        for (let parent = node; parent; parent = parent.parentElement) if (Number(getComputedStyle(parent).opacity) < 1) return false;
+        return true;
+      }));
       expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
       await page.keyboard.press('Escape');
       await expect(dialog).not.toBeVisible();
