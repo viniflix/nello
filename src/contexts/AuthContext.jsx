@@ -15,6 +15,7 @@ import { redeemPatientInvite } from '@/features/auth/authFlows';
 import { Events, track } from '@/infrastructure/analytics/posthog';
 import { clearPrivateDraftStorage } from '@/lib/utils/privateDraftStorage';
 import { clearPasswordReminders } from '@/features/auth/passwordReminder';
+import { Button } from '@/components/ui/button';
 
 const AuthLoadingFallback = () => (
   <div className="flex min-h-dvh items-center justify-center bg-background">
@@ -54,7 +55,7 @@ export function AuthProvider({ children }) {
   }, [queryClient]);
 
   // Busca o perfil via React Query
-  const { data: profile, isLoading: isProfileLoading, isError: isProfileError } = useProfile(user?.id);
+  const { data: profile, isError: isProfileError, isFetching: isProfileFetching, refetch: refetchProfile } = useProfile(user?.id);
 
   useEffect(() => {
     let active = true;
@@ -333,7 +334,20 @@ export function AuthProvider({ children }) {
   return (
     <AuthContext.Provider value={value}>
       {!['/', '/status', '/recursos', '/para-pacientes', '/termos', '/privacidade', '/ajuda', '/seguranca'].includes(pathname.replace(/\/+$/, '') || '/')
-        && (initializing || (loading && !user) || (user && !user.profile)) ? <AuthLoadingFallback /> : children}
+        && (initializing || (loading && !user) || (user && !user.profile))
+        ? !initializing && user && !user.profile && isProfileError
+          ? <div className="flex min-h-dvh items-center justify-center bg-background px-6">
+              <div className="flex max-w-md flex-col items-center gap-4 text-center">
+                <div role="alert">
+                  <h1 className="text-lg font-semibold text-foreground">Não foi possível carregar seu perfil</h1>
+                  <p className="mt-2 text-sm text-muted-foreground">Confira sua conexão e tente novamente. Você também pode sair e entrar de novo.</p>
+                </div>
+                <Button onClick={() => refetchProfile()} disabled={isProfileFetching}>Tentar novamente</Button>
+                <Button variant="outline" onClick={signOut}>Sair da conta</Button>
+              </div>
+            </div>
+          : <AuthLoadingFallback />
+        : children}
     </AuthContext.Provider>
   );
 }
