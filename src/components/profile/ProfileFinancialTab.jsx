@@ -13,6 +13,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { updateClinicSettings, getClinicSettings, getRecurringExpenses, saveRecurringExpense, deleteRecurringExpense } from '@/lib/supabase/profile-queries';
 import { getServices, saveService, deleteService } from '@/lib/supabase/financial-queries';
 import { formatCurrency } from '@/lib/utils';
+import ServiceActions from '@/components/financial/ServiceActions';
 
 const SERVICE_CATEGORIES = [
     { value: 'consulta', label: 'Consulta' },
@@ -22,7 +23,8 @@ const SERVICE_CATEGORIES = [
 
 export default function ProfileFinancialTab({ userId, onUpdate }) {
     const { toast } = useToast();
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState(false);
     const [saving, setSaving] = useState(false);
     
     const [financialSettings, setFinancialSettings] = useState({
@@ -62,6 +64,7 @@ export default function ProfileFinancialTab({ userId, onUpdate }) {
     const loadData = async () => {
         if (!userId) return;
         setLoading(true);
+        setLoadError(false);
         try {
             const [settings, servicesData, expensesData] = await Promise.all([
                 getClinicSettings(userId),
@@ -71,13 +74,14 @@ export default function ProfileFinancialTab({ userId, onUpdate }) {
 
             setFinancialSettings({
                 defaultPixKey: settings.defaultPixKey || '',
-                defaultFeePercentage: settings.defaultFeePercentage || '',
+                defaultFeePercentage: settings.defaultFeePercentage ?? '',
                 monthlyFinancialGoal: settings.monthlyFinancialGoal ?? 10000
             });
 
             setServices(servicesData);
             setRecurringExpenses(expensesData);
         } catch (error) {
+            setLoadError(true);
             logDiagnostic('error', 'components/profile/ProfileFinancialTab.jsx:80', 'Error loading financial data:', error);
             toast({
                 title: "Erro",
@@ -90,12 +94,18 @@ export default function ProfileFinancialTab({ userId, onUpdate }) {
     };
 
     const handleSaveFinancialSettings = async () => {
-        if (!userId) return;
+        if (!userId || loadError || loading) return;
+        const goal = Number(financialSettings.monthlyFinancialGoal);
+        const fee = financialSettings.defaultFeePercentage === '' ? null : Number(financialSettings.defaultFeePercentage);
+        if (!Number.isFinite(goal) || goal < 0 || (fee !== null && (!Number.isFinite(fee) || fee < 0 || fee > 100))) {
+            toast({ title: 'Confira as configurações', description: 'A meta deve ser zero ou positiva e a taxa deve ficar entre 0 e 100%.', variant: 'destructive' });
+            return;
+        }
         setSaving(true);
         try {
             const updatedProfile = await updateClinicSettings(userId, {
                 defaultPixKey: financialSettings.defaultPixKey,
-                defaultFeePercentage: financialSettings.defaultFeePercentage ? parseFloat(financialSettings.defaultFeePercentage) : null,
+                defaultFeePercentage: financialSettings.defaultFeePercentage === '' ? null : parseFloat(financialSettings.defaultFeePercentage),
                 monthlyFinancialGoal: financialSettings.monthlyFinancialGoal === '' ? 10000 : parseFloat(financialSettings.monthlyFinancialGoal)
             });
 
@@ -129,7 +139,7 @@ export default function ProfileFinancialTab({ userId, onUpdate }) {
             name: service.name,
             description: service.description || '',
             price: service.price.toString(),
-            category: service.category || 'consulta'
+            category: service.category || ''
         });
         setIsServiceFormOpen(true);
     };
@@ -148,6 +158,7 @@ export default function ProfileFinancialTab({ userId, onUpdate }) {
         try {
             await saveService({
                 id: editingService?.id,
+                updated_at: editingService?.updated_at,
                 nutritionist_id: userId,
                 name: serviceFormData.name,
                 description: serviceFormData.description,
@@ -261,6 +272,8 @@ export default function ProfileFinancialTab({ userId, onUpdate }) {
         );
     }
 
+    if (loadError) return <div role="alert" className="rounded-lg border border-destructive/40 p-4 text-sm">Não foi possível carregar as configurações financeiras. Nada foi alterado. <Button variant="outline" size="sm" onClick={loadData}>Tentar novamente</Button></div>;
+
     return (
         <div className="space-y-6">
             {/* Financial Settings */}
@@ -328,7 +341,7 @@ export default function ProfileFinancialTab({ userId, onUpdate }) {
             {/* Services */}
             <Card>
                 <CardHeader>
-                    <div className="flex justify-between items-center">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
                         <div>
                             <CardTitle className="flex items-center gap-2">
                                 <DollarSign className="w-5 h-5" />
@@ -350,7 +363,7 @@ export default function ProfileFinancialTab({ userId, onUpdate }) {
                             Nenhum serviço cadastrado. Clique em "Novo Serviço" para começar.
                         </div>
                     ) : (
-                        <Table>
+                        <Table aria-label="Serviços do consultório" mobileLabels={["Nome", "Descrição", "Categoria", "Preço", "Ações"]}>
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>Nome</TableHead>
@@ -368,30 +381,13 @@ export default function ProfileFinancialTab({ userId, onUpdate }) {
                                             {service.description || '-'}
                                         </TableCell>
                                         <TableCell>
-                                            {SERVICE_CATEGORIES.find(c => c.value === service.category)?.label || service.category}
+                                            {SERVICE_CATEGORIES.find(c => c.value === service.category)?.label || service.category || 'Não definida'}
                                         </TableCell>
-                                        <TableCell className="text-right font-semibold">
+                                        <TableCell className="text-right font-semibold tabular-nums">
                                             {formatCurrency(service.price)}
                                         </TableCell>
                                         <TableCell>
-                                            <div className="flex justify-end gap-2">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    onClick={() => handleEditService(service)}
-                                                    className="h-8 w-8"
-                                                >
-                                                    <Edit className="h-4 w-4" />
-                                                </Button>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    onClick={() => setDeleteConfirm({ type: 'service', id: service.id })}
-                                                    className="h-8 w-8 text-destructive hover:text-destructive"
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                            </div>
+                                            <ServiceActions service={service} onEdit={() => handleEditService(service)} onDelete={() => setDeleteConfirm({ type: 'service', id: service.id })} />
                                         </TableCell>
                                     </TableRow>
                                 ))}
@@ -404,7 +400,7 @@ export default function ProfileFinancialTab({ userId, onUpdate }) {
             {/* Recurring Expenses */}
             <Card>
                 <CardHeader>
-                    <div className="flex justify-between items-center">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
                         <div>
                             <CardTitle className="flex items-center gap-2">
                                 <Calendar className="w-5 h-5" />
@@ -426,7 +422,7 @@ export default function ProfileFinancialTab({ userId, onUpdate }) {
                             Nenhuma despesa recorrente cadastrada.
                         </div>
                     ) : (
-                        <Table>
+                        <Table aria-label="Despesas recorrentes" mobileLabels={["Descrição", "Valor", "Dia do Mês", "Ações"]}>
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>Descrição</TableHead>
@@ -439,7 +435,7 @@ export default function ProfileFinancialTab({ userId, onUpdate }) {
                                 {recurringExpenses.map((expense) => (
                                     <TableRow key={expense.id}>
                                         <TableCell className="font-medium">{expense.description}</TableCell>
-                                        <TableCell className="text-right font-semibold">
+                                        <TableCell className="text-right font-semibold tabular-nums">
                                             {formatCurrency(expense.value)}
                                         </TableCell>
                                         <TableCell className="text-right">
@@ -450,16 +446,16 @@ export default function ProfileFinancialTab({ userId, onUpdate }) {
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
-                                                    onClick={() => handleEditExpense(expense)}
-                                                    className="h-8 w-8"
+                                                    aria-label={`Editar despesa ${expense.description}`} onClick={() => handleEditExpense(expense)}
+                                                    className="h-11 w-11"
                                                 >
                                                     <Edit className="h-4 w-4" />
                                                 </Button>
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
-                                                    onClick={() => setDeleteConfirm({ type: 'expense', id: expense.id })}
-                                                    className="h-8 w-8 text-destructive hover:text-destructive"
+                                                    aria-label={`Excluir despesa ${expense.description}`} onClick={() => setDeleteConfirm({ type: 'expense', id: expense.id })}
+                                                    className="h-11 w-11 text-destructive hover:text-destructive"
                                                 >
                                                     <Trash2 className="h-4 w-4" />
                                                 </Button>
@@ -475,7 +471,7 @@ export default function ProfileFinancialTab({ userId, onUpdate }) {
 
             {/* Service Form Dialog */}
             <Dialog open={isServiceFormOpen} onOpenChange={setIsServiceFormOpen}>
-                <DialogContent>
+                <DialogContent className="max-h-[90dvh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle>
                             {editingService ? 'Editar Serviço' : 'Novo Serviço'}
@@ -501,18 +497,18 @@ export default function ProfileFinancialTab({ userId, onUpdate }) {
                                 placeholder="Descrição opcional"
                             />
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
-                                <Label htmlFor="serviceCategory">Categoria *</Label>
+                                <Label htmlFor="serviceCategory">Categoria (opcional)</Label>
                                 <Select
-                                    required
-                                    value={serviceFormData.category}
-                                    onValueChange={(value) => setServiceFormData(prev => ({ ...prev, category: value }))}
+                                    value={serviceFormData.category || 'none'}
+                                    onValueChange={(value) => setServiceFormData(prev => ({ ...prev, category: value === 'none' ? '' : value }))}
                                 >
-                                    <SelectTrigger>
+                                    <SelectTrigger id="serviceCategory">
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
+                                        <SelectItem value="none">Não definida</SelectItem>
                                         {SERVICE_CATEGORIES.map(cat => (
                                             <SelectItem key={cat.value} value={cat.value}>
                                                 {cat.label}
@@ -547,7 +543,7 @@ export default function ProfileFinancialTab({ userId, onUpdate }) {
 
             {/* Expense Form Dialog */}
             <Dialog open={isExpenseFormOpen} onOpenChange={setIsExpenseFormOpen}>
-                <DialogContent>
+                <DialogContent className="max-h-[90dvh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle>
                             {editingExpense ? 'Editar Despesa Recorrente' : 'Nova Despesa Recorrente'}
@@ -564,7 +560,7 @@ export default function ProfileFinancialTab({ userId, onUpdate }) {
                                 placeholder="Ex: Aluguel do Consultório"
                             />
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                                 <Label htmlFor="expenseValue">Valor (R$) *</Label>
                                 <Input
@@ -612,9 +608,9 @@ export default function ProfileFinancialTab({ userId, onUpdate }) {
             <AlertDialog open={!!deleteConfirm.type} onOpenChange={(open) => !open && setDeleteConfirm({ type: null, id: null })}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+                        <AlertDialogTitle>{deleteConfirm.type === 'service' ? 'Desativar serviço' : 'Excluir despesa recorrente'}</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Tem certeza que deseja excluir este {deleteConfirm.type === 'service' ? 'serviço' : 'despesa'}? Esta ação não pode ser desfeita.
+                            {deleteConfirm.type === 'service' ? 'Este serviço deixará de aparecer nas novas transações. O histórico permanece preservado.' : 'Remover esta despesa das configurações não exclui os lançamentos já registrados.'}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -629,7 +625,7 @@ export default function ProfileFinancialTab({ userId, onUpdate }) {
                             }}
                             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                         >
-                            Excluir
+                            {deleteConfirm.type === 'service' ? 'Desativar' : 'Excluir'}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

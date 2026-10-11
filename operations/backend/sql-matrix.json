@@ -323,6 +323,11 @@
       "file": "security_audit_alerts.sql",
       "kind": "assertion-suite",
       "fixtures": []
+    },
+    {
+      "file": "financial_service_details.sql",
+      "kind": "assertion-suite",
+      "fixtures": []
     }
   ]
 }

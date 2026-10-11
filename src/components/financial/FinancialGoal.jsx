@@ -20,7 +20,7 @@ export default function FinancialGoal({ goal, state, income, loading, incomeUnav
                     : !hasGoal ? <p className="text-sm text-muted-foreground">Sem meta definida. Configure uma meta para acompanhar seu progresso.</p>
                         : <div className="mt-2 grid gap-3 md:grid-cols-2 md:items-center">
                             <p className="text-sm tabular-nums break-words">Recebido: <strong>{formatCurrency(income)}</strong> · Meta: <strong>{formatCurrency(goal)}</strong><span className="block text-muted-foreground">{income < goal ? `Faltam ${formatCurrency(goal - income)}` : income === goal ? 'Meta atingida' : `Superou em ${formatCurrency(income - goal)}`}</span></p>
-                            <div><p className="mb-1 text-xs text-muted-foreground">Progresso <span className="float-right tabular-nums">{progress.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%</span></p><Progress aria-label="Progresso da meta financeira mensal" value={progress} className="h-2" /></div>
+                            <div><p className="mb-1 text-xs text-muted-foreground">Progresso <span className="float-right tabular-nums">{progress.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%</span></p><Progress aria-label="Progresso da meta financeira mensal" value={progress} className="h-2 bg-muted" /></div>
                         </div>}
         </section>
     );

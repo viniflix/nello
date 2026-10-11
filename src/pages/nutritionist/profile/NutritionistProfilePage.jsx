@@ -47,7 +47,7 @@ const NutritionistProfilePage = () => {
     }, [user]);
 
     const handleProfileUpdate = (updatedProfile) => {
-        setProfile(updatedProfile);
+        setProfile(previous => ({ ...previous, ...updatedProfile }));
         if (updateUserProfile) {
             updateUserProfile(updatedProfile);
         }

@@ -258,11 +258,10 @@ export async function getPatientsForAutocomplete(nutritionistId) {
  * @returns {Promise<Array>}
  */
 export async function getServices(nutritionistId) {
-    // Try to fetch all services first, then filter in memory
-    // This handles cases where the column name might be different
+    // Owner scope stays on the server; include the revision required for edits.
     const { data, error } = await supabase
         .from('services')
-        .select("id,nutritionist_id,name,price,duration_minutes,active,created_at")
+        .select("id,nutritionist_id,name,price,duration_minutes,active,created_at,updated_at,description,category")
         .eq('nutritionist_id', nutritionistId)
         .order('name', { ascending: true });
 
@@ -282,7 +281,7 @@ export async function getServices(nutritionistId) {
 
 /**
  * Save a service (create or update)
- * Tabela services: id, nutritionist_id, name, price, duration_minutes, active, created_at
+ * Nullable description/category preserve legacy services; updated_at protects edits.
  * @param {Object} serviceData - Service data object
  * @returns {Promise<Object>}
  */
@@ -290,6 +289,8 @@ export async function saveService(serviceData) {
     const { id, nutritionist_id, name, price, duration_minutes, description, category, ...rest } = serviceData;
     // Enviar apenas colunas existentes na tabela services
     const data = { nutritionist_id, name, price };
+    if (description !== undefined) data.description = description || null;
+    if (category !== undefined) data.category = category || null;
     if (duration_minutes != null) data.duration_minutes = duration_minutes;
     if (rest.active != null) data.active = rest.active;
 

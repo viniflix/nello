@@ -1,9 +1,10 @@
 import { VisibleChart } from '@/components/ui/visible-chart';
 import React, { useMemo } from 'react';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { format, parseISO, addDays, startOfDay } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 const COLORS = {
@@ -12,7 +13,7 @@ const COLORS = {
     pie: ['#527b42', '#ed7204', '#7a8c6a', '#a97c54', '#55646a', '#a6b89a', '#bd9f83']
 };
 
-export default function FinancialCharts({ cashFlowData, expenseDistribution, projectedCashFlow, loading }) {
+export default function FinancialCharts({ cashFlowData, expenseDistribution, projectedCashFlow, loading, loadError, projectionState, onRetry, onProjectionRetry, onNew }) {
     const formattedCashFlow = useMemo(() => {
         if (!cashFlowData || cashFlowData.length === 0) return [];
 
@@ -39,7 +40,7 @@ export default function FinancialCharts({ cashFlowData, expenseDistribution, pro
     return (
         <>
             {/* Cash Flow Chart */}
-            <Card className="min-w-0 overflow-hidden bg-card shadow-card-dark">
+            <Card className="min-w-0 overflow-hidden bg-card shadow-sm">
                 <CardHeader className="pb-3">
                     <CardTitle className="font-heading text-base lg:text-lg font-semibold text-primary">Fluxo de Caixa</CardTitle>
                     <CardDescription>Pagamentos e despesas efetivos por data; estornos são deduzidos.</CardDescription>
@@ -49,10 +50,8 @@ export default function FinancialCharts({ cashFlowData, expenseDistribution, pro
                         <div className="h-[300px] flex items-center justify-center">
                             <div className="text-muted-foreground">Carregando...</div>
                         </div>
-                    ) : formattedCashFlow.length === 0 ? (
-                        <div className="h-[300px] flex items-center justify-center">
-                            <div className="text-muted-foreground">Nenhum dado disponível</div>
-                        </div>
+                    ) : loadError ? (<ChartMessage onAction={onRetry} action="Tentar novamente">Fluxo de caixa indisponível.</ChartMessage>) : formattedCashFlow.length === 0 ? (
+                        <ChartMessage onAction={onNew} action="Registrar transação">Nenhum pagamento ou estorno neste mês.</ChartMessage>
                     ) : (
                         <VisibleChart width="100%" height={300}>
                             <BarChart data={formattedCashFlow}>
@@ -95,7 +94,7 @@ export default function FinancialCharts({ cashFlowData, expenseDistribution, pro
             </Card>
 
             {/* Expense Distribution & Projected Cash Flow */}
-            <Card className="min-w-0 overflow-hidden bg-card shadow-card-dark">
+            <Card className="min-w-0 overflow-hidden bg-card shadow-sm">
                 <CardHeader className="pb-3">
                     <CardTitle className="font-heading text-base lg:text-lg font-semibold text-primary">Análise Financeira</CardTitle>
                     <CardDescription>Despesas pagas por categoria e projeção condicional das pendências.</CardDescription>
@@ -111,10 +110,8 @@ export default function FinancialCharts({ cashFlowData, expenseDistribution, pro
                                 <div className="h-[300px] flex items-center justify-center">
                                     <div className="text-muted-foreground">Carregando...</div>
                                 </div>
-                            ) : formattedExpenses.length === 0 ? (
-                                <div className="h-[300px] flex items-center justify-center">
-                                    <div className="text-muted-foreground">Nenhuma despesa registrada</div>
-                                </div>
+                            ) : loadError ? (<ChartMessage onAction={onRetry} action="Tentar novamente">Despesas indisponíveis.</ChartMessage>) : formattedExpenses.length === 0 ? (
+                                <ChartMessage onAction={onNew} action="Registrar transação">Nenhuma despesa paga neste mês.</ChartMessage>
                             ) : (
                                 <VisibleChart width="100%" height={300}>
                                     <PieChart>
@@ -148,14 +145,10 @@ export default function FinancialCharts({ cashFlowData, expenseDistribution, pro
                             )}
                         </TabsContent>
                         <TabsContent value="projection" className="mt-4">
-                            {loading ? (
-                                <div className="h-[300px] flex items-center justify-center">
-                                    <div className="text-muted-foreground">Carregando...</div>
-                                </div>
-                            ) : formattedProjection.length === 0 ? (
-                                <div className="h-[300px] flex items-center justify-center">
-                                    <div className="text-muted-foreground">Nenhuma projeção disponível</div>
-                                </div>
+                            {projectionState === 'loading' ? (
+                                <ChartMessage>Carregando projeção...</ChartMessage>
+                            ) : projectionState === 'error' ? (<ChartMessage onAction={onProjectionRetry} action="Tentar novamente">Projeção indisponível.</ChartMessage>) : formattedProjection.length === 0 ? (
+                                <ChartMessage onAction={onNew} action="Registrar transação">Nenhuma pendência prevista nos próximos 30 dias.</ChartMessage>
                             ) : (
                                 <VisibleChart width="100%" height={300}>
                                     <LineChart data={formattedProjection}>
@@ -198,3 +191,5 @@ export default function FinancialCharts({ cashFlowData, expenseDistribution, pro
     );
 }
 
+
+function ChartMessage({ children, onAction, action }) { return <div className="flex min-h-28 flex-col items-center justify-center gap-3 py-6 text-center text-sm text-muted-foreground"><p>{children}</p>{onAction && <Button variant="outline" size="sm" onClick={onAction}>{action}</Button>}</div>; }

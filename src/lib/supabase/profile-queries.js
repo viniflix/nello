@@ -24,31 +24,13 @@ export async function updateClinicSettings(userId, settingsObject) {
     const currentSettings = currentProfile.clinic_settings || currentProfile.preferences?.clinic_settings || {};
     const updatedSettings = { ...currentSettings, ...settingsObject };
 
-    // Try to update clinic_settings first, if column exists, otherwise use preferences
-    const updateData = {};
-    
-    // Check if clinic_settings column exists by trying to update it
-    const { error: clinicSettingsError } = await supabase
-        .from('user_profiles')
-        .update({ clinic_settings: updatedSettings })
-        .eq('id', userId);
-
-    if (clinicSettingsError) {
-        // If clinic_settings column doesn't exist, use preferences
-        const currentPreferences = currentProfile.preferences || {};
-        updateData.preferences = {
-            ...currentPreferences,
-            clinic_settings: updatedSettings
-        };
-    } else {
-        updateData.clinic_settings = updatedSettings;
-    }
-
+    // The reconstructed schema provides clinic_settings. One scoped write returns
+    // only the settings needed by consumers; authorization failures remain errors.
     const { data, error } = await supabase
         .from('user_profiles')
-        .update(updateData)
+        .update({ clinic_settings: updatedSettings })
         .eq('id', userId)
-        .select("id,name,user_type,crn,birth_date,gender,height,weight,goal,nutritionist_id,created_at,patient_category,fiscal_data,preferences,avatar_url,phone,address,specialties,education,bio,is_active,cpf,occupation,civil_status,email,observations,is_admin,clinic_settings,slug,invite_code,patient_invite_code,needs_password_reset,ethnicity,last_seen_at,clinical_flags,is_simulation,simulation_owner_id")
+        .select('id,clinic_settings,preferences')
         .single();
 
     if (error) {

@@ -11,8 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { format, addMonths, parseISO } from 'date-fns';
-import { Upload, File, X } from 'lucide-react';
-import { getServices } from '@/lib/supabase/financial-queries';
+import { File, X } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { useToast } from '@/components/ui/use-toast';
 import { splitInstallmentAmounts } from '@/lib/utils/financial-math';
@@ -49,7 +48,9 @@ export default function TransactionDialog({
     patients = [],
     services = [],
     nutritionistId,
-    onSave
+    onSave,
+    auxiliaryState = {},
+    onAuxiliaryRetry
 }) {
     const { toast } = useToast();
     const [formData, setFormData] = useState({
@@ -313,7 +314,9 @@ export default function TransactionDialog({
                         {transaction ? 'Editar Transação' : 'Nova Transação'}
                     </DialogTitle>
                 </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit} className="space-y-5">
+                    {['patients', 'services'].some(key => auxiliaryState[key] === 'error') && <div role="alert" className="rounded-lg border border-destructive/40 p-3 text-sm">Pacientes ou serviços indisponíveis. Confira os dados antes de salvar. <Button type="button" variant="outline" size="sm" onClick={onAuxiliaryRetry}>Tentar novamente</Button></div>}
+                    <fieldset className="min-w-0 space-y-4 rounded-lg border p-4"><legend className="px-2 text-sm font-semibold">Lançamento</legend>
                     {/* Type Selector */}
                     <div>
                         <Label>Tipo de Transação</Label>
@@ -412,7 +415,7 @@ export default function TransactionDialog({
                     </div>
 
                     {/* Amount and Date */}
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <Label htmlFor="amount">Valor Total (R$) *</Label>
                             <Input
@@ -458,7 +461,7 @@ export default function TransactionDialog({
 
                     {/* Installments Input */}
                     {formData.type === 'expense' && formData.isInstallment && !transaction && (
-                        <div className="grid grid-cols-2 gap-4 p-4 border rounded-lg bg-muted/50">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 border rounded-lg bg-muted/50">
                             <div>
                                 <Label htmlFor="installments">Número de Parcelas *</Label>
                                 <Select
@@ -488,6 +491,8 @@ export default function TransactionDialog({
                         </div>
                     )}
 
+                    </fieldset>
+                    <fieldset className="min-w-0 space-y-4 rounded-lg border p-4"><legend className="px-2 text-sm font-semibold">Pagamento</legend>
                     {/* Payment Status */}
                     <div className="flex items-center justify-between p-4 border rounded-lg">
                         <div className="space-y-0.5">
@@ -572,6 +577,8 @@ export default function TransactionDialog({
                         </div>
                     )}
 
+                    </fieldset>
+                    <details open={Boolean(formData.attachment_file || formData.attachment_url)} className="rounded-lg border p-4"><summary className="cursor-pointer text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">Comprovante/NF (opcional)</summary>
                     {/* Attachment Section */}
                     <div>
                         <Label htmlFor="attachment">Anexar Comprovante/NF (opcional)</Label>
@@ -616,19 +623,20 @@ export default function TransactionDialog({
                                         id="attachment"
                                         name="attachment"
                                         type="file"
-                                        accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                                        accept=".pdf,.jpg,.jpeg,.png,.webp"
                                         onChange={handleFileChange}
-                                        className="flex-1"
+                                        className="flex-1 min-w-0"
                                         disabled={uploading}
                                     />
                                 </div>
                             )}
                             <p className="text-xs text-muted-foreground">
-                                Formatos aceitos: PDF, JPG, PNG, DOC, DOCX (máx. 10MB)
+                                Formatos aceitos: PDF, JPG, PNG, WebP (máx. 10MB)
                             </p>
                         </div>
                     </div>
 
+                    </details>
                     <DialogFooter>
                         <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                             Cancelar

@@ -5,8 +5,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Edit, Trash2, Plus, X } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Plus } from 'lucide-react';
+import ServiceActions from './ServiceActions';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { formatCurrency } from '@/lib/utils';
 import { getServices, saveService, deleteService } from '@/lib/supabase/financial-queries';
@@ -23,6 +24,7 @@ export default function ServicesManager({ open, onOpenChange, nutritionistId }) 
     const { toast } = useToast();
     const [services, setServices] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState(false);
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingService, setEditingService] = useState(null);
     const [deleteConfirm, setDeleteConfirm] = useState(null);
@@ -42,10 +44,12 @@ export default function ServicesManager({ open, onOpenChange, nutritionistId }) 
     const loadServices = async () => {
         if (!nutritionistId) return;
         setLoading(true);
+        setLoadError(false);
         try {
             const data = await getServices(nutritionistId);
             setServices(data);
         } catch (error) {
+            setLoadError(true);
             toast({
                 title: "Erro",
                 description: "Não foi possível carregar os serviços.",
@@ -73,7 +77,7 @@ export default function ServicesManager({ open, onOpenChange, nutritionistId }) 
             name: service.name,
             description: service.description || '',
             price: service.price.toString(),
-            category: service.category || 'consulta'
+            category: service.category || ''
         });
         setIsFormOpen(true);
     };
@@ -123,7 +127,7 @@ export default function ServicesManager({ open, onOpenChange, nutritionistId }) 
             await deleteService(id);
             toast({
                 title: "Sucesso!",
-                description: "Serviço excluído com sucesso."
+                description: "Serviço desativado com sucesso."
             });
             setDeleteConfirm(null);
             loadServices();
@@ -145,7 +149,7 @@ export default function ServicesManager({ open, onOpenChange, nutritionistId }) 
                     </DialogHeader>
                     <div className="space-y-4">
                         <div className="flex justify-end">
-                            <Button onClick={handleNewService}>
+                            <Button onClick={handleNewService} disabled={loading || loadError}>
                                 <Plus className="w-4 h-4 mr-2" />
                                 Novo Serviço
                             </Button>
@@ -155,7 +159,7 @@ export default function ServicesManager({ open, onOpenChange, nutritionistId }) 
                             <div className="text-center py-8 text-muted-foreground">
                                 Carregando serviços...
                             </div>
-                        ) : services.length === 0 ? (
+                        ) : loadError ? (<div role="alert" className="rounded-lg border border-destructive/40 p-4 text-sm">Não foi possível carregar os serviços. <Button variant="outline" size="sm" onClick={loadServices}>Tentar novamente</Button></div>) : services.length === 0 ? (
                             <div className="text-center py-8 text-muted-foreground">
                                 Nenhum serviço cadastrado. Clique em "Novo Serviço" para começar.
                             </div>
@@ -182,30 +186,13 @@ export default function ServicesManager({ open, onOpenChange, nutritionistId }) 
                                                         {service.description || '-'}
                                                     </TableCell>
                                                     <TableCell>
-                                                        {SERVICE_CATEGORIES.find(c => c.value === service.category)?.label || service.category}
+                                                        {SERVICE_CATEGORIES.find(c => c.value === service.category)?.label || service.category || 'Não definida'}
                                                     </TableCell>
-                                                    <TableCell className="text-right font-semibold">
+                                                    <TableCell className="text-right font-semibold tabular-nums">
                                                         {formatCurrency(service.price)}
                                                     </TableCell>
                                                     <TableCell>
-                                                        <div className="flex justify-end gap-2">
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                onClick={() => handleEditService(service)}
-                                                                className="h-8 w-8"
-                                                            >
-                                                                <Edit className="h-4 w-4" />
-                                                            </Button>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                onClick={() => setDeleteConfirm(service.id)}
-                                                                className="h-8 w-8 text-destructive hover:text-destructive"
-                                                            >
-                                                                <Trash2 className="h-4 w-4" />
-                                                            </Button>
-                                                        </div>
+                                                        <ServiceActions service={service} onEdit={() => handleEditService(service)} onDelete={() => setDeleteConfirm(service.id)} />
                                                     </TableCell>
                                                 </TableRow>
                                             ))}
@@ -220,7 +207,7 @@ export default function ServicesManager({ open, onOpenChange, nutritionistId }) 
 
             {/* Service Form Dialog */}
             <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-                <DialogContent>
+                <DialogContent className="max-h-[90dvh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle>
                             {editingService ? 'Editar Serviço' : 'Novo Serviço'}
@@ -246,18 +233,18 @@ export default function ServicesManager({ open, onOpenChange, nutritionistId }) 
                                 placeholder="Descrição opcional do serviço"
                             />
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
-                                <Label htmlFor="category">Categoria *</Label>
+                                <Label htmlFor="service-category">Categoria (opcional)</Label>
                                 <Select
-                                    required
-                                    value={formData.category}
-                                    onValueChange={(value) => setFormData(prev => ({ ...prev, category: value }))}
+                                    value={formData.category || 'none'}
+                                    onValueChange={(value) => setFormData(prev => ({ ...prev, category: value === 'none' ? '' : value }))}
                                 >
-                                    <SelectTrigger>
+                                    <SelectTrigger id="service-category">
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
+                                        <SelectItem value="none">Não definida</SelectItem>
                                         {SERVICE_CATEGORIES.map(cat => (
                                             <SelectItem key={cat.value} value={cat.value}>
                                                 {cat.label}
@@ -296,9 +283,9 @@ export default function ServicesManager({ open, onOpenChange, nutritionistId }) 
             <AlertDialog open={!!deleteConfirm} onOpenChange={(open) => !open && setDeleteConfirm(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+                        <AlertDialogTitle>Desativar serviço</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Tem certeza que deseja excluir este serviço? Esta ação não pode ser desfeita.
+                            Este serviço deixará de aparecer nas novas transações. O histórico permanece preservado.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -307,7 +294,7 @@ export default function ServicesManager({ open, onOpenChange, nutritionistId }) 
                             onClick={() => handleDeleteService(deleteConfirm)}
                             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                         >
-                            Excluir
+                            Desativar
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

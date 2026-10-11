@@ -32,6 +32,9 @@ const TYPE_LABELS = {
 export default function TransactionList({
     transactions,
     loading,
+    loadError,
+    onRetry,
+    onNew,
     onEdit,
     onDelete,
     onGenerateReceipt,
@@ -59,7 +62,7 @@ export default function TransactionList({
     const hasActiveFilters = filters?.type || filters?.status || filters?.search;
 
     return (
-        <Card className="min-w-0 overflow-hidden bg-card shadow-card-dark">
+        <Card className="min-w-0 overflow-hidden bg-card shadow-sm">
             <CardHeader className="pb-3">
                 <CardTitle className="font-heading text-base lg:text-lg font-semibold text-primary break-words">Histórico de Transações</CardTitle>
             </CardHeader>
@@ -107,7 +110,7 @@ export default function TransactionList({
                         <Button
                             variant="outline"
                             size="icon"
-                            onClick={clearFilters}
+                            aria-label="Limpar filtros" onClick={clearFilters}
                             className="flex-shrink-0"
                         >
                             <X className="h-4 w-4" />
@@ -115,15 +118,16 @@ export default function TransactionList({
                     )}
                 </div>
 
-                <p className="mb-3 text-xs text-muted-foreground">Inclui lançamentos com competência, pagamento ou estorno no mês selecionado.</p>
+                <p className="mb-3 text-xs text-muted-foreground">Busca pela descrição dos lançamentos do mês. Inclui competência, pagamento ou estorno no período selecionado.</p>
                 {/* Table */}
                 {loading ? (
                     <div className="text-center py-8 text-muted-foreground">
                         Carregando transações...
                     </div>
-                ) : transactions.length === 0 ? (
+                ) : loadError ? (<div role="alert" className="rounded-lg border border-destructive/40 p-4 text-sm">Histórico indisponível. <Button variant="outline" size="sm" onClick={onRetry}>Tentar novamente</Button></div>) : transactions.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
-                        Nenhuma transação encontrada.
+                        <p>{hasActiveFilters ? 'Nenhuma transação corresponde aos filtros.' : 'Nenhuma transação registrada neste mês.'}</p>
+                        <Button variant="outline" className="mt-3" onClick={hasActiveFilters ? clearFilters : onNew}>{hasActiveFilters ? 'Limpar filtros' : 'Registrar primeira transação'}</Button>
                     </div>
                 ) : (
                     <div className="rounded-md border overflow-x-auto">
@@ -159,7 +163,7 @@ export default function TransactionList({
                                         <TableCell className="max-w-[150px] truncate">
                                             {transaction.patient?.name || '-'}
                                         </TableCell>
-                                        <TableCell className={`text-right font-semibold ${
+                                        <TableCell className={`text-right font-semibold tabular-nums ${
                                             transaction.type === 'income'
                                                 ? 'text-primary'
                                                 : 'text-destructive'
@@ -177,7 +181,7 @@ export default function TransactionList({
                                         <TableCell>
                                             <div className="flex justify-end gap-2">
                                                 {transaction.type === 'income' && ['pending', 'overdue'].includes(transaction.status) && onConfirmPayment && (
-                                                    <Button variant="ghost" size="icon" onClick={() => onConfirmPayment(transaction.id)} className="h-8 w-8 text-primary" title="Confirmar recebimento" aria-label="Confirmar recebimento">
+                                                    <Button variant="ghost" size="icon" onClick={() => onConfirmPayment(transaction.id)} className="h-11 w-11 text-primary" title="Confirmar recebimento" aria-label="Confirmar recebimento">
                                                         <CheckCircle2 className="h-4 w-4" />
                                                     </Button>
                                                 )}
@@ -186,14 +190,14 @@ export default function TransactionList({
                                                         variant="ghost"
                                                         size="icon"
                                                         onClick={() => onGenerateReceipt(transaction)}
-                                                        className="h-8 w-8"
-                                                        title="Gerar Recibo"
+                                                        className="h-11 w-11"
+                                                        title="Gerar Recibo" aria-label="Gerar Recibo"
                                                     >
                                                         <Printer className="h-4 w-4" />
                                                     </Button>
                                                 )}
                                                 {transaction.status === 'paid' && onRefund && (
-                                                    <Button variant="ghost" size="icon" onClick={() => onRefund(transaction.id)} className="h-8 w-8" title="Registrar estorno" aria-label="Registrar estorno">
+                                                    <Button variant="ghost" size="icon" onClick={() => onRefund(transaction.id)} className="h-11 w-11" title="Registrar estorno" aria-label="Registrar estorno">
                                                         <RotateCcw className="h-4 w-4" />
                                                     </Button>
                                                 )}
@@ -202,8 +206,8 @@ export default function TransactionList({
                                                     variant="ghost"
                                                     size="icon"
                                                     onClick={() => onEdit(transaction)}
-                                                    className="h-8 w-8"
-                                                    title="Editar"
+                                                    className="h-11 w-11"
+                                                    title="Editar" aria-label="Editar"
                                                 >
                                                     <Edit className="h-4 w-4" />
                                                 </Button>
@@ -213,8 +217,8 @@ export default function TransactionList({
                                                     variant="ghost"
                                                     size="icon"
                                                     onClick={() => onDelete(transaction.id)}
-                                                    className="h-8 w-8 text-destructive hover:text-destructive"
-                                                    title="Excluir"
+                                                    className="h-11 w-11 text-destructive hover:text-destructive"
+                                                    title="Excluir" aria-label="Excluir"
                                                 >
                                                     <Trash2 className="h-4 w-4" />
                                                 </Button>

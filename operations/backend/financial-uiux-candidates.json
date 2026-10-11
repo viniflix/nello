@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "migrations": [
+    {
+      "file": "supabase/migrations/releases/20261011193000_financial_service_details.sql",
+      "sha256": "b6e18fe42074abbff390d760ca6bacd91f266990836ab578369d38ae9a0fe342"
+    }
+  ]
+}

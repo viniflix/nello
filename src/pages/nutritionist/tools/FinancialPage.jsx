@@ -5,10 +5,8 @@ import { Plus, Settings, FileSpreadsheet, Download, ChevronDown } from 'lucide-r
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { MonthInputWithCalendar } from '@/components/ui/date-input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -66,6 +64,8 @@ export default function FinancialPage() {
     const [loadError, setLoadError] = useState(false);
     const [rankingRevision, setRankingRevision] = useState(0);
     const loadRequest = useRef(0);
+    const auxiliaryRequest = useRef(0);
+    const [auxiliaryState, setAuxiliaryState] = useState({ projection: 'loading', patients: 'loading', services: 'loading' });
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [isServicesManagerOpen, setIsServicesManagerOpen] = useState(false);
     const [editingTransaction, setEditingTransaction] = useState(null);
@@ -137,11 +137,18 @@ export default function FinancialPage() {
 
     const loadAuxiliaryData = useCallback(async () => {
         if (!user?.id) return;
+        const request = ++auxiliaryRequest.current;
+        setAuxiliaryState({ projection: 'loading', patients: 'loading', services: 'loading' });
         const [projection, patientsResult, servicesResult] = await Promise.allSettled([
             getProjectedCashFlow(user.id, new Date()),
             getPatientsForAutocomplete(user.id),
             getServices(user.id),
         ]);
+        if (request !== auxiliaryRequest.current) return;
+        setAuxiliaryState({ projection: projection.status === 'fulfilled' ? 'ready' : 'error', patients: patientsResult.status === 'fulfilled' ? 'ready' : 'error', services: servicesResult.status === 'fulfilled' ? 'ready' : 'error' });
+        if (projection.status === 'rejected') setProjectedCashFlow([]);
+        if (patientsResult.status === 'rejected') setPatients([]);
+        if (servicesResult.status === 'rejected') setServices([]);
         if (projection.status === 'fulfilled') setProjectedCashFlow(projection.value);
         if (patientsResult.status === 'fulfilled') setPatients(patientsResult.value);
         if (servicesResult.status === 'fulfilled') setServices(servicesResult.value);
@@ -155,7 +162,7 @@ export default function FinancialPage() {
         return () => { loadRequest.current += 1; };
     }, [loadData]);
 
-    useEffect(() => { loadAuxiliaryData(); }, [loadAuxiliaryData]);
+    useEffect(() => { loadAuxiliaryData(); return () => { auxiliaryRequest.current += 1; }; }, [loadAuxiliaryData]);
 
     const refreshAfterMutation = async () => {
         await Promise.all([loadData(), loadAuxiliaryData()]);
@@ -395,7 +402,7 @@ export default function FinancialPage() {
                                 <span className="sm:hidden">Serviços</span>
                             </Button>
                             <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
+                                <DropdownMenuTrigger asChild disabled={loading || loadError}>
                                     <Button variant="outline" disabled={loading || loadError} className="w-full sm:w-auto px-2 border-primary text-primary hover:bg-primary hover:text-white">
                                         <Download className="w-4 h-4 mr-2" />
                                         <span className="hidden sm:inline">Exportar</span>
@@ -425,20 +432,14 @@ export default function FinancialPage() {
                         </div>
                     </div>
 
-                    {/* Pending Payments Widget */}
-                    <PendingPaymentsWidget
-                        nutritionistId={user?.id}
-                        onUpdate={loadData}
-                    />
-
-                    {/* Month Selector */}
-                    <div className="mb-6">
-                        <MonthInputWithCalendar aria-label="Mês do financeiro"
+                    <div className="mb-5 space-y-2">
+                        <Label htmlFor="financial-month">Período selecionado</Label>
+                        <MonthInputWithCalendar id="financial-month" aria-label="Mês do financeiro"
                             value={format(selectedMonth, 'yyyy-MM')}
                             onChange={(value) => value && setSelectedMonth(new Date(value + '-02'))}
-                            className="w-full sm:w-auto"
-                        />
+                            className="w-full sm:w-auto" />
                     </div>
+                    <PendingPaymentsWidget nutritionistId={user?.id} onUpdate={loadData} />
 
                     {loadError && <div role="alert" className="mb-6 rounded-lg border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">Não foi possível carregar os lançamentos deste mês. <Button variant="outline" size="sm" className="ml-2" onClick={loadData}>Tentar novamente</Button></div>}
 
@@ -446,15 +447,16 @@ export default function FinancialPage() {
 
                     {/* KPIs */}
                     <div className="mb-6">
-                        <FinancialKPIs summary={summary} loading={loading} />
+                        {!loadError && <FinancialKPIs summary={summary} loading={loading} />}
                     </div>
 
                     {/* Transaction List & Top Patients - 70/30 Split */}
-                    <div className="grid min-w-0 grid-cols-1 lg:grid-cols-10 gap-6 mb-6">
-                        <div className="min-w-0 lg:col-span-7">
+                    <div className="grid min-w-0 grid-cols-1 gap-6 mb-6">
+                        <div className="min-w-0">
                             <TransactionList
                                 transactions={transactions}
                                 loading={loading}
+                                loadError={loadError} onRetry={loadData} onNew={handleNewTransaction}
                                 onEdit={handleEditTransaction}
                                 onDelete={(id) => setDeleteConfirm(id)}
                                 onGenerateReceipt={handleGenerateReceipt}
@@ -464,19 +466,19 @@ export default function FinancialPage() {
                                 onFiltersChange={setFilters}
                             />
                         </div>
-                        <div className="min-w-0 lg:col-span-3">
-                            <TopPatientsWidget nutritionistId={user?.id} refreshKey={rankingRevision} />
-                        </div>
                     </div>
                     <h2 className="mb-3 text-lg font-semibold text-primary">Análise financeira</h2>
                     {/* Charts - 50/50 Split */}
-                    <div className="grid min-w-0 grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                    <div className="grid min-w-0 grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 mb-6">
                         <FinancialCharts
                             cashFlowData={cashFlowData}
                             expenseDistribution={expenseDistribution}
                             projectedCashFlow={projectedCashFlow}
                             loading={loading}
+                            loadError={loadError} projectionState={auxiliaryState.projection}
+                            onRetry={loadData} onProjectionRetry={loadAuxiliaryData} onNew={handleNewTransaction}
                         />
+                        <TopPatientsWidget nutritionistId={user?.id} refreshKey={rankingRevision} />
                     </div>
 
                 </motion.div>
@@ -491,6 +493,7 @@ export default function FinancialPage() {
                 services={services}
                 nutritionistId={user?.id}
                 onSave={handleSaveTransaction}
+                auxiliaryState={auxiliaryState} onAuxiliaryRetry={loadAuxiliaryData}
             />
 
             {/* Services Manager */}
@@ -500,7 +503,7 @@ export default function FinancialPage() {
                     setIsServicesManagerOpen(open);
                     // Reload services when manager closes
                     if (!open && user?.id) {
-                        getServices(user.id).then(setServices).catch(error => logDiagnostic('error', 'financial.load_services', error));
+                        loadAuxiliaryData();
                     }
                 }}
                 nutritionistId={user?.id}
