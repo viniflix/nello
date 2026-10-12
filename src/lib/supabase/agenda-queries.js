@@ -9,7 +9,6 @@ import { dispatchMessageTemplate } from './message-templates-queries';
 const STATUS_FALLBACK = 'scheduled';
 // Mapeia para valores aceitos pelo DB (produção usa 'cancelled' com 2 L)
 const STATUS_MAP = {
-    awaiting_confirmation: 'scheduled',
     cancelled: 'cancelled',
     canceled: 'cancelled',
     no_show: 'no_show'
@@ -27,16 +26,14 @@ const toIsoDate = (value) => {
     return parsed.toISOString();
 };
 
-// DB aceita apenas: first_appointment, return, online
-const APPT_TYPE_MAP = { evaluation: 'return', in_person: 'return' };
 const toValidAppointmentType = (v) => {
     if (!v) return 'first_appointment';
-    return APPT_TYPE_MAP[v] || v;
+    return v;
 };
 
 // Schema produção: appointments tem appointment_time, start_time, duration - NÃO tem title, end_time
 const buildAppointmentPayload = (appointmentData = {}) => {
-    const rawStartTime = appointmentData.start_time || appointmentData.appointment_time;
+    const rawStartTime = appointmentData.appointment_time || appointmentData.start_time;
     const durationMinutes = Number(appointmentData.duration || 60);
     const startTimeIso = toIsoDate(rawStartTime);
 

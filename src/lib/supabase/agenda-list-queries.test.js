@@ -25,6 +25,7 @@ describe('agenda por período', () => {
         const end = new Date('2026-10-01T00:00:00Z');
 
         const rows = await fetchAppointmentsInPeriod('nutritionist', start, end);
+        expect(query.select.mock.calls[0][0].split(',')).toContain('updated_at');
 
         expect(rows).toHaveLength(502);
         expect(rows[501].id).toBe(501);

@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/infrastructure/supabase/client';
+import { RESERVING_APPOINTMENT_STATUSES } from '@/lib/agenda/appointment-rules';
 import NextMealCard from '@/components/patient/NextMealCard';
 import PatientMetricsWidget from '@/components/patient/PatientMetricsWidget';
 import DailyAdherenceCard from '@/components/patient/DailyAdherenceCard';
@@ -85,6 +86,7 @@ export default function PatientHomePage() {
       .from('appointments')
       .select("id,nutritionist_id,patient_id,appointment_time,notes,status,reminder_sent_at,created_at,duration,appointment_type,start_time,unregistered_patient_name,care_episode_id")
       .eq('patient_id', user.id)
+      .in('status', RESERVING_APPOINTMENT_STATUSES)
       .gte('start_time', today.toISOString())
       .order('start_time', { ascending: true })
       .limit(1)

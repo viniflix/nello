@@ -63,4 +63,20 @@ describe('gravação atômica de agenda e cobrança', () => {
         expect(rpc).toHaveBeenCalledWith('delete_appointment_with_finance', { p_appointment_id: 7 });
         expect(from).not.toHaveBeenCalled();
     });
+
+    it.each(['evaluation', 'in_person'])('preserva o tipo %s aceito pelo banco', async appointment_type => {
+        rpc.mockResolvedValue({ data: { appointment: { id: 7 }, transaction: null }, error: null });
+        await createAppointmentWithFinance({ ...appointment, appointment_type });
+        expect(rpc.mock.calls[0][1].p_arguments.p_appointment.appointment_type).toBe(appointment_type);
+    });
+
+    it('transporta revisão e horário novo sem reduzir awaiting_confirmation a scheduled', async () => {
+        const updated_at = '2032-07-12T11:00:00Z';
+        rpc.mockResolvedValue({ data: { appointment: { id: 7, status: 'awaiting_confirmation' } }, error: null });
+        await updateAppointment(7, { ...appointment, start_time: '2026-10-01T10:00:00Z', updated_at, status: 'awaiting_confirmation' });
+        const request = rpc.mock.calls[0][1];
+        expect(request.p_expected).toBe(updated_at);
+        expect(request.p_arguments.p_appointment.start_time).toBe(new Date(appointment.appointment_time).toISOString());
+        expect(request.p_arguments.p_appointment.status).toBe('awaiting_confirmation');
+    });
 });

@@ -8,6 +8,7 @@ import { createAppointmentWithFinance, updateAppointment, deleteAppointment } fr
 import { getServices } from '@/lib/supabase/financial-queries';
 import { toPortugueseError } from '@/lib/utils/errorMessages';
 import { fetchAppointmentsInPeriod } from '@/lib/supabase/agenda-list-queries';
+import { hasAppointmentConflict } from '@/lib/agenda/appointment-rules';
 
 export function useAgendaController({ user }) {
     const { toast } = useToast();
@@ -189,14 +190,7 @@ export function useAgendaController({ user }) {
 
         try {
         const nearbyAppointments = await fetchAppointmentsInPeriod(user.id, new Date(startTime.getTime() - 24 * 60 * 60 * 1000), endTime, undefined, 'agenda_conflict');
-        const hasConflict = nearbyAppointments.some(appt => {
-            if (appointmentData.id && appt.id === appointmentData.id) return false;
-
-            const apptStart = new Date(appt.appointment_time);
-            const apptEnd = new Date(apptStart.getTime() + (appt.duration || 60) * 60000);
-
-            return (startTime < apptEnd && endTime > apptStart);
-        });
+        const hasConflict = hasAppointmentConflict(nearbyAppointments, appointmentData);
 
         if (hasConflict) {
             toast({
@@ -204,7 +198,7 @@ export function useAgendaController({ user }) {
                 description: "Já existe um agendamento neste horário. Por favor, escolha outro horário.",
                 variant: "destructive"
             });
-            return;
+            return { success: false, message: 'Já existe um agendamento neste horário. Escolha outro horário.' };
         }
 
             if (appointmentData.id) {
@@ -216,7 +210,8 @@ export function useAgendaController({ user }) {
                     notes,
                     duration: duration || 60,
                     appointment_type: appointment_type || 'first_appointment',
-                    status: status || 'scheduled'
+                    status: status || 'scheduled',
+                    updated_at: appointmentData.updated_at
                 }, financialData);
                 toast({ title: "Sucesso!", description: "Agendamento atualizado com sucesso." });
             } else {
@@ -257,14 +252,19 @@ export function useAgendaController({ user }) {
             setEditingAppointment(null);
             loadData();
             setAgendaRevision(revision => revision + 1);
+            return { success: true };
         } catch (error) {
             logDiagnostic('error', 'hooks/useAgendaController.js:260', 'Error saving appointment:', error);
             const errMsg = error?.message || error?.details || (typeof error === 'string' ? error : '');
+            const description = error?.code === 'PT409'
+                ? 'Este agendamento mudou ou não está mais disponível. Feche e abra novamente para conferir a versão atual antes de salvar.'
+                : toPortugueseError(errMsg || error, 'Não foi possível salvar o agendamento. Verifique se o paciente está vinculado a você.');
             toast({ 
                 title: "Erro ao salvar", 
-                description: toPortugueseError(errMsg || error, 'Não foi possível salvar o agendamento. Verifique se o paciente está vinculado a você.'), 
+                description,
                 variant: "destructive" 
             });
+            return { success: false, message: description };
         }
     };
 

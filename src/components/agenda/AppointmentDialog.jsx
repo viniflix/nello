@@ -1,5 +1,6 @@
 import { getTodayIsoDate, civilDateInZone, localTimeInZone, localDateTimeToInstant } from '@/lib/utils/date';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { appointmentStatusChoices, canonicalAppointmentStatus, isTerminalAppointment } from '@/lib/agenda/appointment-rules';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -41,6 +42,11 @@ export default function AppointmentDialog({
 
     const [patientSearchTerm, setPatientSearchTerm] = useState('');
     const [showPatientSuggestions, setShowPatientSuggestions] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const [saveError, setSaveError] = useState('');
+    const savingRef = useRef(false);
+    const readOnly = !!appointment && isTerminalAppointment(appointment.status);
+    const allowedStatuses = appointmentStatusChoices(appointment?.status);
 
     const filteredPatients = patients.filter(p =>
         p.name.toLowerCase().includes(patientSearchTerm.toLowerCase())
@@ -56,9 +62,10 @@ export default function AppointmentDialog({
 
     const statusOptions = [
         { value: 'scheduled', label: 'Agendada' },
+        { value: 'awaiting_confirmation', label: 'Aguardando confirmação' },
         { value: 'confirmed', label: 'Confirmada' },
         { value: 'completed', label: 'Realizada' },
-        { value: 'canceled', label: 'Cancelada' },
+        { value: 'cancelled', label: 'Cancelada' },
         { value: 'no_show', label: 'Faltou' }
     ];
 
@@ -71,6 +78,7 @@ export default function AppointmentDialog({
     ];
 
     useEffect(() => {
+        setSaveError('');
         if (appointment) {
             const appointmentStart = appointment.start_time || appointment.appointment_time;
             setFormData({
@@ -84,7 +92,7 @@ export default function AppointmentDialog({
                     : '',
                 duration: appointment.duration || 60,
                 appointment_type: appointment.appointment_type || 'first_appointment',
-                status: appointment.status || 'scheduled',
+                status: canonicalAppointmentStatus(appointment.status || 'scheduled'),
                 notes: appointment.notes || '',
                 service_id: '',
                 use_custom_price: false,
@@ -149,8 +157,10 @@ export default function AppointmentDialog({
         }
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
+        if (savingRef.current || readOnly) return;
+        setSaveError('');
 
         // Must have EITHER a patient_id OR a typed registered name
         if (!formData.patient_id && !patientSearchTerm.trim()) {
@@ -161,6 +171,9 @@ export default function AppointmentDialog({
             return;
         }
 
+        savingRef.current = true;
+        setSaving(true);
+        try {
         const appointment_time = localDateTimeToInstant(`${formData.appointment_time_date}T${formData.appointment_time_hour}`);
 
         const appointmentData = {
@@ -180,23 +193,31 @@ export default function AppointmentDialog({
             custom_description: formData.use_custom_price ? formData.custom_description : null
         };
 
-        onSave(appointmentData, financialData);
+        const result = await onSave(appointmentData, financialData);
+        if (result?.success === false) setSaveError(result.message || 'Não foi possível confirmar o salvamento. Confira os dados e tente novamente.');
+        } catch {
+            setSaveError('Não foi possível confirmar o salvamento. Confira a data, o horário e sua conexão antes de tentar novamente.');
+        } finally {
+            savingRef.current = false;
+            setSaving(false);
+        }
     };
 
     const selectedService = services.find(s => s.id.toString() === formData.service_id);
 
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
+        <Dialog open={open} onOpenChange={(nextOpen) => { if (!savingRef.current) onOpenChange(nextOpen); }}>
             <DialogContent className="w-[calc(100vw-2rem)] max-w-2xl max-h-[90dvh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>
-                        {appointment ? 'Editar Agendamento' : 'Novo Agendamento'}
+                        {readOnly ? 'Detalhes do agendamento' : appointment ? 'Editar Agendamento' : 'Novo Agendamento'}
                     </DialogTitle>
                     <DialogDescription>
-                        {appointment ? 'Altere os dados do agendamento.' : 'Preencha os dados para agendar uma nova consulta.'}
+                        {readOnly ? 'Este agendamento foi encerrado. Seus dados estão disponíveis para consulta.' : appointment ? 'Altere os dados do agendamento.' : 'Preencha os dados para agendar uma nova consulta.'}
                     </DialogDescription>
                 </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit} className="space-y-4" aria-busy={saving}>
+                    <fieldset disabled={saving || readOnly} className="space-y-4 min-w-0">
                     {/* Patient Search */}
                     <div className="relative">
                         <Label htmlFor="patient_search">Paciente *</Label>
@@ -288,13 +309,12 @@ export default function AppointmentDialog({
                         <div>
                             <Label htmlFor="duration">Duração *</Label>
                             <Select
-                                id="duration"
                                 name="duration"
                                 required
                                 value={String(formData.duration)}
                                 onValueChange={(value) => setFormData(prev => ({ ...prev, duration: Number(value) }))}
                             >
-                                <SelectTrigger>
+                                <SelectTrigger id="duration" disabled={saving || readOnly}>
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -309,13 +329,12 @@ export default function AppointmentDialog({
                         <div>
                             <Label htmlFor="appointment_type">Tipo *</Label>
                             <Select
-                                id="appointment_type"
                                 name="appointment_type"
                                 required
                                 value={formData.appointment_type}
                                 onValueChange={(value) => setFormData(prev => ({ ...prev, appointment_type: value }))}
                             >
-                                <SelectTrigger>
+                                <SelectTrigger id="appointment_type" disabled={saving || readOnly}>
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -333,17 +352,17 @@ export default function AppointmentDialog({
                     <div>
                         <Label htmlFor="status">Status *</Label>
                         <Select
-                            id="status"
                             name="status"
                             required
+                            disabled={saving || readOnly || !appointment}
                             value={formData.status}
                             onValueChange={(value) => setFormData(prev => ({ ...prev, status: value }))}
                         >
-                            <SelectTrigger>
+                            <SelectTrigger id="status">
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                                {statusOptions.map(status => (
+                                {statusOptions.filter(status => allowedStatuses.includes(status.value)).map(status => (
                                     <SelectItem key={status.value} value={status.value}>
                                         {status.label}
                                     </SelectItem>
@@ -438,13 +457,15 @@ export default function AppointmentDialog({
                         />
                     </div>
 
-                    <DialogFooter>
-                        <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                            Cancelar
+                    </fieldset>
+                    {saveError && <p role="alert" className="rounded-lg bg-destructive/5 p-3 text-sm text-destructive">{saveError}</p>}
+                    <DialogFooter className="grid grid-cols-2 gap-2 sm:flex sm:justify-end">
+                        <Button type="button" variant="outline" disabled={saving} className="min-h-11 transition-colors motion-reduce:transition-none" onClick={() => onOpenChange(false)}>
+                            {readOnly ? 'Fechar' : 'Cancelar'}
                         </Button>
-                        <Button type="submit">
-                            {appointment ? 'Atualizar' : 'Salvar'}
-                        </Button>
+                        {!readOnly && <Button type="submit" disabled={saving} className="min-h-11 transition-colors motion-reduce:transition-none">
+                            {saving ? 'Salvando…' : appointment ? 'Salvar alterações' : 'Agendar'}
+                        </Button>}
                     </DialogFooter>
                 </form>
             </DialogContent>

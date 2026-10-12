@@ -4,7 +4,7 @@ import {MAX_DATA_ROWS} from './bounded-pages';
 
 const PAGE_SIZE = 500;
 
-export async function fetchAppointmentsInPeriod(nutritionistId, start, end, select = 'id,nutritionist_id,patient_id,appointment_time,notes,status,reminder_sent_at,created_at,duration,appointment_type,start_time,unregistered_patient_name,care_episode_id,patient:user_profiles!appointments_patient_id_fkey(name,id)', operation = 'agenda_period') {
+export async function fetchAppointmentsInPeriod(nutritionistId, start, end, select = 'id,nutritionist_id,patient_id,appointment_time,notes,status,reminder_sent_at,created_at,updated_at,duration,appointment_type,start_time,unregistered_patient_name,care_episode_id,patient:user_profiles!appointments_patient_id_fkey(name,id)', operation = 'agenda_period') {
     const started = performance.now();
     const rows = [];
     for (let offset = 0; ; offset += PAGE_SIZE) {
