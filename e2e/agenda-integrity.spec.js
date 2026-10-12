@@ -90,6 +90,8 @@ test('save waits for confirmation, prevents duplicate submit and presents permit
 for(const width of [390,820,1440]) test(`appointment form has labels and usable actions at ${width}px`,async({page})=>{
     await page.setViewportSize({width,height:1000}); await login(page); await page.getByRole('button',{name:'Novo Agendamento',exact:true}).click();
     const form=page.getByRole('dialog'); await expect(form.getByLabel('Duração *',{exact:true})).toBeVisible(); await expect(form.getByLabel('Tipo *',{exact:true})).toBeVisible();
+    const dateWidth=await form.getByLabel('Data *',{exact:true}).evaluate(element=>element.getBoundingClientRect().width);
+    expect(dateWidth).toBeGreaterThanOrEqual(130);
     const primary=form.getByRole('button',{name:'Agendar',exact:true}); await primary.scrollIntoViewIfNeeded();
     const bounds=await primary.boundingBox(); expect(bounds.height).toBeGreaterThanOrEqual(44); expect(bounds.x+bounds.width).toBeLessThanOrEqual(width);
     const dimensions=await form.evaluate(element=>({width:element.clientWidth,scroll:element.scrollWidth}));expect(dimensions.scroll).toBeLessThanOrEqual(dimensions.width+1);
