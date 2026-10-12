@@ -72,6 +72,9 @@ export default function TransactionDialog({
         attachment_url: null
     });
     const [uploading, setUploading] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const [saveError, setSaveError] = useState(false);
+    const saveLock = useRef(false);
     const attachmentIntent = useRef(null);
     useEffect(() => { attachmentIntent.current = null; }, [open, nutritionistId]);
 
@@ -194,7 +197,7 @@ export default function TransactionDialog({
 
     const handleServiceChange = (serviceId) => {
         if (!serviceId || serviceId === 'none') {
-            setFormData(prev => ({ ...prev, service_id: 'none', amount: '', description: '' }));
+            setFormData(prev => ({ ...prev, service_id: 'none' }));
             return;
         }
 
@@ -212,10 +215,13 @@ export default function TransactionDialog({
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (saveLock.current) return;
 
         if (!formData.description || !formData.amount || !formData.category) {
             return;
         }
+        saveLock.current = true; setSaving(true); setSaveError(false);
+        try {
         const feePercentage = ['credit', 'debit'].includes(formData.payment_method) && formData.fee_percentage
             ? parseFloat(formData.fee_percentage) : null;
 
@@ -225,7 +231,7 @@ export default function TransactionDialog({
             attachmentUrl = await uploadAttachment();
             if (!attachmentUrl && formData.attachment_file) {
                 // Keep the form and its selected file intact for a retry.
-                return;
+                setSaveError(true); return;
             }
         }
 
@@ -247,7 +253,7 @@ export default function TransactionDialog({
                 fee_percentage: feePercentage,
                 attachment_url: attachmentUrl
             };
-            onSave(payload);
+            if (await onSave(payload) === false) setSaveError(true);
             return;
         }
 
@@ -280,7 +286,7 @@ export default function TransactionDialog({
                     attachment_url: i === 0 ? attachmentUrl : null // Only attach to first installment
                 });
             }
-            onSave({ multiple: true, transactions });
+            if (await onSave({ multiple: true, transactions }) === false) setSaveError(true);
         } else {
             // Single transaction
             const payload = {
@@ -297,8 +303,12 @@ export default function TransactionDialog({
                 fee_percentage: feePercentage,
                 attachment_url: attachmentUrl
             };
-            onSave(payload);
+            if (await onSave(payload) === false) setSaveError(true);
         }
+        } catch (error) {
+            logDiagnostic('error', 'financial.transaction_save_failed', { code: error?.code || 'unknown' });
+            setSaveError(true);
+        } finally { saveLock.current = false; setSaving(false); }
     };
 
     const currentCategories = formData.type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
@@ -307,18 +317,20 @@ export default function TransactionDialog({
         : '0.00';
 
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="w-[calc(100vw-2rem)] max-w-2xl max-h-[90dvh] overflow-y-auto">
-                <DialogHeader>
+        <Dialog open={open} onOpenChange={next => { if (!saveLock.current) onOpenChange(next); }}>
+            <DialogContent className="flex w-[calc(100vw-2rem)] max-w-3xl max-h-[90dvh] flex-col gap-0 overflow-hidden rounded-2xl p-0">
+                <DialogHeader className="shrink-0 border-b px-5 py-4 pr-12">
                     <DialogTitle>
                         {transaction ? 'Editar Transação' : 'Nova Transação'}
                     </DialogTitle>
                 </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-5">
+                <form onSubmit={handleSubmit} aria-busy={saving || undefined} className="flex min-h-0 flex-col overflow-hidden">
+                    <div className="min-h-0 overflow-y-auto overscroll-contain px-5 py-4">
+                    <fieldset disabled={saving} className="min-w-0 space-y-5">
                     {['patients', 'services'].some(key => auxiliaryState[key] === 'error') && <div role="alert" className="rounded-lg border border-destructive/40 p-3 text-sm">Pacientes ou serviços indisponíveis. Confira os dados antes de salvar. <Button type="button" variant="outline" size="sm" onClick={onAuxiliaryRetry}>Tentar novamente</Button></div>}
-                    <fieldset className="min-w-0 space-y-4 rounded-lg border p-4"><legend className="px-2 text-sm font-semibold">Lançamento</legend>
+                    <fieldset className="grid min-w-0 grid-cols-1 gap-4 rounded-xl border p-4 sm:grid-cols-2"><legend className="px-2 text-sm font-semibold">Lançamento</legend>
                     {/* Type Selector */}
-                    <div>
+                    <div className="sm:col-span-2">
                         <Label>Tipo de Transação</Label>
                         <div role="group" aria-label="Tipo de transação" className="mt-2 grid w-full grid-cols-2 gap-2">
                             <Button type="button" variant={formData.type === 'income' ? 'default' : 'outline'} aria-pressed={formData.type === 'income'} onClick={() => handleTypeChange('income')}>Receita</Button>
@@ -348,6 +360,7 @@ export default function TransactionDialog({
                                     ))}
                                 </SelectContent>
                             </Select>
+                            <p className="mt-1 text-xs text-muted-foreground">Ao selecionar, valor e descrição são preenchidos. Ao desvincular, os campos são mantidos para revisão.</p>
                         </div>
                     )}
 
@@ -415,7 +428,7 @@ export default function TransactionDialog({
                     </div>
 
                     {/* Amount and Date */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:col-span-2 sm:grid-cols-2 gap-4">
                         <div>
                             <Label htmlFor="amount">Valor Total (R$) *</Label>
                             <Input
@@ -461,7 +474,7 @@ export default function TransactionDialog({
 
                     {/* Installments Input */}
                     {formData.type === 'expense' && formData.isInstallment && !transaction && (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 border rounded-lg bg-muted/50">
+                        <div className="grid grid-cols-1 sm:col-span-2 sm:grid-cols-2 gap-4 p-4 border rounded-lg bg-muted/50">
                             <div>
                                 <Label htmlFor="installments">Número de Parcelas *</Label>
                                 <Select
@@ -492,7 +505,7 @@ export default function TransactionDialog({
                     )}
 
                     </fieldset>
-                    <fieldset className="min-w-0 space-y-4 rounded-lg border p-4"><legend className="px-2 text-sm font-semibold">Pagamento</legend>
+                    <fieldset className="min-w-0 space-y-4 rounded-xl border p-4"><legend className="px-2 text-sm font-semibold">Pagamento</legend>
                     {/* Payment Status */}
                     <div className="flex items-center justify-between p-4 border rounded-lg">
                         <div className="space-y-0.5">
@@ -578,7 +591,7 @@ export default function TransactionDialog({
                     )}
 
                     </fieldset>
-                    <details open={Boolean(formData.attachment_file || formData.attachment_url)} className="rounded-lg border p-4"><summary className="cursor-pointer text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">Comprovante/NF (opcional)</summary>
+                    <details open={Boolean(formData.attachment_file || formData.attachment_url)} className="rounded-xl border p-4"><summary className="cursor-pointer text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">Comprovante/NF (opcional)</summary>
                     {/* Attachment Section */}
                     <div>
                         <Label htmlFor="attachment">Anexar Comprovante/NF (opcional)</Label>
@@ -637,12 +650,15 @@ export default function TransactionDialog({
                     </div>
 
                     </details>
-                    <DialogFooter>
-                        <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                    </fieldset>
+                    </div>
+                    {saveError && <p role="alert" className="shrink-0 border-t px-5 py-3 text-sm text-destructive">Não foi possível confirmar o salvamento. Os campos e o comprovante continuam disponíveis para revisão e nova tentativa.</p>}
+                    <DialogFooter className="shrink-0 border-t bg-card px-5 py-4">
+                        <Button type="button" variant="outline" disabled={saving} onClick={() => onOpenChange(false)}>
                             Cancelar
                         </Button>
-                        <Button type="submit">
-                            {transaction ? 'Atualizar' : 'Salvar'}
+                        <Button type="submit" disabled={saving}>
+                            {saving ? uploading ? 'Enviando comprovante…' : 'Salvando…' : transaction ? 'Atualizar' : 'Salvar'}
                         </Button>
                     </DialogFooter>
                 </form>

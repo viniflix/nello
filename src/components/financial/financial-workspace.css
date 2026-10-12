@@ -1,0 +1,33 @@
+.financial-workspace :is(h1, h2, h3, p, dt, dd, span, button, summary) {
+  overflow-wrap: anywhere;
+}
+.financial-workspace button {
+  white-space: normal;
+  min-width: 0;
+}
+.financial-workspace input {
+  min-width: 0;
+}
+.financial-workspace .financial-period {
+  width: 100%;
+  max-width: 100%;
+  flex-wrap: nowrap;
+}
+.financial-workspace .financial-period-field {
+  flex: 1 1 8rem;
+  min-width: 0;
+}
+.financial-workspace .financial-period-field input {
+  flex: 1 1 0;
+  width: 0;
+}
+.financial-workspace .recharts-text {
+  fill: hsl(var(--muted-foreground));
+}
+@media (min-width: 640px) {
+  .financial-workspace .financial-period { width: 280px; }
+  .financial-workspace .financial-period-field { flex: 1 1 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .financial-workspace :is(button, tr, summary) { transition: none; }
+}

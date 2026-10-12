@@ -39,10 +39,15 @@ for (const screen of [{ width: 320, height: 800 }, { width: 390, height: 844 }, 
         await openEditor(page, sample);
         if (screen.zoom) await page.evaluate(() => { document.documentElement.style.fontSize = '200%'; });
         await expect(page.getByRole('button', { name: 'Editar configurações' })).toBeVisible();
-        await expect(page.getByRole('link', { name: 'QA Meal Module', exact: true })).toHaveAttribute('href', `/nutritionist/patients/${sample.patient}/hub?tab=nutrition`);
+        await expect(page.getByText('QA Meal Module', { exact: true })).toBeVisible();
+        await expect(page.getByRole('link', { name: 'QA Meal Module', exact: true })).toHaveCount(0);
         const breadcrumb = page.getByRole('navigation', { name: 'Navegação estrutural' });
-        await expect(breadcrumb.getByRole('link', { name: 'Prontuário', exact: true })).toHaveAttribute('href', `/nutritionist/patients/${sample.patient}/hub`);
-        await expect(breadcrumb.getByRole('link', { name: 'Nutrição', exact: true })).toHaveAttribute('href', `/nutritionist/patients/${sample.patient}/hub?tab=nutrition`);
+        await expect(breadcrumb.getByRole('button', { name: 'Plano alimentar', exact: true })).toBeVisible();
+        const levels = breadcrumb.getByRole('button', { name: 'Ver níveis anteriores' });
+        await expect(levels).toBeEnabled(); await levels.click();
+        await expect(page.getByRole('menuitem', { name: 'Prontuário', exact: true })).toBeVisible();
+        await expect(page.getByRole('menuitem', { name: 'Nutrição', exact: true })).toBeVisible();
+        await page.keyboard.press('Escape');
         await expect(breadcrumb.locator('[aria-current="page"]')).toHaveText('Editar plano');
         await page.getByRole('button', { name: 'Expandir QA Café da manhã com nome longo', exact: true }).click();
         await audit(page);

@@ -5,9 +5,11 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Edit, Trash2, Search, X, Printer, CheckCircle2, RotateCcw } from 'lucide-react';
+import { Trash2, Search, X, Printer, CheckCircle2, RotateCcw } from 'lucide-react';
+import TransactionDetails, { civilDate } from './TransactionDetails';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
+import { MoreHorizontal, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
 import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { formatCurrency } from '@/lib/utils';
 
 const STATUS_COLORS = {
@@ -41,30 +43,37 @@ export default function TransactionList({
     onConfirmPayment,
     onRefund,
     filters,
-    onFiltersChange
+    onFiltersChange,
+    totalCount = transactions.length
 }) {
-    const [localSearch, setLocalSearch] = useState(filters?.search || '');
+    const [page, setPage] = useState(1);
+    const [details, setDetails] = useState(null);
+    const pageCount = Math.max(1, Math.ceil(transactions.length / 20));
+    const currentPage = Math.min(page, pageCount);
+    const pageRows = transactions.slice((currentPage - 1) * 20, currentPage * 20);
 
     const handleSearchChange = (value) => {
-        setLocalSearch(value);
+        setPage(1);
         onFiltersChange({ ...filters, search: value });
     };
 
     const handleFilterChange = (key, value) => {
+        setPage(1);
         onFiltersChange({ ...filters, [key]: value === 'all' ? null : value });
     };
 
     const clearFilters = () => {
-        setLocalSearch('');
+        setPage(1);
         onFiltersChange({ type: null, status: null, search: null });
     };
 
     const hasActiveFilters = filters?.type || filters?.status || filters?.search;
 
     return (
-        <Card className="min-w-0 overflow-hidden bg-card shadow-sm">
+        <>
+        <Card className="min-w-0 overflow-hidden rounded-2xl bg-card shadow-sm">
             <CardHeader className="pb-3">
-                <CardTitle className="font-heading text-base lg:text-lg font-semibold text-primary break-words">Histórico de Transações</CardTitle>
+                <CardTitle className="font-sans text-base font-semibold text-foreground break-words">Histórico de Transações</CardTitle>
             </CardHeader>
             <CardContent>
                 {/* Filters */}
@@ -73,16 +82,16 @@ export default function TransactionList({
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
                             aria-label="Buscar transações" placeholder="Buscar por descrição..."
-                            value={localSearch}
+                            value={filters?.search || ''}
                             onChange={(e) => handleSearchChange(e.target.value)}
-                            className="pl-9 min-w-0"
+                            className="h-11 pl-9 min-w-0"
                         />
                     </div>
                     <Select
                         value={filters?.type || 'all'}
                         onValueChange={(value) => handleFilterChange('type', value)}
                     >
-                        <SelectTrigger aria-label="Filtro de transações" className="w-full sm:w-[180px]">
+                        <SelectTrigger aria-label="Filtro de transações" className="min-h-11 w-full sm:w-[160px]">
                             <SelectValue placeholder="Tipo" />
                         </SelectTrigger>
                         <SelectContent>
@@ -95,7 +104,7 @@ export default function TransactionList({
                         value={filters?.status || 'all'}
                         onValueChange={(value) => handleFilterChange('status', value)}
                     >
-                        <SelectTrigger aria-label="Filtrar por status" className="w-full sm:w-[180px]">
+                        <SelectTrigger aria-label="Filtrar por status" className="min-h-11 w-full sm:w-[160px]">
                             <SelectValue placeholder="Status" />
                         </SelectTrigger>
                         <SelectContent>
@@ -111,7 +120,7 @@ export default function TransactionList({
                             variant="outline"
                             size="icon"
                             aria-label="Limpar filtros" onClick={clearFilters}
-                            className="flex-shrink-0"
+                            className="h-11 w-11 flex-shrink-0"
                         >
                             <X className="h-4 w-4" />
                         </Button>
@@ -119,6 +128,7 @@ export default function TransactionList({
                 </div>
 
                 <p className="mb-3 text-xs text-muted-foreground">Busca pela descrição dos lançamentos do mês. Inclui competência, pagamento ou estorno no período selecionado.</p>
+                {!loading && !loadError && <p role="status" className="mb-3 text-xs text-muted-foreground">{transactions.length} de {totalCount} lançamentos do mês{hasActiveFilters ? ' · filtros ativos' : ''}. A exportação inclui o mês completo.</p>}
                 {/* Table */}
                 {loading ? (
                     <div className="text-center py-8 text-muted-foreground">
@@ -141,18 +151,18 @@ export default function TransactionList({
                                     <TableHead className="w-[150px]">Paciente</TableHead>
                                     <TableHead className="w-[120px] text-right">Valor</TableHead>
                                     <TableHead className="w-[100px]">Status</TableHead>
-                                    <TableHead className="w-[100px] text-right">Ações</TableHead>
+                                    <TableHead className="w-[160px] text-right">Ações</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {transactions.map((transaction) => (
+                                {pageRows.map((transaction) => (
                                     <TableRow key={transaction.id}>
                                         <TableCell className="font-medium">
-                                            {format(new Date(transaction.transaction_date + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR })}
+                                            {civilDate(transaction.transaction_date)}
                                         </TableCell>
-                                        <TableCell>{transaction.paid_at ? format(new Date(transaction.paid_at + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR }) : '-'}</TableCell>
-                                        <TableCell className="max-w-[200px] truncate">
-                                            {transaction.description}
+                                        <TableCell>{civilDate(transaction.paid_at)}</TableCell>
+                                        <TableCell className="max-w-[260px]">
+                                            <button type="button" onClick={() => setDetails(transaction)} className="min-h-11 max-w-full break-words text-left font-medium text-foreground hover:text-primary hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">{transaction.description || 'Sem descrição'}</button>
                                         </TableCell>
                                         <TableCell>
                                             <Badge variant="outline">
@@ -160,13 +170,13 @@ export default function TransactionList({
                                                  (transaction.type === 'income' ? 'Receita' : 'Despesa')}
                                             </Badge>
                                         </TableCell>
-                                        <TableCell className="max-w-[150px] truncate">
+                                        <TableCell className="max-w-[150px] break-words">
                                             {transaction.patient?.name || '-'}
                                         </TableCell>
                                         <TableCell className={`text-right font-semibold tabular-nums ${
                                             transaction.type === 'income'
-                                                ? 'text-primary'
-                                                : 'text-destructive'
+                                                ? 'text-primary dark:text-green-300'
+                                                : 'text-destructive dark:text-red-300'
                                         }`}>
                                             {transaction.type === 'income' ? '+' : '-'}
                                             {formatCurrency(transaction.amount)}
@@ -179,50 +189,17 @@ export default function TransactionList({
                                             </Badge>
                                         </TableCell>
                                         <TableCell>
-                                            <div className="flex justify-end gap-2">
-                                                {transaction.type === 'income' && ['pending', 'overdue'].includes(transaction.status) && onConfirmPayment && (
-                                                    <Button variant="ghost" size="icon" onClick={() => onConfirmPayment(transaction.id)} className="h-11 w-11 text-primary" title="Confirmar recebimento" aria-label="Confirmar recebimento">
-                                                        <CheckCircle2 className="h-4 w-4" />
-                                                    </Button>
-                                                )}
-                                                {transaction.type === 'income' && transaction.status === 'paid' && onGenerateReceipt && (
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        onClick={() => onGenerateReceipt(transaction)}
-                                                        className="h-11 w-11"
-                                                        title="Gerar Recibo" aria-label="Gerar Recibo"
-                                                    >
-                                                        <Printer className="h-4 w-4" />
-                                                    </Button>
-                                                )}
-                                                {transaction.status === 'paid' && onRefund && (
-                                                    <Button variant="ghost" size="icon" onClick={() => onRefund(transaction.id)} className="h-11 w-11" title="Registrar estorno" aria-label="Registrar estorno">
-                                                        <RotateCcw className="h-4 w-4" />
-                                                    </Button>
-                                                )}
-                                                {transaction.status !== 'refunded' && (
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    onClick={() => onEdit(transaction)}
-                                                    className="h-11 w-11"
-                                                    title="Editar" aria-label="Editar"
-                                                >
-                                                    <Edit className="h-4 w-4" />
-                                                </Button>
-                                                )}
-                                                {!['paid', 'refunded'].includes(transaction.status) && (
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    onClick={() => onDelete(transaction.id)}
-                                                    className="h-11 w-11 text-destructive hover:text-destructive"
-                                                    title="Excluir" aria-label="Excluir"
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                                )}
+                                            <div className="flex flex-wrap justify-end gap-2">
+                                                {transaction.status !== 'refunded' && <Button variant="ghost" className="h-11 px-3" onClick={() => onEdit(transaction)} aria-label="Editar">Editar</Button>}
+                                                <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-11 w-11" aria-label="Mais ações da transação"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end" className="max-w-[calc(100vw-2rem)]">
+                                                        <DropdownMenuItem className="min-h-11" onClick={() => setDetails(transaction)}><Eye className="mr-2 h-4 w-4" />Ver detalhes</DropdownMenuItem>
+                                                        {transaction.type === 'income' && ['pending', 'overdue'].includes(transaction.status) && onConfirmPayment && <DropdownMenuItem className="min-h-11" onClick={() => onConfirmPayment(transaction.id)}><CheckCircle2 className="mr-2 h-4 w-4" />Confirmar recebimento</DropdownMenuItem>}
+                                                        {transaction.type === 'income' && transaction.status === 'paid' && onGenerateReceipt && <DropdownMenuItem className="min-h-11" onClick={() => onGenerateReceipt(transaction)}><Printer className="mr-2 h-4 w-4" />Gerar Recibo</DropdownMenuItem>}
+                                                        {transaction.status === 'paid' && onRefund && <DropdownMenuItem className="min-h-11" onClick={() => onRefund(transaction.id)}><RotateCcw className="mr-2 h-4 w-4" />Registrar estorno</DropdownMenuItem>}
+                                                        {!['paid', 'refunded'].includes(transaction.status) && <DropdownMenuItem className="min-h-11 text-destructive" onClick={() => onDelete(transaction.id)}><Trash2 className="mr-2 h-4 w-4" />Excluir</DropdownMenuItem>}
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
                                             </div>
                                         </TableCell>
                                     </TableRow>
@@ -231,8 +208,11 @@ export default function TransactionList({
                         </Table>
                     </div>
                 )}
+                {!loading && !loadError && transactions.length > 20 && <div className="mt-4 flex flex-wrap items-center justify-between gap-3"><p className="text-sm text-muted-foreground">Página {currentPage} de {pageCount} · 20 por página</p><div className="flex gap-2"><Button variant="outline" disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)}><ChevronLeft className="mr-1 h-4 w-4" />Anterior</Button><Button variant="outline" disabled={currentPage === pageCount} onClick={() => setPage(currentPage + 1)}>Próxima<ChevronRight className="ml-1 h-4 w-4" /></Button></div></div>}
             </CardContent>
         </Card>
+        <TransactionDetails transaction={details} onClose={() => setDetails(null)} />
+        </>
     );
 }
 

@@ -1,310 +1,74 @@
-import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import React, { useRef, useState } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
 import { DateInputWithCalendar } from '@/components/ui/date-input';
 import { Label } from '@/components/ui/label';
-import { CheckCircle2, XCircle, Calendar, AlertCircle } from 'lucide-react';
-import { format, parseISO, isToday, isYesterday } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { ChevronDown, Clock3, CheckCircle2, Calendar, Trash2 } from 'lucide-react';
+import { format, parseISO, differenceInCalendarDays } from 'date-fns';
 import { formatCurrency } from '@/lib/utils';
-import { getPendingPayments, updateTransactionStatus, rescheduleTransaction, deleteTransaction } from '@/lib/supabase/financial-queries';
+import { getTodayIsoDate } from '@/lib/utils/date';
+import { isFinancialTransactionOverdue } from '@/lib/utils/financial-math';
+import { toCents, fromCents } from '@/lib/utils/money';
+import { updateTransactionStatus, rescheduleTransaction, deleteTransaction } from '@/lib/supabase/financial-queries';
 import { useToast } from '@/components/ui/use-toast';
 
-export default function PendingPaymentsWidget({ nutritionistId, onUpdate }) {
+export default function PendingPaymentsWidget({ payments = [], state = 'loading', onRetry, onUpdate }) {
     const { toast } = useToast();
-    const [pendingPayments, setPendingPayments] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [confirmDialog, setConfirmDialog] = useState(null);
-    const [cancelDialog, setCancelDialog] = useState(null);
-    const [rescheduleDialog, setRescheduleDialog] = useState(null);
-    const [rescheduleDate, setRescheduleDate] = useState('');
-
-    useEffect(() => {
-        if (nutritionistId) {
-            loadPendingPayments();
-        }
-    }, [nutritionistId]);
-
-    const loadPendingPayments = async () => {
-        if (!nutritionistId) return;
-        setLoading(true);
+    const [action, setAction] = useState(null);
+    const [date, setDate] = useState('');
+    const [visibleCount, setVisibleCount] = useState(5);
+    const [busy, setBusy] = useState(false);
+    const [actionError, setActionError] = useState(false);
+    const lock = useRef(false);
+    const today = getTodayIsoDate();
+    const overdue = payments.filter(row => isFinancialTransactionOverdue(row, today)).length;
+    const total = fromCents(payments.reduce((sum, row) => sum + toCents(row.amount), 0));
+    const run = async () => {
+        if (!action || lock.current) return;
+        if (action.type === 'reschedule' && !date) return;
+        lock.current = true; setBusy(true); setActionError(false);
         try {
-            const data = await getPendingPayments(nutritionistId);
-            setPendingPayments(data);
-        } catch (error) {
-            logDiagnostic('error', 'components/financial/PendingPaymentsWidget.jsx:39', 'Error loading pending payments:', error);
-            toast({
-                title: "Erro",
-                description: "Não foi possível carregar os pagamentos pendentes.",
-                variant: "destructive"
-            });
-        } finally {
-            setLoading(false);
-        }
+            if (action.type === 'paid') await updateTransactionStatus(action.id, 'paid');
+            else if (action.type === 'delete') await deleteTransaction(action.id);
+            else await rescheduleTransaction(action.id, date);
+            setAction(null); setDate('');
+
+            toast({ title: action.type === 'paid' ? 'Recebimento confirmado' : action.type === 'delete' ? 'Cobrança excluída' : 'Cobrança reagendada' });
+        } catch {
+            setActionError(true); return;
+        } finally { lock.current = false; setBusy(false); }
+        await onUpdate?.();
     };
-
-    const handleConfirmPayment = async (transactionId) => {
-        try {
-            await updateTransactionStatus(transactionId, 'paid');
-            toast({
-                title: "Sucesso!",
-                description: "Pagamento confirmado com sucesso."
-            });
-            setConfirmDialog(null);
-            loadPendingPayments();
-            if (onUpdate) onUpdate();
-        } catch (error) {
-            toast({
-                title: "Erro",
-                description: "Não foi possível confirmar o pagamento.",
-                variant: "destructive"
-            });
-        }
-    };
-
-    const handleCancelPayment = async (transactionId) => {
-        try {
-            await deleteTransaction(transactionId);
-            toast({
-                title: "Sucesso!",
-                description: "Pagamento cancelado e removido."
-            });
-            setCancelDialog(null);
-            loadPendingPayments();
-            if (onUpdate) onUpdate();
-        } catch (error) {
-            toast({
-                title: "Erro",
-                description: "Não foi possível cancelar o pagamento.",
-                variant: "destructive"
-            });
-        }
-    };
-
-    const handleReschedule = async (transactionId) => {
-        if (!rescheduleDate) {
-            toast({
-                title: "Erro",
-                description: "Selecione uma data para reagendar.",
-                variant: "destructive"
-            });
-            return;
-        }
-
-        try {
-            await rescheduleTransaction(transactionId, rescheduleDate);
-            toast({
-                title: "Sucesso!",
-                description: "Cobrança reagendada com sucesso."
-            });
-            setRescheduleDialog(null);
-            setRescheduleDate('');
-            loadPendingPayments();
-            if (onUpdate) onUpdate();
-        } catch (error) {
-            toast({
-                title: "Erro",
-                description: "Não foi possível reagendar a cobrança.",
-                variant: "destructive"
-            });
-        }
-    };
-
-    const formatTransactionDate = (dateString) => {
-        const date = parseISO(dateString + 'T00:00:00');
-        if (isToday(date)) {
-            return 'Hoje';
-        } else if (isYesterday(date)) {
-            return 'Ontem';
-        } else {
-            return format(date, "dd 'de' MMMM", { locale: ptBR });
-        }
-    };
-
-    const getDaysOverdue = (dateString) => {
-        const date = parseISO(dateString + 'T00:00:00');
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const transactionDate = new Date(date);
-        transactionDate.setHours(0, 0, 0, 0);
-        const diffTime = today - transactionDate;
-        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-        return diffDays;
-    };
-
-    if (loading) {
-        return null;
-    }
-
-    if (pendingPayments.length === 0) {
-        return null; // Don't show widget if no pending payments
-    }
-
-    return (
-        <>
-            <Card id="pending-payments" className="mb-6 border-2 border-orange-200 dark:border-orange-800 bg-orange-50/50 dark:bg-orange-950/20 overflow-hidden">
-                <CardHeader className="pb-3">
-                    <div className="flex items-center gap-2 min-w-0">
-                        <AlertCircle className="w-5 h-5 text-orange-700 dark:text-orange-400 shrink-0" />
-                        <CardTitle className="text-base md:text-lg font-semibold text-orange-900 dark:text-orange-100 break-words">
-                            Pagamentos Pendentes
-                        </CardTitle>
-                    </div>
-                    <CardDescription className="text-orange-700 dark:text-orange-300 text-xs md:text-sm">
-                        Receitas ainda não recebidas, inclusive as com vencimento futuro.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="space-y-3">
-                        {pendingPayments.map((transaction) => {
-                            const dueDate = transaction.due_date || transaction.transaction_date;
-                            const daysOverdue = getDaysOverdue(dueDate);
-                            const isOverdue = daysOverdue > 0;
-
-                            return (
-                                <div
-                                    key={transaction.id}
-                                    className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 bg-white dark:bg-gray-900 rounded-lg border border-orange-200 dark:border-orange-800 shadow-sm"
-                                >
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <p className="font-semibold text-sm sm:text-base text-foreground truncate">
-                                                {transaction.description || `Consulta com ${transaction.patient?.name || 'Paciente'}`}
-                                            </p>
-                                            {isOverdue && (
-                                                <Badge variant="destructive" className="text-xs">
-                                                    {daysOverdue} {daysOverdue === 1 ? 'dia' : 'dias'} atrasado
-                                                </Badge>
-                                            )}
-                                        </div>
-                                        <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm text-muted-foreground">
-                                            <span>
-                                                {transaction.patient?.name || 'Paciente não identificado'}
-                                            </span>
-                                            <span>•</span>
-                                            <span>
-                                                Vence {formatTransactionDate(dueDate)}
-                                            </span>
-                                            <span>•</span>
-                                            <span className="font-semibold text-orange-700 dark:text-orange-400">
-                                                {formatCurrency(transaction.amount)}
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <div className="flex flex-col sm:flex-row flex-wrap gap-2 w-full sm:w-auto">
-                                        <Button
-                                            size="sm"
-                                            onClick={() => setConfirmDialog(transaction.id)}
-                                            className="min-h-11 h-auto py-2 sm:flex-initial bg-primary hover:bg-primary/90 text-primary-foreground"
-                                        >
-                                            <CheckCircle2 className="w-4 h-4 mr-1.5" />
-                                            <span className="hidden sm:inline">Confirmar Pagamento</span>
-                                            <span className="sm:hidden">Confirmar</span>
-                                        </Button>
-                                        <Button
-                                            size="sm"
-                                            variant="outline"
-                                            onClick={() => setRescheduleDialog({ id: transaction.id, date: dueDate })}
-                                            className="min-h-11 h-auto py-2 sm:flex-initial"
-                                        >
-                                            <Calendar className="w-4 h-4 mr-1.5" />
-                                            <span className="hidden sm:inline">Reagendar</span>
-                                            <span className="sm:hidden">Reagendar</span>
-                                        </Button>
-                                        <Button
-                                            size="sm"
-                                            variant="outline"
-                                            onClick={() => setCancelDialog(transaction.id)}
-                                            className="min-h-11 h-auto py-2 sm:flex-initial text-destructive hover:text-destructive hover:bg-destructive/10"
-                                        >
-                                            <XCircle className="w-4 h-4 mr-1.5" />
-                                            <span className="hidden sm:inline">Cancelar</span>
-                                            <span className="sm:hidden">Cancelar</span>
-                                        </Button>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                </CardContent>
-            </Card>
-
-            {/* Confirm Payment Dialog */}
-            <AlertDialog open={!!confirmDialog} onOpenChange={(open) => !open && setConfirmDialog(null)}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Confirmar Pagamento</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            Tem certeza que deseja confirmar este pagamento? Esta ação marcará a transação como paga.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction
-                            onClick={() => handleConfirmPayment(confirmDialog)}
-                            className="bg-primary hover:bg-primary/90"
-                        >
-                            Confirmar Pagamento
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-
-            {/* Cancel Payment Dialog */}
-            <AlertDialog open={!!cancelDialog} onOpenChange={(open) => !open && setCancelDialog(null)}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Cancelar Pagamento</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            Tem certeza que deseja cancelar este pagamento? Esta ação removerá a transação permanentemente.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction
-                            onClick={() => handleCancelPayment(cancelDialog)}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        >
-                            Cancelar Pagamento
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-
-            {/* Reschedule Dialog */}
-            <Dialog open={!!rescheduleDialog} onOpenChange={(open) => !open && setRescheduleDialog(null)}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Reagendar Cobrança</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                        <div>
-                            <Label htmlFor="reschedule_date">Nova Data *</Label>
-                            <DateInputWithCalendar
-                                id="reschedule_date"
-                                required
-                                value={rescheduleDate || (rescheduleDialog ? rescheduleDialog.date : '')}
-                                onChange={(value) => setRescheduleDate(value)}
-                                min={format(new Date(), 'yyyy-MM-dd')}
-                            />
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setRescheduleDialog(null)}>
-                            Cancelar
-                        </Button>
-                        <Button onClick={() => handleReschedule(rescheduleDialog.id)}>
-                            Reagendar
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-        </>
-    );
+    const closeAction = () => { if (!lock.current) { setAction(null); setActionError(false); setDate(''); } };
+    const feedback = actionError && <p role="alert" className="text-sm text-destructive">Não foi possível concluir a alteração. Confira o estado da cobrança antes de tentar novamente.</p>;
+    return <>
+        <Card id="pending-payments" className="min-w-0 rounded-2xl bg-card shadow-sm">
+            <CardContent className="p-4 sm:p-5">
+                {state === 'loading' ? <p role="status" className="text-sm text-muted-foreground">Carregando cobranças em aberto…</p>
+                    : state === 'error' ? <div role="alert" className="flex flex-wrap items-center justify-between gap-3 text-sm"><span>Cobranças em aberto indisponíveis. Isso não significa que não há pendências.</span><Button variant="outline" onClick={onRetry}>Tentar carregar cobranças</Button></div>
+                    : payments.length === 0 ? <p className="flex items-center gap-2 text-sm text-muted-foreground"><CheckCircle2 className="h-4 w-4 shrink-0 text-primary dark:text-green-300" aria-hidden="true" />Nenhuma cobrança em aberto · todos os períodos</p>
+                        : <details open={overdue > 0} className="group min-w-0">
+                            <summary className="flex min-h-11 cursor-pointer list-none flex-wrap items-center justify-between gap-3 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary [&::-webkit-details-marker]:hidden">
+                                <span className="flex min-w-0 flex-wrap items-center gap-2"><Clock3 className="h-4 w-4 shrink-0" aria-hidden="true" /><span className="font-medium">Cobranças em aberto</span><Badge variant={overdue ? 'warning' : 'outline'}>{payments.length}{overdue ? ` · ${overdue} vencidas` : ''}</Badge></span>
+                                <span className="flex items-center gap-3"><span className="font-semibold tabular-nums">{formatCurrency(total)}</span><ChevronDown className="h-4 w-4 transition-transform duration-150 group-open:rotate-180 motion-reduce:transition-none" aria-hidden="true" /></span>
+                            </summary>
+                            <p className="mb-3 text-xs leading-relaxed text-muted-foreground">Valor bruto em aberto · todos os períodos, inclusive vencimentos futuros. Este painel não acompanha os filtros do mês.</p>
+                            <ul className="space-y-2">{payments.slice(0, visibleCount).map(row => {
+                                const late = isFinancialTransactionOverdue(row, today);
+                                const days = row.due_date ? Math.max(0, differenceInCalendarDays(new Date(), parseISO(row.due_date + 'T00:00:00'))) : 0;
+                                return <li key={row.id} className="flex min-w-0 flex-col justify-between gap-3 rounded-xl border border-border bg-background/40 p-3 sm:flex-row sm:items-center">
+                                    <div className="min-w-0 flex-1"><p className="break-words text-sm font-medium">{row.description || 'Cobrança sem descrição'}</p><div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground"><span className="break-words">{row.patient?.name || 'Sem paciente vinculado'}</span><span>{row.due_date ? `Vence ${format(parseISO(row.due_date), 'dd/MM/yyyy')}` : `Sem vencimento definido · competência ${format(parseISO(row.transaction_date), 'dd/MM/yyyy')}`}</span><span className="font-medium tabular-nums text-foreground">{formatCurrency(row.amount)}</span>{late && <span className="font-medium text-destructive">{days ? `${days} ${days === 1 ? 'dia em atraso' : 'dias em atraso'}` : 'Vencida'}</span>}</div></div>
+                                    <div className="flex flex-wrap items-center gap-1"><Button size="sm" variant="outline" disabled={busy} className="min-h-11 gap-1.5" onClick={() => setAction({ type: 'paid', id: row.id })}><CheckCircle2 className="h-4 w-4" aria-hidden="true" />Confirmar recebimento</Button><Button size="icon" variant="ghost" disabled={busy} className="h-11 w-11" aria-label="Reagendar cobrança" onClick={() => { setDate(row.due_date || row.transaction_date); setAction({ type: 'reschedule', id: row.id }); }}><Calendar className="h-4 w-4" aria-hidden="true" /></Button><Button size="icon" variant="ghost" disabled={busy} className="h-11 w-11 text-destructive" aria-label="Excluir cobrança pendente" onClick={() => setAction({ type: 'delete', id: row.id })}><Trash2 className="h-4 w-4" aria-hidden="true" /></Button></div>
+                                </li>;
+                            })}</ul>
+                            {visibleCount < payments.length && <Button variant="ghost" className="mt-3 min-h-11" onClick={() => setVisibleCount(count => count + 10)}>Mostrar mais cobranças ({payments.length - visibleCount})</Button>}
+                        </details>}
+            </CardContent>
+        </Card>
+        <AlertDialog open={Boolean(action && action.type !== 'reschedule')} onOpenChange={open => !open && closeAction()}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>{action?.type === 'delete' ? 'Excluir cobrança pendente' : 'Confirmar recebimento'}</AlertDialogTitle><AlertDialogDescription>{action?.type === 'delete' ? 'Esta ação exclui a transação permanentemente. Confira a cobrança antes de confirmar.' : 'A cobrança será marcada como paga na data de hoje. Confira o recebimento antes de confirmar.'}</AlertDialogDescription></AlertDialogHeader>{feedback}<AlertDialogFooter><AlertDialogCancel disabled={busy}>Voltar</AlertDialogCancel><AlertDialogAction disabled={busy} onClick={event => { event.preventDefault(); run(); }} className={action?.type === 'delete' ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90' : ''}>{busy ? 'Salvando…' : action?.type === 'delete' ? 'Excluir cobrança' : 'Confirmar recebimento'}</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
+        <Dialog open={action?.type === 'reschedule'} onOpenChange={open => !open && closeAction()}><DialogContent><DialogHeader><DialogTitle>Reagendar cobrança</DialogTitle></DialogHeader><div className="space-y-3"><Label htmlFor="reschedule-date">Nova data de vencimento</Label><DateInputWithCalendar id="reschedule-date" value={date} onChange={setDate} disabled={busy} min={today} />{feedback}</div><DialogFooter><Button variant="outline" disabled={busy} onClick={closeAction}>Cancelar</Button><Button disabled={busy || !date} onClick={run}>{busy ? 'Salvando…' : 'Reagendar'}</Button></DialogFooter></DialogContent></Dialog>
+    </>;
 }
-

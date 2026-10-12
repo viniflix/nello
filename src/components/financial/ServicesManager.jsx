@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { decimalMoney } from '@/lib/utils/money';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,6 +26,8 @@ export default function ServicesManager({ open, onOpenChange, nutritionistId }) 
     const [services, setServices] = useState([]);
     const [loading, setLoading] = useState(true);
     const [loadError, setLoadError] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const saveLock = useRef(false);
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingService, setEditingService] = useState(null);
     const [deleteConfirm, setDeleteConfirm] = useState(null);
@@ -84,6 +87,7 @@ export default function ServicesManager({ open, onOpenChange, nutritionistId }) 
 
     const handleSaveService = async (e) => {
         e.preventDefault();
+        if (saveLock.current) return;
 
         if (!formData.name || !formData.price) {
             toast({
@@ -94,6 +98,7 @@ export default function ServicesManager({ open, onOpenChange, nutritionistId }) 
             return;
         }
 
+        saveLock.current = true; setSaving(true);
         try {
             await saveService({
                 id: editingService?.id,
@@ -101,7 +106,7 @@ export default function ServicesManager({ open, onOpenChange, nutritionistId }) 
                 nutritionist_id: nutritionistId,
                 name: formData.name,
                 description: formData.description,
-                price: parseFloat(formData.price),
+                price: decimalMoney(formData.price),
                 category: formData.category
             });
 
@@ -112,14 +117,14 @@ export default function ServicesManager({ open, onOpenChange, nutritionistId }) 
 
             setIsFormOpen(false);
             setEditingService(null);
-            loadServices();
+            await loadServices();
         } catch (error) {
             toast({
                 title: "Erro",
                 description: toPortugueseError(error, 'Não foi possível salvar o serviço.'),
                 variant: "destructive"
             });
-        }
+        } finally { saveLock.current = false; setSaving(false); }
     };
 
     const handleDeleteService = async (id) => {
@@ -142,7 +147,7 @@ export default function ServicesManager({ open, onOpenChange, nutritionistId }) 
 
     return (
         <>
-            <Dialog open={open} onOpenChange={onOpenChange}>
+            <Dialog open={open} onOpenChange={next => !saveLock.current && onOpenChange(next)}>
                 <DialogContent className="max-w-4xl max-h-[90dvh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle>Gerenciar Serviços</DialogTitle>
@@ -206,7 +211,7 @@ export default function ServicesManager({ open, onOpenChange, nutritionistId }) 
             </Dialog>
 
             {/* Service Form Dialog */}
-            <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+            <Dialog open={isFormOpen} onOpenChange={next => !saveLock.current && setIsFormOpen(next)}>
                 <DialogContent className="max-h-[90dvh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle>
@@ -268,11 +273,11 @@ export default function ServicesManager({ open, onOpenChange, nutritionistId }) 
                             </div>
                         </div>
                         <DialogFooter>
-                            <Button type="button" variant="outline" onClick={() => setIsFormOpen(false)}>
+                            <Button type="button" variant="outline" disabled={saving} onClick={() => setIsFormOpen(false)}>
                                 Cancelar
                             </Button>
-                            <Button type="submit">
-                                {editingService ? 'Atualizar' : 'Salvar'}
+                            <Button type="submit" disabled={saving}>
+                                {saving ? 'Salvando…' : editingService ? 'Atualizar' : 'Salvar'}
                             </Button>
                         </DialogFooter>
                     </form>

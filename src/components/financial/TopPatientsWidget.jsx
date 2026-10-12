@@ -1,182 +1,37 @@
-import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
-import { Trophy, Medal, Award } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatCurrency } from '@/lib/utils';
 import { supabase } from '@/infrastructure/supabase/client';
+import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 
 export default function TopPatientsWidget({ nutritionistId, refreshKey = 0 }) {
-    const [topPatients, setTopPatients] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [loadFailed, setLoadFailed] = useState(false);
-
-    useEffect(() => {
-        if (nutritionistId) {
-            loadTopPatients();
-        }
-    }, [nutritionistId, refreshKey]);
-
-    const loadTopPatients = async () => {
-        if (!nutritionistId) return;
-        setLoading(true);
-        setLoadFailed(false);
+    const [rows, setRows] = useState([]);
+    const [state, setState] = useState('loading');
+    const request = useRef(0);
+    const load = useCallback(async () => {
+        const sequence = ++request.current;
+        setRows([]); setState('loading');
+        if (!nutritionistId) { setState('empty'); return; }
         try {
             const { data, error } = await supabase.rpc('get_top_financial_patients', { p_limit: 3 });
             if (error) throw error;
-            setTopPatients((data || []).map(row => ({
-                patient: { id: row.patient_id, name: row.patient_name, avatar_url: row.avatar_url },
-                total: Number(row.total) || 0,
-            })));
+            if (sequence !== request.current) return;
+            setRows(data || []); setState('ready');
         } catch (error) {
-            logDiagnostic('warn', 'components/financial/TopPatientsWidget.jsx:33', 'Top patients query failed', { code: error?.code || 'unknown' });
-            setTopPatients([]);
-            setLoadFailed(true);
-        } finally {
-            setLoading(false);
+            if (sequence !== request.current) return;
+            logDiagnostic('warn', 'financial/top-patients', 'Ranking query failed', { code: error?.code || 'unknown' });
+            setState('error');
         }
-    };
-
-    const getInitials = (name) => {
-        if (!name) return '?';
-        const parts = name.trim().split(' ');
-        if (parts.length >= 2) {
-            return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-        }
-        return name.substring(0, 2).toUpperCase();
-    };
-
-    const getRankConfig = (rank) => {
-        if (rank === 0) {
-            return { 
-                icon: Trophy, 
-                color: 'text-yellow-600', 
-                bgColor: 'bg-yellow-50 dark:bg-yellow-950',
-                borderColor: 'border-yellow-300 dark:border-yellow-700',
-                label: '1º'
-            };
-        }
-        if (rank === 1) {
-            return { 
-                icon: Medal, 
-                color: 'text-gray-400', 
-                bgColor: 'bg-gray-50 dark:bg-gray-950',
-                borderColor: 'border-gray-300 dark:border-gray-700',
-                label: '2º'
-            };
-        }
-        if (rank === 2) {
-            return { 
-                icon: Award, 
-                color: 'text-amber-700', 
-                bgColor: 'bg-amber-50 dark:bg-amber-950',
-                borderColor: 'border-amber-300 dark:border-amber-700',
-                label: '3º'
-            };
-        }
-        return { 
-            icon: Trophy, 
-            color: 'text-muted-foreground', 
-            bgColor: 'bg-muted',
-            borderColor: 'border-border',
-            label: `${rank + 1}º`
-        };
-    };
-
-    if (loading) {
-        return (
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <Trophy className="w-5 h-5" />
-                        Top Pacientes
-                    </CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <div className="text-center py-4 text-muted-foreground">
-                        Carregando...
-                    </div>
-                </CardContent>
-            </Card>
-        );
-    }
-
-    if (loadFailed || topPatients.length === 0) {
-        return (
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <Trophy className="w-5 h-5" />
-                        Top Pacientes
-                    </CardTitle>
-                    <CardDescription>
-                        Histórico acumulado · todos os períodos (LTV)
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="text-center py-4 text-muted-foreground">
-                        {loadFailed ? 'Não foi possível carregar o ranking.' : 'Nenhum dado disponível'}
-                    </div>
-                    {loadFailed && <Button variant="outline" className="w-full" onClick={loadTopPatients}>Tentar novamente</Button>}
-                </CardContent>
-            </Card>
-        );
-    }
-
-    return (
-        <Card>
-            <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                    <Trophy className="w-5 h-5 text-yellow-600" />
-                    Top 3 Pacientes
-                </CardTitle>
-                <CardDescription>
-                    Histórico acumulado · todos os períodos (LTV)
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
-                <div className="space-y-3">
-                    {topPatients.map((item, index) => {
-                        const rankConfig = getRankConfig(index);
-                        const RankIcon = rankConfig.icon;
-                        return (
-                        <div
-                            key={item.patient?.id || index}
-                            className={`flex items-center gap-3 p-3 rounded-lg border-2 ${rankConfig.bgColor} ${rankConfig.borderColor} hover:shadow-md transition-all`}
-                        >
-                            <div className={`flex-shrink-0 w-10 h-10 rounded-full ${rankConfig.bgColor} ${rankConfig.borderColor} border-2 flex items-center justify-center`}>
-                                <RankIcon className={`w-5 h-5 ${rankConfig.color}`} />
-                            </div>
-                            <Avatar className="h-10 w-10 flex-shrink-0">
-                                <AvatarImage src={item.patient?.avatar_url} alt={item.patient?.name} />
-                                <AvatarFallback>
-                                    {getInitials(item.patient?.name)}
-                                </AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 mb-1">
-                                    <span className={`text-xs font-bold ${rankConfig.color}`}>
-                                        {rankConfig.label}
-                                    </span>
-                                    <p className="font-semibold text-sm truncate">
-                                        {item.patient?.name || 'Paciente não identificado'}
-                                    </p>
-                                </div>
-                                <p className="text-xs text-muted-foreground">
-                                    Total investido
-                                </p>
-                            </div>
-                            <div className="flex-shrink-0 text-right">
-                                <p className={`font-bold text-lg ${rankConfig.color}`}>
-                                    {formatCurrency(item.total)}
-                                </p>
-                            </div>
-                        </div>
-                    )})}
-                </div>
-            </CardContent>
-        </Card>
-    );
+    }, [nutritionistId]);
+    useEffect(() => { void load(); return () => { request.current++; }; }, [load, refreshKey]);
+    return <Card className="min-w-0 rounded-2xl bg-card shadow-sm">
+        <CardHeader className="pb-3"><CardTitle className="font-sans text-base font-semibold">Top 3 Pacientes</CardTitle><CardDescription>Recebimentos líquidos acumulados · todos os períodos (LTV)</CardDescription></CardHeader>
+        <CardContent>
+            {state === 'loading' ? <p role="status" className="text-sm text-muted-foreground">Carregando ranking…</p>
+                : state === 'error' ? <div role="alert" className="flex flex-wrap items-center justify-between gap-3 text-sm"><span>Não foi possível carregar o ranking.</span><Button variant="outline" onClick={load}>Tentar novamente</Button></div>
+                    : !rows.length ? <p className="text-sm text-muted-foreground">Nenhum dado disponível</p>
+                        : <ol className="grid gap-3 lg:grid-cols-3">{rows.map((row, index) => <li key={row.patient_id} className="flex min-w-0 items-center gap-3 rounded-xl border p-4"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-medium" aria-label={`${index + 1}º lugar`}>{index + 1}</span><div className="min-w-0 flex-1"><p className="break-words text-sm font-medium">{row.patient_name || 'Paciente não identificado'}</p><p className="mt-1 break-all text-base font-semibold tabular-nums">{formatCurrency(Number(row.total) || 0)}</p></div></li>)}</ol>}
+        </CardContent>
+    </Card>;
 }

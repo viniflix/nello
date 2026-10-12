@@ -1,18 +1,8 @@
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { motion } from 'framer-motion';
-import { Plus, Settings, FileSpreadsheet, Download, ChevronDown } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { MonthInputWithCalendar } from '@/components/ui/date-input';
-import { Label } from '@/components/ui/label';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { useToast } from '@/components/ui/use-toast';
 import { format, startOfMonth } from 'date-fns';
 import Papa from 'papaparse';
@@ -21,6 +11,8 @@ import { supabase } from '@/infrastructure/supabase/client';
 
 // Components
 import FinancialKPIs from '@/components/financial/FinancialKPIs';
+import '@/components/financial/financial-workspace.css';
+import FinancialToolbar from '@/components/financial/FinancialToolbar';
 import FinancialCharts from '@/components/financial/FinancialCharts';
 import TransactionList from '@/components/financial/TransactionList';
 import TransactionDialog from '@/components/financial/TransactionDialog';
@@ -32,6 +24,7 @@ import FinancialGoal from '@/components/financial/FinancialGoal';
 // Queries
 import {
     getFinancialMonthRows,
+    getPendingPayments,
     saveTransaction,
     saveMultipleTransactions,
     deleteTransaction,
@@ -63,9 +56,14 @@ export default function FinancialPage() {
     const [loading, setLoading] = useState(true);
     const [loadError, setLoadError] = useState(false);
     const [rankingRevision, setRankingRevision] = useState(0);
+    const [pendingPayments, setPendingPayments] = useState([]);
+    const transactionSaveLock = useRef(false);
+    const mutationLock = useRef(false);
+    const [mutationBusy, setMutationBusy] = useState(false);
+    const [mutationError, setMutationError] = useState(false);
     const loadRequest = useRef(0);
     const auxiliaryRequest = useRef(0);
-    const [auxiliaryState, setAuxiliaryState] = useState({ projection: 'loading', patients: 'loading', services: 'loading' });
+    const [auxiliaryState, setAuxiliaryState] = useState({ projection: 'loading', patients: 'loading', services: 'loading', pending: 'loading' });
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [isServicesManagerOpen, setIsServicesManagerOpen] = useState(false);
     const [editingTransaction, setEditingTransaction] = useState(null);
@@ -138,22 +136,25 @@ export default function FinancialPage() {
     const loadAuxiliaryData = useCallback(async () => {
         if (!user?.id) return;
         const request = ++auxiliaryRequest.current;
-        setAuxiliaryState({ projection: 'loading', patients: 'loading', services: 'loading' });
-        const [projection, patientsResult, servicesResult] = await Promise.allSettled([
+        setAuxiliaryState({ projection: 'loading', patients: 'loading', services: 'loading', pending: 'loading' });
+        setPendingPayments([]);
+        const [projection, patientsResult, servicesResult, pendingResult] = await Promise.allSettled([
             getProjectedCashFlow(user.id, new Date()),
             getPatientsForAutocomplete(user.id),
             getServices(user.id),
+            getPendingPayments(user.id),
         ]);
         if (request !== auxiliaryRequest.current) return;
-        setAuxiliaryState({ projection: projection.status === 'fulfilled' ? 'ready' : 'error', patients: patientsResult.status === 'fulfilled' ? 'ready' : 'error', services: servicesResult.status === 'fulfilled' ? 'ready' : 'error' });
+        setAuxiliaryState({ projection: projection.status === 'fulfilled' ? 'ready' : 'error', patients: patientsResult.status === 'fulfilled' ? 'ready' : 'error', services: servicesResult.status === 'fulfilled' ? 'ready' : 'error', pending: pendingResult.status === 'fulfilled' ? 'ready' : 'error' });
+        setPendingPayments(pendingResult.status === 'fulfilled' ? pendingResult.value : []);
         if (projection.status === 'rejected') setProjectedCashFlow([]);
         if (patientsResult.status === 'rejected') setPatients([]);
         if (servicesResult.status === 'rejected') setServices([]);
         if (projection.status === 'fulfilled') setProjectedCashFlow(projection.value);
         if (patientsResult.status === 'fulfilled') setPatients(patientsResult.value);
         if (servicesResult.status === 'fulfilled') setServices(servicesResult.value);
-        if ([projection, patientsResult, servicesResult].some(result => result.status === 'rejected')) {
-            toast({ title: 'Dados complementares indisponíveis', description: 'Tente atualizar para recuperar projeção, pacientes ou serviços.', variant: 'destructive' });
+        if ([projection, patientsResult, servicesResult, pendingResult].some(result => result.status === 'rejected')) {
+            toast({ title: 'Dados complementares indisponíveis', description: 'Tente atualizar para recuperar cobranças, projeção, pacientes ou serviços.', variant: 'destructive' });
         }
     }, [user?.id, toast]);
 
@@ -181,8 +182,10 @@ export default function FinancialPage() {
     };
 
     const handleSaveTransaction = async (data) => {
+        if (transactionSaveLock.current) return false;
+        transactionSaveLock.current = true;
         try {
-            if (!user?.id) return;
+            if (!user?.id) return false;
 
             // Handle multiple transactions (installments)
             if (data.multiple && data.transactions) {
@@ -213,6 +216,7 @@ export default function FinancialPage() {
             setIsDialogOpen(false);
             setEditingTransaction(null);
             await refreshAfterMutation();
+            return true;
         } catch (error) {
             logDiagnostic('error', 'pages/nutritionist/tools/FinancialPage.jsx:192', 'Error saving transaction:', error);
             toast({
@@ -220,49 +224,27 @@ export default function FinancialPage() {
                 description: toPortugueseError(error, 'Não foi possível salvar a transação.'),
                 variant: "destructive"
             });
-        }
+            return false;
+        } finally { transactionSaveLock.current = false; }
     };
 
-    const handleDeleteTransaction = async (id) => {
+    const runTransactionAction = async (operation, close, title) => {
+        if (mutationLock.current) return;
+        mutationLock.current = true; setMutationBusy(true); setMutationError(false);
         try {
-            await deleteTransaction(id);
-            toast({
-                title: "Sucesso!",
-                description: "Transação deletada com sucesso."
-            });
-            setDeleteConfirm(null);
-            await refreshAfterMutation();
+            await operation();
         } catch (error) {
-            logDiagnostic('error', 'pages/nutritionist/tools/FinancialPage.jsx:211', 'Error deleting transaction:', error);
-            toast({
-                title: "Erro",
-                description: "Não foi possível deletar a transação.",
-                variant: "destructive"
-            });
-        }
+            logDiagnostic('warn', 'financial/transaction-action', 'Financial action not confirmed', { code: error?.code || 'unknown' });
+            setMutationError(true);
+            return;
+        } finally { mutationLock.current = false; setMutationBusy(false); }
+        close(null);
+        toast({ title });
+        await refreshAfterMutation();
     };
-
-    const handleConfirmPayment = async (id) => {
-        try {
-            await updateTransactionStatus(id, 'paid');
-            setPaymentConfirm(null);
-            await refreshAfterMutation();
-            toast({ title: 'Recebimento confirmado' });
-        } catch (error) {
-            toast({ title: 'Não foi possível confirmar', description: toPortugueseError(error), variant: 'destructive' });
-        }
-    };
-
-    const handleRefund = async (id) => {
-        try {
-            await refundTransaction(id);
-            setRefundConfirm(null);
-            await refreshAfterMutation();
-            toast({ title: 'Estorno registrado' });
-        } catch (error) {
-            toast({ title: 'Não foi possível registrar o estorno', description: toPortugueseError(error), variant: 'destructive' });
-        }
-    };
+    const handleDeleteTransaction = id => runTransactionAction(() => deleteTransaction(id), setDeleteConfirm, 'Transação excluída');
+    const handleConfirmPayment = id => runTransactionAction(() => updateTransactionStatus(id, 'paid'), setPaymentConfirm, 'Recebimento confirmado');
+    const handleRefund = id => runTransactionAction(() => refundTransaction(id), setRefundConfirm, 'Estorno registrado');
 
     const handleExportCSV = () => {
         const csvData = monthRows.map(t => ({
@@ -378,111 +360,19 @@ export default function FinancialPage() {
     };
 
     return (
-        <div className="min-h-dvh bg-background min-w-0">
-            <main className="max-w-7xl mx-auto w-full px-4 md:px-8 pt-4 md:pt-8 pb-8 min-w-0 min-w-0">
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5 }}
-                    className="min-w-0"
-                >
-                    {/* Header */}
-                    <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4 mb-5 text-left">
-                        <div className="min-w-0">
-                            <h1 className="text-2xl md:text-3xl font-bold font-heading uppercase tracking-wide text-primary break-words">Financeiro</h1>
-                            <p className="text-neutral-600 mt-1 text-sm md:text-base">
-                                Gerencie receitas, despesas e acompanhe o fluxo de caixa
-                            </p>
-                        </div>
-                        <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:justify-end">
-                            <Button variant="outline" onClick={openFinancialSettings} className="min-w-0"><Settings className="mr-2 h-4 w-4 shrink-0" aria-hidden="true" /><span className="hidden sm:inline">Configurações financeiras</span><span className="sm:hidden">Configurações</span></Button>
-                            <Button onClick={() => setIsServicesManagerOpen(true)} variant="outline" className="min-w-0 border-primary text-primary hover:bg-primary hover:text-white">
-                                <Settings className="w-4 h-4 mr-2" />
-                                <span className="hidden sm:inline">Gerenciar Serviços</span>
-                                <span className="sm:hidden">Serviços</span>
-                            </Button>
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild disabled={loading || loadError}>
-                                    <Button variant="outline" disabled={loading || loadError} className="w-full sm:w-auto px-2 border-primary text-primary hover:bg-primary hover:text-white">
-                                        <Download className="w-4 h-4 mr-2" />
-                                        <span className="hidden sm:inline">Exportar</span>
-                                        <span className="sm:hidden">Exportar</span>
-                                        <ChevronDown className="w-4 h-4 ml-2" />
-                                    </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                    <DropdownMenuItem onClick={handleExportPDF}>
-                                        <FileSpreadsheet className="w-4 h-4 mr-2" />
-                                        Exportar PDF
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={handleExportCSV}>
-                                        <FileSpreadsheet className="w-4 h-4 mr-2" />
-                                        Exportar CSV
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={handleExportReport}>
-                                        <FileSpreadsheet className="w-4 h-4 mr-2" />
-                                        Relatório Completo (CSV)
-                                    </DropdownMenuItem>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
-                            <Button onClick={handleNewTransaction} className="col-span-2 bg-primary hover:bg-primary/90 sm:col-auto">
-                                <Plus className="w-4 h-4 mr-2" />
-                                Nova Transação
-                            </Button>
-                        </div>
-                    </div>
-
-                    <div className="mb-5 space-y-2">
-                        <Label htmlFor="financial-month">Período selecionado</Label>
-                        <MonthInputWithCalendar id="financial-month" aria-label="Mês do financeiro"
-                            value={format(selectedMonth, 'yyyy-MM')}
-                            onChange={(value) => value && setSelectedMonth(new Date(value + '-02'))}
-                            className="w-full sm:w-auto" />
-                    </div>
-                    <PendingPaymentsWidget nutritionistId={user?.id} onUpdate={loadData} />
-
-                    {loadError && <div role="alert" className="mb-6 rounded-lg border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">Não foi possível carregar os lançamentos deste mês. <Button variant="outline" size="sm" className="ml-2" onClick={loadData}>Tentar novamente</Button></div>}
-
-                    <FinancialGoal goal={monthlyGoal} state={goalState} income={summary.income} loading={loading} incomeUnavailable={loadError} onSettings={openFinancialSettings} onRetry={() => setGoalRevision(v => v + 1)} />
-
-                    {/* KPIs */}
-                    <div className="mb-6">
-                        {!loadError && <FinancialKPIs summary={summary} loading={loading} />}
-                    </div>
-
-                    {/* Transaction List & Top Patients - 70/30 Split */}
-                    <div className="grid min-w-0 grid-cols-1 gap-6 mb-6">
-                        <div className="min-w-0">
-                            <TransactionList
-                                transactions={transactions}
-                                loading={loading}
-                                loadError={loadError} onRetry={loadData} onNew={handleNewTransaction}
-                                onEdit={handleEditTransaction}
-                                onDelete={(id) => setDeleteConfirm(id)}
-                                onGenerateReceipt={handleGenerateReceipt}
-                                onConfirmPayment={setPaymentConfirm}
-                                onRefund={setRefundConfirm}
-                                filters={filters}
-                                onFiltersChange={setFilters}
-                            />
-                        </div>
-                    </div>
-                    <h2 className="mb-3 text-lg font-semibold text-primary">Análise financeira</h2>
-                    {/* Charts - 50/50 Split */}
-                    <div className="grid min-w-0 grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 mb-6">
-                        <FinancialCharts
-                            cashFlowData={cashFlowData}
-                            expenseDistribution={expenseDistribution}
-                            projectedCashFlow={projectedCashFlow}
-                            loading={loading}
-                            loadError={loadError} projectionState={auxiliaryState.projection}
-                            onRetry={loadData} onProjectionRetry={loadAuxiliaryData} onNew={handleNewTransaction}
-                        />
-                        <TopPatientsWidget nutritionistId={user?.id} refreshKey={rankingRevision} />
-                    </div>
-
-                </motion.div>
-            </main>
+        <div className="financial-workspace min-h-dvh min-w-0 bg-[#f7f8f5] dark:bg-background">
+            <section aria-label="Gestão financeira" className="mx-auto w-full max-w-7xl min-w-0 space-y-5 px-4 py-5 md:px-8 md:py-7">
+                <FinancialToolbar month={selectedMonth} onMonthChange={value => value && setSelectedMonth(new Date(value + '-02'))} onNew={handleNewTransaction} onSettings={openFinancialSettings} onServices={() => setIsServicesManagerOpen(true)} exportDisabled={loading || loadError} onExportPDF={handleExportPDF} onExportCSV={handleExportCSV} onExportReport={handleExportReport} />
+                {loadError && <div role="alert" className="rounded-xl border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">Não foi possível carregar os lançamentos deste mês. <Button variant="outline" size="sm" className="ml-2" onClick={loadData}>Tentar novamente</Button></div>}
+                {!loadError && <FinancialKPIs summary={summary} loading={loading} />}
+                <FinancialGoal goal={monthlyGoal} state={goalState} income={summary.income} loading={loading} incomeUnavailable={loadError} onSettings={openFinancialSettings} onRetry={() => setGoalRevision(v => v + 1)} />
+                <PendingPaymentsWidget payments={pendingPayments} state={auxiliaryState.pending} onRetry={loadAuxiliaryData} onUpdate={refreshAfterMutation} />
+                <TransactionList transactions={transactions} totalCount={monthRows.length} loading={loading} loadError={loadError} onRetry={loadData} onNew={handleNewTransaction} onEdit={handleEditTransaction} onDelete={id => setDeleteConfirm(id)} onGenerateReceipt={handleGenerateReceipt} onConfirmPayment={setPaymentConfirm} onRefund={setRefundConfirm} filters={filters} onFiltersChange={setFilters} />
+                <div className="grid min-w-0 grid-cols-1 gap-5 lg:grid-cols-2">
+                    <FinancialCharts cashFlowData={cashFlowData} expenseDistribution={expenseDistribution} projectedCashFlow={projectedCashFlow} loading={loading} loadError={loadError} projectionState={auxiliaryState.projection} onRetry={loadData} onProjectionRetry={loadAuxiliaryData} onNew={handleNewTransaction} />
+                </div>
+                <TopPatientsWidget nutritionistId={user?.id} refreshKey={rankingRevision} />
+            </section>
 
             {/* Transaction Dialog */}
             <TransactionDialog
@@ -510,19 +400,19 @@ export default function FinancialPage() {
             />
 
             {/* Delete Confirmation */}
-            <AlertDialog open={!!paymentConfirm} onOpenChange={(open) => !open && setPaymentConfirm(null)}>
+            <AlertDialog open={!!paymentConfirm} onOpenChange={(open) => { if (!open && !mutationLock.current) { setPaymentConfirm(null); setMutationError(false); } }}>
                 <AlertDialogContent>
                     <AlertDialogHeader><AlertDialogTitle>Confirmar recebimento</AlertDialogTitle><AlertDialogDescription>O valor entrará no caixa de hoje. Confirme apenas após receber o pagamento.</AlertDialogDescription></AlertDialogHeader>
-                    <AlertDialogFooter><AlertDialogCancel>Voltar</AlertDialogCancel><AlertDialogAction onClick={() => handleConfirmPayment(paymentConfirm)}>Confirmar</AlertDialogAction></AlertDialogFooter>
+                    <p role="alert" className={mutationError ? 'text-sm text-destructive' : 'hidden'}>{mutationError ? 'Não foi possível confirmar a alteração. Confira o estado da transação antes de tentar novamente.' : ''}</p><AlertDialogFooter><AlertDialogCancel disabled={mutationBusy}>Voltar</AlertDialogCancel><AlertDialogAction disabled={mutationBusy} onClick={event => { event.preventDefault(); return  handleConfirmPayment(paymentConfirm); }}>{mutationBusy ? 'Confirmando…' : 'Confirmar'}</AlertDialogAction></AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
-            <AlertDialog open={!!refundConfirm} onOpenChange={(open) => !open && setRefundConfirm(null)}>
+            <AlertDialog open={!!refundConfirm} onOpenChange={(open) => { if (!open && !mutationLock.current) { setRefundConfirm(null); setMutationError(false); } }}>
                 <AlertDialogContent>
                     <AlertDialogHeader><AlertDialogTitle>Registrar estorno integral</AlertDialogTitle><AlertDialogDescription>O estorno será deduzido do caixa de hoje e manterá o histórico do pagamento original.</AlertDialogDescription></AlertDialogHeader>
-                    <AlertDialogFooter><AlertDialogCancel>Voltar</AlertDialogCancel><AlertDialogAction onClick={() => handleRefund(refundConfirm)}>Registrar estorno</AlertDialogAction></AlertDialogFooter>
+                    <p role="alert" className={mutationError ? 'text-sm text-destructive' : 'hidden'}>{mutationError ? 'Não foi possível confirmar a alteração. Confira o estado da transação antes de tentar novamente.' : ''}</p><AlertDialogFooter><AlertDialogCancel disabled={mutationBusy}>Voltar</AlertDialogCancel><AlertDialogAction disabled={mutationBusy} onClick={event => { event.preventDefault(); return  handleRefund(refundConfirm); }}>{mutationBusy ? 'Registrando…' : 'Registrar estorno'}</AlertDialogAction></AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
-            <AlertDialog open={!!deleteConfirm} onOpenChange={(open) => !open && setDeleteConfirm(null)}>
+            <AlertDialog open={!!deleteConfirm} onOpenChange={(open) => { if (!open && !mutationLock.current) { setDeleteConfirm(null); setMutationError(false); } }}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
@@ -530,10 +420,11 @@ export default function FinancialPage() {
                             Tem certeza que deseja excluir esta transação? Esta ação não pode ser desfeita.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <p role="alert" className={mutationError ? 'text-sm text-destructive' : 'hidden'}>{mutationError ? 'Não foi possível confirmar a alteração. Confira o estado da transação antes de tentar novamente.' : ''}</p><AlertDialogFooter>
+                        <AlertDialogCancel disabled={mutationBusy}>Cancelar</AlertDialogCancel>
                         <AlertDialogAction
-                            onClick={() => handleDeleteTransaction(deleteConfirm)}
+                            disabled={mutationBusy}
+                            onClick={event => { event.preventDefault(); void handleDeleteTransaction(deleteConfirm); }}
                             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                         >
                             Excluir

@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { readFileSync } from 'node:fs';
 import { seed } from './helpers/mealPlanFixture';
+import { getPortalBreadcrumbPolicy } from '../src/app/router/portalBreadcrumbs';
 import { assertIsolatedRuntime } from '../scripts/qa/isolated-runtime.mjs';
 assertIsolatedRuntime();
 const fixture = JSON.parse(readFileSync('.backend-ci/browser-runtime/fixture.json'));
@@ -14,7 +15,14 @@ async function login(page, persona) {
   await expect(page).toHaveURL(persona.startsWith('patient') ? /\/patient/ : /\/nutritionist/);
 }
 async function auditBreadcrumb(page) {
+  await expect(page.getByRole('status', { name: 'Carregando página' })).toHaveCount(0);
   const nav = page.getByRole('navigation', { name: 'Navegação estrutural' });
+  const policy = getPortalBreadcrumbPolicy(new URL(page.url()).pathname);
+  if (!policy.visible) {
+    await expect(nav).toHaveCount(0);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    return;
+  }
   await expect(nav).toHaveCount(1);
   await expect(nav).toBeVisible();
   await expect(nav.locator('[aria-current="page"]')).toHaveCount(1);
@@ -22,7 +30,7 @@ async function auditBreadcrumb(page) {
   const result = await new AxeBuilder({ page }).include('nav[aria-label="Navegação estrutural"]').withTags(['wcag2a','wcag2aa','wcag21aa']).analyze();
   expect(result.violations).toEqual([]);
 }
-test('all nutritionist route patterns render breadcrumbs and card surface opens the patient', async ({ page }) => {
+test('all nutritionist route patterns respect contextual navigation and card surface opens the patient', async ({ page }) => {
   test.setTimeout(180000);
   const sample = seed();
   await page.setViewportSize({ width: 390, height: 900 });
@@ -33,6 +41,8 @@ test('all nutritionist route patterns render breadcrumbs and card surface opens 
     const path = pattern.replace(':patientId', sample.patient).replace(':planId', String(sample.plan))
       .replace(/:(anamnesisId|templateId|id)/g, '00000000-0000-0000-0000-000000000001').replace(':type','diet');
     await page.goto(path);
+    // Missing fixture templates redirect to their section; assert the final route.
+    if (/\/templates\/(forms|checkins)\/[^/]+\/edit$/.test(path)) await expect(page).toHaveURL(/\/nutritionist\/templates\?group=forms/);
     await auditBreadcrumb(page);
   }
   await page.goto('/nutritionist/patients');
@@ -58,7 +68,7 @@ test('all nutritionist route patterns render breadcrumbs and card surface opens 
   await cardLink.focus(); await page.keyboard.press('Enter');
   await expect(page).toHaveURL(new RegExp(`/patients/${sample.patient}/hub`));
 });
-test('all patient routes including full-screen pages render responsive breadcrumbs', async ({ page }) => {
+test('all patient routes retain responsive contextual navigation and form-owned headers', async ({ page }) => {
   test.setTimeout(120000);
   await page.setViewportSize({ width: 320, height: 900 });
   await login(page, 'patient-a');

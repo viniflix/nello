@@ -25,6 +25,10 @@ const cents = (value) => toCents(value);
 const money = (value) => fromCents(value);
 const inMonth = (date, start, end) => Boolean(date && date >= start && date <= end);
 
+export function isFinancialTransactionOverdue(row, today) {
+  return ['pending', 'overdue'].includes(row.status) && (row.status === 'overdue' || Boolean(row.due_date && row.due_date < today));
+}
+
 /** Caixa usa paid_at/refunded_at; competência usa transaction_date. */
 export function summarizeFinancialTransactions(rows, start, end, today) {
   let income = 0;
@@ -56,7 +60,7 @@ export function summarizeFinancialTransactions(rows, start, end, today) {
       if (isOpen) {
         if (isIncome) {
           pendingIncome += amount;
-          if (row.status === 'overdue' || (row.due_date && row.due_date < today)) overdue += amount;
+          if (isFinancialTransactionOverdue(row, today)) overdue += amount;
         } else pendingExpenses += amount;
       }
     }
