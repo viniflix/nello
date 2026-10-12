@@ -20,7 +20,8 @@ async function owner() {
 }
 function createPatient(actor,name) {
  const patient=randomUUID();
- execFileSync('docker',['exec','-i','-e','PGPASSWORD=postgres','supabase_db_nello-reconstruction','psql','-X','-h','127.0.0.1','-U','supabase_admin','-d',fixtureDatabase,'-v','ON_ERROR_STOP=1'],{
+ // Connect through the local container socket; no password belongs in source.
+ execFileSync('docker',['exec','-i','supabase_db_nello-reconstruction','psql','-X','-U','supabase_admin','-d',fixtureDatabase,'-v','ON_ERROR_STOP=1'],{
   input:`INSERT INTO auth.users(id,aud,role,email,raw_user_meta_data) VALUES('${patient}','authenticated','authenticated','${patient}@example.invalid','{"name":"${name}","user_type":"patient"}');
   UPDATE public.user_profiles SET nutritionist_id='${actor}' WHERE id='${patient}';
   INSERT INTO public.nutritionist_patients(nutritionist_id,patient_id,status) VALUES('${actor}','${patient}','active');`,stdio:['pipe','ignore','pipe']});

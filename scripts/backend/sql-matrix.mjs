@@ -21,8 +21,8 @@ const restoration = JSON.parse(readFileSync('.backend-ci/restore-results/result.
 assertForwardRestoration(restoration);
 const template = restoration.database;
 const docker = (command, args, options = {}) => execFileSync('docker', ['exec',
-  ...(options.input ? ['-i'] : []), '-e', 'PGPASSWORD=postgres',
-  'supabase_db_nello-reconstruction', command, '-h', '127.0.0.1', '-U', 'supabase_admin', ...args],
+  ...(options.input ? ['-i'] : []),
+  'supabase_db_nello-reconstruction', command, '-U', 'supabase_admin', ...args],
   { timeout: 120000, maxBuffer: 64 * 1024 * 1024, ...options });
 const sql = (database, script) => docker('psql', ['-X', '-t', '-A', '-v', 'ON_ERROR_STOP=1',
   '-v', 'VERBOSITY=verbose', '-d', database], { input: script, encoding: 'utf8' });
