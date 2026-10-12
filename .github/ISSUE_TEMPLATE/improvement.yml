@@ -1,0 +1,30 @@
+name: Propor uma melhoria
+description: Objetivo, valor para o usuário e critérios de conclusão.
+title: "[Melhoria] "
+labels: [enhancement, "status:proposta"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Necessidade do usuário
+      description: Explique o problema e o valor esperado sem dados privados.
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Escopo e comportamentos a preservar
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Critérios de conclusão
+      description: Inclua funcionalidade, responsividade, acessibilidade e validação publicada quando aplicáveis.
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependências e decisões
+      description: Distinga trabalho técnico, hipótese e condição externa. Não exponha comprovantes privados.

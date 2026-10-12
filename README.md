@@ -1,301 +1,95 @@
+<p align="center"><img src="public/nello-logo.png" alt="Nello" width="150"></p>
+
 # Nello
 
-Nello e uma plataforma SaaS de acompanhamento nutricional que conecta nutricionistas, pacientes e administradores em um unico ecossistema. O projeto combina consultorio digital, prontuario nutricional, prescricao alimentar, acompanhamento do paciente, comunicacao em tempo real, agenda, financeiro, observabilidade e uma base crescente de automacoes.
+**O consultório digital do nutricionista.** Gestão clínica, prescrição alimentar e acompanhamento do paciente, com agenda, comunicação e financeiro em uma plataforma.
 
-A proposta central e reduzir o trabalho operacional do nutricionista e aumentar a adesao do paciente. O sistema nao e apenas um criador de dieta: ele tenta funcionar como a camada de operacao diaria da clinica, com dados clinicos, plano alimentar, diario alimentar, chat, check-ins, alertas e historico do paciente em um unico lugar.
+[Acessar o Nello](https://nellonutri.com.br) · [Versões](https://github.com/viniflix/nello/releases) · [Planejamento](https://github.com/viniflix/nello/milestones) · [Tarefas](https://github.com/viniflix/nello/issues) · [Quadro](https://github.com/users/viniflix/projects/2)
 
-## Estado atual em uma frase
+[![Quality gate](https://github.com/viniflix/nello/actions/workflows/quality.yml/badge.svg?branch=main)](https://github.com/viniflix/nello/actions/workflows/quality.yml)
+[![Backend reconstruction](https://github.com/viniflix/nello/actions/workflows/backend-reconstruction.yml/badge.svg?branch=main)](https://github.com/viniflix/nello/actions/workflows/backend-reconstruction.yml)
+[![Production observation](https://github.com/viniflix/nello/actions/workflows/production-observation.yml/badge.svg?branch=main)](https://github.com/viniflix/nello/actions/workflows/production-observation.yml)
 
-O produto tem uma base ampla em React/Vite/Supabase e passou por 20 ondas de correcoes. Continua em testes publicos com nutricionistas selecionados; a validacao clinica de registros historicos, os testes completos por persona e a medicao de desempenho em uso real permanecem em andamento.
+## O produto
 
-## Personas e experiencias
+| Experiência | Funcionalidades |
+|---|---|
+| Nutricionista | Pacientes e prontuário, anamnese, avaliações, exames, metas e plano alimentar; modelos, receitas, check-ins, chat, agenda e financeiro. |
+| Paciente | Plano prescrito, diário alimentar, check-ins, evolução, conquistas, perfil e comunicação com o profissional. |
+| Administração | Gestão de usuários, operação do produto, relatórios e acompanhamento técnico. |
 
-### Nutricionista
+O Nello está em evolução contínua. Uma entrega técnica validada não substitui avaliação clínica, pesquisa com usuários ou comprovações dos serviços externos. As tarefas distinguem melhorias planejadas, hipóteses em investigação e dependências externas.
 
-Usa o Nello como consultorio digital:
+<details>
+<summary>Conheça a interface</summary>
 
-- Dashboard operacional.
-- Gestao de pacientes e hub central do paciente.
-- Anamnese e fichas clinicas.
-- Avaliacao antropometrica, fotos, exames e glicemia.
-- Calculos energeticos e metas.
-- Plano alimentar com refeicoes, alimentos, substituicoes, rascunhos e resumo.
-- Protocolos/templates de dietas, refeicoes e receitas.
-- Diario alimentar do paciente.
-- Chat, notificacoes e presenca online.
-- Check-ins, agenda, financeiro e banco de alimentos.
+![Visão do consultório digital](public/images/product/nutri-dashboard-desktop-720.webp)
 
-### Paciente
+Imagem demonstrativa já usada na apresentação pública do produto; não representa o estado atual de uma conta real.
 
-Usa o Nello como aplicativo de acompanhamento:
+</details>
 
-- Home mobile com resumo do dia.
-- Diario alimentar.
-- Visualizacao do plano prescrito.
-- Check-ins pendentes e historico.
-- Progresso, conquistas, perfil e chat.
-- Fluxos de convite e atualizacao obrigatoria de senha.
+## Tecnologia e organização
 
-### Admin
+React 18, Vite, React Router, Tailwind CSS 3 e Radix UI compõem a interface. React Query, React Hook Form e Zod apoiam consultas e formulários; Recharts e Framer Motion oferecem visualização e movimento. O backend usa PostgreSQL/Supabase, Auth, Storage, Realtime e Edge Functions. Sentry e PostHog apoiam a observabilidade com filtros de privacidade.
 
-Usa o Nello como painel de operacao do SaaS:
+| Caminho | Responsabilidade |
+|---|---|
+| `src/` | Interface, domínios, aplicação e integrações. |
+| `api/` | Endpoints da plataforma de hospedagem. |
+| `supabase/` | Contratos, migrações e funções do backend. |
+| `e2e/` | Jornadas e referências visuais com dados fictícios. |
+| `scripts/` | Validação, reconstrução, observabilidade e ferramentas de entrega. |
+| `operations/` | Contratos operacionais versionados. |
+| `public/` | Assets públicos da aplicação. |
+| `.github/` | Workflows e modelos de tarefas. |
 
-- Dashboard administrativo.
-- Usuarios/nutricionistas.
-- Financeiro admin.
-- Relatorios de bugs.
-- Area de estudos/gestao interna.
+## Desenvolvimento local
 
-## Domínio público e migração
+Use a versão de Node indicada em [.nvmrc](.nvmrc) e o npm fixado em [package.json](package.json). O instalador do projeto prepara o gerenciador e instala a árvore do lockfile:
 
-O domínio canônico do aplicativo é `https://nellonutri.com.br`. Novos links de
-cadastro, convite, recuperação e formulários são gerados nesse domínio. Em
-desenvolvimento, URLs de `localhost` e `127.0.0.1` permanecem locais. O callback
-de autenticação aceita apenas destinos nos domínios atuais ou na origem local.
-
-Estado externo conferido em 24/09/2026:
-
-- Supabase Auth: Site URL `https://nellonutri.com.br`; nenhum redirect do
-  domínio anterior permanece na allowlist. URLs atuais, localhost e preview
-  continuam cadastradas.
-- Supabase Edge Functions: `create-patient` v15 fixa o callback de convite no
-  domínio canônico; `sentry-proxy` v10 removeu CORS legado. Ambas seguem com
-  JWT obrigatório. Um teste HTTP confirmou CORS 200 para o domínio novo e 403
-  para as duas origens antigas. A variável `OBSERVABILITY_ALLOWED_ORIGINS` não
-  consta entre os secrets do projeto.
-- SMTP personalizado ativo no Supabase, com remetente
-  `Nello <naoresponda@nellonutri.com.br>` e host Resend. Templates de
-  autenticação conferidos no painel sem referências ao domínio antigo.
-
-Cuidados de operação:
-
-Sessões do navegador não migram entre domínios. Usuários precisam entrar
-novamente em `nellonutri.com.br`.
-
-## Stack
-
-### Frontend
-
-- React 18.
-- Vite.
-- React Router.
-- Tailwind CSS.
-- Radix UI/shadcn-style components.
-- Lucide React.
-- Framer Motion.
-- Recharts.
-- React Hook Form e Zod.
-- Zustand em partes do estado local/global.
-- TanStack React Query para cache e mutacoes em fluxos novos.
-
-### Backend e infraestrutura
-
-- Supabase Auth.
-- Supabase PostgreSQL.
-- Row Level Security como pilar de seguranca.
-- Supabase Realtime para chat/presenca/notificacoes.
-- Supabase Storage para midias e arquivos.
-- Supabase Edge Functions:
-  - `create-patient`
-  - `generate-pdf`
-  - `openfoodfacts-proxy`
-  - `sentry-proxy`
-
-### Observabilidade
-
-## Estrutura principal
-
-
-## Rotas principais
-
-### Autenticacao
-
-- `/login`
-- `/register`
-- `/update-password`
-- `/convite`
-- `/auth/verify`
-
-### Nutricionista
-
-- `/nutritionist`
-- `/nutritionist/patients`
-- `/nutritionist/patients/:patientId/hub`
-- `/nutritionist/patients/:patientId/anamnesis`
-- `/nutritionist/patients/:patientId/anthropometry`
-- `/nutritionist/patients/:patientId/meal-plan`
-- `/nutritionist/patients/:patientId/energy-expenditure`
-- `/nutritionist/patients/:patientId/lab-results`
-- `/nutritionist/patients/:patientId/goals`
-- `/nutritionist/patients/:patientId/food-diary`
-- `/nutritionist/patients/:patientId/achievements`
-- `/nutritionist/patients/:patientId/photos`
-- `/nutritionist/templates`
-- `/nutritionist/templates/new/:type`
-- `/nutritionist/templates/edit/:type/:id`
-- `/nutritionist/checkins`
-- `/nutritionist/agenda`
-- `/nutritionist/financial`
-- `/nutritionist/chat`
-- `/nutritionist/settings/anamnesis-templates`
-
-### Paciente
-
-- `/patient`
-- `/patient/invites`
-- `/patient/diario`
-- `/patient/progresso`
-- `/patient/chat`
-- `/patient/perfil`
-- `/patient/editar-perfil`
-- `/patient/conquistas`
-- `/patient/add-meal`
-- `/patient/add-food/:mealId?`
-- `/patient/checkin/:sessionId`
-
-### Publico
-
-- `/f/:token` para formularios/anamnese public-facing.
-
-### Admin
-
-- `/admin/dashboard`
-- `/admin/bugs`
-- `/admin/users`
-- `/admin/users/:id`
-- `/admin/financial`
-- `/admin/study`
-
-## Modulos de dominio
-
-### Autenticacao e permissoes
-
-`AuthContext` centraliza usuario, perfil, carregamento, cache/offline e redirecionamentos. `ProtectedRoute` separa acesso de nutricionista, paciente e admin. Pacientes com `needs_password_reset` sao interceptados por `ForcePasswordUpdate`.
-
-### Hub do paciente
-
-O hub do nutricionista usa `usePatientHub` e queries em `patient-queries` para montar resumo clinico, metricas, status de modulos e atividades. E o ponto natural para consolidar sinais importantes do paciente.
-
-### Plano alimentar
-
-Modulo mais denso do produto. Inclui:
-
-- Criacao/edicao de planos.
-- Rascunhos.
-- Refeicoes e alimentos.
-- Substituicoes.
-- Medidas caseiras.
-- Graficos de macros.
-- Valores de referencia.
-- Geracao de PDF/resumo.
-- Importacao de protocolo/template.
-
-Historicamente ja houve correcoes importantes em rascunho inativo e botao de nova refeicao. O proximo cuidado tecnico e reduzir flicker, fetch duplicado e re-render pesado.
-
-### Templates de nutricao
-
-O modulo de templates ja existe no codigo atual:
-
-- `useTemplates` le `diet_templates`, `meal_templates` e `recipes`.
-- `useTemplateBuilder` cria e edita dietas, refeicoes e receitas.
-- `template-queries` tem `getDietTemplateWithMeals`, `cloneDietTemplateToPatient` e `cloneMealTemplateToPlan`.
-- Rotas de criacao e edicao usam `/nutritionist/templates/new/:type` e `/nutritionist/templates/edit/:type/:id`.
-
-### Check-ins
-
-`useCheckins` ja usa React Query para templates, schedules, check-ins pendentes, submissao e historico. Ha pagina de manager para nutricionista e resposta para paciente.
-
-Ainda merece validacao ponta a ponta com as tabelas Supabase, crons/edge functions e regra de score/streak.
-
-### Anamnese e Nello Forms
-
-Existem duas linhas em convivencia:
-
-- Fluxo atual de anamnese por paciente (`PatientAnamnesisList`, `PatientAnamnesisForm`, `PatientAnamnesePage`).
-- Shell/configuracao global de templates em `/nutritionist/settings/anamnesis-templates`.
-- Rota publica `/f/:token` com `PatientFacingUi`.
-
-A direcao documentada e evoluir para motor dinamico com JSONB, versionamento, builder, data binding clinico e fluxo omnichannel.
-
-### Agenda e financeiro
-
-Ja existem paginas e componentes para agenda, servicos, transacoes, KPIs, graficos, pendencias e perfil do nutricionista. Estes modulos tornam o produto mais proximo de um ERP leve para consultorio.
-
-### Chat, presenca e notificacoes
-
-`ChatContext`, `PresenceGlobal`, `useOnlinePresence`, `NotificationsPanel` e paginas compartilhadas de chat sustentam comunicacao entre paciente e nutricionista.
-
-### Admin e observabilidade
-
-Admin tem painel proprio, relatorios de bugs, usuarios, detalhe de nutricionista e financeiro. O frontend inicializa Sentry e PostHog em `main.jsx`.
-
-## Como rodar localmente
-
-### Requisitos
-
-- Node.js compatível com o projeto.
-- npm.
-- Credenciais do Supabase.
-
-### Instalar dependencias
-
-```bash
-npm install
-```
-
-### Variaveis de ambiente
-
-Crie `.env` na raiz:
-
-```env
-VITE_SUPABASE_URL=...
-VITE_SUPABASE_ANON_KEY=...
-VITE_SENTRY_DSN=...
-VITE_PUBLIC_POSTHOG_KEY=...
-VITE_PUBLIC_POSTHOG_HOST=...
-```
-
-`VITE_SENTRY_DSN`, `VITE_PUBLIC_POSTHOG_KEY` e `VITE_PUBLIC_POSTHOG_HOST` podem variar conforme ambiente. O essencial para autenticar e ler dados e Supabase.
-
-### Desenvolvimento
-
-```bash
+```sh
+node scripts/release/install.mjs
 npm run dev
 ```
 
-### Build
+Configure `.env.local` com as variáveis públicas exigidas pelo cliente, usando apenas um ambiente local descartável para testes:
 
-```bash
-npm run build
+```dotenv
+VITE_SUPABASE_URL=<url-do-ambiente-local>
+VITE_SUPABASE_ANON_KEY=<chave-publica-do-ambiente-local>
 ```
 
-O build executa `npm run lint` antes de `vite build`.
+Variáveis `VITE_*` são incorporadas ao frontend: nunca coloque senhas, tokens administrativos ou chaves privadas nelas. Arquivos de ambiente e credenciais não são versionados. Configuração de observabilidade e CAPTCHA depende da jornada que será exercitada; não reutilize credenciais de produção para fixtures.
 
-### Testes
+## Validação e publicação
 
-```bash
-npm run test
-npm run test:run
-npm run test:coverage
+```sh
+npm run test:run       # Testes automatizados
+npm run build          # Build, licenças e lint
+npm run verify:release # Gate completo antes de mudanças no produto
 ```
 
-### Manutenção e verificação
+O gate verifica dependências, contratos de backend, licenças, estrutura, arquitetura, tipos, lint, testes/cobertura, build, orçamento de bundle e política de segurança. A aprovação de uma exceção revisada não significa ausência de todos os avisos de dependências.
 
-- `npm run check:structure`: valida a organização mínima e impede artefatos gerados ou temporários no Git.
-- `npm run verify`: executa estrutura, lint, testes e build.
+Desenvolvimento na **main**, com mudanças pequenas, validação local e deploy direto. Após publicar uma mudança no produto, conferir todos os workflows do SHA, deployment canônico e jornadas afetadas. CI verde, isoladamente, não certifica produção.
 
-Verificações automatizadas do repositório ficam em `scripts/qa`.
+Os testes usam dados fictícios e ambientes descartáveis. O workflow de reconstrução não aplica SQL em produção. Para trabalhar no backend, consultar o [contrato de reconstrução](operations/backend/README.md); não executar `db push` indiscriminadamente sobre migrações legadas.
 
-## Pontos de atencao para proximas implementacoes
+## Como acompanhar as entregas
 
-1. Validar o estado real dos templates de nutricao no banco antes de reimplementar o que o codigo ja aparenta conter.
-2. Remover ou aposentar `src/services/demoDataService.js` somente depois de confirmar zero imports ativos.
-3. Continuar migrando fetches criticos para React Query, principalmente hubs e paginas densas.
-4. Reduzir loading global e desmontagens no plano alimentar.
-5. Tratar performance de componentes grandes com memoizacao e separacao de responsabilidades.
-6. Validar RLS/cascade em templates, check-ins e rotas publicas.
-7. Manter o marketplace congelado ate definicao de modelo comercial.
+- **Issues:** tarefas com objetivo, classificação e critérios de conclusão.
+- **Milestones:** conjuntos de objetivos; sem prazo artificial para condições externas.
+- **Projects:** andamento do trabalho; o quadro do proprietário pode exigir acesso autorizado.
+- **Releases e tags:** marcos do produto, vinculados ao commit da entrega. O versionamento editorial usa `release-AAAA.MM.DD.N`, sem alterar a versão do pacote ou a correlação por SHA.
+- **Deployments e Actions:** registros técnicos individuais, preservados para rastreabilidade.
 
-## Licenca
+As notas de versão descrevem o conjunto de melhorias, validações e limites relevantes. Não é necessário criar uma Release para cada deploy. Tags publicadas não devem ser movidas para outro commit.
 
-Projeto proprietario. Consulte [LICENSE](LICENSE).
+## Privacidade e licença
+
+Não publique dados de pacientes, informações clínicas, credenciais, logs privados ou comprovantes internos em issues, comentários ou anexos. Possíveis vulnerabilidades devem ser tratadas pelo canal privado de [relato de segurança](https://github.com/viniflix/nello/security), quando disponível; nunca exponha provas sensíveis em uma issue pública.
+
+Planos, checkpoints, evidências e instruções internas permanecem locais e ignorados pelo Git, com backup privado. Este repositório contém o código e a apresentação pública do projeto.
+
+Projeto proprietário de **Vinicius Costa**. Consulte [LICENSE](LICENSE) e [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

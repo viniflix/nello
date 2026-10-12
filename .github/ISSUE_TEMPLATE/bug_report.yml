@@ -1,0 +1,32 @@
+name: Relatar um problema
+description: Comportamento reproduzível, sem dados pessoais ou clínicos.
+title: "[Problema] "
+labels: [bug, "status:investigar"]
+body:
+  - type: markdown
+    attributes:
+      value: "Não publique credenciais, dados clínicos, nomes, emails ou logs privados. Para possíveis vulnerabilidades, use o canal privado de segurança quando disponível."
+  - type: textarea
+    id: expected
+    attributes:
+      label: Resultado esperado e observado
+      description: Descreva o comportamento sem informações pessoais.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Como reproduzir com dados fictícios
+      description: Informe passos, ambiente e condições necessários.
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Navegador, dispositivo e versão
+      description: Inclua o SHA ou release, se conhecido; não informe tokens ou IDs privados.
+  - type: textarea
+    id: scope
+    attributes:
+      label: Impacto e frequência
+      description: Distinga ocorrência atual, histórica e hipótese.
