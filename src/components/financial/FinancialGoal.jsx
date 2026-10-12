@@ -11,7 +11,7 @@ export default function FinancialGoal({ goal, state, income, loading, incomeUnav
     return (
         <section aria-label="Meta financeira mensal" className="financial-goal rounded-2xl border-0 bg-card px-5 py-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
-                <h2 className="flex items-center gap-2 font-sans text-sm font-medium tracking-normal"><Target className="h-4 w-4 text-primary" aria-hidden="true" />Meta Financeira Mensal</h2>
+                <h2 className="flex min-w-0 items-center gap-2 font-sans text-sm font-medium tracking-normal"><Target className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" /><span className="financial-desktop-label">Meta Financeira Mensal</span><span className="financial-mobile-label" aria-hidden="true">Meta do mês</span></h2>
                 <Button variant="ghost" size="sm" onClick={onSettings}>Editar meta</Button>
             </div>
             {state === 'error' ? <div role="alert" className="flex flex-wrap items-center gap-2 text-sm">Meta indisponível. <Button variant="outline" size="sm" onClick={onRetry}>Tentar carregar meta</Button></div>

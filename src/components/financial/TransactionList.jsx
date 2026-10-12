@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Trash2, Search, X, Printer, CheckCircle2, RotateCcw } from 'lucide-react';
+import { Trash2, Search, X, Printer, CheckCircle2, RotateCcw, Receipt as ReceiptText } from 'lucide-react';
 import TransactionDetails, { civilDate } from './TransactionDetails';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { MoreHorizontal, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -72,14 +72,14 @@ export default function TransactionList({
 
     return (
         <>
-        <Card className="min-w-0 overflow-hidden rounded-2xl bg-card shadow-sm">
+        <Card className="financial-list-card min-w-0 overflow-hidden rounded-2xl bg-card shadow-sm">
             <CardHeader className="pb-3">
                 <CardTitle className="font-sans text-base font-semibold text-foreground break-words">Histórico de Transações</CardTitle>
             </CardHeader>
             <CardContent>
                 {/* Filters */}
-                <div className="flex flex-col sm:flex-row gap-3 mb-4 min-w-0">
-                    <div className="flex-1 relative min-w-0">
+                <div className="financial-list-filters grid grid-cols-2 sm:flex sm:flex-row gap-2 sm:gap-3 mb-4 min-w-0">
+                    <div className="col-span-2 flex-1 relative min-w-0">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
                             aria-label="Buscar transações" placeholder="Buscar por descrição..."
@@ -136,8 +136,10 @@ export default function TransactionList({
                         Carregando transações...
                     </div>
                 ) : loadError ? (<div role="alert" className="rounded-lg border border-destructive/40 p-4 text-sm">Histórico indisponível. <Button variant="outline" size="sm" onClick={onRetry}>Tentar novamente</Button></div>) : transactions.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
-                        <p>{hasActiveFilters ? 'Nenhuma transação corresponde aos filtros.' : 'Nenhuma transação registrada neste mês.'}</p>
+                    <div className="financial-list-empty flex flex-col items-center gap-2 py-6 text-center text-sm text-muted-foreground">
+                        <span className="financial-empty-icon"><ReceiptText className="h-5 w-5" aria-hidden="true" /></span>
+                        <p className="font-medium text-foreground">{hasActiveFilters ? 'Nenhuma transação corresponde aos filtros.' : 'Nenhuma transação registrada neste mês.'}</p>
+                        <p className="max-w-sm text-xs leading-relaxed">{hasActiveFilters ? 'Ajuste a busca ou limpe os filtros para consultar os outros lançamentos do mês.' : 'Registre uma receita ou despesa para acompanhar os movimentos do período.'}</p>
                         <Button variant="outline" className="mt-3" onClick={hasActiveFilters ? clearFilters : onNew}>{hasActiveFilters ? 'Limpar filtros' : 'Registrar primeira transação'}</Button>
                     </div>
                 ) : (
@@ -209,7 +211,7 @@ export default function TransactionList({
                         </Table>
                     </div>
                 )}
-                {!loading && !loadError && transactions.length > pageSize && <div className="mt-4 flex flex-wrap items-center justify-between gap-3"><p className="text-sm text-muted-foreground">Página {currentPage} de {pageCount} · {pageSize} por página</p><div className="flex gap-2"><Button variant="outline" disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)}><ChevronLeft className="mr-1 h-4 w-4" />Anterior</Button><Button variant="outline" disabled={currentPage === pageCount} onClick={() => setPage(currentPage + 1)}>Próxima<ChevronRight className="ml-1 h-4 w-4" /></Button></div></div>}
+                {!loading && !loadError && transactions.length > pageSize && <div className="financial-pagination mt-4 flex flex-wrap items-center justify-between gap-3"><p className="text-sm text-muted-foreground">Página {currentPage} de {pageCount} · {pageSize} por página</p><div className="flex gap-2"><Button variant="outline" disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)}><ChevronLeft className="mr-1 h-4 w-4" />Anterior</Button><Button variant="outline" disabled={currentPage === pageCount} onClick={() => setPage(currentPage + 1)}>Próxima<ChevronRight className="ml-1 h-4 w-4" /></Button></div></div>}
             </CardContent>
         </Card>
         <TransactionDetails transaction={details} onClose={() => setDetails(null)} />

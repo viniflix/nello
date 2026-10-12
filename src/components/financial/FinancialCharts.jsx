@@ -10,6 +10,8 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, PieChart, Pie, Cell, Line
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { BarChart3 as ChartColumn, CalendarDays, Wallet } from 'lucide-react';
+import { toCents, fromCents } from '@/lib/utils/money';
 
 const COLORS = {
     income: 'hsl(var(--primary))',
@@ -52,27 +54,27 @@ export default function FinancialCharts({ cashFlowData, expenseDistribution, pro
                 </CardHeader>
                 <CardContent className="min-w-0">
                     {loading ? (
-                        <div className="h-[300px] flex items-center justify-center">
+                        <div className="financial-chart-loading flex items-center justify-center">
                             <div className="text-muted-foreground">Carregando...</div>
                         </div>
                     ) : loadError ? (<ChartMessage onAction={onRetry} action="Tentar novamente">Fluxo de caixa indisponível.</ChartMessage>) : formattedCashFlow.length === 0 ? (
-                        <ChartMessage >Nenhum pagamento ou estorno neste mês.</ChartMessage>
+                        <ChartMessage icon={ChartColumn} description="O gráfico aparece quando houver pagamentos, despesas pagas ou estornos no período.">Nenhum pagamento ou estorno neste mês.</ChartMessage>
                     ) : (
-                        <div aria-hidden="true"><VisibleChart width="100%" height={280}>
+                        <div aria-hidden="true" className="financial-chart-plot"><VisibleChart width="100%" height="100%">
                             <BarChart data={formattedCashFlow}>
                                 <XAxis
                                     dataKey="date"
                                     tick={{ fontSize: 12 }}
                                     angle={-45}
                                     textAnchor="end"
-                                    height={80}
+                                    height={56}
                                 />
-                                <YAxis width={86}
+                                <YAxis width={72}
                                     tick={{ fontSize: 12 }}
                                     tickFormatter={formatFinancialAxis}
                                 />
                                 <Tooltip
-                                    formatter={value => formatCurrency(Number(value))}
+                                    content={<FinancialCashTooltip />}
                                     cursor={{ fill: 'hsl(var(--muted))', fillOpacity: 0.55 }}
                                     contentStyle={{
                                         backgroundColor: 'hsl(var(--card))',
@@ -81,14 +83,15 @@ export default function FinancialCharts({ cashFlowData, expenseDistribution, pro
                                     }}
                                 />
                                 <Legend />
-                                <Bar isAnimationActive={!reducedMotion} animationDuration={700} animationBegin={view === 'cash' ? 650 : 0}
+                                <Bar isAnimationActive={!reducedMotion} animationDuration={550} animationBegin={view === 'cash' ? 280 : 0}
                                     activeBar={{ stroke: 'hsl(var(--primary))', strokeWidth: 2 }}
                                     dataKey="income"
                                     name="Recebimentos"
                                     fill={COLORS.income}
                                     radius={[4, 4, 0, 0]}
                                 />
-                                <Bar isAnimationActive={!reducedMotion} animationDuration={700} animationBegin={view === 'cash' ? 650 : 0}
+                                <Bar isAnimationActive={!reducedMotion} animationDuration={550} animationBegin={view === 'cash' ? 280 : 0}
+                                    activeBar={{ stroke: COLORS.expense, strokeWidth: 2 }}
                                     dataKey="expenses"
                                     name="Despesas pagas"
                                     fill={COLORS.expense}
@@ -115,15 +118,15 @@ export default function FinancialCharts({ cashFlowData, expenseDistribution, pro
                         </TabsList>
                         <TabsContent value="expenses" className="mt-4">
                             {loading ? (
-                                <div className="h-[300px] flex items-center justify-center">
+                                <div className="financial-chart-loading flex items-center justify-center">
                                     <div className="text-muted-foreground">Carregando...</div>
                                 </div>
                             ) : loadError ? (<ChartMessage onAction={onRetry} action="Tentar novamente">Despesas indisponíveis.</ChartMessage>) : formattedExpenses.length === 0 ? (
-                                <ChartMessage >Nenhuma despesa paga neste mês.</ChartMessage>
+                                <ChartMessage icon={Wallet} description="Despesas pendentes continuam no histórico. Esta análise considera somente saídas efetivas.">Nenhuma despesa paga neste mês.</ChartMessage>
                             ) : (
-                                <div aria-hidden="true"><VisibleChart width="100%" height={280}>
+                                <div aria-hidden="true" className="financial-chart-plot"><VisibleChart width="100%" height="100%">
                                     <PieChart>
-                                        <Pie isAnimationActive={!reducedMotion} animationDuration={700} animationBegin={view === 'cash' ? 650 : 0}
+                                        <Pie isAnimationActive={!reducedMotion} animationDuration={550}
                                             data={formattedExpenses}
                                             cx="50%"
                                             cy="50%"
@@ -145,7 +148,7 @@ export default function FinancialCharts({ cashFlowData, expenseDistribution, pro
                                             contentStyle={{
                                                 backgroundColor: 'hsl(var(--card))',
                                                 border: '1px solid hsl(var(--border))',
-                                                borderRadius: '6px'
+                                                borderRadius: '12px', padding: '12px', boxShadow: '0 6px 24px rgba(0,0,0,.08)'
                                             }}
                                         />
                                     </PieChart>
@@ -157,18 +160,18 @@ export default function FinancialCharts({ cashFlowData, expenseDistribution, pro
                             {projectionState === 'loading' ? (
                                 <ChartMessage>Carregando projeção...</ChartMessage>
                             ) : projectionState === 'error' ? (<ChartMessage onAction={onProjectionRetry} action="Tentar novamente">Projeção indisponível.</ChartMessage>) : formattedProjection.length === 0 ? (
-                                <ChartMessage >Nenhuma pendência prevista nos próximos 30 dias.</ChartMessage>
+                                <ChartMessage icon={CalendarDays} description="A projeção acompanha compromissos registrados para hoje e os próximos 30 dias, independentemente do mês selecionado.">Nenhuma pendência prevista nos próximos 30 dias.</ChartMessage>
                             ) : (
-                                <div aria-hidden="true"><VisibleChart width="100%" height={280}>
+                                <div aria-hidden="true" className="financial-chart-plot"><VisibleChart width="100%" height="100%">
                                     <LineChart data={formattedProjection}>
                                         <XAxis
                                             dataKey="date"
                                             tick={{ fontSize: 12 }}
                                             angle={-45}
                                             textAnchor="end"
-                                            height={80}
+                                            height={56}
                                         />
-                                        <YAxis width={86}
+                                        <YAxis width={72}
                                             tick={{ fontSize: 12 }}
                                             tickFormatter={formatFinancialAxis}
                                         />
@@ -177,17 +180,18 @@ export default function FinancialCharts({ cashFlowData, expenseDistribution, pro
                                             contentStyle={{
                                                 backgroundColor: 'hsl(var(--card))',
                                                 border: '1px solid hsl(var(--border))',
-                                                borderRadius: '6px'
+                                                borderRadius: '12px', padding: '12px', boxShadow: '0 6px 24px rgba(0,0,0,.08)'
                                             }}
                                         />
                                         <Legend />
-                                        <Line isAnimationActive={!reducedMotion} animationDuration={700} animationBegin={view === 'cash' ? 650 : 0}
+                                        <Line isAnimationActive={!reducedMotion} animationDuration={550}
                                             type="monotone"
                                             dataKey="balance"
                                             name="Saldo Projetado"
                                             stroke={COLORS.income}
                                             strokeWidth={2}
                                             dot={{ r: 3 }}
+                                            activeDot={{ r: 5, stroke: 'hsl(var(--card))', strokeWidth: 2 }}
                                         />
                                     </LineChart>
                                 </VisibleChart></div>
@@ -202,4 +206,11 @@ export default function FinancialCharts({ cashFlowData, expenseDistribution, pro
 }
 
 
-function ChartMessage({ children, onAction, action }) { return <div className="flex min-h-28 flex-col items-center justify-center gap-3 py-6 text-center text-sm text-muted-foreground"><p>{children}</p>{onAction && <Button variant="outline" size="sm" onClick={onAction}>{action}</Button>}</div>; }
+function ChartMessage({ children, description, icon: Icon, onAction, action }) { return <div className="financial-chart-message flex flex-col items-center justify-center gap-2 text-center text-sm text-muted-foreground">{Icon && <span className="financial-empty-icon"><Icon className="h-5 w-5" aria-hidden="true" /></span>}<p className={description ? 'font-medium text-foreground' : ''}>{children}</p>{description && <p className="max-w-sm text-xs leading-relaxed">{description}</p>}{onAction && <Button variant="outline" size="sm" onClick={onAction}>{action}</Button>}</div>; }
+
+export function FinancialCashTooltip({ active, payload, label }) {
+    const row = payload?.[0]?.payload;
+    if (!active || !row) return null;
+    const result = fromCents(toCents(row.income) - toCents(row.expenses));
+    return <div className="financial-cash-tooltip"><p className="mb-3 text-xs font-medium text-muted-foreground">{label}</p><dl className="space-y-2 text-xs">{[['Recebimentos', row.income], ['Despesas pagas', row.expenses], ['Resultado do dia', result]].map(([name, value]) => <div key={name} className="flex items-center justify-between gap-4"><dt>{name}</dt><dd className="whitespace-nowrap font-semibold tabular-nums">{formatCurrency(value)}</dd></div>)}</dl></div>;
+}

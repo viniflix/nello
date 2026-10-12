@@ -21,8 +21,12 @@ async function pending() {
     expect(saved.error).toBeNull(); await client.auth.signOut(); return description;
 }
 async function expandPending(page) {
-    const details = page.locator('#pending-payments details');
+    const panel = page.locator('#pending-payments');
+    await expect(panel.getByRole('status')).toHaveCount(0);
+    const details = panel.locator('details');
     if ((await details.getAttribute('open')) === null) await details.locator('summary').click();
+    const more = panel.getByRole('button', { name: /Mostrar mais cobranças/ });
+    while (await more.isVisible()) await more.click();
 }
 test('monthly payment confirmation refreshes global pending, and global confirmation refreshes monthly history', async ({ page }) => {
     const first = await pending(), second = await pending(); await login(page, financePersona); await expandPending(page);
@@ -125,6 +129,10 @@ for (const width of [320, 820, 1440]) test(`whole financial cards, contextual re
     expect(await dialog.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
     await page.keyboard.press('Escape');
     await expect(metric).toBeFocused();
+    const receipts = page.getByRole('button', { name: 'Ver recebimentos: Caixa recebido líquido', exact: true });
+    await receipts.click();
+    await expect(page.getByRole('dialog').getByText('Receitas lançadas pela competência, inclusive pendências', { exact: true })).toBeVisible();
+    await page.keyboard.press('Escape'); await expect(receipts).toBeFocused();
     await page.getByRole('tab', { name: 'Análises', exact: true }).click();
     await page.getByRole('tab', { name: 'Por paciente', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Recebimentos por paciente', exact: true })).toBeVisible();
@@ -140,4 +148,44 @@ for (const width of [320, 820, 1440]) test(`whole financial cards, contextual re
         await expect(page.getByRole('dialog').getByText('Método de pagamento', { exact: true })).toBeVisible();
         await page.keyboard.press('Escape');
     }
+});
+
+for (const width of [320, 360, 390, 430]) test(`compact mobile finance with long amounts and aligned actions ${width}`, async ({ page }) => {
+    const client = createClient(fixture.url, fixture.anonKey, { auth: { persistSession: false, autoRefreshToken: false } });
+    expect((await client.auth.signInWithPassword({ email: fixture.personas[financePersona].email, password: fixture.password })).error).toBeNull();
+    const date = new Date().toISOString().slice(0, 10), actor = fixture.personas[financePersona].id;
+    const saved = await client.rpc('mutate_record_idempotently', { p_table: 'financial_transactions', p_values: { nutritionist_id: actor, type: 'income', category: 'consulta', description: 'Synthetic mobile long value ' + randomUUID(), amount: 1234567.89, status: 'paid', transaction_date: date, paid_at: date }, p_id: null, p_expected: null, p_nonce: randomUUID(), p_actor: actor });
+    expect(saved.error).toBeNull(); await client.auth.signOut();
+    await page.setViewportSize({ width, height: 740 }); await page.emulateMedia({ reducedMotion: 'reduce' }); await login(page, financePersona);
+    await expect(page.locator('.financial-kpi-target').first()).toBeEnabled();
+    const metrics = await page.locator('.financial-kpi').evaluateAll(elements => elements.map(el => {
+        const r = el.getBoundingClientRect(), value = el.querySelector('.financial-kpi-value');
+        return { width: r.width, height: r.height, right: r.right, top: r.top, valueClipped: value.scrollWidth > value.clientWidth + 1 };
+    }));
+    expect(metrics).toHaveLength(4);
+    for (const metric of metrics) { expect(metric.height).toBeLessThanOrEqual(190); expect(metric.right).toBeLessThanOrEqual(width); expect(metric.valueClipped).toBe(false); }
+    expect(metrics[0].top).toBe(metrics[1].top); expect(metrics[2].top).toBe(metrics[3].top);
+    const actions = await page.locator('.financial-toolbar-actions button').evaluateAll(elements => elements.map(el => ({ top: el.getBoundingClientRect().top, height: el.getBoundingClientRect().height, wrapped: el.scrollWidth > el.clientWidth + 1 })));
+    expect(actions).toHaveLength(3); expect(new Set(actions.map(a => a.top)).size).toBe(1);
+    for (const action of actions) { expect(action.height).toBeGreaterThanOrEqual(44); expect(action.wrapped).toBe(false); }
+    const filters = page.locator('.financial-list-filters [role=combobox]'); const boxes = await filters.evaluateAll(elements => elements.map(e => e.getBoundingClientRect().top)); expect(boxes[0]).toBe(boxes[1]);
+    await page.getByRole('button', { name: 'Nova Transação', exact: true }).click();
+    const dialog = page.getByRole('dialog'), buttons = dialog.locator('.financial-dialog-footer button');
+    await expect(buttons).toHaveCount(2);
+    const footer = await buttons.evaluateAll(elements => elements.map(el => { const r=el.getBoundingClientRect();return {top:r.top,bottom:r.bottom,height:r.height}; }));
+    expect(footer[0].top).toBe(footer[1].top); for (const button of footer) { expect(button.bottom).toBeLessThanOrEqual(740); expect(button.height).toBeGreaterThanOrEqual(44); }
+    expect(await dialog.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
+    expect((await new AxeBuilder({ page }).include('[role="dialog"]').withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    await page.keyboard.press('Escape'); expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test('financial form keeps actions reachable in a short landscape viewport', async ({ page }) => {
+    await page.setViewportSize({ width: 740, height: 360 }); await page.emulateMedia({ reducedMotion: 'reduce' }); await login(page, financePersona);
+    await page.getByRole('button', { name: 'Nova Transação', exact: true }).click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog.getByRole('button', { name: 'Salvar', exact: true })).toBeVisible();
+    const footer = await dialog.locator('.financial-dialog-footer').boundingBox(); expect(footer.y + footer.height).toBeLessThanOrEqual(360);
+    expect(await dialog.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
+    const body = dialog.locator('.financial-dialog-body'); expect(await body.evaluate(el => getComputedStyle(el).overflowY)).toBe('auto');
+    await page.keyboard.press('Escape'); await expect(dialog).toHaveCount(0);
 });

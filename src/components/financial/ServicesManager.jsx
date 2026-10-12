@@ -148,11 +148,11 @@ export default function ServicesManager({ open, onOpenChange, nutritionistId }) 
     return (
         <>
             <Dialog open={open} onOpenChange={next => !saveLock.current && onOpenChange(next)}>
-                <DialogContent className="financial-dialog max-w-4xl max-h-[90dvh] overflow-y-auto">
-                    <DialogHeader>
+                <DialogContent className="financial-dialog financial-structured-dialog flex max-w-4xl max-h-[90dvh] flex-col gap-0 overflow-hidden p-0">
+                    <DialogHeader className="financial-dialog-header">
                         <DialogTitle>Gerenciar Serviços</DialogTitle>
                     </DialogHeader>
-                    <div className="space-y-4">
+                    <div className="financial-dialog-body min-h-0 overflow-y-auto space-y-4">
                         <div className="flex justify-end">
                             <Button onClick={handleNewService} disabled={loading || loadError}>
                                 <Plus className="w-4 h-4 mr-2" />
@@ -207,18 +207,20 @@ export default function ServicesManager({ open, onOpenChange, nutritionistId }) 
                             </Card>
                         )}
                     </div>
+                    <DialogFooter className="financial-dialog-footer"><Button variant="outline" disabled={saving} onClick={() => onOpenChange(false)}>Fechar serviços</Button></DialogFooter>
                 </DialogContent>
             </Dialog>
 
             {/* Service Form Dialog */}
             <Dialog open={isFormOpen} onOpenChange={next => !saveLock.current && setIsFormOpen(next)}>
-                <DialogContent className="financial-dialog max-h-[90dvh] overflow-y-auto">
-                    <DialogHeader>
+                <DialogContent className="financial-dialog financial-structured-dialog flex max-h-[90dvh] flex-col gap-0 overflow-hidden p-0">
+                    <DialogHeader className="financial-dialog-header">
                         <DialogTitle>
                             {editingService ? 'Editar Serviço' : 'Novo Serviço'}
                         </DialogTitle>
                     </DialogHeader>
-                    <form onSubmit={handleSaveService} className="space-y-4">
+                    <form onSubmit={handleSaveService} className="flex min-h-0 flex-col overflow-hidden">
+                        <div className="financial-dialog-body min-h-0 overflow-y-auto space-y-4">
                         <div>
                             <Label htmlFor="name">Nome do Serviço *</Label>
                             <Input
@@ -272,7 +274,8 @@ export default function ServicesManager({ open, onOpenChange, nutritionistId }) 
                                 />
                             </div>
                         </div>
-                        <DialogFooter>
+                        </div>
+                        <DialogFooter className="financial-dialog-footer">
                             <Button type="button" variant="outline" disabled={saving} onClick={() => setIsFormOpen(false)}>
                                 Cancelar
                             </Button>

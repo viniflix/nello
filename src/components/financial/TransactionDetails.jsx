@@ -28,12 +28,14 @@ export default function TransactionDetails({ transaction, onClose }) {
         ['Status registrado', statuses[transaction.status] || 'Não informado'],
     ];
     return <Dialog open onOpenChange={open => !open && onClose()}>
-        <DialogContent className="financial-dialog max-h-[90dvh] max-w-2xl overflow-y-auto rounded-2xl">
-            <DialogHeader><DialogTitle>Detalhes da transação</DialogTitle><DialogDescription>Consulta dos dados registrados. Nenhuma alteração é feita nesta tela.</DialogDescription></DialogHeader>
+        <DialogContent className="financial-dialog financial-details-dialog flex max-h-[90dvh] max-w-2xl flex-col overflow-hidden p-0">
+            <DialogHeader className="financial-dialog-header"><DialogTitle>Detalhes da transação</DialogTitle><DialogDescription>Consulta dos dados registrados. Nenhuma alteração é feita nesta tela.</DialogDescription></DialogHeader>
+            <div className="financial-dialog-body min-h-0 overflow-y-auto">
             <p className="my-2 rounded-xl bg-muted/50 p-4 text-3xl font-semibold tabular-nums">{formatCurrency(transaction.amount)}<span className="mt-1 block text-xs font-normal text-muted-foreground">Valor bruto · {statuses[transaction.status] || 'Status não informado'}</span></p>
-            <dl className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">{rows.map(([label, value]) => <div key={label} className={label === 'Descrição' ? 'sm:col-span-2' : ''}><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-1 break-words text-sm font-medium tabular-nums">{value}</dd></div>)}</dl>
+            <dl className="grid min-w-0 grid-cols-2 gap-4">{rows.map(([label, value]) => <div key={label} className={['Descrição', 'Paciente', 'Método de pagamento'].includes(label) ? 'col-span-2 sm:col-span-1' : ''}><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-1 break-words text-sm font-medium tabular-nums">{value}</dd></div>)}</dl>
             {transaction.attachment_url && <PrivateFileLink bucket="financial-docs" value={transaction.attachment_url} className="break-words [&_button]:min-h-11 dark:[&_button]:text-green-300">Abrir comprovante</PrivateFileLink>}
-        <DialogFooter><Button variant="outline" onClick={onClose}>Fechar detalhes</Button></DialogFooter>
+            </div>
+        <DialogFooter className="financial-dialog-footer"><Button variant="outline" onClick={onClose}>Fechar detalhes</Button></DialogFooter>
         </DialogContent>
     </Dialog>;
 }

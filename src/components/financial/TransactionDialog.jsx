@@ -318,14 +318,14 @@ export default function TransactionDialog({
 
     return (
         <Dialog open={open} onOpenChange={next => { if (!saveLock.current) onOpenChange(next); }}>
-            <DialogContent className="financial-dialog flex w-[calc(100vw-2rem)] max-w-3xl max-h-[90dvh] flex-col gap-0 overflow-hidden rounded-2xl p-0">
-                <DialogHeader className="shrink-0 border-b px-5 py-4 pr-12">
+            <DialogContent className="financial-dialog financial-structured-dialog flex w-[calc(100vw-2rem)] max-w-3xl max-h-[90dvh] flex-col gap-0 overflow-hidden rounded-2xl p-0">
+                <DialogHeader className="financial-dialog-header shrink-0 border-b px-5 py-4 pr-12">
                     <DialogTitle>
                         {transaction ? 'Editar Transação' : 'Nova Transação'}
                     </DialogTitle>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} aria-busy={saving || undefined} className="flex min-h-0 flex-col overflow-hidden">
-                    <div className="min-h-0 overflow-y-auto overscroll-contain px-5 py-4">
+                    <div className="financial-dialog-body min-h-0 overflow-y-auto overscroll-contain px-5 py-4">
                     <fieldset disabled={saving} className="min-w-0 space-y-5">
                     {['patients', 'services'].some(key => auxiliaryState[key] === 'error') && <div role="alert" className="rounded-lg border border-destructive/40 p-3 text-sm">Pacientes ou serviços indisponíveis. Confira os dados antes de salvar. <Button type="button" variant="outline" size="sm" onClick={onAuxiliaryRetry}>Tentar novamente</Button></div>}
                     <fieldset className="grid min-w-0 grid-cols-1 gap-4 rounded-xl border p-4 sm:grid-cols-2"><legend className="px-2 text-sm font-semibold">Lançamento</legend>
@@ -653,7 +653,7 @@ export default function TransactionDialog({
                     </fieldset>
                     </div>
                     {saveError && <p role="alert" className="shrink-0 border-t px-5 py-3 text-sm text-destructive">Não foi possível confirmar o salvamento. Os campos e o comprovante continuam disponíveis para revisão e nova tentativa.</p>}
-                    <DialogFooter className="shrink-0 border-t bg-card px-5 py-4">
+                    <DialogFooter className="financial-dialog-footer shrink-0 border-t bg-card px-5 py-4">
                         <Button type="button" variant="outline" disabled={saving} onClick={() => onOpenChange(false)}>
                             Cancelar
                         </Button>

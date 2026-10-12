@@ -20,7 +20,7 @@ export default function FinancialSummaryDialog({ kind, summary, rows, start, end
     if (!kind) return null;
     const selected = financialMetricRows(rows, kind, start, end);
     const fields = kind === 'balance' || kind === 'income'
-        ? [['Recebido bruto, após estornos', summary.grossIncome], ['Taxas de recebimento', summary.grossIncome - summary.income], ['Caixa recebido líquido', summary.income], ...(kind === 'balance' ? [['Despesas pagas', summary.expenses], ['Saldo de caixa do período', summary.netResult]] : [])]
+        ? [['Recebido bruto, após estornos', summary.grossIncome], ['Taxas de recebimento', summary.grossIncome - summary.income], ['Caixa recebido líquido', summary.income], ...(kind === 'balance' ? [['Despesas pagas', summary.expenses], ['Saldo de caixa do período', summary.netResult]] : [['Receitas lançadas pela competência, inclusive pendências', summary.expectedIncome]])]
         : kind === 'expense' ? [['Despesas pagas no período', summary.expenses], ['Despesas lançadas pela competência', summary.expectedExpenses]]
             : [['A receber pela competência', summary.pendingIncome], ['Vencido', summary.overdue]];
     return <Dialog open onOpenChange={open => !open && onClose()}>
