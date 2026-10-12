@@ -5,7 +5,10 @@ import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { assertIsolatedRuntime } from '../scripts/qa/isolated-runtime.mjs';
 assertIsolatedRuntime();
-const fixture=JSON.parse(readFileSync('.backend-ci/browser-runtime/fixture.json'));
+const fixture=JSON.parse(readFileSync(process.env.NELLO_FEED_QA_FIXTURE || '.backend-ci/browser-runtime/fixture.json'));
+const fixtureDatabase=process.env.NELLO_FEED_QA_DATABASE || 'postgres';
+if(!['http://localhost:54321','http://localhost:4180'].includes(fixture.url)
+ || (fixtureDatabase!=='postgres' && !/^nello_qa_wave02_[0-9]+$/.test(fixtureDatabase)))throw Error('Disposable feed fixture required');
 async function login(page) {
  await page.goto('/login');await page.locator('#email').fill(fixture.personas['nutritionist-a'].email);
  await page.locator('#password').fill(fixture.password);await page.getByRole('button',{name:'Entrar',exact:true}).click();
@@ -17,7 +20,7 @@ async function owner() {
 }
 function createPatient(actor,name) {
  const patient=randomUUID();
- execFileSync('docker',['exec','-i','-e','PGPASSWORD=postgres','supabase_db_nello-reconstruction','psql','-X','-h','127.0.0.1','-U','supabase_admin','-d','postgres','-v','ON_ERROR_STOP=1'],{
+ execFileSync('docker',['exec','-i','-e','PGPASSWORD=postgres','supabase_db_nello-reconstruction','psql','-X','-h','127.0.0.1','-U','supabase_admin','-d',fixtureDatabase,'-v','ON_ERROR_STOP=1'],{
   input:`INSERT INTO auth.users(id,aud,role,email,raw_user_meta_data) VALUES('${patient}','authenticated','authenticated','${patient}@example.invalid','{"name":"${name}","user_type":"patient"}');
   UPDATE public.user_profiles SET nutritionist_id='${actor}' WHERE id='${patient}';
   INSERT INTO public.nutritionist_patients(nutritionist_id,patient_id,status) VALUES('${actor}','${patient}','active');`,stdio:['pipe','ignore','pipe']});
@@ -31,14 +34,16 @@ test('feed retry really saves the failed subset and removes its warning',async({
  // independently of records left by other journeys, then confirm one manual retry.
  const patients=Array.from({length:26},(_,index)=>createPatient(fixture.personas['nutritionist-a'].id,`QA Retry ${index}`));
  try {
- let fail=true;const failed=new Set();const retried=new Set();
+ let fail=true;let failReads=true;const failed=new Set();const retried=new Set();
  const gatewayFailures=new Map();
- // Reproduce the real gateway failures seen in reconstruction. Only the first
- // read fails; the authorized retry must reach the actual local SQL service.
+ // A synthetic failure followed by a real upstream 502 exhausted the bounded
+ // read retry in CI. Exercise that complete recovery before testing writes.
  for(const rpc of ['get_my_feed_task_states','get_comprehensive_activity_feed_optimized']) {
   await page.route(`**/rest/v1/rpc/${rpc}`,async route=>{
-   if(!gatewayFailures.has(rpc)){gatewayFailures.set(rpc,1);return route.fulfill({status:502,contentType:'application/json',body:JSON.stringify({message:'Synthetic gateway unavailable'})});}
-   gatewayFailures.set(rpc,gatewayFailures.get(rpc)+1);await route.continue();
+   const attempts=(gatewayFailures.get(rpc)||0)+1;gatewayFailures.set(rpc,attempts);
+   if((rpc==='get_comprehensive_activity_feed_optimized' && failReads)
+    || (rpc==='get_my_feed_task_states' && attempts===1))return route.fulfill({status:502,contentType:'application/json',body:JSON.stringify({message:'Synthetic gateway unavailable'})});
+   await route.continue();
   });
  }
  await page.route('**/rest/v1/rpc/save_feed_task',async route=>{
@@ -47,9 +52,14 @@ test('feed retry really saves the failed subset and removes its warning',async({
   else {retried.add(key);await route.continue();}
  });
  await login(page);
+ await expect(page.getByRole('alert').filter({hasText:'Não foi possível carregar o feed.'})).toBeVisible();
+ expect(failed.size).toBe(0);
+ failReads=false;
+ await page.getByRole('button',{name:'Tentar novamente',exact:true}).click();
  await expect(page.getByRole('alert').filter({hasText:'alterações do feed não foram salvas'})).toBeVisible();
  expect([...gatewayFailures.values()]).toHaveLength(2);
  expect([...gatewayFailures.values()].every(attempts=>attempts>=2)).toBe(true);
+ expect(gatewayFailures.get('get_comprehensive_activity_feed_optimized')).toBeGreaterThanOrEqual(3);
  expect(failed.size).toBe(100);fail=false;
  await page.getByRole('button',{name:'Tentar salvar novamente',exact:true}).click();
  await expect(page.getByRole('alert').filter({hasText:'alterações do feed não foram salvas'})).toHaveCount(0);
