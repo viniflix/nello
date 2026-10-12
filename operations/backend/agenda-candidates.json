@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "migrations": [
+    {
+      "sha256": "c81d47dc80df5bc8505ae1f242822cf978b5a41ed1bb1f74d9b360595ce0fcd9",
+      "file": "supabase/migrations/releases/20261012230000_agenda_operational_integrity.sql"
+    }
+  ]
+}

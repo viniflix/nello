@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { rpc, from, sync, logError } = vi.hoisted(() => ({
-    rpc: vi.fn(), from: vi.fn(), sync: vi.fn(), logError: vi.fn()
+const { rpc, from, sync, logError, dispatch } = vi.hoisted(() => ({
+    rpc: vi.fn(), from: vi.fn(), sync: vi.fn(), logError: vi.fn(), dispatch: vi.fn()
 }));
 vi.mock('@/lib/supabase/idempotent-mutations',()=>({clinicalRpc: (operation,args,expected)=>rpc('perform_clinical_operation',{p_operation:operation,p_arguments:args,p_expected:expected ?? null})}));
 vi.mock('@/infrastructure/supabase/client', () => ({ supabase: { rpc, from } }));
@@ -9,7 +9,7 @@ vi.mock('@/lib/supabase/appointment-notifications-queries', () => ({
     syncAppointmentNotificationSchedule: sync
 }));
 vi.mock('@/lib/supabase/query-helpers', () => ({ logSupabaseError: logError }));
-vi.mock('./message-templates-queries', () => ({ dispatchMessageTemplate: vi.fn() }));
+vi.mock('./message-templates-queries', () => ({ dispatchMessageTemplate: dispatch }));
 
 const { createAppointmentWithFinance, updateAppointment, deleteAppointment } = await import('./agenda-queries');
 const appointment = {
@@ -78,5 +78,17 @@ describe('gravação atômica de agenda e cobrança', () => {
         expect(request.p_expected).toBe(updated_at);
         expect(request.p_arguments.p_appointment.start_time).toBe(new Date(appointment.appointment_time).toISOString());
         expect(request.p_arguments.p_appointment.status).toBe('awaiting_confirmation');
+    });
+
+    it('mantém consulta salva e informa envio pendente quando o dispatcher retorna erro', async () => {
+        const saved = { id: 7, status: 'completed', patient_id: 'patient-id', nutritionist_id: appointment.nutritionist_id };
+        rpc.mockResolvedValue({ data: { appointment: saved }, error: null });
+        const query = { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), order: vi.fn().mockReturnThis(), limit: vi.fn().mockReturnThis(), maybeSingle: vi.fn().mockResolvedValue({ data: { id: 'template-id' }, error: null }) };
+        from.mockReturnValue(query);
+        const failure = { code: 'PGRST202', message: 'dispatcher unavailable' };
+        dispatch.mockResolvedValue({ data: null, error: failure });
+        await expect(updateAppointment(7, { ...appointment, status: 'completed' })).resolves.toEqual({ ...saved, post_consultation_delivery_pending: true });
+        expect(rpc).toHaveBeenCalledTimes(1);
+        expect(logError).toHaveBeenCalledWith('erro_ao_disparar_template_pos_consulta', failure);
     });
 });

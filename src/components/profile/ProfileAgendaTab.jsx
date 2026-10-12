@@ -1,5 +1,5 @@
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { TimeInput } from '@/components/ui/date-input';
 import { Label } from '@/components/ui/label';
@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Clock, Calendar, Loader2 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { updateClinicSettings, getClinicSettings } from '@/lib/supabase/profile-queries';
+import { readAgendaSettings, validateAgendaSettings } from '@/lib/agenda/availability';
 
 const DAYS_OF_WEEK = [
     { value: 'monday', label: 'Segunda-feira' },
@@ -31,6 +32,10 @@ export default function ProfileAgendaTab({ userId, onUpdate }) {
     const { toast } = useToast();
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
+    const [settingsError, setSettingsError] = useState('');
+    const [loadFailed, setLoadFailed] = useState(false);
+    const loadSequence = useRef(0);
+    const savingRef = useRef(false);
     
     const [formData, setFormData] = useState({
         startTime: '08:00',
@@ -39,29 +44,31 @@ export default function ProfileAgendaTab({ userId, onUpdate }) {
         slotDuration: 60
     });
 
-    useEffect(() => {
-        loadSettings();
-    }, [userId]);
-
-    const loadSettings = async () => {
+    const loadSettings = useCallback(async () => {
         if (!userId) return;
+        const sequence = ++loadSequence.current;
         setLoading(true);
+        setLoadFailed(false);
         try {
             const settings = await getClinicSettings(userId);
-            if (settings.agenda) {
-                setFormData({
-                    startTime: settings.agenda.startTime || '08:00',
-                    endTime: settings.agenda.endTime || '18:00',
-                    workingDays: settings.agenda.workingDays || ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
-                    slotDuration: settings.agenda.slotDuration || 60
-                });
-            }
+            if (sequence !== loadSequence.current) return;
+            const agenda = readAgendaSettings(settings);
+            setFormData(agenda.settings);
+            setSettingsError(agenda.errors.join(' '));
         } catch (error) {
+            if (sequence !== loadSequence.current) return;
             logDiagnostic('error', 'components/profile/ProfileAgendaTab.jsx:59', 'Error loading agenda settings:', error);
+            setLoadFailed(true);
+            setSettingsError('Não foi possível carregar sua jornada. Tente novamente antes de salvar.');
         } finally {
-            setLoading(false);
+            if (sequence === loadSequence.current) setLoading(false);
         }
-    };
+    }, [userId]);
+
+    useEffect(() => {
+        void loadSettings();
+        return () => { loadSequence.current += 1; };
+    }, [loadSettings]);
 
     const handleDayToggle = (day) => {
         setFormData(prev => ({
@@ -73,7 +80,11 @@ export default function ProfileAgendaTab({ userId, onUpdate }) {
     };
 
     const handleSave = async () => {
-        if (!userId) return;
+        if (!userId || savingRef.current || loadFailed || loading) return;
+        const errors = validateAgendaSettings(formData);
+        setSettingsError(errors.join(' '));
+        if (errors.length) return;
+        savingRef.current = true;
         setSaving(true);
         try {
             await updateClinicSettings(userId, {
@@ -91,13 +102,14 @@ export default function ProfileAgendaTab({ userId, onUpdate }) {
             });
 
             if (onUpdate) onUpdate();
-        } catch (error) {
+        } catch {
             toast({
                 title: "Erro",
                 description: "Não foi possível salvar as configurações.",
                 variant: "destructive"
             });
         } finally {
+            savingRef.current = false;
             setSaving(false);
         }
     };
@@ -112,6 +124,7 @@ export default function ProfileAgendaTab({ userId, onUpdate }) {
 
     return (
         <div className="space-y-6">
+            {settingsError && <div role="alert" className="rounded-lg bg-destructive/5 p-3 text-sm text-destructive">{settingsError}{loadFailed && <Button variant="outline" onClick={loadSettings} className="mt-2 min-h-11">Tentar novamente</Button>}</div>}
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
@@ -189,7 +202,7 @@ export default function ProfileAgendaTab({ userId, onUpdate }) {
                             value={formData.slotDuration.toString()}
                             onValueChange={(value) => setFormData(prev => ({ ...prev, slotDuration: parseInt(value) }))}
                         >
-                            <SelectTrigger>
+                            <SelectTrigger id="slotDuration">
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -205,7 +218,7 @@ export default function ProfileAgendaTab({ userId, onUpdate }) {
             </Card>
 
             <div className="flex justify-end gap-2">
-                <Button onClick={handleSave} disabled={saving}>
+                <Button onClick={handleSave} disabled={saving || loadFailed} className="min-h-11">
                     {saving ? (
                         <>
                             <Loader2 className="w-4 h-4 mr-2 animate-spin" />

@@ -126,7 +126,7 @@ export async function updateAppointment(appointmentId, appointmentData, financia
         refreshed?.nutritionist_id
     ) {
         try {
-            const { data: postTpl } = await supabase
+            const { data: postTpl, error: templateError } = await supabase
                 .from('message_templates')
                 .select('id')
                 .eq('nutritionist_id', refreshed.nutritionist_id)
@@ -136,16 +136,22 @@ export async function updateAppointment(appointmentId, appointmentData, financia
                 .limit(1)
                 .maybeSingle();
 
+            if (templateError) throw templateError;
+
             if (postTpl?.id) {
-                await dispatchMessageTemplate({
+                const delivery = await dispatchMessageTemplate({
                     templateId: postTpl.id,
                     patientId: finalPatientId,
                     triggerEvent: 'appointment_completed',
                     extraVariables: { appointment_id: appointmentId }
                 });
+                if (delivery?.error) throw delivery.error;
             }
         } catch (dispatchErr) {
             logSupabaseError("erro_ao_disparar_template_pos_consulta", dispatchErr);
+            // The clinical update is already committed; a delivery failure must
+            // never be presented as an unsaved consultation or trigger a re-save.
+            return { ...refreshed, post_consultation_delivery_pending: true };
         }
     }
 

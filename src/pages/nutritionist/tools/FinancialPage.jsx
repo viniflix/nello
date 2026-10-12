@@ -42,6 +42,9 @@ import { exportFinancialReport } from '@/lib/utils/exportUtils';
 import { getClinicSettings } from '@/lib/supabase/profile-queries';
 import { toPortugueseError } from '@/lib/utils/errorMessages';
 import { Events, track } from '@/infrastructure/analytics/posthog';
+import { readAgendaReturn } from '@/lib/agenda/navigation';
+import { getFinancialTransactionById } from '@/lib/supabase/financial-queries';
+import { subscribeDomain } from '@/infrastructure/realtime/events';
 import { summarizeFinancialTransactions, buildFinancialCashFlow, buildFinancialExpenseDistribution, formatFinancialDecimal } from '@/lib/utils/financial-math';
 
 export default function FinancialPage() {
@@ -49,6 +52,9 @@ export default function FinancialPage() {
     const { toast } = useToast();
     const navigate = useNavigate();
     const location = useLocation();
+    const agendaReturn = readAgendaReturn(location.state?.agendaReturn, user?.id);
+    const agendaTransactionId = agendaReturn ? location.state?.agendaTransactionId : null;
+    const [agendaLinkState, setAgendaLinkState] = useState('idle');
     const returnView = user?.id && location.state?.financialReturn?.userId === user.id ? location.state.financialReturn : null;
 
     // State
@@ -79,6 +85,16 @@ export default function FinancialPage() {
     const [metricView, setMetricView] = useState(null);
     const metricTrigger = useRef(null);
     const [inspectedTransaction, setInspectedTransaction] = useState(null);
+    useEffect(() => { setInspectedTransaction(null); setAgendaLinkState('idle'); }, [user?.id]);
+    useEffect(() => {
+        if (!user?.id || !agendaTransactionId) return;
+        let active = true;
+        setAgendaLinkState('loading');
+        getFinancialTransactionById(user.id, agendaTransactionId)
+            .then(row => { if (active) { setInspectedTransaction(row); setAgendaLinkState('ready'); } })
+            .catch(() => { if (active) setAgendaLinkState('error'); });
+        return () => { active = false; };
+    }, [user?.id, agendaTransactionId]);
     const [monthlyGoal, setMonthlyGoal] = useState(null);
     const [goalState, setGoalState] = useState('loading');
     const [goalRevision, setGoalRevision] = useState(0);
@@ -172,6 +188,11 @@ export default function FinancialPage() {
     }, [loadData]);
 
     useEffect(() => { loadAuxiliaryData(); return () => { auxiliaryRequest.current += 1; }; }, [loadAuxiliaryData]);
+    useEffect(() => subscribeDomain(user?.id, 'clinical', () => {
+        void loadData();
+        void loadAuxiliaryData();
+        setRankingRevision(value => value + 1);
+    }), [user?.id, loadData, loadAuxiliaryData]);
 
     const refreshAfterMutation = async () => {
         await Promise.all([loadData(), loadAuxiliaryData()]);
@@ -369,6 +390,11 @@ export default function FinancialPage() {
 
     return (
         <div className="financial-workspace min-h-dvh min-w-0 bg-[#f7f8f5] dark:bg-background">
+            {agendaReturn && <div className="mx-auto max-w-7xl px-4 pt-4">
+                <Button variant="outline" className="min-h-11" onClick={() => navigate('/nutritionist/agenda', { state: { agendaReturn } })}>Voltar à agenda</Button>
+                {agendaLinkState === 'loading' && <p role="status" className="mt-2 text-sm">Conferindo o lançamento do agendamento…</p>}
+                {agendaLinkState === 'error' && <p role="alert" className="mt-2 text-sm text-destructive">O lançamento não está disponível nesta conta ou foi alterado. Volte à agenda para conferir o estado atual.</p>}
+            </div>}
             <section aria-label="Gestão financeira" className="mx-auto w-full max-w-7xl min-w-0 space-y-5 px-4 py-5 md:px-8 md:py-7">
                 <FinancialToolbar month={selectedMonth} onMonthChange={value => value && setSelectedMonth(new Date(value + '-02'))} onNew={handleNewTransaction} onSettings={openFinancialSettings} onServices={() => setIsServicesManagerOpen(true)} exportDisabled={loading || loadError} onExportPDF={handleExportPDF} onExportCSV={handleExportCSV} onExportReport={handleExportReport} />
                 <Tabs value={workspaceView} onValueChange={setWorkspaceView} className="space-y-5">

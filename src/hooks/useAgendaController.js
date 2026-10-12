@@ -1,16 +1,20 @@
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { supabase } from '@/infrastructure/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
-import { format, isToday, isTomorrow, isThisWeek, isThisMonth, startOfDay, addDays, subDays, isSameDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
+import { format, startOfDay, addDays, subDays, isSameDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { createAppointmentWithFinance, updateAppointment, deleteAppointment } from '@/lib/supabase/agenda-queries';
-import { getServices } from '@/lib/supabase/financial-queries';
 import { toPortugueseError } from '@/lib/utils/errorMessages';
 import { fetchAppointmentsInPeriod } from '@/lib/supabase/agenda-list-queries';
 import { hasAppointmentConflict } from '@/lib/agenda/appointment-rules';
 
-export function useAgendaController({ user }) {
+import { useAgendaReferences } from './useAgendaReferences';
+import { useAgendaDayAvailability } from './useAgendaDayAvailability';
+import { subscribeDomain } from '@/infrastructure/realtime/events';
+import { agendaToday, agendaPeriod, agendaCivilRange, calendarDateKey, instantInAgendaPeriod, agendaEndTime } from '@/lib/agenda/availability';
+import { civilDateInZone, civilDateToDate, getTodayIsoDate } from '@/lib/utils/date';
+
+export function useAgendaController({ user, returnView = null }) {
     const { toast } = useToast();
     
     const [appointments, setAppointments] = useState([]);
@@ -18,23 +22,26 @@ export function useAgendaController({ user }) {
     const [summaryReady, setSummaryReady] = useState(false);
     const [agendaRevision, setAgendaRevision] = useState(0);
     const loadSequence = useRef(0);
-    const [patients, setPatients] = useState([]);
-    const [services, setServices] = useState([]);
-    const [selectedDate, setSelectedDate] = useState(null); // null = todos os dias
+    const references = useAgendaReferences(user?.id);
+    const { patients, services } = references;
+    const [selectedDate, setSelectedDate] = useState(() => returnView?.date ? civilDateToDate(returnView.date) : null); // null = todos os dias
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingAppointment, setEditingAppointment] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [filterView, setFilterView] = useState('all'); // 'all', 'today', 'week', 'month'
+    const [filterView, setFilterView] = useState(returnView?.view || 'all'); // 'all', 'today', 'week', 'month'
     const [patientSearch, setPatientSearch] = useState(''); // Busca de paciente
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+    const [deletingAppointment, setDeletingAppointment] = useState(false);
+    const [deleteError, setDeleteError] = useState('');
+    const deleteLock = useRef(false);
     const [appointmentToDelete, setAppointmentToDelete] = useState(null);
     const [mobileCalendarOpen, setMobileCalendarOpen] = useState(false); // Modal do calendário mobile
-    const [calendarMonth, setCalendarMonth] = useState(startOfMonth(new Date()));
+    const [calendarMonth, setCalendarMonth] = useState(startOfMonth(agendaToday()));
     const [calendarAppointments, setCalendarAppointments] = useState([]);
     const [exportDialogOpen, setExportDialogOpen] = useState(false); // Modal de exportação PDF
     const [exportPeriodType, setExportPeriodType] = useState('week'); // 'week' ou 'month'
-    const [exportWeekStart, setExportWeekStart] = useState(startOfWeek(new Date(), { locale: ptBR }));
-    const [exportMonth, setExportMonth] = useState(new Date());
+    const [exportWeekStart, setExportWeekStart] = useState(startOfWeek(agendaToday(), { locale: ptBR }));
+    const [exportMonth, setExportMonth] = useState(agendaToday());
     const [askToRegisterPatient, setAskToRegisterPatient] = useState({ isOpen: false, name: '' });
     const [anamnesisModal, setAnamnesisModal] = useState({ open: false, patientId: null, patientName: '' });
 
@@ -61,15 +68,7 @@ export function useAgendaController({ user }) {
         if (!user) return;
         const sequence = ++loadSequence.current;
         setLoading(true);
-        const now = new Date();
-        const start = selectedDate ? startOfDay(selectedDate)
-            : filterView === 'today' ? startOfDay(now)
-            : filterView === 'week' ? startOfWeek(now, { locale: ptBR })
-            : filterView === 'month' ? startOfMonth(now) : startOfDay(now);
-        const end = selectedDate ? addDays(start, 1)
-            : filterView === 'today' ? addDays(start, 1)
-            : filterView === 'week' ? addDays(startOfDay(endOfWeek(now, { locale: ptBR })), 1)
-            : filterView === 'month' ? new Date(now.getFullYear(), now.getMonth() + 1, 1) : null;
+        const { start, end } = agendaPeriod(filterView, selectedDate);
         try {
             const apptsData = await fetchAppointmentsInPeriod(user.id, start, end);
             if (sequence === loadSequence.current) setAppointments(apptsData.map(normalizeAppointment));
@@ -83,7 +82,7 @@ export function useAgendaController({ user }) {
     useEffect(() => {
         let cancelled = false;
         if (!user?.id) return;
-        fetchAppointmentsInPeriod(user.id, calendarMonth, new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 1), 'id, appointment_time', 'agenda_calendar')
+        fetchAppointmentsInPeriod(user.id, ...Object.values(agendaCivilRange(calendarMonth, new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 1))), 'id, appointment_time', 'agenda_calendar')
             .then(rows => { if (!cancelled) setCalendarAppointments(rows); })
             .catch(error => { if (!cancelled) logDiagnostic('error', 'hooks/useAgendaController.js:86', 'Falha ao carregar contagem do calendário', error); });
         return () => { cancelled = true; };
@@ -93,15 +92,14 @@ export function useAgendaController({ user }) {
         if (!user?.id) return;
         let cancelled = false;
         setSummaryReady(false);
-        const now = new Date();
+        const now = agendaToday();
         const weekStart = startOfWeek(now, { locale: ptBR });
         const monthStart = startOfMonth(now);
         const weekEnd = addDays(startOfDay(endOfWeek(now, { locale: ptBR })), 1);
         const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
         fetchAppointmentsInPeriod(
             user.id,
-            weekStart < monthStart ? weekStart : monthStart,
-            weekEnd > monthEnd ? weekEnd : monthEnd,
+            ...Object.values(agendaCivilRange(weekStart < monthStart ? weekStart : monthStart, weekEnd > monthEnd ? weekEnd : monthEnd)),
             'id, appointment_time',
             'agenda_summary'
         ).then(rows => {
@@ -114,73 +112,12 @@ export function useAgendaController({ user }) {
         return () => { cancelled = true; };
     }, [user?.id, agendaRevision]);
 
-    useEffect(() => {
-        if (!user?.id) return;
-        let cancelled = false;
-        const loadReferenceData = async () => {
-
-        let patientsList = [];
-        let loadError = null;
-        const patientMap = new Map();
-
-        try {
-            const { data: links, error: errLinks } = await supabase
-                .from('nutritionist_patients')
-                .select('patient_id')
-                .eq('nutritionist_id', user.id);
-
-            if (!errLinks && links?.length) {
-                const ids = links.map(l => l.patient_id).filter(Boolean);
-                const { data: profiles } = await supabase
-                    .from('user_profiles')
-                    .select('id, name')
-                    .in('id', ids);
-                if (profiles) profiles.forEach(p => patientMap.set(p.id, p));
-            } else if (errLinks) {
-                loadError = errLinks;
-            }
-
-            const { data: fromProfiles, error: errProfiles } = await supabase
-                .from('user_profiles')
-                .select('id, name')
-                .eq('nutritionist_id', user.id)
-                .limit(500);
-
-            if (!errProfiles && fromProfiles?.length) {
-                fromProfiles.forEach(p => patientMap.set(p.id, p));
-            } else if (errProfiles && !loadError) {
-                loadError = errProfiles;
-            }
-
-            patientsList = Array.from(patientMap.values()).map(p => ({
-                id: p.id,
-                name: p.name || 'Paciente'
-            }));
-            
-            if (patientsList.length === 0 && loadError) {
-                toast({ title: "Erro", description: "Não foi possível carregar os pacientes. Verifique sua conexão.", variant: "destructive" });
-            }
-        } catch (e) {
-            logDiagnostic('error', 'hooks/useAgendaController.js:162', 'Error fetching patients:', e);
-        }
-
-        if (!cancelled) setPatients(patientsList);
-
-        try {
-            const servicesData = await getServices(user.id);
-            if (!cancelled) setServices(servicesData || []);
-        } catch (error) {
-            logDiagnostic('error', 'hooks/useAgendaController.js:171', 'Error loading services:', error);
-            if (!cancelled) setServices([]);
-        }
-        };
-        loadReferenceData();
-        return () => { cancelled = true; };
-    }, [user?.id, toast]);
+    const dayAvailability = useAgendaDayAvailability(user?.id, calendarDateKey(selectedDate || agendaToday()));
+    useEffect(() => subscribeDomain(user?.id, 'clinical', () => setAgendaRevision(value => value + 1)), [user?.id]);
 
     useEffect(() => {
         loadData();
-    }, [loadData]);
+    }, [loadData, agendaRevision]);
 
     const handleSaveAppointment = async (appointmentData, financialData) => {
         const { patient_id, unregistered_patient_name, appointment_time, notes, duration, appointment_type, status } = appointmentData;
@@ -202,7 +139,7 @@ export function useAgendaController({ user }) {
         }
 
             if (appointmentData.id) {
-                await updateAppointment(appointmentData.id, {
+                const savedAppointment = await updateAppointment(appointmentData.id, {
                     nutritionist_id: user.id,
                     patient_id: patient_id || null,
                     unregistered_patient_name: unregistered_patient_name || null,
@@ -213,7 +150,9 @@ export function useAgendaController({ user }) {
                     status: status || 'scheduled',
                     updated_at: appointmentData.updated_at
                 }, financialData);
-                toast({ title: "Sucesso!", description: "Agendamento atualizado com sucesso." });
+                toast({ title: "Agendamento atualizado", description: savedAppointment?.post_consultation_delivery_pending
+                    ? 'A consulta foi salva. O aviso pós-consulta não foi confirmado; não é necessário salvar novamente.'
+                    : 'Agendamento atualizado com sucesso.' });
             } else {
                 const payload = {
                     nutritionist_id: user.id,
@@ -226,7 +165,7 @@ export function useAgendaController({ user }) {
                     status: status || 'scheduled'
                 };
 
-                const { transaction } = await createAppointmentWithFinance(payload, financialData);
+                const { appointment: createdAppointment, transaction } = await createAppointmentWithFinance(payload, financialData);
                 
                 if (transaction) {
                     toast({ 
@@ -243,6 +182,7 @@ export function useAgendaController({ user }) {
                 if (!patient_id && unregistered_patient_name) {
                     setAskToRegisterPatient({
                         name: unregistered_patient_name,
+                        appointment: { ...createdAppointment, charge: transaction ? [transaction] : [] },
                         isOpen: true
                     });
                 }
@@ -250,13 +190,12 @@ export function useAgendaController({ user }) {
 
             setIsFormOpen(false);
             setEditingAppointment(null);
-            loadData();
             setAgendaRevision(revision => revision + 1);
             return { success: true };
         } catch (error) {
             logDiagnostic('error', 'hooks/useAgendaController.js:260', 'Error saving appointment:', error);
             const errMsg = error?.message || error?.details || (typeof error === 'string' ? error : '');
-            const description = error?.code === 'PT409'
+            const description = error?.code === '23P01' ? 'Este horário acabou de ser ocupado. Escolha outro horário.' : error?.code === 'PT409'
                 ? 'Este agendamento mudou ou não está mais disponível. Feche e abra novamente para conferir a versão atual antes de salvar.'
                 : toPortugueseError(errMsg || error, 'Não foi possível salvar o agendamento. Verifique se o paciente está vinculado a você.');
             toast({ 
@@ -269,62 +208,44 @@ export function useAgendaController({ user }) {
     };
 
     const handleDeleteClick = (appointment) => {
+        setDeleteError('');
         setAppointmentToDelete(appointment);
         setDeleteConfirmOpen(true);
     };
 
     const handleDeleteAppointment = async () => {
-        if (!appointmentToDelete) return;
+        if (!appointmentToDelete || deleteLock.current) return;
+        deleteLock.current = true;
+        setDeletingAppointment(true);
+        setDeleteError('');
 
         try {
             await deleteAppointment(appointmentToDelete.id);
             toast({ title: "Sucesso!", description: "Agendamento deletado com sucesso." });
-            loadData();
             setAgendaRevision(revision => revision + 1);
+            setDeleteConfirmOpen(false);
+            setAppointmentToDelete(null);
         } catch (error) {
-            toast({ title: "Erro", description: toPortugueseError(error, "Não foi possível remover. Consultas com pagamento exigem ajuste manual."), variant: "destructive" });
+            const message = toPortugueseError(error, 'Não foi possível remover. Consultas com pagamento exigem ajuste manual.');
+            setDeleteError(message);
+            toast({ title: 'Erro', description: message, variant: 'destructive' });
+        } finally {
+            deleteLock.current = false;
+            setDeletingAppointment(false);
         }
-        setDeleteConfirmOpen(false);
-        setAppointmentToDelete(null);
     };
 
     const filteredAppointments = useMemo(() => {
-        const now = new Date();
-        let filtered = [...appointments].sort((a, b) => new Date(a.appointment_time) - new Date(b.appointment_time));
-
-        if (selectedDate) {
-            filtered = filtered.filter(a => isSameDay(new Date(a.appointment_time), selectedDate));
-        } else {
-            switch (filterView) {
-                case 'today':
-                    filtered = filtered.filter(a => isToday(new Date(a.appointment_time)));
-                    break;
-                case 'week':
-                    filtered = filtered.filter(a => isThisWeek(new Date(a.appointment_time), { locale: ptBR }));
-                    break;
-                case 'month':
-                    filtered = filtered.filter(a => isThisMonth(new Date(a.appointment_time)));
-                    break;
-                default:
-                    filtered = filtered.filter(a => new Date(a.appointment_time) >= startOfDay(now));
-            }
-        }
-
-        if (patientSearch.trim()) {
-            const searchLower = patientSearch.toLowerCase();
-            filtered = filtered.filter(a => {
-                const name = a.patient?.name || a.unregistered_patient_name || '';
-                return name.toLowerCase().includes(searchLower);
-            });
-        }
-
-        return filtered;
+        const period = agendaPeriod(filterView, selectedDate);
+        const search = patientSearch.trim().toLocaleLowerCase('pt-BR');
+        return appointments.filter(appointment => instantInAgendaPeriod(appointment.appointment_time, period)
+            && (!search || (appointment.patient?.name || appointment.unregistered_patient_name || '').toLocaleLowerCase('pt-BR').includes(search)));
     }, [appointments, filterView, selectedDate, patientSearch]);
 
     const groupedAppointments = useMemo(() => {
         const groups = {};
         filteredAppointments.forEach(appt => {
-            const dateKey = format(new Date(appt.appointment_time), 'yyyy-MM-dd');
+            const dateKey = civilDateInZone(appt.appointment_time);
             if (!groups[dateKey]) {
                 groups[dateKey] = [];
             }
@@ -336,14 +257,14 @@ export function useAgendaController({ user }) {
     const appointmentsByDay = useMemo(() => {
         const counts = {};
         calendarAppointments.forEach(a => {
-            const dateKey = format(new Date(a.appointment_time), 'yyyy-MM-dd');
+            const dateKey = civilDateInZone(a.appointment_time);
             counts[dateKey] = (counts[dateKey] || 0) + 1;
         });
         return counts;
     }, [calendarAppointments]);
 
     const getDayColorClass = (date) => {
-        const dateKey = format(date, 'yyyy-MM-dd');
+        const dateKey = calendarDateKey(date);
         const count = appointmentsByDay[dateKey] || 0;
 
         if (count >= 5) {
@@ -380,10 +301,7 @@ export function useAgendaController({ user }) {
         return typeMap[type] || typeMap['first_appointment'];
     };
 
-    const getEndTime = (startTime, duration) => {
-        const end = new Date(new Date(startTime).getTime() + (duration || 60) * 60000);
-        return format(end, 'HH:mm');
-    };
+    const getEndTime = agendaEndTime;
 
     const formatAppointmentDate = (dateString) => {
         const [year, month, day] = dateString.split('-').map(Number);
@@ -393,23 +311,23 @@ export function useAgendaController({ user }) {
         const weekdayCapitalized = weekday.charAt(0).toUpperCase() + weekday.slice(1);
         const fullDate = format(apptDate, "dd 'de' MMMM", { locale: ptBR });
 
-        if (isToday(apptDate)) return `Hoje • ${weekdayCapitalized}, ${fullDate}`;
-        if (isTomorrow(apptDate)) return `Amanhã • ${weekdayCapitalized}, ${fullDate}`;
+        if (dateString === getTodayIsoDate()) return `Hoje • ${weekdayCapitalized}, ${fullDate}`;
+        if (dateString === calendarDateKey(addDays(agendaToday(), 1))) return `Amanhã • ${weekdayCapitalized}, ${fullDate}`;
         return `${weekdayCapitalized}, ${fullDate}`;
     };
 
     const handlePreviousDay = () => {
-        const currentDate = selectedDate || new Date();
+        const currentDate = selectedDate || agendaToday();
         setSelectedDate(subDays(currentDate, 1));
     };
 
     const handleNextDay = () => {
-        const currentDate = selectedDate || new Date();
+        const currentDate = selectedDate || agendaToday();
         setSelectedDate(addDays(currentDate, 1));
     };
 
     const handleToday = () => {
-        setSelectedDate(new Date());
+        setSelectedDate(agendaToday());
     };
 
     const handleClearDateFilter = () => {
@@ -451,14 +369,14 @@ export function useAgendaController({ user }) {
                 endDate = endOfWeek(exportWeekStart, { locale: ptBR });
                 periodLabel = `Semana de ${format(startDate, 'dd/MM')} a ${format(endDate, 'dd/MM/yyyy')}`;
 
-                filteredExport = await fetchAppointmentsInPeriod(user.id, startDate, addDays(startOfDay(endDate), 1), undefined, 'agenda_export');
+                filteredExport = await fetchAppointmentsInPeriod(user.id, ...Object.values(agendaCivilRange(startDate, addDays(endDate, 1))), undefined, 'agenda_export');
             } else {
                 startDate = startOfMonth(exportMonth);
                 endDate = endOfMonth(exportMonth);
                 periodLabel = format(exportMonth, "MMMM 'de' yyyy", { locale: ptBR });
                 periodLabel = periodLabel.charAt(0).toUpperCase() + periodLabel.slice(1);
 
-                filteredExport = await fetchAppointmentsInPeriod(user.id, startDate, new Date(endDate.getFullYear(), endDate.getMonth() + 1, 1), undefined, 'agenda_export');
+                filteredExport = await fetchAppointmentsInPeriod(user.id, ...Object.values(agendaCivilRange(startDate, new Date(endDate.getFullYear(), endDate.getMonth() + 1, 1))), undefined, 'agenda_export');
             }
 
             if (filteredExport.length === 0) {
@@ -500,6 +418,12 @@ export function useAgendaController({ user }) {
         summaryReady,
         patients,
         services,
+        agendaSettings: references.settings,
+        referenceErrors: references.errors,
+        referencesLoading: references.loading,
+        searchPatients: references.searchPatients,
+        reloadReferences: references.reload,
+        dayAvailability,
         selectedDate,
         isFormOpen,
         editingAppointment,
@@ -507,6 +431,8 @@ export function useAgendaController({ user }) {
         filterView,
         patientSearch,
         deleteConfirmOpen,
+        deletingAppointment,
+        deleteError,
         appointmentToDelete,
         mobileCalendarOpen,
         calendarMonth,

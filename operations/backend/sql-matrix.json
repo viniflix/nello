@@ -328,6 +328,11 @@
       "file": "financial_service_details.sql",
       "kind": "assertion-suite",
       "fixtures": []
+    },
+    {
+      "file": "agenda_operational_integrity.sql",
+      "kind": "assertion-suite",
+      "fixtures": []
     }
   ]
 }

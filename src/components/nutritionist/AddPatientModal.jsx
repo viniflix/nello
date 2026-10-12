@@ -134,7 +134,7 @@ const DateInputWithCalendar = ({ value, onChange, required }) => {
 };
 
 
-const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded }) => {
+const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded, initialName, preserveExistingDraft = false }) => {
     const { user } = useAuth();
     const { toast } = useToast();
     const [step, setStep] = useState("1");
@@ -144,6 +144,14 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded }) => {
     const [cepLoading, setCepLoading] = useState(false);
     const [sendInvite, setSendInvite] = useState(true);
     const creationRequestId = useRef(crypto.randomUUID());
+
+    useEffect(() => {
+        if (!isOpen || !preserveExistingDraft) return;
+        const previousDraft = structuredClone(usePatientFormStore.getState().formData);
+        usePatientFormStore.getState().resetForm();
+        usePatientFormStore.getState().updateField('name', initialName || '');
+        return () => usePatientFormStore.setState({ formData: previousDraft });
+    }, [isOpen, preserveExistingDraft, initialName]);
 
     // Derive isOffline from email content
     const isOffline = !formData.email || formData.email.trim() === '';
@@ -303,7 +311,12 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded }) => {
             track(Events.PATIENT_CREATED,{operation:'patient_create',outcome:'succeeded'});
             creationRequestId.current = crypto.randomUUID();
             resetForm();
-            onPatientAdded(); // Atualiza a lista na página
+            try {
+                await onPatientAdded?.(data);
+            } catch (integrationError) {
+                logDiagnostic('error', 'patient_create_follow_up', 'Patient exists; follow-up failed', integrationError);
+                toast({ title: 'Paciente cadastrado', description: 'O cadastro foi salvo. A atualização da página ou o vínculo precisa ser tentado novamente.' });
+            }
             handleClose();
 
         } catch (error) {

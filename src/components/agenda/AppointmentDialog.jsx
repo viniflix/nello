@@ -7,8 +7,12 @@ import { Input } from '@/components/ui/input';
 import { DateInputWithCalendar, TimeInput } from '@/components/ui/date-input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search } from 'lucide-react';
-import { format } from 'date-fns';
+import { calendarDateKey, isOutsideAgendaSchedule } from '@/lib/agenda/availability';
+import { useAgendaDayAvailability } from '@/hooks/useAgendaDayAvailability';
+import { appointmentCharge } from '@/lib/agenda/navigation';
+import { Checkbox } from '@/components/ui/checkbox';
+import AgendaPatientPicker from './AgendaPatientPicker';
+import AgendaAvailabilityOptions from './AgendaAvailabilityOptions';
 import { formatCurrency } from '@/lib/utils';
 
 const SERVICE_OPTION_CUSTOM = 'custom';
@@ -22,12 +26,16 @@ export default function AppointmentDialog({
     nutritionistId,
     preSelectedDate,
     initialPatientId,
-    onSave
+    onSave,
+    onSearchPatients,
+    agendaSettings,
+    dayAvailability,
+    referenceErrors = {}
 }) {
     const [formData, setFormData] = useState({
         patient_id: '',
         unregistered_patient_name: '',
-        appointment_time_date: preSelectedDate ? format(preSelectedDate, 'yyyy-MM-dd') : getTodayIsoDate(),
+        appointment_time_date: preSelectedDate ? calendarDateKey(preSelectedDate) : getTodayIsoDate(),
         appointment_time_hour: '',
         duration: 60,
         appointment_type: 'first_appointment',
@@ -41,16 +49,13 @@ export default function AppointmentDialog({
     });
 
     const [patientSearchTerm, setPatientSearchTerm] = useState('');
-    const [showPatientSuggestions, setShowPatientSuggestions] = useState(false);
+    const initialized = useRef(null);
+    const [outsideConfirmed, setOutsideConfirmed] = useState(false);
     const [saving, setSaving] = useState(false);
     const [saveError, setSaveError] = useState('');
     const savingRef = useRef(false);
     const readOnly = !!appointment && isTerminalAppointment(appointment.status);
     const allowedStatuses = appointmentStatusChoices(appointment?.status);
-
-    const filteredPatients = patients.filter(p =>
-        p.name.toLowerCase().includes(patientSearchTerm.toLowerCase())
-    ).slice(0, 5);
 
     const appointmentTypes = [
         { value: 'first_appointment', label: 'Primeira Consulta' },
@@ -78,6 +83,11 @@ export default function AppointmentDialog({
     ];
 
     useEffect(() => {
+        if (!open) { initialized.current = null; return; }
+        const key = nutritionistId + ':' + (appointment?.id || 'new');
+        if (initialized.current === key) return;
+        initialized.current = key;
+        setOutsideConfirmed(false);
         setSaveError('');
         if (appointment) {
             const appointmentStart = appointment.start_time || appointment.appointment_time;
@@ -101,9 +111,7 @@ export default function AppointmentDialog({
             });
             if (appointment.patient_id) {
                 const patient = patients.find(p => p.id === appointment.patient_id);
-                if (patient) {
-                    setPatientSearchTerm(patient.name);
-                }
+                setPatientSearchTerm(appointment.patient?.name || patient?.name || 'Paciente');
             } else if (appointment.unregistered_patient_name) {
                 setPatientSearchTerm(appointment.unregistered_patient_name);
             }
@@ -115,9 +123,9 @@ export default function AppointmentDialog({
             setFormData({
                 patient_id: initialPatient?.id || '',
                 unregistered_patient_name: '',
-                appointment_time_date: preSelectedDate ? format(preSelectedDate, 'yyyy-MM-dd') : getTodayIsoDate(),
+                appointment_time_date: preSelectedDate ? calendarDateKey(preSelectedDate) : getTodayIsoDate(),
                 appointment_time_hour: '',
-                duration: 60,
+                duration: Number(agendaSettings?.slotDuration) >= 1 && Number(agendaSettings?.slotDuration) <= 480 ? Number(agendaSettings.slotDuration) : 60,
                 appointment_type: 'first_appointment',
                 status: 'scheduled',
                 notes: '',
@@ -128,7 +136,7 @@ export default function AppointmentDialog({
             });
             setPatientSearchTerm(initialPatient?.name || '');
         }
-    }, [appointment, open, preSelectedDate, patients, initialPatientId]);
+    }, [appointment, open, preSelectedDate, patients, initialPatientId, nutritionistId, agendaSettings]);
 
     // Restaurar pointer-events ao fechar (evita página travada quando Popover modal está dentro de Dialog)
     useEffect(() => {
@@ -138,6 +146,19 @@ export default function AppointmentDialog({
         }
     }, [open]);
 
+    const localAvailability = useAgendaDayAvailability(nutritionistId, formData.appointment_time_date,
+        open && !readOnly && dayAvailability?.date !== formData.appointment_time_date);
+    const availability = dayAvailability?.date === formData.appointment_time_date ? dayAvailability : localAvailability;
+    const charge = appointmentCharge(appointment);
+    // Association belongs to the revision-checked linking flow, never an edit by name.
+    const identityLocked = !!appointment;
+    const unchangedInterval = !!appointment && civilDateInZone(appointment.appointment_time) === formData.appointment_time_date
+        && localTimeInZone(appointment.appointment_time) === formData.appointment_time_hour && Number(appointment.duration || 60) === Number(formData.duration);
+    const outsideSchedule = agendaSettings && !unchangedInterval && formData.status !== 'cancelled'
+        && isOutsideAgendaSchedule(formData.appointment_time_date, formData.appointment_time_hour, formData.duration, agendaSettings);
+    const workingDaysKey = JSON.stringify(agendaSettings?.workingDays);
+    useEffect(() => setOutsideConfirmed(false), [formData.appointment_time_date, formData.appointment_time_hour, formData.duration, agendaSettings?.startTime, agendaSettings?.endTime, workingDaysKey]);
+
     const handleServiceChange = (value) => {
         if (value === SERVICE_OPTION_CUSTOM) {
             setFormData(prev => ({
@@ -146,7 +167,6 @@ export default function AppointmentDialog({
                 use_custom_price: true
             }));
         } else {
-            const service = services.find(s => s.id.toString() === value);
             setFormData(prev => ({
                 ...prev,
                 service_id: value,
@@ -171,6 +191,7 @@ export default function AppointmentDialog({
             return;
         }
 
+        if (outsideSchedule && !outsideConfirmed) { setSaveError('Confirme a exceção de jornada ou escolha um horário sugerido.'); return; }
         savingRef.current = true;
         setSaving(true);
         try {
@@ -218,69 +239,11 @@ export default function AppointmentDialog({
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4" aria-busy={saving}>
                     <fieldset disabled={saving || readOnly} className="space-y-4 min-w-0">
-                    {/* Patient Search */}
-                    <div className="relative">
-                        <Label htmlFor="patient_search">Paciente *</Label>
-                        <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                            <Input
-                                id="patient_search"
-                                name="patient_search"
-                                type="text"
-                                placeholder="Buscar paciente pelo nome..."
-                                value={patientSearchTerm}
-                                onChange={(e) => {
-                                    setPatientSearchTerm(e.target.value);
-                                    setShowPatientSuggestions(true);
-                                    if (!e.target.value) {
-                                        setFormData(prev => ({ ...prev, patient_id: '', unregistered_patient_name: '' }));
-                                    } else {
-                                        // Auto-desvincula patient_id se o nome digitado não bater com nada ainda
-                                        setFormData(prev => ({ ...prev, patient_id: '' }));
-                                    }
-                                }}
-                                onFocus={() => setShowPatientSuggestions(true)}
-                                className="pl-9"
-                                required={!formData.patient_id && !patientSearchTerm.trim()}
-                            />
-                        </div>
-
-                        {showPatientSuggestions && patientSearchTerm && filteredPatients.length > 0 && (
-                            <div className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-lg max-h-60 overflow-auto">
-                                {filteredPatients.map(patient => (
-                                    <button
-                                        key={patient.id}
-                                        type="button"
-                                        className="w-full text-left px-3 py-2 hover:bg-accent hover:text-accent-foreground text-sm"
-                                        onClick={() => {
-                                            setFormData(prev => ({ ...prev, patient_id: patient.id }));
-                                            setPatientSearchTerm(patient.name);
-                                            setShowPatientSuggestions(false);
-                                        }}
-                                    >
-                                        {patient.name}
-                                    </button>
-                                ))}
-
-                                {/* Opção Adicionar Novo */}
-                                {!filteredPatients.some(p => p.name.toLowerCase() === patientSearchTerm.toLowerCase()) && (
-                                    <button
-                                        type="button"
-                                        className="w-full text-left px-3 py-2 hover:bg-amber-50 hover:text-amber-700 text-sm font-medium border-t flex items-center gap-2"
-                                        onClick={() => {
-                                            setFormData(prev => ({ ...prev, patient_id: '', unregistered_patient_name: patientSearchTerm }));
-                                            setShowPatientSuggestions(false);
-                                        }}
-                                    >
-                                        <div className="w-5 h-5 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
-                                            <span className="text-amber-600 text-xs">+</span>
-                                        </div>
-                                        Agendar para "{patientSearchTerm}" (Sem cadastro)
-                                    </button>
-                                )}
-                            </div>
-                        )}
-                    </div>
+                    <AgendaPatientPicker value={patientSearchTerm} selectedId={formData.patient_id} disabled={saving || readOnly || identityLocked}
+                        patients={patients} onSearch={onSearchPatients}
+                        onChange={(name, id) => { setPatientSearchTerm(name); setFormData(previous => ({ ...previous, patient_id: appointment ? '' : id, unregistered_patient_name: id ? '' : name })); }} />
+                    {identityLocked && <p className="text-xs text-muted-foreground">A identidade permanece vinculada a este agendamento. Para completar um cadastro pendente, use a ação de cadastro na lista.</p>}
+                    {referenceErrors.patients && <p role="alert" className="text-xs text-destructive">Não foi possível carregar os pacientes. A busca pode ser tentada novamente; nenhum vínculo será escolhido automaticamente.</p>}
 
                     {/* Date and Time */}
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -318,7 +281,7 @@ export default function AppointmentDialog({
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {durationOptions.map(opt => (
+                                    {[...durationOptions, ...(!durationOptions.some(option => option.value === Number(formData.duration)) ? [{ value: Number(formData.duration), label: `${formData.duration} minutos` }] : [])].map(opt => (
                                         <SelectItem key={opt.value} value={String(opt.value)}>
                                             {opt.label}
                                         </SelectItem>
@@ -348,6 +311,10 @@ export default function AppointmentDialog({
                         </div>
                     </div>
 
+                    {!readOnly && <AgendaAvailabilityOptions date={formData.appointment_time_date} duration={formData.duration} settings={agendaSettings} availability={availability}
+                        appointmentId={appointment?.id} onChoose={time => { setFormData(previous => ({ ...previous, appointment_time_hour: time })); setOutsideConfirmed(false); }} />}
+                    {outsideSchedule && !readOnly && <div className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900"><p>Este horário ou duração está fora da jornada configurada.</p><Label htmlFor="agenda-outside-hours" className="mt-2 flex min-h-11 items-center gap-2"><Checkbox id="agenda-outside-hours" checked={outsideConfirmed} onCheckedChange={checked => setOutsideConfirmed(checked === true)} />Agendar fora da jornada neste atendimento</Label></div>}
+
                     {/* Status */}
                     <div>
                         <Label htmlFor="status">Status *</Label>
@@ -371,6 +338,12 @@ export default function AppointmentDialog({
                         </Select>
                     </div>
 
+                    {appointment && <section className="rounded-xl bg-muted/50 p-3 text-sm" aria-label="Cobrança vinculada">
+                        <p className="font-medium">{charge ? 'Cobrança vinculada' : 'Sem cobrança vinculada'}</p>
+                        {charge && <><p>{formatCurrency(charge.amount)} · {charge.status === 'paid' ? 'Paga' : charge.status === 'refunded' ? 'Estornada' : charge.status === 'overdue' ? 'Atrasada' : 'Pendente'}</p>
+                            <p className="mt-1 text-xs text-muted-foreground">{formData.status === 'cancelled' ? ['paid', 'refunded'].includes(charge.status) ? 'O pagamento e o histórico financeiro serão preservados.' : 'Ao cancelar, a cobrança será removida se ainda estiver pendente ou atrasada.' : ['pending', 'overdue'].includes(charge.status) ? 'Ao reagendar para outro dia, o vencimento e a competência da cobrança pendente acompanham a consulta.' : 'Reagendar preserva o pagamento. Ajustes são feitos no Financeiro.'}</p></>}
+                    </section>}
+                    {referenceErrors.services && !appointment && <p role="alert" className="text-xs text-destructive">Os serviços não foram carregados. Confira antes de selecionar uma cobrança; nenhum preço será presumido.</p>}
                     {/* Financial Section - Only for new appointments */}
                     {!appointment && (
                         <div className="border-t pt-4 space-y-4">
@@ -390,7 +363,7 @@ export default function AppointmentDialog({
                                     value={formData.use_custom_price ? SERVICE_OPTION_CUSTOM : (formData.service_id || '')}
                                     onValueChange={handleServiceChange}
                                 >
-                                    <SelectTrigger>
+                                    <SelectTrigger id="service">
                                         <SelectValue placeholder="Selecione um serviço ou valor personalizado" />
                                     </SelectTrigger>
                                     <SelectContent>

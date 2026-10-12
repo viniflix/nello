@@ -1,5 +1,6 @@
 import { patientClient as supabase } from '@/infrastructure/supabase/domainClients';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
+import { invalidateDomain } from '@/infrastructure/realtime/events';
 
 /**
  * Update clinic settings (stored in preferences JSONB or clinic_settings JSONB)
@@ -38,6 +39,7 @@ export async function updateClinicSettings(userId, settingsObject) {
         throw error;
     }
 
+    invalidateDomain(userId, 'profile');
     return data;
 }
 

@@ -227,8 +227,8 @@ export const exportAgendaToPdf = async (appointments, periodType, periodLabel, n
             `Total de consultas: ${appointments.length}`,
             ...appointments.map((appt) => {
                 const date = new Date(appt.appointment_time);
-                const dateStr = date.toLocaleDateString('pt-BR');
-                const timeStr = date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                const dateStr = date.toLocaleDateString('pt-BR', { timeZone: 'America/Fortaleza' });
+                const timeStr = date.toLocaleTimeString('pt-BR', { timeZone: 'America/Fortaleza', hour: '2-digit', minute: '2-digit' });
                 const patientName = appt.patient?.name || appt.unregistered_patient_name || appt.patient_name || 'Não identificado';
                 return `${dateStr} ${timeStr} | ${patientName} | ${appt.status || 'scheduled'}`;
             }),
@@ -316,10 +316,10 @@ export const exportAgendaToPdf = async (appointments, periodType, periodLabel, n
 
     appointments.forEach(appt => {
         const date = new Date(appt.appointment_time);
-        const dateStr = date.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' });
-        const startTime = date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        const dateStr = date.toLocaleDateString('pt-BR', { timeZone: 'America/Fortaleza', weekday: 'short', day: '2-digit', month: '2-digit' });
+        const startTime = date.toLocaleTimeString('pt-BR', { timeZone: 'America/Fortaleza', hour: '2-digit', minute: '2-digit' });
         const duration = appt.duration || 60;
-        const endTime = new Date(date.getTime() + duration * 60000).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        const endTime = new Date(date.getTime() + duration * 60000).toLocaleTimeString('pt-BR', { timeZone: 'America/Fortaleza', hour: '2-digit', minute: '2-digit' });
         const timeStr = `${startTime} - ${endTime}`;
 
         tableRows.push([

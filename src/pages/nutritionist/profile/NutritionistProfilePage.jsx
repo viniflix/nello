@@ -16,12 +16,14 @@ import { PageHeaderSkeleton, FormSkeleton } from '@/components/ui/custom-skeleto
 import DocumentIdentitySection from '@/features/documents/components/DocumentIdentitySection';
 import ClinicalProtocolCatalogSection from '@/features/clinical-science/components/ClinicalProtocolCatalogSection';
 import AccountEmailChange from '@/components/profile/AccountEmailChange';
+import { readAgendaReturn } from '@/lib/agenda/navigation';
 
 const NutritionistProfilePage = () => {
     const { user, updateUserProfile } = useAuth();
     const [searchParams, setSearchParams] = useSearchParams();
     const location = useLocation();
     const navigate = useNavigate();
+    const agendaReturn = readAgendaReturn(location.state?.agendaReturn, user?.id);
     const financialReturn = user?.id && location.state?.financialReturn?.userId === user.id ? location.state.financialReturn : null;
     const requestedTab = searchParams.get('tab');
     const activeTab = ['personal', 'agenda', 'financial', 'documents', 'protocols', 'account'].includes(requestedTab) ? requestedTab : 'personal';
@@ -77,6 +79,7 @@ const NutritionistProfilePage = () => {
                     className="space-y-6 min-w-0"
                 >
                     {/* Header */}
+                    {agendaReturn && <Button variant="outline" className="min-h-11" onClick={() => navigate('/nutritionist/agenda', { state: { agendaReturn } })}>Voltar à agenda</Button>}
                     {financialReturn && <Button variant="outline" onClick={() => navigate('/nutritionist/financial', { state: { financialReturn } })}>Voltar ao financeiro</Button>}
                     <Card className="overflow-hidden">
                         <CardHeader>

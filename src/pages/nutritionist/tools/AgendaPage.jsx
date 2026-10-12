@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Calendar as CalendarIcon, Plus, Clock, User, Edit, Trash2, Filter, CalendarDays, Eye, X, Search, ChevronLeft, ChevronRight, FileDown, ClipboardList } from 'lucide-react';
+import { Calendar as CalendarIcon, Plus, Clock, User, Edit, Trash2, Filter, CalendarDays, Eye, X, Search, ChevronLeft, ChevronRight, FileDown, ClipboardList, Settings } from 'lucide-react';
 import { AnamnesisLinkModal } from '@/components/anamnesis/AnamnesisLinkModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -12,18 +12,25 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { format, isToday, isThisWeek, isThisMonth, startOfWeek, endOfWeek, addWeeks, subWeeks, addMonths, subMonths } from 'date-fns';
+import { format, startOfWeek, endOfWeek, addWeeks, subWeeks, addMonths, subMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import AppointmentDialog from '@/components/agenda/AppointmentDialog';
+import AgendaRegistrationDialog from '@/components/agenda/AgendaRegistrationDialog';
+import { agendaSummary, isAgendaTodayDate as isToday } from '@/lib/agenda/availability';
+import { civilDateInZone, civilDateToDate, localTimeInZone } from '@/lib/utils/date';
+import { agendaReturnContext, readAgendaReturn, appointmentCharge } from '@/lib/agenda/navigation';
+import { formatCurrency } from '@/lib/utils';
 
 import { useAgendaController } from '@/hooks/useAgendaController';
 
 export default function AgendaPage() {
     const { user, signOut } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
     const [searchParams, setSearchParams] = useSearchParams();
     const [routePatientId, setRoutePatientId] = useState(null);
+    const [routePatient, setRoutePatient] = useState(null);
     const routeActionHandledRef = useRef(false);
 
     const {
@@ -31,6 +38,11 @@ export default function AgendaPage() {
         summaryReady,
         patients,
         services,
+        agendaSettings,
+        dayAvailability,
+        searchPatients,
+        referencesLoading,
+        referenceErrors,
         selectedDate,
         isFormOpen,
         editingAppointment,
@@ -38,6 +50,8 @@ export default function AgendaPage() {
         filterView,
         patientSearch,
         deleteConfirmOpen,
+        deletingAppointment,
+        deleteError,
         appointmentToDelete,
         mobileCalendarOpen,
         calendarMonth,
@@ -82,28 +96,43 @@ export default function AgendaPage() {
         handleCalendarSelect,
         handleMobileCalendarSelect,
         getCountColor,
-        handleExportPDF
-    } = useAgendaController({ user });
+        handleExportPDF,
+        loadData,
+        reloadReferences
+    } = useAgendaController({ user, returnView: readAgendaReturn(location.state?.agendaReturn, user?.id) });
 
     useEffect(() => {
         if (searchParams.get('action') !== 'new') {
             routeActionHandledRef.current = false;
             return;
         }
-        if (routeActionHandledRef.current || loading) return;
+        if (routeActionHandledRef.current || loading || referencesLoading) return;
 
         routeActionHandledRef.current = true;
         const requestedPatientId = searchParams.get('patientId');
-        const availablePatient = requestedPatientId && patients.some((patient) => patient.id === requestedPatientId);
-        setRoutePatientId(availablePatient ? requestedPatientId : null);
-        setEditingAppointment(null);
-        setIsFormOpen(true);
-
-        const nextParams = new URLSearchParams(searchParams);
-        nextParams.delete('action');
-        nextParams.delete('patientId');
-        setSearchParams(nextParams, { replace: true });
-    }, [loading, patients, searchParams, setEditingAppointment, setIsFormOpen, setSearchParams]);
+        let active = true;
+        const resolvePatient = async () => {
+            let patient = null;
+            try {
+                if (requestedPatientId) patient = (await searchPatients('', 0, requestedPatientId)).patients[0] || null;
+            } catch {
+                // Leave the route intact for an explicit retry; never silently create a guest.
+                if (active) routeActionHandledRef.current = false;
+                return;
+            }
+            if (!active) return;
+            setRoutePatient(patient);
+            setRoutePatientId(patient?.id || null);
+            setEditingAppointment(null);
+            setIsFormOpen(true);
+            const nextParams = new URLSearchParams(searchParams);
+            nextParams.delete('action');
+            nextParams.delete('patientId');
+            setSearchParams(nextParams, { replace: true });
+        };
+        void resolvePatient();
+        return () => { active = false; routeActionHandledRef.current = false; };
+    }, [loading, referencesLoading, searchPatients, searchParams, setEditingAppointment, setIsFormOpen, setSearchParams]);
 
     return (
         <div className="min-h-dvh bg-background overflow-x-hidden">
@@ -124,6 +153,9 @@ export default function AgendaPage() {
                         </p>
                     </div>
                     <div className="flex gap-2 flex-wrap justify-center sm:justify-end">
+                        <Button variant="outline" className="min-h-11" onClick={() => navigate('/nutritionist/profile?tab=agenda', { state: { agendaReturn: agendaReturnContext(user?.id, selectedDate, filterView) } })}>
+                            <Settings className="w-4 h-4 mr-2" /> Configurar agenda
+                        </Button>
                         <Button
                             variant="outline"
                             onClick={() => setExportDialogOpen(true)}
@@ -134,10 +166,12 @@ export default function AgendaPage() {
                         <Button
                             onClick={() => {
                                 setRoutePatientId(null);
+                                setRoutePatient(null);
                                 setEditingAppointment(null);
                                 setIsFormOpen(true);
                             }}
                             className="bg-primary hover:bg-primary/90"
+                            disabled={referencesLoading}
                         >
                             <Plus className="w-4 h-4 mr-2" /> Novo Agendamento
                         </Button>
@@ -399,7 +433,7 @@ export default function AgendaPage() {
                                                                 <div className="flex flex-col items-center justify-center bg-primary/10 px-2 lg:px-3 py-1.5 lg:py-2 rounded-lg min-w-[55px] lg:min-w-[70px] flex-shrink-0">
                                                                     <Clock className="w-3 h-3 lg:w-4 lg:h-4 mb-0.5 lg:mb-1 text-primary" />
                                                                     <span className="text-xs lg:text-sm font-bold text-primary">
-                                                                        {format(new Date(appt.appointment_time), 'HH:mm')}
+                                                                        {localTimeInZone(appt.appointment_time)}
                                                                     </span>
                                                                     <span className="text-xs lg:text-xs text-muted-foreground">
                                                                         {endTime}
@@ -426,6 +460,10 @@ export default function AgendaPage() {
                                                                         <span className="text-xs text-muted-foreground">
                                                                             {typeInfo.label}
                                                                         </span>
+                                                                        {appointmentCharge(appt) && <Button type="button" variant="ghost" className="min-h-11 h-auto whitespace-normal px-2 text-xs"
+                                                                            onClick={() => navigate('/nutritionist/financial', { state: { agendaReturn: agendaReturnContext(user?.id, selectedDate, filterView), agendaTransactionId: appointmentCharge(appt).id } })}>
+                                                                            {formatCurrency(appointmentCharge(appt).amount)} · {({ paid: 'Pago', pending: 'Pendente', overdue: 'Vencido', refunded: 'Estornado' })[appointmentCharge(appt).status] || 'Cobrança'}
+                                                                        </Button>}
                                                                         {appt.notes && (
                                                                             <p className="text-xs text-muted-foreground line-clamp-1 hidden lg:block">
                                                                                 • {appt.notes}
@@ -465,7 +503,8 @@ export default function AgendaPage() {
                                                                         <Button
                                                                             variant="ghost"
                                                                             size="icon"
-                                                                            onClick={() => setAskToRegisterPatient({ isOpen: true, name: appt.unregistered_patient_name })}
+                                                                            onClick={() => setAskToRegisterPatient({ isOpen: true, name: appt.unregistered_patient_name, appointment: appt })}
+                                                                            disabled={['completed', 'cancelled', 'no_show'].includes(appt.status)}
                                                                             className="h-8 w-8 lg:h-9 lg:w-9 hover:bg-amber-50 hover:text-amber-600"
                                                                             title="Cadastrar Paciente"
                                                                         >
@@ -597,9 +636,7 @@ export default function AgendaPage() {
                             </CardHeader>
                             <CardContent className="space-y-3">
                                 {(() => {
-                                    const todayCount = summaryAppointments.filter(a => isToday(new Date(a.appointment_time))).length;
-                                    const weekCount = summaryAppointments.filter(a => isThisWeek(new Date(a.appointment_time), { locale: ptBR })).length;
-                                    const monthCount = summaryAppointments.filter(a => isThisMonth(new Date(a.appointment_time))).length;
+                                    const { today: todayCount, week: weekCount, month: monthCount } = agendaSummary(summaryAppointments);
 
                                     return (
                                         <>
@@ -748,8 +785,12 @@ export default function AgendaPage() {
                         if (!open) setRoutePatientId(null);
                     }}
                     appointment={editingAppointment}
-                    patients={patients}
+                    patients={routePatient && !patients.some(patient => patient.id === routePatient.id) ? [routePatient, ...patients] : patients}
                     services={services}
+                    agendaSettings={agendaSettings}
+                    dayAvailability={dayAvailability}
+                    onSearchPatients={searchPatients}
+                    referenceErrors={referenceErrors}
                     nutritionistId={user?.id}
                     preSelectedDate={selectedDate}
                     initialPatientId={routePatientId}
@@ -757,7 +798,7 @@ export default function AgendaPage() {
                 />
 
                 {/* Dialog de Confirmação de Exclusão */}
-                <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+                <AlertDialog open={deleteConfirmOpen} onOpenChange={open => { if (!deletingAppointment) setDeleteConfirmOpen(open); }}>
                     <AlertDialogContent>
                         <AlertDialogHeader>
                             <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
@@ -765,43 +806,28 @@ export default function AgendaPage() {
                                 Tem certeza que deseja excluir o agendamento de{' '}
                                 <strong>{appointmentToDelete?.patient?.name || appointmentToDelete?.unregistered_patient_name}</strong> para{' '}
                                 <strong>
-                                    {appointmentToDelete && format(new Date(appointmentToDelete.appointment_time), "dd/MM/yyyy 'às' HH:mm")}
+                                    {appointmentToDelete && `${format(civilDateToDate(civilDateInZone(appointmentToDelete.appointment_time)), 'dd/MM/yyyy')} às ${localTimeInZone(appointmentToDelete.appointment_time)}`}
                                 </strong>?
                                 <br /><br />
                                 Esta ação não pode ser desfeita.
+                                {appointmentCharge(appointmentToDelete) && <span className="mt-2 block">Cobrança {formatCurrency(appointmentCharge(appointmentToDelete).amount)}: a pendente será removida junto com o agendamento. Pagamentos registrados impedem a exclusão; o histórico será preservado.</span>}
                             </AlertDialogDescription>
                         </AlertDialogHeader>
+                        {deleteError && <p role="alert" className="text-sm text-destructive">{deleteError}</p>}
                         <AlertDialogFooter>
-                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                            <AlertDialogAction onClick={handleDeleteAppointment} className="bg-destructive hover:bg-destructive/90">
-                                Excluir
+                            <AlertDialogCancel disabled={deletingAppointment} className="min-h-11">Cancelar</AlertDialogCancel>
+                            <AlertDialogAction disabled={deletingAppointment} onClick={event => { event.preventDefault(); void handleDeleteAppointment(); }} className="min-h-11 bg-destructive hover:bg-destructive/90">
+                                {deletingAppointment ? 'Excluindo…' : 'Excluir'}
                             </AlertDialogAction>
                         </AlertDialogFooter>
                     </AlertDialogContent>
                 </AlertDialog>
 
-                {/* Dialog para Cadastrar Paciente Não Registrado */}
-                <AlertDialog open={askToRegisterPatient.isOpen} onOpenChange={(val) => setAskToRegisterPatient(prev => ({ ...prev, isOpen: val }))}>
-                    <AlertDialogContent>
-                        <AlertDialogHeader>
-                            <AlertDialogTitle>Paciente Não Cadastrado</AlertDialogTitle>
-                            <AlertDialogDescription>
-                                O agendamento para <strong>{askToRegisterPatient.name}</strong> foi criado com sucesso. <br /><br />
-                                No entanto, este paciente ainda não possui cadastro no sistema. Deseja cadastrá-lo e enviá-lo um convite agora?
-                            </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                            <AlertDialogCancel>Agora não</AlertDialogCancel>
-                            <AlertDialogAction
-                                onClick={() => navigate(`/nutritionist/patients?addPatientName=${encodeURIComponent(askToRegisterPatient.name)}`)}
-                                className="bg-primary hover:bg-primary/90"
-                            >
-                                Cadastrar Paciente
-                            </AlertDialogAction>
-                        </AlertDialogFooter>
-                    </AlertDialogContent>
-                </AlertDialog>
-
+                <AgendaRegistrationDialog open={askToRegisterPatient.isOpen}
+                    onOpenChange={value => setAskToRegisterPatient(previous => ({ ...previous, isOpen: value }))}
+                    appointmentId={askToRegisterPatient.appointment?.id} userId={user?.id}
+                    name={askToRegisterPatient.name} patients={patients} searchPatients={searchPatients}
+                    onLinked={async () => { await Promise.all([loadData(), reloadReferences()]); }} />
                 {/* Sprint F: Modal de envio de anamnese */}
                 <AnamnesisLinkModal
                     open={anamnesisModal.open}

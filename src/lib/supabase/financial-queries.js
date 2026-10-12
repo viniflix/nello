@@ -7,6 +7,15 @@ import { logSupabaseError } from '@/lib/supabase/query-helpers';
 import { summarizeFinancialTransactions, buildFinancialCashFlow, buildFinancialExpenseDistribution } from '@/lib/utils/financial-math';
 import {MAX_DATA_ROWS} from './bounded-pages';
 
+export async function getFinancialTransactionById(nutritionistId, transactionId) {
+    if (!nutritionistId || !/^[1-9]\d*$/.test(String(transactionId))) throw new Error('Invalid transaction reference');
+    const { data, error } = await supabase.from('financial_transactions')
+        .select('id,nutritionist_id,patient_id,type,description,amount,transaction_date,updated_at,category,status,due_date,paid_at,refunded_at,payment_method,fee_percentage,attachment_url,appointment_id,patient:user_profiles!financial_transactions_patient_id_fkey(id,name)')
+        .eq('nutritionist_id', nutritionistId).eq('id', transactionId).single();
+    if (error) throw error;
+    return data;
+}
+
 /** Fetch every row touching the month by competence, payment or refund date. */
 export async function getFinancialMonthRows(nutritionistId, monthDate) {
     if (!nutritionistId) throw new Error('nutritionistId is required');
