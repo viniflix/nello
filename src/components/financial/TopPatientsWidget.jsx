@@ -26,7 +26,7 @@ export default function TopPatientsWidget({ nutritionistId, refreshKey = 0 }) {
     }, [nutritionistId]);
     useEffect(() => { void load(); return () => { request.current++; }; }, [load, refreshKey]);
     return <Card className="min-w-0 rounded-2xl bg-card shadow-sm">
-        <CardHeader className="pb-3"><CardTitle className="font-sans text-base font-semibold">Top 3 Pacientes</CardTitle><CardDescription>Recebimentos líquidos acumulados · todos os períodos (LTV)</CardDescription></CardHeader>
+        <CardHeader className="pb-3"><CardTitle className="font-sans text-base font-semibold">Recebimentos por paciente</CardTitle><CardDescription>Recebimentos líquidos acumulados · todos os períodos (LTV)</CardDescription></CardHeader>
         <CardContent>
             {state === 'loading' ? <p role="status" className="text-sm text-muted-foreground">Carregando ranking…</p>
                 : state === 'error' ? <div role="alert" className="flex flex-wrap items-center justify-between gap-3 text-sm"><span>Não foi possível carregar o ranking.</span><Button variant="outline" onClick={load}>Tentar novamente</Button></div>

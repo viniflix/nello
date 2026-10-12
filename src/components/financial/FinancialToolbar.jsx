@@ -10,7 +10,7 @@ export default function FinancialToolbar({ month, onMonthChange, onNew, onSettin
   const period = format(month, 'MMMM yyyy', { locale: ptBR });
   return <header className="space-y-4">
     <div className="flex flex-wrap items-start justify-between gap-4">
-      <div className="min-w-0"><p className="mb-1 text-xs font-medium uppercase tracking-[.12em] text-muted-foreground">Gestão do consultório</p><h1 className="font-heading text-2xl font-bold uppercase tracking-wide text-foreground md:text-3xl">Financeiro</h1><p className="mt-2 max-w-xl text-sm text-muted-foreground">Seu caixa, compromissos e lançamentos em um só lugar.</p></div>
+      <div className="min-w-0"><p className="mb-1 text-xs font-medium uppercase tracking-[.12em] text-muted-foreground">Gestão do consultório</p><h1 className="font-heading text-2xl font-bold uppercase tracking-wide text-foreground md:text-3xl">Financeiro</h1></div>
       <Button onClick={onNew} className="min-h-11 w-full gap-2 rounded-xl shadow-sm transition-colors duration-150 motion-reduce:transition-none sm:w-auto"><Plus className="h-4 w-4" aria-hidden="true" />Nova Transação</Button>
     </div>
     <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-card p-3 sm:p-4">

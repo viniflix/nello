@@ -9,7 +9,7 @@ export default function FinancialGoal({ goal, state, income, loading, incomeUnav
     const hasGoal = ready && goal > 0;
     const progress = hasGoal ? Math.max(0, Math.min(100, income / goal * 100)) : 0;
     return (
-        <section aria-label="Meta financeira mensal" className="rounded-2xl border border-border bg-card px-5 py-3">
+        <section aria-label="Meta financeira mensal" className="financial-goal rounded-2xl border-0 bg-card px-5 py-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
                 <h2 className="flex items-center gap-2 font-sans text-sm font-medium tracking-normal"><Target className="h-4 w-4 text-primary" aria-hidden="true" />Meta Financeira Mensal</h2>
                 <Button variant="ghost" size="sm" onClick={onSettings}>Editar meta</Button>

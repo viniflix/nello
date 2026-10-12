@@ -318,7 +318,7 @@ export default function TransactionDialog({
 
     return (
         <Dialog open={open} onOpenChange={next => { if (!saveLock.current) onOpenChange(next); }}>
-            <DialogContent className="flex w-[calc(100vw-2rem)] max-w-3xl max-h-[90dvh] flex-col gap-0 overflow-hidden rounded-2xl p-0">
+            <DialogContent className="financial-dialog flex w-[calc(100vw-2rem)] max-w-3xl max-h-[90dvh] flex-col gap-0 overflow-hidden rounded-2xl p-0">
                 <DialogHeader className="shrink-0 border-b px-5 py-4 pr-12">
                     <DialogTitle>
                         {transaction ? 'Editar Transação' : 'Nova Transação'}

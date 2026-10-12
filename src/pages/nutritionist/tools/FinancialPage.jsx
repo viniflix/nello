@@ -20,6 +20,10 @@ import ServicesManager from '@/components/financial/ServicesManager';
 import PendingPaymentsWidget from '@/components/financial/PendingPaymentsWidget';
 import TopPatientsWidget from '@/components/financial/TopPatientsWidget';
 import FinancialGoal from '@/components/financial/FinancialGoal';
+import TransactionDetails from '@/components/financial/TransactionDetails';
+import FinancialSummaryDialog from '@/components/financial/FinancialSummaryDialog';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { formatCurrency } from '@/lib/utils';
 
 // Queries
 import {
@@ -71,10 +75,14 @@ export default function FinancialPage() {
     const [paymentConfirm, setPaymentConfirm] = useState(null);
     const [refundConfirm, setRefundConfirm] = useState(null);
     const [filters, setFilters] = useState(() => ({ type: ['income', 'expense'].includes(returnView?.filters?.type) ? returnView.filters.type : null, status: ['paid', 'pending', 'overdue', 'refunded'].includes(returnView?.filters?.status) ? returnView.filters.status : null, search: typeof returnView?.filters?.search === 'string' ? returnView.filters.search : null }));
+    const [workspaceView, setWorkspaceView] = useState(() => ['overview', 'history', 'analysis'].includes(returnView?.view) ? returnView.view : 'overview');
+    const [metricView, setMetricView] = useState(null);
+    const metricTrigger = useRef(null);
+    const [inspectedTransaction, setInspectedTransaction] = useState(null);
     const [monthlyGoal, setMonthlyGoal] = useState(null);
     const [goalState, setGoalState] = useState('loading');
     const [goalRevision, setGoalRevision] = useState(0);
-    const openFinancialSettings = () => navigate('/nutritionist/profile?tab=financial', { state: { financialReturn: { userId: user?.id, month: format(selectedMonth, 'yyyy-MM'), filters } } });
+    const openFinancialSettings = () => navigate('/nutritionist/profile?tab=financial', { state: { financialReturn: { userId: user?.id, month: format(selectedMonth, 'yyyy-MM'), filters, view: workspaceView } } });
     const monthStartKey = format(startOfMonth(selectedMonth), 'yyyy-MM-dd');
     const monthEndKey = format(new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 1, 0), 'yyyy-MM-dd');
     const summary = useMemo(() => summarizeFinancialTransactions(monthRows, monthStartKey, monthEndKey, format(new Date(), 'yyyy-MM-dd')), [monthRows, monthStartKey, monthEndKey]);
@@ -363,17 +371,29 @@ export default function FinancialPage() {
         <div className="financial-workspace min-h-dvh min-w-0 bg-[#f7f8f5] dark:bg-background">
             <section aria-label="Gestão financeira" className="mx-auto w-full max-w-7xl min-w-0 space-y-5 px-4 py-5 md:px-8 md:py-7">
                 <FinancialToolbar month={selectedMonth} onMonthChange={value => value && setSelectedMonth(new Date(value + '-02'))} onNew={handleNewTransaction} onSettings={openFinancialSettings} onServices={() => setIsServicesManagerOpen(true)} exportDisabled={loading || loadError} onExportPDF={handleExportPDF} onExportCSV={handleExportCSV} onExportReport={handleExportReport} />
-                {loadError && <div role="alert" className="rounded-xl border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">Não foi possível carregar os lançamentos deste mês. <Button variant="outline" size="sm" className="ml-2" onClick={loadData}>Tentar novamente</Button></div>}
-                {!loadError && <FinancialKPIs summary={summary} loading={loading} />}
-                <FinancialGoal goal={monthlyGoal} state={goalState} income={summary.income} loading={loading} incomeUnavailable={loadError} onSettings={openFinancialSettings} onRetry={() => setGoalRevision(v => v + 1)} />
-                <PendingPaymentsWidget payments={pendingPayments} state={auxiliaryState.pending} onRetry={loadAuxiliaryData} onUpdate={refreshAfterMutation} />
-                <TransactionList transactions={transactions} totalCount={monthRows.length} loading={loading} loadError={loadError} onRetry={loadData} onNew={handleNewTransaction} onEdit={handleEditTransaction} onDelete={id => setDeleteConfirm(id)} onGenerateReceipt={handleGenerateReceipt} onConfirmPayment={setPaymentConfirm} onRefund={setRefundConfirm} filters={filters} onFiltersChange={setFilters} />
-                <div className="grid min-w-0 grid-cols-1 gap-5 lg:grid-cols-2">
-                    <FinancialCharts cashFlowData={cashFlowData} expenseDistribution={expenseDistribution} projectedCashFlow={projectedCashFlow} loading={loading} loadError={loadError} projectionState={auxiliaryState.projection} onRetry={loadData} onProjectionRetry={loadAuxiliaryData} onNew={handleNewTransaction} />
-                </div>
-                <TopPatientsWidget nutritionistId={user?.id} refreshKey={rankingRevision} />
+                <Tabs value={workspaceView} onValueChange={setWorkspaceView} className="space-y-5">
+                    <TabsList className="financial-view-tabs grid h-auto w-full grid-cols-3 sm:w-auto sm:inline-flex"><TabsTrigger value="overview">Visão geral</TabsTrigger><TabsTrigger value="history">Movimentações</TabsTrigger><TabsTrigger value="analysis">Análises</TabsTrigger></TabsList>
+                    {loadError && <div role="alert" className="rounded-xl border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">Não foi possível carregar os lançamentos deste mês. <Button variant="outline" size="sm" className="ml-2" onClick={loadData}>Tentar novamente</Button></div>}
+                    {!loadError && <FinancialKPIs summary={summary} loading={loading} onInspect={(kind, target) => { metricTrigger.current = target; setMetricView(kind); }} />}
+                    <TabsContent value="overview" className="space-y-5">
+                        <div className="financial-overview-grid"><div className="financial-panel financial-panel--flow"><FinancialCharts view="cash" cashFlowData={cashFlowData} expenseDistribution={expenseDistribution} projectedCashFlow={projectedCashFlow} loading={loading} loadError={loadError} projectionState={auxiliaryState.projection} onRetry={loadData} onProjectionRetry={loadAuxiliaryData} /></div><div className="financial-panel financial-panel--pending"><PendingPaymentsWidget payments={pendingPayments} state={auxiliaryState.pending} onRetry={loadAuxiliaryData} onUpdate={refreshAfterMutation} onInspect={setInspectedTransaction} /></div></div>
+                        <FinancialGoal goal={monthlyGoal} state={goalState} income={summary.income} loading={loading} incomeUnavailable={loadError} onSettings={openFinancialSettings} onRetry={() => setGoalRevision(v => v + 1)} />
+                        <div className="flex items-center justify-between gap-3"><h2 className="text-base font-semibold">Últimas movimentações</h2><Button variant="ghost" onClick={() => setWorkspaceView('history')}>Abrir histórico completo</Button></div>
+                        <TransactionList key={workspaceView} pageSize={workspaceView === 'overview' ? 6 : 20} transactions={transactions} totalCount={monthRows.length} loading={loading} loadError={loadError} onRetry={loadData} onNew={handleNewTransaction} onEdit={handleEditTransaction} onDelete={id => setDeleteConfirm(id)} onGenerateReceipt={handleGenerateReceipt} onConfirmPayment={setPaymentConfirm} onRefund={setRefundConfirm} filters={filters} onFiltersChange={setFilters} />
+                    </TabsContent>
+                    <TabsContent value="history" className="space-y-5"><TransactionList key={workspaceView} pageSize={workspaceView === 'overview' ? 6 : 20} transactions={transactions} totalCount={monthRows.length} loading={loading} loadError={loadError} onRetry={loadData} onNew={handleNewTransaction} onEdit={handleEditTransaction} onDelete={id => setDeleteConfirm(id)} onGenerateReceipt={handleGenerateReceipt} onConfirmPayment={setPaymentConfirm} onRefund={setRefundConfirm} filters={filters} onFiltersChange={setFilters} /></TabsContent>
+                    <TabsContent value="analysis">
+                        <Tabs defaultValue="cash" className="space-y-4"><TabsList className="grid h-auto w-full grid-cols-3 sm:inline-flex sm:w-auto"><TabsTrigger value="cash">Caixa e projeção</TabsTrigger><TabsTrigger value="patients">Por paciente</TabsTrigger><TabsTrigger value="services">Serviços</TabsTrigger></TabsList>
+                            <TabsContent value="cash"><FinancialCharts view="analysis" cashFlowData={cashFlowData} expenseDistribution={expenseDistribution} projectedCashFlow={projectedCashFlow} loading={loading} loadError={loadError} projectionState={auxiliaryState.projection} onRetry={loadData} onProjectionRetry={loadAuxiliaryData} /></TabsContent>
+                            <TabsContent value="patients"><TopPatientsWidget nutritionistId={user?.id} refreshKey={rankingRevision} /></TabsContent>
+                            <TabsContent value="services"><section aria-label="Catálogo de serviços" className="rounded-2xl bg-card p-5 shadow-sm"><div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-base font-semibold">Serviços do consultório</h2><p className="mt-1 text-sm text-muted-foreground">Preços cadastrados. Alterar um serviço não recalcula lançamentos anteriores.</p></div><Button variant="outline" onClick={() => setIsServicesManagerOpen(true)}>Gerenciar Serviços</Button></div>{auxiliaryState.services === 'error' ? <div role="alert" className="mt-4 text-sm">Catálogo indisponível. <Button variant="outline" onClick={loadAuxiliaryData}>Tentar carregar serviços</Button></div> : auxiliaryState.services === 'loading' ? <p role="status" className="mt-4 text-sm">Carregando serviços…</p> : !services.length ? <p className="mt-4 text-sm text-muted-foreground">Nenhum serviço cadastrado.</p> : <ul className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{services.map(service => <li key={service.id} className="rounded-xl bg-muted/50 p-4"><p className="break-words text-sm font-medium">{service.name}</p><p className="mt-2 text-xl font-semibold tabular-nums">{formatCurrency(service.price)}</p>{service.description && <p className="mt-2 break-words text-sm text-muted-foreground">{service.description}</p>}</li>)}</ul>}</section></TabsContent>
+                        </Tabs>
+                    </TabsContent>
+                </Tabs>
             </section>
 
+            <FinancialSummaryDialog kind={metricView} summary={summary} rows={monthRows} start={monthStartKey} end={monthEndKey} onClose={() => setMetricView(null)} onReturnFocus={() => metricTrigger.current?.focus()} onTransaction={row => { setMetricView(null); setInspectedTransaction(row); }} />
+            <TransactionDetails transaction={inspectedTransaction} onClose={() => setInspectedTransaction(null)} />
             {/* Transaction Dialog */}
             <TransactionDialog
                 open={isDialogOpen}
@@ -401,19 +421,19 @@ export default function FinancialPage() {
 
             {/* Delete Confirmation */}
             <AlertDialog open={!!paymentConfirm} onOpenChange={(open) => { if (!open && !mutationLock.current) { setPaymentConfirm(null); setMutationError(false); } }}>
-                <AlertDialogContent>
+                <AlertDialogContent className="financial-dialog">
                     <AlertDialogHeader><AlertDialogTitle>Confirmar recebimento</AlertDialogTitle><AlertDialogDescription>O valor entrará no caixa de hoje. Confirme apenas após receber o pagamento.</AlertDialogDescription></AlertDialogHeader>
                     <p role="alert" className={mutationError ? 'text-sm text-destructive' : 'hidden'}>{mutationError ? 'Não foi possível confirmar a alteração. Confira o estado da transação antes de tentar novamente.' : ''}</p><AlertDialogFooter><AlertDialogCancel disabled={mutationBusy}>Voltar</AlertDialogCancel><AlertDialogAction disabled={mutationBusy} onClick={event => { event.preventDefault(); return  handleConfirmPayment(paymentConfirm); }}>{mutationBusy ? 'Confirmando…' : 'Confirmar'}</AlertDialogAction></AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
             <AlertDialog open={!!refundConfirm} onOpenChange={(open) => { if (!open && !mutationLock.current) { setRefundConfirm(null); setMutationError(false); } }}>
-                <AlertDialogContent>
+                <AlertDialogContent className="financial-dialog">
                     <AlertDialogHeader><AlertDialogTitle>Registrar estorno integral</AlertDialogTitle><AlertDialogDescription>O estorno será deduzido do caixa de hoje e manterá o histórico do pagamento original.</AlertDialogDescription></AlertDialogHeader>
                     <p role="alert" className={mutationError ? 'text-sm text-destructive' : 'hidden'}>{mutationError ? 'Não foi possível confirmar a alteração. Confira o estado da transação antes de tentar novamente.' : ''}</p><AlertDialogFooter><AlertDialogCancel disabled={mutationBusy}>Voltar</AlertDialogCancel><AlertDialogAction disabled={mutationBusy} onClick={event => { event.preventDefault(); return  handleRefund(refundConfirm); }}>{mutationBusy ? 'Registrando…' : 'Registrar estorno'}</AlertDialogAction></AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
             <AlertDialog open={!!deleteConfirm} onOpenChange={(open) => { if (!open && !mutationLock.current) { setDeleteConfirm(null); setMutationError(false); } }}>
-                <AlertDialogContent>
+                <AlertDialogContent className="financial-dialog">
                     <AlertDialogHeader>
                         <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
                         <AlertDialogDescription>

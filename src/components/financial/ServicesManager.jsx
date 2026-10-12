@@ -148,7 +148,7 @@ export default function ServicesManager({ open, onOpenChange, nutritionistId }) 
     return (
         <>
             <Dialog open={open} onOpenChange={next => !saveLock.current && onOpenChange(next)}>
-                <DialogContent className="max-w-4xl max-h-[90dvh] overflow-y-auto">
+                <DialogContent className="financial-dialog max-w-4xl max-h-[90dvh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle>Gerenciar Serviços</DialogTitle>
                     </DialogHeader>
@@ -212,7 +212,7 @@ export default function ServicesManager({ open, onOpenChange, nutritionistId }) 
 
             {/* Service Form Dialog */}
             <Dialog open={isFormOpen} onOpenChange={next => !saveLock.current && setIsFormOpen(next)}>
-                <DialogContent className="max-h-[90dvh] overflow-y-auto">
+                <DialogContent className="financial-dialog max-h-[90dvh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle>
                             {editingService ? 'Editar Serviço' : 'Novo Serviço'}
@@ -286,7 +286,7 @@ export default function ServicesManager({ open, onOpenChange, nutritionistId }) 
 
             {/* Delete Confirmation */}
             <AlertDialog open={!!deleteConfirm} onOpenChange={(open) => !open && setDeleteConfirm(null)}>
-                <AlertDialogContent>
+                <AlertDialogContent className="financial-dialog">
                     <AlertDialogHeader>
                         <AlertDialogTitle>Desativar serviço</AlertDialogTitle>
                         <AlertDialogDescription>

@@ -44,13 +44,14 @@ export default function TransactionList({
     onRefund,
     filters,
     onFiltersChange,
+    pageSize = 20,
     totalCount = transactions.length
 }) {
     const [page, setPage] = useState(1);
     const [details, setDetails] = useState(null);
-    const pageCount = Math.max(1, Math.ceil(transactions.length / 20));
+    const pageCount = Math.max(1, Math.ceil(transactions.length / pageSize));
     const currentPage = Math.min(page, pageCount);
-    const pageRows = transactions.slice((currentPage - 1) * 20, currentPage * 20);
+    const pageRows = transactions.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
     const handleSearchChange = (value) => {
         setPage(1);
@@ -208,7 +209,7 @@ export default function TransactionList({
                         </Table>
                     </div>
                 )}
-                {!loading && !loadError && transactions.length > 20 && <div className="mt-4 flex flex-wrap items-center justify-between gap-3"><p className="text-sm text-muted-foreground">Página {currentPage} de {pageCount} · 20 por página</p><div className="flex gap-2"><Button variant="outline" disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)}><ChevronLeft className="mr-1 h-4 w-4" />Anterior</Button><Button variant="outline" disabled={currentPage === pageCount} onClick={() => setPage(currentPage + 1)}>Próxima<ChevronRight className="ml-1 h-4 w-4" /></Button></div></div>}
+                {!loading && !loadError && transactions.length > pageSize && <div className="mt-4 flex flex-wrap items-center justify-between gap-3"><p className="text-sm text-muted-foreground">Página {currentPage} de {pageCount} · {pageSize} por página</p><div className="flex gap-2"><Button variant="outline" disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)}><ChevronLeft className="mr-1 h-4 w-4" />Anterior</Button><Button variant="outline" disabled={currentPage === pageCount} onClick={() => setPage(currentPage + 1)}>Próxima<ChevronRight className="ml-1 h-4 w-4" /></Button></div></div>}
             </CardContent>
         </Card>
         <TransactionDetails transaction={details} onClose={() => setDetails(null)} />

@@ -13,11 +13,11 @@ import { ptBR } from 'date-fns/locale';
 
 const COLORS = {
     income: 'hsl(var(--primary))',
-    expense: 'hsl(var(--destructive))',
+    expense: '#b87960',
     pie: ['#527b42', '#ed7204', '#7a8c6a', '#a97c54', '#55646a', '#a6b89a', '#bd9f83']
 };
 
-export default function FinancialCharts({ cashFlowData, expenseDistribution, projectedCashFlow, loading, loadError, projectionState, onRetry, onProjectionRetry }) {
+export default function FinancialCharts({ cashFlowData, expenseDistribution, projectedCashFlow, loading, loadError, projectionState, onRetry, onProjectionRetry, view = 'all' }) {
     const reducedMotion = useReducedMotion();
     const formattedCashFlow = useMemo(() => {
         if (!cashFlowData || cashFlowData.length === 0) return [];
@@ -45,7 +45,7 @@ export default function FinancialCharts({ cashFlowData, expenseDistribution, pro
     return (
         <>
             {/* Cash Flow Chart */}
-            <Card className="min-w-0 overflow-hidden bg-card rounded-2xl shadow-sm">
+            {view !== 'analysis' && <Card className="min-w-0 overflow-hidden bg-card rounded-2xl shadow-sm">
                 <CardHeader className="pb-3">
                     <CardTitle className="font-sans text-base font-semibold tracking-normal text-foreground">Fluxo de Caixa</CardTitle>
                     <CardDescription>Pagamentos e despesas efetivos por data; estornos são deduzidos.</CardDescription>
@@ -73,6 +73,7 @@ export default function FinancialCharts({ cashFlowData, expenseDistribution, pro
                                 />
                                 <Tooltip
                                     formatter={value => formatCurrency(Number(value))}
+                                    cursor={{ fill: 'hsl(var(--muted))', fillOpacity: 0.55 }}
                                     contentStyle={{
                                         backgroundColor: 'hsl(var(--card))',
                                         border: '1px solid hsl(var(--border))',
@@ -80,13 +81,14 @@ export default function FinancialCharts({ cashFlowData, expenseDistribution, pro
                                     }}
                                 />
                                 <Legend />
-                                <Bar isAnimationActive={!reducedMotion} animationDuration={180}
+                                <Bar isAnimationActive={!reducedMotion} animationDuration={700} animationBegin={view === 'cash' ? 650 : 0}
+                                    activeBar={{ stroke: 'hsl(var(--primary))', strokeWidth: 2 }}
                                     dataKey="income"
                                     name="Recebimentos"
                                     fill={COLORS.income}
                                     radius={[4, 4, 0, 0]}
                                 />
-                                <Bar isAnimationActive={!reducedMotion} animationDuration={180}
+                                <Bar isAnimationActive={!reducedMotion} animationDuration={700} animationBegin={view === 'cash' ? 650 : 0}
                                     dataKey="expenses"
                                     name="Despesas pagas"
                                     fill={COLORS.expense}
@@ -97,10 +99,10 @@ export default function FinancialCharts({ cashFlowData, expenseDistribution, pro
                     )}
                     {!loading && !loadError && formattedCashFlow.length > 0 && <FinancialChartData label="Dados do fluxo de caixa" columns={['Data', 'Recebimentos', 'Despesas pagas']} rows={formattedCashFlow.map(row => [row.date, formatCurrency(row.income), formatCurrency(row.expenses)])} />}
                 </CardContent>
-            </Card>
+            </Card>}
 
             {/* Expense Distribution & Projected Cash Flow */}
-            <Card className="min-w-0 overflow-hidden bg-card rounded-2xl shadow-sm">
+            {view !== 'cash' && <Card className="min-w-0 overflow-hidden bg-card rounded-2xl shadow-sm">
                 <CardHeader className="pb-3">
                     <CardTitle className="font-sans text-base font-semibold tracking-normal text-foreground">Análise Financeira</CardTitle>
                     <CardDescription>Despesas do mês. Projeção independente: hoje e os próximos 30 dias, condicionada aos recebimentos e pagamentos.</CardDescription>
@@ -121,7 +123,7 @@ export default function FinancialCharts({ cashFlowData, expenseDistribution, pro
                             ) : (
                                 <div aria-hidden="true"><VisibleChart width="100%" height={280}>
                                     <PieChart>
-                                        <Pie isAnimationActive={!reducedMotion} animationDuration={180}
+                                        <Pie isAnimationActive={!reducedMotion} animationDuration={700} animationBegin={view === 'cash' ? 650 : 0}
                                             data={formattedExpenses}
                                             cx="50%"
                                             cy="50%"
@@ -179,7 +181,7 @@ export default function FinancialCharts({ cashFlowData, expenseDistribution, pro
                                             }}
                                         />
                                         <Legend />
-                                        <Line isAnimationActive={!reducedMotion} animationDuration={180}
+                                        <Line isAnimationActive={!reducedMotion} animationDuration={700} animationBegin={view === 'cash' ? 650 : 0}
                                             type="monotone"
                                             dataKey="balance"
                                             name="Saldo Projetado"
@@ -194,7 +196,7 @@ export default function FinancialCharts({ cashFlowData, expenseDistribution, pro
                         </TabsContent>
                     </Tabs>
                 </CardContent>
-            </Card>
+            </Card>}
         </>
     );
 }

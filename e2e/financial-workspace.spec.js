@@ -105,3 +105,39 @@ for (const width of [390, 820, 1440]) test(`financial workspace hierarchy, acces
     expect((await new AxeBuilder({ page }).include('main').withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
+
+for (const width of [320, 820, 1440]) test(`whole financial cards, contextual receipts and analysis navigation ${width}`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await login(page, financePersona);
+    const title = page.getByRole('heading', { level: 1 });
+    await expect(title).toHaveText('Financeiro');
+    expect(await title.evaluate(el => getComputedStyle(el).textTransform)).toBe('uppercase');
+    await expect(page.getByText('Seu caixa, compromissos e lançamentos em um só lugar.')).toHaveCount(0);
+    const metric = page.getByRole('button', { name: 'Entender meu caixa: Saldo de caixa', exact: true });
+    await expect(metric).toBeEnabled();
+    const target = await metric.boundingBox();
+    expect(target.height).toBeGreaterThan(130);
+    await metric.click({ position: { x: 12, y: 12 } });
+    const dialog = page.getByRole('dialog');
+    await expect(dialog.getByRole('heading', { name: 'Saldo de caixa', exact: true })).toBeVisible();
+    expect((await new AxeBuilder({ page }).include('[role="dialog"]').withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    expect(await dialog.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
+    await page.keyboard.press('Escape');
+    await expect(metric).toBeFocused();
+    await page.getByRole('tab', { name: 'Análises', exact: true }).click();
+    await page.getByRole('tab', { name: 'Por paciente', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Recebimentos por paciente', exact: true })).toBeVisible();
+    await page.getByRole('tab', { name: 'Serviços', exact: true }).click();
+    await expect(page.getByRole('region', { name: 'Catálogo de serviços' })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.getByRole('tab', { name: 'Visão geral', exact: true }).click();
+    await expandPending(page);
+    const receiptName = page.locator('.financial-pending-name').first();
+    if (await receiptName.count()) {
+        await receiptName.click();
+        await expect(page.getByRole('dialog').getByRole('heading', { name: 'Detalhes da transação', exact: true })).toBeVisible();
+        await expect(page.getByRole('dialog').getByText('Método de pagamento', { exact: true })).toBeVisible();
+        await page.keyboard.press('Escape');
+    }
+});
