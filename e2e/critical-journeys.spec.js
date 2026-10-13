@@ -4,7 +4,8 @@ import { relevantDiagnostic } from '../scripts/qa/diagnostic-policy.mjs';
 import AxeBuilder from '@axe-core/playwright';
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
-const fixture=JSON.parse(readFileSync('.backend-ci/browser-runtime/fixture.json'));
+const fixture=JSON.parse(readFileSync(process.env.NELLO_CRITICAL_QA_FIXTURE || '.backend-ci/browser-runtime/fixture.json'));
+if (!['http://localhost:54321', 'http://localhost:4180'].includes(fixture.url)) throw Error('Disposable loopback fixture required');
 async function login(page,key){await page.goto(key.startsWith('admin-')?'/admin/dashboard':'/login');await page.locator('#email').fill(fixture.personas[key].email);await page.locator('#password').fill(fixture.password);await page.getByRole('button',{name:'Entrar',exact:true}).click();}
 async function audit(page){await page.evaluate(async()=>{await Promise.all(document.getAnimations().filter(a=>a.effect?.getComputedTiming().iterations!==Infinity).map(a=>a.finished.catch(()=>{})));});const {violations}=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze();expect(violations.map(v=>({id:v.id,nodes:v.nodes.map(n=>({target:n.target,html:n.html,summary:n.failureSummary}))}))).toEqual([]);expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);}
 test('anonymous protected routes redirect to login; keyboard login is usable',async({page})=>{
@@ -14,12 +15,35 @@ for(const [key,route] of [['nutritionist-a','/nutritionist'],['nutritionist-b','
  test(`real Auth login and role boundary: ${key}`,async({page})=>{await login(page,key);await expect(page).toHaveURL(new RegExp(route));await expect(page.locator('#root')).not.toBeEmpty();if(key.startsWith('patient')){await page.goto('/nutritionist/patients');await expect(page).toHaveURL(/\/patient/);}});
 }
 test('disabled account is refused by actual Auth',async({page})=>{await login(page,'disabled');await expect(page.getByText('Erro',{exact:true})).toBeVisible();await expect(page).toHaveURL(/\/login/);});
-test('admin without MFA cannot enter privileged panel',async({page})=>{await login(page,'admin-aal1');await expect(page.getByText('Acesso administrativo protegido',{exact:true})).toBeVisible();});
+test('admin without MFA cannot enter privileged panel',async({page})=>{
+ await login(page,'admin-aal1');
+ const protectedPrompt=page.getByText('Acesso administrativo protegido',{exact:true});
+ const retry=page.getByRole('button',{name:'Validar acesso novamente',exact:true});
+ await expect(protectedPrompt.or(retry)).toBeVisible();
+ // A failed access read must stay closed. Exercise the existing manual recovery,
+ // then still require MFA; a connection error is never authorization.
+ if(await retry.isVisible())await retry.click();
+ await expect(protectedPrompt).toBeVisible();
+ await expect(page.getByRole('heading',{name:'Painel Administrativo',exact:true})).toHaveCount(0);
+});
+test('failed administrative access read stays closed and manual recovery still requires MFA',async({page})=>{
+ let reads=0;
+ await page.route('**/rest/v1/rpc/admin_access_status',async route=>{
+  if(++reads===1)return route.fulfill({status:502,contentType:'application/json',body:JSON.stringify({message:'Synthetic access read failure'})});
+  await route.continue();
+ });
+ await login(page,'admin-aal1');
+ await expect(page.getByRole('alert')).toContainText('A conexão segura com o painel não pôde ser validada');
+ await expect(page.getByRole('heading',{name:'Painel Administrativo',exact:true})).toHaveCount(0);
+ await page.getByRole('button',{name:'Validar acesso novamente',exact:true}).click();
+ await expect(page.getByText('Acesso administrativo protegido',{exact:true})).toBeVisible();
+ expect(reads).toBeGreaterThanOrEqual(2);
+});
 for(const viewport of [{width:390,height:844},{width:768,height:1024},{width:1440,height:1000}]){
  test(`clinical screens accessibility and layout ${viewport.width}`,async({page})=>{
   // Pin the synthetic peer to offline for stable visual baselines; protocol
   // presence/TTL and two-tab behavior are verified separately over real sockets.
-  execFileSync('docker',['exec','-i','-e','PGPASSWORD=postgres','supabase_db_nello-reconstruction','psql','-X','-h','127.0.0.1','-U','supabase_admin','-d','postgres','-v','ON_ERROR_STOP=1'],{input:`delete from private.chat_presence_leases where actor_id='${fixture.personas['patient-a'].id}';`,stdio:['pipe','ignore','pipe']});
+  execFileSync('docker',['exec','-i','supabase_db_nello-reconstruction','psql','-X','-U','supabase_admin','-d','postgres','-v','ON_ERROR_STOP=1'],{input:`delete from private.chat_presence_leases where actor_id='${fixture.personas['patient-a'].id}';`,stdio:['pipe','ignore','pipe']});
   const errors=[];page.on('pageerror',error=>errors.push(error.message));page.on('console',message=>{if(relevantDiagnostic(message.text()))errors.push(message.text());});
   await page.setViewportSize(viewport);await login(page,'nutritionist-a');await expect(page).toHaveURL(/\/nutritionist/);
   for(const module of ['hub','energy-expenditure','meal-plan','anamnese']){await page.goto(`/nutritionist/patients/${fixture.personas['patient-a'].id}/${module}`);await expect(page.locator('main')).toBeVisible();if(['hub','energy-expenditure'].includes(module))await expect(page.getByText('QA patient-a',{exact:false}).first()).toBeVisible();else await expect(page.getByRole('heading',{name:module==='meal-plan'?'Plano alimentar':'Prontuário & Histórico'}).first()).toBeVisible();await audit(page);await expect(page).toHaveScreenshot(`${module}-${viewport.width}.png`,{fullPage:true,animations:'disabled',maxDiffPixelRatio:0.002});}

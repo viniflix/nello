@@ -280,7 +280,7 @@ export const exportAgendaToPdf = async (appointments, periodType, periodLabel, n
         ? capitalizeName(nutritionistName)
         : 'Não informado';
     doc.text(`Nutricionista: ${nutricionistaNome}`, 14, 35);
-    doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`, 14, 40);
+    doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Fortaleza' })} às ${new Date().toLocaleTimeString('pt-BR', { timeZone: 'America/Fortaleza', hour: '2-digit', minute: '2-digit' })}`, 14, 40);
 
     // Resumo
     doc.setFontSize(9);

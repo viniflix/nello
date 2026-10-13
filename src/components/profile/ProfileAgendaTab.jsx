@@ -206,6 +206,9 @@ export default function ProfileAgendaTab({ userId, onUpdate }) {
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
+                                {!SLOT_DURATIONS.some(option => option.value === Number(formData.slotDuration))
+                                    && Number(formData.slotDuration) >= 1 && Number(formData.slotDuration) <= 480
+                                    && <SelectItem value={String(formData.slotDuration)}>{formData.slotDuration} minutos (atual)</SelectItem>}
                                 {SLOT_DURATIONS.map(duration => (
                                     <SelectItem key={duration.value} value={duration.value.toString()}>
                                         {duration.label}
