@@ -29,7 +29,7 @@ function revise(api, appointment, changes) {
 async function login(page) {
     await page.goto('/login'); await page.locator('#email').fill(pro.email); await page.locator('#password').fill(fixture.password);
     await page.getByRole('button',{name:'Entrar',exact:true}).click(); await expect(page).toHaveURL(/\/nutritionist/);
-    await page.goto('/nutritionist/agenda'); await expect(page.getByRole('heading',{name:'Agenda de Consultas',exact:true})).toBeVisible();
+    await page.goto('/nutritionist/agenda'); await expect(page.getByRole('heading',{name:'Agenda de Consultas',exact:true})).toBeVisible(); await page.getByRole('group', { name: 'Visualização da agenda' }).getByRole('button', { name: 'Lista', exact: true }).click();
 }
 async function edit(page, appointment) {
     const row=page.getByText(appointment.unregistered_patient_name,{exact:true}).locator('xpath=ancestor::div[@data-appointment-id]');

@@ -31,10 +31,11 @@ export function useAgendaController({ user, returnView = null }) {
     const [loadError, setLoadError] = useState(false);
     const [summaryError, setSummaryError] = useState(false);
     const [calendarError, setCalendarError] = useState(false);
+    const [calendarLoading, setCalendarLoading] = useState(true);
     const [exporting, setExporting] = useState(false);
     const exportLock = useRef(false);
     const [periodDate, setPeriodDate] = useState(() => returnView?.periodDate ? civilDateToDate(returnView.periodDate) : agendaToday());
-    const [filterView, setFilterView] = useState(returnView?.view || 'all'); // 'all', 'today', 'week', 'month'
+    const [filterView, setFilterView] = useState(returnView?.view || 'week'); // 'all', 'today', 'week', 'month'
     const [patientSearch, setPatientSearch] = useState(''); // Busca de paciente
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
     const [deletingAppointment, setDeletingAppointment] = useState(false);
@@ -42,7 +43,7 @@ export function useAgendaController({ user, returnView = null }) {
     const deleteLock = useRef(false);
     const [appointmentToDelete, setAppointmentToDelete] = useState(null);
     const [mobileCalendarOpen, setMobileCalendarOpen] = useState(false); // Modal do calendário mobile
-    const [calendarMonth, setCalendarMonth] = useState(startOfMonth(agendaToday()));
+    const [calendarMonth, setCalendarMonth] = useState(() => startOfMonth(returnView?.date ? civilDateToDate(returnView.date) : returnView?.periodDate ? civilDateToDate(returnView.periodDate) : agendaToday()));
     const [calendarAppointments, setCalendarAppointments] = useState([]);
     const [exportDialogOpen, setExportDialogOpen] = useState(false); // Modal de exportação PDF
     const [exportPeriodType, setExportPeriodType] = useState('week'); // 'week' ou 'month'
@@ -90,9 +91,11 @@ export function useAgendaController({ user, returnView = null }) {
         let cancelled = false;
         if (!user?.id) return;
         setCalendarError(false);
-        fetchAppointmentsInPeriod(user.id, ...Object.values(agendaCivilRange(calendarMonth, new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 1))), 'id, appointment_time', 'agenda_calendar')
+        setCalendarLoading(true);
+        fetchAppointmentsInPeriod(user.id, ...Object.values(agendaCivilRange(calendarMonth, new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 1))), 'id, appointment_time, status', 'agenda_calendar')
             .then(rows => { if (!cancelled) setCalendarAppointments(rows); })
-            .catch(error => { if (!cancelled) { setCalendarError(true); logDiagnostic('error', 'hooks/useAgendaController.js:86', 'Falha ao carregar contagem do calendário', error); } });
+            .catch(error => { if (!cancelled) { setCalendarError(true); logDiagnostic('error', 'hooks/useAgendaController.js:86', 'Falha ao carregar contagem do calendário', error); } })
+            .finally(() => { if (!cancelled) setCalendarLoading(false); });
         return () => { cancelled = true; };
     }, [user?.id, calendarMonth, agendaRevision]);
 
@@ -429,7 +432,7 @@ export function useAgendaController({ user, returnView = null }) {
     };
 
     return {
-        periodDate, setPeriodDate, loadError, calendarError, summaryError, exporting,
+        periodDate, setPeriodDate, loadError, calendarError, calendarLoading, summaryError, exporting,
         appointmentDateKey: civilDateInZone,
         reloadOverview: () => setAgendaRevision(value => value + 1),
         appointments,
@@ -455,6 +458,7 @@ export function useAgendaController({ user, returnView = null }) {
         appointmentToDelete,
         mobileCalendarOpen,
         calendarMonth,
+        calendarAppointments,
         exportDialogOpen,
         exportPeriodType,
         exportWeekStart,

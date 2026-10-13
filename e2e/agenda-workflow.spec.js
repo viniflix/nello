@@ -10,7 +10,7 @@ const pro=fixture.personas['nutritionist-a'];
 const patient=fixture.personas['patient-a'];
 test.use({timezoneId:'America/Los_Angeles'});
 async function client(){const api=createClient(fixture.url,fixture.anonKey,{auth:{persistSession:false,autoRefreshToken:false}});expect((await api.auth.signInWithPassword({email:pro.email,password:fixture.password})).error).toBeNull();return api;}
-async function login(page){await page.goto('/login');await page.locator('#email').fill(pro.email);await page.locator('#password').fill(fixture.password);await page.getByRole('button',{name:'Entrar',exact:true}).click();await expect(page).toHaveURL(/\/nutritionist/);await page.goto('/nutritionist/agenda');await expect(page.getByRole('heading',{name:'Agenda de Consultas',exact:true})).toBeVisible();}
+async function login(page){await page.goto('/login');await page.locator('#email').fill(pro.email);await page.locator('#password').fill(fixture.password);await page.getByRole('button',{name:'Entrar',exact:true}).click();await expect(page).toHaveURL(/\/nutritionist/);await page.goto('/nutritionist/agenda');await expect(page.getByRole('heading',{name:'Agenda de Consultas',exact:true})).toBeVisible(); await page.getByRole('group', { name: 'Visualização da agenda' }).getByRole('button', { name: 'Lista', exact: true }).click();}
 function removeSyntheticBooking(id,guest){
  const ci=process.env.CI==='true'&&process.env.GITHUB_ACTIONS==='true';
  const database=ci?'postgres':process.env.NELLO_AGENDA_QA_DATABASE;

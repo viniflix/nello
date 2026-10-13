@@ -45,6 +45,7 @@ test('future month navigation drills into the correct civil day and preserves co
 
 test('an appointment read failure is an error with retry and never an empty-success state', async ({ page }) => {
   await login(page);
+  await page.getByRole('group', { name: 'Visualização da agenda' }).getByRole('button', { name: 'Dia', exact: true }).click();
   await page.route('**/rest/v1/appointments?*', route => route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ message: 'Synthetic Agenda outage' }) }));
   await page.getByRole('group', { name: 'Visualização da agenda' }).getByRole('button', { name: 'Semana', exact: true }).click();
   await expect(page.getByRole('alert').filter({ hasText: 'Não foi possível atualizar os agendamentos' })).toBeVisible();
