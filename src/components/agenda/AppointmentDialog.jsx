@@ -55,10 +55,11 @@ export default function AppointmentDialog({
     const [outsideConfirmed, setOutsideConfirmed] = useState(false);
     const [saving, setSaving] = useState(false);
     const [saveError, setSaveError] = useState('');
-    const [dirty, setDirty] = useState(false);
+    const [draftBaseline, setDraftBaseline] = useState(null);
+    const dirty = draftBaseline !== null && draftBaseline !== JSON.stringify({ formData, patientSearchTerm });
     const [discardOpen, setDiscardOpen] = useState(false);
     const savingRef = useRef(false);
-    const updateFormData = updater => { setDirty(true); setFormData(updater); };
+    const updateFormData = setFormData;
     const readOnly = !!appointment && isTerminalAppointment(appointment.status);
     const allowedStatuses = appointmentStatusChoices(appointment?.status);
 
@@ -92,13 +93,19 @@ export default function AppointmentDialog({
         const key = nutritionistId + ':' + (appointment?.id || 'new');
         if (initialized.current === key) return;
         initialized.current = key;
-        setDirty(false);
         setDiscardOpen(false);
         setOutsideConfirmed(false);
         setSaveError('');
+        const initializeDraft = (data, name) => {
+            setFormData(data);
+            setPatientSearchTerm(name);
+            setDraftBaseline(JSON.stringify({ formData: data, patientSearchTerm: name }));
+        };
         if (appointment) {
+            const patient = patients.find(p => p.id === appointment.patient_id);
+            const patientName = appointment.patient_id ? appointment.patient?.name || patient?.name || 'Paciente' : appointment.unregistered_patient_name || '';
             const appointmentStart = appointment.start_time || appointment.appointment_time;
-            setFormData({
+            initializeDraft({
                 patient_id: appointment.patient_id || '',
                 unregistered_patient_name: appointment.unregistered_patient_name || '',
                 appointment_time_date: appointmentStart
@@ -115,19 +122,13 @@ export default function AppointmentDialog({
                 use_custom_price: false,
                 custom_price: '',
                 custom_description: ''
-            });
-            if (appointment.patient_id) {
-                const patient = patients.find(p => p.id === appointment.patient_id);
-                setPatientSearchTerm(appointment.patient?.name || patient?.name || 'Paciente');
-            } else if (appointment.unregistered_patient_name) {
-                setPatientSearchTerm(appointment.unregistered_patient_name);
-            }
+            }, patientName);
         } else {
             const initialPatient = initialPatientId
                 ? patients.find((patient) => patient.id === initialPatientId)
                 : null;
             // Reset form
-            setFormData({
+            initializeDraft({
                 patient_id: initialPatient?.id || '',
                 unregistered_patient_name: '',
                 appointment_time_date: preSelectedDate ? calendarDateKey(preSelectedDate) : getTodayIsoDate(),
@@ -140,8 +141,7 @@ export default function AppointmentDialog({
                 use_custom_price: false,
                 custom_price: '',
                 custom_description: ''
-            });
-            setPatientSearchTerm(initialPatient?.name || '');
+            }, initialPatient?.name || '');
         }
     }, [appointment, open, preSelectedDate, patients, initialPatientId, nutritionistId, agendaSettings]);
 
@@ -167,7 +167,6 @@ export default function AppointmentDialog({
     useEffect(() => setOutsideConfirmed(false), [formData.appointment_time_date, formData.appointment_time_hour, formData.duration, agendaSettings?.startTime, agendaSettings?.endTime, workingDaysKey]);
 
     const handleServiceChange = (value) => {
-        setDirty(true);
         if (value === SERVICE_OPTION_CUSTOM) {
             setFormData(prev => ({
                 ...prev,
@@ -246,11 +245,11 @@ export default function AppointmentDialog({
                         {readOnly ? 'Este agendamento foi encerrado. Seus dados estão disponíveis para consulta.' : appointment ? 'Altere os dados do agendamento.' : 'Preencha os dados para agendar uma nova consulta.'}
                     </DialogDescription>
                 </DialogHeader>
-                <form onSubmit={handleSubmit} onChange={() => setDirty(true)} className="space-y-4" aria-busy={saving}>
+                <form onSubmit={handleSubmit} className="space-y-4" aria-busy={saving}>
                     <fieldset disabled={saving || readOnly} className="space-y-4 min-w-0">
                     {identityLocked ? <div className="rounded-xl bg-muted/40 p-3"><p className="text-xs text-muted-foreground">Paciente</p><p className="mt-1 break-words text-sm font-semibold">{patientSearchTerm}</p></div> : <AgendaPatientPicker value={patientSearchTerm} selectedId={formData.patient_id} disabled={saving || readOnly}
                         patients={patients} onSearch={onSearchPatients}
-                        onChange={(name, id) => { setDirty(true); setPatientSearchTerm(name); setFormData(previous => ({ ...previous, patient_id: appointment ? '' : id, unregistered_patient_name: id ? '' : name })); }} />}
+                        onChange={(name, id) => { setPatientSearchTerm(name); setFormData(previous => ({ ...previous, patient_id: appointment ? '' : id, unregistered_patient_name: id ? '' : name })); }} />}
                     {identityLocked && <p className="text-xs text-muted-foreground">A identidade permanece vinculada a este agendamento. Para completar um cadastro pendente, use a ação de cadastro na lista.</p>}
                     {referenceErrors.patients && <p role="alert" className="text-xs text-destructive">Não foi possível carregar os pacientes. A busca pode ser tentada novamente; nenhum vínculo será escolhido automaticamente.</p>}
 
@@ -453,7 +452,7 @@ export default function AppointmentDialog({
             </DialogContent>
         </Dialog>
         <AlertDialog open={discardOpen} onOpenChange={setDiscardOpen}>
-            <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Descartar alterações?</AlertDialogTitle><AlertDialogDescription>As alterações deste agendamento ainda não foram salvas. Você pode continuar editando ou descartar o rascunho.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel className="min-h-11">Continuar editando</AlertDialogCancel><AlertDialogAction className="min-h-11" onClick={() => { setDiscardOpen(false); setDirty(false); onOpenChange(false); }}>Descartar alterações</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
+            <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Descartar alterações?</AlertDialogTitle><AlertDialogDescription>As alterações deste agendamento ainda não foram salvas. Você pode continuar editando ou descartar o rascunho.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel className="min-h-11">Continuar editando</AlertDialogCancel><AlertDialogAction className="min-h-11" onClick={() => { setDiscardOpen(false); setDraftBaseline(null); onOpenChange(false); }}>Descartar alterações</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
         </AlertDialog>
         </>
     );

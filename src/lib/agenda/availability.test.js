@@ -18,6 +18,9 @@ describe('consultório schedule and civil dates', () => {
     const month = agendaPeriod('month', null, '2026-10-13T01:30:00Z', '2034-12-18');
     expect(month.startKey).toBe('2034-12-01');
     expect(month.endKey).toBe('2035-01-01');
+    const list = agendaPeriod('all', null, '2026-10-13T01:30:00Z', '2034-12-18');
+    expect(list.startKey).toBe('2026-10-12');
+    expect(list.endKey).toBeNull();
   });
   it('keeps Fortaleza midnight on the preceding civil day', () => {
     const period = agendaPeriod('today', null, '2026-10-13T01:30:00Z');

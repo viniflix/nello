@@ -4,8 +4,8 @@ import { readFileSync } from 'node:fs';
 import { createClient } from '@supabase/supabase-js';
 import { randomUUID } from 'node:crypto';
 import { totp } from '../scripts/qa/totp.mjs';
-const fixture = JSON.parse(readFileSync('.backend-ci/browser-runtime/fixture.json'));
-if (fixture.url !== 'http://localhost:54321') throw Error('Only disposable loopback fixtures');
+const fixture = JSON.parse(readFileSync(process.env.NELLO_FINANCIAL_QA_FIXTURE || '.backend-ci/browser-runtime/fixture.json'));
+if (!['http://localhost:54321', 'http://localhost:4180'].includes(fixture.url)) throw Error('Only disposable loopback fixtures');
 async function login(page, key) {
   await page.goto('/login'); await page.locator('#email').fill(fixture.personas[key].email); await page.locator('#password').fill(fixture.password);
   await page.getByRole('button', { name: 'Entrar', exact: true }).click();

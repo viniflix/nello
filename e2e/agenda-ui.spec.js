@@ -61,7 +61,7 @@ test('full synthetic day supports long identities, responsive actions, accessibl
   try {
     for (let index = 0; index < 6; index++) {
       const instant = `2034-10-20T${String(11 + index).padStart(2, '0')}:00:00Z`;
-      const result = await api.rpc('perform_clinical_operation', { p_operation: 'appointment', p_arguments: { p_appointment: { nutritionist_id: pro.id, unregistered_patient_name: marker + ' Nome composto extenso para legibilidade ' + index, start_time: instant, appointment_time: instant, duration: 60, status: 'scheduled' }, p_financial: {}, p_appointment_id: null }, p_expected: null, p_nonce: randomUUID(), p_actor: pro.id });
+      const result = await api.rpc('perform_clinical_operation', { p_operation: 'appointment', p_arguments: { p_appointment: { nutritionist_id: pro.id, unregistered_patient_name: marker + ' Nome composto extenso para legibilidade ' + index, start_time: instant, appointment_time: instant, duration: index === 0 ? 45 : 60, status: 'scheduled' }, p_financial: {}, p_appointment_id: null }, p_expected: null, p_nonce: randomUUID(), p_actor: pro.id });
       expect(result.error).toBeNull(); ids.push(result.data.appointment.id);
     }
     await page.emulateMedia({ reducedMotion: 'reduce' }); await login(page);
@@ -78,6 +78,16 @@ test('full synthetic day supports long identities, responsive actions, accessibl
     expect(axe.violations.map(item => ({ id: item.id, nodes: item.nodes.map(node => node.target) }))).toEqual([]);
     await page.locator('[data-appointment-id]').first().getByRole('button', { name: 'Abrir agendamento', exact: true }).click();
     await expect(page.getByRole('dialog').getByLabel('Observações', { exact: true })).toHaveJSProperty('tagName', 'TEXTAREA');
+    await expect(page.getByRole('dialog').getByLabel('Duração *', { exact: true })).toContainText('45 minutos');
+    await page.getByRole('dialog').getByRole('button', { name: 'Cancelar', exact: true }).click();
+    await expect(page.getByRole('alertdialog')).toHaveCount(0);
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await page.locator('[data-appointment-id]').first().getByRole('button', { name: 'Abrir agendamento', exact: true }).click();
+    await page.getByRole('dialog').getByLabel('Observações', { exact: true }).fill('Synthetic temporary change');
+    await page.getByRole('dialog').getByLabel('Observações', { exact: true }).fill('');
+    await page.getByRole('dialog').getByRole('button', { name: 'Cancelar', exact: true }).click();
+    await expect(page.getByRole('alertdialog')).toHaveCount(0);
+    await expect(page.getByRole('dialog')).toHaveCount(0);
   } finally {
     for (const id of ids) expect((await api.rpc('delete_appointment_with_finance', { p_appointment_id: id })).error).toBeNull();
     await api.auth.signOut();

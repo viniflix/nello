@@ -47,7 +47,7 @@ export function readAgendaSettings(clinicSettings = {}) {
 
 /** Calendar controls use local display Dates; persistence boundaries use Fortaleza. */
 export function agendaPeriod(view = 'all', selectedDate = null, now = new Date(), periodDate = null) {
-  const today = periodDate ? civilDateToDate(calendarDateKey(periodDate)) : civilDateToDate(civilDateInZone(now));
+  const today = periodDate && view !== 'all' ? civilDateToDate(calendarDateKey(periodDate)) : civilDateToDate(civilDateInZone(now));
   const startDate = selectedDate ? civilDateToDate(calendarDateKey(selectedDate))
     : view === 'week' ? startOfWeek(today, { locale: ptBR })
       : view === 'month' ? startOfMonth(today) : today;
