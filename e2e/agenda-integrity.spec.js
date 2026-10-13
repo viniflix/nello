@@ -32,7 +32,7 @@ async function login(page) {
     await page.goto('/nutritionist/agenda'); await expect(page.getByRole('heading',{name:'Agenda de Consultas',exact:true})).toBeVisible();
 }
 async function edit(page, appointment) {
-    const row=page.getByText(appointment.unregistered_patient_name,{exact:true}).locator('xpath=ancestor::div[contains(@class,"bg-muted/30")]');
+    const row=page.getByText(appointment.unregistered_patient_name,{exact:true}).locator('xpath=ancestor::div[@data-appointment-id]');
     await row.getByTitle('Editar agendamento',{exact:true}).click();
     return page.getByRole('dialog');
 }

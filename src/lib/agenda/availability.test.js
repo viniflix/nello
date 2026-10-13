@@ -1,8 +1,24 @@
 import { describe, expect, it } from 'vitest';
-import { agendaPeriod, agendaSummary, availableAgendaSlots, isOutsideAgendaSchedule, readAgendaSettings, validateAgendaSettings } from './availability';
+import { agendaPeriod, agendaSummary, availableAgendaSlots, isOutsideAgendaSchedule, readAgendaSettings, validateAgendaSettings, agendaDayOccupancy } from './availability';
 
 const settings = { startTime: '08:00', endTime: '12:00', workingDays: ['monday'], slotDuration: 30 };
 describe('consultório schedule and civil dates', () => {
+  it('clips reservation minutes at Fortaleza midnight and separates cancellations from historical reservations', () => {
+    expect(agendaDayOccupancy('2034-10-18', [
+      { appointment_time: '2034-10-18T02:30:00Z', duration: 90, status: 'confirmed' },
+      { appointment_time: '2034-10-18T12:00:00Z', duration: 60, status: 'cancelled' },
+      { appointment_time: '2034-10-19T02:30:00Z', duration: 90, status: 'completed' }
+    ])).toEqual({ reservedMinutes: 90, cancelledCount: 1 });
+  });
+  it('navigates to future weeks and months without using the device timezone or narrowing to a single day', () => {
+    const week = agendaPeriod('week', null, '2026-10-13T01:30:00Z', '2034-10-18');
+    expect(week.startKey).toBe('2034-10-15');
+    expect(week.endKey).toBe('2034-10-22');
+    expect(week.start.toISOString()).toBe('2034-10-15T03:00:00.000Z');
+    const month = agendaPeriod('month', null, '2026-10-13T01:30:00Z', '2034-12-18');
+    expect(month.startKey).toBe('2034-12-01');
+    expect(month.endKey).toBe('2035-01-01');
+  });
   it('keeps Fortaleza midnight on the preceding civil day', () => {
     const period = agendaPeriod('today', null, '2026-10-13T01:30:00Z');
     expect(period.startKey).toBe('2026-10-12');

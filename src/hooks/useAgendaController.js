@@ -28,6 +28,12 @@ export function useAgendaController({ user, returnView = null }) {
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingAppointment, setEditingAppointment] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState(false);
+    const [summaryError, setSummaryError] = useState(false);
+    const [calendarError, setCalendarError] = useState(false);
+    const [exporting, setExporting] = useState(false);
+    const exportLock = useRef(false);
+    const [periodDate, setPeriodDate] = useState(() => returnView?.periodDate ? civilDateToDate(returnView.periodDate) : agendaToday());
     const [filterView, setFilterView] = useState(returnView?.view || 'all'); // 'all', 'today', 'week', 'month'
     const [patientSearch, setPatientSearch] = useState(''); // Busca de paciente
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -68,23 +74,25 @@ export function useAgendaController({ user, returnView = null }) {
         if (!user) return;
         const sequence = ++loadSequence.current;
         setLoading(true);
-        const { start, end } = agendaPeriod(filterView, selectedDate);
+        setLoadError(false);
+        const { start, end } = agendaPeriod(filterView, selectedDate, new Date(), periodDate);
         try {
             const apptsData = await fetchAppointmentsInPeriod(user.id, start, end);
             if (sequence === loadSequence.current) setAppointments(apptsData.map(normalizeAppointment));
         } catch (error) {
-            if (sequence === loadSequence.current) toast({ title: 'Erro', description: toPortugueseError(error, 'Não foi possível carregar a agenda.'), variant: 'destructive' });
+            if (sequence === loadSequence.current) { setLoadError(true); toast({ title: 'Erro', description: toPortugueseError(error, 'Não foi possível carregar a agenda.'), variant: 'destructive' }); }
         } finally {
             if (sequence === loadSequence.current) setLoading(false);
         }
-    }, [user, toast, normalizeAppointment, selectedDate, filterView]);
+    }, [user, toast, normalizeAppointment, selectedDate, filterView, periodDate]);
 
     useEffect(() => {
         let cancelled = false;
         if (!user?.id) return;
+        setCalendarError(false);
         fetchAppointmentsInPeriod(user.id, ...Object.values(agendaCivilRange(calendarMonth, new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 1))), 'id, appointment_time', 'agenda_calendar')
             .then(rows => { if (!cancelled) setCalendarAppointments(rows); })
-            .catch(error => { if (!cancelled) logDiagnostic('error', 'hooks/useAgendaController.js:86', 'Falha ao carregar contagem do calendário', error); });
+            .catch(error => { if (!cancelled) { setCalendarError(true); logDiagnostic('error', 'hooks/useAgendaController.js:86', 'Falha ao carregar contagem do calendário', error); } });
         return () => { cancelled = true; };
     }, [user?.id, calendarMonth, agendaRevision]);
 
@@ -92,6 +100,7 @@ export function useAgendaController({ user, returnView = null }) {
         if (!user?.id) return;
         let cancelled = false;
         setSummaryReady(false);
+        setSummaryError(false);
         const now = agendaToday();
         const weekStart = startOfWeek(now, { locale: ptBR });
         const monthStart = startOfMonth(now);
@@ -108,15 +117,16 @@ export function useAgendaController({ user, returnView = null }) {
                 setSummaryReady(true);
             }
         })
-            .catch(error => { if (!cancelled) logDiagnostic('error', 'hooks/useAgendaController.js:111', 'Falha ao carregar resumo da agenda', error); });
+            .catch(error => { if (!cancelled) { setSummaryError(true); logDiagnostic('error', 'hooks/useAgendaController.js:111', 'Falha ao carregar resumo da agenda', error); } });
         return () => { cancelled = true; };
     }, [user?.id, agendaRevision]);
 
-    const dayAvailability = useAgendaDayAvailability(user?.id, calendarDateKey(selectedDate || agendaToday()));
+    const dayAvailability = useAgendaDayAvailability(user?.id, calendarDateKey(selectedDate || periodDate));
     useEffect(() => subscribeDomain(user?.id, 'clinical', () => setAgendaRevision(value => value + 1)), [user?.id]);
 
     useEffect(() => {
         loadData();
+        return () => { loadSequence.current += 1; };
     }, [loadData, agendaRevision]);
 
     const handleSaveAppointment = async (appointmentData, financialData) => {
@@ -236,11 +246,11 @@ export function useAgendaController({ user, returnView = null }) {
     };
 
     const filteredAppointments = useMemo(() => {
-        const period = agendaPeriod(filterView, selectedDate);
+        const period = agendaPeriod(filterView, selectedDate, new Date(), periodDate);
         const search = patientSearch.trim().toLocaleLowerCase('pt-BR');
         return appointments.filter(appointment => instantInAgendaPeriod(appointment.appointment_time, period)
             && (!search || (appointment.patient?.name || appointment.unregistered_patient_name || '').toLocaleLowerCase('pt-BR').includes(search)));
-    }, [appointments, filterView, selectedDate, patientSearch]);
+    }, [appointments, filterView, selectedDate, patientSearch, periodDate]);
 
     const groupedAppointments = useMemo(() => {
         const groups = {};
@@ -309,7 +319,7 @@ export function useAgendaController({ user, returnView = null }) {
 
         const weekday = format(apptDate, "EEEE", { locale: ptBR });
         const weekdayCapitalized = weekday.charAt(0).toUpperCase() + weekday.slice(1);
-        const fullDate = format(apptDate, "dd 'de' MMMM", { locale: ptBR });
+        const fullDate = format(apptDate, apptDate.getFullYear() === agendaToday().getFullYear() ? "dd 'de' MMMM" : "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
 
         if (dateString === getTodayIsoDate()) return `Hoje • ${weekdayCapitalized}, ${fullDate}`;
         if (dateString === calendarDateKey(addDays(agendaToday(), 1))) return `Amanhã • ${weekdayCapitalized}, ${fullDate}`;
@@ -359,6 +369,9 @@ export function useAgendaController({ user, returnView = null }) {
     };
 
     const handleExportPDF = async () => {
+        if (exportLock.current) return;
+        exportLock.current = true;
+        setExporting(true);
         try {
             let periodLabel = '';
             let filteredExport = [];
@@ -410,9 +423,13 @@ export function useAgendaController({ user, returnView = null }) {
                 variant: "destructive"
             });
         }
+        finally { exportLock.current = false; setExporting(false); }
     };
 
     return {
+        periodDate, setPeriodDate, loadError, calendarError, summaryError, exporting,
+        appointmentDateKey: civilDateInZone,
+        reloadOverview: () => setAgendaRevision(value => value + 1),
         appointments,
         summaryAppointments,
         summaryReady,

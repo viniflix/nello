@@ -40,6 +40,7 @@ test('configured duration and whole slots guide a guest without creating an acco
   await expect(form.getByRole('alert')).toContainText('Confirme a exceção');
   await expect(form.getByLabel('Observações',{exact:true})).toHaveValue('Synthetic intact draft');
   await form.getByRole('button',{name:'Cancelar',exact:true}).click();
+  await page.getByRole('alertdialog').getByRole('button',{name:'Descartar alterações',exact:true}).click();
  }finally{await api.from('user_profiles').update({clinic_settings:previous.data.clinic_settings}).eq('id',pro.id);await api.auth.signOut();}
 });
 
@@ -51,7 +52,7 @@ test('linking a paid guest preserves the charge and opens the exact financial re
   expect(result.error).toBeNull();id=result.data.appointment.id;
   expect((await api.from('financial_transactions').update({status:'paid',paid_at:new Date().toISOString().slice(0,10)}).eq('id',result.data.transaction.id)).error).toBeNull();
   await login(page);
-  const row=page.getByText(guest,{exact:true}).locator('xpath=ancestor::div[contains(@class,"bg-muted/30")]');
+  const row=page.getByText(guest,{exact:true}).locator('xpath=ancestor::div[@data-appointment-id]');
   await row.getByTitle('Cadastrar Paciente',{exact:true}).click();const modal=page.getByRole('dialog');
   await expect(modal.getByRole('heading',{name:'Completar cadastro do agendamento',exact:true})).toBeVisible();
   await modal.getByRole('combobox',{name:'Paciente cadastrado *',exact:true}).fill(target.data.name);
@@ -65,8 +66,9 @@ test('linking a paid guest preserves the charge and opens the exact financial re
   await expect(page.getByRole('dialog')).toContainText('125,75');
   await page.getByRole('dialog').getByRole('button',{name:'Fechar detalhes',exact:true}).click();
   await page.getByRole('button',{name:'Voltar à agenda',exact:true}).click();await expect(page).toHaveURL(/\/nutritionist\/agenda/);
-  const paidRow=page.getByRole('button',{name:/125,75.*Pago/}).locator('xpath=ancestor::div[contains(@class,"bg-muted/30")]');
-  await paidRow.getByTitle('Excluir agendamento',{exact:true}).click();
+  const paidRow=page.getByRole('button',{name:/125,75.*Pago/}).locator('xpath=ancestor::div[@data-appointment-id]');
+  await paidRow.getByRole('button',{name:/Mais ações/}).click();
+  await page.getByRole('menuitem',{name:'Excluir agendamento',exact:true}).click();
   const deletion=page.getByRole('alertdialog');await deletion.getByRole('button',{name:'Excluir',exact:true}).click();
   await expect(deletion.getByRole('alert')).toBeVisible();await expect(deletion).toBeVisible();
   expect((await api.from('financial_transactions').select('status').eq('appointment_id',id).single()).data.status).toBe('paid');

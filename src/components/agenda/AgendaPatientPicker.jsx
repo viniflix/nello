@@ -35,7 +35,7 @@ export default function AgendaPatientPicker({ value, selectedId, onChange, onSea
       setRows(previous => [...previous, ...result.patients]); setHasMore(result.hasMore); setState('ready');
     } catch { if (sequence.current === request) setState('error'); }
   };
-  return <div className="relative min-w-0">
+  return <div className="relative min-w-0" onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false); }}>
     <Label htmlFor={inputId}>{allowGuest ? 'Paciente *' : 'Paciente cadastrado *'}</Label>
     <div className="relative">
       <Search aria-hidden="true" className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />

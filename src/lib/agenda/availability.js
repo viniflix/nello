@@ -46,8 +46,8 @@ export function readAgendaSettings(clinicSettings = {}) {
 }
 
 /** Calendar controls use local display Dates; persistence boundaries use Fortaleza. */
-export function agendaPeriod(view = 'all', selectedDate = null, now = new Date()) {
-  const today = civilDateToDate(civilDateInZone(now));
+export function agendaPeriod(view = 'all', selectedDate = null, now = new Date(), periodDate = null) {
+  const today = periodDate ? civilDateToDate(calendarDateKey(periodDate)) : civilDateToDate(civilDateInZone(now));
   const startDate = selectedDate ? civilDateToDate(calendarDateKey(selectedDate))
     : view === 'week' ? startOfWeek(today, { locale: ptBR })
       : view === 'month' ? startOfMonth(today) : today;
@@ -61,6 +61,22 @@ export function agendaPeriod(view = 'all', selectedDate = null, now = new Date()
 export function instantInAgendaPeriod(instant, period) {
   const key = civilDateInZone(instant);
   return key >= period.startKey && (!period.endKey || key < period.endKey);
+}
+
+/** Display only the portion of each reservation inside this Fortaleza civil day. */
+export function agendaDayOccupancy(date, appointments = []) {
+  const period = agendaPeriod('today', date);
+  const dayStart = period.start.getTime(), dayEnd = period.end.getTime();
+  let reservedMs = 0, cancelledCount = 0;
+  for (const appointment of appointments) {
+    const start = new Date(appointment.start_time || appointment.appointment_time).getTime();
+    const end = start + Number(appointment.duration || 60) * 60000;
+    const overlap = Math.max(0, Math.min(end, dayEnd) - Math.max(start, dayStart));
+    if (!Number.isFinite(overlap) || overlap === 0) continue;
+    if (['cancelled', 'canceled'].includes(appointment.status)) cancelledCount += 1;
+    else reservedMs += overlap;
+  }
+  return { reservedMinutes: Math.round(reservedMs / 60000), cancelledCount };
 }
 
 export function agendaSummary(appointments, now = new Date()) {

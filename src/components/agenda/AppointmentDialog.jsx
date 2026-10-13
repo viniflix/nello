@@ -4,6 +4,8 @@ import { appointmentStatusChoices, canonicalAppointmentStatus, isTerminalAppoint
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog';
 import { DateInputWithCalendar, TimeInput } from '@/components/ui/date-input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -53,7 +55,10 @@ export default function AppointmentDialog({
     const [outsideConfirmed, setOutsideConfirmed] = useState(false);
     const [saving, setSaving] = useState(false);
     const [saveError, setSaveError] = useState('');
+    const [dirty, setDirty] = useState(false);
+    const [discardOpen, setDiscardOpen] = useState(false);
     const savingRef = useRef(false);
+    const updateFormData = updater => { setDirty(true); setFormData(updater); };
     const readOnly = !!appointment && isTerminalAppointment(appointment.status);
     const allowedStatuses = appointmentStatusChoices(appointment?.status);
 
@@ -87,6 +92,8 @@ export default function AppointmentDialog({
         const key = nutritionistId + ':' + (appointment?.id || 'new');
         if (initialized.current === key) return;
         initialized.current = key;
+        setDirty(false);
+        setDiscardOpen(false);
         setOutsideConfirmed(false);
         setSaveError('');
         if (appointment) {
@@ -160,6 +167,7 @@ export default function AppointmentDialog({
     useEffect(() => setOutsideConfirmed(false), [formData.appointment_time_date, formData.appointment_time_hour, formData.duration, agendaSettings?.startTime, agendaSettings?.endTime, workingDaysKey]);
 
     const handleServiceChange = (value) => {
+        setDirty(true);
         if (value === SERVICE_OPTION_CUSTOM) {
             setFormData(prev => ({
                 ...prev,
@@ -227,8 +235,9 @@ export default function AppointmentDialog({
     const selectedService = services.find(s => s.id.toString() === formData.service_id);
 
     return (
-        <Dialog open={open} onOpenChange={(nextOpen) => { if (!savingRef.current) onOpenChange(nextOpen); }}>
-            <DialogContent className="w-[calc(100vw-2rem)] max-w-2xl max-h-[90dvh] overflow-y-auto">
+        <>
+        <Dialog open={open} onOpenChange={(nextOpen) => { if (savingRef.current) return; if (!nextOpen && dirty && !readOnly) setDiscardOpen(true); else onOpenChange(nextOpen); }}>
+            <DialogContent className="agenda-dialog w-[calc(100vw-2rem)] max-w-2xl max-h-[90dvh]">
                 <DialogHeader>
                     <DialogTitle>
                         {readOnly ? 'Detalhes do agendamento' : appointment ? 'Editar Agendamento' : 'Novo Agendamento'}
@@ -237,11 +246,11 @@ export default function AppointmentDialog({
                         {readOnly ? 'Este agendamento foi encerrado. Seus dados estão disponíveis para consulta.' : appointment ? 'Altere os dados do agendamento.' : 'Preencha os dados para agendar uma nova consulta.'}
                     </DialogDescription>
                 </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-4" aria-busy={saving}>
+                <form onSubmit={handleSubmit} onChange={() => setDirty(true)} className="space-y-4" aria-busy={saving}>
                     <fieldset disabled={saving || readOnly} className="space-y-4 min-w-0">
-                    <AgendaPatientPicker value={patientSearchTerm} selectedId={formData.patient_id} disabled={saving || readOnly || identityLocked}
+                    {identityLocked ? <div className="rounded-xl bg-muted/40 p-3"><p className="text-xs text-muted-foreground">Paciente</p><p className="mt-1 break-words text-sm font-semibold">{patientSearchTerm}</p></div> : <AgendaPatientPicker value={patientSearchTerm} selectedId={formData.patient_id} disabled={saving || readOnly}
                         patients={patients} onSearch={onSearchPatients}
-                        onChange={(name, id) => { setPatientSearchTerm(name); setFormData(previous => ({ ...previous, patient_id: appointment ? '' : id, unregistered_patient_name: id ? '' : name })); }} />
+                        onChange={(name, id) => { setDirty(true); setPatientSearchTerm(name); setFormData(previous => ({ ...previous, patient_id: appointment ? '' : id, unregistered_patient_name: id ? '' : name })); }} />}
                     {identityLocked && <p className="text-xs text-muted-foreground">A identidade permanece vinculada a este agendamento. Para completar um cadastro pendente, use a ação de cadastro na lista.</p>}
                     {referenceErrors.patients && <p role="alert" className="text-xs text-destructive">Não foi possível carregar os pacientes. A busca pode ser tentada novamente; nenhum vínculo será escolhido automaticamente.</p>}
 
@@ -253,7 +262,7 @@ export default function AppointmentDialog({
                                 id="date"
                                 required
                                 value={formData.appointment_time_date}
-                                onChange={(value) => setFormData(prev => ({ ...prev, appointment_time_date: value }))}
+                                onChange={(value) => updateFormData(prev => ({ ...prev, appointment_time_date: value }))}
                             />
                         </div>
                         <div>
@@ -262,20 +271,20 @@ export default function AppointmentDialog({
                                 id="time"
                                 required
                                 value={formData.appointment_time_hour}
-                                onChange={(value) => setFormData(prev => ({ ...prev, appointment_time_hour: value }))}
+                                onChange={(value) => updateFormData(prev => ({ ...prev, appointment_time_hour: value }))}
                             />
                         </div>
                     </div>
 
                     {/* Duration and Type */}
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <div>
                             <Label htmlFor="duration">Duração *</Label>
                             <Select
                                 name="duration"
                                 required
                                 value={String(formData.duration)}
-                                onValueChange={(value) => setFormData(prev => ({ ...prev, duration: Number(value) }))}
+                                onValueChange={(value) => updateFormData(prev => ({ ...prev, duration: Number(value) }))}
                             >
                                 <SelectTrigger id="duration" disabled={saving || readOnly}>
                                     <SelectValue />
@@ -295,7 +304,7 @@ export default function AppointmentDialog({
                                 name="appointment_type"
                                 required
                                 value={formData.appointment_type}
-                                onValueChange={(value) => setFormData(prev => ({ ...prev, appointment_type: value }))}
+                                onValueChange={(value) => updateFormData(prev => ({ ...prev, appointment_type: value }))}
                             >
                                 <SelectTrigger id="appointment_type" disabled={saving || readOnly}>
                                     <SelectValue />
@@ -323,7 +332,7 @@ export default function AppointmentDialog({
                             required
                             disabled={saving || readOnly || !appointment}
                             value={formData.status}
-                            onValueChange={(value) => setFormData(prev => ({ ...prev, status: value }))}
+                            onValueChange={(value) => updateFormData(prev => ({ ...prev, status: value }))}
                         >
                             <SelectTrigger id="status">
                                 <SelectValue />
@@ -421,7 +430,7 @@ export default function AppointmentDialog({
                     {/* Notes */}
                     <div>
                         <Label htmlFor="notes">Observações</Label>
-                        <Input
+                        <Textarea
                             id="notes"
                             name="notes"
                             value={formData.notes}
@@ -433,7 +442,7 @@ export default function AppointmentDialog({
                     </fieldset>
                     {saveError && <p role="alert" className="rounded-lg bg-destructive/5 p-3 text-sm text-destructive">{saveError}</p>}
                     <DialogFooter className="grid grid-cols-2 gap-2 sm:flex sm:justify-end">
-                        <Button type="button" variant="outline" disabled={saving} className="min-h-11 transition-colors motion-reduce:transition-none" onClick={() => onOpenChange(false)}>
+                        <Button type="button" variant="outline" disabled={saving} className="min-h-11 transition-colors motion-reduce:transition-none" onClick={() => { if (dirty && !readOnly) setDiscardOpen(true); else onOpenChange(false); }}>
                             {readOnly ? 'Fechar' : 'Cancelar'}
                         </Button>
                         {!readOnly && <Button type="submit" disabled={saving} className="min-h-11 transition-colors motion-reduce:transition-none">
@@ -443,5 +452,9 @@ export default function AppointmentDialog({
                 </form>
             </DialogContent>
         </Dialog>
+        <AlertDialog open={discardOpen} onOpenChange={setDiscardOpen}>
+            <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Descartar alterações?</AlertDialogTitle><AlertDialogDescription>As alterações deste agendamento ainda não foram salvas. Você pode continuar editando ou descartar o rascunho.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel className="min-h-11">Continuar editando</AlertDialogCancel><AlertDialogAction className="min-h-11" onClick={() => { setDiscardOpen(false); setDirty(false); onOpenChange(false); }}>Descartar alterações</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
+        </AlertDialog>
+        </>
     );
 }
