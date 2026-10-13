@@ -10,6 +10,11 @@ describe('visible calendar preserves civil dates and explicit status information
     expect(day.textContent).toContain('18'); fireEvent.click(day);
     expect(onSelect.mock.calls[0][0].getDate()).toBe(18);
   });
+  it('activates an already selected day as navigation instead of deselecting it', () => {
+    const onSelect=vi.fn(); render(<AgendaCalendarNavigator month={new Date(2034,9,1)} selected={new Date(2034,9,18)} onMonthChange={vi.fn()} onSelect={onSelect} appointments={[]} />);
+    fireEvent.click(screen.getByText('18').closest('button'));
+    expect(onSelect).toHaveBeenCalledOnce(); expect(onSelect.mock.calls[0][0].getDate()).toBe(18);
+  });
   it('exposes calendar failure and a retry rather than claiming an empty month', () => {
     const onRetry=vi.fn(); render(<AgendaCalendarNavigator month={new Date(2034,9,1)} onMonthChange={vi.fn()} onSelect={vi.fn()} appointments={[]} error onRetry={onRetry} />);
     expect(screen.getByRole('alert')).toHaveTextContent('Não foi possível');

@@ -18,6 +18,9 @@ test('temporal grid proposes a reviewed move, preserves billing, and has respons
     await page.goto('/login'); await page.locator('#email').fill(pro.email); await page.locator('#password').fill(fixture.password); await page.getByRole('button', { name: 'Entrar', exact: true }).click(); await expect(page).toHaveURL(/\/nutritionist/); await page.goto('/nutritionist/agenda');
     const view = page.getByRole('group', { name: 'Visualização da agenda' });
     await view.getByRole('button', { name: 'Semana', exact: true }).click();
+    await page.getByRole('complementary', { name: 'Calendário de navegação' }).locator('button[aria-selected="true"]').press('Enter');
+    await expect(view.getByRole('button', { name: 'Dia', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    await view.getByRole('button', { name: 'Semana', exact: true }).click();
     await page.getByRole('button', { name: `Agendar ${date} às 17:30`, exact: true }).click();
     await expect(page.getByRole('dialog').getByLabel('Hora *', { exact: true })).toHaveValue('17:30');
     await page.getByRole('dialog').getByRole('button', { name: 'Cancelar', exact: true }).click();
