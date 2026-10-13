@@ -1,5 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
+// SQL is committed with LF by .gitattributes; checkout CRLF is not a SQL change.
+export const candidateChecksum = content => createHash('sha256')
+  .update(content.toString('utf8').replaceAll('\r\n', '\n')).digest('hex');
 export function candidateMigrations() {
   const manifest=JSON.parse(readFileSync('operations/backend/wave02-candidates.json','utf8'));
   const identity=JSON.parse(readFileSync('operations/backend/wave04-candidates.json','utf8'));
@@ -39,8 +42,8 @@ export function candidateMigrations() {
   if(manifest.schemaVersion!==1||!Array.isArray(manifest.migrations))throw Error('Invalid candidate migration manifest');
   return manifest.migrations.map(({file,sha256})=>{
     if(!/^supabase\/migrations\/(releases|applied)\/\d{14}_(restrict_anonymous_clinical_table_privileges|document_source_replacement_boundary|clinical_adversarial_boundaries|wave04_identity_onboarding|wave05_authorization_boundaries|wave06_edge_quotas|post06_clinical_and_invitation_repairs|wave07_private_storage|wave08_private_realtime|wave09_data_integrity|wave10_clinical_calculation_contract|wave12_bounded_queries|feed_active_care_scope|nutrition_editor_recovery|admin_operational_workspace|admin_triage_conflict_contract|admin_product_analytics|admin_verification_actions|admin_support_workspace|admin_intelligence_workspace|mc04_frozen_meal_document|security_anamnesis_revocation|security_admin_active_actor|security_audit_alerts|financial_service_details|agenda_operational_integrity|agenda_notification_outbox)\.sql$/.test(file))throw Error('Unexpected candidate migration');
-    const content=readFileSync(file,'utf8');
-    if(createHash('sha256').update(content).digest('hex')!==sha256)throw Error('Candidate migration checksum mismatch');
+    const content=readFileSync(file,'utf8').replaceAll('\r\n','\n');
+    if(candidateChecksum(content)!==sha256)throw Error('Candidate migration checksum mismatch');
     return {file,sha256,content};
   });
 }

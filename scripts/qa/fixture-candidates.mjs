@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { createHash } from 'node:crypto';
+import { candidateChecksum } from '../backend/candidate-migrations.mjs';
 import path from 'node:path';
 
 export function applyFixtureCandidates(sql, migrations, read = readFileSync) {
@@ -11,7 +11,7 @@ export function applyFixtureCandidates(sql, migrations, read = readFileSync) {
     if (applied === '0') sql(migration.content);
     else if (applied === '1') {
       const bytes = read(path.join('.backend-ci/supabase/migrations', name));
-      if (createHash('sha256').update(bytes).digest('hex') !== migration.sha256) throw Error('Applied fixture migration checksum mismatch');
+      if (candidateChecksum(bytes) !== migration.sha256) throw Error('Applied fixture migration checksum mismatch');
     } else throw Error('Unexpected migration history');
   }
 }

@@ -6,7 +6,7 @@
       "file": "supabase/migrations/releases/20261012230000_agenda_operational_integrity.sql"
     },
     {
-      "sha256": "7fd9f44e09fedacbd6c2e009a44a69d187185f2e941f0c139d40608c8cdc895d",
+      "sha256": "486338a76e37096855436a4d9edbd86675e783724b97384ac64e7b092ef15c91",
       "file": "supabase/migrations/releases/20261013070000_agenda_notification_outbox.sql"
     }
   ]

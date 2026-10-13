@@ -19,3 +19,9 @@ it('applies absent candidates and rejects an invalid history result', () => {
   expect(sql).toHaveBeenLastCalledWith(content);
   expect(() => applyFixtureCandidates(() => '2', [migration])).toThrow('history');
 });
+it('recognizes an applied CRLF checkout using the committed LF checksum without replaying SQL', () => {
+  const source = 'BEGIN;\nSELECT 1;\nCOMMIT;\n';
+  const sql = vi.fn(() => '1');
+  applyFixtureCandidates(sql, [{ ...migration, content: source, sha256: createHash('sha256').update(source).digest('hex') }], () => Buffer.from(source.replaceAll('\n', '\r\n')));
+  expect(sql).toHaveBeenCalledTimes(1);
+});
