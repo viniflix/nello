@@ -39,7 +39,14 @@ async function menu(page, id, name) {
   await card.getByRole('button', { name: /^Mais ações/ }).click(); await page.getByRole('menuitem', { name, exact: true }).click();
 }
 async function cleanup(api, appointment) {
-  if (appointment) expect((await api.from('appointments').delete().eq('id', appointment.id).eq('nutritionist_id', pro.id)).error).toBeNull();
+  if (appointment) {
+    // Use the same owner-authorized operation as the product, only on loopback
+    // fixtures without a charge. Completed test bookings must not leak into
+    // subsequent patient-history and visual-regression journeys.
+    expect((await api.rpc('delete_appointment_with_finance', { p_appointment_id: appointment.id })).error).toBeNull();
+    const remaining = await api.from('appointments').select('id').eq('id', appointment.id).eq('nutritionist_id', pro.id);
+    expect(remaining.error).toBeNull(); expect(remaining.data).toEqual([]);
+  }
   await api.auth.signOut();
 }
 
@@ -82,9 +89,7 @@ test('return draft resolves the active patient and leaves clinical notes and bil
     await expect(dialog.getByRole('combobox', { name: 'Paciente *', exact: true })).not.toHaveValue('');
     await expect(dialog.getByLabel('Serviço', { exact: true })).toContainText('Selecione um serviço'); expect(saves).toBe(0);
   } finally {
-    // The completed synthetic record remains in the disposable fixture until teardown.
-    // Never bypass terminal-record permissions just to clean up a browser test.
-    await api.auth.signOut();
+    await cleanup(api, appointment);
   }
 });
 
