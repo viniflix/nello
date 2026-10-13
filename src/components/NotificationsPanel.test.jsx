@@ -19,6 +19,18 @@ describe('clinical amendment notifications', () => {
 });
 
 describe('patient notification routes', () => {
+  it('shows the exact agenda notice state rather than replacing it with a generic title', () => {
+    expect(getNotificationMeta({ type: 'appointment_canceled', title: 'Consulta removida', message: 'Este agendamento foi removido.' }, 'patient')).toMatchObject({ title: 'Consulta removida', description: 'Este agendamento foi removido.', ctaPath: '/patient' });
+    expect(getNotificationMeta({ type: 'appointment_notice_closed', title: 'Lembrete encerrado', message: 'O acompanhamento foi encerrado.', link_url: '/patient' }, 'patient')).toMatchObject({ title: 'Lembrete encerrado', description: 'O acompanhamento foi encerrado.', ctaPath: '/patient' });
+  });
+  it('formats a legacy reminder in the clinic timezone without asserting current delivery', () => {
+    const meta = getNotificationMeta({ type: 'appointment_reminder', content: { appointment_time: '2034-10-12T02:00:00Z' } }, 'patient');
+    expect(meta.description).toContain('11/10/2034'); expect(meta.description).toContain('23:00');
+    expect(meta.description).not.toContain('entregue');
+  });
+  it('keeps post-consultation text inside the recipient route and rejects an external link', () => {
+    expect(getNotificationMeta({ type: 'post_consultation', title: 'Após a consulta', message: 'Confira suas orientações.', link_url: 'https://evil.example' }, 'patient')).toMatchObject({ title: 'Após a consulta', description: 'Confira suas orientações.', ctaPath: '/patient' });
+  });
   it.each([
     ['new_achievement', '/patient/conquistas'],
     ['new_weekly_summary', '/patient/progresso'],

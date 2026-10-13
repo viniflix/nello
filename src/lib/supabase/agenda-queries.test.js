@@ -26,6 +26,14 @@ describe('gravação atômica de agenda e cobrança', () => {
         sync.mockResolvedValue({ error: null });
     });
 
+    it('avisa sobre falha da fila após criação sem duplicar consulta ou cobrança', async () => {
+        const saved = { id: 7, status: 'scheduled' }, transaction = { id: 9, status: 'pending' };
+        rpc.mockResolvedValue({ data: { appointment: saved, transaction }, error: null });
+        sync.mockResolvedValue({ data: { events: [{ delivery_status: 'failed' }] }, error: null });
+        expect(await createAppointmentWithFinance(appointment, {})).toEqual({ appointment: { ...saved, appointment_notifications_pending: true }, transaction });
+        expect(rpc).toHaveBeenCalledTimes(1);
+    });
+
     it('não anuncia consulta criada quando a transação do banco falha', async () => {
         const error = new Error('cobrança rejeitada');
         rpc.mockResolvedValue({ data: null, error });
@@ -80,15 +88,21 @@ describe('gravação atômica de agenda e cobrança', () => {
         expect(request.p_arguments.p_appointment.status).toBe('awaiting_confirmation');
     });
 
-    it('mantém consulta salva e informa envio pendente quando o dispatcher retorna erro', async () => {
-        const saved = { id: 7, status: 'completed', patient_id: 'patient-id', nutritionist_id: appointment.nutritionist_id };
+    it('mantém a consulta salva quando o serviço de avisos falha, sem redisparar modelos pelo cliente', async () => {
+        const saved = { id: 7, status: 'completed', patient_id: 'synthetic-patient', nutritionist_id: appointment.nutritionist_id };
         rpc.mockResolvedValue({ data: { appointment: saved }, error: null });
-        const query = { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), order: vi.fn().mockReturnThis(), limit: vi.fn().mockReturnThis(), maybeSingle: vi.fn().mockResolvedValue({ data: { id: 'template-id' }, error: null }) };
-        from.mockReturnValue(query);
-        const failure = { code: 'PGRST202', message: 'dispatcher unavailable' };
-        dispatch.mockResolvedValue({ data: null, error: failure });
-        await expect(updateAppointment(7, { ...appointment, status: 'completed' })).resolves.toEqual({ ...saved, post_consultation_delivery_pending: true });
+        const failure = { code: 'PGRST202', message: 'schedule unavailable' };
+        sync.mockResolvedValue({ data: null, error: failure });
+        await expect(updateAppointment(7, { ...appointment, status: 'completed' })).resolves.toEqual({ ...saved, appointment_notifications_pending: true, post_consultation_delivery_pending: true });
         expect(rpc).toHaveBeenCalledTimes(1);
-        expect(logError).toHaveBeenCalledWith('erro_ao_disparar_template_pos_consulta', failure);
+        expect(dispatch).not.toHaveBeenCalled();
+        expect(from).not.toHaveBeenCalled();
+    });
+    it('não interpreta canal externo bloqueado como pós-consulta enviada', async () => {
+        const saved = { id: 7, status: 'completed' };
+        rpc.mockResolvedValue({ data: { appointment: saved }, error: null });
+        sync.mockResolvedValue({ data: { events: [{ event_kind: 'post_consultation', delivery_status: 'blocked', reason_code: 'external_channel_unconfigured' }] }, error: null });
+        expect((await updateAppointment(7, appointment)).appointment_notifications_pending).toBe(true);
+        expect(dispatch).not.toHaveBeenCalled();
     });
 });

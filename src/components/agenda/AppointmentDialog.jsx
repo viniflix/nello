@@ -28,6 +28,7 @@ export default function AppointmentDialog({
     nutritionistId,
     preSelectedDate,
     initialPatientId,
+    initialAppointmentType = 'first_appointment',
     onSave,
     onSearchPatients,
     agendaSettings,
@@ -134,7 +135,7 @@ export default function AppointmentDialog({
                 appointment_time_date: preSelectedDate ? calendarDateKey(preSelectedDate) : getTodayIsoDate(),
                 appointment_time_hour: '',
                 duration: Number(agendaSettings?.slotDuration) >= 1 && Number(agendaSettings?.slotDuration) <= 480 ? Number(agendaSettings.slotDuration) : 60,
-                appointment_type: 'first_appointment',
+                appointment_type: initialAppointmentType,
                 status: 'scheduled',
                 notes: '',
                 service_id: '',
@@ -143,7 +144,7 @@ export default function AppointmentDialog({
                 custom_description: ''
             }, initialPatient?.name || '');
         }
-    }, [appointment, open, preSelectedDate, patients, initialPatientId, nutritionistId, agendaSettings]);
+    }, [appointment, open, preSelectedDate, patients, initialPatientId, initialAppointmentType, nutritionistId, agendaSettings]);
 
     // Restaurar pointer-events ao fechar (evita página travada quando Popover modal está dentro de Dialog)
     useEffect(() => {

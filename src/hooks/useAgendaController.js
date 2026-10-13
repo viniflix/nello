@@ -160,8 +160,8 @@ export function useAgendaController({ user, returnView = null }) {
                     status: status || 'scheduled',
                     updated_at: appointmentData.updated_at
                 }, financialData);
-                toast({ title: "Agendamento atualizado", description: savedAppointment?.post_consultation_delivery_pending
-                    ? 'A consulta foi salva. O aviso pós-consulta não foi confirmado; não é necessário salvar novamente.'
+                toast({ title: "Agendamento atualizado", description: savedAppointment?.appointment_notifications_pending
+                    ? 'A consulta foi salva. A confirmação de aviso está pendente; não é necessário salvar novamente.'
                     : 'Agendamento atualizado com sucesso.' });
             } else {
                 const payload = {
@@ -177,7 +177,9 @@ export function useAgendaController({ user, returnView = null }) {
 
                 const { appointment: createdAppointment, transaction } = await createAppointmentWithFinance(payload, financialData);
                 
-                if (transaction) {
+                if (createdAppointment.appointment_notifications_pending) {
+                    toast({ title: 'Agendamento salvo', description: 'A confirmação do aviso está pendente. Confira Avisos da consulta; não é necessário salvar novamente.' });
+                } else if (transaction) {
                     toast({ 
                         title: "Sucesso!", 
                         description: "Agendamento criado e registro financeiro gerado automaticamente." 

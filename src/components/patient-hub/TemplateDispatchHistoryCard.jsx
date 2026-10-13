@@ -95,7 +95,7 @@ const TemplateDispatchHistoryCard = ({ patientId }) => {
                                                     : 'bg-red-50 text-red-700 border-red-200'
                                             )}
                                         >
-                                            {item.delivery_status === 'sent' ? 'Enviado' : 'Falhou'}
+                                            {item.metadata?.delivery_evidence === 'internal_available' ? 'Disponível no Nello' : item.delivery_status === 'sent' ? 'Enviado (registro)' : item.delivery_status === 'pending' ? 'Pendente' : 'Falhou'}
                                         </Badge>
                                     </div>
                                     {item.rendered_title && (

@@ -1,5 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import AgendaWorkspace from '@/components/agenda/AgendaWorkspace';
+import AgendaNotificationsDialog from '@/components/agenda/AgendaNotificationsDialog';
+import { downloadAppointmentCalendar } from '@/lib/agenda/calendar-export';
+import { useToast } from '@/components/ui/use-toast';
+import { track } from '@/infrastructure/analytics/posthog';
 import { ChevronLeft, ChevronRight, FileDown } from 'lucide-react';
 import { AnamnesisLinkModal } from '@/components/anamnesis/AnamnesisLinkModal';
 import { useAuth } from '@/contexts/AuthContext';
@@ -15,6 +19,7 @@ import AppointmentDialog from '@/components/agenda/AppointmentDialog';
 import AgendaRegistrationDialog from '@/components/agenda/AgendaRegistrationDialog';
 import { civilDateInZone, civilDateToDate, localTimeInZone } from '@/lib/utils/date';
 import { agendaReturnContext, readAgendaReturn, appointmentCharge } from '@/lib/agenda/navigation';
+import { calendarDateKey } from '@/lib/agenda/availability';
 import { formatCurrency } from '@/lib/utils';
 
 import { useAgendaController } from '@/hooks/useAgendaController';
@@ -22,6 +27,12 @@ import { useAgendaController } from '@/hooks/useAgendaController';
 export default function AgendaPage() {
     const { user } = useAuth();
     const navigate = useNavigate();
+    const { toast } = useToast();
+    const [noticeAppointment, setNoticeAppointment] = useState(null);
+    const [calendarAppointment, setCalendarAppointment] = useState(null);
+    const [initialAppointmentType, setInitialAppointmentType] = useState('first_appointment');
+    const [returnLoading, setReturnLoading] = useState(false);
+    const returnLock = useRef(false);
     const location = useLocation();
     const [searchParams, setSearchParams] = useSearchParams();
     const [routePatientId, setRoutePatientId] = useState(null);
@@ -92,6 +103,7 @@ export default function AgendaPage() {
                 return;
             }
             if (!active) return;
+            setInitialAppointmentType('first_appointment');
             setRoutePatient(patient);
             setRoutePatientId(patient?.id || null);
             setEditingAppointment(null);
@@ -105,11 +117,39 @@ export default function AgendaPage() {
         return () => { active = false; routeActionHandledRef.current = false; };
     }, [loading, referencesLoading, searchPatients, searchParams, setEditingAppointment, setIsFormOpen, setSearchParams]);
 
+    const openReturn = async appointment => {
+        if (returnLock.current || !appointment.patient_id || appointment.status !== 'completed') return;
+        returnLock.current = true; setReturnLoading(true);
+        try {
+            const result = await searchPatients('', 0, appointment.patient_id);
+            const patient = result.patients.find(item => item.id === appointment.patient_id);
+            if (!patient) {
+                toast({ title: 'Acompanhamento não disponível', description: 'Confira o vínculo ativo do paciente antes de agendar um retorno.' });
+                return;
+            }
+            setRoutePatient(patient); setRoutePatientId(patient.id); setInitialAppointmentType('return');
+            const today = civilDateInZone();
+            if (calendarDateKey(selectedDate) < today) setSelectedDate(civilDateToDate(today));
+            setEditingAppointment(null); setIsFormOpen(true);
+            track('ui_action_outcome', { module: 'agenda', operation: 'agenda_return_draft', outcome: 'succeeded' });
+        } catch {
+            toast({ title: 'Não foi possível conferir o paciente', description: 'Tente novamente. Nenhum agendamento foi criado.', variant: 'destructive' });
+        } finally { returnLock.current = false; setReturnLoading(false); }
+    };
+    const exportCalendar = () => {
+        try {
+            downloadAppointmentCalendar(calendarAppointment);
+            track('ui_action_outcome', { module: 'agenda', operation: 'agenda_calendar_file', outcome: 'succeeded' });
+            setCalendarAppointment(null);
+        } catch (error) { toast({ title: 'Não foi possível exportar', description: error.message, variant: 'destructive' }); }
+    };
+
     return (
         <div className="min-h-dvh bg-background">
             <div>
                 <AgendaWorkspace controller={controller}
-                    onNew={date => { setRoutePatientId(null); setRoutePatient(null); if (date) setSelectedDate(civilDateToDate(date)); setEditingAppointment(null); setIsFormOpen(true); }}
+                    onNew={date => { setInitialAppointmentType('first_appointment'); setRoutePatientId(null); setRoutePatient(null); if (date) setSelectedDate(civilDateToDate(date)); setEditingAppointment(null); setIsFormOpen(true); }}
+                    onNotices={setNoticeAppointment} onReturn={openReturn} onCalendar={setCalendarAppointment} returnLoading={returnLoading}
                     onSettings={() => navigate('/nutritionist/profile?tab=agenda', { state: { agendaReturn: agendaReturnContext(user?.id, selectedDate, filterView, controller.periodDate) } })}
                     onExport={() => setExportDialogOpen(true)}
                     onEdit={appointment => { setEditingAppointment(appointment); setIsFormOpen(true); }}
@@ -230,6 +270,10 @@ export default function AgendaPage() {
                     </DialogContent>
                 </Dialog>
 
+                <AgendaNotificationsDialog appointment={noticeAppointment} nutritionistId={user?.id} onClose={() => setNoticeAppointment(null)} />
+                <Dialog open={Boolean(calendarAppointment)} onOpenChange={open => { if (!open) setCalendarAppointment(null); }}>
+                    <DialogContent className="max-w-lg [&>button]:h-11 [&>button]:w-11"><DialogHeader><DialogTitle>Baixar para calendário</DialogTitle><DialogDescription>O arquivo contém apenas horário, duração e o título Consulta Nello. Não inclui nome, contato, observações ou cobrança.</DialogDescription></DialogHeader><p className="text-sm text-muted-foreground">É uma cópia local. Reagendamentos e cancelamentos no Nello não atualizam automaticamente o calendário em que você importar o arquivo.</p><DialogFooter className="grid grid-cols-2 gap-2 sm:flex"><Button variant="outline" className="min-h-11" onClick={() => setCalendarAppointment(null)}>Cancelar</Button><Button className="min-h-11" onClick={exportCalendar}>Baixar .ics</Button></DialogFooter></DialogContent>
+                </Dialog>
                 {/* Appointment Dialog */}
                 <AppointmentDialog
                     open={isFormOpen}
@@ -247,6 +291,7 @@ export default function AgendaPage() {
                     nutritionistId={user?.id}
                     preSelectedDate={selectedDate}
                     initialPatientId={routePatientId}
+                    initialAppointmentType={initialAppointmentType}
                     onSave={handleSaveAppointment}
                 />
 

@@ -333,6 +333,11 @@
       "file": "agenda_operational_integrity.sql",
       "kind": "assertion-suite",
       "fixtures": []
+    },
+    {
+      "file": "agenda_notification_outbox.sql",
+      "kind": "assertion-suite",
+      "fixtures": []
     }
   ]
 }

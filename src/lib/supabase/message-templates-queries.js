@@ -291,7 +291,7 @@ export const getTemplateDispatchHistory = async ({
             .from('template_dispatch_log')
             .select(`
                 id, template_id, channel, trigger_event,
-                rendered_title, rendered_body, delivery_status,
+                rendered_title, rendered_body, delivery_status, metadata,
                 created_at,
                 message_templates (name, context),
                 patient:patient_id (name)

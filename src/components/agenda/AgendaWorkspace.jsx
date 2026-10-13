@@ -12,7 +12,7 @@ import './agenda-workspace.css';
 const views = [['today', 'Dia'], ['week', 'Semana'], ['month', 'Mês'], ['all', 'Lista']];
 function SectionError({ text, onRetry }) { return <div role="alert" className="agenda-section-error"><p>{text}</p><Button variant="outline" onClick={onRetry}>Tentar novamente</Button></div>; }
 
-export default function AgendaWorkspace({ controller: c, onNew, onSettings, onExport, onEdit, onDelete, onRegister, onPatient, onAnamnesis, onCharge }) {
+export default function AgendaWorkspace({ controller: c, onNew, onSettings, onExport, onEdit, onDelete, onRegister, onPatient, onAnamnesis, onCharge, onNotices, onReturn, onCalendar, returnLoading }) {
   const [statusFilter, setStatusFilter] = useState('all');
   const anchor = c.selectedDate || c.periodDate || agendaToday();
   const mode = c.selectedDate ? 'today' : c.filterView;
@@ -35,7 +35,7 @@ export default function AgendaWorkspace({ controller: c, onNew, onSettings, onEx
   const monthStart = startOfMonth(anchor), gridStart = startOfWeek(monthStart, { locale: ptBR });
   const monthDays = Array.from({ length: 42 }, (_, index) => addDays(gridStart, index));
   const title = mode === 'week' ? `${format(weekStart, 'dd/MM')} – ${format(addDays(weekStart, 6), 'dd/MM/yyyy')}` : mode === 'month' ? format(anchor, 'MMMM yyyy', { locale: ptBR }) : mode === 'all' ? 'Próximos agendamentos' : format(anchor, "dd 'de' MMMM", { locale: ptBR });
-  const renderCard = item => <AgendaAppointmentCard key={item.id} appointment={item} status={c.getStatusInfo(item.status)} type={c.getTypeInfo(item.appointment_type)} onEdit={() => onEdit(item)} onDelete={() => onDelete(item)} onRegister={() => onRegister(item)} onPatient={() => onPatient(item)} onAnamnesis={() => onAnamnesis(item)} onCharge={() => onCharge(item)} />;
+  const renderCard = item => <AgendaAppointmentCard key={item.id} appointment={item} status={c.getStatusInfo(item.status)} type={c.getTypeInfo(item.appointment_type)} onEdit={() => onEdit(item)} onDelete={() => onDelete(item)} onRegister={() => onRegister(item)} onPatient={() => onPatient(item)} onAnamnesis={() => onAnamnesis(item)} onCharge={() => onCharge(item)} onNotices={() => onNotices(item)} onReturn={() => onReturn(item)} onCalendar={() => onCalendar(item)} returnLoading={returnLoading} />;
   const loadState = c.loading ? <div role="status" className="agenda-loading"><span className="sr-only">Carregando agendamentos…</span>{[1, 2, 3].map(key => <div key={key} className="agenda-skeleton" />)}</div> : null;
   return <section className="agenda-workspace">
     <header className="agenda-heading agenda-enter"><div><h2 className="font-heading text-2xl font-bold uppercase tracking-wide text-primary md:text-3xl">Agenda de Consultas</h2><p className="mt-1 text-sm text-muted-foreground md:text-base">Visualize e gerencie todos os seus agendamentos.</p></div><div className="agenda-heading-actions"><Button variant="outline" onClick={onSettings}><Settings className="h-4 w-4" aria-hidden="true" /><span>Configurar agenda</span></Button><Button variant="outline" onClick={onExport} disabled={c.exporting}><FileDown className="h-4 w-4" aria-hidden="true" /><span>Exportar PDF</span></Button><Button onClick={() => onNew()} disabled={c.referencesLoading}><Plus className="h-4 w-4" aria-hidden="true" /><span>Novo Agendamento</span></Button></div></header>

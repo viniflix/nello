@@ -7,7 +7,7 @@ import { appointmentCharge } from '@/lib/agenda/navigation';
 import { isTerminalAppointment } from '@/lib/agenda/appointment-rules';
 import { formatCurrency } from '@/lib/utils';
 
-export default function AgendaAppointmentCard({ appointment, status, type, onEdit, onDelete, onRegister, onPatient, onAnamnesis, onCharge }) {
+export default function AgendaAppointmentCard({ appointment, status, type, onEdit, onDelete, onRegister, onPatient, onAnamnesis, onCharge, onNotices, onReturn, onCalendar, returnLoading }) {
   const name = appointment.patient?.name || appointment.unregistered_patient_name || 'Paciente não identificado';
   const charge = appointmentCharge(appointment), terminal = isTerminalAppointment(appointment.status);
   return <div data-appointment-id={appointment.id} className="agenda-appointment bg-muted/30">
@@ -27,6 +27,9 @@ export default function AgendaAppointmentCard({ appointment, status, type, onEdi
           {appointment.patient_id && <><DropdownMenuItem className="min-h-11" onSelect={onPatient}>Ver detalhes do paciente</DropdownMenuItem><DropdownMenuItem className="min-h-11" onSelect={onAnamnesis}>Abrir formulário de anamnese</DropdownMenuItem></>}
           {!appointment.patient_id && !terminal && <DropdownMenuItem className="min-h-11" onSelect={onRegister}>Completar cadastro</DropdownMenuItem>}
           {charge && <DropdownMenuItem className="min-h-11" onSelect={onCharge}>Abrir cobrança no Financeiro</DropdownMenuItem>}
+          <DropdownMenuItem className="min-h-11" onSelect={onNotices}>Avisos da consulta</DropdownMenuItem>
+          {appointment.patient_id && appointment.status === 'completed' && onReturn && <DropdownMenuItem className="min-h-11" disabled={returnLoading} onSelect={onReturn}>Agendar retorno</DropdownMenuItem>}
+          {!terminal && onCalendar && <DropdownMenuItem className="min-h-11" onSelect={onCalendar}>Baixar para calendário (.ics)</DropdownMenuItem>}
           <DropdownMenuSeparator /><DropdownMenuItem title="Excluir agendamento" className="min-h-11 text-destructive focus:text-destructive" onSelect={onDelete}>Excluir agendamento</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

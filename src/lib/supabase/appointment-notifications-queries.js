@@ -1,13 +1,6 @@
 import { agendaClient as supabase } from '@/infrastructure/supabase/domainClients';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
 
-const isFunctionMissing = (err) => {
-    if (!err) return false;
-    const msg = String(err?.message || '').toLowerCase();
-    const code = String(err?.code || err?.statusCode || '').toString();
-    return code === '404' || code === '42883' || msg.includes('could not find the function') || msg.includes('schema cache');
-};
-
 export const syncAppointmentNotificationSchedule = async (appointmentId, forceReschedule = false) => {
     try {
         const { data, error } = await supabase.rpc('sync_appointment_notification_schedule', {
@@ -16,16 +9,10 @@ export const syncAppointmentNotificationSchedule = async (appointmentId, forceRe
         });
 
         if (error) {
-            if (isFunctionMissing(error)) {
-                return { data: null, error: null }; // Ignore gracefully
-            }
             throw error;
         }
         return { data, error: null };
     } catch (error) {
-        if (isFunctionMissing(error)) {
-            return { data: null, error: null };
-        }
         logSupabaseError("erro_ao_sincronizar_notificacoes_da_consulta", error);
         return { data: null, error };
     }
@@ -53,11 +40,12 @@ export const getAppointmentNotifications = async ({
     limit = 50
 } = {}) => {
     try {
+        if (!appointmentId || !nutritionistId) throw new Error('Consulta e responsável são obrigatórios.');
         let query = supabase
             .from('appointment_notifications')
-            .select('id,appointment_id,nutritionist_id,patient_id,scheduled_for,delivery_status')
-            .order('scheduled_for', { ascending: true })
-            .limit(limit);
+            .select('id,appointment_id,nutritionist_id,patient_id,scheduled_for,delivery_status,event_kind,channel,reason_code,attempts,last_error_code,available_at,created_at')
+            .order('created_at', { ascending: false })
+            .limit(Math.min(100, Math.max(1, Number(limit) || 20)));
 
         if (appointmentId) query = query.eq('appointment_id', appointmentId);
         if (nutritionistId) query = query.eq('nutritionist_id', nutritionistId);

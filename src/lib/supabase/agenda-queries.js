@@ -4,7 +4,7 @@ import { agendaClient as supabase } from '@/infrastructure/supabase/domainClient
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
 import { syncAppointmentNotificationSchedule } from './appointment-notifications-queries';
 
-import { dispatchMessageTemplate } from './message-templates-queries';
+
 
 const STATUS_FALLBACK = 'scheduled';
 // Mapeia para valores aceitos pelo DB (produção usa 'cancelled' com 2 L)
@@ -72,6 +72,10 @@ const buildAppointmentPayload = (appointmentData = {}) => {
  * @param {Object} financialData - Financial data (service_id, custom_price, custom_description)
  * @returns {Promise<{appointment: Object, transaction: Object}>}
  */
+const hasNoticeFailure = result => Boolean(result.error) || (result.data?.events || []).some(event =>
+    event.delivery_status === 'failed' || (event.delivery_status === 'blocked'
+        && !['no_active_template', 'no_patient_account'].includes(event.reason_code)));
+
 export async function createAppointmentWithFinance(appointmentData, financialData) {
     const appointmentPayload = buildAppointmentPayload(appointmentData);
     const { data, error } = await clinicalRpc('appointment', {
@@ -91,7 +95,7 @@ export async function createAppointmentWithFinance(appointmentData, financialDat
         logSupabaseError("erro_ao_sincronizar_notificacoes_da_consulta_apos_criacao", syncResult.error);
     }
 
-    return { appointment, transaction };
+    return { appointment: hasNoticeFailure(syncResult) ? { ...appointment, appointment_notifications_pending: true } : appointment, transaction };
 }
 
 /**
@@ -117,43 +121,9 @@ export async function updateAppointment(appointmentId, appointmentData, financia
         logSupabaseError("erro_ao_sincronizar_notificacoes_da_consulta_apos_atualizacao", syncResult.error);
     }
 
-    // Auto-dispatch post_consultation template when appointment is completed
-    const finalStatus = refreshed?.status;
-    const finalPatientId = refreshed?.patient_id;
-    if (
-        finalStatus === 'completed' &&
-        finalPatientId &&
-        refreshed?.nutritionist_id
-    ) {
-        try {
-            const { data: postTpl, error: templateError } = await supabase
-                .from('message_templates')
-                .select('id')
-                .eq('nutritionist_id', refreshed.nutritionist_id)
-                .eq('context', 'post_consultation')
-                .eq('is_active', true)
-                .order('use_count', { ascending: false })
-                .limit(1)
-                .maybeSingle();
-
-            if (templateError) throw templateError;
-
-            if (postTpl?.id) {
-                const delivery = await dispatchMessageTemplate({
-                    templateId: postTpl.id,
-                    patientId: finalPatientId,
-                    triggerEvent: 'appointment_completed',
-                    extraVariables: { appointment_id: appointmentId }
-                });
-                if (delivery?.error) throw delivery.error;
-            }
-        } catch (dispatchErr) {
-            logSupabaseError("erro_ao_disparar_template_pos_consulta", dispatchErr);
-            // The clinical update is already committed; a delivery failure must
-            // never be presented as an unsaved consultation or trigger a re-save.
-            return { ...refreshed, post_consultation_delivery_pending: true };
-        }
-    }
+    const pending = hasNoticeFailure(syncResult);
+    if (pending) return { ...refreshed, appointment_notifications_pending: true,
+        post_consultation_delivery_pending: refreshed.status === 'completed' };
 
     return refreshed;
 }

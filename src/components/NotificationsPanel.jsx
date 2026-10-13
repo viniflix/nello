@@ -109,12 +109,17 @@ export const getNotificationMeta = (notification, userType) => {
     ctaPath: safeInternalPath(notification?.link_url, userType === 'nutritionist' ? '/nutritionist' : '/patient')
   };
   const isClinicalAmendment = ['clinical_record_corrected', 'clinical_record_invalidated'].includes(notification.type);
+  const isAgendaNotice = ['appointment_scheduled', 'appointment_rescheduled', 'appointment_canceled', 'appointment_reminder', 'appointment_notice_closed', 'post_consultation'].includes(notification.type);
+  const appointmentTime = new Date(notification?.content?.appointment_time);
+  const agendaDescription = notification?.message || notification?.content?.message
+    || (Number.isFinite(appointmentTime.getTime()) ? `Consulta: ${appointmentTime.toLocaleString('pt-BR', { timeZone: 'America/Fortaleza' })}` : 'Confira os detalhes no Nello.');
 
   return {
     ...base,
+    title: isAgendaNotice ? notification?.title || base.title : base.title,
     description: isClinicalAmendment
       ? 'Seu registro clínico recebeu uma atualização.'
-      : (base.description || genericMessage)
+      : isAgendaNotice ? agendaDescription : (base.description || genericMessage)
   };
 };
 

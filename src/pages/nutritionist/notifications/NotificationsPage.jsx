@@ -37,11 +37,16 @@ const NotificationCard = ({ notification, onMarkAsRead, user }) => {
                 break;
                 }
             case 'appointment_reminder':
-                const time = new Date(content.appointment_time).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+            case 'appointment_rescheduled':
+            case 'appointment_canceled':
+            case 'post_consultation':
+            case 'appointment_notice_closed':
                 details = {
-                    title: 'Lembrete de Consulta',
-                    description: `Sua consulta está agendada para ${time}.`,
-                    action: () => user?.profile?.user_type === 'nutritionist' ? navigate('/nutritionist/agenda') : null,
+                    title: notification.title || 'Aviso de consulta',
+                    description: notification.message || (content?.appointment_time
+                        ? `Consulta: ${new Date(content.appointment_time).toLocaleString('pt-BR', { timeZone: 'America/Fortaleza' })}`
+                        : 'Confira os detalhes no Nello.'),
+                    action: () => navigate(user?.profile?.user_type === 'nutritionist' ? '/nutritionist/agenda' : '/patient'),
                 };
                 break;
             case 'new_message':
