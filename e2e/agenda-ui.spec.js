@@ -66,6 +66,7 @@ test('full synthetic day supports long identities, responsive actions, accessibl
       expect(result.error).toBeNull(); ids.push(result.data.appointment.id);
     }
     await page.emulateMedia({ reducedMotion: 'reduce' }); await login(page);
+    await page.getByRole('group', { name: 'Visualização da agenda' }).getByRole('button', { name: 'Lista', exact: true }).click();
     await page.getByLabel('Buscar agendamento pelo paciente', { exact: true }).fill(marker);
     await expect(page.locator('[data-appointment-id]')).toHaveCount(6);
     for (const width of [320, 360, 390, 430, 768, 820, 1024, 1280, 1440]) {

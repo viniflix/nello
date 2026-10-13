@@ -48,7 +48,7 @@ export default function AgendaNotificationsDialog({ appointment, nutritionistId,
     return () => { active = false; };
   }, [appointment?.id, nutritionistId, retry]);
   return <Dialog open={Boolean(appointment)} onOpenChange={open => { if (!open) onClose(); }}>
-    <DialogContent className="flex max-h-[92dvh] max-w-lg flex-col gap-0 p-0 [&>button]:h-11 [&>button]:w-11">
+    <DialogContent className="agenda-notice-dialog flex max-h-[92dvh] max-w-lg flex-col gap-0 p-0 [&>button]:h-11 [&>button]:w-11">
       <DialogHeader className="p-5 pr-16 text-left"><DialogTitle>Avisos da consulta</DialogTitle><DialogDescription>Acompanhe os registros internos. Disponibilidade não confirma leitura pelo paciente.</DialogDescription></DialogHeader>
       <div className="min-h-0 space-y-3 overflow-y-auto px-5 pb-5" aria-live="polite">
         {state.loading ? <p role="status" className="text-sm text-muted-foreground">Consultando avisos…</p> : state.error ? <div role="alert" className="space-y-3"><p className="text-sm">Não foi possível consultar os avisos. O agendamento permanece salvo.</p><Button variant="outline" className="min-h-11" onClick={() => setRetry(value => value + 1)}>Tentar novamente</Button></div> : state.rows.length ? state.rows.map(row => {
